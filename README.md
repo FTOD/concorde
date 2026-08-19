@@ -24,26 +24,32 @@ implemented.
 
 ### Prerequisites
 
-- Python 3.11 or newer
+- [`uv`](https://docs.astral.sh/uv/) for the repository's Python 3.11 development environment
 - Spec Kit/Specify CLI 0.16.4 available as `specify`
 - Codex for the initial skills-mode integration
 
 Check the required versions:
 
 ```bash
-python3 --version
+uv --version
+uv sync
+uv run python --version
 specify --version
 ```
+
+`uv sync` creates the repository-local `.venv/` from `pyproject.toml` and `uv.lock`. Concorde's
+installed bundle runtime remains Python 3.11 standard-library-only and does not require target
+projects to install `uv`.
 
 ### 1. Build the local release
 
 From a Concorde checkout:
 
 ```bash
-python3 scripts/release/build-components.py --output dist
+uv run python scripts/release/build-components.py --output dist
 specify bundle validate --path bundles/concorde-starter
 specify bundle build --path bundles/concorde-starter --output dist
-python3 scripts/release/verify-release.py --dist dist
+uv run python scripts/release/verify-release.py --dist dist
 ```
 
 The release contains exactly `concorde-core@0.1.0` and `concorde@0.1.0`. It does not install a custom

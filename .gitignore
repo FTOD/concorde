@@ -7,6 +7,15 @@ build/
 coverage/
 *.tsbuildinfo
 
+# Python and uv
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
 # Logs and local environment
 *.log
 npm-debug.log*
@@ -20,4 +29,3 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
-

@@ -23,7 +23,8 @@ YAML front matter and JSON for maintained architecture sources; YAML/JSON manife
 Kit 0.16.4
 
 **Primary Dependencies**: Spec Kit/Specify CLI 0.16.4 public bundle, preset, extension, catalog, and
-agent-registration contracts; Python standard library only in the installed Concorde runtime
+agent-registration contracts; `uv` for the repository development environment; Python standard
+library only in the installed Concorde runtime
 
 **Storage**: Project-scoped files: Spec Kit registries and provenance under `.specify/`, Concorde
 configuration under `.concorde/`, maintained architecture under `architecture/`, canonical feature

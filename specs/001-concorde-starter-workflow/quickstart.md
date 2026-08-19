@@ -5,7 +5,7 @@ implementation and uses only the normal Spec Kit lifecycle plus the commands ins
 
 ## Prerequisites
 
-- Python 3.11 or later.
+- `uv`, using the repository's pinned Python 3.11 development environment.
 - Spec Kit/Specify CLI 0.16.4 available as `specify`.
 - A checkout of this repository.
 - Codex for the primary skills-mode run. Repeat the registration section with one supported
@@ -14,7 +14,9 @@ implementation and uses only the normal Spec Kit lifecycle plus the commands ins
 Confirm versions from the repository root:
 
 ```bash
-python3 --version
+uv --version
+uv sync
+uv run python --version
 specify --version
 ```
 
@@ -24,10 +26,10 @@ against another Spec Kit version.
 ## 1. Build and Verify Release Inputs
 
 ```bash
-python3 scripts/release/build-components.py --output dist
+uv run python scripts/release/build-components.py --output dist
 specify bundle validate --path bundles/concorde-starter
 specify bundle build --path bundles/concorde-starter --output dist
-python3 scripts/release/verify-release.py --dist dist
+uv run python scripts/release/verify-release.py --dist dist
 ```
 
 Expected:
@@ -43,7 +45,7 @@ Expected:
 In a second terminal from the repository root:
 
 ```bash
-python3 tests/concorde/support/catalog_server.py --dist dist --port 8765
+uv run python tests/concorde/support/catalog_server.py --dist dist --port 8765
 ```
 
 Keep the server running. It exposes the generated catalogs and archives from localhost, allowing the
@@ -250,7 +252,7 @@ Run the injected-failure fixture from the repository test suite:
 
 ```bash
 cd /path/to/concorde
-python3 -m unittest tests.concorde.integration.test_bundle_lifecycle
+uv run python -m unittest tests.concorde.integration.test_bundle_lifecycle
 ```
 
 Expected: a failed install/update is not recorded as successful, newly installed components are

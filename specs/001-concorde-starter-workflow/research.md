@@ -54,6 +54,10 @@ Codex `SKILL.md` output and slash-command agents. Keeping the runtime agent-inde
 surface the same inputs, outputs, and failure behavior. Python 3.11 matches Spec Kit's own minimum
 runtime and avoids requiring Node or a new package manager in installed projects.
 
+Repository contributors use `uv`, a committed lockfile, and a project-local `.venv/` to select and
+run Python 3.11 reproducibly. This development convention is deliberately separate from the installed
+extension contract: target projects need Python 3.11 but do not need `uv` or third-party packages.
+
 **Alternatives considered**:
 
 - Put validation rules only in the prompt. Rejected because LLM results cannot satisfy deterministic
