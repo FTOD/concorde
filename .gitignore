@@ -1,0 +1,23 @@
+# Node and Docusaurus
+node_modules/
+dist/
+build/
+.docusaurus/
+.generated/
+coverage/
+*.tsbuildinfo
+
+# Logs and local environment
+*.log
+npm-debug.log*
+.env*
+!.env.example
+
+# Editor and OS artifacts
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
+

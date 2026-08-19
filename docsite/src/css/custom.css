@@ -1,0 +1,41 @@
+:root {
+  --ifm-color-primary: #3f4fd7;
+  --ifm-color-primary-dark: #2d3dc4;
+  --ifm-color-primary-darker: #2b39b9;
+  --ifm-color-primary-darkest: #232f99;
+  --ifm-color-primary-light: #5967dc;
+  --ifm-color-primary-lighter: #6572df;
+  --ifm-color-primary-lightest: #8992e7;
+  --concorde-surface: #f6f7ff;
+  --concorde-border: #dfe2f8;
+}
+
+[data-theme='dark'] {--concorde-surface: #202238; --concorde-border: #363a63;}
+.homeMain {max-width: 72rem; margin: 0 auto; padding: 5rem 1.5rem;}
+.heroBanner {max-width: 48rem; padding-bottom: 3rem;}
+.heroBanner h1 {font-size: clamp(2.5rem, 7vw, 5rem); line-height: .98; letter-spacing: -.045em;}
+.heroBanner__eyebrow {color: var(--ifm-color-primary); font-weight: 700; letter-spacing: .08em; text-transform: uppercase;}
+.projectSummary__grid {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem;}
+.projectSummary__card {display: flex; min-height: 9rem; flex-direction: column; justify-content: space-between; padding: 1.5rem; border: 1px solid var(--concorde-border); border-radius: 1rem; background: var(--concorde-surface); color: inherit; text-decoration: none; transition: transform .15s ease, border-color .15s ease;}
+.projectSummary__card strong {font-size: 1.5rem;}
+.projectSummary__card:hover {border-color: var(--ifm-color-primary); text-decoration: none; transform: translateY(-2px);}
+.provenanceShell {max-width: var(--ifm-container-width); margin: 1rem auto -1rem; padding: 0 var(--ifm-spacing-horizontal);}
+.provenance {display: flex; flex-wrap: wrap; gap: .55rem 1rem; align-items: center; padding: .75rem 1rem; border: 1px solid var(--concorde-border); border-radius: .65rem; background: var(--concorde-surface); font-size: .8rem;}
+.provenance__kind {font-weight: 700;}
+.provenance__status {border-radius: 99px; padding: .15rem .55rem; background: var(--ifm-color-primary); color: white;}
+.architectureViewShell {max-width: var(--ifm-container-width); margin: 1.5rem auto 0; padding: 0 var(--ifm-spacing-horizontal);}
+.architectureView {padding: 1rem; border: 1px solid var(--concorde-border); border-radius: .85rem; background: var(--concorde-surface);}
+.architectureView__heading {display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: .75rem;}
+.architectureView__heading h2 {margin: 0; font-size: 1.3rem;}
+.architectureView__eyebrow {margin: 0 0 .25rem; color: var(--ifm-color-primary); font-size: .75rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;}
+.architectureView__frame {display: block; width: 100%; min-height: 38rem; border: 1px solid var(--concorde-border); border-radius: .55rem; background: white;}
+.architectureView__source {margin: .75rem 0 0; font-size: .8rem;}
+a:focus-visible, button:focus-visible {outline: 3px solid var(--ifm-color-primary-light); outline-offset: 3px;}
+
+@media (max-width: 640px) {
+  .homeMain {padding-top: 3rem;}
+  .projectSummary__grid {grid-template-columns: 1fr;}
+  .provenance {align-items: flex-start; flex-direction: column;}
+  .architectureView__heading {align-items: flex-start; flex-direction: column;}
+  .architectureView__frame {min-height: 30rem;}
+}

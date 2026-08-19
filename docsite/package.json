@@ -1,0 +1,43 @@
+{
+  "name": "@concorde/project-docsite",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Generated read model for Concorde project documentation and feature specifications.",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "inspect": "tsx scripts/inspect.ts",
+    "validate": "tsx scripts/validate.ts",
+    "start": "npm run validate && docusaurus start",
+    "build": "tsx scripts/build.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm test && npm run validate && npm run build"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.2",
+    "@docusaurus/plugin-content-docs": "3.10.2",
+    "@docusaurus/preset-classic": "3.10.2",
+    "@easyops-cn/docusaurus-search-local": "0.55.3",
+    "ajv": "8.17.1",
+    "fast-glob": "3.3.3",
+    "gray-matter": "4.0.3",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remark-parse": "11.0.0",
+    "unified": "11.0.5",
+    "unist-util-visit": "5.0.0"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "3.10.2",
+    "@docusaurus/tsconfig": "3.10.2",
+    "@docusaurus/types": "3.10.2",
+    "@types/node": "22.18.0",
+    "@types/react": "19.1.12",
+    "@types/react-dom": "19.1.9",
+    "tsx": "4.20.5",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}

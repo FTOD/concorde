@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Concorde — Documentation Module",
+    "output": "../../../../generated/architecture/documentation.html",
+    "quality_profile": "showcase",
+    "viewBox": [1220, 680],
+    "views": [
+      {
+        "id": "publish-project-docsite",
+        "label": "Publish project docsite",
+        "focus": ["projectDocs", "specKit", "architectureCore", "archify", "documentation", "maintainer"],
+        "note": "Architecture sources, project Markdown, canonical feature specs, and delivered views become one verified, read-only site."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "projectDocs",
+      "type": "external",
+      "label": "Project Docs",
+      "sublabel": "docs/**/*.md",
+      "pos": [40, 105],
+      "size": [170, 72]
+    },
+    {
+      "id": "specKit",
+      "type": "external",
+      "label": "Spec Kit",
+      "sublabel": "specs/**/spec.md",
+      "pos": [40, 265],
+      "size": [170, 72]
+    },
+    {
+      "id": "architectureCore",
+      "type": "external",
+      "label": "Architecture Core",
+      "sublabel": "Markdown + Archify JSON",
+      "pos": [40, 425],
+      "size": [190, 72]
+    },
+    {
+      "id": "archify",
+      "type": "external",
+      "label": "Archify",
+      "sublabel": "validated HTML views",
+      "pos": [410, 525],
+      "size": [180, 72]
+    },
+    {
+      "id": "documentation",
+      "type": "frontend",
+      "label": "Documentation",
+      "sublabel": "validated read model",
+      "pos": [480, 265],
+      "size": [200, 84]
+    },
+    {
+      "id": "maintainer",
+      "type": "external",
+      "label": "Maintainer",
+      "sublabel": "builds and browses",
+      "pos": [940, 265],
+      "size": [180, 84]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Documentation module",
+      "wraps": ["documentation"],
+      "pad": 42
+    }
+  ],
+  "connections": [
+    {
+      "id": "projectContentDocs",
+      "from": "projectDocs",
+      "to": "documentation",
+      "label": "Markdown • project-content",
+      "variant": "emphasis"
+    },
+    {
+      "id": "projectContentSpecs",
+      "from": "specKit",
+      "to": "documentation",
+      "label": "spec.md • project-content",
+      "variant": "emphasis",
+      "labelAt": [260, 380]
+    },
+    {
+      "id": "architectureSources",
+      "from": "architectureCore",
+      "to": "documentation",
+      "label": "sources + view refs • project-content",
+      "variant": "emphasis"
+    },
+    {
+      "id": "archifyViews",
+      "from": "archify",
+      "to": "documentation",
+      "label": "rendered views",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "buildRequest",
+      "from": "maintainer",
+      "to": "documentation",
+      "label": "inspect / validate / build"
+    },
+    {
+      "id": "publishedSite",
+      "from": "documentation",
+      "to": "maintainer",
+      "label": "HTML + manifest",
+      "variant": "emphasis",
+      "labelDy": 28
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Authority",
+      "items": [
+        "docs/ owns project documentation",
+        "specs/**/spec.md owns feature behavior",
+        "architecture/ owns architecture intent",
+        "Generated pages remain read-only"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Publication gate",
+      "items": [
+        "Validate identities, links, and routes",
+        "Require every declared view to be deliverable",
+        "Emit deterministic provenance and manifest",
+        "Preserve the last successful site on failure"
+      ]
+    }
+  ]
+}

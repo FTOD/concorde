@@ -1,0 +1,138 @@
+# Quickstart Validation: Unified Project Docsite
+
+This guide is executable after feature implementation. It validates the external contracts and user
+journeys; it is not an implementation tutorial.
+
+## Prerequisites
+
+- Node.js 20 or newer
+- npm with lockfile support
+- A clean Concorde checkout containing root `architecture/`, `generated/architecture/`, `docs/`, root
+  `specs/`, and `docsite/`
+
+## 1. Install Locked Dependencies
+
+```bash
+cd docsite
+npm ci
+```
+
+Expected: installation completes from `docsite/package-lock.json`. It does not create or change files
+under `../architecture`, `../docs`, or `../specs`.
+
+## 2. Inspect and Validate Canonical Inputs
+
+```bash
+npm run inspect
+npm run validate
+```
+
+Expected:
+
+- The summary identifies `architecture`, `docs`, and `features` as separate collections.
+- Architecture Markdown sources and both declared Archify views are discoverable.
+- Feature 001 and feature 002 are discovered from their canonical `spec.md` files.
+- Plans, tasks, and checklists are reported as excluded rather than feature pages.
+- All paths are project-relative and all checks pass with exit status 0.
+
+The required source semantics are defined by
+[`contracts/content-sources.md`](contracts/content-sources.md).
+
+## 3. Run Deterministic Evidence
+
+```bash
+npm test
+```
+
+Expected: unit, contract, and fixture integration tests pass, including:
+
+- three-collection source discovery and stable ordering;
+- architecture identity and declared-view publication;
+- feature identity/status extraction;
+- documentation-to-feature and feature-to-document link mapping;
+- missing source, duplicate ID, duplicate route, and escaping-path failures;
+- manifest example and generated-manifest schema validation;
+- failure-safe candidate promotion and source immutability.
+
+## 4. Build the Production Site
+
+```bash
+npm run build
+```
+
+Expected:
+
+- `docsite/build/` contains the landing page, `/architecture`, `/docs`, `/features`, delivered
+  Archify HTML, local search index, and
+  `build-manifest.json`.
+- The landing page links to Architecture, Documentation, and Features.
+- Every included page displays its project-relative source provenance.
+- Feature pages display stable ID, owning module, and recorded status.
+- Architecture pages show stable identity and embed declared Archify views in a sandbox.
+- No generated or copied content appears under `../architecture`, `../docs`, or `../specs`.
+
+Validate the generated manifest explicitly:
+
+```bash
+npx ajv-cli@5 validate \
+  --spec=draft2020 \
+  -s ../specs/002-create-project-docsite/contracts/build-manifest.schema.json \
+  -d build/build-manifest.json
+```
+
+Expected: the manifest is valid. Its normative field meanings are documented in
+[`contracts/build-manifest-contract.md`](contracts/build-manifest-contract.md).
+
+## 5. Verify Repeatability
+
+```bash
+tmp_dir="$(mktemp -d)"
+cp build/build-manifest.json "$tmp_dir/first-build.json"
+npm run build
+cmp "$tmp_dir/first-build.json" build/build-manifest.json
+```
+
+Expected: `cmp` exits 0. This compares the required page inventory, navigation, source mapping,
+versions, hashes, and passed checks without depending on wall-clock metadata.
+
+## 6. Preview the User Experience
+
+```bash
+npm run start
+```
+
+Open the URL printed by Docusaurus and validate:
+
+1. The landing page reaches Architecture, Documentation, and Features.
+2. A known phrase returns results across all three route spaces in local search.
+3. The root module page shows its stable ID and embeds the delivered root view.
+4. Feature 002 is reachable and visibly marked Draft.
+5. A cross-collection link reaches its target and preserves its heading fragment.
+6. Narrow and wide browser layouts keep content, navigation, provenance, and embedded views readable.
+
+## 7. Run Failure Contracts
+
+```bash
+npm test -- --run tests/integration/atomic-promotion.test.ts
+npm test -- --run tests/contract/content-sources.test.ts
+```
+
+Expected:
+
+- Invalid fixtures fail with rule ID, source path, reason, and remediation.
+- A failed candidate leaves the previously successful `docsite/build/` unchanged.
+- No failed run emits a manifest with `validation.status: "passed"`.
+
+The command and promotion guarantees are defined by
+[`contracts/build-interface.md`](contracts/build-interface.md) and
+[`contracts/published-site.md`](contracts/published-site.md).
+
+## 8. Run the Complete Gate
+
+```bash
+npm run check
+```
+
+Expected: type checks, unit and contract tests, source validation, production rendering, route
+verification, schema validation, source-immutability checks, and architecture publication all pass.
+Archify showcase validation and delivery remain repository-level gates and must also pass before merge.
