@@ -12,7 +12,10 @@ import type {
 import {populateLinks} from './links';
 
 export const collections: SourceCollection[] = [
-  {id: 'architecture', sourceBase: 'architecture', routeBase: '/architecture', include: ['**/*.md'], contentKind: 'architecture-source'},
+  {
+    id: 'architecture', sourceBase: 'specs', routeBase: '/architecture',
+    include: ['**/module.md', '**/contracts/**/contract.md'], contentKind: 'architecture-source',
+  },
   {id: 'docs', sourceBase: 'docs', routeBase: '/docs', include: ['**/*.md'], contentKind: 'project-document'},
   {id: 'features', sourceBase: 'specs', routeBase: '/features', include: ['**/spec.md'], contentKind: 'feature-specification'},
 ];
@@ -142,11 +145,15 @@ export async function buildRegistry(projectRoot: string): Promise<ContentRegistr
     }
   }
 
-  const excluded = await fg(['**/*.md', '!**/spec.md'], {
+  const includedSources = new Set(documents.map((document) => document.sourcePath));
+  const excluded = await fg(['**/*.md'], {
     cwd: resolve(root, 'specs'), onlyFiles: true, unique: true, followSymbolicLinks: false,
   });
   for (const path of excluded.sort()) {
-    excludedSources.push({sourcePath: posix.join('specs', posixPath(path)), reason: 'not-canonical-feature-artifact'});
+    const sourcePath = posix.join('specs', posixPath(path));
+    if (!includedSources.has(sourcePath)) {
+      excludedSources.push({sourcePath, reason: 'not-canonical-feature-artifact'});
+    }
   }
 
   documents.sort((left, right) => left.sourcePath.localeCompare(right.sourcePath));

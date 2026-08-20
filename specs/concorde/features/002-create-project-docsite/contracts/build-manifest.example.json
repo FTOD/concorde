@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 2,
+  "generator": {
+    "name": "concorde-docsite",
+    "version": "0.2.0",
+    "docusaurusVersion": "3.10.2"
+  },
+  "collections": [
+    {
+      "id": "architecture",
+      "sourceBase": "specs",
+      "routeBase": "/architecture",
+      "include": ["**/module.md", "**/contracts/**/contract.md"]
+    },
+    {
+      "id": "docs",
+      "sourceBase": "docs",
+      "routeBase": "/docs",
+      "include": ["**/*.md"]
+    },
+    {
+      "id": "features",
+      "sourceBase": "specs",
+      "routeBase": "/features",
+      "include": ["**/spec.md"]
+    }
+  ],
+  "pages": [
+    {
+      "kind": "architecture-source",
+      "sourcePath": "specs/concorde/module.md",
+      "sourceSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "route": "/architecture/concorde/module.concorde",
+      "title": "Concorde",
+      "navigation": {
+        "section": "Architecture",
+        "label": "Concorde"
+      },
+      "links": [],
+      "architectureId": "module.concorde",
+      "architectureKind": "module",
+      "architectureViewSource": "specs/concorde/architecture.json",
+      "architectureViewSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "architectureViewRoute": "/architecture/concorde-root.html"
+    },
+    {
+      "kind": "project-document",
+      "sourcePath": "docs/index.md",
+      "sourceSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "route": "/docs/",
+      "title": "Concorde Documentation",
+      "navigation": {
+        "section": "Documentation",
+        "label": "Concorde Documentation"
+      },
+      "links": [
+        {
+          "targetSourcePath": "specs/concorde/features/002-create-project-docsite/spec.md",
+          "targetRoute": "/features/concorde/features/002-create-project-docsite/feature.concorde.publish-project-docsite"
+        }
+      ]
+    },
+    {
+      "kind": "feature-specification",
+      "sourcePath": "specs/concorde/features/002-create-project-docsite/spec.md",
+      "sourceSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "route": "/features/concorde/features/002-create-project-docsite/feature.concorde.publish-project-docsite",
+      "title": "Create Unified Project Docsite",
+      "navigation": {
+        "section": "Features",
+        "label": "Create Unified Project Docsite"
+      },
+      "links": [],
+      "featureId": "feature.concorde.publish-project-docsite",
+      "moduleId": "module.concorde",
+      "status": "Implemented"
+    }
+  ],
+  "excludedSources": [
+    {
+      "sourcePath": "specs/concorde/features/002-create-project-docsite/plan.md",
+      "reason": "not-canonical-feature-artifact"
+    }
+  ],
+  "routeInventory": [
+    "/",
+    "/architecture/concorde/module.concorde",
+    "/architecture/concorde-root.html",
+    "/docs/",
+    "/features/concorde/features/002-create-project-docsite/feature.concorde.publish-project-docsite"
+  ],
+  "validation": {
+    "status": "passed",
+    "checks": [
+      {
+        "name": "source-contracts",
+        "status": "passed"
+      },
+      {
+        "name": "identity-and-routes",
+        "status": "passed"
+      },
+      {
+        "name": "rendered-route-inventory",
+        "status": "passed"
+      }
+    ]
+  }
+}

@@ -9,7 +9,7 @@ import {buildRegistry} from '../../plugins/concorde-content/registry';
 import {assertValidRegistry} from '../../plugins/concorde-content/validation';
 
 async function hashes(root: string) {
-  const paths = (await fg(['architecture/**/*.{json,md}', 'docs/**/*.md', 'specs/**/*.md'], {cwd: root})).sort();
+  const paths = (await fg(['docs/**/*.md', 'specs/**/*.{json,md}'], {cwd: root})).sort();
   return Promise.all(paths.map(async (path) => [path, createHash('sha256').update(await readFile(resolve(root, path))).digest('hex')]));
 }
 

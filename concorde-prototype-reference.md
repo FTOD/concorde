@@ -31,6 +31,8 @@ Concorde uses two kinds of maintained source artifacts:
 - Markdown documents for module intent, feature specifications, scenarios, constraints, and decisions.
 - Archify JSON documents for module structure and scenario interactions at each architectural level.
 
+Both behavioral and architectural intent live under one `specs/` hierarchy. Concorde does not treat architecture as a separate documentation domain; it is part of the specification of the system.
+
 Docusaurus turns those sources into a read-only website whose navigation mirrors the architecture hierarchy. Archify renders the JSON diagrams as interactive HTML within those pages. The result serves both audiences: AI agents receive explicit structure and traceable behavioral intent, while developers receive a browsable, visual explanation of the codebase they are directing.
 
 ## 2. The problem
@@ -341,7 +343,7 @@ The goal is not blind trust in either code or documentation. It is a reviewable 
 
 ## 7. Artifact model
 
-Concorde deliberately starts with two primary architecture documentation formats. Contract documents may additionally reference standard interface definitions or custom JSON, YAML, TOML, or similar schema and example files when those files define the actual boundary representation.
+Concorde deliberately starts with two primary specification source formats. Contract documents may additionally reference standard interface definitions or custom JSON, YAML, TOML, or similar schema and example files when those files define the actual boundary representation.
 
 ### 7.1 Markdown
 
@@ -403,7 +405,7 @@ Docusaurus is the generated human-facing presentation. It combines Markdown cont
 
 | Artifact | Authority |
 |---|---|
-| Feature Markdown | Intended behavior of the feature |
+| Feature `spec.md` | Intended behavior of the feature |
 | Module Markdown | Intended responsibility, boundary, and constraints |
 | Contract Markdown | Intended obligations across a module boundary |
 | Standard or custom contract definition | Normative serialized representation exchanged across the boundary |
@@ -415,12 +417,14 @@ Docusaurus is the generated human-facing presentation. It combines Markdown cont
 
 When these disagree, Concorde should expose the disagreement rather than silently choose one representation as universally correct.
 
-## 8. Repository organization
+## 8. Unified specification repository
 
-The source tree should mirror the architecture hierarchy. A possible prototype layout is:
+In vanilla Spec Kit, `specs/` is the default home of feature workspaces. Concorde broadens its meaning: `specs/` is the home of all maintained system intent, including module architecture, boundary contracts, and feature specifications. Architecture is therefore part of the specification tree rather than a separate top-level `architecture/` tree.
+
+The specification tree mirrors the module hierarchy. A possible prototype layout is:
 
 ```text
-architecture/
+specs/
 └── concorde/
     ├── module.md
     ├── architecture.json
@@ -430,14 +434,25 @@ architecture/
     │       ├── schema.json        # when custom
     │       └── example.json       # when custom
     ├── features/
-    │   ├── model-hierarchy.md
-    │   └── publish-documentation.md
+    │   ├── 001-model-hierarchy/
+    │   │   ├── spec.md
+    │   │   ├── plan.md
+    │   │   ├── tasks.md
+    │   │   └── checklists/
+    │   └── 002-publish-documentation/
+    │       ├── spec.md
+    │       ├── plan.md
+    │       └── tasks.md
     └── modules/
         ├── authoring/
         │   ├── module.md
         │   ├── architecture.json
         │   ├── contracts/
         │   ├── features/
+        │   │   └── 001-validate-architecture/
+        │   │       ├── spec.md
+        │   │       ├── plan.md
+        │   │       └── tasks.md
         │   └── modules/
         └── documentation/
             ├── module.md
@@ -463,13 +478,19 @@ generated/
 └── validation-report.json
 ```
 
-Each module directory is self-similar: it contains the module document, its level-specific Archify JSON, the features it provides, its boundary contract documents and format definitions, and optional child module directories.
+Each module directory is a self-similar architecture specification package. It contains the module document, its level-specific Archify JSON, boundary contract documents and format definitions, Spec Kit feature workspaces owned by that module, and optional child module packages.
 
-This layout is a design target, not yet a compatibility claim about unmodified Spec Kit path handling. The prototype must determine whether a Spec Kit preset or extension can operate directly on these feature documents or whether Concorde should maintain a small path adapter. It should not duplicate the same specification in two canonical locations.
+Within a feature workspace, `spec.md`, `plan.md`, `tasks.md`, checklists, and other design artifacts retain their normal Spec Kit meanings. The architecture files surrounding that workspace provide its durable module context.
+
+Spec Kit defaults to creating a feature directly under `specs/`, but it also supports explicitly selecting a feature workspace through `SPECIFY_FEATURE_DIRECTORY` or `.specify/feature.json`. Concorde should use that mechanism to select a nested workspace such as `specs/concorde/modules/authoring/features/001-validate-architecture`. Downstream Spec Kit commands can then continue to resolve `spec.md`, `plan.md`, and `tasks.md` from the active workspace.
+
+Concorde therefore needs a small feature-path selector in its extension or workflow, not a second canonical feature store. The same feature specification must never be copied into both a flat Spec Kit directory and the hierarchical Concorde tree.
 
 ## 9. Spec Kit integration
 
 Spec Kit remains the feature-specification engine. Concorde adds architectural context before planning and preserves architectural understanding after implementation.
+
+Spec Kit commands operate on one active feature workspace at a time. Concorde owns the surrounding module specification package and sets the active nested feature path before invoking those commands. This preserves the standard feature artifacts without implying that features are the only kind of specification in the project.
 
 ### 9.1 Division of responsibility
 
@@ -489,6 +510,8 @@ Spec Kit remains the feature-specification engine. Concorde adds architectural c
 
 ```text
 Choose providing module
+  → create or select its nested feature workspace under specs/
+  → set SPECIFY_FEATURE_DIRECTORY for Spec Kit
   → link the feature to its parent-level feature when applicable
   → specify or revise feature behavior with Spec Kit
   → clarify scenarios
@@ -519,7 +542,7 @@ Concorde should require the following metadata or sections:
 The likely distribution is a Spec Kit bundle containing:
 
 - a preset that adds architecture metadata and scenario structure to feature artifacts;
-- an extension that adds Concorde commands, validation, rendering, and publishing;
+- an extension that selects nested feature workspaces and adds Concorde validation, rendering, and publishing commands;
 - a workflow that places architecture review into the normal feature lifecycle.
 
 This should be validated in the prototype before deciding that a fork or a separate orchestration layer is necessary.
@@ -642,6 +665,8 @@ A prototype CLI could provide:
 
 ```text
 concorde init
+concorde feature create <module-id> <feature-name>
+concorde feature select <feature-id>
 concorde validate [path-or-id]
 concorde context <module-or-feature-id>
 concorde render [module-id]
@@ -652,6 +677,8 @@ concorde status [module-or-feature-id]
 | Command | Prototype behavior |
 |---|---|
 | `init` | Create the recursive source layout, schemas, and starter documents |
+| `feature create` | Create a Spec Kit workspace under the owning module's `features/` directory and make it active |
+| `feature select` | Resolve a feature ID and persist its nested workspace path for subsequent Spec Kit commands |
 | `validate` | Check structure, IDs, references, hierarchy, scenario participants, contract representations and examples, and generated freshness |
 | `context` | Return one bounded level: current module I/O and features, immediate submodules and their I/O summaries, organization, scenarios, and refinement links |
 | `render` | Validate Archify JSON and produce the corresponding HTML view |
@@ -665,28 +692,31 @@ There should be no LLM call in validation or publication. AI-authored artifacts 
 The first prototype should validate rules that directly protect comprehension and structural control:
 
 1. Every module, feature, and scenario has a unique stable ID.
-2. Every feature names exactly one providing module at its current level.
-3. Every lower-level feature links to at least one feature owned by its parent module, unless explicitly marked internal.
-4. Feature refinement links connect adjacent module levels and contain no cycles.
-5. Every module explicitly declares its provided and required contracts, their I/O flow directions, and an explicit empty set when it has none.
-6. Every feature references at least one provided contract through which it is made available and every required contract on which it depends.
-7. Every non-leaf module declares its immediate submodules.
-8. Every feature normally has at least one representative scenario; a feature without one explicitly records why an example would not add useful understanding.
-9. Every scenario participant resolves to an immediate submodule or permitted external actor.
-10. Every interaction crossing a module boundary references a declared contract.
-11. Every contract reference resolves, has a role and flow direction, and identifies its owning module and external counterparty or audience.
-12. Every contract declares its representation as either a commonly adopted format or a custom serialized format.
-13. A commonly adopted format names the format and relevant version, links to its authoritative definition, and summarizes the information passed.
-14. A custom format uses a programmer-readable serialization definition and supplies a normative schema or grammar, complete field semantics, compatibility rules, and representative examples.
-15. Every custom example validates against its declared schema or grammar, and contract evidence checks implementation conformance where practical.
-16. References to parent, child, deeper scenario, source, and test evidence resolve.
-17. The module hierarchy contains no cycles.
-18. A module-level view contains only the current module's I/O and features, immediate submodules and their I/O, relevant externals, and connections among them.
-19. A module-level view does not expand child features, grandchildren, or deeper implementation details.
-20. Every `architecture.json` file passes Archify validation.
-21. Each documented scenario can be found in the corresponding module-level architecture view, unless explicitly marked prose-only.
-22. Generated Archify HTML and Docusaurus pages match the maintained sources.
-23. Unknown or missing implementation evidence is reported as unknown, not agreement.
+2. Every maintained module architecture specification and feature workspace lives under the unified `specs/` hierarchy.
+3. Every feature workspace is nested under its owning module's `features/` directory and contains one canonical `spec.md`.
+4. No feature ID or specification is duplicated in a second flat or hierarchical location.
+5. Every feature names exactly one providing module at its current level.
+6. Every lower-level feature links to at least one feature owned by its parent module, unless explicitly marked internal.
+7. Feature refinement links connect adjacent module levels and contain no cycles.
+8. Every module explicitly declares its provided and required contracts, their I/O flow directions, and an explicit empty set when it has none.
+9. Every feature references at least one provided contract through which it is made available and every required contract on which it depends.
+10. Every non-leaf module declares its immediate submodules.
+11. Every feature normally has at least one representative scenario; a feature without one explicitly records why an example would not add useful understanding.
+12. Every scenario participant resolves to an immediate submodule or permitted external actor.
+13. Every interaction crossing a module boundary references a declared contract.
+14. Every contract reference resolves, has a role and flow direction, and identifies its owning module and external counterparty or audience.
+15. Every contract declares its representation as either a commonly adopted format or a custom serialized format.
+16. A commonly adopted format names the format and relevant version, links to its authoritative definition, and summarizes the information passed.
+17. A custom format uses a programmer-readable serialization definition and supplies a normative schema or grammar, complete field semantics, compatibility rules, and representative examples.
+18. Every custom example validates against its declared schema or grammar, and contract evidence checks implementation conformance where practical.
+19. References to parent, child, deeper scenario, source, and test evidence resolve.
+20. The module hierarchy contains no cycles.
+21. A module-level view contains only the current module's I/O and features, immediate submodules and their I/O, relevant externals, and connections among them.
+22. A module-level view does not expand child features, grandchildren, or deeper implementation details.
+23. Every `architecture.json` file passes Archify validation.
+24. Each documented scenario can be found in the corresponding module-level architecture view, unless explicitly marked prose-only.
+25. Generated Archify HTML and Docusaurus pages match the maintained sources.
+26. Unknown or missing implementation evidence is reported as unknown, not agreement.
 
 The validator should not require every class, function, or call edge to appear in the architecture. Concorde protects intentional structure, not a second copy of the codebase.
 
@@ -708,6 +738,8 @@ TypeScript is a pragmatic implementation language for the CLI and generator beca
 ### 15.1 Included
 
 - Model one real project area as a root module with two or three levels.
+- Store architectural and behavioral specifications together under one recursive `specs/` hierarchy.
+- Select nested Spec Kit feature workspaces through the active feature-directory mechanism.
 - Define aligned module containment and feature refinement hierarchies.
 - Enforce the one-level visibility rule for modules, features, I/O contracts, and organization.
 - Maintain module and feature documentation in Markdown.
@@ -737,6 +769,7 @@ TypeScript is a pragmatic implementation language for the CLI and generator beca
 
 ### Milestone 1: Prove the hierarchy
 
+- Move all maintained architecture and feature intent into the unified `specs/` tree.
 - Select one subsystem with at least two meaningful levels.
 - Write the root and child module documents.
 - Define features, refinement links, I/O contracts, contract representations, and primary scenarios at each level.
@@ -786,11 +819,13 @@ The prototype succeeds if a developer unfamiliar with the chosen subsystem can:
 8. Explain which contracts must hold for a selected feature to function.
 9. Identify whether a contract uses a commonly adopted or custom format and summarize the information it passes.
 10. Inspect a custom serialized example and understand every field from its schema and semantic documentation.
-11. Locate the specification, architecture view, source evidence, and tests through stable links.
-12. Decide at which module and feature level a proposed behavior belongs before implementation planning begins.
-13. Detect a deliberately broken module, feature, refinement, scenario, contract, schema, example, or participant reference.
-14. Detect stale generated documentation in CI.
-15. Rebuild the same Archify HTML and Docusaurus site without an LLM.
+11. Locate a module architecture specification and all of its feature workspaces within the same `specs/` subtree.
+12. Select a nested feature workspace and run normal Spec Kit planning and task commands against it.
+13. Locate the specification, architecture view, source evidence, and tests through stable links.
+14. Decide at which module and feature level a proposed behavior belongs before implementation planning begins.
+15. Detect a deliberately broken module, feature, refinement, scenario, contract, schema, example, or participant reference.
+16. Detect stale generated documentation in CI.
+17. Rebuild the same Archify HTML and Docusaurus site without an LLM.
 
 The prototype fails if the hierarchy merely reproduces the source tree, if diagrams require the whole project to be understood at once, or if developers must duplicate the same intent across several maintained formats.
 
@@ -810,13 +845,13 @@ The prototype fails if the hierarchy merely reproduces the source tree, if diagr
 | Hierarchy hides important cross-cutting dependencies | Preserve typed references and scenario links across the tree |
 | AI-authored diagrams appear authoritative | Treat them as proposed intent until reviewed and validated |
 | Documentation becomes burdensome | Require only information that improves placement, review, navigation, or confidence |
-| Physical nesting conflicts with Spec Kit assumptions | Prototype the integration and add a path adapter rather than duplicate canonical specs |
+| Physical nesting bypasses Spec Kit's default feature location | Explicitly select the nested workspace through `SPECIFY_FEATURE_DIRECTORY` or `.specify/feature.json` |
 | Docusaurus output becomes another editable source | Generate it reproducibly and mark it read-only |
 | Developers infer implementation correctness from architecture | Present tests and source links as separate evidence, including unknowns |
 
 ## 19. Open design questions
 
-- Should each feature Markdown file be the Spec Kit `spec.md`, or should Concorde adapt existing Spec Kit feature directories into the hierarchy at build time?
+- How should feature names and numbering be assigned within each module's nested `features/` directory?
 - How much of a scenario belongs in Markdown versus Archify JSON without duplicating intent?
 - Which Archify JSON fields are stable enough to be treated as maintained architecture source rather than generated rendering input?
 - Can a scenario reference a deeper scenario directly, or should the relationship always pass through a lower-level feature?
@@ -827,7 +862,7 @@ The prototype fails if the hierarchy merely reproduces the source tree, if diagr
 - What qualifies as a commonly adopted format, and who approves that classification for the project?
 - How should leaf modules link to code without forcing directory structure to equal architecture?
 - Which changes require explicit architecture review, and which can update documentation during normal convergence?
-- Can Spec Kit presets and extensions support the desired nested source layout cleanly, or is a Concorde path adapter required?
+- Should Concorde persist the active nested feature only through `.specify/feature.json`, or also expose a higher-level feature-selection index?
 
 ## 20. Recommended first implementation decision
 
@@ -841,7 +876,7 @@ Build the smallest end-to-end example that demonstrates recursive reasoning:
 6. Represent one contract with a commonly adopted format and another with a custom JSON, YAML, or TOML format.
 7. For the custom contract, provide a schema, complete field semantics, and a validated representative example.
 8. Write one primary scenario at each of those two levels.
-9. Store the behavioral documents in Markdown and both structural views in Archify JSON.
+9. Store the feature workspaces, module documents, contracts, and both structural views in one hierarchical `specs/` tree.
 10. Generate linked Docusaurus pages that preserve the one-level visibility rule while allowing explicit zooming.
 11. Use the resulting context to guide an AI agent through one small implementation change.
 12. Evaluate whether the developer can review the placement and collaboration of the change without inspecting every line of code.
@@ -852,6 +887,7 @@ This vertical slice tests Concorde's essential promise: feature specifications e
 
 - [Spec Kit repository and workflow overview](https://github.com/github/spec-kit)
 - [Spec Kit quickstart](https://github.com/github/spec-kit/blob/main/docs/quickstart.md)
+- [Spec Kit core path and active-feature reference](https://github.com/github/spec-kit/blob/main/docs/reference/core.md)
 - [Spec Kit extensions](https://github.com/github/spec-kit/blob/main/docs/reference/extensions.md)
 - [Spec Kit presets](https://github.com/github/spec-kit/blob/main/docs/reference/presets.md)
 - [Spec Kit bundles](https://github.com/github/spec-kit/blob/main/docs/reference/bundles.md)
@@ -865,26 +901,28 @@ This vertical slice tests Concorde's essential promise: feature specifications e
 ## Appendix A: Prototype authoring rules
 
 1. The project is the root module.
-2. Every module has one clear responsibility.
-3. Every module documents the contracts it provides to and requires from externals.
-4. Every contract records both its provided/required role and its I/O flow direction.
-5. Every contract uses either a commonly adopted format or a programmer-readable custom serialized format.
-6. A commonly adopted format has an authoritative reference and a concise explanation of the information passed.
-7. A custom format has a normative schema or grammar, complete semantic documentation, compatibility rules, and validated representative examples.
-8. Every feature has one providing module at its current architectural level.
-9. Every lower-level feature refines or supports a parent-level feature unless explicitly internal.
-10. Every feature references the contracts that must hold for it to function.
-11. Every feature normally has a representative primary scenario; exceptions are explicit.
-12. A scenario uses immediate submodules by default; deeper details belong in lower-level views.
-13. Every scenario interaction crossing a module boundary names its governing contract.
-14. A view shows the current module's I/O and features, its immediate children and their I/O, and their organization—nothing deeper.
-15. Every module may be opened as a new level with the same visibility rule.
-16. Stable IDs connect Markdown, Archify JSON, code evidence, tests, and generated pages.
-17. Markdown and Archify JSON are maintained sources; Archify HTML and Docusaurus pages are generated.
-18. Architecture describes intended structure; code and tests provide distinct implementation evidence.
-19. AI-generated architecture changes require review and deterministic validation.
-20. The model records architecturally meaningful facts, not every implementation detail.
-21. No intent should need to be maintained canonically in more than one place.
+2. All maintained behavioral and architectural intent lives under one hierarchical `specs/` tree.
+3. Every module has one clear responsibility.
+4. Every module documents the contracts it provides to and requires from externals.
+5. Every contract records both its provided/required role and its I/O flow direction.
+6. Every contract uses either a commonly adopted format or a programmer-readable custom serialized format.
+7. A commonly adopted format has an authoritative reference and a concise explanation of the information passed.
+8. A custom format has a normative schema or grammar, complete semantic documentation, compatibility rules, and validated representative examples.
+9. Every feature has one providing module at its current architectural level.
+10. Every feature has one canonical Spec Kit workspace nested under its owning module.
+11. Every lower-level feature refines or supports a parent-level feature unless explicitly internal.
+12. Every feature references the contracts that must hold for it to function.
+13. Every feature normally has a representative primary scenario; exceptions are explicit.
+14. A scenario uses immediate submodules by default; deeper details belong in lower-level views.
+15. Every scenario interaction crossing a module boundary names its governing contract.
+16. A view shows the current module's I/O and features, its immediate children and their I/O, and their organization—nothing deeper.
+17. Every module may be opened as a new level with the same visibility rule.
+18. Stable IDs connect Markdown, Archify JSON, code evidence, tests, and generated pages.
+19. Markdown and Archify JSON are maintained sources; Archify HTML and Docusaurus pages are generated.
+20. Architecture describes intended structure; code and tests provide distinct implementation evidence.
+21. AI-generated architecture changes require review and deterministic validation.
+22. The model records architecturally meaningful facts, not every implementation detail.
+23. No intent should need to be maintained canonically in more than one place.
 
 ## Appendix B: Minimal module document
 
@@ -893,7 +931,7 @@ This vertical slice tests Concorde's essential promise: feature specifications e
 id: module.docs
 kind: module
 parent: module.concorde
-view: architecture/concorde/modules/documentation/architecture.json
+view: specs/concorde/modules/documentation/architecture.json
 children:
   - module.docs.site-generator
   - module.docs.archify-adapter

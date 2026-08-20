@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "operation": "context",
+  "target": "module.example",
+  "status": "success",
+  "artifacts": [
+    "specs/example/architecture.json",
+    "specs/example/module.md",
+    "specs/example/modules/api/module.md"
+  ],
+  "findings": [],
+  "result": {
+    "context": {
+      "requested_id": "module.example",
+      "current_module": {
+        "id": "module.example",
+        "features": ["feature.example.deliver-workflow"],
+        "contracts": {
+          "provided": [
+            {
+              "id": "contract.example.workflow",
+              "role": "provided",
+              "flow": "bidirectional",
+              "counterparties": ["external.maintainer"]
+            }
+          ],
+          "required": []
+        },
+        "organization": {
+          "parent": null,
+          "children": ["module.example.api"]
+        },
+        "responsibility": "Deliver the example workflow.",
+        "boundary": "Own orchestration, not API internals."
+      },
+      "children": [
+        {
+          "id": "module.example.api",
+          "contracts": {
+            "provided": [
+              {
+                "id": "contract.api.commands",
+                "role": "provided",
+                "flow": "input",
+                "counterparties": ["module.example"]
+              }
+            ],
+            "required": []
+          },
+          "organization": {
+            "parent": "module.example",
+            "position": "immediate-child"
+          }
+        }
+      ],
+      "externals": ["external.maintainer"],
+      "scenarios": ["scenario.example.install"],
+      "refinement_links": [
+        {
+          "from": "feature.example.api.expose-commands",
+          "to": "feature.example.deliver-workflow"
+        }
+      ],
+      "deeper_references": ["module.example.api"]
+    }
+  }
+}

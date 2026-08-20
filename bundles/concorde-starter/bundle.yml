@@ -1,0 +1,29 @@
+schema_version: "1.0"
+
+bundle:
+  id: "concorde-starter"
+  name: "Concorde Starter"
+  version: "0.1.0"
+  role: "developer"
+  description: "Architecture-aware Spec Kit starter workflow"
+  author: "Concorde maintainers"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.16.4,<0.16.5"
+  tools: []
+  mcp: []
+
+provides:
+  extensions:
+    - id: "concorde"
+      version: "0.1.0"
+  presets:
+    - id: "concorde-core"
+      version: "0.1.0"
+      priority: 10
+      strategy: "append"
+  steps: []
+  workflows: []
+
+tags: ["architecture", "context", "validation", "spec-driven-development"]

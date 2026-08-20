@@ -8,7 +8,14 @@ import {remarkConcordeLinks} from './plugins/concorde-content/links';
 import {buildRegistry} from './plugins/concorde-content/registry';
 
 const projectRoot = resolve(__dirname, '..');
-const linkPlugin = [remarkConcordeLinks, {projectRoot, getRegistry: () => buildRegistry(projectRoot)}] as const;
+const canonicalLinks = {projectRoot, getRegistry: () => buildRegistry(projectRoot)};
+const linkPlugin = [remarkConcordeLinks, canonicalLinks] as const;
+const architectureLinkPlugin = [remarkConcordeLinks, {
+  ...canonicalLinks, stagedRoot: resolve(__dirname, '.generated/content/architecture'), canonicalSourceBase: 'specs',
+}] as const;
+const featureLinkPlugin = [remarkConcordeLinks, {
+  ...canonicalLinks, stagedRoot: resolve(__dirname, '.generated/content/features'), canonicalSourceBase: 'specs',
+}] as const;
 
 const config: Config = {
   title: 'Concorde',
@@ -39,18 +46,18 @@ const config: Config = {
   plugins: [
     [concordeContent as unknown as PluginModule, {projectRoot}],
     ['@docusaurus/plugin-content-docs', {
-      id: 'architecture', path: '../architecture', routeBasePath: 'architecture', sidebarPath: './sidebars.architecture.ts',
+      id: 'architecture', path: '.generated/content/architecture', routeBasePath: 'architecture', sidebarPath: './sidebars.architecture.ts',
       include: ['**/*.md'], showLastUpdateAuthor: false, showLastUpdateTime: false,
-      numberPrefixParser: false, beforeDefaultRemarkPlugins: [linkPlugin],
+      numberPrefixParser: false, beforeDefaultRemarkPlugins: [architectureLinkPlugin],
     }],
     ['@docusaurus/plugin-content-docs', {
-      id: 'features', path: '../specs', routeBasePath: 'features', sidebarPath: './sidebars.features.ts',
-      include: ['**/spec.md'], showLastUpdateAuthor: false, showLastUpdateTime: false,
-      numberPrefixParser: false, beforeDefaultRemarkPlugins: [linkPlugin],
+      id: 'features', path: '.generated/content/features', routeBasePath: 'features', sidebarPath: './sidebars.features.ts',
+      include: ['**/*.md'], showLastUpdateAuthor: false, showLastUpdateTime: false,
+      numberPrefixParser: false, beforeDefaultRemarkPlugins: [featureLinkPlugin],
     }],
     ['@easyops-cn/docusaurus-search-local', {
       hashed: true, indexDocs: true, indexBlog: false, docsRouteBasePath: ['/architecture', '/docs', '/features'],
-      docsDir: ['../architecture', '../docs', '../specs'],
+      docsDir: ['.generated/content/architecture', '../docs', '.generated/content/features'],
     }],
   ],
   themeConfig: {

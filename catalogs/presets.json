@@ -1,0 +1,22 @@
+{
+  "catalog_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/presets.json",
+  "presets": {
+    "concorde-core": {
+      "author": "Concorde maintainers",
+      "description": "Append-only architecture guidance for the Spec Kit feature lifecycle",
+      "download_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/concorde-core-0.1.0.zip",
+      "id": "concorde-core",
+      "license": "MIT",
+      "name": "Concorde Core",
+      "provides": {"commands": 0, "templates": 3},
+      "repository": "https://github.com/concorde-workflow/concorde",
+      "requires": {"speckit_version": ">=0.16.4,<0.16.5"},
+      "sha256": "sha256:4f166f1fb614081f7775609e45a164e7136dad19bd1e79a929c4303e40bde28d",
+      "tags": ["architecture", "contracts", "spec-driven-development"],
+      "verified": false,
+      "version": "0.1.0"
+    }
+  },
+  "schema_version": "1.0",
+  "updated_at": "2026-08-20T00:00:00Z"
+}

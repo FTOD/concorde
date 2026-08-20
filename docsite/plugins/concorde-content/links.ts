@@ -95,14 +95,23 @@ export function resetRemarkRegistryCache(): void {
   registryCache = new Map();
 }
 
-export function remarkConcordeLinks(options: {projectRoot: string; getRegistry: () => Promise<ContentRegistry>}) {
+export function remarkConcordeLinks(options: {
+  projectRoot: string;
+  getRegistry: () => Promise<ContentRegistry>;
+  stagedRoot?: string;
+  canonicalSourceBase?: string;
+}) {
   return async (tree: unknown, file: {path?: string}) => {
     if (!file.path) return;
     const projectRoot = resolve(options.projectRoot);
     const promise = registryCache.get(projectRoot) ?? options.getRegistry();
     registryCache.set(projectRoot, promise);
     const registry = await promise;
-    const sourcePath = posixPath(relative(projectRoot, resolve(file.path)));
+    const filePath = resolve(file.path);
+    const stagedRelative = options.stagedRoot ? relative(resolve(options.stagedRoot), filePath) : undefined;
+    const sourcePath = stagedRelative !== undefined && stagedRelative !== '..' && !stagedRelative.startsWith('../')
+      ? posix.join(options.canonicalSourceBase ?? '', posixPath(stagedRelative))
+      : posixPath(relative(projectRoot, filePath));
     const source = registry.documents.find((document) => document.sourcePath === sourcePath);
     if (!source) return;
     visit(tree as Parameters<typeof visit>[0], 'link', (node: MarkdownLinkNode) => {

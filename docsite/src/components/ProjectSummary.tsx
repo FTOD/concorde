@@ -5,7 +5,7 @@ export interface ProjectSummaryProps {architecture: number; docs: number; featur
 export default function ProjectSummary({architecture, docs, features}: ProjectSummaryProps) {
   return (
     <section className="projectSummary" aria-labelledby="project-content-heading">
-      <h2 id="project-content-heading">One project, three canonical collections</h2>
+      <h2 id="project-content-heading">One project, two source roots, three views</h2>
       <div className="projectSummary__grid">
         <Link className="projectSummary__card" to="/architecture">
           <strong>Architecture</strong><span>{architecture} maintained {architecture === 1 ? 'source' : 'sources'}</span>

@@ -1,0 +1,45 @@
+schema_version: "1.0"
+
+extension:
+  id: "concorde"
+  name: "Concorde Architecture Workflow"
+  version: "0.1.0"
+  description: "Initialize, retrieve, and validate bounded hierarchical architecture sources"
+  author: "Concorde maintainers"
+  repository: "https://github.com/concorde-workflow/concorde"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.16.4,<0.16.5"
+
+provides:
+  commands:
+    - name: "speckit.concorde.init"
+      file: "commands/speckit.concorde.init.md"
+      description: "Propose and explicitly apply a root Concorde specification hierarchy"
+    - name: "speckit.concorde.context"
+      file: "commands/speckit.concorde.context.md"
+      description: "Retrieve exactly one bounded architectural level"
+    - name: "speckit.concorde.validate"
+      file: "commands/speckit.concorde.validate.md"
+      description: "Deterministically validate Concorde architecture sources"
+  scripts:
+    - name: "concorde-bash"
+      file: "scripts/bash/concorde.sh"
+      runtime: "bash"
+      description: "POSIX Concorde runtime launcher"
+    - name: "concorde-powershell"
+      file: "scripts/powershell/concorde.ps1"
+      runtime: "powershell"
+      description: "PowerShell Concorde runtime launcher"
+    - name: "concorde-python"
+      file: "scripts/python/concorde.py"
+      runtime: "python"
+      description: "Python Concorde runtime launcher"
+
+effect: "read-write"
+
+tags:
+  - "architecture"
+  - "context"
+  - "validation"

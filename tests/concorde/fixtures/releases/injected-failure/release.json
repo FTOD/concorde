@@ -1,0 +1,4 @@
+{
+  "stage": "extension archive integrity verification",
+  "expected": "prior successful bundle record remains and failed version is not recorded"
+}

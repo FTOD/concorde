@@ -9,7 +9,8 @@
   "scripts": {
     "inspect": "tsx scripts/inspect.ts",
     "validate": "tsx scripts/validate.ts",
-    "start": "npm run validate && docusaurus start",
+    "prepare-content": "tsx scripts/materialize-content.ts",
+    "start": "npm run validate && npm run prepare-content && docusaurus start",
     "build": "tsx scripts/build.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

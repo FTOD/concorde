@@ -1,34 +1,143 @@
 {
   "schemaVersion": 1,
-  "ok": false,
+  "ok": true,
   "command": "visual-check",
-  "status": "skipped",
+  "status": "pass",
   "visualReview": "pending",
   "artifact": {
     "path": "/home/zhenyu/concorde/generated/architecture/documentation.html",
-    "sha256": "e950fdce4594d4e11eeb035d5b97bd69d71fe17f5de1620e8af79e34b50e9c67",
-    "bytes": 631601
+    "sha256": "a4e88271bc7c566bc420551ded3836d926c4bc8901c7ae64ae5ec34c40a9655c",
+    "bytes": 630293
   },
   "state": {
     "detail": "read",
     "motion": "still"
   },
   "chrome": {
-    "status": "unavailable",
-    "executable": null
+    "status": "available",
+    "executable": "/home/zhenyu/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome"
   },
   "containment": {
-    "status": "skipped",
-    "viewports": []
+    "status": "pass",
+    "viewports": [
+      {
+        "width": 1440,
+        "height": 900,
+        "theme": "light",
+        "innerWidth": 1440,
+        "innerHeight": 900,
+        "scrollWidth": 1440,
+        "scrollHeight": 900,
+        "overflowX": false,
+        "overflowY": false,
+        "ok": true,
+        "resolvedTheme": "light"
+      },
+      {
+        "width": 1600,
+        "height": 1000,
+        "theme": "light",
+        "innerWidth": 1600,
+        "innerHeight": 1000,
+        "scrollWidth": 1600,
+        "scrollHeight": 1000,
+        "overflowX": false,
+        "overflowY": false,
+        "ok": true,
+        "resolvedTheme": "light"
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "theme": "light",
+        "innerWidth": 1920,
+        "innerHeight": 1080,
+        "scrollWidth": 1920,
+        "scrollHeight": 1080,
+        "overflowX": false,
+        "overflowY": false,
+        "ok": true,
+        "resolvedTheme": "light"
+      },
+      {
+        "width": 2048,
+        "height": 1320,
+        "theme": "light",
+        "innerWidth": 2048,
+        "innerHeight": 1320,
+        "scrollWidth": 2048,
+        "scrollHeight": 1320,
+        "overflowX": false,
+        "overflowY": false,
+        "ok": true,
+        "resolvedTheme": "light"
+      }
+    ]
   },
   "captures": {
-    "status": "skipped",
-    "screenshots": [],
-    "contactSheet": null
+    "status": "pass",
+    "screenshots": [
+      {
+        "width": 1440,
+        "height": 900,
+        "theme": "light",
+        "innerWidth": 1440,
+        "innerHeight": 900,
+        "scrollWidth": 1440,
+        "scrollHeight": 900,
+        "overflowX": false,
+        "overflowY": false,
+        "ok": true,
+        "resolvedTheme": "light",
+        "file": "documentation.visual-check.1440x900.light.png"
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "theme": "dark",
+        "innerWidth": 1440,
+        "innerHeight": 900,
+        "scrollWidth": 1440,
+        "scrollHeight": 900,
+        "overflowX": false,
+        "overflowY": false,
+        "ok": true,
+        "resolvedTheme": "dark",
+        "file": "documentation.visual-check.1440x900.dark.png"
+      },
+      {
+        "width": 2048,
+        "height": 1320,
+        "theme": "light",
+        "innerWidth": 2048,
+        "innerHeight": 1320,
+        "scrollWidth": 2048,
+        "scrollHeight": 1320,
+        "overflowX": false,
+        "overflowY": false,
+        "ok": true,
+        "resolvedTheme": "light",
+        "file": "documentation.visual-check.2048x1320.light.png"
+      },
+      {
+        "width": 2048,
+        "height": 1320,
+        "theme": "dark",
+        "innerWidth": 2048,
+        "innerHeight": 1320,
+        "scrollWidth": 2048,
+        "scrollHeight": 1320,
+        "overflowX": false,
+        "overflowY": false,
+        "ok": true,
+        "resolvedTheme": "dark",
+        "file": "documentation.visual-check.2048x1320.dark.png"
+      }
+    ],
+    "contactSheet": "documentation.visual-check.html"
   },
   "sidecars": {
     "receipt": "documentation.visual-check.json",
     "contactSheet": "documentation.visual-check.html"
-  },
-  "error": "Chrome or Chromium is unavailable. Set ARCHIFY_CHROME to its executable path."
+  }
 }

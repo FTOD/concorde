@@ -1,0 +1,36 @@
+schema_version: "1.0"
+
+preset:
+  id: "concorde-core"
+  name: "Concorde Core"
+  version: "0.1.0"
+  description: "Append-only architecture guidance for the Spec Kit feature lifecycle"
+  author: "Concorde maintainers"
+  repository: "https://github.com/concorde-workflow/concorde"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.16.4,<0.16.5"
+
+provides:
+  templates:
+    - type: "template"
+      name: "spec-template"
+      file: "templates/spec-template.md"
+      description: "Concorde feature ownership and contract addendum"
+      strategy: "append"
+    - type: "template"
+      name: "plan-template"
+      file: "templates/plan-template.md"
+      description: "Concorde bounded architecture planning gates"
+      strategy: "append"
+    - type: "template"
+      name: "tasks-template"
+      file: "templates/tasks-template.md"
+      description: "Concorde architecture and evidence task guidance"
+      strategy: "append"
+
+tags:
+  - "architecture"
+  - "contracts"
+  - "spec-driven-development"

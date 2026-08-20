@@ -10,7 +10,7 @@ describe('build manifest contract', () => {
   it('accepts the normative representative example', async () => {
     const contractRoot = resolve(
       process.cwd(),
-      '../specs/002-create-project-docsite/contracts',
+      '../specs/concorde/features/002-create-project-docsite/contracts',
     );
     const schema = JSON.parse(
       await readFile(resolve(contractRoot, 'build-manifest.schema.json'), 'utf8'),

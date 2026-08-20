@@ -5,11 +5,18 @@ sidebar_position: 2
 
 # Contributing to the Docsite
 
-Architecture sources belong under `architecture/`; project documentation belongs under `docs/`;
-feature specifications belong under `specs/<feature>/spec.md`. The independent `docsite/` directory
-contains only rendering, validation, search, and presentation code.
+Architecture and feature sources belong in one hierarchical `specs/` tree; project documentation
+belongs under `docs/`. At any module level, `module.md` and `contracts/**/contract.md` describe the
+architecture boundary, while `features/<feature>/spec.md` describes a feature owned at that level.
+The independent `docsite/` directory contains only rendering, validation, search, and presentation
+code.
 
-Module, feature, and contract Markdown under `architecture/` is published directly. A source that
+Because Docusaurus cannot apply two docs-plugin MDX pipelines to the same physical directory, preview
+and build commands materialize ignored Architecture and Features projections under
+`docsite/.generated/content/`. Never edit those projections; change the matching source under `specs/`.
+
+Module and contract Markdown under `specs/` is published in the Architecture view. Feature `spec.md`
+files are published in the Features view. A source that
 declares `view` or `architecture_view` must point to maintained Archify JSON whose `meta.output`
 identifies delivered HTML under `generated/`. The site embeds that HTML in a sandbox and keeps the
 Markdown summary visible for accessibility and search.
@@ -21,7 +28,7 @@ Give every page either a `title` in YAML front matter or one level-one heading. 
 page in site configuration.
 
 Use source-relative `.md` links. Links may cross collections—for example, the
-[docsite feature specification](../../specs/002-create-project-docsite/spec.md)—and fragments are
+[docsite feature specification](../../specs/concorde/features/002-create-project-docsite/spec.md)—and fragments are
 preserved when the build rewrites a source path to a published route. A link to a noncanonical Spec
 Kit artifact such as `plan.md` is rejected.
 

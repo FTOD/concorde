@@ -58,7 +58,7 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
       findings.push({
         ruleId: 'content.path.outside-root', severity: 'error', sourcePath: document.sourcePath,
         message: 'The resolved source path escapes the project root.',
-        remediation: 'Move the source into architecture/, docs/, or specs/ and remove escaping symbolic links.',
+        remediation: 'Move the source into docs/ or specs/ and remove escaping symbolic links.',
       });
     }
     if (!document.title.trim()) {

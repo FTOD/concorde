@@ -2,6 +2,9 @@
 node_modules/
 dist/
 build/
+*.zip
+.concorde-acceptance/
+tests/concorde/.tmp/
 .docusaurus/
 .generated/
 coverage/

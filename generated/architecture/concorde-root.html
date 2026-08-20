@@ -4840,7 +4840,7 @@
       </div>
     </div>
 
-    <script id="archify-guided-views-data" type="application/json">[{"id":"install-starter-workflow","label":"Install starter workflow","focus":["maintainer","specKit","distribution","integration","agentHost","architectureCore"],"note":"Install the bundle, register agent skills, and exercise the first architecture commands."},{"id":"publish-architecture","label":"Publish architecture","focus":["maintainer","specKit","architectureCore","documentation"],"note":"Combine canonical project docs and feature specs with validated architecture sources."}]</script>
+    <script id="archify-guided-views-data" type="application/json">[{"id":"install-starter-workflow","label":"Install starter workflow","focus":["maintainer","specKit","distribution","integration","agentHost","architectureCore"],"note":"Install the bundle, register agent skills, and exercise the first architecture commands."},{"id":"initialize-root-architecture","label":"Initialize root architecture","focus":["maintainer","agentHost","architectureCore"],"note":"Review a proposal and explicitly establish the root specification hierarchy."},{"id":"retrieve-and-validate-context","label":"Retrieve and validate context","focus":["maintainer","agentHost","architectureCore"],"note":"Retrieve one bounded level and validate the maintained hierarchy deterministically."},{"id":"manage-installation-lifecycle","label":"Manage installation lifecycle","focus":["maintainer","specKit","distribution","integration"],"note":"Preview updates and preserve project sources and shared components during removal."},{"id":"publish-architecture","label":"Publish architecture","focus":["maintainer","specKit","architectureCore","documentation"],"note":"Publish architecture and feature specifications from one hierarchical specs tree alongside project docs."}]</script>
 
     <div class="guided-views no-print" id="guided-views" hidden aria-label="Guided diagram views">
       <button id="guided-view-prev" type="button" aria-label="Previous guided view" title="Previous guided view ([)">&#8592;</button>
@@ -4919,8 +4919,8 @@
         <path data-edge-from="integration" data-edge-to="agentHost" data-edge-label="register skills" data-edge-key="3" data-edge-id="integrationRegistersSkills" data-composition-points="940,149;1010,149" d="M 940 149 L 1010 149" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="agentHost" data-edge-to="architectureCore" data-edge-label="init / context / validate" data-edge-key="4" data-edge-id="agentInvokesCore" data-composition-points="1010,149;975,149;975,394;940,394" d="M 1010 149 L 983 149 Q 975 149 975 157 L 975 386 Q 975 394 967 394 L 940 394" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="integration" data-edge-to="architectureCore" data-edge-label="architecture rules" data-edge-key="5" data-edge-id="integrationUsesCore" data-composition-points="845,188;845,355" d="M 845 188 L 845 355" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="architectureCore" data-edge-to="documentation" data-edge-label="validated sources" data-edge-key="6" data-edge-id="coreFeedsDocumentation" data-composition-points="940,394;1010,394" d="M 940 394 L 1010 394" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="specKit" data-edge-to="documentation" data-edge-label="canonical feature specs" data-edge-key="7" data-edge-id="specKitFeedsDocumentation" data-composition-points="420,311;450,311;450,540;1105,540;1105,433" d="M 420 311 L 442 311 Q 450 311 450 319 L 450 532 Q 450 540 458 540 L 1097 540 Q 1105 540 1105 532 L 1105 433" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="architectureCore" data-edge-to="documentation" data-edge-label="module + contract specs" data-edge-key="6" data-edge-id="coreFeedsDocumentation" data-composition-points="940,394;1010,394" d="M 940 394 L 1010 394" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="specKit" data-edge-to="documentation" data-edge-label="feature specs in specs/" data-edge-key="7" data-edge-id="specKitFeedsDocumentation" data-composition-points="420,311;450,311;450,540;1105,540;1105,433" d="M 420 311 L 442 311 Q 450 311 450 319 L 450 532 Q 450 540 458 540 L 1097 540 Q 1105 540 1105 532 L 1105 433" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
 
         <!-- Components -->
         <g id="node-maintainer" data-node-id="maintainer" data-node-label="Maintainer" tabindex="0" role="button" aria-label="Focus Maintainer, Installs and directs Concorde, Architecture component" aria-pressed="false" data-node-kind="external" data-node-sublabel="Installs and directs Concorde" data-node-context="Architecture component">
@@ -5031,13 +5031,13 @@
           <rect x="796.8" y="260" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
           <text x="845" y="270" class="t-muted" font-size="8" text-anchor="middle">architecture rules</text>
         </g>
-        <g data-detail="context" data-edge-from="architectureCore" data-edge-to="documentation" data-edge-label="validated sources" data-edge-key="6" data-edge-id="coreFeedsDocumentation">
-          <rect x="929.2" y="437" width="91.6" height="14" rx="3" class="c-mask"/>
-          <text x="975" y="447" class="t-muted" font-size="8" text-anchor="middle">validated sources</text>
+        <g data-detail="context" data-edge-from="architectureCore" data-edge-to="documentation" data-edge-label="module + contract specs" data-edge-key="6" data-edge-id="coreFeedsDocumentation">
+          <rect x="914.8" y="437" width="120.39999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="975" y="447" class="t-muted" font-size="8" text-anchor="middle">module + contract specs</text>
         </g>
-        <g data-detail="context" data-edge-from="specKit" data-edge-to="documentation" data-edge-label="canonical feature specs" data-edge-key="7" data-edge-id="specKitFeedsDocumentation">
+        <g data-detail="context" data-edge-from="specKit" data-edge-to="documentation" data-edge-label="feature specs in specs/" data-edge-key="7" data-edge-id="specKitFeedsDocumentation">
           <rect x="389.8" y="405.5" width="120.39999999999999" height="14" rx="3" class="c-mask"/>
-          <text x="450" y="415.5" class="t-messagebus" font-size="8" text-anchor="middle">canonical feature specs</text>
+          <text x="450" y="415.5" class="t-messagebus" font-size="8" text-anchor="middle">feature specs in specs/</text>
         </g>
 
         <!-- Legend -->
@@ -5263,6 +5263,7 @@
         <ul>
           <li>&bull; Spec Kit retains the feature-development lifecycle</li>
           <li>&bull; Concorde owns hierarchy, contracts, bounded context, and validation</li>
+          <li>&bull; Architecture and feature intent share the specs/ tree</li>
         </ul>
       </div>
 
@@ -5272,9 +5273,9 @@
           <h3>Published read model</h3>
         </div>
         <ul>
-          <li>&bull; Architecture, documentation, and features share one site</li>
-          <li>&bull; Declared Archify views accompany textual summaries</li>
-          <li>&bull; Generated output remains a read-only projection</li>
+          <li>&bull; specs/ feeds Architecture and Features</li>
+          <li>&bull; Project docs complete the three-view site</li>
+          <li>&bull; Archify views stay read-only and textual</li>
         </ul>
       </div>
     </div>

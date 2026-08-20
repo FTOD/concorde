@@ -1,0 +1,23 @@
+{
+  "catalog_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/extensions.json",
+  "extensions": {
+    "concorde": {
+      "author": "Concorde maintainers",
+      "description": "Initialize, retrieve, and validate bounded hierarchical architecture sources",
+      "download_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/concorde-0.1.0.zip",
+      "effect": "read-write",
+      "id": "concorde",
+      "license": "MIT",
+      "name": "Concorde Architecture Workflow",
+      "provides": {"commands": 3, "scripts": 3},
+      "repository": "https://github.com/concorde-workflow/concorde",
+      "requires": {"speckit_version": ">=0.16.4,<0.16.5"},
+      "sha256": "sha256:71e89c6769c95975039d61d3422ba38c256ce9d4d59922f562557cdb886e158c",
+      "tags": ["architecture", "context", "validation"],
+      "verified": false,
+      "version": "0.1.0"
+    }
+  },
+  "schema_version": "1.0",
+  "updated_at": "2026-08-20T00:00:00Z"
+}

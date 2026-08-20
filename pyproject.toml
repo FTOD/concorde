@@ -10,3 +10,7 @@ dev = []
 
 [tool.uv]
 package = false
+
+[tool.concorde]
+python = "3.11"
+test-command = "python -m unittest discover -s tests/concorde -p test_*.py"

@@ -13,12 +13,11 @@ Concorde is designed to be installed as a native Spec Kit bundle containing:
 
 ## Project status
 
-The project docsite and its architecture publication pipeline are implemented and tested. The starter
-bundle is fully specified and planned in
-[`specs/001-concorde-starter-workflow/`](specs/001-concorde-starter-workflow/), but its distributable
-bundle, preset, extension, and release scripts have not been implemented yet. The bundle commands
-below describe the intended Feature 001 quick start and will become runnable when that feature is
-implemented.
+The project docsite and architecture publication pipeline are implemented and tested. Feature 001 now
+provides the native starter bundle, append-only preset, three-command extension, deterministic Python
+runtime, reproducible release/catalog tooling, and clean-project lifecycle acceptance. Its automated
+gates pass; the timed first-use participant pilot remains pending and is reported separately rather
+than inferred from automation.
 
 ## Quick start: install Concorde as a Spec Kit bundle
 
@@ -46,8 +45,8 @@ projects to install `uv`.
 From a Concorde checkout:
 
 ```bash
-uv run python scripts/release/build-components.py --output dist
-specify bundle validate --path bundles/concorde-starter
+uv run python scripts/release/build-components.py --output dist \
+  --base-url http://127.0.0.1:8765
 specify bundle build --path bundles/concorde-starter --output dist
 uv run python scripts/release/verify-release.py --dist dist
 ```
@@ -55,7 +54,15 @@ uv run python scripts/release/verify-release.py --dist dist
 The release contains exactly `concorde-core@0.1.0` and `concorde@0.1.0`. It does not install a custom
 workflow or reusable Spec Kit steps.
 
-### 2. Initialize a target Spec Kit project
+### 2. Serve the local catalogs
+
+In a second terminal:
+
+```bash
+uv run python tests/concorde/support/catalog_server.py --dist dist --port 8765
+```
+
+### 3. Initialize a target Spec Kit project
 
 Use a new project directory, or run the equivalent command in an existing supported Spec Kit project:
 
@@ -65,13 +72,21 @@ cd "$project_root"
 specify init --here --integration codex --integration-options="--skills"
 ```
 
-### 3. Install the local bundle
+### 4. Install the local bundle
 
 Set `concorde_checkout` to the absolute path of this repository:
 
 ```bash
 concorde_checkout=/absolute/path/to/concorde
-specify bundle info "$concorde_checkout/bundles/concorde-starter/bundle.yml" --json
+specify extension catalog add http://127.0.0.1:8765/extensions.json \
+  --name concorde-dev --install-allowed
+specify preset catalog add http://127.0.0.1:8765/presets.json \
+  --name concorde-dev --install-allowed
+specify bundle catalog add http://127.0.0.1:8765/bundles.json \
+  --id concorde-dev --policy install-allowed
+specify bundle validate --offline \
+  --path "$concorde_checkout/bundles/concorde-starter"
+specify bundle info concorde-starter --json
 specify bundle install "$concorde_checkout/bundles/concorde-starter/bundle.yml"
 ```
 
@@ -86,9 +101,9 @@ find .agents/skills -maxdepth 2 -name SKILL.md -print | sort
 ```
 
 For catalog-based installation and release acceptance, follow the complete
-[Feature 001 quick start](specs/001-concorde-starter-workflow/quickstart.md).
+[Feature 001 quick start](specs/concorde/features/001-concorde-starter-workflow/quickstart.md).
 
-### 4. Use the Concorde commands
+### 5. Use the Concorde commands
 
 After installation, invoke these agent skills from the target project:
 
@@ -103,17 +118,17 @@ $speckit-concorde-validate
 - `validate` deterministically checks identities, hierarchy, references, contracts, views, and
   evidence status.
 
-Project-authored `.concorde/` and `architecture/` sources are retained when the bundle is updated or
-removed.
+Project-authored `.concorde/` configuration and the unified `specs/` hierarchy are retained when the
+bundle is updated or removed.
 
 ## Run this project's documentation site
 
 The independent [`docsite/`](docsite/) package builds Concorde's own read-only Docusaurus site from
-three canonical collections:
+two canonical source roots, presented as three reader-facing collections:
 
 | Source | Published content |
 |---|---|
-| `architecture/**/*.md` | Modules, architectural features, contracts, and declared Archify views |
+| `specs/**/module.md`, `specs/**/contracts/**/contract.md` | Architecture modules, boundary contracts, and declared Archify views |
 | `docs/**/*.md` | Project documentation |
 | `specs/**/spec.md` | Canonical Spec Kit feature specifications |
 
@@ -157,6 +172,6 @@ authoring rules and troubleshooting.
 
 - [Concorde prototype reference](concorde-prototype-reference.md)
 - [Project constitution](.specify/memory/constitution.md)
-- [Root architecture](architecture/concorde/module.md)
-- [Starter bundle specification](specs/001-concorde-starter-workflow/spec.md)
-- [Project docsite specification](specs/002-create-project-docsite/spec.md)
+- [Root architecture](specs/concorde/module.md)
+- [Starter bundle specification](specs/concorde/features/001-concorde-starter-workflow/spec.md)
+- [Project docsite specification](specs/concorde/features/002-create-project-docsite/spec.md)

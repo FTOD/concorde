@@ -6,6 +6,7 @@ import Ajv2020 from 'ajv/dist/2020';
 
 import {buildRegistry} from '../plugins/concorde-content/registry';
 import {assertValidRegistry} from '../plugins/concorde-content/validation';
+import {materializeContent} from './materialize-content';
 
 const siteDir = resolve(__dirname, '..');
 const projectRoot = resolve(siteDir, '..');
@@ -41,7 +42,7 @@ async function runDocusaurus(candidate: string): Promise<void> {
 
 async function validateGeneratedManifest(candidate: string): Promise<void> {
   const [schemaText, manifestText] = await Promise.all([
-    readFile(resolve(projectRoot, 'specs/002-create-project-docsite/contracts/build-manifest.schema.json'), 'utf8'),
+    readFile(resolve(projectRoot, 'specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json'), 'utf8'),
     readFile(resolve(candidate, 'build-manifest.json'), 'utf8'),
   ]);
   const validate = new Ajv2020({allErrors: true}).compile(JSON.parse(schemaText));
@@ -54,6 +55,7 @@ export async function buildSite(): Promise<void> {
   const backup = resolve(siteDir, '.generated/previous-build');
   await rm(candidate, {recursive: true, force: true});
   assertValidRegistry(await buildRegistry(projectRoot));
+  await materializeContent();
   try {
     await runDocusaurus(candidate);
     await validateGeneratedManifest(candidate);

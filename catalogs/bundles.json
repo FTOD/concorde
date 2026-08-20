@@ -1,0 +1,23 @@
+{
+  "bundles": {
+    "concorde-starter": {
+      "author": "Concorde maintainers",
+      "description": "Architecture-aware Spec Kit starter workflow",
+      "download_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/concorde-starter-0.1.0.zip",
+      "id": "concorde-starter",
+      "license": "MIT",
+      "name": "Concorde Starter",
+      "provides": {"extensions": 1, "presets": 1, "steps": 0, "workflows": 0},
+      "repository": "https://github.com/concorde-workflow/concorde",
+      "requires": {"speckit_version": ">=0.16.4,<0.16.5"},
+      "role": "developer",
+      "sha256": "sha256:af0581a97fb28c898876d6ce9c5ef672a40f6b80efe4ee8be9fd0ad3be1afd3a",
+      "tags": ["architecture", "context", "validation", "spec-driven-development"],
+      "verified": false,
+      "version": "0.1.0"
+    }
+  },
+  "catalog_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/bundles.json",
+  "schema_version": "1.0",
+  "updated_at": "2026-08-20T00:00:00Z"
+}

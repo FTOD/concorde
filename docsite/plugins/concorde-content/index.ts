@@ -35,9 +35,8 @@ export default function concordeContentPlugin(
     },
     getPathsToWatch() {
       return [
-        resolve(projectRoot, 'architecture/**/*.md'), resolve(projectRoot, 'architecture/**/*.json'),
+        resolve(projectRoot, 'specs/**/*.md'), resolve(projectRoot, 'specs/**/architecture.json'),
         resolve(projectRoot, 'docs/**/*.md'), resolve(projectRoot, 'generated/architecture/**/*.html'),
-        resolve(projectRoot, 'specs/**/spec.md'),
       ];
     },
     async postBuild({outDir, routesPaths}) {

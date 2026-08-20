@@ -16,11 +16,11 @@ describe('architecture source publication', () => {
       (document): document is ArchitectureSource => document.collectionId === 'architecture',
     );
     expect(validateRegistry(registry)).toEqual([]);
-    expect(sources).toHaveLength(12);
+    expect(sources).toHaveLength(19);
     expect(new Set(sources.map((source) => source.architectureId)).size).toBe(sources.length);
     expect(sources.find((source) => source.architectureId === 'module.concorde')).toMatchObject({
       architectureKind: 'module',
-      architectureViewSource: 'architecture/concorde/architecture.json',
+      architectureViewSource: 'specs/concorde/architecture.json',
       architectureViewRoute: '/architecture/concorde-root.html',
     });
     expect(sources.find((source) => source.architectureId === 'module.concorde.documentation')).toMatchObject({
@@ -32,12 +32,12 @@ describe('architecture source publication', () => {
   it('rejects a declared view without a deliverable generated artifact', async () => {
     const projectRoot = await mkdtemp(resolve(tmpdir(), 'concorde-architecture-'));
     try {
-      await mkdir(resolve(projectRoot, 'architecture/example'), {recursive: true});
-      await writeFile(resolve(projectRoot, 'architecture/example/module.md'), `---
+      await mkdir(resolve(projectRoot, 'specs/example'), {recursive: true});
+      await writeFile(resolve(projectRoot, 'specs/example/module.md'), `---
 id: module.example
 kind: module
 parent: null
-view: architecture/example/missing.json
+view: specs/example/missing.json
 children: []
 features: []
 contracts:

@@ -13,8 +13,8 @@ describe('content registry', () => {
     const registry = await buildRegistry(fixture);
     expect(validateRegistry(registry)).toEqual([]);
     expect(registry.documents.map((item) => item.sourcePath)).toEqual([
-      'architecture/example/module.md', 'docs/guide/intro.md', 'docs/index.md',
-      'specs/001-alpha/spec.md', 'specs/nested/002-beta/spec.md',
+      'docs/guide/intro.md', 'docs/index.md', 'specs/001-alpha/spec.md',
+      'specs/example/module.md', 'specs/nested/002-beta/spec.md',
     ]);
     expect(new Set(registry.documents.map((item) => item.route)).size).toBe(5);
     expect(registry.documents.every((item) => item.sourceSha256.length === 64)).toBe(true);
@@ -25,7 +25,7 @@ describe('content registry', () => {
     const manifest = createManifest(registry);
     expect(manifest.pages).toHaveLength(registry.documents.length);
     expect(manifest.pages.map((page) => page.navigation.section)).toEqual([
-      'Architecture', 'Documentation', 'Documentation', 'Features', 'Features',
+      'Documentation', 'Documentation', 'Features', 'Architecture', 'Features',
     ]);
   });
 });

@@ -4,7 +4,7 @@ export type SourceState = 'discovered' | 'parsed' | 'validated' | 'mapped' | 're
 
 export interface SourceCollection {
   id: CollectionId;
-  sourceBase: 'architecture' | 'docs' | 'specs';
+  sourceBase: 'docs' | 'specs';
   routeBase: '/architecture' | '/docs' | '/features';
   include: string[];
   contentKind: ContentKind;

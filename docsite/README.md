@@ -4,10 +4,14 @@ This private package builds the read-only Concorde project website. Canonical co
 this package:
 
 - `../docs/**/*.md` owns project documentation.
-- `../specs/**/spec.md` owns feature specifications.
-- `../architecture/**/*.md` owns architectural modules, features, and contracts.
-- `../architecture/**/architecture.json` owns structural views; `../generated/architecture/*.html`
+- `../specs/**/spec.md` owns feature specifications at any module level.
+- `../specs/**/module.md` and `../specs/**/contracts/**/contract.md` own architecture intent.
+- `../specs/**/architecture.json` owns structural views; `../generated/architecture/*.html`
   contains their delivered, disposable Archify projections.
+
+Before preview or build, the package classifies the unified `specs/` tree and writes disposable
+Architecture and Features inputs beneath `.generated/content/`. These are renderer projections only;
+all provenance, validation, and edits continue to reference the canonical files under `../specs/`.
 
 ## Prerequisites
 

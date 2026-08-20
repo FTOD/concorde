@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Concorde — Root Module",
+    "output": "../../generated/architecture/concorde-root.html",
+    "quality_profile": "showcase",
+    "viewBox": [1280, 650],
+    "views": [
+      {
+        "id": "install-starter-workflow",
+        "label": "Install starter workflow",
+        "focus": [
+          "maintainer",
+          "specKit",
+          "distribution",
+          "integration",
+          "agentHost",
+          "architectureCore"
+        ],
+        "note": "Install the bundle, register agent skills, and exercise the first architecture commands."
+      },
+      {
+        "id": "initialize-root-architecture",
+        "label": "Initialize root architecture",
+        "focus": ["maintainer", "agentHost", "architectureCore"],
+        "note": "Review a proposal and explicitly establish the root specification hierarchy."
+      },
+      {
+        "id": "retrieve-and-validate-context",
+        "label": "Retrieve and validate context",
+        "focus": ["maintainer", "agentHost", "architectureCore"],
+        "note": "Retrieve one bounded level and validate the maintained hierarchy deterministically."
+      },
+      {
+        "id": "manage-installation-lifecycle",
+        "label": "Manage installation lifecycle",
+        "focus": ["maintainer", "specKit", "distribution", "integration"],
+        "note": "Preview updates and preserve project sources and shared components during removal."
+      },
+      {
+        "id": "publish-architecture",
+        "label": "Publish architecture",
+        "focus": ["maintainer", "specKit", "architectureCore", "documentation"],
+        "note": "Publish architecture and feature specifications from one hierarchical specs tree alongside project docs."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "maintainer",
+      "type": "external",
+      "label": "Maintainer",
+      "sublabel": "Installs and directs Concorde",
+      "pos": [40, 275],
+      "size": [160, 72]
+    },
+    {
+      "id": "specKit",
+      "type": "external",
+      "label": "Spec Kit",
+      "sublabel": "CLI and SDD lifecycle",
+      "pos": [260, 275],
+      "size": [160, 72]
+    },
+    {
+      "id": "distribution",
+      "type": "cloud",
+      "label": "Distribution",
+      "sublabel": "Bundle and release lifecycle",
+      "pos": [490, 110],
+      "size": [180, 78]
+    },
+    {
+      "id": "integration",
+      "type": "backend",
+      "label": "Spec Kit Integration",
+      "sublabel": "Presets, extensions, skills",
+      "pos": [750, 110],
+      "size": [190, 78]
+    },
+    {
+      "id": "architectureCore",
+      "type": "backend",
+      "label": "Architecture Core",
+      "sublabel": "Model, context, validation",
+      "pos": [750, 355],
+      "size": [190, 78]
+    },
+    {
+      "id": "documentation",
+      "type": "frontend",
+      "label": "Documentation",
+      "sublabel": "Rendered architecture site",
+      "pos": [1010, 355],
+      "size": [190, 78]
+    },
+    {
+      "id": "agentHost",
+      "type": "external",
+      "label": "Coding Agent",
+      "sublabel": "Installed Concorde skills",
+      "pos": [1010, 110],
+      "size": [190, 78]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Concorde root module",
+      "wraps": ["distribution", "integration", "architectureCore", "documentation"],
+      "pad": 34
+    }
+  ],
+  "connections": [
+    {
+      "id": "maintainerUsesSpecKit",
+      "from": "maintainer",
+      "to": "specKit",
+      "label": "install / update / remove",
+      "variant": "emphasis",
+      "labelAt": [230, 361]
+    },
+    {
+      "id": "specKitInstallsBundle",
+      "from": "specKit",
+      "to": "distribution",
+      "label": "bundle lifecycle",
+      "variant": "emphasis"
+    },
+    {
+      "id": "distributionInstallsComponents",
+      "from": "distribution",
+      "to": "integration",
+      "label": "preset + extension",
+      "variant": "emphasis",
+      "labelAt": [710, 202]
+    },
+    {
+      "id": "integrationRegistersSkills",
+      "from": "integration",
+      "to": "agentHost",
+      "label": "register skills",
+      "variant": "emphasis",
+      "labelAt": [1080, 220]
+    },
+    {
+      "id": "agentInvokesCore",
+      "from": "agentHost",
+      "to": "architectureCore",
+      "label": "init / context / validate",
+      "variant": "emphasis"
+    },
+    {
+      "id": "integrationUsesCore",
+      "from": "integration",
+      "to": "architectureCore",
+      "label": "architecture rules",
+      "labelAt": [845, 270]
+    },
+    {
+      "id": "coreFeedsDocumentation",
+      "from": "architectureCore",
+      "to": "documentation",
+      "label": "module + contract specs",
+      "labelAt": [975, 447]
+    },
+    {
+      "id": "specKitFeedsDocumentation",
+      "from": "specKit",
+      "to": "documentation",
+      "label": "feature specs in specs/",
+      "variant": "dashed",
+      "toSide": "bottom",
+      "via": [[450, 311], [450, 540], [1105, 540]]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "First vertical slice",
+      "items": [
+        "Install one bundle into an initialized Spec Kit project",
+        "Compose one architecture-aware preset and one command extension",
+        "Use init, context, and validate as agent skills"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Ownership",
+      "items": [
+        "Spec Kit retains the feature-development lifecycle",
+        "Concorde owns hierarchy, contracts, bounded context, and validation",
+        "Architecture and feature intent share the specs/ tree"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Published read model",
+      "items": [
+        "specs/ feeds Architecture and Features",
+        "Project docs complete the three-view site",
+        "Archify views stay read-only and textual"
+      ]
+    }
+  ]
+}

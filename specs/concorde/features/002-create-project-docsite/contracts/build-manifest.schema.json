@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://concorde.dev/contracts/documentation/build-manifest-v2.schema.json",
+  "title": "Concorde Documentation Build Manifest v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "generator",
+    "collections",
+    "pages",
+    "excludedSources",
+    "routeInventory",
+    "validation"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 2
+    },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "docusaurusVersion"],
+      "properties": {
+        "name": { "const": "concorde-docsite" },
+        "version": { "type": "string", "minLength": 1 },
+        "docusaurusVersion": { "type": "string", "minLength": 1 }
+      }
+    },
+    "collections": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "sourceBase", "routeBase", "include"],
+        "properties": {
+          "id": { "enum": ["architecture", "docs", "features"] },
+          "sourceBase": { "enum": ["docs", "specs"] },
+          "routeBase": { "enum": ["/architecture", "/docs", "/features"] },
+          "include": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "pages": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/page" }
+    },
+    "excludedSources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sourcePath", "reason"],
+        "properties": {
+          "sourcePath": { "$ref": "#/$defs/sourcePath" },
+          "reason": { "const": "not-canonical-feature-artifact" }
+        }
+      }
+    },
+    "routeInventory": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/route" }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "checks"],
+      "properties": {
+        "status": { "const": "passed" },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "status"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "status": { "const": "passed" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sourcePath": {
+      "type": "string",
+      "pattern": "^(docs|specs)/[^\\\\]+$"
+    },
+    "route": {
+      "type": "string",
+      "pattern": "^/[^?#]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetSourcePath", "targetRoute"],
+      "properties": {
+        "targetSourcePath": { "$ref": "#/$defs/sourcePath" },
+        "targetRoute": { "$ref": "#/$defs/route" }
+      }
+    },
+    "navigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["section", "label"],
+      "properties": {
+        "section": { "enum": ["Architecture", "Documentation", "Features"] },
+        "label": { "type": "string", "minLength": 1 },
+        "parentRoute": { "$ref": "#/$defs/route" }
+      }
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "sourcePath",
+        "sourceSha256",
+        "route",
+        "title",
+        "navigation",
+        "links"
+      ],
+      "properties": {
+        "kind": { "enum": ["architecture-source", "project-document", "feature-specification"] },
+        "sourcePath": { "$ref": "#/$defs/sourcePath" },
+        "sourceSha256": { "$ref": "#/$defs/sha256" },
+        "route": { "$ref": "#/$defs/route" },
+        "title": { "type": "string", "minLength": 1 },
+        "navigation": { "$ref": "#/$defs/navigation" },
+        "links": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/link" }
+        },
+        "featureId": { "type": "string", "minLength": 1 },
+        "moduleId": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "minLength": 1 },
+        "architectureId": { "type": "string", "minLength": 1 },
+        "architectureKind": { "enum": ["module", "feature", "contract"] },
+        "parentId": { "type": "string", "minLength": 1 },
+        "architectureViewSource": { "$ref": "#/$defs/sourcePath" },
+        "architectureViewSha256": { "$ref": "#/$defs/sha256" },
+        "architectureViewRoute": { "$ref": "#/$defs/route" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "feature-specification" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "required": ["featureId", "moduleId", "status"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "architecture-source" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "required": ["architectureId", "architectureKind"]
+          }
+        }
+      ]
+    }
+  }
+}
