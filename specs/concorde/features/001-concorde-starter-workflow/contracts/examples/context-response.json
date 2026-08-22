@@ -78,6 +78,7 @@
       "deeper_references": ["module.example.api"],
       "architecture_readiness": null,
       "feature_workspace": null,
+      "feature_diagrams": [],
       "contracts": [],
       "evidence": []
     }

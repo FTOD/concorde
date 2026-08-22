@@ -7,16 +7,20 @@ const siteDir = resolve(__dirname, '../..');
 
 describe('accessible presentation contract', () => {
   it('provides semantic landmarks and named provenance', async () => {
-    const [home, provenance, architectureView] = await Promise.all([
+    const [home, provenance, architectureView, featureDiagrams] = await Promise.all([
       readFile(resolve(siteDir, 'src/pages/index.tsx'), 'utf8'),
       readFile(resolve(siteDir, 'src/components/ContentProvenance.tsx'), 'utf8'),
       readFile(resolve(siteDir, 'src/components/ArchitectureView.tsx'), 'utf8'),
+      readFile(resolve(siteDir, 'src/components/FeatureDiagrams.tsx'), 'utf8'),
     ]);
     expect(home).toContain('<main');
     expect(home).toContain('<header');
     expect(provenance).toContain('aria-label="Content provenance"');
     expect(architectureView).toContain('title={`Interactive architecture view for ${page.title}`}');
     expect(architectureView).toContain('sandbox="allow-downloads allow-scripts"');
+    expect(featureDiagrams).toContain('aria-labelledby="feature-diagrams-heading"');
+    expect(featureDiagrams).toContain('sandbox="allow-downloads allow-scripts"');
+    expect(featureDiagrams).toContain('Source: <code>{diagram.source}</code>');
   });
 
   it('keeps visible keyboard focus and a narrow-layout breakpoint', async () => {

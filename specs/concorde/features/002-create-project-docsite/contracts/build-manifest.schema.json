@@ -124,6 +124,23 @@
         "parentRoute": { "$ref": "#/$defs/route" }
       }
     },
+    "featureDiagram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "sourceSha256", "kind", "scenarios", "title", "route"],
+      "properties": {
+        "source": { "$ref": "#/$defs/sourcePath" },
+        "sourceSha256": { "$ref": "#/$defs/sha256" },
+        "kind": { "enum": ["architecture", "workflow", "sequence", "dataflow", "lifecycle"] },
+        "scenarios": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "route": { "$ref": "#/$defs/route" }
+      }
+    },
     "page": {
       "type": "object",
       "additionalProperties": false,
@@ -150,6 +167,10 @@
         "featureId": { "type": "string", "minLength": 1 },
         "moduleId": { "type": "string", "minLength": 1 },
         "status": { "type": "string", "minLength": 1 },
+        "diagrams": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/featureDiagram" }
+        },
         "architectureId": { "type": "string", "minLength": 1 },
         "architectureKind": { "enum": ["module", "feature", "contract"] },
         "parentId": { "type": "string", "minLength": 1 },
@@ -164,7 +185,7 @@
             "required": ["kind"]
           },
           "then": {
-            "required": ["featureId", "moduleId", "status"]
+            "required": ["featureId", "moduleId", "status", "diagrams"]
           }
         },
         {

@@ -1,0 +1,60 @@
+import json
+import shutil
+import tempfile
+import unittest
+from pathlib import Path
+
+from tests.concorde.contract.test_installed_command_surfaces import _builder
+from tests.concorde.support.catalog_server import CatalogServer
+from tests.concorde.support.installed_command_surface import (
+    NORMAL_PHASES,
+    execute_workspace_surface,
+    registered_artifact,
+)
+from tests.concorde.support.paths import CONTEXT_PROJECT, REPOSITORY_ROOT
+from tests.concorde.support.specify_project import SpecifyProject
+
+
+class CleanPhaseMatrixTests(unittest.TestCase):
+    def test_three_runs_route_every_phase_without_root_aliases(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            dist = base / "dist"
+            server = CatalogServer(dist)
+            _builder.build_release(dist, server.base_url)
+            with server:
+                root = base / "target"
+                project = SpecifyProject(root)
+                project.initialize()
+                project.register_catalogs(server.base_url)
+                project.run("bundle", "install", "concorde-starter")
+                shutil.copytree(CONTEXT_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
+                shutil.copytree(CONTEXT_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
+                selected = "specs/example/features/001-deliver"
+                (root / ".specify/feature.json").write_text(
+                    json.dumps({"feature_directory": selected}, separators=(",", ":")) + "\n",
+                    encoding="utf-8",
+                )
+                runs = []
+                for _ in range(3):
+                    receipts = []
+                    for command, phase in NORMAL_PHASES.items():
+                        receipt = execute_workspace_surface(
+                            root,
+                            registered_artifact(root, "codex", command),
+                            command,
+                            phase,
+                            REPOSITORY_ROOT,
+                        )
+                        receipts.append(json.dumps(receipt.to_dict(), sort_keys=True, separators=(",", ":")))
+                    runs.append(receipts)
+                self.assertEqual(runs[0], runs[1])
+                self.assertEqual(runs[1], runs[2])
+                feature = root / selected
+                self.assertFalse((feature / "plan.md").exists())
+                self.assertFalse((feature / "tasks.md").exists())
+                self.assertFalse((feature / "implementation").is_symlink())
+
+
+if __name__ == "__main__":
+    unittest.main()

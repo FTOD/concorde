@@ -49,6 +49,9 @@ The Architecture and Features collections are disjoint projections of the same s
 - `module`: required owning module ID.
 - first level-one heading: required feature title.
 - `Status` metadata line: required lifecycle status and displayed without changing its meaning.
+- `diagrams`: optional list of feature-owned Archify declarations. Every source must be directly
+  below the feature's `diagrams/` directory and name its kind, scenarios or question, and generated
+  output. The JSON `diagram_type` and `meta.output` must agree with the declaration.
 - Parent directory: the feature directory; only its `spec.md` is canonical site content in version 1.
 
 ### Architecture Sources
@@ -71,20 +74,24 @@ The Architecture and Features collections are disjoint projections of the same s
 - Consumers MUST preserve authored prose, headings, code, tables, and supported links.
 - Consumers MUST expose content kind and project-relative provenance on every page; architecture pages
   additionally expose stable ID, kind, hierarchy metadata, and view provenance when applicable.
+- Consumers MUST discover feature diagrams from `spec.md`, verify their generated outputs, include
+  their source hashes and routes in the manifest, and embed every declared view on the canonical
+  feature page with a standalone-view link.
 - Providers MUST keep stable feature IDs unique and internal Markdown targets resolvable.
 
 ## Failure Semantics
 
-Unreadable sources, invalid YAML or JSON, missing required identity, duplicate feature or architecture
+Unreadable sources, invalid YAML or JSON, missing required identity, invalid feature-diagram
+placement/declarations, duplicate feature or architecture
 IDs, escaping paths, missing or ambiguous Markdown targets, excluded-source links, unpublishable
-declared views, and route collisions are errors. Each
+declared views or feature diagrams, and route collisions are errors. Each
 diagnostic includes a rule ID, source path when applicable, reason, and remediation. Any error stops
 candidate publication.
 
 ## Compatibility
 
-This is contract version 2; it adds the Architecture collection and declared-view projection. Adding
-optional metadata is backward compatible. Changing source roots,
+This is contract version 2; it includes Architecture collection views and feature-declared diagram
+projection. Adding optional metadata is backward compatible. Changing source roots,
 eligibility globs, required fields, route bases, path semantics, or exclusion meaning requires a new
 contract version and a route/content migration decision.
 

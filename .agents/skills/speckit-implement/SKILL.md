@@ -98,6 +98,8 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **IF EXISTS**: Read `IMPLEMENTATION_DIR/research.md` for technical decisions and constraints
    - **IF EXISTS**: Read .specify/memory/constitution.md for governance constraints
    - **IF EXISTS**: Read `IMPLEMENTATION_DIR/quickstart.md` for integration scenarios
+   - **IF REFERENCED**: Read feature-owned Archify JSON beside the durable `spec.md` and its textual
+     explanation. Treat generated HTML and visual receipts as reproducible evidence, never as source.
 
 4. **Project Setup Verification**:
    - **REQUIRED**: Create/verify ignore files based on actual project setup:
@@ -162,6 +164,11 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Core development**: Implement models, services, CLI commands, endpoints
    - **Integration work**: Database connections, middleware, logging, external services
    - **Polish and validation**: Unit tests, performance optimization, documentation
+   - **Feature diagrams**: When a task changes one, update the maintained JSON and textual counterpart
+     together; run Archify showcase validation after each candidate edit and delivery at completion;
+     run visual checks when the environment supports them, inspect captures before claiming perceptual
+     review, and record skipped/pending truthfully. Keep the source under `diagrams/`, declare it in
+     `spec.md`, and verify provenance, generated freshness, and automatic feature-page embedding.
 
 8. Progress tracking and error handling:
    - Report progress after each completed task
@@ -176,6 +183,9 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Check that implemented features match the original specification
    - Validate that tests pass and coverage meets requirements
    - Confirm the implementation follows the technical plan
+   - Confirm every required feature diagram is text-aligned, declared from `diagrams/`, validated,
+     freshly delivered, embedded on the canonical feature page, and not being used as the authority
+     for behavior or contracts
 
 Note: This command assumes a complete task breakdown exists in tasks.md. If tasks are incomplete or missing, suggest running `$speckit-tasks` first to regenerate the task list.
 

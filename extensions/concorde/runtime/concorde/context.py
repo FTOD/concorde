@@ -66,6 +66,7 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
         "deeper_references": sorted(child.identifier for child in children),
         "architecture_readiness": None,
         "feature_workspace": None,
+        "feature_diagrams": [],
         "contracts": [],
         "evidence": [],
     }
@@ -80,6 +81,22 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
                 path for path in package.auxiliary if path.startswith(workspace_paths.implementation_dir + "/")
             )
             durable_artifacts = [target.path]
+            diagram_projections = []
+            for declaration in target.metadata.get("diagrams", []):
+                if not isinstance(declaration, dict):
+                    continue
+                source = declaration.get("source")
+                if not isinstance(source, str) or source not in package.diagrams:
+                    continue
+                diagram = package.diagrams[source]
+                diagram_projections.append({
+                    "source": source,
+                    "kind": declaration.get("kind"),
+                    "scenarios": declaration.get("scenarios", []),
+                    "output": declaration.get("output"),
+                    "title": diagram.get("meta", {}).get("title"),
+                })
+                durable_artifacts.append(source)
             root_path = package.project_root / feature_root
             for directory in ("contracts", "checklists"):
                 candidate = root_path / directory
@@ -94,6 +111,7 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
                 "durable_artifacts": sorted(durable_artifacts),
                 "implementation_artifacts": implementation_artifacts,
             }
+            context["feature_diagrams"] = sorted(diagram_projections, key=lambda item: item["source"])
             artifacts.update(durable_artifacts)
             artifacts.update(implementation_artifacts)
         except WorkspaceError:

@@ -2,10 +2,10 @@
   "schema_version": 1,
   "diagram_type": "workflow",
   "meta": {
-    "title": "Install and Maintain Concorde",
-    "output": "../../../../generated/architecture/concorde-starter-installation-flow.html",
+    "title": "Install, Materialize, and Prove Concorde",
+    "output": "../../../../../generated/architecture/concorde-starter-installation-flow.html",
     "quality_profile": "showcase",
-    "viewBox": [1080, 600],
+    "viewBox": [1080, 714],
     "views": [
       {
         "id": "publish",
@@ -17,13 +17,19 @@
         "id": "install",
         "label": "Inspect and install",
         "focus": ["catalogs", "inspectPlan", "installBundle", "componentsActive"],
-        "note": "The maintainer reviews the expanded plan before Spec Kit installs each pinned component."
+        "note": "The maintainer reviews the plan before Spec Kit installs packages and materializes their winning command layers."
       },
       {
         "id": "use",
         "label": "Use Concorde",
         "focus": ["componentsActive", "normalLifecycle", "concordeCommands"],
-        "note": "Normal Spec Kit phases receive guidance while Concorde commands operate on architecture sources."
+        "note": "A clean target executes nine overridden lifecycle commands and five Concorde-specific commands without the source checkout."
+      },
+      {
+        "id": "maintain",
+        "label": "Maintain or remove",
+        "focus": ["installBundle", "componentsActive", "normalLifecycle"],
+        "note": "Disable and priority changes keep registered commands; removal restores the surviving lower layer."
       }
     ]
   },
@@ -42,7 +48,7 @@
     },
     {
       "id": "project",
-      "label": "Installed Project"
+      "label": "Clean Target Project"
     }
   ],
   "phases": [
@@ -124,25 +130,25 @@
       "id": "componentsActive",
       "lane": "project",
       "col": 4,
-      "type": "backend",
-      "label": "Components",
-      "sublabel": "preset + extension"
+      "type": "frontend",
+      "label": "Integration",
+      "sublabel": "14 command surfaces"
     },
     {
       "id": "normalLifecycle",
-      "lane": "specKit",
+      "lane": "project",
       "col": 5,
       "type": "frontend",
-      "label": "Feature Phases",
-      "sublabel": "preset path"
+      "label": "Phase Check",
+      "sublabel": "9 commands · paths"
     },
     {
       "id": "concordeCommands",
       "lane": "maintainer",
       "col": 5,
       "type": "frontend",
-      "label": "Commands",
-      "sublabel": "extension path"
+      "label": "Core Check",
+      "sublabel": "5 commands · runtime"
     }
   ],
   "edges": [
@@ -175,23 +181,27 @@
       "id": "activateComponents",
       "from": "installBundle",
       "to": "componentsActive",
-      "label": "apply exact pins",
+      "label": "install + compose",
       "variant": "emphasis"
     },
     {
-      "id": "composeTemplates",
+      "id": "materializeLifecycle",
       "from": "componentsActive",
       "to": "normalLifecycle",
-      "variant": "emphasis"
+      "label": "9 winning surfaces",
+      "variant": "emphasis",
+      "labelAt": [563, 531]
     },
     {
-      "id": "registerCommands",
+      "id": "materializeConcordeCommands",
       "from": "componentsActive",
       "to": "concordeCommands",
+      "label": "5 commands + runtime",
       "variant": "emphasis",
-      "route": "outside-right",
-      "fromSide": "right",
-      "toSide": "right"
+      "fromSide": "bottom",
+      "toSide": "right",
+      "via": [[500, 550], [720, 550], [720, 243]],
+      "labelAt": [780, 350]
     }
   ],
   "cards": [
@@ -200,7 +210,8 @@
       "title": "Release-time",
       "items": [
         "Bundle, preset, and extension have separate manifests and archives",
-        "Catalogs supply trusted URLs and digests; the bundle pins versions"
+        "Catalogs supply trusted URLs and digests; the bundle pins versions",
+        "Checkout-local .agents and .specify files are not release inputs"
       ]
     },
     {
@@ -208,15 +219,18 @@
       "title": "Install-time",
       "items": [
         "Spec Kit expands the recipe, then applies each native installer",
-        "The target project's active agent integration is inherited"
+        "The target project's active agent integration is inherited",
+        "Preset layers and extension commands materialize into winning surfaces"
       ]
     },
     {
       "dot": "violet",
       "title": "Use-time",
       "items": [
-        "The preset guides normal Spec Kit feature phases",
-        "The extension adds deterministic architecture operations"
+        "Nine normal commands route before legacy root-path assumptions",
+        "Five Concorde commands invoke the installed adapter and runtime",
+        "Disable and priority changes retain registered command artifacts",
+        "Removal restores the next surviving layer with no stale instructions"
       ]
     }
   ]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import posixpath
 from collections import defaultdict
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -70,6 +71,7 @@ class ProjectRepository:
         specification_root = config["specification_root"]
         sources: list[SourceDocument] = []
         view_paths: set[str] = set()
+        diagram_declarations: list[tuple[str, str, dict[str, Any]]] = []
         for path in self._markdown_paths(specification_root):
             relative = path.relative_to(self.project_root).as_posix()
             try:
@@ -87,6 +89,19 @@ class ProjectRepository:
                 value = metadata.get(key)
                 if isinstance(value, str) and value:
                     view_paths.add(safe_relative_path(value))
+            if kind == "feature":
+                diagrams = metadata.get("diagrams", [])
+                if not isinstance(diagrams, list) or not all(isinstance(item, dict) for item in diagrams):
+                    raise RepositoryError(f"{relative}: diagrams must be a list of mappings")
+                feature_root = PurePosixPath(relative).parent
+                for declaration in diagrams:
+                    source = safe_relative_path(declaration.get("source"))
+                    source_path = PurePosixPath(source)
+                    if source_path.parent != feature_root / "diagrams" or source_path.name == "architecture.json":
+                        raise RepositoryError(
+                            f"{relative}: feature diagram must be directly under diagrams/ with a descriptive filename"
+                        )
+                    diagram_declarations.append((relative, source, declaration))
         views: dict[str, Any] = {}
         for relative in sorted(view_paths):
             path = self.resolve(relative)
@@ -94,10 +109,48 @@ class ProjectRepository:
                 views[relative] = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError) as error:
                 raise RepositoryError(f"{relative}: invalid architecture JSON: {error}") from error
+        diagrams: dict[str, Any] = {}
+        for feature_path, relative, declaration in sorted(diagram_declarations, key=lambda item: item[1]):
+            path = self.resolve(relative)
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as error:
+                raise RepositoryError(f"{relative}: invalid feature diagram JSON: {error}") from error
+            if not isinstance(value, dict):
+                raise RepositoryError(f"{relative}: feature diagram must be a JSON object")
+            kind = declaration.get("kind")
+            output = declaration.get("output")
+            scenarios = declaration.get("scenarios", [])
+            if kind not in {"architecture", "workflow", "sequence", "dataflow", "lifecycle"}:
+                raise RepositoryError(f"{feature_path}: feature diagram kind is unsupported")
+            if value.get("diagram_type") != kind:
+                raise RepositoryError(f"{relative}: diagram_type does not match the feature declaration")
+            meta = value.get("meta")
+            if not isinstance(meta, dict):
+                raise RepositoryError(f"{relative}: feature diagram meta must be a JSON object")
+            meta_output = meta.get("output")
+            if not isinstance(output, str) or not isinstance(meta_output, str):
+                raise RepositoryError(f"{relative}: meta.output does not match the feature declaration")
+            declared_output = safe_relative_path(output)
+            output_candidates: set[str] = set()
+            try:
+                output_candidates.add(safe_relative_path(meta_output))
+            except RepositoryError:
+                pass
+            resolved_output = posixpath.normpath((source_path.parent / meta_output).as_posix())
+            try:
+                output_candidates.add(safe_relative_path(resolved_output))
+            except RepositoryError:
+                pass
+            if declared_output not in output_candidates:
+                raise RepositoryError(f"{relative}: meta.output does not match the feature declaration")
+            if not isinstance(scenarios, list) or not scenarios or not all(isinstance(item, str) for item in scenarios):
+                raise RepositoryError(f"{feature_path}: feature diagram scenarios must be a non-empty string list")
+            diagrams[relative] = value
         by_id: dict[str, list[SourceDocument]] = defaultdict(list)
         for source in sources:
             by_id[source.identifier].append(source)
-        artifacts = [source.path for source in sources] + list(views)
+        artifacts = [source.path for source in sources] + list(views) + list(diagrams)
         auxiliary: dict[str, str] = {}
         for feature in (source for source in sources if source.kind == "feature"):
             implementation = self.resolve(str(PurePosixPath(feature.path).parent / "implementation"))
@@ -127,6 +180,7 @@ class ProjectRepository:
             profile_version=config["profile_version"],
             sources=tuple(sources),
             views=views,
+            diagrams=diagrams,
             by_id={key: tuple(value) for key, value in sorted(by_id.items())},
             source_digest=digest_sources(self.project_root, artifacts),
             auxiliary=auxiliary,

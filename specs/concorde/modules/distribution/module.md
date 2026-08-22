@@ -47,8 +47,8 @@ installed state.
 See the installation feature's
 <a href="/architecture/concorde-spec-kit-component-model.html">component model</a> and
 <a href="/architecture/concorde-starter-installation-flow.html">installation flow</a>. Their
-maintained sources are `specs/concorde/features/003-install-concorde-speckit/spec-kit-component-model.json` and
-`specs/concorde/features/003-install-concorde-speckit/starter-installation-flow.json`.
+maintained sources are `specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` and
+`specs/concorde/features/003-install-concorde-speckit/diagrams/starter-installation-flow.json`.
 
 ## Canonical Contract Definitions
 
@@ -64,7 +64,9 @@ The maintained definitions are `contracts/bundle-lifecycle/contract.md` and
 - **Guarantees**: preview and install resolve the same component set; repeated installation is
   idempotent; update is explicit; removal affects only owned components.
 - **Failure**: unresolved or incompatible components stop installation and are named in diagnostics.
-- **Evidence**: verified by clean-project preview/install/update/failure/removal acceptance.
+- **Evidence**: package preview/install/update/failure/removal acceptance is verified; evidence remains
+  partial until clean targets execute every installed winning command surface and preset
+  recomposition restores the correct lower layer.
 
 ### `contract.distribution.component-packages`
 

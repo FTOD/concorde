@@ -20,6 +20,8 @@ class SpecifyProject:
     def run(self, *arguments: str, check: bool = True) -> subprocess.CompletedProcess[str]:
         environment = os.environ.copy()
         environment.pop("SPECIFY_FEATURE_DIRECTORY", None)
+        environment.pop("PYTHONPATH", None)
+        environment["PYTHONNOUSERSITE"] = "1"
         if self.home:
             environment["HOME"] = str(self.home)
         result = subprocess.run(
@@ -55,7 +57,7 @@ class SpecifyProject:
     def json(self, *arguments: str) -> object:
         return json.loads(self.run(*arguments).stdout)
 
-    def source_hashes(self, roots: Iterable[str] = (".concorde", "specs")) -> dict[str, str]:
+    def source_hashes(self, roots: Iterable[str] = (".concorde", "specs", "docs")) -> dict[str, str]:
         hashes: dict[str, str] = {}
         for name in roots:
             directory = self.root / name

@@ -17,7 +17,7 @@ consumers:
   - external.spec-kit
 features:
   - feature.concorde.install-with-spec-kit
-evidence_status: verified
+evidence_status: partial
 ---
 
 # Concorde Spec Kit Installation Contract
@@ -32,22 +32,32 @@ ecosystem without a separate installer or a replacement feature lifecycle.
 This contract adopts the public Spec Kit `0.16.4` bundle, preset, extension, catalog, provenance, and
 active-integration formats. The information passed includes package identities and versions,
 compatibility constraints, download locations and digests, trust policy, the expanded component plan,
-preset composition settings, extension command registrations, installation results, ownership state,
-and actionable diagnostics.
+preset template and command composition settings, resolved normal-command layers, extension command
+registrations, materialized agent presentations, installation results, ownership state, and
+actionable diagnostics.
 
 The bundle is a recipe that pins one independently packaged preset and extension. Catalogs advertise
-those packages. Spec Kit applies the preset through template resolution and the extension through the
+those packages. Spec Kit applies the preset through template and command resolution, materializes the
+winning normal-command layers, and registers the extension's Concorde-specific commands through the
 active coding-agent integration. None of those setup roles owns Feature 001's Concorde workflow
 semantics; Architecture Core begins handling project architecture only after setup activates the
-extension commands.
+installed command surfaces.
 
 ## Obligations
 
 - Preview MUST identify every component and version that setup would add or change.
 - Installation MUST match the accepted plan and record component provenance and ownership.
-- The preset MUST append guidance without replacing core artifacts or creating a duplicate feature
-  specification.
-- The extension commands MUST be discoverable through the target project's active integration.
+- The preset MUST compose guidance and authoritative selected-workspace routing into the nine
+  affected normal lifecycle commands without replacing phase semantics or creating a duplicate
+  feature specification.
+- The extension's five Concorde-specific commands and supporting adapter/runtime MUST be discoverable
+  through the target project's active integration.
+- Clean-project verification MUST execute the winning installed command surfaces with the source
+  checkout unavailable and prove the durable/temporal path matrix across skills and slash-command
+  presentations.
+- Preset disable and priority change MUST preserve registered command artifacts according to Spec Kit
+  0.16.4 while changing future resolution; update/removal MUST materialize the accepted or next
+  surviving normal-command layer without stale Concorde instructions.
 - Repeated installation MUST be idempotent.
 - Update and removal MUST preserve project-authored `.concorde/` and `specs/` sources and shared
   components.
@@ -55,7 +65,8 @@ extension commands.
 ## Failure Semantics
 
 An unsupported host version, untrusted source, invalid manifest, digest mismatch, unresolved
-component, command collision, or failed registration MUST stop setup with an actionable diagnostic.
+component, command collision, ambiguous or unsafe command composition, or failed materialization MUST
+stop setup with an actionable diagnostic.
 A failed installation or update MUST NOT be recorded as successful, and any residual state MUST be
 reported.
 
@@ -66,6 +77,7 @@ installation, verification, update, and removal evidence before it is advertised
 
 ## Evidence
 
-Verified by clean-project native component lifecycle, catalog, source, manifest, archive,
-idempotency, update/removal, preset-composition, Codex skills, Gemini slash-command, and installed
-journey acceptance under `tests/concorde/`.
+Bundle lifecycle, catalog, source, manifest, archive, idempotency, update/removal, and basic command
+registration are verified under `tests/concorde/`. Evidence remains partial until clean release
+installation executes all nine normal and five Concorde-specific winning surfaces in both supported
+presentation styles, with checkout isolation and lower-layer restoration.

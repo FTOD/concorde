@@ -44,6 +44,25 @@ class ManifestContractTests(unittest.TestCase):
             self.assertTrue((root / ".specify/extensions/concorde/extension.yml").is_file())
             self.assertTrue((root / ".specify/presets/concorde-core/preset.yml").is_file())
 
+    def test_preset_has_three_append_templates_and_nine_replace_commands(self):
+        manifest = (REPOSITORY_ROOT / "presets/concorde-core/preset.yml").read_text(encoding="utf-8")
+        self.assertEqual(manifest.count('type: "template"'), 3)
+        self.assertEqual(manifest.count('type: "command"'), 9)
+        self.assertEqual(manifest.count('strategy: "append"'), 3)
+        self.assertEqual(manifest.count('strategy: "replace"'), 9)
+        for command in (
+            "specify",
+            "clarify",
+            "checklist",
+            "plan",
+            "tasks",
+            "implement",
+            "analyze",
+            "converge",
+            "taskstoissues",
+        ):
+            self.assertIn(f'name: "speckit.{command}"', manifest)
+
 
 if __name__ == "__main__":
     unittest.main()

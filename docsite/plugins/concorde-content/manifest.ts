@@ -32,6 +32,7 @@ export function pageFromDocument(document: SourceDocument): ContentPage {
       .sort((a, b) => `${a.targetSourcePath}\0${a.targetRoute}`.localeCompare(`${b.targetSourcePath}\0${b.targetRoute}`)),
     ...(isFeature(document) ? {
       featureId: document.featureId, moduleId: document.moduleId, status: document.status,
+      diagrams: document.diagrams,
     } : {}),
     ...(isArchitecture(document) ? {
       architectureId: document.architectureId,

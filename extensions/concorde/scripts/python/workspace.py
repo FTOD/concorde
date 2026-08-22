@@ -27,7 +27,11 @@ def main() -> int:
     parser.add_argument("--persist", action="store_true")
     arguments = parser.parse_args()
     try:
-        paths = resolve_selected_workspace(arguments.project_root, arguments.feature_directory)
+        paths = resolve_selected_workspace(
+            arguments.project_root,
+            arguments.feature_directory,
+            allow_missing_spec=arguments.phase == "specify",
+        )
         status = persist_selection(arguments.project_root, paths.feature_directory) if arguments.persist else "resolved"
         payload = {"schema_version": 1, "status": status, "workspace": paths.to_dict()}
         if arguments.phase:

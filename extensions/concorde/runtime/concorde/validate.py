@@ -74,7 +74,7 @@ def _visible_scenario_ids(package: Any) -> set[str]:
 
 
 def _target_artifacts(package: Any, target: str | None) -> tuple[str, ...]:
-    all_artifacts = sorted([source.path for source in package.sources] + list(package.views))
+    all_artifacts = sorted([source.path for source in package.sources] + list(package.views) + list(package.diagrams))
     if not target or target in {package.specification_root, "."}:
         return tuple(all_artifacts)
     matches = package.by_id.get(target, ())
@@ -86,6 +86,12 @@ def _target_artifacts(package: Any, target: str | None) -> tuple[str, ...]:
     module = package.by_id.get(module_id, ())
     if len(module) == 1 and isinstance(module[0].metadata.get("view"), str):
         selected.append(module[0].metadata["view"])
+    if source.kind == "feature":
+        selected.extend(
+            item.get("source")
+            for item in source.metadata.get("diagrams", [])
+            if isinstance(item, dict) and isinstance(item.get("source"), str)
+        )
     return tuple(sorted(set(selected)))
 
 

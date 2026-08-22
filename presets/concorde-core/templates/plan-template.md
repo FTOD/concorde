@@ -7,6 +7,14 @@ their current-level organization. Identify affected module Markdown, contract de
 JSON views, adjacent child feature refinements, and evidence. Keep deeper implementation details
 behind stable navigation references.
 
+Evaluate feature-owned diagrams explicitly. Preserve any diagram already required by `spec.md`; add
+one when component participation, ordered invocation, boundary crossings, state, or data flow would
+be materially clearer visually. Plan the descriptive Archify JSON source under the feature's
+`diagrams/` directory, its declaration in `spec.md`, complete textual counterpart, governing contract
+references, automatic feature-page embedding, deterministic validation/delivery, and generated-output
+freshness. A feature diagram is supplemental and must not overload the module's canonical
+`architecture.json`.
+
 Authority remains split by artifact meaning: `spec.md` owns feature behavior, module and contract
 Markdown own architecture prose, Archify JSON owns view structure, code owns implementation, and tests
 own executable evidence.

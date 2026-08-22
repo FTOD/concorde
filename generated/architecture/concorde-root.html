@@ -4917,7 +4917,7 @@
         <path data-edge-from="specKit" data-edge-to="installFeature" data-edge-label="inspect / install / update" data-edge-key="1" data-edge-id="contract_concorde_spec-kit-installation__invoke" data-composition-points="460,261;555,261;555,103;650,103" d="M 460 261 L 547 261 Q 555 261 555 253 L 555 111 Q 555 103 563 103 L 650 103" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="installFeature" data-edge-to="distribution" data-edge-label="bundle lifecycle" data-edge-key="2" data-edge-id="contract_distribution_bundle-lifecycle" data-composition-points="880,96;1070,96" d="M 880 96 L 1070 96" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="integration" data-edge-to="distribution" data-edge-label="preset + extension packages" data-edge-key="3" data-edge-id="contract_distribution_component-packages" data-composition-points="1175,220;1175,128" d="M 1175 220 L 1175 128" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="installFeature" data-edge-to="integration" data-edge-label="activate command extension" data-edge-key="4" data-edge-id="contract_integration_agent-skills" data-composition-points="880,110;975,110;975,252;1070,252" d="M 880 110 L 967 110 Q 975 110 975 118 L 975 244 Q 975 252 983 252 L 1070 252" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="installFeature" data-edge-to="integration" data-edge-label="compose overrides + commands" data-edge-key="4" data-edge-id="contract_integration_agent-skills" data-composition-points="880,110;975,110;975,252;1070,252" d="M 880 110 L 967 110 Q 975 110 975 118 L 975 244 Q 975 252 983 252 L 1070 252" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="specKit" data-edge-to="coreWorkflowFeature" data-edge-label="specify → converge" data-edge-key="5" data-edge-id="contract_concorde_core-workflow__spec-kit" data-composition-points="460,275;555,275;555,368;650,368" d="M 460 275 L 547 275 Q 555 275 555 283 L 555 360 Q 555 368 563 368 L 650 368" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="agentHost" data-edge-to="coreWorkflowFeature" data-edge-label="init / create / select / context / validate" data-edge-key="6" data-edge-id="contract_concorde_core-workflow__agent" data-composition-points="460,468;555,468;555,368;650,368" d="M 460 468 L 547 468 Q 555 468 555 460 L 555 376 Q 555 368 563 368 L 650 368" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="coreWorkflowFeature" data-edge-to="integration" data-edge-label="workspace + phase routing" data-edge-key="7" data-edge-id="contract_integration_feature-workspace" data-composition-points="880,361;975,361;975,266;1070,266" d="M 880 361 L 967 361 Q 975 361 975 353 L 975 274 Q 975 266 983 266 L 1070 266" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
@@ -5014,15 +5014,15 @@
         <text data-detail="fine" x="1175" y="120" class="t-cloud" font-size="7" text-anchor="middle">module.concorde.distribution</text>
         </g>
 
-        <g id="node-integration" data-node-id="integration" data-node-label="Spec Kit Integration" tabindex="0" role="button" aria-label="Focus Spec Kit Integration, Workspace + command adapters, Concorde root · current features + immediate modules" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Workspace + command adapters" data-node-tag="module.concorde.spec-kit-integration" data-node-context="Concorde root · current features + immediate modules">
-          <title>Spec Kit Integration · Workspace + command adapters · Concorde root · current features + immediate modules · module.concorde.spec-kit-integration</title>
+        <g id="node-integration" data-node-id="integration" data-node-label="Spec Kit Integration" tabindex="0" role="button" aria-label="Focus Spec Kit Integration, Workspace + command composition, Concorde root · current features + immediate modules" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Workspace + command composition" data-node-tag="module.concorde.spec-kit-integration" data-node-context="Concorde root · current features + immediate modules">
+          <title>Spec Kit Integration · Workspace + command composition · Concorde root · current features + immediate modules · module.concorde.spec-kit-integration</title>
           <rect x="1070" y="220" width="210" height="78" rx="6" class="c-mask"/>
           <rect x="1070" y="220" width="210" height="78" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(1076 226) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-detail-anchor x="1175" y="257" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Spec Kit Integration</text>
-        <text data-detail="context" x="1175" y="273" class="t-muted" font-size="9" text-anchor="middle">Workspace + command adapters</text>
+        <text data-detail="context" x="1175" y="273" class="t-muted" font-size="9" text-anchor="middle">Workspace + command composition</text>
         <text data-detail="fine" x="1175" y="290" class="t-backend" font-size="7" text-anchor="middle">module.concorde.spec-kit-integration</text>
         </g>
 
@@ -5070,9 +5070,9 @@
           <rect x="1105.2" y="200" width="139.6" height="14" rx="3" class="c-mask"/>
           <text x="1175" y="210" class="t-muted" font-size="8" text-anchor="middle">preset + extension packages</text>
         </g>
-        <g data-detail="context" data-edge-from="installFeature" data-edge-to="integration" data-edge-label="activate command extension" data-edge-key="4" data-edge-id="contract_integration_agent-skills">
-          <rect x="907.6" y="161" width="134.8" height="14" rx="3" class="c-mask"/>
-          <text x="975" y="171" class="t-backend" font-size="8" text-anchor="middle">activate command extension</text>
+        <g data-detail="context" data-edge-from="installFeature" data-edge-to="integration" data-edge-label="compose overrides + commands" data-edge-key="4" data-edge-id="contract_integration_agent-skills">
+          <rect x="902.8" y="161" width="144.4" height="14" rx="3" class="c-mask"/>
+          <text x="975" y="171" class="t-backend" font-size="8" text-anchor="middle">compose overrides + commands</text>
         </g>
         <g data-detail="context" data-edge-from="specKit" data-edge-to="coreWorkflowFeature" data-edge-label="specify → converge" data-edge-key="5" data-edge-id="contract_concorde_core-workflow__spec-kit">
           <rect x="506.8" y="301.5" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
@@ -5325,7 +5325,7 @@
         </div>
         <ul>
           <li>&bull; Spec Kit owns bundle operations and the normal feature phases</li>
-          <li>&bull; The coding-agent integration presents five Concorde commands</li>
+          <li>&bull; The active integration presents nine composed lifecycle surfaces plus five Concorde commands</li>
           <li>&bull; Documentation build and browse operations invoke the publication feature</li>
         </ul>
       </div>

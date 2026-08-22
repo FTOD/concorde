@@ -6,8 +6,9 @@ boundary contracts, bounded architecture views, and implementation evidence.
 
 Concorde is designed to be installed as a native Spec Kit bundle containing:
 
-- the `concorde-core` preset, which adds architecture-aware guidance to normal Spec Kit artifacts;
-- the `concorde` extension, which supplies Concorde agent commands; and
+- the `concorde-core` preset, which appends architecture guidance to templates and replaces nine
+  normal command instructions with Concorde-aware workspace routing;
+- the `concorde` extension, which supplies five Concorde commands, the workspace adapter, and runtime; and
 - no replacement workflow: Spec Kit continues to own specification, planning, tasks, and
   implementation.
 
@@ -16,8 +17,8 @@ The three Spec Kit package concepts have different jobs:
 | Concept | Concorde package | Role |
 |---|---|---|
 | Bundle | `concorde-starter` | An installation recipe that pins the tested preset and extension versions. |
-| Preset | `concorde-core` | Append-only guidance added to the existing spec, plan, and task templates. |
-| Extension | `concorde` | Agent commands and deterministic runtime behavior for architecture operations. |
+| Preset | `concorde-core` | Three append template layers plus nine complete normal-command replacements for nested workspace routing. |
+| Extension | `concorde` | Five Concorde-specific commands, the selected-workspace adapter, and deterministic runtime behavior. |
 
 Catalogs are trusted discovery metadata for these independently versioned packages; they are not a
 fourth installed runtime component. See the interactive
@@ -28,10 +29,11 @@ fourth installed runtime component. See the interactive
 ## Project status
 
 The project docsite and architecture publication pipeline are implemented and tested. Feature 003
-owns the native starter bundle, append-only preset, three-command extension, release/catalog tooling,
-and setup lifecycle. Feature 001 now defines the core architecture-aware development workflow; its
-initialization, bounded-context, and validation slice is implemented, while dedicated nested feature
-creation and selection remain planned.
+owns the native starter bundle, preset command composition, five-command extension, release/catalog
+tooling, and setup lifecycle. Feature 001 defines the core architecture-aware development workflow;
+its initialization, nested feature placement/selection, bounded context, architecture readiness, and
+deterministic validation behavior are implemented. Timed human pilots and browser-based diagram
+review remain pending and are kept separate from automated evidence.
 
 ## Quick start: install Concorde as a Spec Kit bundle
 
@@ -124,11 +126,15 @@ After installation, invoke these agent skills from the target project:
 
 ```text
 $speckit-concorde-init
+$speckit-concorde-feature-create --module-id module.<project-slug> --feature-id feature.<project-slug>.<name> --short-name <name>
+$speckit-concorde-feature-select feature.<project-slug>.<name>
 $speckit-concorde-context module.<project-slug>
 $speckit-concorde-validate
 ```
 
 - `init` proposes a root architecture package and writes it only after explicit approval.
+- `feature.create` proposes reviewed module ownership and one canonical nested feature root.
+- `feature.select` selects an existing nested feature for all normal Spec Kit phases.
 - `context` returns one bounded architectural level without expanding child internals.
 - `validate` deterministically checks identities, hierarchy, references, contracts, views, and
   evidence status.

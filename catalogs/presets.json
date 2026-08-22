@@ -3,7 +3,7 @@
   "presets": {
     "concorde-core": {
       "author": "Concorde maintainers",
-      "description": "Append-only architecture guidance for the Spec Kit feature lifecycle",
+      "description": "Architecture guidance plus authoritative nested-workspace routing for the Spec Kit lifecycle",
       "download_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/concorde-core-0.1.0.zip",
       "id": "concorde-core",
       "license": "MIT",
@@ -16,7 +16,7 @@
       "requires": {
         "speckit_version": ">=0.16.4,<0.16.5"
       },
-      "sha256": "sha256:2b2605c6aa96a79d24e0b67978e0f80c1fbe8c167039460738de69190fdd51a5",
+      "sha256": "sha256:307fdddaae9cb13a8cc74e844ad431af826028b8d344fa8aac298cd64289f10f",
       "tags": [
         "architecture",
         "contracts",

@@ -4,7 +4,7 @@ extension:
   id: "concorde"
   name: "Concorde Architecture Workflow"
   version: "0.1.0"
-  description: "Initialize, retrieve, and validate bounded hierarchical architecture sources"
+  description: "Initialize, place, select, retrieve, and validate bounded hierarchical architecture sources"
   author: "Concorde maintainers"
   repository: "https://github.com/concorde-workflow/concorde"
   license: "MIT"

@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Project Docsite — Publication Invocation",
+    "quality_profile": "showcase",
+    "output": "../../../../../generated/architecture/project-docsite-publication-flow.html",
+    "viewBox": [1040, 940],
+    "views": [
+      {
+        "id": "collect-inputs",
+        "label": "Collect inputs",
+        "focus": ["maintainer", "build", "registry", "archify", "workspace"],
+        "note": "See canonical source validation and fresh Archify delivery before rendering."
+      },
+      {
+        "id": "build-candidate",
+        "label": "Build candidate",
+        "focus": ["build", "registry", "materializer", "docusaurus", "workspace"],
+        "note": "Follow disposable projections into the three-view site, manifest, and search index."
+      },
+      {
+        "id": "publish-site",
+        "label": "Validate and publish",
+        "focus": ["build", "workspace", "publisher", "reader"],
+        "note": "Only a complete candidate replaces the previous published read model."
+      }
+    ]
+  },
+  "participants": [
+    { "id": "maintainer", "type": "external", "label": "Maintainer", "sublabel": "authors + invokes" },
+    { "id": "build", "type": "frontend", "label": "Build CLI", "sublabel": "project interface" },
+    { "id": "registry", "type": "security", "label": "Registry", "sublabel": "IDs + routes" },
+    { "id": "archify", "type": "backend", "label": "Archify", "sublabel": "diagram delivery" },
+    { "id": "materializer", "type": "messagebus", "label": "Materializer", "sublabel": "ignored inputs" },
+    { "id": "docusaurus", "type": "backend", "label": "Docusaurus", "sublabel": "site + search" },
+    { "id": "workspace", "type": "database", "label": "Build Area", "sublabel": "sources + candidate" },
+    { "id": "publisher", "type": "cloud", "label": "Publisher", "sublabel": "atomic promote" },
+    { "id": "reader", "type": "external", "label": "Reader", "sublabel": "programmer / agent" }
+  ],
+  "segments": [
+    { "from": 150, "to": 410, "label": "Collect and validate canonical inputs" },
+    { "from": 430, "to": 690, "label": "Build a disposable candidate" },
+    { "from": 710, "to": 850, "label": "Validate and publish atomically" }
+  ],
+  "messages": [
+    { "id": "invoke-build", "from": "maintainer", "to": "build", "y": 180, "label": "build project docsite", "variant": "default", "note": "contract.documentation.build-interface" },
+    { "id": "discover-sources", "from": "build", "to": "registry", "y": 220, "label": "validate IDs + canonical paths", "variant": "security" },
+    { "id": "read-sources", "from": "registry", "to": "workspace", "y": 260, "label": "read modules, contracts, features, docs", "variant": "default" },
+    { "id": "request-diagrams", "from": "build", "to": "archify", "y": 300, "label": "deliver declared JSON views", "variant": "emphasis", "note": "contract.documentation.archify-renderer" },
+    { "id": "write-diagrams", "from": "archify", "to": "workspace", "y": 340, "label": "fresh HTML + provenance", "variant": "return" },
+    { "id": "return-registry", "from": "registry", "to": "build", "y": 380, "label": "canonical route map", "variant": "return" },
+    { "id": "materialize-content", "from": "build", "to": "materializer", "y": 450, "label": "recreate Architecture + Features", "variant": "emphasis" },
+    { "id": "write-projections", "from": "materializer", "to": "workspace", "y": 490, "label": "ignored byte projections", "variant": "dashed" },
+    { "id": "render-site", "from": "build", "to": "docusaurus", "y": 535, "label": "build three document views", "variant": "emphasis" },
+    { "id": "consume-projections", "from": "docusaurus", "to": "workspace", "y": 575, "label": "read docs + projections + diagrams", "variant": "default" },
+    { "id": "write-candidate", "from": "docusaurus", "to": "workspace", "y": 615, "label": "pages + local search", "variant": "return" },
+    { "id": "write-manifest", "from": "build", "to": "workspace", "y": 655, "label": "manifest + provenance", "variant": "security", "note": "contract.documentation.build-manifest" },
+    { "id": "validate-candidate", "from": "build", "to": "workspace", "y": 725, "label": "verify routes, links, freshness", "variant": "security" },
+    { "id": "promote-site", "from": "build", "to": "publisher", "y": 765, "label": "promote complete candidate", "variant": "emphasis" },
+    { "id": "publish-read-model", "from": "publisher", "to": "reader", "y": 805, "label": "architecture / docs / features", "variant": "return" },
+    { "id": "browse-provenance", "from": "reader", "to": "publisher", "y": 845, "label": "browse + follow source provenance", "variant": "default" }
+  ],
+  "activations": [
+    { "participant": "build", "from": 175, "to": 775, "type": "frontend" },
+    { "participant": "registry", "from": 215, "to": 390, "type": "security" },
+    { "participant": "archify", "from": 295, "to": 350, "type": "backend" },
+    { "participant": "materializer", "from": 445, "to": 500, "type": "messagebus" },
+    { "participant": "docusaurus", "from": 530, "to": 625, "type": "backend" },
+    { "participant": "publisher", "from": 760, "to": 855, "type": "cloud" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Source Authority",
+      "items": [
+        "Markdown and Archify JSON remain maintained sources",
+        "Materialized files, HTML, search, and pages are projections",
+        "Published pages retain canonical path provenance"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Atomic Failure Boundary",
+      "items": [
+        "Validation completes before public output is replaced",
+        "A failed candidate preserves the last successful site",
+        "The manifest and search index cover one route inventory"
+      ]
+    }
+  ]
+}

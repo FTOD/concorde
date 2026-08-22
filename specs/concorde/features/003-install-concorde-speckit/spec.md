@@ -12,6 +12,18 @@ contracts:
   required:
     - contract.concorde.spec-kit-platform
 architecture_view: specs/concorde/architecture.json
+diagrams:
+  - source: specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json
+    kind: architecture
+    scenarios:
+      - inspect-install-and-verify-concorde
+    output: generated/architecture/concorde-spec-kit-component-model.html
+  - source: specs/concorde/features/003-install-concorde-speckit/diagrams/starter-installation-flow.json
+    kind: workflow
+    scenarios:
+      - inspect-install-and-verify-concorde
+      - manage-concorde-installation
+    output: generated/architecture/concorde-starter-installation-flow.html
 evidence_status: partial
 canonical_spec: specs/concorde/features/003-install-concorde-speckit/spec.md
 ---
@@ -22,11 +34,11 @@ canonical_spec: specs/concorde/features/003-install-concorde-speckit/spec.md
 
 **Created**: 2026-08-22
 
-**Status**: Implemented; timed first-use and comprehension pilot pending
+**Status**: Automated installation and installed-command behavior implemented; human and browser visual evidence pending
 
-**Input**: User description: "Create a separate feature for installing and setting up Concorde with
-Spec Kit. Installation concerns must no longer define Feature 001, which owns the core Concorde
-workflow."
+**Input**: User description: "Install and set up Concorde through Spec Kit, and ensure the released
+bundle correctly overrides the normal commands and skills so a user's clean project receives the
+same Concorde workflow rather than only this repository's local modifications."
 
 ## How Concorde Is Delivered through Spec Kit
 
@@ -38,22 +50,38 @@ delivered as independently versioned ecosystem parts with different responsibili
 |---|---|---|
 | **Catalog** | Advertises package identity, version, compatibility, download location, integrity, and trust metadata. | It is discovery metadata, not installed product behavior. |
 | **Bundle** | Provides an inspectable recipe that pins the compatible Concorde preset and extension versions. | It is not executable behavior, a template layer, or a replacement workflow. |
-| **Preset** | Appends Concorde's architecture-aware guidance to the normal feature, plan, and task templates. | It does not register commands or create a second canonical feature specification. |
-| **Extension** | Provides portable Concorde command definitions and their deterministic runtime behavior. | It does not own the feature lifecycle or agent-specific presentation syntax. |
-| **Coding-agent integration** | Presents installed commands using the active agent's supported skill or slash-command form. | It adapts invocation syntax without changing command intent. |
+| **Preset** | Composes Concorde guidance into normal templates and authoritative routing into the existing Spec Kit lifecycle commands. | It introduces no new runtime command namespace and creates no second canonical feature specification. It does not register commands by itself; Spec Kit materializes its resolved command layers. |
+| **Extension** | Provides the five Concorde-specific command definitions, the selected-workspace adapter, and their deterministic runtime behavior. | It does not own the normal Spec Kit phases or agent-specific presentation syntax. |
+| **Coding-agent integration** | Materializes both resolved core-command overrides and Concorde-specific commands using the active agent's supported skill or slash-command form. | It adapts invocation syntax without changing command intent or path semantics. |
 | **Architecture Core** | Performs project-scoped initialization, bounded context retrieval, and validation after setup. | Its behavior belongs to the core workflow, not to installation. |
 
 The `concorde-starter` bundle pins exactly the tested `concorde-core` preset and `concorde` extension.
 Spec Kit expands the recipe before installation, installs each part through its native component
-lifecycle, and records ownership for later update or removal. Release building writes the future
+lifecycle, resolves the preset command stack, materializes the result for the active coding-agent
+integration, and records ownership for later update or removal. Release building writes the future
 catalog/archive location into metadata; it does not contact that URL during the build.
+
+The normal Spec Kit command names remain the user-facing lifecycle. Concorde's preset must provide
+the complete routing layer for `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`,
+`analyze`, `converge`, and `taskstoissues`. Once installed, each resolved command must select the
+nested feature workspace before any phase-specific file is read or written. Durable intent stays at
+the feature root, while temporal planning and delivery artifacts stay under `implementation/`.
+Repository-local `.agents/` skills and `.specify/` scripts are self-hosting evidence only: a released
+Concorde installation must work when those checkout files are unavailable.
 
 Two supplemental, text-backed views explain this boundary:
 
-- `spec-kit-component-model.json` and its generated component view show the package roles and the
-  separate preset and extension use-time paths.
-- `starter-installation-flow.json` and its generated workflow view show release, discovery, preview,
-  installation, verification, update, and removal.
+- `diagrams/spec-kit-component-model.json` and its generated component view show the package roles,
+  command-composition boundary, active integration, and clean installed project.
+- `diagrams/starter-installation-flow.json` and its generated workflow view show release, discovery,
+  preview, installation, command materialization, clean-project verification, update, and removal.
+
+The component model supports User Stories 1 and 3 by distinguishing discovery, template guidance,
+core-command composition, Concorde-specific commands, agent presentation, and runtime ownership. The
+installation flow supports all four stories by showing preview and approval before installation,
+then materialization and an actual clean-project lifecycle before setup is accepted. Together they
+demonstrate the encouraged Concorde pattern: use feature-owned diagrams when component roles or
+invocation order would be harder to understand from prose alone.
 
 These diagrams explain this feature and do not replace the canonical one-level root module view in
 `specs/concorde/architecture.json`.
@@ -117,30 +145,46 @@ extension, provenance, and command presentation match the accepted plan.
 
 ---
 
-### User Story 3 - Verify the Concorde Setup (Priority: P2)
+### User Story 3 - Verify the Installed Workflow, Not Just Files (Priority: P1)
 
-As a maintainer, I can verify that the preset contribution, extension commands, and active coding-agent
-presentation are ready so that I can begin the core Concorde workflow with confidence.
+As a maintainer, I can verify that the release installed the same Concorde workflow used to develop
+Concorde itself, so I can begin work without copying or editing command skills by hand.
 
-**Why this priority**: Files being copied is not sufficient evidence that the installed workflow can
-actually be discovered and used.
+**Why this priority**: Registered files or matching snippets are not evidence that the resulting
+commands execute the correct phase in the correct nested workspace.
 
-**Independent Test**: After installation, inspect component status, resolve the normal feature
-templates, discover the Concorde commands through two supported agent presentation styles, and invoke
-the existing read-only or proposal-first operations against a fixture project.
+**Independent Test**: Build the release, install its bundle into a pristine supported project that
+cannot read the Concorde source checkout, and execute the normal lifecycle through one skills-based
+and one slash-command-based presentation. Verify every durable and temporal output path, all five
+Concorde-specific commands, and restoration after the preset is disabled or removed.
 
 **Acceptance Scenarios**:
 
-1. **Given** a complete installation, **When** a normal feature template is resolved, **Then** the
-   original Spec Kit content remains authoritative and Concorde guidance is appended without a second
-   canonical feature specification.
-2. **Given** the installed extension, **When** the active coding-agent integration is inspected,
-   **Then** `speckit.concorde.init`, `speckit.concorde.context`, and
-   `speckit.concorde.validate` are discoverable in its supported invocation form.
-3. **Given** two supported agent integrations, **When** equivalent Concorde commands are invoked,
-   **Then** their intent, inputs, outputs, project scope, and failure behavior remain equivalent.
-4. **Given** verified setup, **When** the maintainer starts Feature 001's core workflow, **Then** no
-   additional Concorde installer, duplicate feature store, or replacement lifecycle is required.
+1. **Given** a pristine supported Spec Kit project, **When** the released bundle is installed,
+   **Then** the active integration contains resolved Concorde-aware forms of all nine normal lifecycle
+   commands and all five Concorde-specific commands declared by the installed manifests.
+2. **Given** a selected nested feature, **When** `specify`, `clarify`, or `checklist` runs, **Then**
+   the canonical `spec.md`, contracts, and checklists remain at the feature root and no duplicate
+   specification is created.
+3. **Given** the same selected feature, **When** `plan`, `tasks`, `implement`, `analyze`, `converge`,
+   or `taskstoissues` runs, **Then** it uses that feature's single active `implementation/` workspace
+   and creates no root-level compatibility copy of temporal artifacts.
+4. **Given** a path-sensitive normal command, **When** its installed presentation is executed,
+   **Then** nested-workspace resolution occurs before any lower command layer or helper can select a
+   legacy root-level plan or task path.
+5. **Given** one skills-based and one slash-command-based integration, **When** equivalent lifecycle
+   and Concorde commands run, **Then** they produce equivalent selected-workspace, phase-path, result,
+   and failure behavior.
+6. **Given** the Concorde source checkout is unavailable, **When** clean-project verification runs,
+   **Then** every command resolves only files installed from the released preset and extension archives.
+7. **Given** the preset is disabled or reprioritized, **When** Spec Kit updates its preset registry,
+   **Then** existing materialized commands remain active as defined by Spec Kit 0.16.4 while future
+   template resolution reflects the new state or priority.
+8. **Given** Concorde is updated or removed, **When** Spec Kit rematerializes registered commands,
+   **Then** it installs the accepted updated layer or restores the next surviving lower-priority layer
+   without leaving stale Concorde instructions.
+8. **Given** verified setup, **When** the maintainer starts Feature 001's core workflow, **Then** no
+   manual skill edit, extra installer, duplicate feature store, or replacement lifecycle is required.
 
 ---
 
@@ -171,6 +215,12 @@ project-owned sources.
 - A catalog entry is valid during preview but its archive becomes unavailable before installation.
 - The target project has stacked presets, local template overrides, or an existing component with the
   same stable identity.
+- A lower-priority Spec Kit command invokes a legacy root-level setup helper before an appended
+  Concorde routing addendum is reached.
+- A preset command appears correct as text but is not the command artifact selected by the active
+  coding-agent integration.
+- The test environment can accidentally read the Concorde checkout's `.agents/` or `.specify/`
+  directories, masking missing release content.
 - The active coding-agent integration is absent, disabled, or requires a reload before commands are
   visible.
 - A built release uses a future public base address that is not reachable from the build environment.
@@ -192,49 +242,69 @@ project-owned sources.
   component identities, versions, dependencies, compatibility constraints, preset strategy and
   priority, trust sources, integration inheritance, and intended changes.
 - **FR-004**: The installed component set and versions MUST match the plan accepted by the maintainer.
-- **FR-005**: The preset MUST append Concorde architecture guidance to the normal feature, plan, and
-  task artifacts without replacing core templates or creating a second canonical feature
-  specification.
-- **FR-006**: The extension MUST register portable Concorde commands and their supporting runtime
-  through the target project's active coding-agent integration.
-- **FR-007**: Setup MUST preserve Spec Kit's authority for its normal lifecycle and MUST NOT install a
+- **FR-005**: The preset MUST compose Concorde architecture guidance into normal feature, plan, and
+  task templates without creating a second canonical feature specification.
+- **FR-006**: The preset MUST provide Concorde-aware command layers for `specify`, `clarify`,
+  `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues`; these are
+  overrides of existing lifecycle command surfaces, not new Concorde runtime command IDs.
+- **FR-007**: Each path-sensitive preset command MUST resolve the selected feature and the correct
+  durable or temporal workspace before any inherited instruction or helper can read or write a
+  legacy root-level artifact.
+- **FR-008**: The extension MUST register the five Concorde-specific commands and the portable
+  selected-workspace and runtime support they require through the target project's active
+  coding-agent integration.
+- **FR-009**: Setup MUST preserve Spec Kit's authority for its normal lifecycle and MUST NOT install a
   dedicated Concorde workflow component or reusable steps in the initial bundle.
-- **FR-008**: Catalogs MUST remain discovery and trust metadata for independent bundle, preset, and
+- **FR-010**: Catalogs MUST remain discovery and trust metadata for independent bundle, preset, and
   extension packages and MUST NOT be presented as installed runtime components.
-- **FR-009**: Release building MUST treat the supplied base address as metadata for future catalog and
+- **FR-011**: Release building MUST treat the supplied base address as metadata for future catalog and
   archive locations and MUST NOT require contacting that address during the build.
-- **FR-010**: The initial release MUST state its supported Spec Kit range and reject an unsupported
+- **FR-012**: The initial release MUST state its supported Spec Kit range and reject an unsupported
   version before making installation changes.
-- **FR-011**: Installation MUST inherit the target project's active coding-agent integration rather
+- **FR-013**: Installation MUST inherit the target project's active coding-agent integration rather
   than hard-code one agent presentation.
-- **FR-012**: Canonical command intent, arguments, results, project scope, and failures MUST remain
-  equivalent across every supported skill or slash-command presentation.
-- **FR-013**: Installation MUST support approved local source, manifest, built-artifact, and trusted
+- **FR-014**: Canonical command intent, arguments, results, selected-workspace semantics, phase paths,
+  and failures MUST remain equivalent across every supported skill or slash-command presentation.
+- **FR-015**: Installation MUST support approved local source, manifest, built-artifact, and trusted
   catalog inputs while applying the active source-trust policy.
-- **FR-014**: Repeated installation of the same release MUST be idempotent and MUST NOT duplicate
+- **FR-016**: Repeated installation of the same release MUST be idempotent and MUST NOT duplicate
   registry state or modify project-authored sources.
-- **FR-015**: Setup verification MUST identify the installed bundle, preset, extension, versions,
-  source, active/disabled state, composed guidance, and discoverable Concorde commands.
-- **FR-016**: At minimum, setup verification MUST exercise `speckit.concorde.init`,
-  `speckit.concorde.context`, and `speckit.concorde.validate` through the active integration without
-  making installation responsible for their core workflow semantics.
-- **FR-017**: Compatible update MUST preserve project configuration and project-authored
+- **FR-017**: Setup verification MUST identify the installed bundle, preset, extension, versions,
+  source, active/disabled state, resolved template contributions, resolved command layers, and the
+  command artifacts materialized for the active integration.
+- **FR-018**: Setup verification MUST execute every normal command whose artifact path is changed by
+  Concorde and MUST prove the durable-root/temporal-`implementation/` path matrix without root-level
+  copies or symlinks.
+- **FR-019**: Setup verification MUST exercise all five installed Concorde-specific command intents
+  through each supported presentation style without making installation responsible for their core
+  workflow semantics.
+- **FR-020**: Clean-project acceptance MUST install from the built bundle and generated catalogs with
+  the Concorde checkout unavailable; project-local `.agents/`, `.specify/`, templates, or scripts in
+  this repository MUST NOT count as distributed product behavior.
+- **FR-021**: Preset disable and priority change MUST preserve already materialized commands according
+  to Spec Kit 0.16.4 while changing future resolution; update and removal MUST rematerialize the
+  accepted or next surviving command layer without stale Concorde instructions.
+- **FR-022**: Compatible update MUST preserve project configuration and project-authored
   specifications while applying only the maintainer-approved component plan.
-- **FR-018**: Removal MUST delete only components owned solely by the Concorde bundle and MUST preserve
+- **FR-023**: Removal MUST delete only components owned solely by the Concorde bundle and MUST preserve
   shared components and all project-authored `.concorde/` and `specs/` sources.
-- **FR-019**: Failed installation or update MUST NOT record success and MUST report any residual state
-  that could not be restored automatically.
-- **FR-020**: Setup documentation MUST explain Spec Kit, catalog, bundle, preset, extension,
+- **FR-024**: Failed installation, command materialization, or update MUST NOT record success and MUST
+  report any residual state that could not be restored automatically.
+- **FR-025**: Setup documentation MUST explain Spec Kit, catalog, bundle, preset, extension,
   coding-agent integration, and Architecture Core responsibilities without treating them as
   interchangeable.
-- **FR-021**: This feature MUST provide text-backed component and installation/use-flow diagrams that
-  distinguish installation-time composition from the preset-guidance and extension-command use-time
-  paths.
-- **FR-022**: Supplemental setup diagrams MUST remain separate from the canonical root module
+- **FR-026**: This feature MUST provide text-backed component and installation/use-flow diagrams that
+  distinguish release sources from installed files, template composition from command composition,
+  normal command overrides from Concorde-specific commands, and self-hosting files from release
+  inputs.
+- **FR-027**: Supplemental setup diagrams MUST remain separate from the canonical root module
   `architecture.json`, identify their maintained sources and generated outputs, and pass deterministic
   validation and freshness checks.
-- **FR-023**: Setup guidance MUST end by directing the maintainer to Feature 001's core Concorde
+- **FR-028**: Setup guidance MUST end by directing the maintainer to Feature 001's core Concorde
   workflow rather than describing installation as the workflow itself.
+- **FR-029**: A command-registration check that only finds expected text MUST NOT be accepted as setup
+  evidence; verification MUST execute the installed winning command surfaces and compare their
+  observable workspace results with the accepted distribution contract.
 
 ### Scope
 
@@ -245,6 +315,8 @@ project-owned sources.
   removal.
 - One preset and one extension installed together through one bundle recipe.
 - Command discovery and cross-integration equivalence checks for the installed starter operations.
+- Authoritative composition of all affected normal Spec Kit commands and clean-project execution of
+  their durable/temporal path matrix.
 
 **Excluded**:
 
@@ -259,7 +331,8 @@ project-owned sources.
 
 - **Bundle Recipe**: The inspectable installation plan that pins compatible component identities and
   versions but performs no runtime behavior itself.
-- **Preset Package**: The passive, append-only contribution to normal lifecycle artifacts.
+- **Preset Package**: The composable contribution that supplies architecture-aware templates and
+  overrides existing lifecycle command instructions without introducing a new runtime namespace.
 - **Extension Package**: The active command and runtime contribution installed through Spec Kit.
 - **Catalog Entry**: Trusted discovery metadata containing package identity, version, location,
   compatibility, integrity, and policy information.
@@ -267,6 +340,10 @@ project-owned sources.
   installed state.
 - **Active Coding-Agent Integration**: The presentation adapter that renders canonical extension
   commands in a supported agent-specific form.
+- **Resolved Command Surface**: The winning composed instructions materialized for one normal or
+  Concorde-specific command in the active coding-agent integration.
+- **Clean Target Project**: A supported project whose verification environment cannot access the
+  Concorde source checkout and therefore exposes missing distribution content.
 - **Installation Record**: Provenance and ownership state used for verification, update, and safe
   removal.
 - **Supplemental Explanatory View**: A maintained, text-backed setup diagram with a reproducible
@@ -282,8 +359,9 @@ project-owned sources.
   manifest, artifact, and trusted-catalog acceptance paths.
 - **SC-003**: Three consecutive installations of the same release produce one unchanged installed
   component set and no modifications to project-authored sources.
-- **SC-004**: All supported coding-agent presentations expose the required starter commands with
-  equivalent observable behavior.
+- **SC-004**: In 100% of supported coding-agent presentations, the nine affected normal commands and
+  five Concorde-specific commands are materialized from the installed release and expose equivalent
+  observable behavior.
 - **SC-005**: Every seeded unsupported-version, untrusted-source, missing-component, digest,
   collision, and partial-failure case stops without a false success record and provides actionable
   recovery information.
@@ -294,21 +372,34 @@ project-owned sources.
   and the unchanged normal Spec Kit lifecycle.
 - **SC-008**: Both supplemental views pass all deterministic diagram, containment, theme, provenance,
   and freshness checks with zero errors or warnings.
+- **SC-009**: Every command in the phase-path acceptance matrix reads or writes only its specified
+  durable feature-root or temporal `implementation/` location in three consecutive clean-project
+  runs, with zero root compatibility copies or symlinks.
+- **SC-010**: Clean-project verification succeeds with zero reads from the Concorde checkout and
+  fails when any required preset command layer, extension command, adapter, or runtime file is
+  removed from the release archive.
+- **SC-011**: Disable and reprioritize preserve all nine already materialized winners, while update
+  and removal materialize the expected accepted or next surviving layer for all nine commands, with
+  zero stale Concorde instructions.
 
 ## Assumptions
 
 - Spec Kit `0.16.4` is the first supported host version; broader support requires equivalent
   acceptance evidence before it is advertised.
+- Spec Kit's public preset command-composition and install-time registration contracts are the
+  supported integration boundary. Arbitrary replacement of Spec Kit's installed core scripts is not
+  assumed to be distributable by the starter bundle.
 - `concorde-starter` remains integration-agnostic and lets Spec Kit inherit the target project's
   active coding-agent integration.
 - Project-authored architecture sources are user data, not installed component files.
-- The first bundle deliberately contains one passive guidance component and one active command
+- The first bundle deliberately contains one composition component and one active capability
   component; additional component types require a separate scope decision.
 - Local development may serve built catalogs and archives over localhost to exercise the same
   resolution path as publication, but the release builder only writes the supplied location into
   metadata.
-- The existing implementation evidence may be reused after references are remapped to this separated
-  feature; the remaining first-use comprehension outcome requires real participants.
+- Existing bundle lifecycle evidence may be reused, but self-hosting skills, string-presence checks,
+  and manually routed test fixtures do not satisfy the installed-command acceptance criteria.
+- The remaining first-use comprehension outcome requires real participants.
 
 ## Dependencies
 

@@ -23,6 +23,8 @@ class FeatureWorkspaceIntegrationTests(unittest.TestCase):
             root = self.project_copy(temporary)
             first = select_feature(root, "feature.example.deliver")
             self.assertEqual(first.status, "selected")
+            self.assertEqual(first.result["workspace"]["implementation_state"], "absent")
+            self.assertTrue(first.result["workspace"]["diagrams_dir"].endswith("/diagrams"))
             selected = root / ".specify/feature.json"
             first_bytes = selected.read_bytes()
             second = select_feature(root, "feature.example.deliver")
@@ -41,6 +43,7 @@ class FeatureWorkspaceIntegrationTests(unittest.TestCase):
             self.assertFalse((root / ".specify/feature.json").exists())
             resumed = select_feature(root, "feature.example.deliver", resume=True)
             self.assertEqual(resumed.status, "selected")
+            self.assertEqual(resumed.result["workspace"]["implementation_state"], "active")
 
     def test_invalid_selection_preserves_prior_state(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -22,10 +22,11 @@ available.
 | Preview | PASS | Validation ran before the server; landing, Architecture index, root/Documentation modules, both delivered views, Documentation index, and Feature 002 returned HTTP 200 on `127.0.0.1:3010`. |
 | Architecture | PASS | Reconciled root and Documentation views each passed 9/9 Archify showcase checks with 0 errors and 0 warnings and were freshly delivered. |
 | Architecture visual review | PASS | Chromium containment and light/dark captures pass at 1440×900, 1600×1000, 1920×1080, and 2048×1320 for both views. Perceptual inspection found no clipping, crossings, unreadable labels, or unbalanced large-screen composition. The root view required two focused card-copy corrections; Documentation required none. |
+| Feature publication sequence | PASS / visual pending | `diagrams/project-docsite-publication-flow.json` passed 9/9 showcase checks with zero errors or warnings and was freshly delivered and embedded on the canonical feature page. Chrome/Chromium was unavailable for its new visual-check receipt, so no perceptual claim is made. |
 
 The final generated manifest is `docsite/build/build-manifest.json`. Build output is ignored and
 disposable. Its recorded SHA-256 is
-`95db6396814acdff23326ac146898769e366407a942075922a0ff8f27aca581f` and can be reproduced with
+`49e8097c300fa97c85245f9e4e388f7af1f7b370daa7279d5720aff3bfa592a4` and can be reproduced with
 `sha256sum`.
 
 The reviewed Archify artifacts are `generated/architecture/concorde-root.html` at SHA-256
@@ -33,6 +34,11 @@ The reviewed Archify artifacts are `generated/architecture/concorde-root.html` a
 `generated/architecture/documentation.html` at SHA-256
 `a4e88271bc7c566bc420551ded3836d926c4bc8901c7ae64ae5ec34c40a9655c`. Their adjacent visual-check
 receipts and light/dark screenshots bind the inspection to those exact delivered bytes.
+
+The supplemental publication sequence is `generated/architecture/project-docsite-publication-flow.html`.
+Its maintained-source SHA-256 is
+`d483e6d7592dd378ba227bc7bf760cd88fb3e2c9e0f44d746827025806568116`, and its delivered artifact
+SHA-256 is `c85d98ffce678d41c4dc3a7f75ba7102aa6c1e7b0753616c3dd7a9afa5d002a6`.
 
 ## Story Checkpoints
 
@@ -102,6 +108,7 @@ production test performs two builds and compares the complete manifest bytes.
 | FR-030 | PASS | `architecture.view.unpublishable` blocks unresolved JSON/output mappings with remediation. |
 | FR-031 | PASS | Registry reads architecture Markdown/JSON and delivered HTML without mutation; generated site remains disposable. |
 | FR-032 | PASS | Architecture and feature specifications share the hierarchical `specs/` source root and are projected into separate site views. |
+| FR-033 | PASS | The text-backed publication sequence names the build, registry, Archify, materialization, Docusaurus, candidate, and publisher calls; the manifest records its declaration/provenance and the canonical feature page embeds it with a standalone link. |
 
 ## Success-Criteria Matrix
 
@@ -115,6 +122,7 @@ production test performs two builds and compares the complete manifest bytes.
 | SC-006 | MANUAL | Landing, three-section navigation, route reachability, and search index are automated acceptance proxies; the specified 90%-of-participants exercise was not run. |
 | SC-007 | PASS | Production HTML checks every feature source plus ID/module/status provenance; Feature 001 displays `Implemented; timed first-use pilot pending`, and Feature 002 plus its Documentation refinement display `Implemented`. |
 | SC-008 | PASS | Before/after source hashing and ignored-output repository audit show zero generated copies or mutations under `docs/` or `specs/`. |
+| SC-009 | PASS | The publication sequence passes all 9 Archify showcase checks with zero errors or warnings, has a fresh provenance-bound delivery, and is embedded on its canonical feature page. |
 
 ## Security and Output Audit
 

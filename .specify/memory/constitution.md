@@ -1,25 +1,21 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 -> 1.1.0
+- Version change: 1.2.0 -> 1.3.0
 - Modified principles:
-  - I. Recursive, Bounded Architecture -> III. Recursive, Bounded Architecture (renumbered)
-  - II. Explicit Ownership and Feature Alignment -> IV. Explicit Ownership and Feature Alignment
-    (renumbered)
-  - III. Contracts Govern Every Boundary -> V. Contracts Govern Every Boundary (renumbered)
-  - IV. One Authority per Fact, Traceable Everywhere -> VI. One Authority per Fact, Traceable
-    Everywhere (renumbered)
-  - V. Deterministic Validation and Reviewed Evidence -> VII. Deterministic Validation and Reviewed
-    Evidence (renumbered)
-- Added principles:
-  - I. Concorde Is the Workflow Product and Its Proving Ground
-  - II. Spec Kit-Native and Composable
-- Added sections:
-  - Product and Ecosystem Requirements
+  - VI. One Authority per Fact, Traceable Everywhere (feature-owned explanatory diagrams clarified)
+- Added guidance:
+  - Feature-owned Archify diagrams live under each feature's `diagrams/` directory and are declared
+    by `spec.md` for automatic publication on the canonical feature page.
 - Modified sections:
   - Architecture Documentation Standards
   - Development Workflow and Quality Gates
 - Removed sections: None
-- Follow-up TODOs: None
+- Synchronized artifacts:
+  - Concorde preset templates and command addenda
+  - Resolved Spec Kit skills and base templates
+  - Root feature specifications and architecture source profile
+- Follow-up TODOs: Browser perceptual review for delivered diagrams remains pending where
+  Chrome/Chromium is unavailable.
 -->
 # Concorde Constitution
 
@@ -91,8 +87,13 @@ obligations, not internal details, are the promises on which other modules may r
 ### VI. One Authority per Fact, Traceable Everywhere
 Concorde MUST maintain architectural and behavioral intent in version-controlled, machine-readable
 sources without duplicating canonical meaning. Module, feature, contract, scenario, constraint, and
-decision prose belongs in Markdown. Module-level structure and ordered scenario interactions belong
-in Archify JSON. Normative contract representations belong in their referenced standard definitions
+decision prose belongs in Markdown. Module-level architecture structure and its canonical ordered
+scenario interactions belong in the module's `architecture.json`. A feature MAY maintain additional
+Archify JSON views that explain representative workflows, sequences, data flows, lifecycles, or
+component involvement when a visual model improves understanding. These feature-owned views
+supplement the textual feature specification and bounded module view; they MUST NOT redefine
+behavior, ownership, or boundary obligations. Normative contract representations belong in their
+referenced standard definitions
 or checked-in custom schemas and examples. Code records the actual implementation, and tests record
 executable evidence. Archify HTML, Docusaurus pages, indexes, traceability reports, and validation
 reports MUST be reproducible generated outputs and MUST NOT be edited as sources.
@@ -128,7 +129,8 @@ unearned authority.
 - Spec Kit MUST remain authoritative for feature specification, clarification, planning, task
   generation, implementation, and convergence. Concorde MUST own module and feature hierarchy,
   boundary contracts, one-level architecture views, structural traceability, and publication.
-- Archify MUST remain the rendering and validation boundary for maintained architecture JSON, while
+- Archify MUST remain the rendering and validation boundary for maintained module and feature-owned
+  explanatory JSON, while
   Docusaurus MUST remain a generated read model. Adapters MUST preserve those ownership boundaries and
   MUST NOT duplicate their canonical inputs.
 - Every supported Spec Kit version MUST be stated explicitly and covered by an automated fixture that
@@ -149,6 +151,15 @@ unearned authority.
 - A scenario MUST use only the current module, its immediate submodules, and permitted external actors
   as participants. Each documented scenario MUST resolve to its module-level architecture view unless
   it is explicitly marked prose-only.
+- Feature specifications SHOULD use feature-owned Archify diagrams when component participation,
+  ordered invocation, boundary crossings, state changes, or data movement would be materially easier
+  to understand visually. A cross-component scenario MUST provide such a diagram or record a concise
+  rationale for why prose and the canonical module view are sufficient. Feature diagrams MUST live
+  under the feature's `diagrams/` directory, use a descriptive filename other than
+  `architecture.json`, identify the scenario or question they explain, name visible contract
+  crossings where applicable, and have a complete textual counterpart. The feature specification
+  MUST declare each diagram, and generated documentation MUST embed every declared fresh view on the
+  canonical feature page while retaining provenance and a standalone-view link.
 - Custom contract examples MUST validate against their normative schema or grammar. Contract format,
   schema, semantics, examples, affected feature references, and evidence MUST change together.
 - Markdown and Archify JSON MUST divide responsibility by meaning. The same intent MUST NOT require
@@ -164,9 +175,10 @@ Every material change to Concorde MUST proceed through the Spec Kit lifecycle au
 Concorde workflow available at that revision. The author MUST first identify the providing module and
 abstraction level. Unclear ownership or boundary effects MUST be resolved before the implementation
 plan is approved. The feature specification MUST then record parent refinement links, relevant
-scenarios, immediate participants, governing provided and required contracts, and expected source and
-test evidence. Affected module views and contract definitions MUST be updated before implementation is
-treated as architecture-complete.
+scenarios, immediate participants, governing provided and required contracts, expected source and
+test evidence, and the result of evaluating whether feature-owned diagrams would improve
+comprehension. Affected module views, feature diagrams, and contract definitions MUST be updated
+before implementation is treated as architecture-complete.
 
 During bootstrap, a missing command or validator does not waive its governing rule. The change MUST
 include the equivalent reviewable source artifact or manual validation record, plus a linked feature
@@ -211,4 +223,4 @@ precedent, and MUST meet the documentation requirements in the workflow section.
 review the constitution at least once per major release and whenever recurring exceptions indicate
 that a rule no longer serves the project's goals.
 
-**Version**: 1.1.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-19
+**Version**: 1.3.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-22

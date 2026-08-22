@@ -1,7 +1,9 @@
 import importlib.util
 import json
+import hashlib
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -37,6 +39,47 @@ class ReleaseArtifactTests(unittest.TestCase):
                     json.loads((Path(temporary) / name).read_text()),
                     json.loads((REPOSITORY_ROOT / "catalogs" / name).read_text()),
                 )
+
+    def test_archives_match_explicit_allowlists_and_installed_handoff(self):
+        builder = load_builder()
+        sources = {
+            "concorde-core-0.1.0.zip": ("concorde-core", REPOSITORY_ROOT / "presets/concorde-core"),
+            "concorde-0.1.0.zip": ("concorde", REPOSITORY_ROOT / "extensions/concorde"),
+            "concorde-starter-0.1.0.zip": ("concorde-starter", REPOSITORY_ROOT / "bundles/concorde-starter"),
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            builder.build_release(output, "http://127.0.0.1:8765")
+            for archive_name, (component, source) in sources.items():
+                expected = {
+                    path.relative_to(source).as_posix()
+                    for path in builder._source_files(source, component)
+                }
+                with zipfile.ZipFile(output / archive_name) as archive:
+                    self.assertEqual(set(archive.namelist()), expected)
+
+            with zipfile.ZipFile(output / "concorde-core-0.1.0.zip") as preset_archive:
+                command_members = sorted(
+                    name for name in preset_archive.namelist() if name.startswith("commands/")
+                )
+                self.assertEqual(len(command_members), 9)
+                self.assertTrue(all(b"Concorde Installed Workspace Gate" in preset_archive.read(name) for name in command_members))
+
+            with zipfile.ZipFile(output / "concorde-0.1.0.zip") as extension_archive:
+                handoff_members = sorted(
+                    name
+                    for name in extension_archive.namelist()
+                    if name.startswith(("commands/", "scripts/", "runtime/", "schemas/"))
+                )
+                digest = hashlib.sha256()
+                for name in handoff_members:
+                    digest.update(name.encode("utf-8"))
+                    digest.update(b"\0")
+                    digest.update(extension_archive.read(name))
+                    digest.update(b"\0")
+                self.assertEqual(len(digest.hexdigest()), 64)
+                self.assertIn("scripts/python/workspace.py", handoff_members)
+                self.assertNotIn(".agents/", "\n".join(handoff_members))
 
 
 if __name__ == "__main__":

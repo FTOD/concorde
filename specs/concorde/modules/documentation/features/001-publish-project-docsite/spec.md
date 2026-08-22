@@ -73,6 +73,13 @@ is maintained in the Documentation module's `architecture.json`.
 This scenario illustrates one normal interaction; it does not replace the feature's textual outcome
 and requirements.
 
+## Diagram Decision
+
+The parent feature's `diagrams/project-docsite-publication-flow.json` sequence explains invocation from the
+build command through registry, Archify, materialization, Docusaurus, validation, and publication.
+The Documentation module's `architecture.json` remains the canonical bounded structural trace. A
+second child sequence would duplicate those two complementary views.
+
 ## Requirements
 
 - **FR-DOC-001**: The module MUST classify `specs/**/module.md` and

@@ -31,8 +31,11 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                     capture_output=True,
                 )
                 rendered = (root / artifact).read_text(encoding="utf-8")
-                self.assertIn("Concorde selected-workspace routing", rendered)
+                self.assertIn("Concorde Installed Workspace Gate", rendered)
                 self.assertIn("workspace.implementation_dir", rendered)
+                self.assertIn("implementation_state", rendered)
+                self.assertIn(".specify/extensions/concorde/scripts/python/workspace.py", rendered)
+                self.assertNotIn("Concorde selected-workspace routing", rendered)
                 self.assertTrue((root / ".specify/extensions/concorde/scripts/python/workspace.py").is_file())
 
 

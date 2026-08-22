@@ -12,6 +12,13 @@ contracts:
   required:
     - contract.concorde.spec-kit-platform
 architecture_view: specs/concorde/architecture.json
+diagrams:
+  - source: specs/concorde/features/001-concorde-starter-workflow/diagrams/core-workflow-scenarios.json
+    kind: sequence
+    scenarios:
+      - scenario-concorde-establish-and-place-feature
+      - scenario-concorde-review-implement-and-reconcile
+    output: generated/architecture/concorde-core-workflow-scenarios.html
 evidence_status: partial
 canonical_spec: specs/concorde/features/001-concorde-starter-workflow/spec.md
 ---
@@ -120,12 +127,16 @@ implementation-phase artifacts from `implementation/`. No compatibility copy or 
 | Implementation research, technical models, acceptance guidance, and delivery evidence | Other files under `implementation/` | Supports one implementation attempt and never becomes durable feature intent by location. |
 | Module responsibility, feature ownership, contracts, constraints, and decisions | `module.md` and contract Markdown | Defines durable architectural prose at that module level. |
 | Current-level structure and ordered scenario interactions | `architecture.json` | Defines the machine-readable one-level view. |
+| Feature-owned scenario or component explanation | Descriptively named Archify JSON under `diagrams/` | Supplements the text and bounded module view when invocation, collaboration, state, or data movement benefits from a visual explanation. |
 | Standard or custom boundary representation | Referenced standard, or maintained schema/grammar and examples | Defines the information that may cross a module boundary. |
 | Implementation and executable evidence | Code and tests | Records what exists and what has been demonstrated. |
 | Rendered diagrams, documentation pages, indexes, and reports | Generated projections | Makes canonical sources reviewable; never becomes maintained intent. |
 
 A feature is defined by its text. Scenarios are representative examples that make the behavior and
-submodule collaboration concrete; they do not define the feature exhaustively.
+submodule collaboration concrete; they do not define the feature exhaustively. Feature-owned diagrams
+are encouraged whenever they make those examples easier to understand. They may show the modules,
+command surfaces, external systems, artifact stores, and contract crossings involved in a scenario,
+but cannot silently add behavior or obligations absent from the textual specification and contracts.
 
 ## End-to-End Workflow and Commands
 
@@ -138,18 +149,34 @@ command.
 | 1. Establish the root | Create or review the root module package, its I/O contracts, top-level features, immediate submodules, and one-level view. | `speckit.concorde.init` |
 | 2. Locate ownership | Inspect exactly one bounded module level and decide which module owns the behavior at which abstraction. | `speckit.concorde.context <module-or-feature-id>` |
 | 3. Create or select work | Create one nested feature root under the owning module, or select an existing feature; keep durable specification sources at the root. | `speckit.concorde.feature.create` / `speckit.concorde.feature.select` |
-| 4. Specify behavior | Describe the feature in text, clarify uncertainty, and record representative scenarios, contracts, refinement links, and expected evidence. | Normal Spec Kit specification and clarification phases |
+| 4. Specify behavior | Describe the feature in text, clarify uncertainty, record representative scenarios, contracts, refinement links, and expected evidence, and add feature-owned diagrams when they improve comprehension. | Normal Spec Kit specification and clarification phases |
 | 5. Agree on architecture | Review ownership, I/O contracts, immediate participants, dependency direction, and the affected one-level view before approving the implementation structure. | Bounded context plus maintained architecture sources |
 | 6. Open an implementation attempt | Create the feature's temporal `implementation/` workspace, then produce its plan and tasks with explicit architecture, contract, validation, and freshness work where affected. | Normal Spec Kit planning and task phases with Concorde path resolution |
 | 7. Implement with bounded context | Give the coding agent only the relevant module level, feature artifacts, contracts, and evidence expectations; descend one level only when needed. | `speckit.concorde.context` plus normal implementation/convergence phases |
 | 8. Reconcile and validate | Check maintained sources, references, hierarchy, contracts, views, and evidence; report disagreement or unknown evidence rather than silently rewriting intent. | `speckit.concorde.validate [path-or-id]` |
 | 9. Review and publish | Review behavioral and architectural changes together, then reproduce the read-only project site through the separate documentation feature. | Documentation publication workflow |
 
-`feature.create` and `feature.select` are required workflow operations even though the initial
-installed slice currently exposes only `init`, `context`, and `validate`. Until the selectors are
-implemented, maintainers may select the nested workspace through Spec Kit's supported feature-path
-mechanism; this is a temporary capability gap, not a different source layout or a duplicate feature
-store.
+The five Concorde commands support this workflow without replacing the normal Spec Kit phases.
+Feature creation and selection belong to Spec Kit Integration; initialization, context retrieval, and
+validation belong to Architecture Core.
+
+## Scenario and Component Diagram
+
+The maintained sequence view in `diagrams/core-workflow-scenarios.json` is a supplemental explanation of the
+two root scenarios and produces
+`generated/architecture/concorde-core-workflow-scenarios.html`. It answers the implementation-facing
+question: when a maintainer uses Concorde, which command surface, Spec Kit phase, Integration service,
+Architecture Core operation, workspace, and evidence producer is invoked next?
+
+- **Establish and place** follows change intent through `feature.create`, bounded ownership lookup,
+  human placement approval, nested workspace creation/selection, and the normal specify/clarify path.
+- **Review, implement, and reconcile** follows bounded context retrieval through plan, tasks,
+  implementation, delegated test/Archify/docsite evidence, deterministic validation, and final human
+  acceptance or convergence.
+
+The diagram does not replace the textual stories below or the canonical one-level root view in
+`specs/concorde/architecture.json`. Its participants are implementation-facing representatives of
+the root-level modules and external systems already governed by those sources.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -207,6 +234,10 @@ the normal lifecycle, and verify that no duplicate flat specification is created
 4. **Given** a feature specification, **When** it is reviewed, **Then** its text defines the behavior
    and its scenarios are clearly presented as representative examples rather than exhaustive
    definitions.
+5. **Given** a scenario involving multiple components or ordered boundary crossings, **When** the
+   specification is reviewed, **Then** a text-backed feature diagram identifies the involved
+   components and contract-governed interactions, or the specification records why a diagram would
+   not improve understanding.
 
 ---
 
@@ -360,6 +391,16 @@ validation reports both problems consistently without changing maintained source
 - **FR-029**: After the user accepts an implementation, its temporal workspace MAY be frozen as
   evidence, archived, or removed according to project policy without changing the feature's stable ID,
   canonical specification, providing module, or refinement links.
+- **FR-030**: Specification and planning workflows MUST evaluate whether each representative scenario
+  would be materially clearer as a component, workflow, sequence, data-flow, or lifecycle diagram;
+  every cross-component scenario MUST provide one or record why prose and the module view are
+  sufficient.
+- **FR-031**: A feature-owned diagram MUST be maintained as descriptively named Archify JSON under
+  the feature's `diagrams/` directory, identify the scenario or question explained, show the relevant
+  component participation and contract crossings, have an equivalent textual explanation, and produce
+  a validated, provenance-bearing generated projection without redefining feature behavior. The
+  generated feature page MUST embed every declared diagram automatically and retain a link to its
+  standalone interactive view.
 
 ### Scope
 
@@ -373,6 +414,8 @@ validation reports both problems consistently without changing maintained source
 - Architecture gates around the normal specification, plan, task, implementation, convergence, and
   review lifecycle.
 - Traceability among maintained intent, implementation, tests, validation, and generated projections.
+- Text-backed feature-owned diagrams for scenarios whose component collaboration, invocation order,
+  state changes, or data movement benefit from visual explanation.
 
 **Excluded**:
 
@@ -401,6 +444,9 @@ validation reports both problems consistently without changing maintained source
   exchanged between a module and an external counterparty.
 - **Architecture View**: The machine-readable structure and scenario traces for one current module and
   its immediate children only.
+- **Feature Diagram**: A descriptively named, maintained Archify explanation of one or more feature
+  scenarios; it supplements `spec.md` and the module view without becoming behavioral or architectural
+  authority for facts owned elsewhere.
 - **Bounded Context**: The smallest resolved set of current-level architecture and active feature
   sources required for one decision or implementation task.
 - **Evidence Reference**: A stable link to implementation, tests, or generated validation material,
@@ -430,6 +476,10 @@ validation reports both problems consistently without changing maintained source
 - **SC-009**: In 100% of workflow path-resolution tests, specification and contract operations read
   the feature root, while planning, task, implementation, analysis, and convergence operations read
   the same feature's `implementation/` workspace; no root-level `plan.md` or `tasks.md` is created.
+- **SC-010**: Every required feature-owned diagram passes all deterministic Archify showcase,
+  provenance, and freshness checks with zero errors or warnings, and every diagrammed boundary
+  crossing resolves to its textual contract reference; every declared diagram appears on the
+  canonical generated feature page without manual page markup.
 
 ## Assumptions
 
@@ -440,9 +490,9 @@ validation reports both problems consistently without changing maintained source
 - The root module is the default starting point, while deeper module packages are created only when
   another abstraction level improves ownership or comprehension.
 - One representative primary scenario is normally sufficient to explain a feature, with alternative,
-  failure, or degraded scenarios added only when they improve understanding.
-- Existing initialization, context, and validation operations form the implemented first slice;
-  nested feature creation and selection remain required follow-up capabilities.
+  failure, degraded, or supplemental visual scenarios added only when they improve understanding.
+- Initialization, feature creation/selection, bounded context, and validation form the implemented
+  command surface; the normal Spec Kit phases remain responsible for feature delivery between them.
 - One active implementation workspace is sufficient for the first release; the project may later
   standardize archival naming without changing the durable/temporal authority boundary.
 - Documentation publication consumes validated sources through the separate Documentation feature and

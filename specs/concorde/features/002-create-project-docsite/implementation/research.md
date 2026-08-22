@@ -186,3 +186,20 @@ not replacing or repeating, the parent project outcome.
   project-level outcome and root publication scenario.
 - Add site-generation behavior to Spec Kit Integration: rejected because that module owns composition
   and agent skills, not presentation.
+
+## R10. Declaration-Driven Feature Diagram Embedding
+
+**Decision**: Parse each canonical feature specification's `diagrams` declarations, require sources
+directly below that feature's `diagrams/` directory, verify their delivered `generated/` outputs, and
+project title, kind, scenario IDs, source hash, and public route into the manifest and page renderer.
+The shared feature layout embeds every diagram in a sandbox and supplies an open-full-view link.
+
+**Rationale**: The specification remains the single registration point while every feature receives
+consistent provenance, accessibility, security, and freshness behavior automatically.
+
+**Alternatives considered**:
+
+- Manual Markdown/MDX embeds were rejected because they duplicate publication mechanics and can
+  drift from front-matter declarations.
+- Publishing only standalone HTML was rejected because readers do not discover the visual explanation
+  while reading the feature it supplements.

@@ -26,11 +26,19 @@
 
 - [x] All functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
+- [x] Cross-component scenarios include a text-backed diagram or a clear sufficiency rationale
+- [x] Preset template layers, preset normal-command overrides, and extension-specific commands have distinct responsibilities
+- [x] All nine affected normal commands and five Concorde-specific commands have clean-install acceptance coverage in the requirements
+- [x] Self-hosting checkout files are explicitly excluded from distributed-product evidence
+- [x] Command precedence, persistent disable/priority registration, update/removal recomposition, and legacy root-path failures are specified
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
 
 ## Notes
 
-- Validation iteration 1 passed all 16 checks on 2026-08-22.
+- Validation iteration 2 passed all 21 checks on 2026-08-22 after adding the authoritative installed
+  command-surface and clean-project parity requirements.
 - The specification intentionally names user-visible Spec Kit package roles and Concorde command IDs;
   these are product contracts, not internal implementation choices.
+- Feature status is `Partial`: existing lifecycle evidence remains valid, but planning and
+  implementation must replace string-presence checks with clean installed command execution.

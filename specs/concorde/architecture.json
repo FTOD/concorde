@@ -105,7 +105,7 @@
       "tag": "module.concorde.spec-kit-integration",
       "type": "backend",
       "label": "Spec Kit Integration",
-      "sublabel": "Workspace + command adapters",
+      "sublabel": "Workspace + command composition",
       "pos": [1070, 220],
       "size": [210, 78]
     },
@@ -168,7 +168,7 @@
       "id": "contract_integration_agent-skills",
       "from": "installFeature",
       "to": "integration",
-      "label": "activate command extension",
+      "label": "compose overrides + commands",
       "variant": "emphasis"
     },
     {
@@ -237,7 +237,7 @@
     {
       "dot": "emerald",
       "title": "How Concorde is invoked",
-      "items": ["Spec Kit owns bundle operations and the normal feature phases", "The coding-agent integration presents five Concorde commands", "Documentation build and browse operations invoke the publication feature"]
+      "items": ["Spec Kit owns bundle operations and the normal feature phases", "The active integration presents nine composed lifecycle surfaces plus five Concorde commands", "Documentation build and browse operations invoke the publication feature"]
     },
     {
       "dot": "violet",

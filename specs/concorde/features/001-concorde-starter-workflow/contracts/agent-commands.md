@@ -205,3 +205,21 @@ Repeated runs over unchanged bytes and arguments produce byte-equivalent JSON an
   returns equivalent normative runtime JSON.
 - Removal deletes only extension-owned registered artifacts; locally modified or unrelated agent
   content follows Spec Kit's ownership safeguards.
+
+## Workflow Distribution Handoff
+
+Feature 003 distributes this contract without becoming authoritative for its behavior. One release
+handoff consists of:
+
+| Item | Required identity |
+|---|---|
+| Workspace protocol | `feature-workspace.schema.json`, schema version 1, both examples, and their combined source digest |
+| Normal phase obligations | Durable `specify`/`clarify`/`checklist`; temporal `plan`/`tasks`/`implement`/`analyze`/`converge`/`taskstoissues` |
+| Concorde command intents | The five canonical IDs and behavior sections in this contract |
+| Installed support | Extension-relative workspace adapter, launchers, schemas, and runtime sources needed by those intents |
+| Acceptance binding | Spec Kit host version, package versions/digests, handoff digest, actual registered winner, selected paths, outputs, and checkout-access result |
+
+The source digest binds behavior to the reviewed contract/runtime set; it is not a digest of the
+user project's mutable architecture sources. Feature 003 may choose supported preset composition and
+agent presentation mechanisms, but its receipts must identify this handoff and may not redefine
+phase paths, command arguments, result envelopes, or failures.

@@ -1,17 +1,21 @@
-# Quickstart Validation: Concorde Starter Workflow
+# Quickstart Validation: Install Concorde through Spec Kit
 
-This guide is the end-to-end setup and acceptance path for Feature 003. It is intended to be runnable after
-implementation and uses only the normal Spec Kit lifecycle plus the commands installed by Concorde.
+**Feature**: `feature.concorde.install-with-spec-kit`
+**Status**: Target-state acceptance guide for the current implementation attempt
+
+This guide proves that a built Concorde release delivers the workflow into projects that cannot use
+this checkout's locally modified skills or Spec Kit files. It does not test Feature 001 by invoking
+repository-local `.agents/` or `.specify/` content.
 
 ## Prerequisites
 
-- `uv`, using the repository's pinned Python 3.11 development environment.
-- Spec Kit/Specify CLI 0.16.4 available as `specify`.
-- A checkout of this repository.
-- Codex for the primary skills-mode run. Repeat the registration section with one supported
-  slash-command integration for portability acceptance.
+- `uv` and the repository's pinned Python 3.11+ environment;
+- Specify CLI / Spec Kit exactly `0.16.4`;
+- this repository only for building the release and running the acceptance harness;
+- Codex skills mode and one supported slash-command integration;
+- two disposable target directories outside the Concorde checkout.
 
-Confirm versions from the repository root:
+From the repository root:
 
 ```bash
 uv --version
@@ -20,34 +24,38 @@ uv run python --version
 specify --version
 ```
 
-Expected: Python is at least 3.11 and Specify reports 0.16.4. Do not claim compatibility from a run
-against another Spec Kit version.
+Do not claim support for another Spec Kit version from manifest parsing alone. The nine normal
+command replacements must be reviewed and rerun against every added host version.
 
-## Mental Model Before Installation
+## Mental Model
 
-The package types are complementary:
-
-| Type | Concorde identity | Effect |
+| Role | Installed responsibility | Boundary |
 |---|---|---|
-| Bundle | `concorde-starter` | Pins and groups the compatible components as one inspectable installation recipe. |
-| Preset | `concorde-core` | Appends architecture-aware guidance to the existing spec, plan, and task templates. |
-| Extension | `concorde` | Registers the three Concorde commands and their deterministic runtime. |
-| Catalog | One catalog per package type | Supplies trusted identity, version, download URL, and digest metadata used during resolution. |
-| Active coding-agent integration | The target project's selected integration | Renders and registers portable extension commands using agent-native presentation and invocation syntax. |
-| Architecture Core | The runtime behind the commands | Deterministically proposes initialization, returns bounded context, and validates maintained architecture sources. |
+| Catalog | Advertises package identity, version, URL, compatibility, digest, and trust metadata. | Discovery metadata, not installed behavior. |
+| Bundle `concorde-starter` | Pins one tested preset and one extension as an inspectable recipe. | Passive and non-executable. |
+| Preset `concorde-core` | Appends three architecture template layers and replaces nine existing lifecycle command instructions with Concorde-aware routing. | No new runtime namespace; Spec Kit still owns normal phase meaning. |
+| Extension `concorde` | Supplies five Concorde commands, the selected-workspace adapter, launchers, and deterministic runtime. | Does not own the nine normal lifecycle commands or agent syntax. |
+| Active coding-agent integration | Materializes resolved normal-command winners and extension commands in agent-native form. | Presentation only; it cannot change intent or paths. |
+| Architecture Core | Implements initialization, bounded context, and validation after installation. | Core-workflow behavior owned by Feature 001. |
 
-The bundle itself does not execute architecture behavior, and the preset does not register commands.
-Spec Kit installs each referenced component through its native lifecycle and remains authoritative for
-the normal feature phases. The active integration owns only presentation syntax; Architecture Core
-owns command behavior. "Starter workflow" names the resulting user journey; this release declares no
-Spec Kit workflow component and no reusable steps.
+The preset's template and command contributions use different composition strategies:
 
-Review the [component model](spec-kit-component-model.json) and
-[installation flow](starter-installation-flow.json) before continuing. Their interactive versions are
-[component model HTML](../../../../generated/architecture/concorde-spec-kit-component-model.html) and
-[installation flow HTML](../../../../generated/architecture/concorde-starter-installation-flow.html).
+- spec, plan, and tasks templates use `append` because they add guidance;
+- `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and
+  `taskstoissues` use complete `replace` layers because selected-workspace routing must occur before
+  any lower instruction can choose legacy paths.
 
-## 1. Build and Verify Release Inputs
+The bundle does not include this repository's `.agents/` or `.specify/` trees. Those are self-hosting
+development state, not proof of what users receive.
+
+Review the maintained [component model](../diagrams/spec-kit-component-model.json) and
+[installation flow](../diagrams/starter-installation-flow.json). Their generated projections are the
+[interactive component model](../../../../../generated/architecture/concorde-spec-kit-component-model.html)
+and [interactive installation flow](../../../../../generated/architecture/concorde-starter-installation-flow.html).
+The complete textual boundary is in
+[Installed Concorde Command Surfaces](../contracts/installed-command-surfaces.md).
+
+## 1. Build Reproducible Release Units
 
 ```bash
 uv run python scripts/release/build-components.py --output dist \
@@ -56,41 +64,62 @@ specify bundle build --path bundles/concorde-starter --output dist
 uv run python scripts/release/verify-release.py --dist dist
 ```
 
-`--base-url` is embedded in the generated catalogs as the later download location. Nothing at that
-address is contacted during this build; the value matches the localhost server started in Section 2.
+`--base-url` is written into the generated catalogs as the location from which installation will
+later download artifacts. The builder does not contact that address. The server starts in the next
+section.
 
 Expected:
 
-- the preset and extension install-contract tests pass, and native bundle build validates the bundle
-  manifest structurally;
-- the bundle contains exactly `concorde-core@0.1.0` and `concorde@0.1.0`;
-- no workflow or step is declared;
-- catalog metadata, archive manifests, versions, and digests agree; and
-- two identical builds produce byte-equivalent release archives.
+- separate bundle, preset, and extension archives exist;
+- archive manifests, catalogs, versions, URLs, compatibility, and SHA-256 digests agree;
+- the bundle pins exactly `concorde-core@0.1.0` and `concorde@0.1.0`;
+- the preset contains three append template layers and nine complete replacement commands;
+- the extension contains five command definitions plus every referenced adapter, launcher, schema,
+  and runtime file;
+- no `.agents/`, root `.specify/`, test, temporal design, or generated documentation file is in an
+  archive; and
+- two clean builds are byte-equivalent.
 
-## 2. Serve the Development Catalogs
+Run focused source/release contracts before installation:
 
-In a second terminal from the repository root:
+```bash
+uv run python -m unittest \
+  tests.concorde.contract.test_manifests \
+  tests.concorde.contract.test_release_artifacts \
+  tests.concorde.contract.test_installed_command_surfaces
+```
+
+The last module is a planned acceptance contract. Until it exists and passes, the implementation
+attempt remains partial.
+
+## 2. Serve the Built Catalogs
+
+In another terminal from the repository root:
 
 ```bash
 uv run python tests/concorde/support/catalog_server.py --dist dist --port 8765
 ```
 
-Keep the server running. It exposes the generated catalogs and archives from localhost, allowing the
-real catalog download and trust paths to be tested without publishing a release.
+Only built `dist/` content is served. Localhost HTTP is allowed for this fixture; published release
+locations use HTTPS.
 
-## 3. Initialize a Clean Codex Skills Project
+## 3. Create Checkout-Isolated Targets
+
+Create the targets from a shell whose import and executable search paths do not expose the Concorde
+checkout:
 
 ```bash
-validation_root="$(mktemp -d)"
-cd "$validation_root"
-specify init --here --integration codex --integration-options="--skills"
+concorde_skills_target="$(mktemp -d)"
+concorde_slash_target="$(mktemp -d)"
+
+cd "$concorde_skills_target"
+env -u PYTHONPATH specify init --here --integration codex --integration-options="--skills"
 ```
 
-The validation directory is disposable. Do not point these commands at a project containing
-uncommitted user architecture sources.
+Initialize the second target with the supported slash-command integration selected for portability
+acceptance. Neither target may be nested under the checkout or use a development-directory install.
 
-Add the three development catalogs as explicitly trusted install sources:
+For each target, add the three localhost catalogs as project-scoped, install-allowed sources:
 
 ```bash
 specify extension catalog add http://127.0.0.1:8765/extensions.json \
@@ -101,247 +130,253 @@ specify bundle catalog add http://127.0.0.1:8765/bundles.json \
   --id concorde-dev --policy install-allowed
 ```
 
-Expected: each source is recorded at project scope as install-allowed. Localhost HTTP is for this
-fixture only; release catalogs and artifact URLs must use HTTPS.
+The acceptance harness must record all file reads made while resolving and executing installed
+surfaces. Any path inside the Concorde checkout invalidates SC-010.
 
-Validate the local bundle structure without asking the native validator to rediscover external
-component catalogs (the later `bundle info` and install steps resolve and verify those exact pins):
-
-```bash
-concorde_checkout=/path/to/concorde
-specify bundle validate --offline --path "$concorde_checkout/bundles/concorde-starter"
-```
-
-Expected: the manifest is valid. Spec Kit may print offline reference-verification warnings; these are
-resolved by the catalog-backed preview and install assertions below.
-
-Before the catalog-ID journey, exercise every supported local bundle source form against the same
-component catalogs:
-
-```bash
-specify bundle install "$concorde_checkout/bundles/concorde-starter"
-specify bundle remove concorde-starter
-specify bundle install "$concorde_checkout/bundles/concorde-starter/bundle.yml"
-specify bundle remove concorde-starter
-specify bundle install "$concorde_checkout/dist/concorde-starter-0.1.0.zip"
-specify bundle remove concorde-starter
-```
-
-Expected: directory, manifest, and built artifact resolve and install the same two catalog-provided
-components, and each removal leaves user-authored sources untouched. The automated lifecycle suite
-also repeats the artifact path from an uninitialized directory using Spec Kit's bundle initialization
-path and isolated user-scope catalogs.
-
-## 4. Preview the Exact Plan
+## 4. Inspect and Accept the Exact Plan
 
 ```bash
 specify bundle info concorde-starter --json > concorde-plan.json
 ```
 
-Verify `concorde-plan.json` reports:
+Review the plan before installing. It must identify:
 
-- bundle `concorde-starter` version `0.1.0`;
-- Spec Kit compatibility `>=0.16.4,<0.16.5`;
-- no fixed integration;
-- extension `concorde` version `0.1.0`;
-- preset `concorde-core` version `0.1.0`, priority `10`, strategy `append`;
-- no workflows or steps; and
-- source/trust information for the selected catalog.
+- bundle `concorde-starter@0.1.0`;
+- preset `concorde-core@0.1.0`, priority `10`, three template append layers, and nine command
+  replacement layers;
+- extension `concorde@0.1.0` and its five command intents;
+- host requirement `>=0.16.4,<0.16.5`;
+- inherited active integration, package provenance, catalog trust, and planned files/state changes;
+- no workflow component, reusable steps, second feature store, or separate installer.
 
-This file is the accepted expanded plan used for the install comparison.
+Retain the plan digest. Installed component identities and versions must match it exactly.
 
-## 5. Install and Discover Commands
+Before the catalog-ID journey, the automated lifecycle suite must also prove that an approved source
+directory, `bundle.yml`, and built bundle archive resolve the same component plan. A development
+directory may assist package authors but cannot satisfy clean-product acceptance.
+
+## 5. Install and Inventory the Actual Winners
 
 ```bash
 specify bundle install concorde-starter
 specify bundle list --json > installed-bundles.json
-specify extension list
 specify preset list
-find .agents/skills -maxdepth 2 -name SKILL.md -print | sort
+specify extension list
 ```
 
 Expected:
 
-- the installed record names the same two components as `concorde-plan.json`;
-- the preset and extension are active at the pinned versions; and
-- Codex skills exist for `speckit-concorde-init`, `speckit-concorde-context`, and
-  `speckit-concorde-validate`.
+- one active bundle, one preset, and one extension match the accepted plan;
+- the active integration has fourteen Concorde-owned surfaces: nine normal and five
+  Concorde-specific;
+- every surface records its winning source component and materialized artifact;
+- every Concorde-owned surface identifies the Feature 001 handoff version and digest packaged by the
+  extension;
+- repository-local command files are absent from the provenance chain.
 
-Repeat installation three times:
+Run the installed-surface inventory harness from the checkout against the isolated target. The
+harness may inspect the target and built archives; the target's installed commands may not import or
+read the checkout:
 
 ```bash
+uv run python -m unittest tests.concorde.contract.test_installed_command_surfaces
+```
+
+Expected: the harness resolves the registered winner rather than accepting matching text in any
+package or inactive file.
+
+## 6. Exercise the Durable and Temporal Path Matrix
+
+In the clean target, use the installed Concorde commands to initialize the root architecture, create
+a nested feature under its providing module, and select that feature. Initialization and feature
+creation remain review-first: inspect the proposal and explicitly approve the exact mutation.
+
+The selected feature must have this durable/temporal shape:
+
+```text
+specs/<root>/modules/<module>/features/<number>-<slug>/
+├── spec.md
+├── contracts/
+├── checklists/
+├── diagrams/
+└── implementation/
+    ├── plan.md
+    ├── research.md
+    ├── data-model.md
+    ├── quickstart.md
+    ├── tasks.md
+    └── validation.md
+```
+
+Execute every normal installed surface through the target integration:
+
+| Commands | Required location |
+|---|---|
+| Specify, clarify, checklist | Selected feature root |
+| Plan, tasks, implement, analyze, converge, taskstoissues | Selected feature's single `implementation/` workspace |
+
+After each command, verify that workspace resolution occurred before any path-sensitive setup or
+prerequisite action. No root `plan.md`, root `tasks.md`, root design copy, compatibility symlink, or
+second active implementation attempt may exist.
+
+Run the deterministic full matrix three times:
+
+```bash
+uv run python -m unittest tests.concorde.integration.test_clean_phase_matrix
+```
+
+Expected: every run produces the same selected paths and observable results, with no root aliases and
+no checkout reads.
+
+## 7. Exercise All Five Concorde Commands
+
+Through the installed presentation, exercise:
+
+1. initialization proposal, approval, apply, and idempotent rerun;
+2. nested feature-create proposal, approval, creation, and collision refusal;
+3. feature selection and project-scoped selection-state update;
+4. root, child, and active-feature bounded context;
+5. deterministic validation success plus seeded failure output.
+
+Repeat equivalent scenarios in the slash-command target. Agent-specific filenames, separators, or
+front matter may differ. Canonical intent, arguments, selected paths, result envelopes, failures, and
+source immutability must match.
+
+The extension test fails if a launcher, adapter, schema, or runtime file is removed from a copied
+release archive. It must not fall back to this checkout.
+
+## 8. Prove Idempotency and User-Source Preservation
+
+Record project-source hashes, install the same bundle three more times, and compare:
+
+```bash
+find .concorde specs docs -type f -print0 2>/dev/null \
+  | sort -z | xargs -0 sha256sum > concorde-sources-before.txt
+
 specify bundle install concorde-starter
 specify bundle install concorde-starter
 specify bundle install concorde-starter
+
+find .concorde specs docs -type f -print0 2>/dev/null \
+  | sort -z | xargs -0 sha256sum > concorde-sources-after.txt
+cmp concorde-sources-before.txt concorde-sources-after.txt
 ```
 
-Expected: every repetition succeeds, registry cardinality remains one bundle/one preset/one
-extension, and no project-authored source changes after the first successful installation.
+Expected: registry cardinality remains one bundle, one preset, and one extension; command winners are
+unchanged; project-authored source hashes are identical.
 
-## 6. Initialize the Root Architecture
+## 9. Prove Recomposition
 
-Start Codex in the clean project and invoke:
+Install a known lower-priority fixture that contributes all nine normal command surfaces. Then test
+each transition:
 
-```text
-$speckit-concorde-init
-```
+1. Concorde enabled: its nine replacement layers win.
+2. Concorde disabled: its already registered command artifacts remain active, as Spec Kit 0.16.4
+   documents; future template resolution excludes the preset.
+3. Priority changed: registered artifacts remain active while future resolution uses the new priority.
+4. Compatible Concorde update: the accepted new layer wins with its new digest.
+5. Concorde removed: the lower layer is restored with no stale Concorde instructions.
 
-Expected first response: a reviewable proposal only. It names the root module ID, responsibility,
-boundary, explicit provided and required contract sets, immediate submodules, one-level view, exact
-target files, and any conflicts. No architecture file exists yet.
-
-Approve the proposal explicitly in the agent conversation. The command then applies that exact
-proposal and reports created project-relative paths. Verify:
+Run:
 
 ```bash
-find .concorde specs -type f -print | sort
+uv run python -m unittest tests.concorde.integration.test_command_recomposition
 ```
 
-Invoke the init skill again. Expected: `unchanged`; no maintained source is overwritten.
+Checking preset registry state is insufficient. The test must resolve, execute, and compare all nine
+materialized winners after every transition.
 
-For the normative operation and result shapes, see
-[Agent Commands](contracts/agent-commands.md) and
-[Architecture Service Schema](contracts/architecture-service.schema.json).
+## 10. Exercise Failure and Recovery Paths
 
-## 7. Retrieve Bounded Context
+Seed unsupported host, untrusted source, missing component, digest mismatch, command collision,
+missing preset override, missing extension runtime member, materialization failure, and partial update
+fixtures.
 
-Invoke the installed skill with the root module ID reported by initialization:
+Expected for every case:
 
-```text
-$speckit-concorde-context module.<project-slug>
-```
+- non-zero status and actionable diagnostics;
+- no false successful installation/update record;
+- no fallback to checkout files or managed core-script patching;
+- previous successful state retained or restored when possible;
+- any unrecoverable residual state named explicitly;
+- unchanged project-authored sources.
 
-Expected JSON/result summary includes only:
+If Spec Kit's public `replace` composition cannot establish selected-workspace routing before the
+legacy helper path on 0.16.4, stop this implementation. Record the missing upstream capability and
+required host version; do not add an undocumented installer patch.
 
-- the root module's responsibility, boundary, features, and I/O contracts;
-- immediate child summaries and their I/O contracts;
-- permitted external actors;
-- root-level scenarios and adjacent refinement links; and
-- stable references for navigating deeper.
+## 11. Update and Remove Safely
 
-It must not expand child feature bodies or any grandchild module. Compare the result shape with
-[context-response.json](contracts/examples/context-response.json).
-
-## 8. Validate and Test Determinism
-
-Invoke:
-
-```text
-$speckit-concorde-validate
-```
-
-Expected: status `success`, no error findings, and explicit `unknown` evidence where implementation
-evidence has not been supplied.
-
-Run the installed deterministic entry point three times and compare bytes:
-
-```bash
-.specify/extensions/concorde/scripts/bash/concorde.sh validate --format json > validation-1.json
-.specify/extensions/concorde/scripts/bash/concorde.sh validate --format json > validation-2.json
-.specify/extensions/concorde/scripts/bash/concorde.sh validate --format json > validation-3.json
-cmp validation-1.json validation-2.json
-cmp validation-2.json validation-3.json
-```
-
-Expected: both comparisons succeed and all runs return the same exit status.
-
-Seed one broken reference in a copy of the fixture and rerun validation. Expected: non-zero status and
-a finding containing rule ID, severity, project-relative source/location, message, and actionable
-remediation, without any source modification. See
-[validation-response.json](contracts/examples/validation-response.json).
-
-## 9. Verify Preset Composition
-
-Create a throwaway feature with the normal Spec Kit specify command, explicitly targeting the owning
-module's nested `features/<number-name>/` workspace. Verify the resulting single `spec.md` contains
-the feature's textual outcome and requirements plus Concorde stable-ID, providing-module, refinement,
-representative-scenario, contract, architecture-view, and evidence prompts in addition to the normal
-Spec Kit content.
-
-Run the normal plan and task phases. Verify:
-
-- the plan contains architecture ownership and boundary review gates; and
-- tasks require affected maintained architecture sources, contracts, validation, tests, and generated
-  freshness where applicable.
-
-There must be no second Concorde feature specification and no separate top-level architecture source
-tree.
-
-## 10. Verify Slash-Command Portability
-
-Repeat Sections 3 through 8 in a second clean project initialized with one supported slash-command
-integration. Use the registered slash syntax shown by that integration.
-
-Expected: all five commands are discoverable, exercise the same primary scenarios, invoke the same
-runtime operations, and return results conforming to the same schema. Agent-specific filenames or
-invocation separators may differ; intent and behavior may not.
-
-## 11. Update and Failure Recovery
-
-Publish a compatible fixture release in the local catalogs, then preview and update:
+Preview and accept a compatible fixture release, apply it, and compare the resulting component state
+with the accepted update plan. Then remove the bundle:
 
 ```bash
 specify bundle info concorde-starter --json > concorde-update-plan.json
 specify bundle update concorde-starter
-specify bundle list --json
-```
-
-Expected: component versions match the accepted update plan, while `.concorde/`, `specs/`, and all
-user configuration remain byte-identical.
-
-Run the injected-failure fixture from the repository test suite:
-
-```bash
-cd /path/to/concorde
-uv run python -m unittest tests.concorde.integration.test_bundle_lifecycle
-```
-
-Expected: a failed install/update is not recorded as successful, newly installed components are
-rolled back where possible, and any remaining partial state is named.
-
-## 12. Remove Safely
-
-Return to the clean project and record source hashes before removal:
-
-```bash
-find .concorde specs -type f -print0 | sort -z | xargs -0 sha256sum > sources-before.txt
 specify bundle remove concorde-starter
-find .concorde specs -type f -print0 | sort -z | xargs -0 sha256sum > sources-after.txt
-cmp sources-before.txt sources-after.txt
-specify bundle list
 ```
 
 Expected:
 
-- the Concorde bundle record and solely owned preset/extension registrations are removed;
-- a component shared with another installed bundle is retained;
-- project-authored `.concorde/` and `specs/` sources are unchanged; and
-- no unrelated agent artifacts are deleted.
+- only approved component versions change;
+- shared components remain installed;
+- solely bundle-owned components and records are removed;
+- lower command layers are rematerialized;
+- `.concorde/`, `specs/`, `docs/`, and unrelated agent artifacts remain unchanged.
 
-## 13. Run the Human First-Use and Comprehension Pilot
+## 12. Validate Diagrams and Publication
 
-Use first-time maintainers who have not contributed to this implementation. Give each participant
-the role explanation and diagram links near the beginning of this quickstart, with a maximum review
-time of five minutes. Then ask, without coaching:
+Validate both declared Feature 003 sources and their generated outputs:
 
-1. What does the bundle do?
-2. What does the preset do?
-3. What does the extension do?
-4. What does a catalog do?
-5. Does Concorde replace the normal Spec Kit lifecycle? Explain the relationship.
+- `diagrams/spec-kit-component-model.json` answers package ownership and static composition;
+- `diagrams/starter-installation-flow.json` answers release, install, materialization, use, update,
+  and removal order.
 
-A participant passes SC-011 only by answering all five prompts correctly: the bundle pins a recipe,
-the preset passively appends template guidance, the extension actively provides commands/runtime, the
-catalog supplies discovery/trust metadata, and Spec Kit continues to own its normal lifecycle. Record
-participant count, review duration, individual results, and the aggregate rate. At least 90% must
-pass. Keep the separate SC-001/SC-009 timing and unassisted-use observations in the same evidence
-record when practical.
+Require all Archify showcase checks, source/generator provenance, fresh generated HTML, four desktop
+containment sizes, light/dark perceptual evidence when a browser is available, and automatic
+embedding on the Feature 003 documentation page.
 
-## Acceptance Evidence
+Then run:
 
-Record the commands, platform, Spec Kit version, agent integration, artifact hashes, test results, and
-requirement mapping in `specs/concorde/features/003-install-concorde-speckit/implementation/validation.md` until the
-separated Feature 003 evidence record is produced during replanning.
-Pilot completion time and unassisted completion rate for SC-001 and SC-009, plus the five-minute role
-comprehension rate for SC-011, require human participant evidence. Automated tests may support but
-must not replace those measurements.
+```bash
+cd docsite
+npm run check
+```
+
+The diagrams are supplemental. The prose in the spec and contracts must remain understandable
+without them, and neither diagram may redefine the bounded root module architecture.
+
+## 13. Human Outcomes
+
+### SC-001 first-use pilot
+
+Recruit first-time maintainers who did not implement the feature. Give each participant only this
+quickstart and a supported clean target. Record start/end time, platform, assistance, completion, and
+failure point. At least 90% must inspect the plan and complete setup within 15 minutes.
+
+### SC-007 role-comprehension pilot
+
+Allow at most five minutes to review the mental model and diagrams. Without coaching, ask the
+participant to explain:
+
+1. catalog discovery/trust;
+2. the bundle's passive pins;
+3. the preset's template layers and normal-command replacements;
+4. the extension's five active commands/runtime;
+5. active-integration presentation;
+6. Architecture Core behavior;
+7. why Spec Kit still owns the normal lifecycle.
+
+A participant passes only by distinguishing all seven roles/boundaries correctly. At least 90% must
+pass. Automated diagram or documentation checks do not substitute for participant evidence.
+
+## Acceptance Record
+
+Record platform and Spec Kit versions, accepted plan digest, package and catalog digests, Feature 001
+handoff digest, fourteen installed-surface receipts, phase matrix, source-access audit, recomposition,
+failure and lifecycle results, diagram/docsite evidence, and human pilot data in
+`implementation/validation.md`.
+
+Historical validation that proved bundle lifecycle or command text presence remains useful baseline
+evidence, but it must not be remapped to FR-006–008, FR-018–021, FR-029, SC-004, or SC-009–011 until
+the clean installed execution and recomposition evidence above exists.

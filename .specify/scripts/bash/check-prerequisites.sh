@@ -114,10 +114,13 @@ if $PATHS_ONLY; then
                 --arg feature_spec "$FEATURE_SPEC" \
                 --arg impl_plan "$IMPL_PLAN" \
                 --arg tasks "$TASKS" \
-                '{REPO_ROOT:$repo_root,BRANCH:$branch,FEATURE_DIR:$feature_dir,IMPLEMENTATION_DIR:$implementation_dir,FEATURE_SPEC:$feature_spec,IMPL_PLAN:$impl_plan,TASKS:$tasks}'
+                --arg contracts_dir "$CONTRACTS_DIR" \
+                --arg checklists_dir "$CHECKLISTS_DIR" \
+                --arg diagrams_dir "$DIAGRAMS_DIR" \
+                '{REPO_ROOT:$repo_root,BRANCH:$branch,FEATURE_DIR:$feature_dir,IMPLEMENTATION_DIR:$implementation_dir,FEATURE_SPEC:$feature_spec,IMPL_PLAN:$impl_plan,TASKS:$tasks,CONTRACTS_DIR:$contracts_dir,CHECKLISTS_DIR:$checklists_dir,DIAGRAMS_DIR:$diagrams_dir}'
         else
-            printf '{"REPO_ROOT":"%s","BRANCH":"%s","FEATURE_DIR":"%s","IMPLEMENTATION_DIR":"%s","FEATURE_SPEC":"%s","IMPL_PLAN":"%s","TASKS":"%s"}\n' \
-                "$(json_escape "$REPO_ROOT")" "$(json_escape "$CURRENT_BRANCH")" "$(json_escape "$FEATURE_DIR")" "$(json_escape "$IMPLEMENTATION_DIR")" "$(json_escape "$FEATURE_SPEC")" "$(json_escape "$IMPL_PLAN")" "$(json_escape "$TASKS")"
+            printf '{"REPO_ROOT":"%s","BRANCH":"%s","FEATURE_DIR":"%s","IMPLEMENTATION_DIR":"%s","FEATURE_SPEC":"%s","IMPL_PLAN":"%s","TASKS":"%s","CONTRACTS_DIR":"%s","CHECKLISTS_DIR":"%s","DIAGRAMS_DIR":"%s"}\n' \
+                "$(json_escape "$REPO_ROOT")" "$(json_escape "$CURRENT_BRANCH")" "$(json_escape "$FEATURE_DIR")" "$(json_escape "$IMPLEMENTATION_DIR")" "$(json_escape "$FEATURE_SPEC")" "$(json_escape "$IMPL_PLAN")" "$(json_escape "$TASKS")" "$(json_escape "$CONTRACTS_DIR")" "$(json_escape "$CHECKLISTS_DIR")" "$(json_escape "$DIAGRAMS_DIR")"
         fi
     else
         echo "REPO_ROOT: $REPO_ROOT"
@@ -127,6 +130,9 @@ if $PATHS_ONLY; then
         echo "FEATURE_SPEC: $FEATURE_SPEC"
         echo "IMPL_PLAN: $IMPL_PLAN"
         echo "TASKS: $TASKS"
+        echo "CONTRACTS_DIR: $CONTRACTS_DIR"
+        echo "CHECKLISTS_DIR: $CHECKLISTS_DIR"
+        echo "DIAGRAMS_DIR: $DIAGRAMS_DIR"
     fi
     exit 0
 fi

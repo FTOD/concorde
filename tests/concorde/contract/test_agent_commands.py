@@ -1,4 +1,5 @@
 import os
+import json
 import subprocess
 import sys
 import tempfile
@@ -23,6 +24,41 @@ class AgentCommandContractTests(unittest.TestCase):
             content = path.read_text()
             self.assertIn(".specify/extensions/concorde/scripts/", content)
             self.assertNotIn(str(REPOSITORY_ROOT), content)
+
+    def test_distribution_handoff_names_nine_normal_and_five_concorde_intents(self):
+        contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts"
+        command_contract = (contracts / "agent-commands.md").read_text(encoding="utf-8")
+        schema = json.loads((contracts / "feature-workspace.schema.json").read_text(encoding="utf-8"))
+        for command in (
+            "specify",
+            "clarify",
+            "checklist",
+            "plan",
+            "tasks",
+            "implement",
+            "analyze",
+            "converge",
+            "taskstoissues",
+        ):
+            self.assertIn(command, command_contract)
+        for command in ("init", "feature.create", "feature.select", "context", "validate"):
+            self.assertIn(command, command_contract)
+        self.assertEqual(schema["$defs"]["workspacePaths"]["required"], [
+            "feature_directory",
+            "feature_spec",
+            "contracts_dir",
+            "checklists_dir",
+            "diagrams_dir",
+            "implementation_dir",
+            "implementation_state",
+            "plan",
+            "research",
+            "data_model",
+            "quickstart",
+            "tasks",
+            "validation",
+        ])
+        self.assertIn("Workflow Distribution Handoff", command_contract)
 
     def test_python_launcher_preserves_exit_and_handles_quoted_root(self):
         launcher = REPOSITORY_ROOT / "extensions/concorde/scripts/python/concorde.py"

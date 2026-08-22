@@ -14,9 +14,28 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
             self.assertIn(payload["operation"], {"feature.create", "feature.select"})
             self.assertEqual(
                 set(payload["workspace"]),
-                {"feature_directory", "feature_spec", "implementation_dir", "plan", "tasks"},
+                {
+                    "feature_directory",
+                    "feature_spec",
+                    "contracts_dir",
+                    "checklists_dir",
+                    "diagrams_dir",
+                    "implementation_dir",
+                    "implementation_state",
+                    "plan",
+                    "research",
+                    "data_model",
+                    "quickstart",
+                    "tasks",
+                    "validation",
+                },
             )
-            for value in (*payload["workspace"].values(), *payload["artifacts"]):
+            path_values = (
+                value
+                for key, value in payload["workspace"].items()
+                if key != "implementation_state"
+            )
+            for value in (*path_values, *payload["artifacts"]):
                 self.assertFalse(Path(value).is_absolute())
                 self.assertNotIn("\\", value)
                 self.assertNotIn("..", Path(value).parts)

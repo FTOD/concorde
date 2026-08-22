@@ -73,7 +73,17 @@
       "links": [],
       "featureId": "feature.concorde.publish-project-docsite",
       "moduleId": "module.concorde",
-      "status": "Implemented"
+      "status": "Implemented",
+      "diagrams": [
+        {
+          "source": "specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json",
+          "sourceSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "kind": "sequence",
+          "scenarios": ["publish-architecture"],
+          "title": "Project Docsite — Publication Invocation",
+          "route": "/architecture/project-docsite-publication-flow.html"
+        }
+      ]
     }
   ],
   "excludedSources": [
@@ -86,6 +96,7 @@
     "/",
     "/architecture/concorde/module.concorde",
     "/architecture/concorde-root.html",
+    "/architecture/project-docsite-publication-flow.html",
     "/docs/",
     "/features/concorde/features/002-create-project-docsite/feature.concorde.publish-project-docsite"
   ],

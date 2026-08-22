@@ -11,7 +11,10 @@ normative maintained-source representation used by that service, not an addition
 
 - Markdown owns module, feature, scenario, contract, constraint, and decision prose plus stable
   relationship metadata.
-- Archify JSON owns module-level component placement, connections, and named scenario views.
+- A module's `architecture.json` owns its bounded component placement, connections, and canonical
+  named scenario views. Descriptively named feature-owned Archify JSON may supplement that view by
+  explaining component invocation, workflow, sequence, data flow, or lifecycle for representative
+  scenarios; it does not own feature behavior or module boundaries.
 - Each feature has one canonical module-owned specification at
   `specs/<root-slug>[/modules/<child-slug>...]/features/<number-name>/spec.md`; its textual outcome and
   requirements are primary, while scenarios are representative examples. Architecture metadata and
@@ -25,6 +28,8 @@ Each feature root separates durable intent from one temporal delivery attempt:
 ```text
 features/<number-name>/
 ├── spec.md
+├── diagrams/
+│   └── <scenario-or-question>.json
 ├── contracts/
 ├── checklists/
 └── implementation/
@@ -36,8 +41,8 @@ features/<number-name>/
     └── validation.md
 ```
 
-`spec.md`, feature-level contract definitions/representations, and requirements-quality checklists
-are durable. The files below `implementation/` describe and evidence at most one active delivery
+`spec.md`, declared feature-owned Archify JSON below `diagrams/`, feature-level contract definitions/representations,
+and requirements-quality checklists are durable. The files below `implementation/` describe and evidence at most one active delivery
 attempt. They are not architecture entities and do not amend feature behavior by changing. Root-level
 `plan.md`, `tasks.md`, research, technical models, acceptance guides, or delivery evidence are
 invalid; compatibility copies and symlinks are prohibited.
@@ -129,6 +134,12 @@ contracts:
     - contract.example.workflow
   required: []
 architecture_view: specs/example/architecture.json
+diagrams:
+  - source: specs/example/features/001-outcome/diagrams/primary-sequence.json
+    kind: sequence
+    scenarios:
+      - scenario.example.primary
+    output: generated/architecture/example-primary-sequence.html
 evidence_status: unknown
 canonical_spec: specs/example/features/001-outcome/spec.md
 ```
@@ -140,6 +151,14 @@ scenario references supply examples and do not exhaustively define the feature.
 The `canonical_spec` path must equal the document's own project-relative path. Its containing feature
 root must match the providing module's package and may contain at most one active
 `implementation/` child. Durable feature metadata must never be inferred from that child.
+
+`diagrams` is optional for a simple feature with a recorded sufficiency rationale. Each entry has a
+safe `source` immediately below the feature's `diagrams/` directory, an Archify `kind`, one or more
+scenario IDs or a named question, and a safe generated `output`. A cross-component scenario requires
+a declared diagram unless the Markdown records why its text and module-level view are sufficient.
+The source filename must be descriptive and must not be `architecture.json`; its generated output is
+evidence, not maintained intent. Documentation publication discovers these declarations and embeds
+every fresh generated view on the canonical feature page automatically.
 
 ### Contract
 
@@ -185,6 +204,15 @@ satisfy Concorde visibility rules:
 - every referenced scenario belongs to the current module level;
 - every connection endpoint resolves within the view; and
 - every boundary-crossing connection can be traced to a declared contract in maintained Markdown.
+
+### Feature-owned explanatory view
+
+The JSON document follows the matching Archify schema for `architecture`, `workflow`, `sequence`,
+`dataflow`, or `lifecycle`. It must identify the scenario or question it explains, use participants
+consistent with maintained module/contract prose, preserve ordered and directional interactions, and
+have a complete textual counterpart in `spec.md`. Boundary-crossing interactions name or trace to
+their governing contract. Validation and delivery are deterministic; visual-check automation records
+containment/captures but never substitutes for human perceptual review.
 
 ## Stable IDs
 

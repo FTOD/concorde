@@ -33,6 +33,13 @@ delivery artifacts under `implementation/`.
 `scenario.integration.place-and-select-feature` illustrates reviewed placement followed by normal
 specification and phase-specific path routing. It is an example, not the feature definition.
 
+## Diagram Decision
+
+The parent feature's `diagrams/core-workflow-scenarios.json` sequence shows `feature.create`/`feature.select`
+invoking this Integration-owned workspace service, followed by the normal Spec Kit lifecycle and
+Architecture Core context. It is the text-backed cross-component view for this refinement; another
+child diagram would duplicate that invocation path.
+
 ## Requirements
 
 - Creation must not silently choose or change architectural ownership.
@@ -46,6 +53,6 @@ specification and phase-specific path routing. It is an example, not the feature
 ## Evidence
 
 Automated contract, integration, and acceptance tests verify proposal safety, deterministic nested
-placement, atomic selection, explicit resume handling, all nine phase-routing addenda, and both
+placement, atomic selection, explicit resume handling, all nine complete phase-command replacements, and both
 Codex-skill and slash-command composition in clean projects. Evidence remains `partial` because the
 human placement and authority-comprehension protocols have not been conducted.

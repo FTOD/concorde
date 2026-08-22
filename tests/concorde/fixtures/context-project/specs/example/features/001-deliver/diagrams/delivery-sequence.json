@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Example Delivery Invocation",
+    "quality_profile": "showcase",
+    "output": "../../../../../generated/architecture/example-delivery-sequence.html"
+  },
+  "participants": [
+    { "id": "maintainer", "type": "external", "label": "Maintainer" },
+    { "id": "service", "type": "backend", "label": "Service" }
+  ],
+  "messages": [
+    { "id": "deliver", "from": "maintainer", "to": "service", "y": 180, "label": "deliver" }
+  ]
+}

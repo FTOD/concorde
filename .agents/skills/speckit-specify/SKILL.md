@@ -128,6 +128,14 @@ Given that feature description, do this:
        - Prioritize clarifications by impact: scope > security/privacy > user experience > technical details
     4. Fill User Scenarios & Testing section
        If no clear user flow: ERROR "Cannot determine user scenarios"
+       Evaluate each representative scenario for a feature-owned Archify diagram. Encourage a
+       component, workflow, sequence, data-flow, or lifecycle view when it materially clarifies
+       participation, invocation order, boundary crossings, state, or data movement. For a
+       cross-component scenario, create a text-backed diagram in the feature's `diagrams/` directory
+       under a descriptive filename other than `architecture.json`, or record why prose and the
+       bounded module view are sufficient. Declare every diagram in `spec.md` so Documentation can
+       embed it automatically. Diagrams supplement the textual feature and contracts; they do not
+       define new behavior or low-level class/function inventories.
     5. Generate Functional Requirements
        Each requirement must be testable
        Use reasonable defaults for unspecified details (document assumptions in Assumptions section)
@@ -173,6 +181,7 @@ Given that feature description, do this:
 
       - [ ] All functional requirements have clear acceptance criteria
       - [ ] User scenarios cover primary flows
+      - [ ] Cross-component scenarios have a text-backed feature diagram or a clear sufficiency rationale
       - [ ] Feature meets measurable outcomes defined in Success Criteria
       - [ ] No implementation details leak into specification
 

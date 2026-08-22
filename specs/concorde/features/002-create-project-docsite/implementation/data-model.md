@@ -63,9 +63,27 @@ Extends Source Document with Spec Kit and Concorde identity.
 | `moduleId` | stable module ID | Required from YAML `module`. |
 | `status` | non-empty string | Required from the specification metadata block. |
 | `featureDirectory` | project-relative directory | Parent directory of canonical `spec.md`. |
+| `diagrams` | Feature Diagram list | Derived only from the specification's declarations; sorted by source path. |
 
 Only the canonical `spec.md` becomes a Feature Specification. Other files in the feature directory
 become Excluded Source records and are never labeled as feature specifications.
+
+#### 2.2.1 Feature Diagram
+
+Maintained visual explanation owned by one Feature Specification but not itself a content page.
+
+| Field | Type | Rules |
+|---|---|---|
+| `source` | project-relative path | Directly below the owning feature's `diagrams/`; descriptive JSON filename. |
+| `sourceSha256` | lowercase hex string | SHA-256 of the exact maintained JSON bytes. |
+| `kind` | Archify diagram kind | Must agree with JSON `diagram_type`. |
+| `scenarios` | non-empty ID/question list | Declared by the owning `spec.md`. |
+| `title` | non-empty string | Read from JSON `meta.title`. |
+| `route` | generated site route | Derived from a matching `meta.output` beneath `generated/`. |
+
+The generated HTML must exist before publication. The shared feature layout sandbox-embeds each
+diagram, displays source provenance, and provides a standalone-view link. The JSON remains durable
+explanatory intent; HTML and page markup remain generated projections.
 
 ### 2.3 Architecture Source
 
@@ -119,6 +137,7 @@ Read-only projection of one validated Source Document.
 | `title` | string | Mirrors the canonical source title. |
 | `navigation` | Navigation Entry | Exactly one primary placement. |
 | `featureMetadata` | optional object | Feature ID, module, and status for feature pages only. |
+| `diagrams` | optional Feature Diagram list | Included for feature pages, including an empty list when none are declared. |
 
 The Content Page does not own prose. Presentation components may add provenance chrome but cannot
 rewrite canonical requirements or documentation meaning.

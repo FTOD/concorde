@@ -1,10 +1,11 @@
 import os
+import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.paths import RUNTIME_ROOT, VALID_PROJECT
+from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT, VALID_PROJECT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
@@ -48,6 +49,23 @@ class RepositoryTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(RepositoryError, "unsupported"):
                 ProjectRepository(root).load_config()
+
+    def test_rejects_declared_feature_diagram_outside_diagrams_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "project"
+            shutil.copytree(CONTEXT_PROJECT, root)
+            feature_root = root / "specs/example/features/001-deliver"
+            source = feature_root / "spec.md"
+            source.write_text(
+                source.read_text(encoding="utf-8").replace(
+                    "specs/example/features/001-deliver/diagrams/delivery-sequence.json",
+                    "specs/example/features/001-deliver/delivery-sequence.json",
+                ),
+                encoding="utf-8",
+            )
+            shutil.copyfile(feature_root / "diagrams/delivery-sequence.json", feature_root / "delivery-sequence.json")
+            with self.assertRaisesRegex(RepositoryError, "directly under diagrams"):
+                ProjectRepository(root).load()
 
 
 if __name__ == "__main__":

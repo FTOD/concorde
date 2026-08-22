@@ -61,7 +61,7 @@ production build only
 | Recursive, bounded architecture | PASS — the root feature uses the root publication trace and is realized by Documentation. | PASS — the adjacent Documentation refinement and its bounded one-level view exist without exposing child internals at the root. |
 | Explicit ownership and feature alignment | PASS — `feature.concorde.publish-project-docsite` owns the project outcome at the root level. | PASS — `feature.documentation.publish-project-docsite` is owned by `module.concorde.documentation` and refines only the adjacent root feature. |
 | Contracts govern every boundary | PASS — publication is already exposed through `contract.documentation.architecture-site`; source and build details require design contracts. | PASS — content-source, build-command, published-site, and manifest contracts now define inputs, outputs, failures, compatibility, and evidence. |
-| One authority per fact | PASS — feature `spec.md` owns behavioral intent, module/contract Markdown owns architectural prose, Archify JSON owns view structure, and `docs/` owns project documentation. | PASS — canonical-path provenance, ignored staging/build directories, and disposable projections/indexes preserve those authorities; the site and Archify HTML remain generated read models. |
+| One authority per fact | PASS — feature `spec.md` owns behavioral intent, module/contract Markdown owns architectural prose, module and feature-owned Archify JSON own their distinct structural/explanatory views, and `docs/` owns project documentation. | PASS — canonical-path provenance, ignored staging/build directories, and disposable projections/indexes preserve those authorities; the site and Archify HTML remain generated read models. |
 | Deterministic validation and reviewed evidence | PASS — the feature requires reproducible builds and explicit diagnostics without an LLM. | PASS — sorted registries, schema checks, fixture tests, route verification, and atomic promotion supply deterministic evidence. |
 | Accessibility, provenance, and textual representation | PASS — all initial sources are textual and the specification requires provenance. | PASS — the shared page wrapper exposes content kind, source path, ID/status where applicable, and semantic text outside presentation chrome. |
 
@@ -75,11 +75,16 @@ visual review remains separately recorded as pending where the required browser 
 
 ```text
 specs/concorde/features/002-create-project-docsite/
-├── plan.md
-├── research.md
-├── data-model.md
-├── quickstart.md
+├── spec.md
+├── diagrams/
+│   └── project-docsite-publication-flow.json
 ├── contracts/
+└── implementation/
+    ├── plan.md
+    ├── research.md
+    ├── data-model.md
+    ├── quickstart.md
+    └── tasks.md
 │   ├── build-interface.md
 │   ├── build-manifest-contract.md
 │   ├── build-manifest.schema.json
@@ -177,7 +182,8 @@ specs/concorde/
 
 generated/architecture/
 ├── concorde-root.html               # regenerated Archify projection, never edited
-└── documentation.html              # regenerated Archify projection, never edited
+├── documentation.html               # regenerated Archify projection, never edited
+└── project-docsite-publication-flow.html # feature-owned explanatory projection, never edited
 ```
 
 **Structure Decision**: `docsite/` is a self-contained npm project and owns only publication code,
@@ -263,15 +269,18 @@ The architecture-complete design is now represented by:
 4. feature-local Phase 1 contract documents, schemas, and examples that define the detailed
    representation and behavior referenced by those module contracts;
 5. bounded root and Documentation Archify views that preserve one-level visibility; and
-6. validated, regenerated HTML projections and recorded executable publication evidence.
+6. a separate text-backed Feature 002 sequence that explains build-component invocation without
+   expanding either module view; and
+7. validated, regenerated HTML projections and recorded executable publication evidence.
 
 ## Implementation Phases
 
 ### Phase A — Architecture and Contracts
 
 Establish module ownership, adjacent refinement, boundary-contract registrations, detailed
-representations, and Archify views first. Validate stable IDs, one-level visibility, cross-boundary
-interactions, and generated Archify freshness.
+representations, module Archify views, and the feature-owned publication sequence first. Validate
+stable IDs, one-level visibility, text/diagram agreement, cross-boundary interactions, and generated
+Archify freshness.
 
 ### Phase B — Independent Site Skeleton
 

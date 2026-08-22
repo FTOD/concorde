@@ -23,23 +23,19 @@ class WorkspacePaths:
     feature_spec: str
     contracts_dir: str
     checklists_dir: str
+    diagrams_dir: str
     implementation_dir: str
+    implementation_state: str
     plan: str
-    tasks: str
     research: str
     data_model: str
     quickstart: str
+    tasks: str
     validation: str
-    lifecycle: str
 
     def protocol_paths(self) -> dict[str, str]:
-        return {
-            "feature_directory": self.feature_directory,
-            "feature_spec": self.feature_spec,
-            "implementation_dir": self.implementation_dir,
-            "plan": self.plan,
-            "tasks": self.tasks,
-        }
+        """Return the complete protocol-defined workspace path/state record."""
+        return self.to_dict()
 
     def to_dict(self) -> dict[str, str]:
         return asdict(self)
@@ -51,7 +47,7 @@ IMPLEMENTATION_PHASES = frozenset(
 )
 
 
-def _lifecycle(root: Path) -> str:
+def _implementation_state(root: Path) -> str:
     implementation = root / "implementation"
     if not implementation.exists():
         return "absent"
@@ -78,15 +74,34 @@ def resolve_phase_paths(project_root: str | Path, feature_directory: str) -> Wor
         feature_spec=f"{relative}/spec.md",
         contracts_dir=f"{relative}/contracts",
         checklists_dir=f"{relative}/checklists",
+        diagrams_dir=f"{relative}/diagrams",
         implementation_dir=implementation,
+        implementation_state=_implementation_state(root),
         plan=f"{implementation}/plan.md",
-        tasks=f"{implementation}/tasks.md",
         research=f"{implementation}/research.md",
         data_model=f"{implementation}/data-model.md",
         quickstart=f"{implementation}/quickstart.md",
+        tasks=f"{implementation}/tasks.md",
         validation=f"{implementation}/validation.md",
-        lifecycle=_lifecycle(root),
     )
+
+
+def resolve_planned_phase_paths(project_root: str | Path, feature_directory: str) -> WorkspacePaths:
+    """Resolve a safe not-yet-specified feature root for the specify phase only."""
+    project = Path(project_root).resolve()
+    try:
+        relative = safe_relative_path(feature_directory.rstrip("/"))
+        repository = ProjectRepository(project)
+        config = repository.load_config()
+        root = repository.resolve(relative)
+    except RepositoryError as error:
+        raise WorkspaceError(str(error)) from error
+    specification_root = config["specification_root"].rstrip("/")
+    if relative == specification_root or not relative.startswith(specification_root + "/"):
+        raise WorkspaceError("planned feature root must remain below the configured specification root")
+    if root.is_symlink() or (root.exists() and not root.is_dir()):
+        raise WorkspaceError("planned feature root must be an absent path or a real directory")
+    return _planned_paths(relative)
 
 
 def _selection_path(project_root: Path) -> Path:
@@ -107,12 +122,18 @@ def _read_persisted_selection(project_root: Path) -> str:
 def resolve_selected_workspace(
     project_root: str | Path,
     explicit_feature_directory: str | None = None,
+    allow_missing_spec: bool = False,
 ) -> WorkspacePaths:
     project = Path(project_root).resolve()
     selected = explicit_feature_directory or os.environ.get("SPECIFY_FEATURE_DIRECTORY")
     if not selected:
         selected = _read_persisted_selection(project)
-    return resolve_phase_paths(project, selected)
+    try:
+        return resolve_phase_paths(project, selected)
+    except WorkspaceError:
+        if not allow_missing_spec:
+            raise
+        return resolve_planned_phase_paths(project, selected)
 
 
 def persist_selection(project_root: str | Path, feature_directory: str) -> str:
@@ -147,14 +168,15 @@ def _planned_paths(relative: str) -> WorkspacePaths:
         feature_spec=f"{relative}/spec.md",
         contracts_dir=f"{relative}/contracts",
         checklists_dir=f"{relative}/checklists",
+        diagrams_dir=f"{relative}/diagrams",
         implementation_dir=implementation,
+        implementation_state="absent",
         plan=f"{implementation}/plan.md",
-        tasks=f"{implementation}/tasks.md",
         research=f"{implementation}/research.md",
         data_model=f"{implementation}/data-model.md",
         quickstart=f"{implementation}/quickstart.md",
+        tasks=f"{implementation}/tasks.md",
         validation=f"{implementation}/validation.md",
-        lifecycle="absent",
     )
 
 
@@ -308,7 +330,7 @@ def select_feature(project_root: str | Path, target: str, resume: bool = False) 
         paths = resolve_phase_paths(project, root)
     except WorkspaceError as error:
         return OperationResult("feature.select", target, "invalid", findings=(_workspace_finding("CONCORDE-WORKSPACE-010", feature.path, str(error), "Restore a safe canonical feature root."),))
-    if paths.lifecycle == "active" and any((project / paths.implementation_dir).iterdir()) and not resume:
+    if paths.implementation_state == "active" and any((project / paths.implementation_dir).iterdir()) and not resume:
         return OperationResult(
             "feature.select",
             target,

@@ -37,13 +37,38 @@
     "workspacePaths": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["feature_directory", "feature_spec", "implementation_dir", "plan", "tasks"],
+      "required": [
+        "feature_directory",
+        "feature_spec",
+        "contracts_dir",
+        "checklists_dir",
+        "diagrams_dir",
+        "implementation_dir",
+        "implementation_state",
+        "plan",
+        "research",
+        "data_model",
+        "quickstart",
+        "tasks",
+        "validation"
+      ],
       "properties": {
         "feature_directory": { "$ref": "#/$defs/safePath" },
         "feature_spec": { "$ref": "#/$defs/safePath" },
+        "contracts_dir": { "$ref": "#/$defs/safePath" },
+        "checklists_dir": { "$ref": "#/$defs/safePath" },
+        "diagrams_dir": { "$ref": "#/$defs/safePath" },
         "implementation_dir": { "$ref": "#/$defs/safePath" },
+        "implementation_state": {
+          "type": "string",
+          "enum": ["absent", "active", "accepted", "frozen", "archived", "removed"]
+        },
         "plan": { "$ref": "#/$defs/safePath" },
-        "tasks": { "$ref": "#/$defs/safePath" }
+        "research": { "$ref": "#/$defs/safePath" },
+        "data_model": { "$ref": "#/$defs/safePath" },
+        "quickstart": { "$ref": "#/$defs/safePath" },
+        "tasks": { "$ref": "#/$defs/safePath" },
+        "validation": { "$ref": "#/$defs/safePath" }
       }
     },
     "request": {
@@ -61,7 +86,9 @@
             "feature_id": { "type": "string", "minLength": 1 },
             "short_name": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
             "number": { "type": "string", "pattern": "^[0-9]{3,}$" },
-            "approved": { "type": "boolean" }
+            "approved": { "type": "boolean" },
+            "proposal_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+            "resume": { "type": "boolean" }
           }
         }
       }

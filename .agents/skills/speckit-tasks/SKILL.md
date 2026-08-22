@@ -59,6 +59,8 @@ You **MUST** consider the user input before proceeding (if not empty).
 2. **Load design documents** using the returned paths:
    - **Required**: IMPL_PLAN (tech stack, libraries, structure), FEATURE_SPEC (user stories with priorities)
    - **Optional**: `IMPLEMENTATION_DIR/data-model.md` (entities), `FEATURE_DIR/contracts/` (durable interface contracts), `IMPLEMENTATION_DIR/research.md` (decisions), `IMPLEMENTATION_DIR/quickstart.md` (test scenarios)
+   - **IF REFERENCED**: Load feature-owned Archify JSON beside `FEATURE_SPEC` as durable explanatory
+     sources; do not confuse them with module-level `architecture.json` or generated HTML.
    - **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints
    - Note: Not all projects have all documents. Generate tasks based on what's available.
 
@@ -72,6 +74,10 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Generate dependency graph showing user story completion order
    - Create parallel execution examples per user story
    - Validate task completeness (each user story has all needed tasks, independently testable)
+   - For every required feature diagram, generate tasks for aligned prose, scenario/contract
+     traceability, maintained Archify JSON, showcase validation, HTML delivery, truthful visual-review
+     status, freshness, and automatic embedding on the canonical feature page. Require its source
+     under the feature's `diagrams/` directory. Do not create a task that edits generated HTML as intent.
 
 4. **Generate TASKS (`IMPLEMENTATION_DIR/tasks.md`)**: Use TASKS_TEMPLATE_CONTENT (from the JSON output above) as the structure. For compatibility with older setup scripts that omit TASKS_TEMPLATE_CONTENT, read TASKS_TEMPLATE instead. Fill with:
    - Correct feature name from plan.md
@@ -210,5 +216,6 @@ Every task MUST strictly follow this format:
 ## Done When
 
 - [ ] tasks.md generated with all phases, task IDs, and file paths
+- [ ] Every required feature diagram has complete source, validation, delivery, and freshness tasks
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with task count, story breakdown, and MVP scope

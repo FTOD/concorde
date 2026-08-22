@@ -21,22 +21,26 @@ evidence_status: partial
 
 ## Purpose
 
-Append Concorde architecture guidance to Spec Kit's normal lifecycle and preserve the selected
-feature's durable/temporal path boundary.
+Compose Concorde architecture guidance and selected-workspace routing into Spec Kit's normal
+lifecycle while preserving the selected feature's durable/temporal path boundary.
 
 ## Information
 
-The standard preset format carries template identity, source path, priority, and append strategy.
+The standard preset format carries template or command identity, source path, priority, and
+composition strategy. Concorde contributes three template layers and nine existing-command layers.
 
 ## Obligations
 
 Composition preserves core phase semantics and one canonical root `spec.md` while adding ownership,
-contract, view, evidence, and freshness gates. Installed phase adapters resolve planning and delivery
-artifacts below `implementation/` and never create root aliases.
+contract, view, evidence, and freshness gates. The installed winning command surface resolves the
+selected workspace before any inherited step assumes a root-level temporal artifact. Durable phases
+use the feature root; planning and delivery phases use `implementation/`; neither path creates root
+aliases. Repository-local self-hosting commands and scripts are not distributed evidence.
 
 ## Failure Semantics
 
-Missing fragments or an incompatible resolver stop composition with a diagnostic.
+Missing fragments, ambiguous winning layers, an inherited root-path step that runs before workspace
+resolution, or an incompatible resolver stop composition with a diagnostic.
 
 ## Compatibility
 
@@ -44,5 +48,7 @@ Validated against the Spec Kit 0.16.4 composition stack.
 
 ## Evidence
 
-Append-only templates are verified by resolver-stack tests. Evidence remains partial until public
-preset command composition delivers the complete phase path matrix in clean installed projects.
+Template composition is verified by resolver-stack tests. Evidence remains partial until the
+installed winning surfaces execute the complete phase-path matrix in clean skills and slash-command
+projects with the source checkout unavailable. Disable preserves registered commands according to
+Spec Kit 0.16.4; removal restores surviving lower layers.

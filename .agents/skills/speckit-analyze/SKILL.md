@@ -86,6 +86,7 @@ Load only the minimal necessary context from each artifact:
 - Success Criteria (measurable outcomes — e.g., performance, security, availability, user success, business impact)
 - User Stories
 - Edge Cases (if present)
+- Feature-diagram decisions, maintained JSON paths, textual counterparts, and sufficiency rationales
 
 **From plan.md:**
 
@@ -145,6 +146,9 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 - Requirements with zero associated tasks
 - Tasks with no mapped requirement/story
 - Success Criteria requiring buildable work (performance, security, availability) not reflected in tasks
+- Required feature diagrams with no plan/tasks coverage for prose alignment, contract traceability,
+  `diagrams/` placement, Archify validation, delivery, automatic feature-page embedding,
+  visual-review status, or freshness
 
 #### F. Inconsistency
 
@@ -152,6 +156,9 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 - Data entities referenced in plan but absent in spec (or vice versa)
 - Task ordering contradictions (e.g., integration tasks before foundational setup tasks without dependency note)
 - Conflicting requirements (e.g., one requires Next.js while other specifies Vue)
+- Feature diagram participants/interactions that conflict with textual scenarios or contracts, or
+  diagram sources outside `diagrams/`, undeclared/unembedded diagrams, or generated projections
+  treated as maintained authority
 
 ### 5. Severity Assignment
 

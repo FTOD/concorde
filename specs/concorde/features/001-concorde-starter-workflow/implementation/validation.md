@@ -1,69 +1,54 @@
 # Validation Record: Concorde Core Workflow Refactoring
 
-**Feature**: `feature.concorde.core-workflow`  
-**Attempt state**: active  
+**Feature**: `feature.concorde.core-workflow`
+**Attempt state**: active
 **Evidence status**: partial
 
-This record belongs only to the current Feature 001 implementation attempt. Installation and bundle
-lifecycle evidence remains under Feature 003.
-
-## Baseline
-
-- Existing deterministic operations: `init`, `context`, and `validate`.
-- Existing installed command surfaces: three Concorde extension commands.
-- Known gaps at attempt start: nested feature create/select, installable temporal-path composition,
-  architecture-readiness output, feature-specific context, representation conformance, evidence
-  disagreement, and generated-projection freshness.
-- Baseline Python suite before this refactor: 54 passing tests.
-- Baseline documentation gate before this refactor: 29 passing tests, 31 validated pages, successful
-  production build.
+This record belongs to the current temporal implementation attempt. Feature 003 owns proof that the
+same workflow is installed into a clean project from release archives.
 
 ## Automated Evidence
 
-### Core workflow and compatibility
+### Core workflow
 
-- `uv run python -m unittest discover -s tests/concorde -v`: 74 tests passed. The suite covers
-  proposal safety, nested feature creation and selection, explicit resume handling, durable/temporal
-  path routing, readiness review, bounded context, contract conformance, evidence/freshness findings,
-  release determinism, installed command registration, and clean-project preset composition.
-- Both supported command presentations were exercised: Codex skills and Gemini-style slash commands.
-  The installed extension exposes five public Concorde commands; the preset contributes three
-  append-only template fragments and nine append-only Spec Kit command-routing fragments.
-- `uv run python extensions/concorde/scripts/python/concorde.py --project-root . validate`: success
-  across 32 canonical architecture artifacts with zero errors, warnings, or informational findings.
-  Final source digest:
-  `sha256:81db4d56414740899124362993d5e7918c642578b0919506c36379fb7ad8fd68`.
+- `uv run python -m unittest discover -s tests/concorde -p 'test_*.py' -v`: **86 tests passed**.
+- The suite covers review-first initialization; one-level root/child context; deterministic nested
+  feature placement proposals; atomic selection and explicit resume; complete durable/temporal phase
+  paths; architecture readiness; contract example conformance; scenario crossings; bounded active
+  feature context; evidence/freshness findings; three-run determinism; and source immutability.
+- Codex skills and Gemini slash-command presentations expose equivalent five-command Concorde intent.
+  Feature 003 separately proves those surfaces from built archives.
+- `uv run python extensions/concorde/scripts/python/concorde.py --project-root . validate --format json`
+  returned `success` over **36 canonical artifacts**, with zero errors, warnings, or informational
+  findings. Source digest:
+  `sha256:c8edebe687c24c33310746569c63accf267368a35ca45ffd8653be111b13ae39`.
 
-### Architecture and documentation projections
+### Feature diagram and documentation
 
-- Archify showcase validation passed 9/9 checks with zero errors and zero warnings for both
-  `specs/concorde/architecture.json` and
-  `specs/concorde/modules/documentation/architecture.json`.
-- Archify delivery regenerated `generated/architecture/concorde-root.html` and
-  `generated/architecture/documentation.html`. Their source/artifact SHA-256 pairs are
-  `0bb4ec…/ac3798…` and `b96cec…/a5d189…`, respectively. The root view now exposes
-  all three root features and their user-to-module invocation paths.
-- Browser visual checks were attempted but skipped because Chrome/Chromium is unavailable in the
-  execution environment. Their receipts correctly retain `visualReview: pending`; structural
-  validation is not presented as perceptual review.
-- `npm run check` in `docsite/`: TypeScript passed, 14 test files and 29 tests passed, 31 pages were
-  validated with 27 excluded sources and zero errors, and the production build was promoted to
-  `docsite/build/`.
+- `diagrams/core-workflow-scenarios.json` passed all **9/9 Archify showcase checks** with zero
+  composition errors and zero warnings.
+- Delivery produced `generated/architecture/concorde-core-workflow-scenarios.html` from source digest
+  `8c7511b0a5058aef160692240179db8ca13d673c306ee262320e5d7b2a964074`; artifact digest is
+  `e0ed6104625b15afbd4d0e2ec330016d793aac995b98f2f83f059fd5c64e6fd6`.
+- Archify visual-check was attempted but skipped because Chrome/Chromium is unavailable. The receipt
+  truthfully retains `visualReview: pending`; containment, light/dark review, and perceptual polish
+  are not claimed.
+- `npm run check` in `docsite/` passed TypeScript, **14 test files / 29 tests**, validation of
+  **31 pages** with **31 excluded sources** and zero errors, and the optimized production build.
+  The canonical Feature 001 page automatically embeds the declared diagram.
 
-### Release and repository integrity
+## Cross-feature Distribution Handoff
 
-- `uv run python scripts/release/build-components.py --output dist --publish-catalogs` regenerated
-  all component archives and catalogs. Release digests are `971965…` (extension), `2b2605…`
-  (preset), and `af0581…` (bundle); the release contract test reproduced them byte-for-byte.
-- Feature 002 and Feature 003 temporal artifacts were migrated below their own `implementation/`
-  directories; no compatibility copies or symlinks remain at feature roots.
-- `git diff --check`, Bash syntax checks, checked-in JSON parsing, and the required absence check for
-  `.specify/extensions.yml` all passed.
+- The handoff defines nine normal Spec Kit phase roots and five Concorde command intents.
+- Feature 003 archive and clean-project tests compare installed adapter/runtime bytes with this
+  maintained handoff and execute all fourteen registered surfaces without checkout fallback.
 
-## Human Evidence
+## Pending Human or Browser Evidence
 
-- SC-001 placement pilot: pending real participants.
+- SC-001 provider-placement pilot: pending real participants.
 - SC-007 authority mental-model pilot: pending real participants.
-- SC-008 reviewer approval: pending explicit maintainer review of the final architecture-source digest.
+- SC-008 explicit maintainer approval of the acceptance architecture changes: pending.
+- SC-010 browser containment/theme/perceptual portion: pending a Chrome/Chromium environment and
+  human inspection; deterministic showcase validation and docsite freshness already pass.
 
-Automated tests must not be used to mark these human outcomes verified.
+Automated tests must not be used to infer these outcomes.

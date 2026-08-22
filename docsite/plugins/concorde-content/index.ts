@@ -36,6 +36,7 @@ export default function concordeContentPlugin(
     getPathsToWatch() {
       return [
         resolve(projectRoot, 'specs/**/*.md'), resolve(projectRoot, 'specs/**/architecture.json'),
+        resolve(projectRoot, 'specs/**/features/*/diagrams/*.json'),
         resolve(projectRoot, 'docs/**/*.md'), resolve(projectRoot, 'generated/architecture/**/*.html'),
       ];
     },

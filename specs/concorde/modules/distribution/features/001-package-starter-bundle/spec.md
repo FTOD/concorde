@@ -11,13 +11,13 @@ contracts:
     - contract.distribution.bundle-lifecycle
   required:
     - contract.distribution.component-packages
-evidence_status: verified
+evidence_status: partial
 canonical_spec: specs/concorde/modules/distribution/features/001-package-starter-bundle/spec.md
 ---
 
 # Package the Concorde Starter Bundle
 
-**Status**: Implemented
+**Status**: Automated package lifecycle and clean installed-command parity implemented; human and browser visual evidence pending
 
 ## Outcome
 
@@ -31,11 +31,22 @@ and shared components remain safe.
 Spec Kit, accepting it, and receiving an installation result governed by
 `contract.distribution.bundle-lifecycle`. The scenario is an example, not the feature definition.
 
+## Diagram Decision
+
+The parent feature's `diagrams/spec-kit-component-model.json` identifies Distribution's package role, while
+`diagrams/starter-installation-flow.json` shows preview, approval, install, update, and removal through Spec
+Kit. Those text-backed views already isolate this child scenario and its bundle-lifecycle crossing, so
+a separate Distribution-owned diagram would duplicate them.
+
 ## Requirements
 
 - The bundle pins one preset and one extension and inherits the active integration.
+- Release archives contain the exact preset template/command sources and extension command/runtime
+  sources required by a clean target; repository-local self-hosting files are excluded.
 - The bundle is presented as an installation recipe, while catalogs are presented as discovery and
   trust metadata rather than runtime components.
 - Preview and installation resolve the same component identities and versions.
 - Repeat installation is idempotent; updates are explicit; removal respects ownership.
 - Failures do not record success and name residual state that could not be rolled back.
+- Acceptance executes the installed winning command surfaces and does not infer correctness from
+  archive membership or expected text alone.

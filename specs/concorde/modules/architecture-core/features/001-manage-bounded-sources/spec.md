@@ -30,6 +30,13 @@ maintained module, feature, contract, scenario, evidence, and view relationships
 approved apply, bounded context retrieval, and read-only validation. It illustrates the feature but
 does not replace this textual definition.
 
+## Diagram Decision
+
+The parent feature's `diagrams/core-workflow-scenarios.json` sequence shows the calls into Architecture Core
+for ownership lookup, bounded context, and reconciliation validation. A separate child diagram would
+repeat those same participants; this specification relies on that text-backed parent view plus the
+Architecture Core module contract for its narrower boundary.
+
 ## Requirements
 
 - Initialization separates proposal from explicit accepted apply and refuses overwrites.

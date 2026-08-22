@@ -53,6 +53,7 @@ function duplicateFindings(
 
 export function validateRegistry(registry: ContentRegistry): ValidationFinding[] {
   const findings: ValidationFinding[] = [];
+  const featureDiagramRoutes = new Map<string, FeatureSpecification[]>();
   for (const document of registry.documents) {
     if (!isContainedPath(registry.projectRoot, document.realPath)) {
       findings.push({
@@ -89,6 +90,9 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
         message: 'Canonical feature specifications require a lifecycle status.',
         remediation: 'Add a **Status** field to the specification body.',
       });
+      for (const diagram of document.diagrams) {
+        featureDiagramRoutes.set(diagram.route, [...(featureDiagramRoutes.get(diagram.route) ?? []), document]);
+      }
     }
     if (isArchitecture(document)) {
       if (!document.architectureId) findings.push({
@@ -112,6 +116,14 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
         remediation: 'Correct the view path, ensure its JSON is valid, set meta.output beneath generated/, and deliver the HTML artifact.',
       });
     }
+  }
+  for (const [route, owners] of featureDiagramRoutes) {
+    if (owners.length < 2) continue;
+    for (const owner of owners) findings.push({
+      ruleId: 'feature.diagram.route.duplicate', severity: 'error', sourcePath: owner.sourcePath,
+      message: `Feature diagram route "${route}" is declared by ${owners.length} feature specifications.`,
+      remediation: 'Give each generated feature diagram a unique output beneath generated/.',
+    });
   }
   findings.push(...duplicateFindings(registry.documents, (document) => document.route, 'content.route.duplicate', 'Route'));
   findings.push(...duplicateFindings(

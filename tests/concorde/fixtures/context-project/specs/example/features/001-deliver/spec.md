@@ -9,6 +9,12 @@ contracts:
   provided:
     - contract.example.workflow
   required: []
+diagrams:
+  - source: specs/example/features/001-deliver/diagrams/delivery-sequence.json
+    kind: sequence
+    scenarios:
+      - scenario.example.deliver
+    output: generated/architecture/example-delivery-sequence.html
 evidence_status: unknown
 canonical_spec: specs/example/features/001-deliver/spec.md
 ---

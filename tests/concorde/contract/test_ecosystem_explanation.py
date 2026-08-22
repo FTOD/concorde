@@ -37,7 +37,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         self.assertIn("spec kit is the host platform", specification)
 
     def test_component_view_separates_package_and_runtime_ownership(self):
-        source = FEATURE_ROOT / "spec-kit-component-model.json"
+        source = FEATURE_ROOT / "diagrams" / "spec-kit-component-model.json"
         diagram = json.loads(source.read_text(encoding="utf-8"))
         self.assertEqual(diagram["diagram_type"], "architecture")
         self.assertEqual(diagram["meta"]["quality_profile"], "showcase")
@@ -53,17 +53,20 @@ class EcosystemExplanationContractTests(unittest.TestCase):
                 "agentHost",
                 "architectureCore",
                 "specTree",
+                "selfHosting",
             }.issubset(component_ids)
         )
         edges = {(edge["from"], edge["to"], edge.get("label")) for edge in diagram["connections"]}
         self.assertIn(("bundle", "preset", "pins preset@0.1.0"), edges)
         self.assertIn(("bundle", "extension", "pins extension@0.1.0"), edges)
-        self.assertIn(("preset", "featureLifecycle", "append guidance"), edges)
-        self.assertIn(("extension", "agentHost", "register commands"), edges)
+        self.assertIn(("preset", "featureLifecycle", "3 templates + 9 overrides"), edges)
+        self.assertIn(("extension", "agentHost", "5 commands + adapter/runtime"), edges)
+        self.assertIn(("selfHosting", "bundle", "excluded from release"), edges)
+        self.assertIn(("featureLifecycle", "agentHost", "materialize winning layer"), edges)
         self.assertIn(("agentHost", "architectureCore", "invoke services"), edges)
 
     def test_workflow_view_has_install_time_and_two_use_time_paths(self):
-        source = FEATURE_ROOT / "starter-installation-flow.json"
+        source = FEATURE_ROOT / "diagrams" / "starter-installation-flow.json"
         diagram = json.loads(source.read_text(encoding="utf-8"))
         self.assertEqual(diagram["diagram_type"], "workflow")
         self.assertEqual(diagram["meta"]["quality_profile"], "showcase")
@@ -83,6 +86,9 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         edges = {(edge["from"], edge["to"]) for edge in diagram["edges"]}
         self.assertIn(("componentsActive", "normalLifecycle"), edges)
         self.assertIn(("componentsActive", "concordeCommands"), edges)
+        labels = {edge.get("label") for edge in diagram["edges"]}
+        self.assertIn("9 winning surfaces", labels)
+        self.assertIn("5 commands + runtime", labels)
 
     def test_supplemental_views_are_delivered_but_not_root_module_participants(self):
         root_view = json.loads(
@@ -93,8 +99,8 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         self.assertTrue({"bundle", "preset", "extension", "catalogs"}.isdisjoint(root_ids))
 
         outputs = {
-            "concorde-spec-kit-component-model.html": "How Concorde Is Installed through Spec Kit",
-            "concorde-starter-installation-flow.html": "Install and Maintain Concorde",
+            "concorde-spec-kit-component-model.html": "How Concorde Commands Reach a Clean Project",
+            "concorde-starter-installation-flow.html": "Install, Materialize, and Prove Concorde",
         }
         for filename, title in outputs.items():
             artifact = REPOSITORY_ROOT / "generated/architecture" / filename

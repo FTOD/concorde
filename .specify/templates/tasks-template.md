@@ -156,6 +156,8 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
 - [ ] TXXX Security hardening
+- [ ] TXXX Validate and deliver required feature-owned Archify diagrams from `diagrams/`, verify
+  automatic feature-page embedding, record truthful visual-review status, and verify generated freshness
 - [ ] TXXX Run `implementation/quickstart.md` validation
 
 ---

@@ -13,6 +13,7 @@ Specification Package
 └── Root Module
     ├── Contract *
     ├── Feature * ── Feature Workspace ── Implementation Workspace (0..1 active)
+    │             └── Feature Diagram *
     ├── Immediate Module * ── repeats Specification Package
     └── Architecture View (required when non-leaf)
 
@@ -21,6 +22,7 @@ Feature ── refines Feature at adjacent parent level (0..*)
 Feature ── illustrated by Scenario (1..*)
 Scenario Interaction ── governed by Contract when it crosses a boundary
 Feature Selection ── points to exactly one Feature Workspace
+Workflow Distribution Handoff ── exposes Feature Selection + phase paths to Feature 003
 Architecture Readiness Review ── gates plan approval for one Feature/source digest
 Bounded Context ── projection of Feature + one Module level + relevant Contracts/Evidence
 Validation Finding ── reports disagreement without changing any authority
@@ -72,6 +74,7 @@ Durable observable behavior at one abstraction level.
 | `contracts.required` | contract ID list | Explicit, possibly empty. |
 | `evidence_status` | enum | `unknown`, `partial`, `verified`, or `disagrees`. |
 | `canonical_spec` | safe path | Exactly `<workspace>/spec.md` and resolves to this document. |
+| `diagrams` | Feature Diagram reference list | Optional for a simple scenario with rationale; required for a cross-component scenario without a sufficiency rationale. |
 
 A lower-level feature without a parent refinement must be marked internal with a non-empty rationale.
 
@@ -85,6 +88,7 @@ The single nested location selected for the normal lifecycle.
 | `specification` | path | Exactly `<root>/spec.md`; required after specify. |
 | `contracts` | directory | Optional durable feature-level representations at `<root>/contracts/`. |
 | `checklists` | directory | Optional durable requirements-quality artifacts at `<root>/checklists/`. |
+| `diagrams` | path list | Optional descriptively named Archify JSON under `diagrams/`; never named `architecture.json`. |
 | `implementation` | directory or null | Exactly `<root>/implementation/` when an attempt exists. |
 | `module_id` | stable ID | Must agree with the spec and containing module. |
 | `feature_id` | stable ID | Must agree with the spec and module registration. |
@@ -237,7 +241,27 @@ The maintained Archify JSON for one module level.
 | `scenarios` | ordered view list | Current-level representative traces. |
 | `output` | safe generated path | Reproducible projection with provenance. |
 
-## 12. Bounded Context
+## 12. Feature Diagram
+
+A maintained, supplemental explanation owned by one feature.
+
+| Field | Type | Rules |
+|---|---|---|
+| `source` | safe path | Directly under the feature's `diagrams/`; descriptive filename other than `architecture.json`. |
+| `kind` | enum | `architecture`, `workflow`, `sequence`, `dataflow`, or `lifecycle`. |
+| `scenarios` | scenario ID list | At least one, unless a named question is supplied. |
+| `question` | string or null | The implementation-facing question explained when not scenario-specific. |
+| `participants` | stable ID/component list | Consistent with maintained architecture and contract prose. |
+| `contract_crossings` | interaction/contract list | Every visible boundary crossing resolves to maintained contract text. |
+| `textual_counterpart` | spec section reference | Complete explanation that remains understandable without the diagram. |
+| `output` | safe generated path | Provenance-bearing reproducible HTML; never maintained authority. |
+| `validation` | evidence reference | Archify type/schema/showcase/freshness receipt and truthful visual-review status. |
+
+Feature Diagram is distinct from Architecture View: it may explain deeper invocation or component
+collaboration for a representative feature scenario, but it cannot redefine module containment,
+feature behavior, or boundary obligations.
+
+## 13. Bounded Context
 
 A deterministic read model for one module or active feature.
 
@@ -247,12 +271,13 @@ A deterministic read model for one module or active feature.
 | `current_module` | projection | Responsibility, boundary, features, and I/O. |
 | `children` | projection list | Immediate children with concise I/O only. |
 | `feature_workspace` | projection or null | Root durable paths and active implementation paths for a feature request. |
+| `feature_diagrams` | projection list | Only diagrams declared by the active feature, with source/output provenance. |
 | `contracts` | ordered list | Only governing/relevant contracts. |
 | `refinement_links` | ordered list | Adjacent links touching the current feature/level. |
 | `evidence` | ordered list | Declared references and explicit status. |
 | `deeper_references` | stable ID list | Navigation targets, not expanded bodies. |
 
-## 13. Evidence Reference
+## 14. Evidence Reference
 
 | Field | Type | Rules |
 |---|---|---|
@@ -264,7 +289,7 @@ A deterministic read model for one module or active feature.
 
 Architecture validation can verify the reference and status; it cannot infer code correctness.
 
-## 14. Validation Finding
+## 15. Validation Finding
 
 | Field | Type | Rules |
 |---|---|---|
@@ -279,6 +304,25 @@ Architecture validation can verify the reference and status; it cannot infer cod
 Findings sort by rule, source, location, subject, and message. Validation is read-only; repeated runs
 over unchanged inputs are byte-equivalent.
 
+## 16. Workflow Distribution Handoff
+
+The versioned, presentation-neutral boundary through which Feature 003 packages Feature 001 behavior.
+
+| Field | Type | Rules |
+|---|---|---|
+| `protocol_version` | integer | Initially `1`; incompatible versions fail before command materialization. |
+| `workspace_adapter` | installed-relative path | Resolves from the extension package, never the Concorde source checkout. |
+| `normal_phase_obligations` | ordered command/phase list | Exactly the nine normal Spec Kit surfaces and their durable or temporal target. |
+| `concorde_command_intents` | ordered command list | Exactly init, feature create/select, context, and validate with presentation-neutral semantics. |
+| `request_example` | durable contract reference | Demonstrates explicit/persisted selection input. |
+| `result_example` | durable contract reference | Demonstrates root, implementation, phase target, status, and failures. |
+| `source_digest` | digest | Binds the handoff to Feature 001 runtime/contract sources. |
+| `evidence_status` | enum | Remains `partial` until Feature 003 supplies a matching clean-install receipt. |
+
+The handoff contains no catalog URL, archive path, integration filename, preset strategy, or bundle
+ownership record. Those are Feature 003 entities. Feature 003 may adapt presentation and packaging,
+but cannot change path meanings or command intent without a reviewed Feature 001 contract change.
+
 ## Cross-Entity Invariants
 
 1. Every Feature is owned by exactly one Module and registered by that Module.
@@ -289,3 +333,8 @@ over unchanged inputs are byte-equivalent.
 6. Bounded Context never expands beyond the current Module's immediate children.
 7. Missing Evidence remains `unknown`; architectural validity never upgrades it.
 8. Generated outputs are projections linked to maintained-source digests, never maintained intent.
+9. Every declared Feature Diagram has a textual counterpart, and every diagrammed boundary crossing
+   resolves to one maintained Contract.
+10. Every release-installed command receipt from Feature 003 identifies the exact Workflow
+    Distribution Handoff digest it implements; registration evidence cannot silently upgrade a
+    changed handoff to verified.

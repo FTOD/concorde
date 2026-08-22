@@ -30,7 +30,7 @@ npm run validate
 Expected:
 
 - The summary identifies `architecture`, `docs`, and `features` as separate collections.
-- Architecture Markdown sources and both declared Archify views are discoverable.
+- Architecture Markdown sources, bounded module views, and feature-declared Archify views are discoverable.
 - Root features 001 and 002 plus the nested Documentation refinement are discovered from their
   canonical `spec.md` files.
 - Plans, tasks, and checklists are reported as excluded rather than feature pages.
@@ -72,6 +72,8 @@ Expected:
 - The landing page links to Architecture, Documentation, and Features.
 - Every included page displays its project-relative source provenance.
 - Feature pages display stable ID, owning module, and recorded status.
+- Feature pages automatically embed every fresh diagram declared by `spec.md`, including source
+  provenance and an open-standalone-view link.
 - Architecture pages show stable identity and embed declared Archify views in a sandbox.
 - No generated or copied content appears under `../docs` or `../specs`.
 

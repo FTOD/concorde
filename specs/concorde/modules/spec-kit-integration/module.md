@@ -43,10 +43,12 @@ validation semantics.
 
 The preset and extension are complementary but not interchangeable:
 
-- `concorde-core` is a passive composition layer. At template-resolution time, its append strategy
-  adds Concorde prompts and gates to Spec Kit's existing spec, plan, and task templates. Their phase
-  meanings remain unchanged, while Concorde's path adapter keeps durable `spec.md` and contracts at
-  the feature root and temporal plan/task artifacts under `implementation/`.
+- `concorde-core` is a composition layer without its own runtime. Its template layers add Concorde
+  prompts and gates to Spec Kit's existing spec, plan, and task templates. Its command layers override
+  the nine affected normal lifecycle surfaces so selected-workspace routing occurs before any
+  inherited root-path assumption. Phase meanings remain unchanged: durable `spec.md`, contracts, and
+  checklists stay at the feature root, while temporal planning and delivery artifacts stay under
+  `implementation/`.
 - `concorde` is an active capability package. At installation time, Spec Kit registers its command
   definitions through the target project's active coding-agent integration. At use time, those agent
   commands invoke the same deterministic Architecture Core runtime regardless of their displayed
@@ -58,8 +60,8 @@ See the installation feature's
 relationship and
 <a href="/architecture/concorde-starter-installation-flow.html">installation flow</a> for the
 release-to-use sequence. Their maintained sources are
-`specs/concorde/features/003-install-concorde-speckit/spec-kit-component-model.json` and
-`specs/concorde/features/003-install-concorde-speckit/starter-installation-flow.json`.
+`specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` and
+`specs/concorde/features/003-install-concorde-speckit/diagrams/starter-installation-flow.json`.
 
 ## Canonical Contract Definitions
 
@@ -73,11 +75,13 @@ context.
 - **Representation**: commonly adopted Spec Kit preset manifest and template composition, version
   `0.16.4`.
 - **Information**: architecture ownership, contract, scenario, traceability, and quality-gate guidance.
-- **Guarantees**: composition preserves core lifecycle responsibilities and creates no duplicate
-  canonical feature specification; it creates no root-level compatibility copy of plan or tasks.
+- **Guarantees**: composition preserves core lifecycle responsibilities, materializes the winning
+  command layer in the active integration, creates no duplicate canonical feature specification, and
+  creates no root-level compatibility copy of plan or tasks.
 - **Failure**: unresolved templates or incompatible composition stop the affected workflow phase.
-- **Evidence**: append-only composition and installed durable/temporal routing are verified in clean
-  Codex skills and Gemini slash-command projects through public preset composition.
+- **Evidence**: template composition is verified. Installed durable/temporal routing remains partial
+  until every affected winning command surface executes in clean Codex skills and Gemini slash-command
+  projects through public preset composition with the source checkout unavailable.
 
 ### `contract.integration.agent-skills`
 
@@ -90,8 +94,11 @@ context.
   `speckit.concorde.feature.select` register in the active integration without hard-coded invocation
   syntax.
 - **Failure**: unsupported integrations or missing dependencies produce an actionable diagnostic.
-- **Evidence**: all five canonical intents are verified in Codex skills mode and Gemini slash-command
-  mode; the platform-compatible registered spellings use `feature-create` and `feature-select`.
+- **Evidence**: all five command artifacts register in Codex skills mode; initialization, context,
+  and validation execute in Codex skills and Gemini slash-command modes. Evidence remains partial
+  until feature creation/selection and the complete normal-command matrix execute from release
+  archives in both modes; platform-compatible registered spellings use `feature-create` and
+  `feature-select`.
 
 ### `contract.integration.feature-workspace`
 

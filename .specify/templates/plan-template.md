@@ -49,6 +49,8 @@
 ```text
 specs/[###-feature]/
 ├── spec.md              # Durable feature intent ($speckit-specify output)
+├── diagrams/            # Optional maintained feature-owned Archify explanations
+│   └── <scenario>.json
 ├── contracts/           # Durable external interface specifications
 ├── checklists/          # Specification-quality review artifacts
 └── implementation/      # One temporal delivery attempt
@@ -105,6 +107,14 @@ ios/ or android/
 
 **Structure Decision**: [Document the selected structure and reference the real
 directories captured above]
+
+## Feature Diagram Strategy
+
+[For every diagram promised by the spec, identify the representative scenario/question, participating
+components, governing contracts, maintained JSON path, complete textual counterpart, generated HTML
+path, deterministic Archify validation/delivery, visual-review evidence, and freshness check. If no
+diagram is needed, preserve the spec's sufficiency rationale. Never overload module architecture.json
+or treat generated output as maintained intent.]
 
 ## Complexity Tracking
 

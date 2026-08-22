@@ -67,6 +67,14 @@ class ContextTests(unittest.TestCase):
                 "specs/example/features/001-deliver/implementation/tasks.md",
             ])
             self.assertEqual(context["evidence"][0]["status"], "unknown")
+            self.assertEqual(context["feature_diagrams"], [{
+                "source": "specs/example/features/001-deliver/diagrams/delivery-sequence.json",
+                "kind": "sequence",
+                "scenarios": ["scenario.example.deliver"],
+                "output": "generated/architecture/example-delivery-sequence.html",
+                "title": "Example Delivery Invocation",
+            }])
+            self.assertIn("specs/example/features/001-deliver/diagrams/delivery-sequence.json", workspace["durable_artifacts"])
             self.assertIn("## Obligations", context["contracts"][0]["body"])
             self.assertNotIn("module.example.api.store", repr(workspace))
 

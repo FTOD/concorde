@@ -8,6 +8,8 @@ this package:
 - `../specs/**/module.md` and `../specs/**/contracts/**/contract.md` own architecture intent.
 - `../specs/**/architecture.json` owns structural views; `../generated/architecture/*.html`
   contains their delivered, disposable Archify projections.
+- `../specs/**/features/*/diagrams/*.json` owns feature scenario explanations declared by `spec.md`;
+  each fresh generated view is embedded automatically on its canonical feature page.
 
 Before preview or build, the package classifies the unified `specs/` tree and writes disposable
 Architecture and Features inputs beneath `.generated/content/`. These are renderer projections only;

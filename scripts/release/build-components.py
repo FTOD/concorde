@@ -18,20 +18,43 @@ DEFAULT_BASE_URL = "https://github.com/concorde-workflow/concorde/releases/downl
 FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 
-def _source_files(directory: Path) -> Iterable[Path]:
+def _allowed_member(component: str, relative: Path) -> bool:
+    path = relative.as_posix()
+    if component == "concorde-core":
+        return path in {"README.md", "preset.yml"} or (
+            (path.startswith("commands/") or path.startswith("templates/")) and path.endswith(".md")
+        )
+    if component == "concorde":
+        return (
+            path in {"README.md", "extension.yml"}
+            or (path.startswith("commands/") and path.endswith(".md"))
+            or (path.startswith("scripts/bash/") and path.endswith(".sh"))
+            or (path.startswith("scripts/powershell/") and path.endswith(".ps1"))
+            or (path.startswith("scripts/python/") and path.endswith(".py"))
+            or (path.startswith("runtime/concorde/") and path.endswith(".py"))
+            or (path.startswith("schemas/") and path.endswith(".json"))
+        )
+    if component == "concorde-starter":
+        return path in {"README.md", "bundle.yml"}
+    return False
+
+
+def _source_files(directory: Path, component: str) -> Iterable[Path]:
     for path in sorted(directory.rglob("*"), key=lambda item: item.relative_to(directory).as_posix()):
         if not path.is_file():
             continue
         relative = path.relative_to(directory)
         if "__pycache__" in relative.parts or path.suffix in {".pyc", ".pyo"}:
             continue
+        if not _allowed_member(component, relative):
+            raise ValueError(f"{component}: source file is outside the release allowlist: {relative.as_posix()}")
         yield path
 
 
-def deterministic_zip(source: Path, destination: Path, version: str = VERSION) -> str:
+def deterministic_zip(source: Path, destination: Path, component: str, version: str = VERSION) -> str:
     destination.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for path in _source_files(source):
+        for path in _source_files(source, component):
             relative = path.relative_to(source).as_posix()
             info = zipfile.ZipInfo(relative, FIXED_TIMESTAMP)
             info.compress_type = zipfile.ZIP_DEFLATED
@@ -56,11 +79,14 @@ def build_release(output: Path, base_url: str = DEFAULT_BASE_URL, version: str =
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     archives = {
-        f"concorde-core-{version}.zip": REPOSITORY_ROOT / "presets/concorde-core",
-        f"concorde-{version}.zip": REPOSITORY_ROOT / "extensions/concorde",
-        f"concorde-starter-{version}.zip": REPOSITORY_ROOT / "bundles/concorde-starter",
+        f"concorde-core-{version}.zip": ("concorde-core", REPOSITORY_ROOT / "presets/concorde-core"),
+        f"concorde-{version}.zip": ("concorde", REPOSITORY_ROOT / "extensions/concorde"),
+        f"concorde-starter-{version}.zip": ("concorde-starter", REPOSITORY_ROOT / "bundles/concorde-starter"),
     }
-    digests = {name: deterministic_zip(source, output / name, version) for name, source in archives.items()}
+    digests = {
+        name: deterministic_zip(source, output / name, component, version)
+        for name, (component, source) in archives.items()
+    }
     common = {
         "author": "Concorde maintainers",
         "license": "MIT",
@@ -102,7 +128,7 @@ def build_release(output: Path, base_url: str = DEFAULT_BASE_URL, version: str =
                     "id": "concorde-core",
                     "name": "Concorde Core",
                     "version": version,
-                    "description": "Append-only architecture guidance for the Spec Kit feature lifecycle",
+                    "description": "Architecture guidance plus authoritative nested-workspace routing for the Spec Kit lifecycle",
                     "download_url": f"{base_url}/concorde-core-{version}.zip",
                     "sha256": f"sha256:{digests[f'concorde-core-{version}.zip']}",
                     "provides": {"templates": 3, "commands": 9},

@@ -14,7 +14,7 @@ representation:
   definition: specs/concorde/features/003-install-concorde-speckit/contracts/bundle-distribution.md
 features:
   - feature.distribution.package-starter-bundle
-evidence_status: verified
+evidence_status: partial
 ---
 
 # Bundle Lifecycle Contract
@@ -31,7 +31,8 @@ catalog trust and provenance, operation status, ownership, and diagnostics.
 ## Obligations
 
 Preview and apply resolve the same plan; repeats are idempotent; project sources and shared components
-are preserved.
+are preserved. Verification executes the installed winning command surfaces in a clean target rather
+than accepting archive membership or matching text as workflow evidence.
 
 ## Failure Semantics
 
@@ -44,4 +45,6 @@ This release supports Spec Kit 0.16.4 only. Expanding the range requires lifecyc
 
 ## Evidence
 
-Verified by `tests/concorde/integration/test_bundle_lifecycle.py` and the installed acceptance journey.
+Package lifecycle behavior is verified by `tests/concorde/integration/test_bundle_lifecycle.py`.
+Evidence remains partial until the installed acceptance journey covers the complete normal-command
+phase matrix, all Concorde-specific commands, checkout isolation, and preset recomposition.

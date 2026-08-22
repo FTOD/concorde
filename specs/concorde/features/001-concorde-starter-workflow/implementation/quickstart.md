@@ -10,7 +10,10 @@ does not build release archives, register catalogs, or run a local release serve
 ## 1. Prepare an isolated project
 
 Use a clean temporary Spec Kit project with Concorde already installed and a supported active coding
-agent. Record the Spec Kit and Concorde versions. Do not point these checks at valuable user content.
+agent. Record the Spec Kit and Concorde versions plus Feature 003's clean-install receipt and the
+Feature 001 Workflow Distribution Handoff digest it claims to implement. Do not point these checks at
+valuable user content. If the receipt is missing, stale, or identifies a different handoff digest,
+stop: repository-local skills are not a substitute for installed behavior.
 
 Expected installed command set:
 
@@ -23,6 +26,10 @@ speckit.concorde.validate
 ```
 
 Agent-specific skill/slash punctuation may differ; the canonical command intent must not.
+
+The active integration must also expose the nine normal Spec Kit lifecycle surfaces composed by
+Feature 003. This guide tests the workflow meaning behind them; Feature 003 owns their release archive,
+winning-layer materialization, checkout isolation, and restoration after preset removal.
 
 ## 2. Establish and navigate the hierarchy
 
@@ -63,6 +70,7 @@ Confirm:
 
 ```text
 <feature-root>/spec.md                         exists
+<feature-root>/diagrams/                       contains any declared feature-owned Archify JSON
 <feature-root>/implementation/                 may be absent before planning
 <feature-root>/plan.md                         does not exist
 <feature-root>/tasks.md                        does not exist
@@ -85,6 +93,10 @@ Run the normal lifecycle in this order:
 5. implement;
 6. analyze and converge.
 
+For every cross-component scenario, confirm that `spec.md` declares a text-backed source directly
+under `<feature-root>/diagrams/`, or records a sufficiency rationale. After documentation publication,
+the canonical feature page must embed every declaration without manual page markup.
+
 For every phase, capture the path resolver output. The required matrix is:
 
 | Artifact/operation | Required location |
@@ -98,6 +110,9 @@ the same root is idempotent. Selecting another valid root changes only the stand
 An existing non-empty implementation attempt requires explicit resume; silence is not consent.
 
 This is the automated SC-004 and SC-009 acceptance path.
+
+Record the Feature 001 semantic result separately from Feature 003's installation receipt. A passing
+self-hosted path run cannot repair or replace a failed clean-install result.
 
 ## 5. Exercise the architecture-readiness gate
 

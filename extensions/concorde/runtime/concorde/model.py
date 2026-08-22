@@ -90,6 +90,7 @@ class ArchitecturePackage:
     profile_version: int
     sources: tuple[SourceDocument, ...]
     views: Mapping[str, Mapping[str, Any]]
+    diagrams: Mapping[str, Mapping[str, Any]]
     by_id: Mapping[str, tuple[SourceDocument, ...]]
     source_digest: str
     auxiliary: Mapping[str, str]

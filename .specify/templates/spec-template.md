@@ -8,6 +8,23 @@
 
 **Input**: User description: "$ARGUMENTS"
 
+## Scenario and Component Diagrams *(recommended when useful)*
+
+<!--
+  Evaluate whether each representative scenario is materially easier to understand as an Archify
+  component, workflow, sequence, data-flow, or lifecycle view. Cross-component scenarios should have
+  a text-backed diagram unless this section records why the prose and bounded module view suffice.
+
+  Keep maintained diagram JSON in the feature's diagrams/ directory under a descriptive filename
+  other than architecture.json, and declare it in spec.md so the project docsite embeds it
+  automatically. State the question/scenario explained, involved components, relevant contract
+  crossings, and generated output. The prose must remain understandable without opening the diagram;
+  diagrams supplement rather than redefine behavior, ownership, or contracts.
+-->
+
+- **Decision**: [Diagram source and scenario/question explained, or concise sufficiency rationale]
+- **Generated view**: [project-relative generated HTML path, if a diagram is maintained]
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--

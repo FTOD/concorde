@@ -117,6 +117,7 @@ Load only the minimal necessary context from each artifact:
   post-launch outcome metrics and business KPIs
 - User Stories and their Acceptance Scenarios
 - Edge Cases (if present)
+- Required feature diagrams, their textual counterparts, and any explicit sufficiency rationale
 
 **From plan.md:**
 
@@ -159,6 +160,11 @@ For each item in the intent inventory, inspect the current code in scope and pro
 - **`unrequested`**: the code contains work not called for by the spec, plan, or tasks
   (surfaced for awareness — converge does **not** delete code, it only appends a task to
   review/justify or remove it).
+
+Treat missing, stale, unvalidated, or textually/contractually inconsistent required feature diagrams
+as buildable gaps. Append work for `diagrams/` placement, declaration in `spec.md`, maintained Archify
+JSON, prose alignment, contract references, delivery, automatic feature-page embedding, truthful
+visual-review evidence, and freshness; never append a task to hand-edit generated HTML or screenshots.
 
 Each `Finding` records: a stable id, the `source-ref` it traces to, the `gap-type`, a
 severity, and a short human-readable description with the evidence (the file/area observed).

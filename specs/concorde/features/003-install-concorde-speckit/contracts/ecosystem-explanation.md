@@ -16,13 +16,15 @@ including install-time composition and the two distinct use-time paths.
 | Spec Kit | Owns resolution, template composition, installation, registries, provenance, update/removal, and active-integration selection. |
 | Catalog | Carries discovery and trust metadata for independently packaged bundle, preset, and extension archives. |
 | Bundle | Is a passive, non-executable recipe pinning exactly one preset and one extension. |
-| Preset | Passively appends guidance to normal Spec Kit template resolution and adds no command or runtime. |
-| Extension | Actively contributes five portable command intents, a phase-path adapter, and the deterministic runtime they invoke. |
-| Active coding-agent integration | Renders and registers commands in agent-native syntax without owning their behavior. |
+| Preset | Composes architecture guidance into templates and authoritative selected-workspace routing into nine existing lifecycle commands. It introduces no new runtime command namespace. |
+| Extension | Actively contributes five Concorde-specific command intents, a selected-workspace adapter, and the deterministic runtime they invoke. |
+| Active coding-agent integration | Materializes resolved core-command overrides and Concorde-specific commands in agent-native syntax without owning their behavior. |
 | Architecture Core | Implements deterministic initialization, bounded-context projection, and validation. |
 
 The explanation must say that Concorde augments the standard Spec Kit lifecycle; it does not replace
-`specify`, `plan`, `tasks`, or the single canonical feature `spec.md`.
+`specify`, `plan`, `tasks`, or the single canonical feature `spec.md`. It must also distinguish the
+source checkout's self-hosting `.agents/` and `.specify/` files from the preset and extension files
+that a clean target actually receives from release archives.
 
 ## Authority Split
 
@@ -33,15 +35,16 @@ The explanation must say that Concorde augments the standard Spec Kit lifecycle;
 | Feature behavior and success criteria | Feature 003 `spec.md` |
 | Boundary obligations and failure semantics | Canonical module contracts and feature-local interface contracts |
 | Supplemental visual composition | The two Feature 003 Archify JSON sources |
-| Command/runtime behavior | Extension implementation |
+| Existing lifecycle-command routing instructions | Preset command sources and their resolved installed surfaces |
+| Concorde-specific command/runtime behavior | Extension implementation |
 | Published visual projection | Generated HTML, which is reproducible and non-authoritative |
 
 ## Required Views
 
 | Question | Maintained source | Published projection |
 |---|---|---|
-| What are the ecosystem components, and who owns what? | `spec-kit-component-model.json` | `/architecture/concorde-spec-kit-component-model.html` |
-| What happens during release/install and along each use-time path? | `starter-installation-flow.json` | `/architecture/concorde-starter-installation-flow.html` |
+| What are the ecosystem components, and who owns what? | `diagrams/spec-kit-component-model.json` | `/architecture/concorde-spec-kit-component-model.html` |
+| What happens during release/install and along each use-time path? | `diagrams/starter-installation-flow.json` | `/architecture/concorde-starter-installation-flow.html` |
 
 These are supplemental Feature 003 explanations. They are not module-owned `architecture.json`
 views, do not participate in Architecture Core source profile 1, and must not redefine the root
@@ -57,7 +60,7 @@ module's one-level participants or contracts.
   or overlap.
 - The existing documentation site publishes the generated views; this feature adds no render or
   publication command to the starter bundle.
-- SC-011 requires a human pilot: after at most five minutes of review, at least 90% of first-time
+- SC-007 requires a human pilot: after at most five minutes of review, at least 90% of first-time
   maintainers must correctly identify the bundle, preset, extension, and catalog roles and explain
   that the normal Spec Kit lifecycle remains in control.
 
@@ -65,8 +68,10 @@ module's one-level participants or contracts.
 
 The explanation is invalid when roles conflict across prose or diagrams, a diagram implies that the
 bundle embeds or executes its components, the active integration is shown as owning behavior, the
-preset is shown as registering commands, a supplemental view is treated as canonical module
-architecture, a generated output is stale, or the textual explanation depends on the visual.
+preset is shown as runtime-owning or as introducing Concorde-specific command IDs, command
+composition is described as template composition only, self-hosting checkout files are presented as
+release inputs, a supplemental view is treated as canonical module architecture, a generated output
+is stale, or the textual explanation depends on the visual.
 
 ## Compatibility
 

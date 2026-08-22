@@ -189,10 +189,13 @@ among maintained sources, implementation, tests, and generated projections.
 - [X] T057 Reconcile contributor commands, projection behavior, and observed outputs with the build-interface contract in `docsite/README.md` and `docs/contributing/docsite.md`
 - [X] T058 Run every scenario in `specs/concorde/features/002-create-project-docsite/implementation/quickstart.md` and record command results, timings, source immutability, feature statuses, and manifest hashes in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`
 - [X] T059 Re-run root and Documentation Archify validation, regenerate site/diagram projections, and update evidence status in `specs/concorde/module.md` and `specs/concorde/modules/documentation/module.md`
-- [X] T060 Run `npm run check`, verify all 32 functional requirements and 8 success criteria, and record the requirement-to-evidence matrix in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`
+- [X] T060 Run `npm run check`, verify all 33 functional requirements and 9 success criteria, and record the requirement-to-evidence matrix in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`
 - [X] T061 Verify `git status` contains no generated site, cache, renderer projection, copied canonical content, or unexpected source mutation and record the audit in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`
 - [ ] T062 Conduct the browser visual review for both delivered Archify views and the SC-006 participant exercise requiring at least 90% of participants to locate a named document or feature within 60 seconds, then record participants, timings, outcomes, and reviewed receipts in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`
   - **Progress**: Both Archify views pass required-viewport containment and perceptual light/dark review; the timed participant exercise remains outstanding.
+- [X] T063 Add the text-backed publication-invocation sequence and feature declaration in `specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json` and `specs/concorde/features/002-create-project-docsite/spec.md`
+- [X] T065 Discover declared feature diagrams, include their provenance in the manifest, and embed their interactive views automatically on canonical feature pages
+- [X] T064 Deliver and publish the new sequence, assert its production route in `docsite/tests/integration/production-build.test.ts`, and record deterministic and pending visual evidence in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`
 
 **Checkpoint**: All deterministic tests and builds pass, architecture and documentation projections
 are fresh, canonical sources remain authoritative, and every requirement maps to evidence.

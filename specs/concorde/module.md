@@ -96,18 +96,21 @@ types divide responsibility as follows:
 | Spec Kit | Owns component resolution and provenance plus the normal feature-development lifecycle. |
 | Component catalogs | Advertise independently packaged bundle, preset, and extension archives with location, compatibility, digest, and trust metadata. |
 | `concorde-starter` bundle | Pins and groups the accepted Concorde components as one inspectable installation recipe. |
-| `concorde-core` preset | Appends architecture-aware guidance to Spec Kit's existing spec, plan, and task artifacts. |
-| `concorde` extension | Registers portable agent commands that call deterministic Architecture Core services. |
-| Coding-agent integration | Presents the installed extension commands in its native skill or slash-command syntax. |
+| `concorde-core` preset | Composes architecture-aware templates and selected-workspace routing into nine existing Spec Kit lifecycle commands. |
+| `concorde` extension | Supplies five portable Concorde-specific commands, the workspace adapter, and deterministic Architecture Core runtime. |
+| Coding-agent integration | Materializes resolved normal-command overrides and Concorde-specific commands in its native skill or slash-command syntax. |
 | Concorde Architecture Core | Maintains bounded hierarchy, context, and validation under the shared `specs/` tree. |
 
 The detailed <a href="/architecture/concorde-spec-kit-component-model.html">component model</a> and
 <a href="/architecture/concorde-starter-installation-flow.html">installation flow</a> are
 supplemental Feature 003 explanatory views. Their maintained sources are
-`features/003-install-concorde-speckit/spec-kit-component-model.json` and
-`features/003-install-concorde-speckit/starter-installation-flow.json`. `architecture.json` remains
-the canonical one-level root module view. Feature 001 instead owns the core development lifecycle and
-the recursive `specs/` organization used after installation.
+`features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` and
+`features/003-install-concorde-speckit/diagrams/starter-installation-flow.json`. `architecture.json` remains
+the canonical one-level root module view. Feature 001 owns the supplemental
+`features/001-concorde-starter-workflow/diagrams/core-workflow-scenarios.json` invocation sequence, and Feature
+002 owns `features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json`. Feature-owned
+views are encouraged explanations of scenario collaboration; they do not expand or replace the root
+module view.
 
 ## Scenario Trace
 
@@ -120,6 +123,10 @@ permitted external actors.
 The root and Documentation views pass all 9 Archify showcase checks with zero errors or warnings.
 The two supplemental Feature 003 component and installation views also pass all 9 showcase checks,
 desktop containment at four target viewports, and perceptual light/dark review.
+The Feature 001 core-workflow sequence and Feature 002 publication sequence pass all 9 showcase
+checks with zero errors or warnings and have fresh provenance-bearing deliveries. Their browser
+containment and perceptual review remain pending because Chrome/Chromium is unavailable in the
+current validation environment.
 The Documentation publication feature is implemented and verified by the feature's unit, contract,
 integration, production-build, repeatability, and source-immutability evidence in
 `specs/concorde/features/002-create-project-docsite/implementation/validation.md`. Both maintained architecture hierarchies and their
@@ -127,9 +134,10 @@ delivered views are published as a distinct Architecture collection. Browser con
 light/dark perceptual review of the current root and Documentation artifacts remain pending because
 Chrome/Chromium is unavailable in the validation environment; structural checks are not treated as
 perceptual evidence.
-The Spec Kit installation feature is implemented and verified across the native Spec Kit 0.16.4
-lifecycle and cross-integration command registration; its evidence remains `partial` because the timed
-first-use and comprehension pilot has not yet been conducted. The core workflow has verified
+The Spec Kit bundle lifecycle and component registration are implemented, while the installation
+feature remains `partial` until all nine normal command overrides and five Concorde-specific commands
+execute from release-installed artifacts in clean skills and slash-command projects, preset
+recomposition is verified, and the timed first-use and comprehension pilot is conducted. The core workflow has verified
 initialization, nested feature placement/selection, public preset command composition, bounded
 active-feature context, architecture readiness, contract example conformance, evidence disagreement,
 freshness normalization, and deterministic validation. Its human placement, mental-model, and final

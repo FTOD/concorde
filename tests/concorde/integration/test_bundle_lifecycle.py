@@ -44,6 +44,11 @@ class BundleLifecycleTests(unittest.TestCase):
         (self.root / ".concorde/user.json").write_text('{"owned_by":"maintainer"}\n')
         (self.root / "specs/user").mkdir(parents=True)
         (self.root / "specs/user/notes.md").write_text("# Maintained intent\n")
+        (self.root / "docs").mkdir()
+        (self.root / "docs/user.md").write_text("# Maintained documentation\n")
+        unrelated = self.root / ".agents/skills/user-owned/SKILL.md"
+        unrelated.parent.mkdir(parents=True)
+        unrelated.write_text("---\nname: user-owned\n---\n# User-owned skill\n")
 
     def tearDown(self):
         self.project_temporary.cleanup()
@@ -146,6 +151,7 @@ class BundleLifecycleTests(unittest.TestCase):
     def test_compatible_update_and_remove_preserve_sources(self):
         self.project.run("bundle", "install", "concorde-starter")
         source_hashes = self.project.source_hashes()
+        unrelated_hashes = self.project.source_hashes((".agents/skills/user-owned",))
         _builder.build_release(self.dist, self.server.base_url, "0.1.1")
         self.project.clear_catalog_caches()
         update_plan = self.project.json("bundle", "info", "concorde-starter", "--json")
@@ -154,9 +160,11 @@ class BundleLifecycleTests(unittest.TestCase):
         installed = self.project.json("bundle", "list", "--json")
         self.assertEqual(installed[0]["version"], "0.1.1")
         self.assertEqual(self.project.source_hashes(), source_hashes)
+        self.assertEqual(self.project.source_hashes((".agents/skills/user-owned",)), unrelated_hashes)
         self.project.run("bundle", "remove", "concorde-starter")
         self.assertEqual(self.project.json("bundle", "list", "--json"), [])
         self.assertEqual(self.project.source_hashes(), source_hashes)
+        self.assertEqual(self.project.source_hashes((".agents/skills/user-owned",)), unrelated_hashes)
 
     def test_component_shared_with_another_bundle_is_not_removed(self):
         shared_bundle = REPOSITORY_ROOT / "tests/concorde/fixtures/releases/shared-component"

@@ -10,6 +10,12 @@ contracts:
     - contract.documentation.architecture-site
   required: []
 architecture_view: specs/concorde/architecture.json
+diagrams:
+  - source: specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json
+    kind: sequence
+    scenarios:
+      - publish-architecture
+    output: generated/architecture/project-docsite-publication-flow.html
 evidence_status: verified
 canonical_spec: specs/concorde/features/002-create-project-docsite/spec.md
 ---
@@ -26,6 +32,18 @@ canonical_spec: specs/concorde/features/002-create-project-docsite/spec.md
 configuration and formatting, keep actual Markdown documentation in a separate root `docs/`, and
 present those documents, feature specifications under `specs/`, and Concorde architecture sources
 and views as one project website."
+
+## Scenario and Component Diagram
+
+`diagrams/project-docsite-publication-flow.json` is a maintained, supplemental sequence view for the
+`publish-architecture` scenario. Its generated projection is
+`generated/architecture/project-docsite-publication-flow.html`. The view shows the build command
+invoking the source registry, Archify delivery, disposable content materialization, Docusaurus build,
+candidate validation, and atomic publisher before a programmer or agent browses the result.
+
+The diagram explains component involvement and call order; the user stories and requirements below
+remain the behavioral authority, and `specs/concorde/architecture.json` remains the bounded root
+architecture view.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -137,6 +155,9 @@ and prevents the incomplete result from being reported as successful.
    affected source and reason.
 4. **Given** a failed build, **When** the maintainer reviews its result, **Then** the incomplete output
    is not represented as the current successful project site.
+5. **Given** the textual publication scenario and its feature-owned diagram, **When** a maintainer
+   reviews the build path, **Then** they can identify which component validates sources, renders
+   diagrams, materializes content, builds the site, validates the candidate, and promotes output.
 
 ### Edge Cases
 
@@ -227,6 +248,11 @@ and prevents the incomplete result from being reported as successful.
 - **FR-031**: Architecture Markdown, Archify JSON, and delivered Archify HTML MUST remain separate
   authorities and projections: publication MUST NOT rewrite maintained sources or treat generated HTML
   as editable intent.
+- **FR-033**: This feature MUST maintain a text-backed Archify sequence view that identifies the
+  components invoked by the publication scenario, the information passed at documented boundaries,
+  the candidate failure boundary, and the generated output with deterministic provenance and
+  freshness validation. The canonical feature page MUST discover the declaration automatically,
+  embed the interactive diagram with source provenance, and retain an open-standalone-view link.
 
 ### Key Entities
 
@@ -242,6 +268,8 @@ and prevents the incomplete result from being reported as successful.
   Features hierarchy while preserving meaningful source organization.
 - **Build Manifest**: The deterministic inventory that maps every included maintained source to its
   content page and records exclusions, collisions, and validation outcomes.
+- **Supplemental Feature Diagram**: A maintained, text-backed explanation of the publication
+  invocation path whose generated HTML is a reproducible, non-authoritative projection.
 
 ## Success Criteria *(mandatory)*
 
@@ -263,6 +291,9 @@ and prevents the incomplete result from being reported as successful.
   and recorded lifecycle status when present, with zero cases in which a draft is presented as final.
 - **SC-008**: A repository check after preview and production builds finds zero generated or copied
   content changes under the maintained `docs/` and `specs/` source directories.
+- **SC-009**: The publication sequence view passes all deterministic Archify showcase, provenance,
+  and freshness checks with zero errors or warnings and appears automatically on the canonical
+  Feature 002 page with source provenance and a standalone-view link.
 
 ## Assumptions
 
@@ -283,5 +314,6 @@ and prevents the incomplete result from being reported as successful.
 - The site may create disposable staging and build output beneath its own ignored workspace, provided
   those projections are reproducible and never become canonical content.
 - The existing root architecture view's `publish-architecture` scenario provides the current-level
-  structural trace for this project-wide feature. Deeper Documentation-module features and views will
-  refine it during architecture-aware planning without expanding child internals in the root view.
+  structural trace for this project-wide feature. The feature-owned publication sequence explains
+  deeper invocation without expanding child internals in the root view; the Documentation-module
+  feature and view remain the adjacent architectural refinement.

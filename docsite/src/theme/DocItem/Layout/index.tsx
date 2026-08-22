@@ -8,6 +8,7 @@ import type OriginalLayoutType from '@theme/DocItem/Layout';
 import type {ContentPage} from '../../../../plugins/concorde-content/types';
 import ArchitectureView from '../../../components/ArchitectureView';
 import ContentProvenance from '../../../components/ContentProvenance';
+import FeatureDiagrams from '../../../components/FeatureDiagrams';
 
 type Props = WrapperProps<typeof OriginalLayoutType>;
 interface GlobalData {pages: ContentPage[]}
@@ -20,6 +21,7 @@ export default function LayoutWrapper(props: Props) {
   return <>
     {page && <div className="provenanceShell"><ContentProvenance page={page} /></div>}
     {page?.architectureViewRoute && <div className="architectureViewShell"><ArchitectureView page={page} /></div>}
+    {page?.diagrams?.length ? <div className="featureDiagramsShell"><FeatureDiagrams page={page} /></div> : null}
     <OriginalLayout {...props} />
   </>;
 }

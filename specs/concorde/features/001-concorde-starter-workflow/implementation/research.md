@@ -79,8 +79,10 @@ workflow. Reusing it avoids a second registry and already works without relying 
 **Decision**: Add `speckit.concorde.feature.create` and
 `speckit.concorde.feature.select` as Spec Kit extension commands. Creation first retrieves bounded
 module context, proposes the exact nested feature root and required architecture registrations, and
-continues through the normal specify operation only after maintainer approval. Selection validates
-an existing feature root and atomically updates the standard Spec Kit selection record. Both return
+continues through the normal specify operation only after maintainer approval. The command surface,
+not the Architecture Core runtime, coordinates behavioral spec authoring and the subsequent module
+registration/validation steps. Selection validates an existing feature root and atomically updates
+the standard Spec Kit selection record. Both return
 the selected root plus derived specification and implementation paths.
 
 **Rationale**: Users need a clear entry point for placement and selection, but the commands should
@@ -95,22 +97,20 @@ specification system. Portable command Markdown keeps the same intent across age
 - Having Architecture Core author the behavioral specification was rejected because that belongs to
   Spec Kit's specify phase.
 
-## Decision 5A: Deliver phase-specific routing through public preset command composition
+## Decision 5A: Expose a distribution-neutral workspace handoff to Feature 003
 
-**Decision**: Treat the checked-in `.specify/scripts/` and `.agents/skills/` edits as the
-self-hosting prototype, not as proof that installed projects receive the behavior. Package supported
-`concorde-core` preset command wrappers/overrides for the affected core phases. Those commands invoke
-a project-local workspace adapter from the installed Concorde extension and use its returned root and
-`implementation/` paths while preserving the underlying Spec Kit phase semantics. The first
-implementation checkpoint must install the real preset/extension into clean Codex and slash-command
-fixtures and prove the path matrix. If Spec Kit 0.16.4 cannot compose the required command/script
-surface through its public preset APIs, stop and pursue an upstream Spec Kit change rather than
-patching managed core infrastructure during installation.
+**Decision**: Treat checked-in `.specify/scripts/` and `.agents/skills/` edits as self-hosting
+prototypes, not installed-product evidence. Feature 001 owns a portable workspace adapter and
+contract that return the selected feature root, `implementation/` root, and all phase paths. Feature
+003 owns how the nine existing Spec Kit command surfaces are replaced/composed, registered, and
+packaged for clean projects. Feature 001 acceptance proves the adapter and command semantics; Feature
+003 acceptance proves release-installed Codex and slash-command materialization.
 
-**Rationale**: Spec Kit 0.16.4 publicly supports preset command replacement/composition, and its
-resolver models scripts as a supported artifact type. Core-command overrides are therefore the
-narrowest public mechanism to prototype. A stop condition prevents a self-host-only patch from being
-misrepresented as composable product behavior.
+**Rationale**: Workflow semantics and distribution mechanics have different owners. The explicit
+handoff keeps Feature 001 independent of agent presentation and package lifecycle while giving
+Feature 003 one normative source for path behavior. Spec Kit 0.16.4 publicly supports command
+replacement/composition, but preset script replacement is marked reserved for future use; therefore
+Feature 001 must not assume that checkout-local core-script changes can ship.
 
 **Alternatives considered**:
 
@@ -118,18 +118,23 @@ misrepresented as composable product behavior.
   undocumented managed-infrastructure fork.
 - Declaring the current repository edits sufficient was rejected because Feature 003 does not package
   them.
-- Requiring a future Spec Kit version is the explicit fallback if the supported 0.16.4 prototype
-  fails; any new range belongs to Feature 003 compatibility metadata.
+- Implementing preset registration and bundle acceptance inside Feature 001 was rejected because it
+  duplicates Feature 003 ownership.
+- Requiring a future Spec Kit version remains Feature 003's fallback if public command replacement
+  cannot satisfy the handoff without core-script mutation.
 
 ## Decision 6: Treat placement as a reviewed proposal
 
 **Decision**: Feature creation produces a deterministic proposal containing the providing module,
 stable feature ID, nested root, canonical spec path, module registration changes, affected view, and
-conflicts. No maintained architectural source is accepted without explicit human approval. Applying
-the accepted placement is all-or-nothing and the normal specify phase fills the behavior.
+conflicts. No maintained architectural source is accepted without explicit human approval. The
+accepted command orchestration keeps the proposal digest visible, lets the normal specify phase fill
+the behavior, validates the resulting registration, and persists selection only after success.
 
-**Rationale**: Placement changes durable intent and therefore needs the same proposal/apply safety as
-root initialization. A complete proposal also makes nearest-common-parent decisions reviewable.
+**Rationale**: Placement changes durable intent and therefore needs a review-first boundary. Unlike
+root initialization, it crosses the normal Spec Kit specify phase, so Concorde does not pretend that
+one runtime file promotion can make the whole multi-command interaction atomic. A complete proposal
+makes nearest-common-parent decisions reviewable, and withholding selection prevents false success.
 
 **Alternatives considered**:
 
@@ -181,10 +186,10 @@ silently choosing a winner and keep failures reproducible without an AI model.
 ## Decision 9: Keep contract evolution additive in the current slice
 
 **Decision**: Keep Concorde Architecture Service Protocol v1 for `init`, `context`, and `validate`.
-The two feature-workspace commands use standard Spec Kit command and selection contracts and may
-orchestrate existing Architecture Core operations. Do not add new Architecture Service enum values
-unless implementation proves a deterministic core operation is necessary; that would require an
-explicit compatibility review.
+Use the separate custom Feature Workspace Protocol v1, owned by Spec Kit Integration, for reviewed
+`feature.create`, atomic `feature.select`, selected-root resolution, and phase-path results. The two
+command presentations may orchestrate existing Architecture Core operations, but they do not add
+create/select enum values to Architecture Service Protocol v1.
 
 **Rationale**: The missing user workflow can be delivered without forcing existing runtime consumers
 to adopt a new custom protocol version. It also preserves the boundary between agent orchestration
@@ -194,8 +199,8 @@ and deterministic architecture semantics.
 
 - Expanding the v1 operation enum immediately was rejected because strict schema consumers could
   treat new values as incompatible.
-- Creating a second custom workspace protocol was rejected until a real external boundary requires
-  one.
+- Encoding selection only in prompt prose was rejected because Feature 003 needs a deterministic,
+  versioned adapter result to package and test.
 
 ## Decision 10: Prove automation and human comprehension separately
 
@@ -214,15 +219,36 @@ claim.
 - Requiring a human pilot for deterministic byte/path outcomes was rejected as unnecessary and less
   reproducible.
 
+## Decision 11: Give feature diagrams one declared source boundary
+
+**Decision**: Store feature-owned Archify JSON directly below the feature's `diagrams/` directory and
+declare every view in `spec.md`. Architecture Core includes declared JSON in source identity and
+bounded feature context. Documentation resolves each declaration to a fresh generated artifact and
+embeds it automatically on the canonical feature page.
+
+**Rationale**: A dedicated directory keeps durable visual explanations discoverable without mixing
+them with the feature specification, contracts, checklists, or temporal implementation artifacts.
+Declaration-driven publication prevents manual Docusaurus markup from becoming a second registry.
+
+**Alternatives considered**:
+
+- Keeping JSON beside `spec.md` was rejected because multiple durable artifact kinds become harder to
+  scan and enforce consistently.
+- Hand-written iframe markup in each specification was rejected because it duplicates routing,
+  provenance, sandboxing, and freshness behavior.
+
 ## Unknowns Resolved
 
 - The selected workspace is the nested feature root, not its `implementation/` child.
 - Spec Kit selection remains the single active-workspace authority.
 - Contracts and checklists remain durable; plan-phase artifacts are temporal.
 - Feature creation coordinates reviewed placement with the normal specify phase.
-- Installed routing must be proven through public preset/extension mechanisms; repository-local core
-  edits alone are not delivery evidence.
+- Feature 001 proves the workspace adapter/command semantics; Feature 003 alone proves their public
+  preset/extension delivery. Repository-local core edits are not product evidence.
+- Spec Kit 0.16.4 command composition is public, while preset script replacement is not a supported
+  delivery mechanism for this plan.
 - Architecture Core retains three v1 operations unless implementation demonstrates a necessary new
   deterministic boundary.
 - Feature 003 owns installation/package education; Feature 002 owns site implementation.
-- No unresolved `NEEDS CLARIFICATION` items remain for planning.
+- Feature-owned Archify JSON lives under `diagrams/` and is published from `spec.md` declarations.
+- All planning questions are resolved.

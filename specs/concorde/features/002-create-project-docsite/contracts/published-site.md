@@ -25,20 +25,22 @@ JavaScript, assets, a local search index, and `build-manifest.json`.
 | `/` | Project landing page with Architecture, Documentation, and Features entry points and source counts |
 | `/architecture/**` | Architecture module and contract Markdown plus declared embedded views |
 | `/docs/**` | Project documents sourced from `docs/**/*.md` |
-| `/features/**` | Canonical feature specifications sourced from `specs/**/spec.md` |
+| `/features/**` | Canonical feature specifications sourced from `specs/**/spec.md`, including their declared feature diagrams |
 | `/build-manifest.json` | Machine-readable successful-build inventory |
 
 Every source-derived page displays its content kind and project-relative source path. Architecture
 pages also display stable entity identity, hierarchy metadata, and declared-view provenance; feature
-pages display stable feature ID, owning module, and recorded lifecycle status. Draft status is visible
-and does not imply approval or implementation agreement.
+pages display stable feature ID, owning module, recorded lifecycle status, and every declared fresh
+feature diagram with source provenance and a standalone-view link. Draft status is visible and does
+not imply approval or implementation agreement.
 
 ## Guarantees
 
 - Every eligible valid source has exactly one primary page and navigation entry.
 - Architecture, Documentation, and Features remain distinct navigation sections and share
   project-wide local search.
-- Delivered Archify HTML is sandboxed and paired with accessible, searchable architecture Markdown.
+- Delivered Archify HTML is sandboxed and paired with accessible, searchable architecture or feature
+  Markdown; feature diagrams are embedded automatically from `spec.md` declarations.
 - Cross-collection source links resolve to the corresponding site pages with fragments preserved.
 - Presentation does not change canonical prose or write to the source trees.
 - The site includes accessible textual content and provenance independent of decorative formatting.

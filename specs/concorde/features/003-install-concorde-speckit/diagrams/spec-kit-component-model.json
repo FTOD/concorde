@@ -2,28 +2,28 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "How Concorde Is Installed through Spec Kit",
-    "output": "../../../../generated/architecture/concorde-spec-kit-component-model.html",
+    "title": "How Concorde Commands Reach a Clean Project",
+    "output": "../../../../../generated/architecture/concorde-spec-kit-component-model.html",
     "quality_profile": "showcase",
-    "viewBox": [1420, 640],
+    "viewBox": [1460, 720],
     "views": [
       {
         "id": "bundle-composition",
         "label": "Bundle composition",
-        "focus": ["catalogs", "specKit", "bundle", "preset", "extension"],
-        "note": "The bundle is an installable recipe that pins one preset and one extension; it does not add behavior by itself."
+        "focus": ["catalogs", "specKit", "bundle", "preset", "extension", "selfHosting"],
+        "note": "The bundle pins release archives; checkout-local skills and scripts are not distribution inputs."
       },
       {
         "id": "preset-path",
-        "label": "Preset contribution",
-        "focus": ["preset", "featureLifecycle", "specTree"],
-        "note": "The preset appends architecture guidance to the existing specification, plan, and task templates."
+        "label": "Normal command overrides",
+        "focus": ["preset", "featureLifecycle", "agentHost", "specTree"],
+        "note": "The preset supplies three template layers and authoritative routing for nine existing lifecycle commands."
       },
       {
         "id": "extension-path",
         "label": "Extension contribution",
         "focus": ["extension", "agentHost", "architectureCore", "specTree"],
-        "note": "The extension registers portable agent commands that invoke deterministic Concorde services."
+        "note": "The extension supplies five Concorde-specific commands, the workspace adapter, and deterministic runtime."
       }
     ]
   },
@@ -61,10 +61,18 @@
       "size": [190, 76]
     },
     {
+      "id": "selfHosting",
+      "type": "external",
+      "label": "Checkout-local Files",
+      "sublabel": ".agents/ + .specify/ · not shipped",
+      "pos": [485, 500],
+      "size": [190, 76]
+    },
+    {
       "id": "preset",
       "type": "backend",
       "label": "concorde-core",
-      "sublabel": "Preset: template guidance",
+      "sublabel": "Preset: templates + 9 overrides",
       "pos": [745, 95],
       "size": [190, 76]
     },
@@ -72,15 +80,15 @@
       "id": "extension",
       "type": "backend",
       "label": "concorde",
-      "sublabel": "Extension: commands + runtime",
+      "sublabel": "Extension: 5 commands + runtime",
       "pos": [745, 455],
       "size": [190, 76]
     },
     {
       "id": "featureLifecycle",
       "type": "backend",
-      "label": "Feature Lifecycle",
-      "sublabel": "Specify, plan, tasks",
+      "label": "Resolved Core Commands",
+      "sublabel": "Nine existing phase surfaces",
       "pos": [1010, 95],
       "size": [190, 76]
     },
@@ -95,8 +103,8 @@
     {
       "id": "agentHost",
       "type": "external",
-      "label": "Coding Agent",
-      "sublabel": "Active Spec Kit integration",
+      "label": "Active Integration",
+      "sublabel": "Skills or slash commands",
       "pos": [1010, 455],
       "size": [190, 76]
     },
@@ -118,7 +126,7 @@
     },
     {
       "kind": "region",
-      "label": "Installed project",
+      "label": "Clean installed project",
       "wraps": ["featureLifecycle", "architectureCore", "agentHost", "specTree"],
       "pad": 28
     }
@@ -132,6 +140,16 @@
       "variant": "emphasis",
       "route": "straight",
       "labelAt": [215, 365]
+    },
+    {
+      "id": "maintainerInvokesAgent",
+      "from": "maintainer",
+      "to": "agentHost",
+      "label": "invoke installed surfaces",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "via": [[110, 635], [1105, 635]]
     },
     {
       "id": "catalogsFeedSpecKit",
@@ -167,31 +185,50 @@
       "id": "presetGuidesLifecycle",
       "from": "preset",
       "to": "featureLifecycle",
-      "label": "append guidance",
+      "label": "3 templates + 9 overrides",
       "variant": "emphasis",
-      "labelAt": [973, 185]
+      "labelAt": [860, 190]
     },
     {
-      "id": "lifecycleWritesSpecs",
+      "id": "commandsMaterialize",
       "from": "featureLifecycle",
-      "to": "specTree",
-      "label": "one canonical spec",
-      "variant": "emphasis"
+      "to": "agentHost",
+      "label": "materialize winning layer",
+      "variant": "emphasis",
+      "fromSide": "left",
+      "toSide": "left",
+      "via": [[970, 133], [970, 493]],
+      "labelAt": [895, 315]
     },
     {
       "id": "extensionRegistersCommands",
       "from": "extension",
       "to": "agentHost",
-      "label": "register commands",
+      "label": "5 commands + adapter/runtime",
       "variant": "emphasis",
       "labelAt": [973, 545]
+    },
+    {
+      "id": "selfHostingExcluded",
+      "from": "selfHosting",
+      "to": "bundle",
+      "label": "excluded from release",
+      "variant": "dashed"
+    },
+    {
+      "id": "normalCommandsUseSpecs",
+      "from": "featureLifecycle",
+      "to": "specTree",
+      "label": "durable root / implementation",
+      "variant": "emphasis"
     },
     {
       "id": "agentInvokesCore",
       "from": "agentHost",
       "to": "architectureCore",
       "label": "invoke services",
-      "variant": "emphasis"
+      "variant": "emphasis",
+      "labelAt": [1235, 405]
     },
     {
       "id": "coreMaintainsHierarchy",
@@ -216,18 +253,27 @@
       "dot": "emerald",
       "title": "Preset",
       "items": [
-        "Changes guidance, not runtime behavior",
-        "Appends to spec, plan, and task templates",
-        "Keeps Spec Kit's feature lifecycle authoritative"
+        "Composes three template layers without owning runtime",
+        "Overrides nine existing lifecycle command surfaces",
+        "Routes before inherited root-path assumptions can run"
       ]
     },
     {
       "dot": "violet",
       "title": "Extension",
       "items": [
-        "Adds commands and their deterministic runtime",
+        "Adds five Concorde-specific commands and runtime",
         "Registers through the active coding-agent integration",
-        "Operates on Concorde's hierarchical specs sources"
+        "Ships the selected-workspace adapter used by installed commands"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Clean-project proof",
+      "items": [
+        "Installs only from built archives and catalogs",
+        "Cannot read checkout-local .agents or .specify files",
+        "Executes winning command surfaces instead of matching text"
       ]
     }
   ]

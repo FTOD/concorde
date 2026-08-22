@@ -6,9 +6,17 @@
   "workspace": {
     "feature_directory": "specs/example/modules/api/features/002-add-health-check",
     "feature_spec": "specs/example/modules/api/features/002-add-health-check/spec.md",
+    "contracts_dir": "specs/example/modules/api/features/002-add-health-check/contracts",
+    "checklists_dir": "specs/example/modules/api/features/002-add-health-check/checklists",
+    "diagrams_dir": "specs/example/modules/api/features/002-add-health-check/diagrams",
     "implementation_dir": "specs/example/modules/api/features/002-add-health-check/implementation",
+    "implementation_state": "active",
     "plan": "specs/example/modules/api/features/002-add-health-check/implementation/plan.md",
-    "tasks": "specs/example/modules/api/features/002-add-health-check/implementation/tasks.md"
+    "research": "specs/example/modules/api/features/002-add-health-check/implementation/research.md",
+    "data_model": "specs/example/modules/api/features/002-add-health-check/implementation/data-model.md",
+    "quickstart": "specs/example/modules/api/features/002-add-health-check/implementation/quickstart.md",
+    "tasks": "specs/example/modules/api/features/002-add-health-check/implementation/tasks.md",
+    "validation": "specs/example/modules/api/features/002-add-health-check/implementation/validation.md"
   },
   "changes": [
     {

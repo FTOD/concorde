@@ -22,16 +22,20 @@ evidence_status: partial
 ## Purpose
 
 Expose portable orchestration for Concorde initialization, feature placement/selection, bounded
-context, and validation.
+context, and validation, while presenting the preset's resolved normal-command overrides through the
+same active integration.
 
 ## Information
 
-Command Markdown carries user arguments, operation intent, runtime invocation, approval rules,
-structured output handling, and failure behavior.
+Command Markdown carries user arguments, operation intent, selected-workspace routing, runtime
+invocation, approval rules, structured output handling, and failure behavior. Registered artifacts
+may be skill or slash-command presentations.
 
 ## Obligations
 
-Every integration preserves the canonical operation contract and uses project-relative runtime paths.
+Every integration preserves the canonical operation contract, selected-workspace and phase-path
+semantics, and project-relative runtime paths. Registration must materialize the currently winning
+composed layer rather than merely retain matching text in an inactive source.
 
 ## Failure Semantics
 
@@ -44,4 +48,5 @@ Command registration follows Spec Kit 0.16.4 and is tested in skills and slash-c
 ## Evidence
 
 Initialization, context, and validation are verified in installed Codex skills mode and Gemini
-slash-command mode. Evidence remains partial until feature creation and selection pass the same suite.
+slash-command mode. Evidence remains partial until all five Concorde-specific intents and all nine
+affected normal commands execute from release-installed artifacts in both presentation modes.

@@ -58,6 +58,16 @@ export interface FeatureSpecification extends SourceDocument {
   moduleId: string;
   status: string;
   featureDirectory: string;
+  diagrams: FeatureDiagram[];
+}
+
+export interface FeatureDiagram {
+  source: string;
+  sourceSha256: string;
+  kind: 'architecture' | 'workflow' | 'sequence' | 'dataflow' | 'lifecycle';
+  scenarios: string[];
+  title: string;
+  route: string;
 }
 
 export type ArchitectureKind = 'contract' | 'feature' | 'module';
@@ -90,6 +100,7 @@ export interface ContentPage {
   featureId?: string;
   moduleId?: string;
   status?: string;
+  diagrams?: FeatureDiagram[];
   architectureId?: string;
   architectureKind?: ArchitectureKind;
   parentId?: string;
