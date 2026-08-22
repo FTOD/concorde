@@ -1,11 +1,13 @@
 <!--
 Sync Impact Report
-- Version change: 1.2.0 -> 1.3.0
+- Version change: 1.3.0 -> 1.4.0
 - Modified principles:
-  - VI. One Authority per Fact, Traceable Everywhere (feature-owned explanatory diagrams clarified)
+  - VI. One Authority per Fact, Traceable Everywhere (core and supplemental feature-diagram roles clarified)
 - Added guidance:
-  - Feature-owned Archify diagrams live under each feature's `diagrams/` directory and are declared
-    by `spec.md` for automatic publication on the canonical feature page.
+  - A feature's optional core diagram is a single Archify architecture view of stable components and
+    interactions; sequence, workflow, data-flow, and lifecycle views are supplemental only.
+  - Feature-owned Archify diagrams declare `core` or `supplemental` role under each feature's
+    `diagrams/` directory for validation and automatic publication on the canonical feature page.
 - Modified sections:
   - Architecture Documentation Standards
   - Development Workflow and Quality Gates
@@ -153,13 +155,18 @@ unearned authority.
   it is explicitly marked prose-only.
 - Feature specifications SHOULD use feature-owned Archify diagrams when component participation,
   ordered invocation, boundary crossings, state changes, or data movement would be materially easier
-  to understand visually. A cross-component scenario MUST provide such a diagram or record a concise
-  rationale for why prose and the canonical module view are sufficient. Feature diagrams MUST live
-  under the feature's `diagrams/` directory, use a descriptive filename other than
-  `architecture.json`, identify the scenario or question they explain, name visible contract
+  to understand visually. A cross-component feature MUST provide one core component-interaction
+  diagram or record a concise rationale for why prose and the canonical module view are sufficient.
+  A feature MUST declare at most one `core` diagram, and that diagram MUST use the Archify
+  `architecture` type to show stable components, responsibilities, and interactions. Workflow,
+  sequence, data-flow, and lifecycle diagrams MUST be declared `supplemental`; they MAY explain
+  narrower dynamic scenario questions but MUST NOT serve as the feature's core diagram. Every feature
+  diagram MUST live under the feature's `diagrams/` directory, use a descriptive filename other than
+  `architecture.json`, identify the scenario or question it explains, name visible contract
   crossings where applicable, and have a complete textual counterpart. The feature specification
-  MUST declare each diagram, and generated documentation MUST embed every declared fresh view on the
-  canonical feature page while retaining provenance and a standalone-view link.
+  MUST declare each diagram's `core` or `supplemental` role, and generated documentation MUST embed
+  every declared fresh view on the canonical feature page while retaining provenance and a
+  standalone-view link.
 - Custom contract examples MUST validate against their normative schema or grammar. Contract format,
   schema, semantics, examples, affected feature references, and evidence MUST change together.
 - Markdown and Archify JSON MUST divide responsibility by meaning. The same intent MUST NOT require
@@ -223,4 +230,4 @@ precedent, and MUST meet the documentation requirements in the workflow section.
 review the constitution at least once per major release and whenever recurring exceptions indicate
 that a rule no longer serves the project's goals.
 
-**Version**: 1.3.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-22
+**Version**: 1.4.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-22

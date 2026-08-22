@@ -67,6 +67,18 @@ class RepositoryTests(unittest.TestCase):
             with self.assertRaisesRegex(RepositoryError, "directly under diagrams"):
                 ProjectRepository(root).load()
 
+    def test_rejects_sequence_diagram_as_feature_core(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "project"
+            shutil.copytree(CONTEXT_PROJECT, root)
+            source = root / "specs/example/features/001-deliver/spec.md"
+            source.write_text(
+                source.read_text(encoding="utf-8").replace("role: supplemental", "role: core"),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(RepositoryError, "core feature diagram must use the architecture kind"):
+                ProjectRepository(root).load()
+
 
 if __name__ == "__main__":
     unittest.main()

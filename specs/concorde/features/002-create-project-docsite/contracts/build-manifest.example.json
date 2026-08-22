@@ -78,6 +78,7 @@
         {
           "source": "specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json",
           "sourceSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "role": "supplemental",
           "kind": "sequence",
           "scenarios": ["publish-architecture"],
           "title": "Project Docsite — Publication Invocation",

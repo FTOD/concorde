@@ -32,10 +32,10 @@ does not replace this textual definition.
 
 ## Diagram Decision
 
-The parent feature's `diagrams/core-workflow-scenarios.json` sequence shows the calls into Architecture Core
-for ownership lookup, bounded context, and reconciliation validation. A separate child diagram would
-repeat those same participants; this specification relies on that text-backed parent view plus the
-Architecture Core module contract for its narrower boundary.
+The parent feature's `diagrams/core-workflow-components.json` core architecture view shows Architecture
+Core's responsibility and its interactions with the agent, workspace, Integration, and evidence
+producers. A separate child diagram would repeat those same component boundaries; this specification
+relies on that text-backed parent view plus the Architecture Core module contract.
 
 ## Requirements
 

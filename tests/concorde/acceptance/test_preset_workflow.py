@@ -45,7 +45,7 @@ class PresetWorkflowAcceptance(unittest.TestCase):
                 artifact.write_text(result.stdout)
             self.assertEqual(list(workspace.glob("spec.md")), [workspace / "spec.md"])
             self.assertIn("Concorde Architecture Alignment", (workspace / "spec.md").read_text())
-            self.assertIn("Feature diagrams", (workspace / "spec.md").read_text())
+            self.assertIn("Core feature diagram", (workspace / "spec.md").read_text())
             self.assertIn("Concorde Architecture Gate", (implementation / "plan.md").read_text())
             self.assertIn("Evaluate feature-owned diagrams", (implementation / "plan.md").read_text())
             self.assertIn("Concorde Task Coverage", (implementation / "tasks.md").read_text())

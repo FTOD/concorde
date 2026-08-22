@@ -74,8 +74,9 @@ Spec Kit; Feature 003 separately packages its preset and extension; no server or
 - this feature must expose distribution-neutral workspace semantics; Feature 003 must deliver them
   through public Spec Kit preset/extension mechanisms without overwriting managed core infrastructure;
 - Feature 003 installation logic and Feature 002 rendering logic remain outside this implementation;
-- feature diagrams remain supplemental to `spec.md` and module `architecture.json`; cross-component
-  scenarios require a text-backed diagram or a recorded sufficiency rationale
+- feature diagrams remain explanatory rather than behavioral authority; a cross-component feature
+  has at most one `role: core` architecture view of stable component interaction or a recorded
+  sufficiency rationale, while dynamic scenario diagrams remain `role: supplemental`
 
 **Scale/Scope**: One recursively nested specification package per project; one selected feature and
 one active attempt; five canonical Concorde command intents; module/feature/contract/scenario/view/evidence
@@ -96,7 +97,7 @@ below is a blocking implementation checkpoint; failure stops the attempt before 
 | V. Contracts govern every boundary | Phase 1 adds the Feature Workspace Protocol and extends agent/source contracts. Scenario crossings, custom conformance, failures, and evidence remain explicit implementation gates. | PASS |
 | VI. One authority per fact | Root spec/contracts/checklists are durable; implementation artifacts are temporal; `.specify/feature.json` is the only selection pointer; generated outputs remain projections. Existing feature workspaces must be migrated or recorded as finite bootstrap debt before completion. | PASS |
 | VII. Deterministic validation and reviewed evidence | Proposal/apply or atomic selection protects mutations; validators remain sorted/read-only; approval, evidence disagreement, and freshness receipts are separately tested. | PASS |
-| Architecture documentation standards | Root view stays one-level. Scenario IDs/interactions and governing contracts stay stable; the core workflow has a separate text-backed sequence view for component invocation. | PASS |
+| Architecture documentation standards | Root view stays one-level. Scenario IDs/interactions and governing contracts stay stable; the feature has a separate text-backed core architecture view for stable component interaction, while dynamic views remain supplemental. | PASS |
 | Pre-implementation ownership gate | Feature 001 is correctly root-owned because it coordinates Spec Kit Integration and Architecture Core; Documentation is a downstream publication handoff, not an unmodeled owned implementation. | PASS |
 
 No constitutional exception is accepted. The public composition prototype and architecture source
@@ -152,7 +153,7 @@ remain navigation targets and are never embedded in the root view.
 specs/concorde/features/001-concorde-starter-workflow/
 ├── spec.md
 ├── diagrams/
-│   └── core-workflow-scenarios.json
+│   └── core-workflow-components.json
 ├── checklists/
 │   └── requirements.md
 ├── contracts/
@@ -326,7 +327,7 @@ canonical intent, result contracts, path semantics, or failure behavior.
    outcomes.
 5. Conduct SC-001 and SC-007 pilots and record SC-008 human approvals. Keep evidence `partial` until
    real results meet thresholds.
-6. Maintain the core-workflow sequence under `diagrams/`, declare it in `spec.md`, align it with scenario/contract prose,
+6. Maintain the core component-interaction architecture view under `diagrams/`, declare it as `role: core` in `spec.md`, align it with scenario/contract prose,
    deliver it through Archify, publish it through the existing docsite artifact route, and preserve
    truthful pending visual status when no browser is available.
 
@@ -344,7 +345,7 @@ canonical intent, result contracts, path semantics, or failure behavior.
 | Evidence/freshness | Missing, stale, verified, and disagrees references; Archify/docsite provenance receipts; architecture success never upgrades code evidence. |
 | Determinism/safety | Three byte-equivalent runs, stable exit codes/order, before/after source hashes, staged write rollback. |
 | Self-application | Zero unexplained findings over Concorde sources plus complete Python, Archify, and Docusaurus gates. |
-| Feature diagram | `diagrams/core-workflow-scenarios.json` names the involved components and contract calls; 9/9 Archify showcase validation, fresh HTML delivery, automatic feature-page embedding, and truthful visual-check receipt. |
+| Feature diagram | `diagrams/core-workflow-components.json` names the stable components, responsibilities, interactions, and contract calls; 9/9 Archify showcase validation, fresh HTML delivery, automatic feature-page embedding, and truthful visual-check receipt. |
 | Human outcomes | Timed SC-001 placement pilot, five-minute SC-007 authority pilot, and explicit SC-008 review records; never inferred from tests. |
 
 ## Post-Design Constitution Re-check

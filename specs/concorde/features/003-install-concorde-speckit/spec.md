@@ -14,11 +14,13 @@ contracts:
 architecture_view: specs/concorde/architecture.json
 diagrams:
   - source: specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json
+    role: core
     kind: architecture
     scenarios:
       - inspect-install-and-verify-concorde
     output: generated/architecture/concorde-spec-kit-component-model.html
   - source: specs/concorde/features/003-install-concorde-speckit/diagrams/starter-installation-flow.json
+    role: supplemental
     kind: workflow
     scenarios:
       - inspect-install-and-verify-concorde

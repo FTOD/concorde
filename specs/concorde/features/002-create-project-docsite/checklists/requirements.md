@@ -26,7 +26,7 @@
 
 - [x] All functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
-- [x] Cross-component scenarios include a text-backed diagram or a clear sufficiency rationale
+- [x] Cross-component features include a core component-interaction architecture diagram or a clear sufficiency rationale
 - [x] Declared feature diagrams live under `diagrams/` and are automatically embedded on the canonical feature page
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification

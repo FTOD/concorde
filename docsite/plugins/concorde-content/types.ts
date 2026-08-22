@@ -64,6 +64,7 @@ export interface FeatureSpecification extends SourceDocument {
 export interface FeatureDiagram {
   source: string;
   sourceSha256: string;
+  role: 'core' | 'supplemental';
   kind: 'architecture' | 'workflow' | 'sequence' | 'dataflow' | 'lifecycle';
   scenarios: string[];
   title: string;

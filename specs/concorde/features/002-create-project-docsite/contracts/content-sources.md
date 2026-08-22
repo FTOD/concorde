@@ -50,8 +50,10 @@ The Architecture and Features collections are disjoint projections of the same s
 - first level-one heading: required feature title.
 - `Status` metadata line: required lifecycle status and displayed without changing its meaning.
 - `diagrams`: optional list of feature-owned Archify declarations. Every source must be directly
-  below the feature's `diagrams/` directory and name its kind, scenarios or question, and generated
-  output. The JSON `diagram_type` and `meta.output` must agree with the declaration.
+  below the feature's `diagrams/` directory and name its `core` or `supplemental` role, kind,
+  scenarios or question, and generated output. A feature may declare at most one core diagram, and
+  its kind must be `architecture`; dynamic kinds are supplemental. The JSON `diagram_type` and
+  `meta.output` must agree with the declaration.
 - Parent directory: the feature directory; only its `spec.md` is canonical site content in version 1.
 
 ### Architecture Sources

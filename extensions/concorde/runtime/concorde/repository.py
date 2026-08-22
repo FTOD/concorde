@@ -93,8 +93,19 @@ class ProjectRepository:
                 diagrams = metadata.get("diagrams", [])
                 if not isinstance(diagrams, list) or not all(isinstance(item, dict) for item in diagrams):
                     raise RepositoryError(f"{relative}: diagrams must be a list of mappings")
+                core_diagrams = [item for item in diagrams if item.get("role") == "core"]
+                if len(core_diagrams) > 1:
+                    raise RepositoryError(f"{relative}: a feature may declare at most one core diagram")
                 feature_root = PurePosixPath(relative).parent
                 for declaration in diagrams:
+                    role = declaration.get("role")
+                    if role not in {"core", "supplemental"}:
+                        raise RepositoryError(f"{relative}: feature diagram role must be core or supplemental")
+                    if role == "core" and declaration.get("kind") != "architecture":
+                        raise RepositoryError(
+                            f"{relative}: a core feature diagram must use the architecture kind; "
+                            "dynamic diagram kinds are supplemental"
+                        )
                     source = safe_relative_path(declaration.get("source"))
                     source_path = PurePosixPath(source)
                     if source_path.parent != feature_root / "diagrams" or source_path.name == "architecture.json":
@@ -119,6 +130,7 @@ class ProjectRepository:
             if not isinstance(value, dict):
                 raise RepositoryError(f"{relative}: feature diagram must be a JSON object")
             kind = declaration.get("kind")
+            role = declaration.get("role")
             output = declaration.get("output")
             scenarios = declaration.get("scenarios", [])
             if kind not in {"architecture", "workflow", "sequence", "dataflow", "lifecycle"}:

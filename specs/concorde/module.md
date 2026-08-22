@@ -106,8 +106,8 @@ The detailed <a href="/architecture/concorde-spec-kit-component-model.html">comp
 supplemental Feature 003 explanatory views. Their maintained sources are
 `features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` and
 `features/003-install-concorde-speckit/diagrams/starter-installation-flow.json`. `architecture.json` remains
-the canonical one-level root module view. Feature 001 owns the supplemental
-`features/001-concorde-starter-workflow/diagrams/core-workflow-scenarios.json` invocation sequence, and Feature
+the canonical one-level root module view. Feature 001 owns the core
+`features/001-concorde-starter-workflow/diagrams/core-workflow-components.json` component-interaction model, and Feature
 002 owns `features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json`. Feature-owned
 views are encouraged explanations of scenario collaboration; they do not expand or replace the root
 module view.
@@ -123,7 +123,7 @@ permitted external actors.
 The root and Documentation views pass all 9 Archify showcase checks with zero errors or warnings.
 The two supplemental Feature 003 component and installation views also pass all 9 showcase checks,
 desktop containment at four target viewports, and perceptual light/dark review.
-The Feature 001 core-workflow sequence and Feature 002 publication sequence pass all 9 showcase
+The Feature 001 core component view and Feature 002 supplemental publication sequence pass all 9 showcase
 checks with zero errors or warnings and have fresh provenance-bearing deliveries. Their browser
 containment and perceptual review remain pending because Chrome/Chromium is unavailable in the
 current validation environment.

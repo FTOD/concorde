@@ -26,7 +26,7 @@
 
 - [x] All functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
-- [x] Cross-component scenarios include a text-backed diagram or a clear sufficiency rationale
+- [x] Cross-component features include a core component-interaction architecture diagram or a clear sufficiency rationale
 - [x] Declared feature diagrams live under `diagrams/` and are automatically embedded on the canonical feature page
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
@@ -38,5 +38,5 @@
   must be revised in the planning phase; that lifecycle work does not reduce specification quality.
 - Product-visible command IDs and the maintained `specs/` artifact model are intentional interface
   requirements, not internal implementation choices.
-- `diagrams/core-workflow-scenarios.json` supplements the textual scenarios and passes all 9 Archify showcase
+- `diagrams/core-workflow-components.json` supplies the core component model and passes all 9 Archify showcase
   checks with zero errors or warnings.

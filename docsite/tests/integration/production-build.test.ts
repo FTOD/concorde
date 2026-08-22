@@ -36,16 +36,18 @@ describe('production build', () => {
       .toContain('How Concorde Commands Reach a Clean Project');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-starter-installation-flow.html'), 'utf8'))
       .toContain('Install, Materialize, and Prove Concorde');
-    expect(await readFile(resolve(buildDir, 'architecture/concorde-core-workflow-scenarios.html'), 'utf8'))
-      .toContain('Concorde Core Workflow — Component Invocation');
+    expect(await readFile(resolve(buildDir, 'architecture/concorde-core-workflow-components.html'), 'utf8'))
+      .toContain('Concorde Core Workflow — Components and Interactions');
     expect(await readFile(resolve(buildDir, 'architecture/project-docsite-publication-flow.html'), 'utf8'))
       .toContain('Project Docsite — Publication Invocation');
     const coreFeature = manifest.pages.find((page: {featureId?: string}) => page.featureId === 'feature.concorde.core-workflow');
     const docsiteFeature = manifest.pages.find((page: {featureId?: string}) => page.featureId === 'feature.concorde.publish-project-docsite');
     if (!coreFeature || !docsiteFeature) throw new Error('Expected Feature 001 and Feature 002 in the build manifest.');
     expect(coreFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
-      source: 'specs/concorde/features/001-concorde-starter-workflow/diagrams/core-workflow-scenarios.json',
-      route: '/architecture/concorde-core-workflow-scenarios.html',
+      source: 'specs/concorde/features/001-concorde-starter-workflow/diagrams/core-workflow-components.json',
+      role: 'core',
+      kind: 'architecture',
+      route: '/architecture/concorde-core-workflow-components.html',
     })]));
     expect(docsiteFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
       source: 'specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json',
@@ -53,10 +55,10 @@ describe('production build', () => {
     })]));
     const coreFeatureHtml = await readFile(resolve(buildDir, `${coreFeature.route.slice(1)}.html`), 'utf8');
     const docsiteFeatureHtml = await readFile(resolve(buildDir, `${docsiteFeature.route.slice(1)}.html`), 'utf8');
-    expect(coreFeatureHtml).toContain('Feature scenario diagrams');
-    expect(coreFeatureHtml).toContain('Concorde Core Workflow — Component Invocation');
-    expect(coreFeatureHtml).toContain('/architecture/concorde-core-workflow-scenarios.html');
-    expect(docsiteFeatureHtml).toContain('Feature scenario diagrams');
+    expect(coreFeatureHtml).toContain('Feature diagrams');
+    expect(coreFeatureHtml).toContain('Concorde Core Workflow — Components and Interactions');
+    expect(coreFeatureHtml).toContain('/architecture/concorde-core-workflow-components.html');
+    expect(docsiteFeatureHtml).toContain('Feature diagrams');
     expect(docsiteFeatureHtml).toContain('Project Docsite — Publication Invocation');
     expect(docsiteFeatureHtml).toContain('/architecture/project-docsite-publication-flow.html');
     const rootModule = await readFile(resolve(buildDir, 'architecture/concorde/module.concorde.html'), 'utf8');

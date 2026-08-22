@@ -13,12 +13,13 @@ contracts:
     - contract.concorde.spec-kit-platform
 architecture_view: specs/concorde/architecture.json
 diagrams:
-  - source: specs/concorde/features/001-concorde-starter-workflow/diagrams/core-workflow-scenarios.json
-    kind: sequence
+  - source: specs/concorde/features/001-concorde-starter-workflow/diagrams/core-workflow-components.json
+    role: core
+    kind: architecture
     scenarios:
       - scenario-concorde-establish-and-place-feature
       - scenario-concorde-review-implement-and-reconcile
-    output: generated/architecture/concorde-core-workflow-scenarios.html
+    output: generated/architecture/concorde-core-workflow-components.html
 evidence_status: partial
 canonical_spec: specs/concorde/features/001-concorde-starter-workflow/spec.md
 ---
@@ -160,19 +161,23 @@ The five Concorde commands support this workflow without replacing the normal Sp
 Feature creation and selection belong to Spec Kit Integration; initialization, context retrieval, and
 validation belong to Architecture Core.
 
-## Scenario and Component Diagram
+## Core Component and Interaction Diagram
 
-The maintained sequence view in `diagrams/core-workflow-scenarios.json` is a supplemental explanation of the
-two root scenarios and produces
-`generated/architecture/concorde-core-workflow-scenarios.html`. It answers the implementation-facing
-question: when a maintainer uses Concorde, which command surface, Spec Kit phase, Integration service,
-Architecture Core operation, workspace, and evidence producer is invoked next?
+The maintained architecture view in `diagrams/core-workflow-components.json` is the feature's core
+diagram and produces `generated/architecture/concorde-core-workflow-components.html`. It answers the
+stable structural question: when a maintainer uses Concorde, which components participate, which
+responsibility each component owns, and through which interactions they collaborate?
 
-- **Establish and place** follows change intent through `feature.create`, bounded ownership lookup,
-  human placement approval, nested workspace creation/selection, and the normal specify/clarify path.
-- **Review, implement, and reconcile** follows bounded context retrieval through plan, tasks,
-  implementation, delegated test/Archify/docsite evidence, deterministic validation, and final human
-  acceptance or convergence.
+- **Establish and place** focuses the Maintainer, Coding Agent, Spec Kit Integration, Architecture
+  Core, and Project Workspace relationships used for reviewed ownership and nested selection.
+- **Specify and implement** focuses the Coding Agent, Spec Kit lifecycle, Architecture Core, and
+  Project Workspace separation of lifecycle control from bounded architectural context.
+- **Reconcile evidence** focuses the independent Evidence Producers, Architecture Core validation,
+  Project Workspace, and Maintainer review boundary.
+
+The core view intentionally does not model chronological message order. If a particular user story
+later needs call-by-call timing, retries, or asynchronous returns, it may add a separately declared
+`role: supplemental` sequence or workflow diagram without replacing this component model.
 
 The diagram does not replace the textual stories below or the canonical one-level root view in
 `specs/concorde/architecture.json`. Its participants are implementation-facing representatives of
@@ -391,16 +396,22 @@ validation reports both problems consistently without changing maintained source
 - **FR-029**: After the user accepts an implementation, its temporal workspace MAY be frozen as
   evidence, archived, or removed according to project policy without changing the feature's stable ID,
   canonical specification, providing module, or refinement links.
-- **FR-030**: Specification and planning workflows MUST evaluate whether each representative scenario
-  would be materially clearer as a component, workflow, sequence, data-flow, or lifecycle diagram;
-  every cross-component scenario MUST provide one or record why prose and the module view are
-  sufficient.
+- **FR-030**: Specification and planning workflows MUST evaluate whether a feature's components and
+  interactions would be materially clearer as a core architecture diagram and whether individual
+  scenarios additionally need workflow, sequence, data-flow, or lifecycle views; every
+  cross-component feature MUST provide a core component diagram or record why prose and the bounded
+  module view are sufficient.
 - **FR-031**: A feature-owned diagram MUST be maintained as descriptively named Archify JSON under
   the feature's `diagrams/` directory, identify the scenario or question explained, show the relevant
   component participation and contract crossings, have an equivalent textual explanation, and produce
   a validated, provenance-bearing generated projection without redefining feature behavior. The
   generated feature page MUST embed every declared diagram automatically and retain a link to its
   standalone interactive view.
+- **FR-032**: Every declared feature diagram MUST identify its role as `core` or `supplemental`. A
+  feature MAY declare at most one core diagram; that core diagram MUST use the Archify `architecture`
+  type to show stable components, responsibilities, and interactions. Sequence, workflow, data-flow,
+  and lifecycle diagrams MUST be supplemental views of narrower dynamic questions and MUST NOT serve
+  as the feature's core diagram.
 
 ### Scope
 
@@ -444,8 +455,9 @@ validation reports both problems consistently without changing maintained source
   exchanged between a module and an external counterparty.
 - **Architecture View**: The machine-readable structure and scenario traces for one current module and
   its immediate children only.
-- **Feature Diagram**: A descriptively named, maintained Archify explanation of one or more feature
-  scenarios; it supplements `spec.md` and the module view without becoming behavioral or architectural
+- **Feature Diagram**: A descriptively named, maintained Archify explanation declared as either the
+  feature's single optional core component-interaction architecture view or a supplemental dynamic
+  view; it supplements `spec.md` and the module view without becoming behavioral or architectural
   authority for facts owned elsewhere.
 - **Bounded Context**: The smallest resolved set of current-level architecture and active feature
   sources required for one decision or implementation task.
@@ -476,10 +488,10 @@ validation reports both problems consistently without changing maintained source
 - **SC-009**: In 100% of workflow path-resolution tests, specification and contract operations read
   the feature root, while planning, task, implementation, analysis, and convergence operations read
   the same feature's `implementation/` workspace; no root-level `plan.md` or `tasks.md` is created.
-- **SC-010**: Every required feature-owned diagram passes all deterministic Archify showcase,
-  provenance, and freshness checks with zero errors or warnings, and every diagrammed boundary
-  crossing resolves to its textual contract reference; every declared diagram appears on the
-  canonical generated feature page without manual page markup.
+- **SC-010**: Every required feature-owned diagram passes core/supplemental role validation and all
+  deterministic Archify showcase, provenance, and freshness checks with zero errors or warnings;
+  every diagrammed boundary crossing resolves to its textual contract reference, and every declared
+  diagram appears on the canonical generated feature page without manual page markup.
 
 ## Assumptions
 

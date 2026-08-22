@@ -12,6 +12,7 @@ contracts:
 architecture_view: specs/concorde/architecture.json
 diagrams:
   - source: specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json
+    role: supplemental
     kind: sequence
     scenarios:
       - publish-architecture
@@ -44,6 +45,12 @@ candidate validation, and atomic publisher before a programmer or agent browses 
 The diagram explains component involvement and call order; the user stories and requirements below
 remain the behavioral authority, and `specs/concorde/architecture.json` remains the bounded root
 architecture view.
+
+This feature does not add a separate core component diagram because the bounded root view already
+shows Documentation, Architecture Core, Spec Kit Integration, the coding agent, and the maintainer at
+the level where this root feature is owned. Repeating those components here would duplicate that
+canonical structure. The publication sequence is therefore explicitly `role: supplemental` and
+answers only the narrower call-order question.
 
 ## User Scenarios & Testing *(mandatory)*
 

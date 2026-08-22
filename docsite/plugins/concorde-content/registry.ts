@@ -68,10 +68,17 @@ async function parseFeatureDiagrams(
     }
     const sourceText = await readFile(absoluteSource, 'utf8');
     const diagram = JSON.parse(sourceText) as {diagram_type?: unknown; meta?: {title?: unknown; output?: unknown}};
+    const role = declaration.role;
     const kind = declaration.kind;
     const scenarios = declaration.scenarios;
     if (typeof kind !== 'string' || !diagramKinds.has(kind) || diagram.diagram_type !== kind) {
       throw new Error(`Feature diagram "${source}" has a missing or inconsistent diagram kind.`);
+    }
+    if (role !== 'core' && role !== 'supplemental') {
+      throw new Error(`Feature diagram "${source}" must declare role as core or supplemental.`);
+    }
+    if (role === 'core' && kind !== 'architecture') {
+      throw new Error(`Core feature diagram "${source}" must use the architecture kind; dynamic views are supplemental.`);
     }
     if (!Array.isArray(scenarios) || scenarios.length === 0 || !scenarios.every((value) => typeof value === 'string' && value.length > 0)) {
       throw new Error(`Feature diagram "${source}" must declare at least one scenario or named question.`);
@@ -92,13 +99,18 @@ async function parseFeatureDiagrams(
     diagrams.push({
       source,
       sourceSha256: sha256(sourceText),
+      role,
       kind: kind as FeatureDiagram['kind'],
       scenarios: [...scenarios] as string[],
       title: diagram.meta.title.trim(),
       route: `/${generatedRelative}`,
     });
   }
-  return diagrams.sort((left, right) => left.source.localeCompare(right.source));
+  if (diagrams.filter((diagram) => diagram.role === 'core').length > 1) {
+    throw new Error(`Feature "${featureSourcePath}" may declare at most one core diagram.`);
+  }
+  return diagrams.sort((left, right) =>
+    left.role.localeCompare(right.role) || left.source.localeCompare(right.source));
 }
 
 async function parseDocument(

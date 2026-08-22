@@ -17,8 +17,8 @@
 
   | Artifact | SHA-256 |
   |---|---|
-  | `concorde-0.1.0.zip` | `a2611f58fca7d9bef67b1a703f0bc6a509cf72d74b1cb513f0bf4a6a70893d60` |
-  | `concorde-core-0.1.0.zip` | `307fdddaae9cb13a8cc74e844ad431af826028b8d344fa8aac298cd64289f10f` |
+  | `concorde-0.1.0.zip` | `0c2f39ab7f652369dd8463ad20c9564210548c0e2255b14c660f97d29fdbb60a` |
+  | `concorde-core-0.1.0.zip` | `17a4a48644ffdfd083301a1c7570eb2a076a327333343a5527c11d0b3e74a861` |
   | `concorde-starter-0.1.0.zip` | `343ecb318685040f0048b63b3dd1178ab79bcc29882cd6c717c5c9796b35ae3a` |
 
 - The preset archive contains exactly three append template layers and nine complete `replace`
@@ -30,7 +30,7 @@
 
 ### Installed command behavior
 
-- The complete Concorde Python suite passed: **86 tests**.
+- The complete Concorde Python suite passed: **87 tests**.
 - Clean targets outside the checkout installed the built bundle through served generated catalogs.
   Codex skills and Gemini slash-command integrations materialized all **nine normal + five Concorde**
   command surfaces.

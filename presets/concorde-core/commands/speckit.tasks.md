@@ -84,10 +84,13 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - Generate dependency graph showing user story completion order
    - Create parallel execution examples per user story
    - Validate task completeness (each user story has all needed tasks, independently testable)
-   - For every required feature diagram, generate tasks for aligned prose, scenario/contract
-     traceability, maintained Archify JSON, showcase validation, HTML delivery, truthful visual-review
-     status, freshness, and automatic embedding on the canonical feature page. Require its source
-     under the feature's `diagrams/` directory. Do not create a task that edits generated HTML as intent.
+   - First generate a task that verifies any `role: core` diagram is the feature's single stable
+     component-interaction view and uses Archify `architecture`; a sequence diagram can never satisfy
+     that task. For every required core or `role: supplemental` diagram, generate tasks for aligned
+     prose, scenario/contract traceability, maintained Archify JSON, showcase validation, HTML
+     delivery, truthful visual-review status, freshness, and automatic embedding on the canonical
+     feature page. Require its source under the feature's `diagrams/` directory. Do not create a task
+     that edits generated HTML as intent.
 
 4. **Generate TASKS (`IMPLEMENTATION_DIR/tasks.md`)**: Use TASKS_TEMPLATE_CONTENT (from the JSON output above) as the structure. For compatibility with older setup scripts that omit TASKS_TEMPLATE_CONTENT, read TASKS_TEMPLATE instead. Fill with:
    - Correct feature name from plan.md

@@ -8,21 +8,26 @@
 
 **Input**: User description: "$ARGUMENTS"
 
-## Scenario and Component Diagrams *(recommended when useful)*
+## Core Component Diagram and Supplemental Scenario Views *(recommended when useful)*
 
 <!--
-  Evaluate whether each representative scenario is materially easier to understand as an Archify
-  component, workflow, sequence, data-flow, or lifecycle view. Cross-component scenarios should have
-  a text-backed diagram unless this section records why the prose and bounded module view suffice.
+  First evaluate whether the feature's stable components and interactions are materially easier to
+  understand as one core Archify architecture diagram. A cross-component feature should have that
+  text-backed core component view unless this section records why the prose and bounded module view
+  suffice. Then evaluate whether individual scenarios need supplemental workflow, sequence,
+  data-flow, or lifecycle views for order, timing, state, or data movement.
 
   Keep maintained diagram JSON in the feature's diagrams/ directory under a descriptive filename
   other than architecture.json, and declare it in spec.md so the project docsite embeds it
   automatically. State the question/scenario explained, involved components, relevant contract
   crossings, and generated output. The prose must remain understandable without opening the diagram;
-  diagrams supplement rather than redefine behavior, ownership, or contracts.
+  diagrams supplement rather than redefine behavior, ownership, or contracts. Declare `role: core`
+  only on the architecture component view; declare dynamic views as `role: supplemental`. A feature
+  may have at most one core diagram, and a sequence diagram can never be the core diagram.
 -->
 
-- **Decision**: [Diagram source and scenario/question explained, or concise sufficiency rationale]
+- **Core decision**: [Core architecture source and component question, or concise sufficiency rationale]
+- **Supplemental decisions**: [Optional dynamic diagram sources and narrower questions]
 - **Generated view**: [project-relative generated HTML path, if a diagram is maintained]
 
 ## User Scenarios & Testing *(mandatory)*

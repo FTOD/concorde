@@ -35,10 +35,11 @@ specification and phase-specific path routing. It is an example, not the feature
 
 ## Diagram Decision
 
-The parent feature's `diagrams/core-workflow-scenarios.json` sequence shows `feature.create`/`feature.select`
-invoking this Integration-owned workspace service, followed by the normal Spec Kit lifecycle and
-Architecture Core context. It is the text-backed cross-component view for this refinement; another
-child diagram would duplicate that invocation path.
+The parent feature's `diagrams/core-workflow-components.json` core architecture view shows the Coding
+Agent invoking this Integration-owned workspace service through `feature.create`/`feature.select`,
+with the selected workspace shared with the normal Spec Kit lifecycle and Architecture Core. It is
+the text-backed cross-component view for this refinement; another child diagram would duplicate that
+component boundary.
 
 ## Requirements
 

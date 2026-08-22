@@ -190,8 +190,9 @@ not replacing or repeating, the parent project outcome.
 ## R10. Declaration-Driven Feature Diagram Embedding
 
 **Decision**: Parse each canonical feature specification's `diagrams` declarations, require sources
-directly below that feature's `diagrams/` directory, verify their delivered `generated/` outputs, and
-project title, kind, scenario IDs, source hash, and public route into the manifest and page renderer.
+directly below that feature's `diagrams/` directory, validate the `core`/`supplemental` role and the
+invariant that core means Archify `architecture`, verify delivered `generated/` outputs, and project
+title, role, kind, scenario IDs, source hash, and public route into the manifest and page renderer.
 The shared feature layout embeds every diagram in a sandbox and supplies an open-full-view link.
 
 **Rationale**: The specification remains the single registration point while every feature receives

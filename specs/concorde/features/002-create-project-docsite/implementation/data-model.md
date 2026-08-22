@@ -76,6 +76,7 @@ Maintained visual explanation owned by one Feature Specification but not itself 
 |---|---|---|
 | `source` | project-relative path | Directly below the owning feature's `diagrams/`; descriptive JSON filename. |
 | `sourceSha256` | lowercase hex string | SHA-256 of the exact maintained JSON bytes. |
+| `role` | enum | `core` or `supplemental`; at most one core per feature, and core requires `kind: architecture`. |
 | `kind` | Archify diagram kind | Must agree with JSON `diagram_type`. |
 | `scenarios` | non-empty ID/question list | Declared by the owning `spec.md`. |
 | `title` | non-empty string | Read from JSON `meta.title`. |

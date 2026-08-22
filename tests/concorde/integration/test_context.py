@@ -69,6 +69,7 @@ class ContextTests(unittest.TestCase):
             self.assertEqual(context["evidence"][0]["status"], "unknown")
             self.assertEqual(context["feature_diagrams"], [{
                 "source": "specs/example/features/001-deliver/diagrams/delivery-sequence.json",
+                "role": "supplemental",
                 "kind": "sequence",
                 "scenarios": ["scenario.example.deliver"],
                 "output": "generated/architecture/example-delivery-sequence.html",

@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Concorde Core Workflow — Components and Interactions",
+    "quality_profile": "showcase",
+    "output": "../../../../../generated/architecture/concorde-core-workflow-components.html",
+    "viewBox": [1490, 850],
+    "views": [
+      {
+        "id": "establish-feature",
+        "label": "Establish and place",
+        "focus": ["maintainer", "agent", "integration", "architecture", "workspace"],
+        "note": "See how reviewed intent becomes a correctly placed and selected feature workspace."
+      },
+      {
+        "id": "develop-feature",
+        "label": "Specify and implement",
+        "focus": ["agent", "speckit", "architecture", "workspace"],
+        "note": "Spec Kit owns the lifecycle while Concorde supplies structure, selection, and bounded context."
+      },
+      {
+        "id": "reconcile-feature",
+        "label": "Reconcile evidence",
+        "focus": ["agent", "architecture", "workspace", "evidence", "maintainer"],
+        "note": "Independent evidence is compared with durable intent before maintainer acceptance."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "maintainer",
+      "type": "external",
+      "label": "Maintainer",
+      "sublabel": "intent, review, approval",
+      "pos": [30, 360],
+      "size": [150, 76]
+    },
+    {
+      "id": "agent",
+      "type": "frontend",
+      "label": "Coding Agent",
+      "sublabel": "installed command surface",
+      "pos": [300, 360],
+      "size": [160, 76]
+    },
+    {
+      "id": "speckit",
+      "type": "backend",
+      "label": "Spec Kit Lifecycle",
+      "sublabel": "specify through converge",
+      "pos": [1000, 80],
+      "size": [180, 76]
+    },
+    {
+      "id": "integration",
+      "type": "backend",
+      "label": "Spec Kit Integration",
+      "sublabel": "feature create + select",
+      "pos": [580, 360],
+      "size": [180, 76]
+    },
+    {
+      "id": "architecture",
+      "type": "security",
+      "label": "Architecture Core",
+      "sublabel": "init, context, validate",
+      "pos": [580, 640],
+      "size": [180, 76]
+    },
+    {
+      "id": "workspace",
+      "type": "database",
+      "label": "Project Workspace",
+      "sublabel": "specs, implementation, code",
+      "pos": [1000, 360],
+      "size": [180, 76]
+    },
+    {
+      "id": "evidence",
+      "type": "cloud",
+      "label": "Evidence Producers",
+      "sublabel": "tests, Archify, docsite",
+      "pos": [1000, 640],
+      "size": [180, 76]
+    },
+    {
+      "id": "published",
+      "type": "external",
+      "label": "Reviewable Project View",
+      "sublabel": "Feature 002 projection",
+      "pos": [1320, 360],
+      "size": [150, 76]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Concorde workflow services",
+      "wraps": ["integration", "architecture"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "direct-work",
+      "from": "maintainer",
+      "to": "agent",
+      "label": "intent + approval",
+      "variant": "emphasis"
+    },
+    {
+      "id": "run-lifecycle",
+      "from": "agent",
+      "to": "speckit",
+      "label": "specify → converge"
+    },
+    {
+      "id": "manage-feature",
+      "from": "agent",
+      "to": "integration",
+      "label": "create / select",
+      "variant": "emphasis",
+      "labelAt": [540, 330]
+    },
+    {
+      "id": "govern-architecture",
+      "from": "agent",
+      "to": "architecture",
+      "label": "init / context / validate",
+      "variant": "security"
+    },
+    {
+      "id": "write-lifecycle-artifacts",
+      "from": "speckit",
+      "to": "workspace",
+      "label": "durable + temporal artifacts",
+      "labelAt": [1090, 230]
+    },
+    {
+      "id": "select-workspace",
+      "from": "integration",
+      "to": "workspace",
+      "label": "workspace state",
+      "labelAt": [880, 330]
+    },
+    {
+      "id": "inspect-and-validate",
+      "from": "architecture",
+      "to": "workspace",
+      "label": "bounded context + findings",
+      "variant": "security"
+    },
+    {
+      "id": "produce-evidence",
+      "from": "evidence",
+      "to": "workspace",
+      "label": "test / render / build receipts",
+      "variant": "dashed"
+    },
+    {
+      "id": "publish-read-model",
+      "from": "workspace",
+      "to": "published",
+      "label": "validated projection"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Stable Ownership",
+      "items": [
+        "Spec Kit owns the feature lifecycle",
+        "Integration owns nested feature workspaces",
+        "Architecture Core owns bounded structure and validation"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Evidence Is Not Intent",
+      "items": [
+        "Feature prose remains behavioral authority",
+        "Diagrams explain component collaboration",
+        "Code, tests, renders, and docs retain separate status"
+      ]
+    }
+  ]
+}

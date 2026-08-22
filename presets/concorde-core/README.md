@@ -11,8 +11,10 @@ extension supplies that workspace adapter and the five Concorde-specific command
 
 A feature remains one canonical module-owned `features/<number-name>/spec.md`; its text and
 requirements define behavior, while scenarios are representative examples. The preset encourages
-descriptively named, text-backed feature-owned Archify diagrams when component invocation, boundary
-crossings, state, or data flow benefit from visual explanation. Cross-component scenarios require
-such a view or a concise rationale that prose and the bounded module view are sufficient. Maintained
-JSON lives under the feature's `diagrams/` directory, is declared by `spec.md`, and is embedded
+descriptively named, text-backed feature-owned Archify diagrams when component interaction,
+invocation, boundary crossings, state, or data flow benefit from visual explanation. A
+cross-component feature requires one `role: core` Archify architecture view or a concise rationale
+that prose and the bounded module view are sufficient. Dynamic views are `role: supplemental`; a
+sequence diagram can never be the core view. Maintained JSON lives under the feature's `diagrams/`
+directory, is declared by `spec.md`, and is embedded
 automatically by the project docsite; generated HTML never becomes specification authority.

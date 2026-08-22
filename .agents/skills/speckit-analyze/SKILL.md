@@ -86,7 +86,7 @@ Load only the minimal necessary context from each artifact:
 - Success Criteria (measurable outcomes — e.g., performance, security, availability, user success, business impact)
 - User Stories
 - Edge Cases (if present)
-- Feature-diagram decisions, maintained JSON paths, textual counterparts, and sufficiency rationales
+- Feature-diagram roles, maintained JSON paths, textual counterparts, and sufficiency rationales
 
 **From plan.md:**
 
@@ -159,6 +159,8 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 - Feature diagram participants/interactions that conflict with textual scenarios or contracts, or
   diagram sources outside `diagrams/`, undeclared/unembedded diagrams, or generated projections
   treated as maintained authority
+- More than one `role: core` diagram, a core diagram whose kind is not `architecture`, or a
+  sequence/workflow/data-flow/lifecycle view presented as the feature's core component model
 
 ### 5. Severity Assignment
 

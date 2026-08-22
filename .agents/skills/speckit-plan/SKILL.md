@@ -66,10 +66,13 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Evaluate gates (ERROR if violations unjustified)
    - Phase 0: Generate `IMPLEMENTATION_DIR/research.md` (resolve all NEEDS CLARIFICATION)
    - Phase 1: Generate `IMPLEMENTATION_DIR/data-model.md`, durable feature-root `contracts/`, and `IMPLEMENTATION_DIR/quickstart.md`
-   - Define the feature-diagram strategy: scenario/question, participating components, governing
-     contracts, maintained JSON, textual counterpart, generated delivery, showcase validation,
-     truthful visual-review evidence, and freshness. Preserve an explicit sufficiency rationale when
-     no diagram is useful.
+   - Define the feature-diagram strategy in two layers. First define at most one `role: core`
+     Archify `architecture` view for stable components, responsibilities, interactions, and
+     governing contracts, or preserve an explicit sufficiency rationale. Then define any
+     `role: supplemental` workflow, sequence, data-flow, or lifecycle views needed for narrower
+     dynamic questions. A sequence diagram cannot be the core view. For every maintained JSON, name
+     its textual counterpart, generated delivery, showcase validation, truthful visual-review
+     evidence, and freshness check.
    - Re-evaluate Constitution Check post-design
 
 ## Mandatory Post-Execution Hooks

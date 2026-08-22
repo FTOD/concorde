@@ -153,8 +153,8 @@ fixtures return stable findings over three unchanged runs.
 **Purpose**: Reconcile durable architecture and produce honest automated evidence.
 
 - [X] T041 [P] Align the core-workflow textual scenario and governing contracts in `specs/concorde/features/001-concorde-starter-workflow/spec.md` and `specs/concorde/features/001-concorde-starter-workflow/contracts/architecture-sources.md`
-- [X] T042 [P] Align component invocation and ordered scenario traces in `specs/concorde/features/001-concorde-starter-workflow/diagrams/core-workflow-scenarios.json` and `specs/concorde/architecture.json`
-- [X] T043 Validate the Feature 001 diagram with all Archify showcase checks and deliver a fresh provenance-bearing projection to `generated/architecture/concorde-core-workflow-scenarios.html`
+- [X] T042 [P] Align the core component-interaction model in `specs/concorde/features/001-concorde-starter-workflow/diagrams/core-workflow-components.json` with the scenario traces in `specs/concorde/architecture.json`
+- [X] T043 Validate the Feature 001 core architecture diagram with all Archify showcase checks and deliver a fresh provenance-bearing projection to `generated/architecture/concorde-core-workflow-components.html`
 - [X] T044 Verify automatic canonical feature-page embedding and freshness for the Feature 001 diagram in `docsite/tests/integration/production-build.test.ts`
 - [X] T045 [P] Align diagram evaluation and durable/temporal workflow guidance in `presets/concorde-core/templates/`, `.specify/templates/`, and `.agents/skills/`
 - [X] T046 Publish the Feature 001 handoff digest/inventory for Feature 003 and verify matching references in `specs/concorde/features/003-install-concorde-speckit/contracts/installed-command-surfaces.md`

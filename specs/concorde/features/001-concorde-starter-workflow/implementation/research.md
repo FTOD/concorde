@@ -219,16 +219,22 @@ claim.
 - Requiring a human pilot for deterministic byte/path outcomes was rejected as unnecessary and less
   reproducible.
 
-## Decision 11: Give feature diagrams one declared source boundary
+## Decision 11: Give feature diagrams one declared source boundary and two explicit roles
 
 **Decision**: Store feature-owned Archify JSON directly below the feature's `diagrams/` directory and
-declare every view in `spec.md`. Architecture Core includes declared JSON in source identity and
-bounded feature context. Documentation resolves each declaration to a fresh generated artifact and
-embeds it automatically on the canonical feature page.
+declare every view and its role in `spec.md`. A feature may have at most one `role: core` view; it is
+an Archify `architecture` diagram answering which stable components, responsibilities, and
+interactions provide the feature. Workflow, sequence, data-flow, and lifecycle views are
+`role: supplemental` and answer narrower dynamic questions. Architecture Core validates those roles
+and includes declared JSON in source identity and bounded feature context. Documentation resolves
+each declaration to a fresh generated artifact and embeds it automatically on the canonical feature
+page.
 
 **Rationale**: A dedicated directory keeps durable visual explanations discoverable without mixing
 them with the feature specification, contracts, checklists, or temporal implementation artifacts.
 Declaration-driven publication prevents manual Docusaurus markup from becoming a second registry.
+The explicit role prevents a chronological call trace from being mistaken for the feature's stable
+component model.
 
 **Alternatives considered**:
 

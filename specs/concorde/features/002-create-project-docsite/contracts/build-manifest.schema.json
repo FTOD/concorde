@@ -127,10 +127,11 @@
     "featureDiagram": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["source", "sourceSha256", "kind", "scenarios", "title", "route"],
+      "required": ["source", "sourceSha256", "role", "kind", "scenarios", "title", "route"],
       "properties": {
         "source": { "$ref": "#/$defs/sourcePath" },
         "sourceSha256": { "$ref": "#/$defs/sha256" },
+        "role": { "enum": ["core", "supplemental"] },
         "kind": { "enum": ["architecture", "workflow", "sequence", "dataflow", "lifecycle"] },
         "scenarios": {
           "type": "array",
@@ -139,7 +140,16 @@
         },
         "title": { "type": "string", "minLength": 1 },
         "route": { "$ref": "#/$defs/route" }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "role": { "const": "core" } },
+            "required": ["role"]
+          },
+          "then": { "properties": { "kind": { "const": "architecture" } } }
+        }
+      ]
     },
     "page": {
       "type": "object",
@@ -169,7 +179,14 @@
         "status": { "type": "string", "minLength": 1 },
         "diagrams": {
           "type": "array",
-          "items": { "$ref": "#/$defs/featureDiagram" }
+          "items": { "$ref": "#/$defs/featureDiagram" },
+          "contains": {
+            "type": "object",
+            "properties": { "role": { "const": "core" } },
+            "required": ["role"]
+          },
+          "minContains": 0,
+          "maxContains": 1
         },
         "architectureId": { "type": "string", "minLength": 1 },
         "architectureKind": { "enum": ["module", "feature", "contract"] },

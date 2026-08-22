@@ -174,11 +174,15 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - **Core development**: Implement models, services, CLI commands, endpoints
    - **Integration work**: Database connections, middleware, logging, external services
    - **Polish and validation**: Unit tests, performance optimization, documentation
-   - **Feature diagrams**: When a task changes one, update the maintained JSON and textual counterpart
-     together; run Archify showcase validation after each candidate edit and delivery at completion;
-     run visual checks when the environment supports them, inspect captures before claiming perceptual
-     review, and record skipped/pending truthfully. Keep the source under `diagrams/`, declare it in
-     `spec.md`, and verify provenance, generated freshness, and automatic feature-page embedding.
+   - **Feature diagrams**: Reject any declaration that designates a sequence, workflow, data-flow, or
+     lifecycle diagram as `role: core`. The optional single core view must use Archify
+     `architecture` and show stable components and interactions; dynamic views are
+     `role: supplemental`. When a task changes one, update the maintained JSON and textual
+     counterpart together; run Archify showcase validation after each candidate edit and delivery at
+     completion; run visual checks when the environment supports them, inspect captures before
+     claiming perceptual review, and record skipped/pending truthfully. Keep the source under
+     `diagrams/`, declare it in `spec.md`, and verify provenance, generated freshness, and automatic
+     feature-page embedding.
 
 8. Progress tracking and error handling:
    - Report progress after each completed task

@@ -11,6 +11,7 @@ contracts:
   required: []
 diagrams:
   - source: specs/example/features/001-deliver/diagrams/delivery-sequence.json
+    role: supplemental
     kind: sequence
     scenarios:
       - scenario.example.deliver

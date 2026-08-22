@@ -110,10 +110,13 @@ directories captured above]
 
 ## Feature Diagram Strategy
 
-[For every diagram promised by the spec, identify the representative scenario/question, participating
-components, governing contracts, maintained JSON path, complete textual counterpart, generated HTML
-path, deterministic Archify validation/delivery, visual-review evidence, and freshness check. If no
-diagram is needed, preserve the spec's sufficiency rationale. Never overload module architecture.json
+[Identify the feature's core component diagram first: it must be `role: core`, use Archify
+`architecture`, and explain stable participating components, responsibilities, and interactions.
+Then cover each promised `role: supplemental` diagram for narrower sequence, workflow, state, or
+data-movement questions. For every diagram, identify governing contracts, maintained JSON path,
+complete textual counterpart, generated HTML path, deterministic Archify validation/delivery,
+visual-review evidence, and freshness check. If no core diagram is needed, preserve the spec's
+sufficiency rationale. Never overload module architecture.json
 or treat generated output as maintained intent.]
 
 ## Complexity Tracking

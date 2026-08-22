@@ -74,7 +74,7 @@ Durable observable behavior at one abstraction level.
 | `contracts.required` | contract ID list | Explicit, possibly empty. |
 | `evidence_status` | enum | `unknown`, `partial`, `verified`, or `disagrees`. |
 | `canonical_spec` | safe path | Exactly `<workspace>/spec.md` and resolves to this document. |
-| `diagrams` | Feature Diagram reference list | Optional for a simple scenario with rationale; required for a cross-component scenario without a sufficiency rationale. |
+| `diagrams` | Feature Diagram reference list | Optional for a simple feature with rationale; a cross-component feature has one core architecture diagram or an explicit sufficiency rationale. |
 
 A lower-level feature without a parent refinement must be marked internal with a non-empty rationale.
 
@@ -243,11 +243,13 @@ The maintained Archify JSON for one module level.
 
 ## 12. Feature Diagram
 
-A maintained, supplemental explanation owned by one feature.
+A maintained visual explanation owned by one feature. It is either the feature's single optional
+core component model or a supplemental view of a narrower dynamic question.
 
 | Field | Type | Rules |
 |---|---|---|
 | `source` | safe path | Directly under the feature's `diagrams/`; descriptive filename other than `architecture.json`. |
+| `role` | enum | `core` or `supplemental`; at most one core per feature. |
 | `kind` | enum | `architecture`, `workflow`, `sequence`, `dataflow`, or `lifecycle`. |
 | `scenarios` | scenario ID list | At least one, unless a named question is supplied. |
 | `question` | string or null | The implementation-facing question explained when not scenario-specific. |
@@ -257,9 +259,11 @@ A maintained, supplemental explanation owned by one feature.
 | `output` | safe generated path | Provenance-bearing reproducible HTML; never maintained authority. |
 | `validation` | evidence reference | Archify type/schema/showcase/freshness receipt and truthful visual-review status. |
 
-Feature Diagram is distinct from Architecture View: it may explain deeper invocation or component
-collaboration for a representative feature scenario, but it cannot redefine module containment,
-feature behavior, or boundary obligations.
+The core Feature Diagram MUST use `architecture` and show stable components, responsibilities, and
+interactions. Workflow, sequence, data-flow, and lifecycle kinds are supplemental only. Feature
+Diagram is distinct from the canonical module Architecture View: it may explain feature component
+collaboration or a representative scenario, but it cannot redefine module containment, feature
+behavior, or boundary obligations.
 
 ## 13. Bounded Context
 
@@ -333,7 +337,8 @@ but cannot change path meanings or command intent without a reviewed Feature 001
 6. Bounded Context never expands beyond the current Module's immediate children.
 7. Missing Evidence remains `unknown`; architectural validity never upgrades it.
 8. Generated outputs are projections linked to maintained-source digests, never maintained intent.
-9. Every declared Feature Diagram has a textual counterpart, and every diagrammed boundary crossing
+9. Every declared Feature Diagram has an explicit core/supplemental role and textual counterpart;
+   there is at most one core, its kind is architecture, and every diagrammed boundary crossing
    resolves to one maintained Contract.
 10. Every release-installed command receipt from Feature 003 identifies the exact Workflow
     Distribution Handoff digest it implements; registration evidence cannot silently upgrade a

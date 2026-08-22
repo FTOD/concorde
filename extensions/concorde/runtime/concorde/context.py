@@ -91,6 +91,7 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
                 diagram = package.diagrams[source]
                 diagram_projections.append({
                     "source": source,
+                    "role": declaration.get("role"),
                     "kind": declaration.get("kind"),
                     "scenarios": declaration.get("scenarios", []),
                     "output": declaration.get("output"),

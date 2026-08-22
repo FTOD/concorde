@@ -135,11 +135,12 @@ contracts:
   required: []
 architecture_view: specs/example/architecture.json
 diagrams:
-  - source: specs/example/features/001-outcome/diagrams/primary-sequence.json
-    kind: sequence
+  - source: specs/example/features/001-outcome/diagrams/component-interactions.json
+    role: core
+    kind: architecture
     scenarios:
       - scenario.example.primary
-    output: generated/architecture/example-primary-sequence.html
+    output: generated/architecture/example-component-interactions.html
 evidence_status: unknown
 canonical_spec: specs/example/features/001-outcome/spec.md
 ```
@@ -153,9 +154,13 @@ root must match the providing module's package and may contain at most one activ
 `implementation/` child. Durable feature metadata must never be inferred from that child.
 
 `diagrams` is optional for a simple feature with a recorded sufficiency rationale. Each entry has a
-safe `source` immediately below the feature's `diagrams/` directory, an Archify `kind`, one or more
-scenario IDs or a named question, and a safe generated `output`. A cross-component scenario requires
-a declared diagram unless the Markdown records why its text and module-level view are sufficient.
+safe `source` immediately below the feature's `diagrams/` directory, a `role` of `core` or
+`supplemental`, an Archify `kind`, one or more scenario IDs or a named question, and a safe generated
+`output`. A feature may declare at most one core diagram. That core MUST use `kind: architecture` and
+show the stable components, responsibilities, and interactions that provide the feature. Dynamic
+workflow, sequence, data-flow, and lifecycle diagrams are supplemental views for narrower scenario
+questions; none may be designated as the core diagram. A cross-component feature requires a core
+component diagram unless the Markdown records why its text and module-level view are sufficient.
 The source filename must be descriptive and must not be `architecture.json`; its generated output is
 evidence, not maintained intent. Documentation publication discovers these declarations and embeds
 every fresh generated view on the canonical feature page automatically.

@@ -5,7 +5,7 @@ export default function FeatureDiagrams({page}: {page: ContentPage}) {
   return (
     <section className="featureDiagrams" aria-labelledby="feature-diagrams-heading">
       <div className="featureDiagrams__intro">
-        <p className="featureDiagrams__eyebrow">Feature scenario diagrams</p>
+        <p className="featureDiagrams__eyebrow">Feature diagrams</p>
         <h2 id="feature-diagrams-heading">Explore component involvement</h2>
         <p>These interactive views supplement the feature text; the specification and contracts remain authoritative.</p>
       </div>
@@ -16,7 +16,7 @@ export default function FeatureDiagrams({page}: {page: ContentPage}) {
             <article className="featureDiagram" key={diagram.source} aria-labelledby={headingId}>
               <div className="featureDiagram__heading">
                 <div>
-                  <p className="featureDiagram__kind">{diagram.kind} diagram</p>
+                  <p className="featureDiagram__kind">{diagram.role} · {diagram.kind} diagram</p>
                   <h3 id={headingId}>{diagram.title}</h3>
                 </div>
                 <a href={diagram.route} target="_blank" rel="noreferrer">Open full view</a>

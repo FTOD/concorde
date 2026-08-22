@@ -26,7 +26,7 @@
 
 - [x] All functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
-- [x] Cross-component scenarios include a text-backed diagram or a clear sufficiency rationale
+- [x] Cross-component features include a core component-interaction architecture diagram or a clear sufficiency rationale
 - [x] Preset template layers, preset normal-command overrides, and extension-specific commands have distinct responsibilities
 - [x] All nine affected normal commands and five Concorde-specific commands have clean-install acceptance coverage in the requirements
 - [x] Self-hosting checkout files are explicitly excluded from distributed-product evidence
