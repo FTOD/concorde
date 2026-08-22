@@ -5,7 +5,10 @@
 **Decision**: Publish `concorde-core` as one Spec Kit preset archive, `concorde` as one extension
 archive, and `concorde-starter` as one bundle artifact that pins those exact versions. Publish matching
 preset, extension, and bundle catalog entries. Development acceptance uses install-allowed catalogs
-served from localhost; release catalogs use approved HTTPS artifact URLs.
+served from localhost; release catalogs use approved HTTPS artifact URLs. The release builder's
+`--base-url` value is serialized into generated catalog entries as the later archive location; the
+builder does not contact that URL. Acceptance starts the localhost server only after artifacts and
+catalogs have been built.
 
 **Rationale**: Spec Kit bundles are composition manifests. Their standard resolver installs component
 references through the existing primitive managers, and the community bundle guide explicitly
@@ -28,7 +31,8 @@ be versioned and tested independently.
 
 **Decision**: The preset provides append-strategy fragments for `spec-template`, `plan-template`, and
 `tasks-template`. The fragments add Concorde metadata, architecture review, and architecture/evidence
-task guidance without replacing the lower-priority templates.
+task guidance without replacing the lower-priority templates. A preset is passive: it affects
+template resolution during normal Spec Kit phases but registers no command and owns no runtime.
 
 **Rationale**: Presets are the supported mechanism for changing how core Spec Kit phases produce
 artifacts. Append composition retains Spec Kit's canonical sections and remains stackable with other
@@ -46,8 +50,10 @@ presets. Using the three artifact templates maps directly to FR-005 through FR-0
 ## Decision 3: Keep agent commands thin and runtime behavior deterministic
 
 **Decision**: The extension owns three Markdown command definitions and a dependency-free Python 3.11
-runtime. Skills inspect user intent and coordinate approval, but context projection and validation are
-performed entirely by the runtime. Initialization has separate proposal and apply modes.
+runtime. Installed command surfaces inspect user intent and coordinate approval, but context projection
+and validation are performed entirely by the runtime. Initialization has separate proposal and apply
+modes. The active coding-agent integration translates portable definitions into its presentation,
+registration, and invocation syntax; it does not own command behavior.
 
 **Rationale**: Extension commands are rendered by Spec Kit for each active integration, including
 Codex `SKILL.md` output and slash-command agents. Keeping the runtime agent-independent gives every
@@ -209,9 +215,40 @@ the integration failures most likely to make the bundle unusable.
 - Commit installation timestamps into reproducibility checks. Rejected; archive bytes must be stable,
   while project-local lifecycle timestamps are provenance rather than build content.
 
+## Decision 11: Explain the ecosystem with prose and two supplemental Archify views
+
+**Decision**: Keep a plain-language role matrix as the complete, nonvisual explanation and add two
+Feature-001-owned Archify JSON sources. `spec-kit-component-model.json` explains structural package
+roles and ownership. `starter-installation-flow.json` explains release, catalog resolution, install,
+and the distinct preset and extension use-time paths. Their generated HTML is a reproducible
+publication projection consumed by the existing documentation site. Neither source is a canonical
+module-level `architecture.json` or part of Architecture Core source profile 1.
+
+**Rationale**: Package composition and execution order answer different questions and are clearer as
+separate views. The role matrix keeps the explanation searchable and accessible without graphics;
+the diagrams make relationships and sequence inspectable. Keeping them supplemental preserves the
+constitution's bounded one-level module view and the single authority assigned to manifests,
+contracts, and feature prose. Validation, four-size containment review, light/dark perceptual review,
+freshness checks, and a human comprehension pilot provide evidence appropriate to each claim.
+
+**Alternatives considered**:
+
+- Add the ecosystem actors and lifecycle to the root module view. Rejected because that would mix
+  abstraction levels and overload the canonical bounded architecture.
+- Use prose only. Rejected because the feature explicitly requires a visual mental model of both
+  composition and flow.
+- Use diagrams only. Rejected because diagrams cannot be the only accessible or searchable
+  explanation of contract semantics.
+- Add rendering or publication commands to the starter extension. Rejected because the existing
+  documentation pipeline already publishes generated views and those capabilities are outside this
+  starter feature.
+
 ## Unknowns Resolved
 
 No `NEEDS CLARIFICATION` items remain. The initial implementation uses Python 3.11, standard Spec Kit
 catalog distribution, append-only preset fragments, a strict architecture-source profile, and the
-schema in `contracts/architecture-service.schema.json`. Broader Spec Kit versions, additional agent
-integrations, generic JSON Schema evaluation, rendering, and publication remain explicitly deferred.
+schema in `contracts/architecture-service.schema.json`. The package-role boundary, passive preset
+path, active extension path, and supplemental-view boundary are explicit. Broader Spec Kit versions,
+additional agent integrations, generic JSON Schema evaluation, and new starter-owned rendering or
+publication commands remain deferred. The timed SC-001, SC-009, and SC-011 outcomes require human
+evidence rather than inference from automated checks.

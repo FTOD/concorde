@@ -24,10 +24,11 @@ canonical_spec: specs/concorde/features/001-concorde-starter-workflow/spec.md
 
 **Created**: 2026-08-19
 
-**Status**: Implemented; timed first-use pilot pending
+**Status**: Implemented; timed first-use and comprehension pilot pending
 
 **Input**: User description: "Integrate Concorde into the Spec Kit ecosystem with a complete
-installation process, Concorde presets, and starter Concorde commands usable as agent skills."
+installation process, Concorde presets, and starter Concorde commands exposed through supported
+coding-agent integrations."
 
 ## Clarifications
 
@@ -35,6 +36,54 @@ installation process, Concorde presets, and starter Concorde commands usable as 
 
 - Q: What must be the primary distribution and installation unit for Concorde? → A: A native Spec Kit bundle.
 - Q: Which component types belong in the first Concorde bundle? → A: One preset and one command extension only.
+
+## How Concorde Fits into Spec Kit
+
+Spec Kit remains the host platform and owns the normal feature lifecycle: specification,
+clarification, planning, task generation, implementation, analysis, and convergence. Concorde enters
+that platform through three related but different ecosystem concepts:
+
+| Concept | What it is | What it does in Concorde | What it is not |
+|---|---|---|---|
+| **Bundle** | An inspectable, versioned installation recipe that groups compatible components. | `concorde-starter` pins exactly `concorde-core@0.1.0` and `concorde@0.1.0`, then asks Spec Kit to install each through its native component lifecycle. | It is not executable behavior, a template layer, or a new feature-development workflow. |
+| **Preset** | A composable customization layer for Spec Kit artifacts and defaults. | `concorde-core` appends architecture ownership, hierarchy, contract, scenario, traceability, and evidence guidance to the existing spec, plan, and task templates. | It does not register commands or replace the core Spec Kit templates and phases. |
+| **Extension** | An independently installable capability package containing commands and supporting runtime behavior. | `concorde` registers `speckit.concorde.init`, `speckit.concorde.context`, and `speckit.concorde.validate` through the project's active coding-agent integration. | It does not own feature specifications or change Spec Kit's core lifecycle. |
+| **Catalog** | A trusted discovery index containing package identity, version, download location, and integrity metadata. | Separate bundle, preset, and extension catalogs let Spec Kit resolve the bundle and its two pinned components. | It is not installed into the project as product behavior. |
+
+The word "workflow" in **Concorde Starter Workflow** names the maintainer's end-to-end journey. The
+starter bundle deliberately declares no Spec Kit workflow component and no reusable steps. Its value
+comes from composing one passive guidance layer (the preset) with one active capability layer (the
+extension).
+
+### How installation resolves
+
+1. A maintainer registers trusted catalog sources or supplies a supported local bundle source.
+2. Spec Kit expands the bundle recipe before installation, showing the exact preset, extension,
+   versions, compatibility range, composition strategy, integration inheritance, and trust source.
+3. After approval, Spec Kit installs the pinned preset through the preset system and the pinned
+   extension through the extension system, then records bundle and component provenance.
+4. The preset participates whenever Spec Kit resolves the spec, plan, or task template. With the
+   `append` strategy, Concorde guidance is added to the normal template instead of replacing it.
+5. The extension is translated into the active integration's command form—Codex skills or a
+   supported slash-command form—while retaining the same command intent and runtime behavior.
+6. Normal Spec Kit phases create the one canonical feature specification; Concorde commands create,
+   retrieve, and validate the linked hierarchical architecture sources under `specs/`.
+
+Catalog URLs are only discovery and download addresses. Release building writes those addresses into
+catalog metadata; it does not contact them. For local acceptance, the generated `dist/` directory is
+served from localhost so Spec Kit can exercise the same catalog-resolution path used by a published
+release.
+
+### Explanatory diagrams
+
+- Source `spec-kit-component-model.json` and the
+  <a href="/architecture/concorde-spec-kit-component-model.html">interactive component view</a> show
+  what each package type contributes after installation.
+- Source `starter-installation-flow.json` and the
+  <a href="/architecture/concorde-starter-installation-flow.html">interactive workflow view</a> show
+  the release, review, installation, and two use paths.
+- The [root module view](/architecture/concorde/module.concorde) keeps the architectural one-level
+  view: Concorde's immediate modules, external actors, contracts, and scenarios.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -47,10 +96,11 @@ ready to use without a separate Concorde installer or manual component copying.
 **Why this priority**: Installation is the entry point for every other Concorde capability. A usable
 starter workflow cannot exist until its exact contents can be inspected, installed, and verified.
 
-**Independent Test**: Starting from a clean supported project, validate and build the Concorde bundle,
-inspect its expanded component plan, install it through the native bundle command, and verify that its
-preset, extension, and three starter commands are active. This delivers a usable integration even
-before any project architecture has been authored.
+**Independent Test**: Starting from a clean supported project, use the textual explanation and
+diagrams to identify the role of each package type, validate and build the Concorde bundle, inspect
+its expanded component plan, install it through the native bundle command, and verify that its preset,
+extension, and three starter commands are active. This delivers a usable integration even before any
+project architecture has been authored.
 
 **Acceptance Scenarios**:
 
@@ -68,6 +118,9 @@ before any project architecture has been authored.
    Concorde reaches the same verified state as an existing project.
 5. **Given** a complete installation, **When** the maintainer repeats installation, **Then** the result
    is successful and no duplicate components or changes to user-authored files are produced.
+6. **Given** the Feature 001 explanation and diagrams, **When** a maintainer reviews how Concorde is
+   integrated, **Then** they can distinguish the bundle recipe, preset guidance, extension behavior,
+   catalog discovery metadata, and the unchanged Spec Kit feature lifecycle.
 
 ---
 
@@ -217,8 +270,9 @@ that all project-owned sources and shared dependencies remain unchanged.
   state that could not be restored automatically.
 - **FR-022**: Installation status and provenance MUST let maintainers identify the installed bundle,
   preset, extension, versions, source, and active or disabled state.
-- **FR-023**: The starter workflow MUST include a concise quick start covering preview, installation,
-  command discovery, root initialization, context retrieval, validation, update, and removal.
+- **FR-023**: The starter workflow MUST include a concise quick start covering the bundle, preset,
+  extension, and catalog roles; preview; installation; command discovery; root initialization;
+  context retrieval; validation; update; and removal.
 - **FR-024**: The architecture package and generated command results MUST distinguish intended design,
   implementation evidence, and unknown evidence rather than infer agreement among them.
 - **FR-025**: The bundle manifest MUST declare schema version, stable bundle ID, display name, semantic
@@ -231,6 +285,12 @@ that all project-owned sources and shared dependencies remain unchanged.
   distributed.
 - **FR-028**: The first bundle MUST contain exactly one Concorde preset and one Concorde command
   extension; it MUST NOT declare a dedicated Concorde workflow or reusable steps.
+- **FR-029**: Feature and architecture documentation MUST explain, in plain language, which behavior
+  belongs to Spec Kit, the bundle, the preset, the extension, catalogs, the active coding-agent
+  integration, and Concorde Architecture Core without treating those concepts as interchangeable.
+- **FR-030**: The feature MUST provide validated component and workflow diagrams that show both
+  installation-time composition and the distinct use-time paths for preset guidance and extension
+  commands, with accompanying text that remains usable without the diagrams.
 
 ### Scope
 
@@ -274,6 +334,10 @@ that all project-owned sources and shared dependencies remain unchanged.
   remediation.
 - **Installation Record**: Provenance describing installed component identities, versions, ownership,
   source, active state, and lifecycle outcome.
+- **Component Catalog Entry**: Discovery and trust metadata that identifies an independently packaged
+  bundle, preset, or extension and its later download location without owning behavior.
+- **Supplemental Explanatory View**: A Feature-001-owned visual composition that explains structural
+  roles or temporal flow without becoming a canonical module-level architecture view.
 
 ## Success Criteria *(mandatory)*
 
@@ -301,6 +365,9 @@ that all project-owned sources and shared dependencies remain unchanged.
   journey without assistance beyond the bundled quick start.
 - **SC-010**: A feature specification created after installation records all required Concorde
   architecture references in its single canonical Spec Kit artifact, with no duplicate feature spec.
+- **SC-011**: At least 90% of first-time pilot maintainers can, after reviewing the explanation and
+  diagrams for no more than five minutes, correctly identify all four ecosystem roles—bundle, preset,
+  extension, and catalog—and describe how Concorde preserves the normal Spec Kit feature lifecycle.
 
 ## Assumptions
 
@@ -319,10 +386,13 @@ that all project-owned sources and shared dependencies remain unchanged.
   have passed the starter bundle's installation and usage acceptance tests.
 - In this specification, "starter workflow" describes the user journey enabled by the bundle; it does
   not mean that the bundle contains a Spec Kit workflow component.
+- Catalogs are transport and trust metadata for independently versioned packages. They are discussed
+  because installation depends on resolution, but they are not additional Concorde runtime
+  components.
 - The three starter commands may coordinate deterministic project-scoped operations, but architectural
   changes remain reviewable proposals until the maintainer approves them.
-- Publishing and visual rendering are architecturally represented but intentionally deferred so the
-  first slice can prove installation, authoring context, and validation end to end.
+- The two supplemental explanations are rendered and published by the existing Archify and Docusaurus
+  pipeline. Rendering and publication commands remain outside the starter bundle and extension.
 
 ## Dependencies
 

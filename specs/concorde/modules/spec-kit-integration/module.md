@@ -32,6 +32,27 @@ Kit core phases, agent-specific runtimes, or architecture validation semantics.
 - `feature.integration.compose-starter-workflow` refines
   `feature.concorde.install-starter-workflow` and owns preset composition and command registration.
 
+## Preset and Extension Model
+
+The preset and extension are complementary but not interchangeable:
+
+- `concorde-core` is a passive composition layer. At template-resolution time, its append strategy
+  adds Concorde prompts and gates to Spec Kit's existing spec, plan, and task templates. The resulting
+  artifacts remain the normal canonical Spec Kit artifacts.
+- `concorde` is an active capability package. At installation time, Spec Kit registers its command
+  definitions through the target project's active coding-agent integration. At use time, those agent
+  commands invoke the same deterministic Architecture Core runtime regardless of their displayed
+  skill or slash-command syntax.
+
+Neither component replaces the core Spec Kit workflow. The bundle merely installs the tested pair.
+See the root feature's
+<a href="/architecture/concorde-spec-kit-component-model.html">component model</a> for the structural
+relationship and
+<a href="/architecture/concorde-starter-installation-flow.html">installation flow</a> for the
+release-to-use sequence. Their maintained sources are
+`specs/concorde/features/001-concorde-starter-workflow/spec-kit-component-model.json` and
+`specs/concorde/features/001-concorde-starter-workflow/starter-installation-flow.json`.
+
 ## Canonical Contract Definitions
 
 Maintained definitions live under `contracts/*/contract.md`; the summaries below provide bounded

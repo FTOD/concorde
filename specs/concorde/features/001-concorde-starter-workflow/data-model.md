@@ -2,12 +2,14 @@
 
 ## Overview
 
-The starter workflow has two related domains:
+The starter workflow has three related domains:
 
 1. the Spec Kit distribution domain, which installs and tracks one bundle, one preset, and one
    extension; and
 2. the Concorde architecture domain, which maintains project intent and returns deterministic
-   proposals, bounded contexts, and validation findings.
+   proposals, bounded contexts, and validation findings; and
+3. the explanatory publication domain, which renders feature-owned supplemental diagrams without
+   changing package, feature, contract, or module authority.
 
 Installation provenance is evidence about deployed tooling. Architecture documents remain intended
 design. Neither is allowed to imply that implementation agrees with that intent.
@@ -15,14 +17,21 @@ design. Neither is allowed to imply that implementation agrees with that intent.
 ## Entity Relationship Summary
 
 ```text
-ConcordeStarterBundle
-  ├── pins exactly one ConcordeCorePreset
-  ├── pins exactly one ConcordeExtension
-  └── produces one InstallationRecord per project
+ComponentCatalogEntry (bundle, preset, or extension)
+  └── is resolved by Spec Kit into an ExpandedComponentPlan
+        ├── reads one ConcordeStarterBundle recipe
+        ├── pins exactly one ConcordeCorePreset
+        ├── pins exactly one ConcordeExtension
+        └── produces one InstallationRecord per project
+
+ConcordeCorePreset
+  └── contributes guidance to the normal Spec Kit lifecycle
+        └── produces one canonical feature spec at its owning module
 
 ConcordeExtension
-  └── registers three AgentCommands
-        └── invoke one ArchitectureOperation each
+  └── is rendered by one ActiveAgentIntegration
+        └── registers three AgentCommands
+              └── invoke one ArchitectureOperation each
 
 ArchitecturePackage
   ├── contains Modules
@@ -31,6 +40,9 @@ ArchitecturePackage
   │     └── contain immediate child Modules
   ├── contains Scenarios and ArchitectureViews
   └── yields BoundedContexts and ValidationReports
+
+SupplementalExplanatoryView
+  └── renders one generated HTML projection plus visual evidence
 ```
 
 ## Distribution Entities
@@ -68,6 +80,43 @@ Validation:
 - Every non-step component has a pinned version.
 - No integration is declared, so the target project's active integration is inherited.
 
+### Component Catalog Entry
+
+Spec Kit discovery and trust metadata for one independently packaged release unit. The catalog is
+not the archive and does not own component behavior.
+
+| Field | Type | Required | Rules |
+|---|---|---:|---|
+| `catalog_kind` | enum | yes | `bundle`, `preset`, or `extension`. |
+| `catalog_url` | URL | yes | Source configured with a Spec Kit trust/install policy. |
+| `id` | slug | yes | Matches the archive manifest identity. |
+| `version` | semver | yes | Matches the archive manifest version. |
+| `download_url` | URL | yes | Location from which Spec Kit later retrieves the archive. |
+| `sha256` | digest | conditional | Required when the catalog profile supplies digests; must match archive bytes. |
+| `requires` | compatibility metadata | yes | Includes the supported Spec Kit range. |
+| `trust` | enum/policy | yes at resolution | Must permit installation, not discovery only. |
+
+The release builder derives `download_url` from its `--base-url` input and writes it into the catalog;
+it does not contact that URL. Local acceptance serves the already-built files afterward.
+
+### Expanded Component Plan
+
+The accepted preview Spec Kit resolves before mutation. It is lifecycle state, not a second bundle
+manifest.
+
+| Field | Type | Required | Rules |
+|---|---|---:|---|
+| `bundle` | ID/version | yes | Resolved `concorde-starter` identity and version. |
+| `components` | ordered component list | yes | Exactly the pinned preset and extension for this release. |
+| `compatibility` | result | yes | Evaluated against the current Spec Kit version before mutation. |
+| `integration` | inherited integration ID | yes | Comes from the target project because the bundle declares none. |
+| `sources` | catalog provenance list | yes | Records catalog URL and trust decision for each unit. |
+| `overlaps` | ownership analysis | yes | Names components already installed or shared with another bundle. |
+| `accepted_snapshot` | canonical JSON/digest | yes before install | The `info` plan against which installation results are compared. |
+
+For unchanged catalog and project state, `info` and `install` must resolve the same ordered component
+plan. Spec Kit owns resolution, mutation, registry records, rollback, update, and removal.
+
 ### Concorde Core Preset
 
 The composable architecture-aware guidance layer.
@@ -103,6 +152,23 @@ Relationships:
 
 - Registers `Agent Command` artifacts through the active integration.
 - Commands invoke the extension's installed `Architecture Operation` runtime.
+
+### Active Agent Integration
+
+The Spec Kit-selected adapter that presents portable extension commands in one coding agent. It owns
+presentation and registration syntax, not Concorde semantics or runtime behavior.
+
+| Field | Type | Required | Rules |
+|---|---|---:|---|
+| `integration_id` | stable Spec Kit ID | yes | Selected by the initialized target project. |
+| `presentation_mode` | enum/string | yes | For example Codex skills or a slash-command surface. |
+| `invocation_syntax` | string profile | yes | Agent-native command naming and separators. |
+| `rendered_artifacts` | project-relative path list | yes | Native command files produced from portable extension definitions. |
+| `registration_state` | enum | yes | `registered`, `partial`, or `failed`. |
+
+The bundle inherits this integration. Changing integrations may change rendered files and invocation
+syntax, but must not change command inputs, architecture operations, structured outputs, or failure
+semantics.
 
 ### Installation Record
 
@@ -277,6 +343,9 @@ Relationships:
 
 ### Architecture View
 
+The canonical one-level structural view owned by a module and validated by Architecture Core source
+profile 1.
+
 | Field | Type | Required | Rules |
 |---|---|---:|---|
 | `path` | project-relative JSON path | yes | Referenced by its current module. |
@@ -284,6 +353,31 @@ Relationships:
 | `components` | view participant list | yes | Current-level child modules and permitted external actors; no grandchildren. |
 | `connections` | ordered/identified edge list | yes | Participants resolve and boundary crossings map to contracts. |
 | `scenarios` | view IDs | yes | Resolve corresponding module-level scenarios unless prose-only. |
+
+### Supplemental Explanatory View
+
+A Feature-001-owned visual explanation that is deliberately outside the module-owned Architecture
+View entity and Architecture Core source profile 1. It cannot define modules, feature behavior,
+contract obligations, or package contents.
+
+| Field | Type | Required | Rules |
+|---|---|---:|---|
+| `source_path` | project-relative JSON path | yes | Maintained beside Feature 001; not named `architecture.json`. |
+| `diagram_kind` | enum | yes | `component-model` or `installation-flow`. |
+| `question_answered` | string | yes | Structural ownership or temporal release/install/use flow. |
+| `authority_references` | path/ID list | yes | Points to manifests, feature prose, and contracts that own represented facts. |
+| `textual_counterparts` | path/section list | yes | Complete explanation available without the visual. |
+| `generated_output` | project-relative HTML path | yes | Reproducible projection under `generated/architecture/`. |
+| `generator_provenance` | version/digest | yes | Records renderer version and source/output freshness. |
+| `validation_receipt` | evidence reference | yes | All Archify showcase checks must pass. |
+| `viewport_evidence` | evidence list | yes | Four desktop sizes plus light/dark perceptual review. |
+| `publication_route` | route | yes | Existing documentation-site route; no starter runtime command is added. |
+
+Instances:
+
+- `spec-kit-component-model.json` owns only the layout of the package-role explanation.
+- `starter-installation-flow.json` owns only the layout of release-to-install and the two use-time
+  paths.
 
 ## Result Entities
 

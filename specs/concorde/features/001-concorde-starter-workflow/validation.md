@@ -2,8 +2,8 @@
 
 **Recorded**: 2026-08-20  
 **Automated implementation status**: Passed  
-**Overall feature evidence**: Partial — the timed human first-use pilot for SC-001 and SC-009 is
-still pending and is not inferred from automation.
+**Overall feature evidence**: Partial — the timed human first-use and comprehension pilot for SC-001,
+SC-009, and SC-011 is still pending and is not inferred from automation.
 
 ## Environment
 
@@ -47,7 +47,7 @@ localhost acceptance catalogs, component manifests, versions, URLs, and archive 
 uv run python -m unittest discover -s tests/concorde -p 'test_*.py'
 ```
 
-Result: **49 tests passed** in unit, contract, integration, and acceptance suites.
+Result: **53 tests passed** in unit, contract, integration, and acceptance suites.
 
 Observed coverage includes:
 
@@ -70,6 +70,9 @@ Observed coverage includes:
   scenario participants, one-level views, evidence status, stable digest, and all-findings behavior;
 - installed proposal/apply/context/validation journeys, seeded validation failure, three-run byte
   equivalence, Codex skills registration, and Gemini slash-command registration.
+- consistent Spec Kit, catalog, bundle, preset, extension, coding-agent integration, and Architecture
+  Core explanations; both supplemental diagram models and use-time paths; separation from the bounded
+  root view; generated artifact presence; and publication of both interactive routes.
 
 ## Self-Application Evidence
 
@@ -80,8 +83,8 @@ extensions/concorde/scripts/bash/concorde.sh --project-root . validate --format 
 ```
 
 All three outputs were byte-equivalent with status `success`, **27 inspected maintained artifacts**,
-zero errors/warnings/infos, and source digest
-`sha256:e75f6b0b39f67e6a82a4781d74eb5173f3d4ac417befce45bf5dd1f8b5974ee1`.
+zero errors/warnings/infos. The latest post-planning validation produced source digest
+`sha256:14408d3f3029e1d027c664e0ae87591bedd97f48700afd58306afa7e1f5dd6f5`.
 No bootstrap exception remains for source validation.
 
 The root bounded-context projection contained two root features, four immediate children, three
@@ -91,21 +94,29 @@ its organization at this level and concise contract ID/role/flow/counterparty in
 
 ## Archify and Documentation Freshness
 
-The root architecture specification passed all nine Archify showcase checks with zero composition
-errors and warnings. Delivery receipts:
+The root architecture specification and both supplemental Feature 001 diagrams passed all nine
+Archify showcase checks with zero composition errors and warnings. Delivery receipts:
 
-- specification SHA-256: `feb429fdbc0a5eb4f964351b44af72a1c6a1dbb1eace6486aeb8a1cf0f61b6f8`
-- generated HTML SHA-256: `0dbce3452b3c8befc43e5ea6ce8f273f998f18f0c6b4adaf158e36415b949b1c`
+- root specification / HTML:
+  `f81f718b9f3c8e4eb279cb0377ba5f45d1f9e30d9552ea737d3a1e38a02bf76f` /
+  `ff42d428bbebd5863561f612db0644b9954aab43c0eda94c53c8a0c98839a3c0`
+- Spec Kit component model specification / HTML:
+  `dfacd3c2fa6d190dd0b737582782fbf894a0317ded6438623cd8c06c1c9b4f24` /
+  `bec4fe89ab0fe5fcf66887f2efe30bcabfd259dca84a38f454b83ff37c82850c`
+- starter installation flow specification / HTML:
+  `1f1dd03335f4fc395ef567ef59833e1b25de9944cbf8a847b86a6ccabfc526d2` /
+  `ac808d28ec9bfe2e8a5369be0a27acd67eff9095aee56e64d77f92cd574fd202`
 
-Archify visual-check was truthfully `skipped` and visual review remains `pending` because Chrome or
-Chromium was unavailable.
+Automated containment passed for the root and both new diagrams at 1440×900, 1600×1000, 1920×1080, and
+2048×1320. Light/dark screenshots at the smallest and largest viewports received perceptual review;
+labels, routes, hierarchy, theme contrast, and vertical balance passed without unresolved findings.
 
 ```bash
 cd docsite
 npm run check
 ```
 
-Result: TypeScript passed; **14 Vitest files / 29 tests passed**; 27 pages and 21 explicit exclusions
+Result: TypeScript passed; **14 Vitest files / 29 tests passed**; 27 pages and 23 explicit exclusions
 validated with zero errors; the optimized Docusaurus site built and promoted successfully.
 
 ## Requirement and Outcome Summary
@@ -116,13 +127,18 @@ validated with zero errors; the optimized Docusaurus site built and promoted suc
   explicit evidence, conflict, and source-immutability tests.
 - FR-016–FR-023: verified by compatibility refusal, repeat install, update/failure/removal,
   provenance, quickstart, and retained-source tests.
+- FR-029–FR-030: verified by the aligned feature, module, refinement, and contract explanations; two
+  validated supplemental diagrams; desktop visual evidence; and a successful production docsite build.
 - SC-002–SC-008 and SC-010: satisfied by automated acceptance evidence above.
-- SC-001 and SC-009: **pending human evidence**. No participant count, timing, or assistance rate has
-  been fabricated.
+- SC-001, SC-009, and SC-011: **pending human evidence**. No participant count, timing, assistance
+  rate, or comprehension result has been fabricated.
 
 ## Pending Timed Pilot
 
 Conduct the quickstart with first-time maintainers and record participant count, environment,
-completion times, assistance required, and outcome. Acceptance requires the primary journey to finish
-within ten minutes and at least 90% of participants to complete without assistance beyond the bundled
-quickstart.
+completion times, assistance required, outcome, and answers to the four role questions plus the
+unchanged-lifecycle prompt.
+Acceptance requires the primary journey to finish within ten minutes, at least 90% of participants to
+complete without assistance beyond the bundled quickstart, and at least 90% to distinguish bundle,
+preset, extension, and catalog roles and explain the unchanged Spec Kit lifecycle after reviewing the
+explanation for no more than five minutes.

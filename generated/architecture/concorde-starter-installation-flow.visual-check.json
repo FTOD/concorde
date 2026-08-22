@@ -5,9 +5,9 @@
   "status": "pass",
   "visualReview": "pending",
   "artifact": {
-    "path": "/home/zhenyu/concorde/generated/architecture/concorde-root.html",
-    "sha256": "ff42d428bbebd5863561f612db0644b9954aab43c0eda94c53c8a0c98839a3c0",
-    "bytes": 636236
+    "path": "/home/zhenyu/concorde/generated/architecture/concorde-starter-installation-flow.html",
+    "sha256": "ac808d28ec9bfe2e8a5369be0a27acd67eff9095aee56e64d77f92cd574fd202",
+    "bytes": 635092
   },
   "state": {
     "detail": "read",
@@ -89,7 +89,7 @@
         "overflowY": false,
         "ok": true,
         "resolvedTheme": "light",
-        "file": "concorde-root.visual-check.1440x900.light.png"
+        "file": "concorde-starter-installation-flow.visual-check.1440x900.light.png"
       },
       {
         "width": 1440,
@@ -103,7 +103,7 @@
         "overflowY": false,
         "ok": true,
         "resolvedTheme": "dark",
-        "file": "concorde-root.visual-check.1440x900.dark.png"
+        "file": "concorde-starter-installation-flow.visual-check.1440x900.dark.png"
       },
       {
         "width": 2048,
@@ -117,7 +117,7 @@
         "overflowY": false,
         "ok": true,
         "resolvedTheme": "light",
-        "file": "concorde-root.visual-check.2048x1320.light.png"
+        "file": "concorde-starter-installation-flow.visual-check.2048x1320.light.png"
       },
       {
         "width": 2048,
@@ -131,13 +131,13 @@
         "overflowY": false,
         "ok": true,
         "resolvedTheme": "dark",
-        "file": "concorde-root.visual-check.2048x1320.dark.png"
+        "file": "concorde-starter-installation-flow.visual-check.2048x1320.dark.png"
       }
     ],
-    "contactSheet": "concorde-root.visual-check.html"
+    "contactSheet": "concorde-starter-installation-flow.visual-check.html"
   },
   "sidecars": {
-    "receipt": "concorde-root.visual-check.json",
-    "contactSheet": "concorde-root.visual-check.html"
+    "receipt": "concorde-starter-installation-flow.visual-check.json",
+    "contactSheet": "concorde-starter-installation-flow.visual-check.html"
   }
 }

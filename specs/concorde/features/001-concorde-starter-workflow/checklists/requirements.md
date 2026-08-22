@@ -32,6 +32,8 @@
 ## Notes
 
 - Validation iteration 1 passed all checklist items.
+- Validation iteration 2 passed all checklist items after adding the ecosystem explanation and
+  explanatory diagrams; no clarification markers were introduced.
 - Product-visible Spec Kit component types, version, and command identities are contractual scope, not
   implementation design.
 - No clarification markers are required; the assumptions make the starter scope and compatibility

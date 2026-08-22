@@ -34,6 +34,12 @@ This contract uses the public Spec Kit bundle, preset, extension, and agent-comm
 The exchanged information consists of component identities and versions, compatibility constraints,
 install plans and results, composed templates, registered command instructions, and diagnostics.
 
+The observable composition is one bundle recipe (`concorde-starter`) resolving to one passive
+guidance component (`concorde-core`) and one active command component (`concorde`). Spec Kit applies
+the preset through template resolution, registers the extension through the active agent integration,
+and retains authority for the normal feature lifecycle. "Starter workflow" names the resulting user
+journey; no dedicated Spec Kit workflow or step is part of this contract.
+
 ## Obligations
 
 - Preview MUST identify every component and version that an installation would add.

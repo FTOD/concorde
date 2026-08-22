@@ -11,6 +11,20 @@ Concorde is designed to be installed as a native Spec Kit bundle containing:
 - no replacement workflow: Spec Kit continues to own specification, planning, tasks, and
   implementation.
 
+The three Spec Kit package concepts have different jobs:
+
+| Concept | Concorde package | Role |
+|---|---|---|
+| Bundle | `concorde-starter` | An installation recipe that pins the tested preset and extension versions. |
+| Preset | `concorde-core` | Append-only guidance added to the existing spec, plan, and task templates. |
+| Extension | `concorde` | Agent commands and deterministic runtime behavior for architecture operations. |
+
+Catalogs are trusted discovery metadata for these independently versioned packages; they are not a
+fourth installed runtime component. See the interactive
+[component model](generated/architecture/concorde-spec-kit-component-model.html),
+[installation flow](generated/architecture/concorde-starter-installation-flow.html), and the full
+[Feature 001 explanation](specs/concorde/features/001-concorde-starter-workflow/spec.md#how-concorde-fits-into-spec-kit).
+
 ## Project status
 
 The project docsite and architecture publication pipeline are implemented and tested. Feature 001 now
@@ -52,7 +66,8 @@ uv run python scripts/release/verify-release.py --dist dist
 ```
 
 The release contains exactly `concorde-core@0.1.0` and `concorde@0.1.0`. It does not install a custom
-workflow or reusable Spec Kit steps.
+workflow or reusable Spec Kit steps. `--base-url` is written into the generated catalog metadata; the
+builder does not contact it. The value must match the address that serves `dist/` in the next step.
 
 ### 2. Serve the local catalogs
 

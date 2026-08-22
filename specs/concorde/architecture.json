@@ -18,7 +18,7 @@
           "agentHost",
           "architectureCore"
         ],
-        "note": "Install the bundle, register agent skills, and exercise the first architecture commands."
+        "note": "Resolve the bundle recipe, register agent commands, and exercise the first architecture operations."
       },
       {
         "id": "initialize-root-architecture",
@@ -75,7 +75,7 @@
       "id": "integration",
       "type": "backend",
       "label": "Spec Kit Integration",
-      "sublabel": "Presets, extensions, skills",
+      "sublabel": "Preset + command extension",
       "pos": [750, 110],
       "size": [190, 78]
     },
@@ -99,7 +99,7 @@
       "id": "agentHost",
       "type": "external",
       "label": "Coding Agent",
-      "sublabel": "Installed Concorde skills",
+      "sublabel": "Installed command surface",
       "pos": [1010, 110],
       "size": [190, 78]
     }
@@ -129,18 +129,18 @@
       "variant": "emphasis"
     },
     {
-      "id": "distributionInstallsComponents",
-      "from": "distribution",
-      "to": "integration",
-      "label": "preset + extension",
+      "id": "integrationProvidesComponents",
+      "from": "integration",
+      "to": "distribution",
+      "label": "component packages",
       "variant": "emphasis",
       "labelAt": [710, 202]
     },
     {
-      "id": "integrationRegistersSkills",
+      "id": "integrationRegistersCommands",
       "from": "integration",
       "to": "agentHost",
-      "label": "register skills",
+      "label": "register commands",
       "variant": "emphasis",
       "labelAt": [1080, 220]
     },
@@ -182,7 +182,7 @@
       "items": [
         "Install one bundle into an initialized Spec Kit project",
         "Compose one architecture-aware preset and one command extension",
-        "Use init, context, and validate as agent skills"
+        "Use init, context, and validate as agent commands"
       ]
     },
     {

@@ -37,6 +37,19 @@ This contract adopts the public formats and behaviors documented for Spec Kit `0
 The authoritative definitions are maintained by the Spec Kit project in its bundle, preset, and
 extension reference documentation.
 
+At this boundary, the component roles are intentionally distinct:
+
+- the bundle contract supplies an expanded, inspectable installation plan and lifecycle provenance;
+- the preset contract supplies composable template contributions and resolution precedence;
+- the extension contract supplies commands, supporting files, lifecycle behavior, and registration;
+- the catalog contracts supply trusted discovery and download metadata for each independent package
+  type; and
+- the active integration contract translates canonical extension commands into agent-specific
+  presentation without changing their intent.
+
+Concorde relies on all five roles but does not redefine them. The bundle references the preset and
+extension; it does not absorb their contents or behavior into a new component type.
+
 ## Preconditions
 
 - The target is a supported Spec Kit project, or the bundle lifecycle can initialize one.

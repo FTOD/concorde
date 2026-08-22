@@ -34,6 +34,8 @@ Spec Kit, accepting it, and receiving an installation result governed by
 ## Requirements
 
 - The bundle pins one preset and one extension and inherits the active integration.
+- The bundle is presented as an installation recipe, while catalogs are presented as discovery and
+  trust metadata rather than runtime components.
 - Preview and installation resolve the same component identities and versions.
 - Repeat installation is idempotent; updates are explicit; removal respects ownership.
 - Failures do not record success and name residual state that could not be rolled back.

@@ -67,6 +67,28 @@ Docusaurus itself.
 - External consumers MUST depend on root or child boundary contracts, never child implementation
   details.
 
+## Spec Kit Ecosystem Placement
+
+Concorde is installed through Spec Kit rather than alongside it as a second orchestrator. The package
+types divide responsibility as follows:
+
+| Package or host | Responsibility at this boundary |
+|---|---|
+| Spec Kit | Owns component resolution and provenance plus the normal feature-development lifecycle. |
+| Component catalogs | Advertise independently packaged bundle, preset, and extension archives with location, compatibility, digest, and trust metadata. |
+| `concorde-starter` bundle | Pins and groups the accepted Concorde components as one inspectable installation recipe. |
+| `concorde-core` preset | Appends architecture-aware guidance to Spec Kit's existing spec, plan, and task artifacts. |
+| `concorde` extension | Registers portable agent commands that call deterministic Architecture Core services. |
+| Coding-agent integration | Presents the installed extension commands in its native skill or slash-command syntax. |
+| Concorde Architecture Core | Maintains bounded hierarchy, context, and validation under the shared `specs/` tree. |
+
+The detailed <a href="/architecture/concorde-spec-kit-component-model.html">component model</a> and
+<a href="/architecture/concorde-starter-installation-flow.html">installation flow</a> are
+supplemental explanatory views. Their maintained sources are
+`features/001-concorde-starter-workflow/spec-kit-component-model.json` and
+`features/001-concorde-starter-workflow/starter-installation-flow.json`. `architecture.json` remains
+the canonical one-level root module view.
+
 ## Scenario Trace
 
 The primary scenarios `install-starter-workflow` and `publish-architecture` are maintained in their
@@ -76,6 +98,8 @@ children and permitted external actors.
 ## Evidence Status
 
 The root and Documentation views pass all 9 Archify showcase checks with zero errors or warnings.
+The two supplemental Feature 001 component and installation views also pass all 9 showcase checks,
+desktop containment at four target viewports, and perceptual light/dark review.
 The Documentation publication feature is implemented and verified by the feature's unit, contract,
 integration, production-build, repeatability, and source-immutability evidence in
 `specs/concorde/features/002-create-project-docsite/validation.md`. Both maintained architecture hierarchies and their
@@ -83,5 +107,5 @@ delivered views are published as a distinct Architecture collection. Chromium co
 perceptual light/dark review pass for both diagrams at the required desktop viewport extremes.
 The starter workflow is implemented and verified across native Spec Kit 0.16.4 lifecycle,
 cross-integration command registration, deterministic Architecture Core behavior, and self-validation.
-Its evidence remains `partial` only because the timed first-use participant pilot for SC-001 and
-SC-009 has not yet been conducted.
+Its evidence remains `partial` only because the timed first-use and comprehension participant pilots
+for SC-001, SC-009, and SC-011 have not yet been conducted.

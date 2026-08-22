@@ -23,6 +23,30 @@ specify --version
 Expected: Python is at least 3.11 and Specify reports 0.16.4. Do not claim compatibility from a run
 against another Spec Kit version.
 
+## Mental Model Before Installation
+
+The package types are complementary:
+
+| Type | Concorde identity | Effect |
+|---|---|---|
+| Bundle | `concorde-starter` | Pins and groups the compatible components as one inspectable installation recipe. |
+| Preset | `concorde-core` | Appends architecture-aware guidance to the existing spec, plan, and task templates. |
+| Extension | `concorde` | Registers the three Concorde commands and their deterministic runtime. |
+| Catalog | One catalog per package type | Supplies trusted identity, version, download URL, and digest metadata used during resolution. |
+| Active coding-agent integration | The target project's selected integration | Renders and registers portable extension commands using agent-native presentation and invocation syntax. |
+| Architecture Core | The runtime behind the commands | Deterministically proposes initialization, returns bounded context, and validates maintained architecture sources. |
+
+The bundle itself does not execute architecture behavior, and the preset does not register commands.
+Spec Kit installs each referenced component through its native lifecycle and remains authoritative for
+the normal feature phases. The active integration owns only presentation syntax; Architecture Core
+owns command behavior. "Starter workflow" names the resulting user journey; this release declares no
+Spec Kit workflow component and no reusable steps.
+
+Review the [component model](spec-kit-component-model.json) and
+[installation flow](starter-installation-flow.json) before continuing. Their interactive versions are
+[component model HTML](../../../../generated/architecture/concorde-spec-kit-component-model.html) and
+[installation flow HTML](../../../../generated/architecture/concorde-starter-installation-flow.html).
+
 ## 1. Build and Verify Release Inputs
 
 ```bash
@@ -31,6 +55,9 @@ uv run python scripts/release/build-components.py --output dist \
 specify bundle build --path bundles/concorde-starter --output dist
 uv run python scripts/release/verify-release.py --dist dist
 ```
+
+`--base-url` is embedded in the generated catalogs as the later download location. Nothing at that
+address is contacted during this build; the value matches the localhost server started in Section 2.
 
 Expected:
 
@@ -291,9 +318,29 @@ Expected:
 - project-authored `.concorde/` and `specs/` sources are unchanged; and
 - no unrelated agent artifacts are deleted.
 
+## 13. Run the Human First-Use and Comprehension Pilot
+
+Use first-time maintainers who have not contributed to this implementation. Give each participant
+the role explanation and diagram links near the beginning of this quickstart, with a maximum review
+time of five minutes. Then ask, without coaching:
+
+1. What does the bundle do?
+2. What does the preset do?
+3. What does the extension do?
+4. What does a catalog do?
+5. Does Concorde replace the normal Spec Kit lifecycle? Explain the relationship.
+
+A participant passes SC-011 only by answering all five prompts correctly: the bundle pins a recipe,
+the preset passively appends template guidance, the extension actively provides commands/runtime, the
+catalog supplies discovery/trust metadata, and Spec Kit continues to own its normal lifecycle. Record
+participant count, review duration, individual results, and the aggregate rate. At least 90% must
+pass. Keep the separate SC-001/SC-009 timing and unassisted-use observations in the same evidence
+record when practical.
+
 ## Acceptance Evidence
 
 Record the commands, platform, Spec Kit version, agent integration, artifact hashes, test results, and
 requirement mapping in `specs/concorde/features/001-concorde-starter-workflow/validation.md` during implementation.
-Pilot completion time and unassisted completion rate for SC-001 and SC-009 require human participant
-evidence; automated tests may support but must not replace those measurements.
+Pilot completion time and unassisted completion rate for SC-001 and SC-009, plus the five-minute role
+comprehension rate for SC-011, require human participant evidence. Automated tests may support but
+must not replace those measurements.

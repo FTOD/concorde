@@ -31,6 +31,21 @@ used by other Spec Kit ecosystem packages.
 Every version above is independently authoritative in its own manifest and matching catalog entry.
 The bundle pins the exact preset and extension versions it has passed acceptance with.
 
+## Role and Authority Boundary
+
+| Role | Authority in the workflow |
+|---|---|
+| Spec Kit | Resolves catalogs and components, composes templates, selects the active integration, mutates projects, and owns registry/provenance lifecycle. |
+| Catalog | Advertises identity, version, download location, compatibility, digest, and trust metadata; it does not contain behavior. |
+| Bundle | Pins the accepted preset and extension as a non-executable recipe; it does not embed or install them itself. |
+| Preset | Passively appends guidance during normal Spec Kit template resolution; it registers no command and owns no runtime. |
+| Extension | Actively supplies portable commands and the deterministic runtime they invoke. |
+| Active integration | Renders/registers portable commands using agent-native presentation and invocation syntax; it does not own behavior. |
+| Architecture Core | Owns deterministic initialization, bounded context, and validation behavior behind the extension commands. |
+
+The root platform and starter-workflow contracts own this cross-module meaning. This distribution
+contract specializes it for packaging, catalog resolution, and lifecycle behavior.
+
 ## Bundle Manifest Profile
 
 The root `bundle.yml` must contain:
@@ -74,6 +89,8 @@ integration.
 
 - Bundle, preset, and extension artifacts are separate reproducible archives.
 - The bundle README lists the required component catalog URLs and their installation policy.
+- `--base-url` is build input used to write later archive locations into generated catalog metadata;
+  the release builder does not contact it. Local acceptance starts its HTTP server after building.
 - Release URLs use HTTPS. Local acceptance may use an HTTP localhost server, which Spec Kit permits.
 - Installation by bundle catalog ID is allowed only when the bundle catalog source is
   `install-allowed`.

@@ -218,22 +218,52 @@ bundle lifecycle and leaves project-owned intent intact.
 
 ---
 
-## Phase 7: Polish and Cross-Cutting Acceptance
+## Phase 7: User Story 1 Extension - Understand the Spec Kit Ecosystem (Priority: P1)
+
+**Goal**: Make the bundle, preset, extension, catalog, active integration, Architecture Core, and
+unchanged Spec Kit lifecycle understandable through consistent prose and two validated supplemental
+views without overloading the canonical root architecture.
+
+**Independent Test**: Review the explanation for no more than five minutes, inspect both published
+views, and verify the bundle is shown as a passive recipe, the preset and extension follow distinct
+use-time paths, Spec Kit owns installation/lifecycle, and the supplemental views remain outside the
+module-owned Architecture Core source profile.
+
+### Tests for the User Story 1 Explanation
+
+- [X] T081 [P] [US1] Add regression coverage for role consistency, diagram participants and paths, supplemental-view boundaries, and generated artifact presence in `tests/concorde/contract/test_ecosystem_explanation.py`
+- [X] T082 [P] [US1] Add production-build assertions for both supplemental interactive routes in `docsite/tests/integration/production-build.test.ts`
+
+### Implementation for the User Story 1 Explanation
+
+- [X] T083 [US1] Align the plain-language role and authority model in `specs/concorde/features/001-concorde-starter-workflow/spec.md`, `specs/concorde/features/001-concorde-starter-workflow/quickstart.md`, `specs/concorde/module.md`, `specs/concorde/contracts/concorde-workflow/contract.md`, and `specs/concorde/contracts/spec-kit-platform/contract.md`
+- [X] T084 [P] [US1] Align Distribution and Spec Kit Integration refinements and module explanations in `specs/concorde/modules/distribution/features/001-package-starter-bundle/spec.md`, `specs/concorde/modules/distribution/module.md`, `specs/concorde/modules/spec-kit-integration/features/001-compose-starter-workflow/spec.md`, and `specs/concorde/modules/spec-kit-integration/module.md`
+- [X] T085 [P] [US1] Maintain the structural and temporal supplemental sources in `specs/concorde/features/001-concorde-starter-workflow/spec-kit-component-model.json` and `specs/concorde/features/001-concorde-starter-workflow/starter-installation-flow.json`
+- [X] T086 [US1] Validate, deliver, visually review, and retain provenance evidence for both supplemental views under `generated/architecture/`
+- [X] T087 [US1] Correct package-supply and command-registration semantics in `specs/concorde/architecture.json`, regenerate `generated/architecture/concorde-root.html`, and keep the root view bounded to immediate Concorde modules and permitted externals
+- [X] T088 [US1] Record FR-029, FR-030, Archify, documentation publication, and pending SC-011 evidence in `specs/concorde/features/001-concorde-starter-workflow/validation.md`
+
+**Checkpoint**: User Story 1 includes an accessible, published, and regression-tested explanation of
+how Concorde composes with Spec Kit, while its human comprehension outcome remains explicitly pending.
+
+---
+
+## Phase 8: Polish and Cross-Cutting Acceptance
 
 **Purpose**: Prove portability, platform safety, self-application, documentation freshness, and the
 complete quick-start outcome across the delivered stories.
 
-- [X] T081 [P] Write and pass discovery plus primary-command portability acceptance for one supported slash-command integration in `tests/concorde/acceptance/test_slash_commands.py`
-- [X] T082 [P] Verify a post-install Spec Kit specify/plan/tasks cycle targets a module-owned nested workspace, produces one canonical feature spec with composed Concorde gates, and creates no top-level `architecture/` source tree in `tests/concorde/acceptance/test_preset_workflow.py`
-- [X] T083 [P] Add POSIX and PowerShell launcher path, quoting, exit-code, and Python 3.11 compatibility coverage in `tests/concorde/contract/test_agent_commands.py`
-- [X] T084 [P] Add absolute path, traversal, backslash, symlink escape, malformed proposal, and unsupported-version security coverage in `tests/concorde/unit/test_repository.py` and `tests/concorde/integration/test_bundle_lifecycle.py`
-- [X] T085 Execute every automated command in `specs/concorde/features/001-concorde-starter-workflow/quickstart.md` from clean fixtures and correct any documented discrepancy in that file
-- [X] T086 Update implementation status and runnable install examples in `README.md`
-- [X] T087 Update delivered feature, contract, and evidence status in `specs/concorde/module.md`, `specs/concorde/modules/distribution/module.md`, `specs/concorde/modules/spec-kit-integration/module.md`, and `specs/concorde/modules/architecture-core/module.md`
-- [X] T088 Run the installed Concorde validator against this repository and append the stable self-application result and any explicit bootstrap exception to `specs/concorde/features/001-concorde-starter-workflow/validation.md`
-- [X] T089 Refresh and validate the root Archify projection from `specs/concorde/architecture.json` into `generated/architecture/concorde-root.html`
-- [X] T090 Run the complete Docusaurus source, architecture, freshness, test, and production-build gate from `docsite/package.json` and record the result in `specs/concorde/features/001-concorde-starter-workflow/validation.md`
-- [ ] T091 Conduct the timed first-use pilot for SC-001 and SC-009 and record participant count, completion times, assistance rate, environment, and outcome in `specs/concorde/features/001-concorde-starter-workflow/validation.md`
+- [X] T089 [P] Write and pass discovery plus primary-command portability acceptance for one supported slash-command integration in `tests/concorde/acceptance/test_slash_commands.py`
+- [X] T090 [P] Verify a post-install Spec Kit specify/plan/tasks cycle targets a module-owned nested workspace, produces one canonical feature spec with composed Concorde gates, and creates no top-level `architecture/` source tree in `tests/concorde/acceptance/test_preset_workflow.py`
+- [X] T091 [P] Add POSIX and PowerShell launcher path, quoting, exit-code, and Python 3.11 compatibility coverage in `tests/concorde/contract/test_agent_commands.py`
+- [X] T092 [P] Add absolute path, traversal, backslash, symlink escape, malformed proposal, and unsupported-version security coverage in `tests/concorde/unit/test_repository.py` and `tests/concorde/integration/test_bundle_lifecycle.py`
+- [X] T093 Execute every automated command in `specs/concorde/features/001-concorde-starter-workflow/quickstart.md` from clean fixtures and correct any documented discrepancy in that file
+- [X] T094 Update implementation status and runnable install examples in `README.md`
+- [X] T095 Update delivered feature, contract, and evidence status in `specs/concorde/module.md`, `specs/concorde/modules/distribution/module.md`, `specs/concorde/modules/spec-kit-integration/module.md`, and `specs/concorde/modules/architecture-core/module.md`
+- [X] T096 Run the installed Concorde validator against this repository and append the stable self-application result and any explicit bootstrap exception to `specs/concorde/features/001-concorde-starter-workflow/validation.md`
+- [X] T097 Refresh and validate the root Archify projection from `specs/concorde/architecture.json` into `generated/architecture/concorde-root.html`
+- [X] T098 Run the complete Docusaurus source, architecture, freshness, test, and production-build gate from `docsite/package.json` and record the result in `specs/concorde/features/001-concorde-starter-workflow/validation.md`
+- [ ] T099 Conduct the timed first-use and comprehension pilot for SC-001, SC-009, and SC-011 and record participant count, completion times, assistance rate, five-prompt comprehension results, environment, and outcome in `specs/concorde/features/001-concorde-starter-workflow/validation.md`
 
 ---
 
@@ -252,7 +282,10 @@ complete quick-start outcome across the delivered stories.
   acceptance T068. Tests T054-T058 precede T059-T069.
 - **Phase 6 — US4**: Depends on the installable US1 release. Tests T071-T074 precede fixtures and
   lifecycle completion T075-T079.
-- **Phase 7 — Polish**: Depends on every story included in the release. T091 is a human evidence gate
+- **Phase 7 — US1 Explanation**: Depends on the installable US1 artifacts and the existing
+  documentation publication pipeline. Regression tasks T081-T082 precede alignment and delivery
+  tasks T083-T088.
+- **Phase 8 — Polish**: Depends on every story included in the release. T099 is a human evidence gate
   and cannot be replaced by automation.
 
 ### User Story Dependency Graph
@@ -288,9 +321,11 @@ Setup → Foundation → US1 (installable MVP) ───────────
 ```text
 T025 manifest contracts | T026 command contracts | T027 preset composition | T028 release contracts
 T031 preset manifest    | T033 extension manifest | T034 command definitions | T036 bundle manifest
+T081 explanation contracts | T082 published-route assertions
+T084 child refinements      | T085 supplemental view sources
 ```
 
-After those converge, complete T035 and T037-T043 in dependency order.
+After those converge, complete T035 and T037-T043, then T083 and T086-T088, in dependency order.
 
 ### User Story 2
 
@@ -336,7 +371,9 @@ prepare versioned release inputs independently before T076-T080.
 3. **US3**: Add bounded context and deterministic validation as read-only controls.
 4. **US4**: Prove update, status, failure recovery, shared ownership, and removal against native Spec
    Kit behavior.
-5. Complete slash portability, self-application, generated-output freshness, and the human pilot.
+5. Add the text-backed ecosystem explanation and two supplemental views without changing the starter
+   runtime surface.
+6. Complete slash portability, self-application, generated-output freshness, and the human pilot.
 
 ## Notes
 

@@ -35,5 +35,7 @@ representative example rather than an exhaustive definition.
 ## Requirements
 
 - Composition preserves the single canonical Spec Kit feature specification.
+- The preset's append-only guidance and the extension's executable commands are explained as distinct
+  paths that are composed by the bundle but applied through their native Spec Kit mechanisms.
 - Commands keep identical intent, arguments, result envelopes, and failures across integrations.
 - Installed launchers resolve the runtime relative to the extension and require only Python 3.11.

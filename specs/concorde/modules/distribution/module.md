@@ -30,6 +30,26 @@ or user-authored architecture sources.
 - `feature.distribution.package-starter-bundle` refines
   `feature.concorde.install-starter-workflow` and owns bundle lifecycle behavior at this level.
 
+## Bundle and Catalog Model
+
+A bundle is a versioned recipe, not a runtime. `concorde-starter` names and pins the independently
+versioned `concorde-core` preset and `concorde` extension that have been tested together. Bundle
+inspection expands that recipe before installation; installation delegates each component to Spec
+Kit's preset or extension machinery and records ownership for safe update and removal.
+
+Catalogs are trusted indexes used to discover those three release units. Each catalog entry carries
+identity, version, compatibility, download location, and integrity metadata. The URL embedded while
+building a release describes where the completed catalog and archives will be served; the builder
+does not need to contact that URL. Local directory, manifest, and archive bundle inputs bypass bundle
+discovery, but referenced components still must resolve from permitted component catalogs or safe
+installed state.
+
+See the root feature's
+<a href="/architecture/concorde-spec-kit-component-model.html">component model</a> and
+<a href="/architecture/concorde-starter-installation-flow.html">installation flow</a>. Their
+maintained sources are `specs/concorde/features/001-concorde-starter-workflow/spec-kit-component-model.json` and
+`specs/concorde/features/001-concorde-starter-workflow/starter-installation-flow.json`.
+
 ## Canonical Contract Definitions
 
 The maintained definitions are `contracts/bundle-lifecycle/contract.md` and
