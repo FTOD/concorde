@@ -110,18 +110,20 @@ if $PATHS_ONLY; then
                 --arg repo_root "$REPO_ROOT" \
                 --arg branch "$CURRENT_BRANCH" \
                 --arg feature_dir "$FEATURE_DIR" \
+                --arg implementation_dir "$IMPLEMENTATION_DIR" \
                 --arg feature_spec "$FEATURE_SPEC" \
                 --arg impl_plan "$IMPL_PLAN" \
                 --arg tasks "$TASKS" \
-                '{REPO_ROOT:$repo_root,BRANCH:$branch,FEATURE_DIR:$feature_dir,FEATURE_SPEC:$feature_spec,IMPL_PLAN:$impl_plan,TASKS:$tasks}'
+                '{REPO_ROOT:$repo_root,BRANCH:$branch,FEATURE_DIR:$feature_dir,IMPLEMENTATION_DIR:$implementation_dir,FEATURE_SPEC:$feature_spec,IMPL_PLAN:$impl_plan,TASKS:$tasks}'
         else
-            printf '{"REPO_ROOT":"%s","BRANCH":"%s","FEATURE_DIR":"%s","FEATURE_SPEC":"%s","IMPL_PLAN":"%s","TASKS":"%s"}\n' \
-                "$(json_escape "$REPO_ROOT")" "$(json_escape "$CURRENT_BRANCH")" "$(json_escape "$FEATURE_DIR")" "$(json_escape "$FEATURE_SPEC")" "$(json_escape "$IMPL_PLAN")" "$(json_escape "$TASKS")"
+            printf '{"REPO_ROOT":"%s","BRANCH":"%s","FEATURE_DIR":"%s","IMPLEMENTATION_DIR":"%s","FEATURE_SPEC":"%s","IMPL_PLAN":"%s","TASKS":"%s"}\n' \
+                "$(json_escape "$REPO_ROOT")" "$(json_escape "$CURRENT_BRANCH")" "$(json_escape "$FEATURE_DIR")" "$(json_escape "$IMPLEMENTATION_DIR")" "$(json_escape "$FEATURE_SPEC")" "$(json_escape "$IMPL_PLAN")" "$(json_escape "$TASKS")"
         fi
     else
         echo "REPO_ROOT: $REPO_ROOT"
         echo "BRANCH: $CURRENT_BRANCH"
         echo "FEATURE_DIR: $FEATURE_DIR"
+        echo "IMPLEMENTATION_DIR: $IMPLEMENTATION_DIR"
         echo "FEATURE_SPEC: $FEATURE_SPEC"
         echo "IMPL_PLAN: $IMPL_PLAN"
         echo "TASKS: $TASKS"
@@ -137,14 +139,14 @@ if [[ ! -d "$FEATURE_DIR" ]]; then
 fi
 
 if [[ ! -f "$IMPL_PLAN" ]]; then
-    echo "ERROR: plan.md not found in $FEATURE_DIR" >&2
+    echo "ERROR: plan.md not found in $IMPLEMENTATION_DIR" >&2
     echo "Run \$speckit-plan first to create the implementation plan." >&2
     exit 1
 fi
 
 # Check for tasks.md if required
 if $REQUIRE_TASKS && [[ ! -f "$TASKS" ]]; then
-    echo "ERROR: tasks.md not found in $FEATURE_DIR" >&2
+    echo "ERROR: tasks.md not found in $IMPLEMENTATION_DIR" >&2
     echo "Run \$speckit-tasks first to create the task list." >&2
     exit 1
 fi
@@ -153,19 +155,19 @@ fi
 docs=()
 
 # Always check these optional docs
-[[ -f "$RESEARCH" ]] && docs+=("research.md")
-[[ -f "$DATA_MODEL" ]] && docs+=("data-model.md")
+[[ -f "$RESEARCH" ]] && docs+=("implementation/research.md")
+[[ -f "$DATA_MODEL" ]] && docs+=("implementation/data-model.md")
 
 # Check contracts directory (only if it exists and has files)
 if [[ -d "$CONTRACTS_DIR" ]] && [[ -n "$(ls -A "$CONTRACTS_DIR" 2>/dev/null)" ]]; then
     docs+=("contracts/")
 fi
 
-[[ -f "$QUICKSTART" ]] && docs+=("quickstart.md")
+[[ -f "$QUICKSTART" ]] && docs+=("implementation/quickstart.md")
 
 # Include tasks.md if requested and it exists
 if $INCLUDE_TASKS && [[ -f "$TASKS" ]]; then
-    docs+=("tasks.md")
+    docs+=("implementation/tasks.md")
 fi
 
 TEMPLATE_CONTENT=""
@@ -190,14 +192,22 @@ if $JSON_MODE; then
         if [[ -n "$TEMPLATE_NAME" ]]; then
             jq -cn \
                 --arg feature_dir "$FEATURE_DIR" \
+                --arg implementation_dir "$IMPLEMENTATION_DIR" \
+                --arg feature_spec "$FEATURE_SPEC" \
+                --arg impl_plan "$IMPL_PLAN" \
+                --arg tasks "$TASKS" \
                 --argjson docs "$json_docs" \
                 --arg template_content "$TEMPLATE_CONTENT" \
-                '{FEATURE_DIR:$feature_dir,AVAILABLE_DOCS:$docs,TEMPLATE_CONTENT:$template_content}'
+                '{FEATURE_DIR:$feature_dir,IMPLEMENTATION_DIR:$implementation_dir,FEATURE_SPEC:$feature_spec,IMPL_PLAN:$impl_plan,TASKS:$tasks,AVAILABLE_DOCS:$docs,TEMPLATE_CONTENT:$template_content}'
         else
             jq -cn \
                 --arg feature_dir "$FEATURE_DIR" \
+                --arg implementation_dir "$IMPLEMENTATION_DIR" \
+                --arg feature_spec "$FEATURE_SPEC" \
+                --arg impl_plan "$IMPL_PLAN" \
+                --arg tasks "$TASKS" \
                 --argjson docs "$json_docs" \
-                '{FEATURE_DIR:$feature_dir,AVAILABLE_DOCS:$docs}'
+                '{FEATURE_DIR:$feature_dir,IMPLEMENTATION_DIR:$implementation_dir,FEATURE_SPEC:$feature_spec,IMPL_PLAN:$impl_plan,TASKS:$tasks,AVAILABLE_DOCS:$docs}'
         fi
     else
         if [[ ${#docs[@]} -eq 0 ]]; then
@@ -207,24 +217,26 @@ if $JSON_MODE; then
             json_docs="[${json_docs%,}]"
         fi
         if [[ -n "$TEMPLATE_NAME" ]]; then
-            printf '{"FEATURE_DIR":"%s","AVAILABLE_DOCS":%s,"TEMPLATE_CONTENT":"%s"}\n' \
-                "$(json_escape "$FEATURE_DIR")" "$json_docs" "$(json_escape "$TEMPLATE_CONTENT")"
+            printf '{"FEATURE_DIR":"%s","IMPLEMENTATION_DIR":"%s","FEATURE_SPEC":"%s","IMPL_PLAN":"%s","TASKS":"%s","AVAILABLE_DOCS":%s,"TEMPLATE_CONTENT":"%s"}\n' \
+                "$(json_escape "$FEATURE_DIR")" "$(json_escape "$IMPLEMENTATION_DIR")" "$(json_escape "$FEATURE_SPEC")" "$(json_escape "$IMPL_PLAN")" "$(json_escape "$TASKS")" "$json_docs" "$(json_escape "$TEMPLATE_CONTENT")"
         else
-            printf '{"FEATURE_DIR":"%s","AVAILABLE_DOCS":%s}\n' "$(json_escape "$FEATURE_DIR")" "$json_docs"
+            printf '{"FEATURE_DIR":"%s","IMPLEMENTATION_DIR":"%s","FEATURE_SPEC":"%s","IMPL_PLAN":"%s","TASKS":"%s","AVAILABLE_DOCS":%s}\n' \
+                "$(json_escape "$FEATURE_DIR")" "$(json_escape "$IMPLEMENTATION_DIR")" "$(json_escape "$FEATURE_SPEC")" "$(json_escape "$IMPL_PLAN")" "$(json_escape "$TASKS")" "$json_docs"
         fi
     fi
 else
     # Text output
     echo "FEATURE_DIR:$FEATURE_DIR"
+    echo "IMPLEMENTATION_DIR:$IMPLEMENTATION_DIR"
     echo "AVAILABLE_DOCS:"
 
     # Show status of each potential document
-    check_file "$RESEARCH" "research.md"
-    check_file "$DATA_MODEL" "data-model.md"
+    check_file "$RESEARCH" "implementation/research.md"
+    check_file "$DATA_MODEL" "implementation/data-model.md"
     check_dir "$CONTRACTS_DIR" "contracts/"
-    check_file "$QUICKSTART" "quickstart.md"
+    check_file "$QUICKSTART" "implementation/quickstart.md"
 
     if $INCLUDE_TASKS; then
-        check_file "$TASKS" "tasks.md"
+        check_file "$TASKS" "implementation/tasks.md"
     fi
 fi

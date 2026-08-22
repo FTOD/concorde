@@ -11,7 +11,13 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, VALID_PROJECT
 class AgentCommandContractTests(unittest.TestCase):
     def test_all_canonical_commands_have_portable_runtime_references(self):
         commands = REPOSITORY_ROOT / "extensions/concorde/commands"
-        expected = {"speckit.concorde.init.md", "speckit.concorde.context.md", "speckit.concorde.validate.md"}
+        expected = {
+            "speckit.concorde.init.md",
+            "speckit.concorde.feature.create.md",
+            "speckit.concorde.feature.select.md",
+            "speckit.concorde.context.md",
+            "speckit.concorde.validate.md",
+        }
         self.assertEqual({path.name for path in commands.glob("*.md")}, expected)
         for path in commands.glob("*.md"):
             content = path.read_text()

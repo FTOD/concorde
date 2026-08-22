@@ -13,23 +13,28 @@ representation:
   definition: https://github.com/github/spec-kit/tree/v0.16.4
 features:
   - feature.integration.compose-starter-workflow
-evidence_status: verified
+  - feature.integration.manage-feature-workspace
+evidence_status: partial
 ---
 
 # Spec Kit Platform Contract
 
 ## Purpose
 
-Consume public component packaging, template resolution, and agent registration services.
+Consume public component packaging, template/command composition, feature selection, lifecycle, and
+agent registration services.
 
 ## Information
 
-The platform exchanges manifests, resolved template stacks, installed component records, active
-integration identity, and registered command artifacts.
+The platform exchanges manifests, resolved template/command stacks, installed component records,
+active integration identity, registered command artifacts, explicit feature-directory selection, and
+the normal lifecycle phase context.
 
 ## Obligations
 
-Spec Kit validates compatibility before mutation and exposes deterministic component ownership.
+Spec Kit validates compatibility before mutation, exposes deterministic component ownership, and
+preserves one explicitly selected feature root across phases. Concorde command composition may adapt
+artifact paths but must preserve the standard meaning of every phase.
 
 ## Failure Semantics
 
@@ -41,4 +46,6 @@ The supported platform is exactly Spec Kit 0.16.4 for the starter release.
 
 ## Evidence
 
-Verified against Specify CLI 0.16.4 by the clean-project lifecycle suite.
+Component packaging and three starter commands are verified against Specify CLI 0.16.4. Evidence is
+partial until clean-project tests prove public command composition, nested feature selection, and the
+complete durable/temporal phase path matrix.

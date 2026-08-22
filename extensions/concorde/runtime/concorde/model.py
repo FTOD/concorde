@@ -92,6 +92,8 @@ class ArchitecturePackage:
     views: Mapping[str, Mapping[str, Any]]
     by_id: Mapping[str, tuple[SourceDocument, ...]]
     source_digest: str
+    auxiliary: Mapping[str, str]
+    receipts: Mapping[str, Mapping[str, Any]]
 
     def documents(self, kind: str) -> tuple[SourceDocument, ...]:
         return tuple(source for source in self.sources if source.kind == kind)

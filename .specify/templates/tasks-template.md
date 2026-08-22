@@ -5,9 +5,9 @@ description: "Task list template for feature implementation"
 
 # Tasks: [FEATURE NAME]
 
-**Input**: Design documents from `/specs/[###-feature-name]/`
+**Input**: Temporal design documents from `/specs/[###-feature-name]/implementation/`, plus the durable feature specification and contracts at the feature root
 
-**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
+**Prerequisites**: `implementation/plan.md` (required), `spec.md` (required for user stories), `implementation/research.md`, `implementation/data-model.md`, `contracts/`
 
 **Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
 
@@ -32,8 +32,8 @@ description: "Task list template for feature implementation"
 
   The $speckit-tasks command MUST replace these with actual tasks based on:
   - User stories from spec.md (with their priorities P1, P2, P3...)
-  - Feature requirements from plan.md
-  - Entities from data-model.md
+  - Feature requirements from root `spec.md`
+  - Entities from `implementation/data-model.md`
   - Endpoints from contracts/
 
   Tasks MUST be organized by user story so each story can be:
@@ -156,7 +156,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
 - [ ] TXXX Security hardening
-- [ ] TXXX Run quickstart.md validation
+- [ ] TXXX Run `implementation/quickstart.md` validation
 
 ---
 

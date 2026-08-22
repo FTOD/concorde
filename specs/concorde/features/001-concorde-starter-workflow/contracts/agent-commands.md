@@ -1,4 +1,4 @@
-# Contract: Concorde Starter Agent Commands
+# Contract: Concorde Core Workflow Agent Commands
 
 **Contract ID**: `contract.integration.agent-skills`
 
@@ -6,16 +6,20 @@
 
 ## Shared Rules
 
-- Canonical names are `speckit.concorde.init`, `speckit.concorde.context`, and
+- Canonical names are `speckit.concorde.init`, `speckit.concorde.feature.create`,
+  `speckit.concorde.feature.select`, `speckit.concorde.context`, and
   `speckit.concorde.validate`.
 - Agent-specific invocation punctuation is presentation only. Codex skills and slash-command outputs
   must preserve the intent, arguments, runtime operation, result schema, and failure behavior below.
 - The command body locates the installed extension runtime relative to the project and invokes it
   using the project's selected script flavor. It does not embed an absolute installation path.
-- Runtime JSON conforming to `architecture-service.schema.json` is the normative result. Agent prose
-  may summarize it but must not hide findings or claim stronger evidence.
+- Architecture operation JSON conforms to `architecture-service.schema.json`; feature placement and
+  selection JSON conforms to `feature-workspace.schema.json`. Agent prose may summarize either
+  normative result but must not hide findings or claim stronger evidence.
 - Context and validation are read-only. Initialization writes only after an explicit accepted
   proposal is supplied to apply mode.
+- Feature creation changes durable intent only after explicit placement approval. Feature selection
+  may write only the standard project-local Spec Kit selection record after validating the target.
 
 ## `speckit.concorde.init`
 
@@ -57,6 +61,66 @@ Unsafe paths, malformed proposals, duplicate IDs, changed target state, existing
 or incomplete promotion return `conflict`, `invalid`, or `failed` with findings. Existing maintained
 content is never silently overwritten.
 
+## `speckit.concorde.feature.create`
+
+### Intent
+
+Review architectural placement, create one nested feature root through the normal Spec Kit specify
+phase, register it with the providing module, and select it for subsequent phases.
+
+### Inputs
+
+| Argument | Required | Meaning |
+|---|---:|---|
+| `--module-id <id>` | yes | Providing module chosen after bounded-context review. |
+| `--feature-id <id>` | yes | Proposed stable feature identity. |
+| `--short-name <name>` | yes | Safe 2–4 word directory suffix. |
+| `--number <NNN>` | no | Explicit feature number; otherwise allocate deterministically inside the module. |
+| `--approve` | apply only | Confirms acceptance of the exact placement proposal and source digest. |
+
+### Behavior
+
+1. Resolve the providing module and return its bounded context.
+2. Propose the feature root, canonical spec path, module registration, affected contracts/view, and
+   any conflict without writing maintained intent.
+3. After explicit approval, invoke the normal Spec Kit specify phase with the exact
+   `SPECIFY_FEATURE_DIRECTORY`; Spec Kit authors the one root `spec.md`.
+4. Apply the approved architecture registration, validate it, and persist the feature root as the
+   active selection atomically.
+5. Return Concorde Feature Workspace Protocol v1 paths and findings.
+
+### Failures
+
+Unknown ownership, unsafe or occupied paths, duplicate IDs, changed source digest, a failed specify
+phase, or invalid post-apply architecture returns `invalid`, `conflict`, or `failed`. The command does
+not silently choose a different module or leave a partial selection.
+
+## `speckit.concorde.feature.select`
+
+### Intent
+
+Select one existing nested feature root as the active workspace for normal Spec Kit phases.
+
+### Inputs
+
+| Argument | Required | Meaning |
+|---|---:|---|
+| `<feature-id-or-root>` | yes | Stable feature ID or project-relative feature-root path. |
+| `--resume` | conditional | Explicitly resume an existing active implementation attempt. |
+
+### Behavior
+
+1. Resolve exactly one feature and verify its canonical root `spec.md`, providing module,
+   registration, path confinement, and implementation-attempt state.
+2. Derive root specification/contract/checklist paths and temporal implementation paths.
+3. Atomically persist only the feature root in `.specify/feature.json`.
+4. Return `selected` or `unchanged` with the complete derived path set.
+
+### Failures
+
+Unknown, ambiguous, unsafe, stale, or conflicting workspaces and non-explicit attempt resumption leave
+the prior selection unchanged and return actionable findings.
+
 ## `speckit.concorde.context`
 
 ### Intent
@@ -69,7 +133,7 @@ Return exactly one bounded architectural level for a module or feature.
 |---|---:|---|
 | `<module-or-feature-id>` | yes | Stable ID to resolve. A feature resolves through its providing module. |
 | `--project-root <path>` | no | Project root; defaults to current Spec Kit project. |
-| `--format json` | no | Canonical format; JSON is the default in the starter release. |
+| `--format json` | no | Canonical format; JSON is the default for the core workflow. |
 
 ### Result
 
@@ -136,8 +200,8 @@ Repeated runs over unchanged bytes and arguments produce byte-equivalent JSON an
 
 - Codex skills mode contains one `SKILL.md` per canonical command under the active project-local
   skills root.
-- One slash-command integration contains the three corresponding registered command artifacts.
-- Each surface exercises proposal, context, and validation behavior against the same fixture and
+- One slash-command integration contains the five corresponding registered command artifacts.
+- Each surface exercises placement, selection, proposal, context, and validation behavior against the same fixture and
   returns equivalent normative runtime JSON.
 - Removal deletes only extension-owned registered artifacts; locally modified or unrelated agent
   content follows Spec Kit's ownership safeguards.

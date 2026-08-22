@@ -9,12 +9,14 @@ children:
   - module.concorde.architecture-core
   - module.concorde.documentation
 features:
-  - feature.concorde.install-starter-workflow
+  - feature.concorde.core-workflow
   - feature.concorde.publish-project-docsite
+  - feature.concorde.install-with-spec-kit
 contracts:
   provided:
-    - contract.concorde.starter-workflow
+    - contract.concorde.core-workflow
     - contract.documentation.architecture-site
+    - contract.concorde.spec-kit-installation
   required:
     - contract.concorde.spec-kit-platform
 ---
@@ -37,15 +39,32 @@ Docusaurus itself.
 
 | Feature ID | Outcome | Canonical specification |
 |---|---|---|
-| `feature.concorde.install-starter-workflow` | A maintainer installs and exercises a minimal Concorde workflow in a Spec Kit project. | `specs/concorde/features/001-concorde-starter-workflow/spec.md` |
+| `feature.concorde.core-workflow` | A maintainer directs feature development through a recursive specification hierarchy, architecture review gates, bounded context, and deterministic validation. | `specs/concorde/features/001-concorde-starter-workflow/spec.md` |
 | `feature.concorde.publish-project-docsite` | A maintainer browses architecture sources and views, project documentation, and Spec Kit feature specifications in one generated site. | `specs/concorde/features/002-create-project-docsite/spec.md` |
+| `feature.concorde.install-with-spec-kit` | A maintainer inspects, installs, verifies, updates, and removes Concorde through the native Spec Kit ecosystem. | `specs/concorde/features/003-install-concorde-speckit/spec.md` |
+
+## Invocation at the Root Level
+
+The feature nodes in `architecture.json` are observable capabilities, not additional runtime
+services. They make it possible to read the root view from user intent to the immediate modules that
+provide the behavior:
+
+| Entry path | Root feature invoked | Immediate modules involved |
+|---|---|---|
+| A maintainer uses Spec Kit's bundle inspect, install, update, or removal operations. | `feature.concorde.install-with-spec-kit` | Distribution owns the bundle lifecycle; Spec Kit Integration supplies and activates the preset and command extension. |
+| A maintainer or coding agent runs normal Spec Kit phases, together with `speckit.concorde.init`, `feature.create`, `feature.select`, `context`, or `validate`. | `feature.concorde.core-workflow` | Spec Kit Integration selects the nested workspace and composes phase guidance; Architecture Core initializes, projects bounded context, and validates architecture. |
+| A maintainer validates, builds, serves, or browses the generated project site. | `feature.concorde.publish-project-docsite` | Documentation builds the read model from validated Architecture Core sources and canonical Spec Kit feature specifications. |
+
+The root view intentionally stops here. Zooming into an immediate module reveals that module's own
+features, contracts, and submodules without exposing them prematurely at the root level.
 
 ## Boundary Contracts
 
 | Contract ID | Role | Flow | Counterparty | Canonical definition |
 |---|---|---|---|---|
-| `contract.concorde.starter-workflow` | provided | bidirectional | Maintainer and coding agent | `contracts/concorde-workflow/contract.md` |
+| `contract.concorde.core-workflow` | provided | bidirectional | Maintainer and coding agent | `contracts/concorde-workflow/contract.md` |
 | `contract.documentation.architecture-site` | provided through Documentation | output | Maintainer browser | `modules/documentation/contracts/architecture-site/contract.md` |
+| `contract.concorde.spec-kit-installation` | provided | bidirectional | Maintainer and Spec Kit | `contracts/spec-kit-installation/contract.md` |
 | `contract.concorde.spec-kit-platform` | required | bidirectional | Spec Kit | `contracts/spec-kit-platform/contract.md` |
 
 ## Immediate Submodules
@@ -53,8 +72,8 @@ Docusaurus itself.
 | Module | Responsibility | Provided I/O at this level | Required I/O at this level |
 |---|---|---|---|
 | `module.concorde.distribution` | Package and manage the installable Concorde stack. | Bundle preview, install, update, and removal results. | Versioned preset and extension component packages. |
-| `module.concorde.spec-kit-integration` | Compose Concorde into Spec Kit and expose portable agent commands. | Architecture-aware artifacts and registered agent skills. | Spec Kit extension points and Architecture Core services. |
-| `module.concorde.architecture-core` | Define, retrieve, and validate bounded Concorde architecture sources. | Architecture initialization, context, and validation results. | Explicit empty set for the starter slice. |
+| `module.concorde.spec-kit-integration` | Compose architecture-aware guidance into Spec Kit, select nested feature workspaces, and expose portable agent commands. | Architecture-aware lifecycle artifacts, active workspace selection, and registered agent commands. | Spec Kit extension points and Architecture Core services. |
+| `module.concorde.architecture-core` | Define, retrieve, and validate bounded Concorde architecture sources. | Architecture initialization, feature placement support, bounded context, and validation results. | Explicit empty set for the current slice. |
 | `module.concorde.documentation` | Publish validated sources as a browsable architecture read model. | Generated architecture site. | Validated architecture sources and Archify rendering. |
 
 ## Organization Rules
@@ -84,28 +103,34 @@ types divide responsibility as follows:
 
 The detailed <a href="/architecture/concorde-spec-kit-component-model.html">component model</a> and
 <a href="/architecture/concorde-starter-installation-flow.html">installation flow</a> are
-supplemental explanatory views. Their maintained sources are
-`features/001-concorde-starter-workflow/spec-kit-component-model.json` and
-`features/001-concorde-starter-workflow/starter-installation-flow.json`. `architecture.json` remains
-the canonical one-level root module view.
+supplemental Feature 003 explanatory views. Their maintained sources are
+`features/003-install-concorde-speckit/spec-kit-component-model.json` and
+`features/003-install-concorde-speckit/starter-installation-flow.json`. `architecture.json` remains
+the canonical one-level root module view. Feature 001 instead owns the core development lifecycle and
+the recursive `specs/` organization used after installation.
 
 ## Scenario Trace
 
-The primary scenarios `install-starter-workflow` and `publish-architecture` are maintained in their
-feature specifications and traced in `architecture.json`. They show only this module's immediate
-children and permitted external actors.
+The core-workflow, installation, and publication scenarios are maintained in their respective feature
+specifications and traced in `architecture.json`. They show only this module's immediate children and
+permitted external actors.
 
 ## Evidence Status
 
 The root and Documentation views pass all 9 Archify showcase checks with zero errors or warnings.
-The two supplemental Feature 001 component and installation views also pass all 9 showcase checks,
+The two supplemental Feature 003 component and installation views also pass all 9 showcase checks,
 desktop containment at four target viewports, and perceptual light/dark review.
 The Documentation publication feature is implemented and verified by the feature's unit, contract,
 integration, production-build, repeatability, and source-immutability evidence in
-`specs/concorde/features/002-create-project-docsite/validation.md`. Both maintained architecture hierarchies and their
-delivered views are published as a distinct Architecture collection. Chromium containment checks and
-perceptual light/dark review pass for both diagrams at the required desktop viewport extremes.
-The starter workflow is implemented and verified across native Spec Kit 0.16.4 lifecycle,
-cross-integration command registration, deterministic Architecture Core behavior, and self-validation.
-Its evidence remains `partial` only because the timed first-use and comprehension participant pilots
-for SC-001, SC-009, and SC-011 have not yet been conducted.
+`specs/concorde/features/002-create-project-docsite/implementation/validation.md`. Both maintained architecture hierarchies and their
+delivered views are published as a distinct Architecture collection. Browser containment and
+light/dark perceptual review of the current root and Documentation artifacts remain pending because
+Chrome/Chromium is unavailable in the validation environment; structural checks are not treated as
+perceptual evidence.
+The Spec Kit installation feature is implemented and verified across the native Spec Kit 0.16.4
+lifecycle and cross-integration command registration; its evidence remains `partial` because the timed
+first-use and comprehension pilot has not yet been conducted. The core workflow has verified
+initialization, nested feature placement/selection, public preset command composition, bounded
+active-feature context, architecture readiness, contract example conformance, evidence disagreement,
+freshness normalization, and deterministic validation. Its human placement, mental-model, and final
+review evidence remains pending.

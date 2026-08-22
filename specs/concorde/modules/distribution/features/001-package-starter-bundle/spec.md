@@ -3,7 +3,7 @@ id: feature.distribution.package-starter-bundle
 kind: feature
 module: module.concorde.distribution
 refines:
-  - feature.concorde.install-starter-workflow
+  - feature.concorde.install-with-spec-kit
 scenarios:
   - scenario.distribution.install-bundle
 contracts:

@@ -32,6 +32,20 @@ def create_parser() -> argparse.ArgumentParser:
     validate = subparsers.add_parser("validate")
     validate.add_argument("target", nargs="?")
     validate.add_argument("--format", choices=["json"], default="json")
+
+    feature = subparsers.add_parser("feature")
+    feature_commands = feature.add_subparsers(dest="feature_operation", required=True)
+    create = feature_commands.add_parser("create")
+    create.add_argument("--module-id", required=True)
+    create.add_argument("--feature-id", required=True)
+    create.add_argument("--short-name", required=True)
+    create.add_argument("--number")
+    create.add_argument("--participant-module", action="append", default=[])
+    create.add_argument("--format", choices=["json"], default="json")
+    select = feature_commands.add_parser("select")
+    select.add_argument("target")
+    select.add_argument("--resume", action="store_true")
+    select.add_argument("--format", choices=["json"], default="json")
     return parser
 
 
@@ -54,6 +68,19 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
         from .context import bounded_context
 
         return bounded_context(root, arguments.target)
+    if arguments.operation == "feature":
+        from .feature_workspace import propose_feature, select_feature
+
+        if arguments.feature_operation == "create":
+            return propose_feature(
+                root,
+                arguments.module_id,
+                arguments.feature_id,
+                arguments.short_name,
+                arguments.number,
+                tuple(arguments.participant_module),
+            )
+        return select_feature(root, arguments.target, arguments.resume)
     from .validate import validate_project
 
     return validate_project(root, arguments.target)

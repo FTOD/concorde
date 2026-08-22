@@ -28,7 +28,7 @@ or user-authored architecture sources.
 ## Feature Set
 
 - `feature.distribution.package-starter-bundle` refines
-  `feature.concorde.install-starter-workflow` and owns bundle lifecycle behavior at this level.
+  `feature.concorde.install-with-spec-kit` and owns bundle lifecycle behavior at this level.
 
 ## Bundle and Catalog Model
 
@@ -44,11 +44,11 @@ does not need to contact that URL. Local directory, manifest, and archive bundle
 discovery, but referenced components still must resolve from permitted component catalogs or safe
 installed state.
 
-See the root feature's
+See the installation feature's
 <a href="/architecture/concorde-spec-kit-component-model.html">component model</a> and
 <a href="/architecture/concorde-starter-installation-flow.html">installation flow</a>. Their
-maintained sources are `specs/concorde/features/001-concorde-starter-workflow/spec-kit-component-model.json` and
-`specs/concorde/features/001-concorde-starter-workflow/starter-installation-flow.json`.
+maintained sources are `specs/concorde/features/003-install-concorde-speckit/spec-kit-component-model.json` and
+`specs/concorde/features/003-install-concorde-speckit/starter-installation-flow.json`.
 
 ## Canonical Contract Definitions
 

@@ -18,9 +18,22 @@ class SelfArchitectureTests(unittest.TestCase):
         projection = context.result["context"]
         self.assertEqual(len(projection["children"]), 4)
         self.assertTrue(all("contracts" in child for child in projection["children"]))
+        participants = {
+            participant
+            for scenario in projection["scenarios"]
+            for participant in scenario["participants"]
+        }
+        self.assertTrue(
+            {
+                "feature.concorde.core-workflow",
+                "feature.concorde.publish-project-docsite",
+                "feature.concorde.install-with-spec-kit",
+            }.issubset(participants)
+        )
         self.assertNotIn("feature.documentation.publish-project-docsite", repr(projection["children"]))
         refinements = {(item["from"], item["to"]) for item in projection["refinement_links"]}
-        self.assertIn(("feature.distribution.package-starter-bundle", "feature.concorde.install-starter-workflow"), refinements)
+        self.assertIn(("feature.distribution.package-starter-bundle", "feature.concorde.install-with-spec-kit"), refinements)
+        self.assertIn(("feature.architecture-core.manage-bounded-sources", "feature.concorde.core-workflow"), refinements)
 
 
 if __name__ == "__main__":

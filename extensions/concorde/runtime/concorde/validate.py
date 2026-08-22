@@ -10,10 +10,24 @@ from typing import Any, Iterable
 from .diagnostics import finding_key
 from .model import Finding, OperationResult, SourceDocument
 from .repository import ProjectRepository, RepositoryError
+from .validation.hierarchy import validate_hierarchy
+from .validation.contracts import validate_contracts
+from .validation.scenarios import validate_scenarios
+from .validation.layout import validate_layout
+from .validation.evidence import validate_evidence
+from .validation.freshness import validate_freshness
 
 
 EVIDENCE_STATES = {"unknown", "partial", "verified", "disagrees", "implemented"}
 REQUIRED_CONTRACT_SECTIONS = ("Purpose", "Information", "Obligations", "Failure Semantics", "Compatibility", "Evidence")
+FOCUSED_VALIDATORS = (
+    validate_hierarchy,
+    validate_layout,
+    validate_contracts,
+    validate_scenarios,
+    validate_evidence,
+    validate_freshness,
+)
 
 
 def _finding(rule: str, source: SourceDocument, message: str, remediation: str, severity: str = "error") -> Finding:
@@ -83,6 +97,8 @@ def validate_project(project_root: str | Path, target: str | None = None) -> Ope
         finding = Finding("CONCORDE-SOURCE-001", "error", ".concorde/config.json", str(error), "Correct the profile configuration or malformed source and retry.")
         return OperationResult("validate", operation_target, "invalid", findings=(finding,), result={"summary": {"errors": 1, "warnings": 0, "infos": 0}, "source_digest": "sha256:" + "0" * 64})
     findings: list[Finding] = []
+    for validator in FOCUSED_VALIDATORS:
+        findings.extend(validator(package))
     artifacts = _target_artifacts(package, target)
     if target and target not in {".", package.specification_root} and target not in package.by_id:
         findings.append(Finding("CONCORDE-TARGET-001", "error", ".concorde/config.json", f"Validation target '{target}' is unknown.", "Pass a configured package path or unique stable ID."))

@@ -97,4 +97,4 @@ and requirements.
 
 - Source discovery, validation, route, provenance, search, and manifest tests under `docsite/tests/`.
 - Reproducible production output from `docsite/`.
-- Requirement-to-evidence mapping in `specs/concorde/features/002-create-project-docsite/validation.md`.
+- Requirement-to-evidence mapping in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`.

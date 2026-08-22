@@ -1,16 +1,14 @@
 ---
-id: feature.concorde.install-starter-workflow
+id: feature.concorde.core-workflow
 kind: feature
 module: module.concorde
 refines: []
 scenarios:
-  - install-starter-workflow
-  - initialize-root-architecture
-  - retrieve-and-validate-context
-  - manage-installation-lifecycle
+  - scenario-concorde-establish-and-place-feature
+  - scenario-concorde-review-implement-and-reconcile
 contracts:
   provided:
-    - contract.concorde.starter-workflow
+    - contract.concorde.core-workflow
   required:
     - contract.concorde.spec-kit-platform
 architecture_view: specs/concorde/architecture.json
@@ -18,387 +16,443 @@ evidence_status: partial
 canonical_spec: specs/concorde/features/001-concorde-starter-workflow/spec.md
 ---
 
-# Feature Specification: Install Concorde Starter Bundle
+# Feature Specification: Direct Development with the Concorde Core Workflow
 
 **Feature Branch**: Not created; no `before_specify` branch hook is configured
 
 **Created**: 2026-08-19
 
-**Status**: Implemented; timed first-use and comprehension pilot pending
+**Revised**: 2026-08-22
 
-**Input**: User description: "Integrate Concorde into the Spec Kit ecosystem with a complete
-installation process, Concorde presets, and starter Concorde commands exposed through supported
-coding-agent integrations."
+**Status**: Implemented for automated workflow behavior; human placement/comprehension evidence pending
 
-## Clarifications
+**Input**: User description: "Make Feature 001 describe the actual Concorde workflow, including the
+organization of specifications, the development lifecycle, and the commands that keep architecture
+and feature work aligned. Move Spec Kit installation and setup into a separate feature."
 
-### Session 2026-08-19
+## What the Concorde Workflow Is
 
-- Q: What must be the primary distribution and installation unit for Concorde? → A: A native Spec Kit bundle.
-- Q: Which component types belong in the first Concorde bundle? → A: One preset and one command extension only.
+Concorde is an architecture-aware development workflow for projects in which people direct the
+structure and intent while coding agents produce much of the implementation. It combines
+spec-driven development with Architecture as Code: feature specifications describe observable
+behavior, while maintained module, contract, and Archify sources describe where that behavior
+belongs and how immediate submodules collaborate to provide it.
 
-## How Concorde Fits into Spec Kit
+The workflow does not replace the normal Spec Kit phases. Spec Kit remains authoritative for feature
+specification, clarification, planning, task generation, implementation, analysis, and convergence.
+Concorde surrounds those phases with four architectural controls:
 
-Spec Kit remains the host platform and owns the normal feature lifecycle: specification,
-clarification, planning, task generation, implementation, analysis, and convergence. Concorde enters
-that platform through three related but different ecosystem concepts:
+1. locate the providing module and abstraction level before specifying or planning a change;
+2. keep feature workspaces inside the providing module's specification package;
+3. review affected module boundaries, contracts, refinements, and one-level views before approving
+   implementation structure; and
+4. provide bounded context and deterministic validation throughout implementation and review.
 
-| Concept | What it is | What it does in Concorde | What it is not |
-|---|---|---|---|
-| **Bundle** | An inspectable, versioned installation recipe that groups compatible components. | `concorde-starter` pins exactly `concorde-core@0.1.0` and `concorde@0.1.0`, then asks Spec Kit to install each through its native component lifecycle. | It is not executable behavior, a template layer, or a new feature-development workflow. |
-| **Preset** | A composable customization layer for Spec Kit artifacts and defaults. | `concorde-core` appends architecture ownership, hierarchy, contract, scenario, traceability, and evidence guidance to the existing spec, plan, and task templates. | It does not register commands or replace the core Spec Kit templates and phases. |
-| **Extension** | An independently installable capability package containing commands and supporting runtime behavior. | `concorde` registers `speckit.concorde.init`, `speckit.concorde.context`, and `speckit.concorde.validate` through the project's active coding-agent integration. | It does not own feature specifications or change Spec Kit's core lifecycle. |
-| **Catalog** | A trusted discovery index containing package identity, version, download location, and integrity metadata. | Separate bundle, preset, and extension catalogs let Spec Kit resolve the bundle and its two pinned components. | It is not installed into the project as product behavior. |
+Installation, component catalogs, bundle preview, preset/extension setup, update, and removal are
+specified separately by `feature.concorde.install-with-spec-kit`. Publication of the read-only
+documentation site is specified separately by `feature.concorde.publish-project-docsite`.
 
-The word "workflow" in **Concorde Starter Workflow** names the maintainer's end-to-end journey. The
-starter bundle deliberately declares no Spec Kit workflow component and no reusable steps. Its value
-comes from composing one passive guidance layer (the preset) with one active capability layer (the
-extension).
+## Specification and Architecture Organization
 
-### How installation resolves
+All maintained behavioral and architectural intent lives in one recursive `specs/` hierarchy.
+Architecture is part of the system specification; it is not maintained in a separate top-level
+`architecture/` source tree.
 
-1. A maintainer registers trusted catalog sources or supplies a supported local bundle source.
-2. Spec Kit expands the bundle recipe before installation, showing the exact preset, extension,
-   versions, compatibility range, composition strategy, integration inheritance, and trust source.
-3. After approval, Spec Kit installs the pinned preset through the preset system and the pinned
-   extension through the extension system, then records bundle and component provenance.
-4. The preset participates whenever Spec Kit resolves the spec, plan, or task template. With the
-   `append` strategy, Concorde guidance is added to the normal template instead of replacing it.
-5. The extension is translated into the active integration's command form—Codex skills or a
-   supported slash-command form—while retaining the same command intent and runtime behavior.
-6. Normal Spec Kit phases create the one canonical feature specification; Concorde commands create,
-   retrieve, and validate the linked hierarchical architecture sources under `specs/`.
+```text
+specs/
+└── <root-module>/
+    ├── module.md                 # responsibility, features, boundary contracts
+    ├── architecture.json        # current module + one level of immediate children
+    ├── contracts/
+    │   └── <contract>/
+    │       ├── contract.md       # obligations, failures, compatibility, representation
+    │       ├── schema.*          # required for a custom serialized format
+    │       └── example.*         # representative custom value
+    ├── features/
+    │   └── <number>-<feature>/
+    │       ├── spec.md           # durable canonical behavioral specification
+    │       ├── contracts/        # durable feature-level boundary representations
+    │       ├── checklists/       # durable requirements-quality review
+    │       └── implementation/   # temporal workspace for one delivery attempt
+    │           ├── plan.md
+    │           ├── tasks.md
+    │           ├── research.md
+    │           ├── data-model.md
+    │           ├── quickstart.md
+    │           └── validation.md
+    └── modules/
+        └── <child-module>/        # repeats the same package at the next level
+```
 
-Catalog URLs are only discovery and download addresses. Release building writes those addresses into
-catalog metadata; it does not contact them. For local acceptance, the generated `dist/` directory is
-served from localhost so Spec Kit can exercise the same catalog-resolution path used by a published
-release.
+At one architectural level, a maintainer sees the current module's responsibility, features, and
+provided/required I/O contracts; its immediate submodules and their I/O summaries; permitted
+external actors; and the organization and contract-governed interactions among those visible
+participants. Child features, grandchildren, and deeper implementation details remain hidden until
+the maintainer zooms into that child as the new current module.
 
-### Explanatory diagrams
+### Durable specification and temporal implementation
 
-- Source `spec-kit-component-model.json` and the
-  <a href="/architecture/concorde-spec-kit-component-model.html">interactive component view</a> show
-  what each package type contributes after installation.
-- Source `starter-installation-flow.json` and the
-  <a href="/architecture/concorde-starter-installation-flow.html">interactive workflow view</a> show
-  the release, review, installation, and two use paths.
-- The [root module view](/architecture/concorde/module.concorde) keeps the architectural one-level
-  view: Concorde's immediate modules, external actors, contracts, and scenarios.
+A feature remains valid beyond any one attempt to implement it. Its root therefore contains only
+durable intent: `spec.md`, normative feature contracts and representations, and requirements-quality
+checklists. These artifacts answer what behavior is required, who owns it, and which boundary
+obligations must hold.
+
+The `implementation/` directory is the active workspace for one delivery attempt. Its plan, research,
+technical model, tasks, runnable acceptance guide, and recorded evidence answer how that attempt will
+realize and verify the feature. They may change substantially while the implementation is in progress
+and do not amend the feature merely by changing. When the user accepts the implementation, the
+workspace may be frozen as historical evidence, archived, or removed according to project policy;
+the feature identity and specification remain at the feature root. A later implementation attempt
+starts from the durable feature and creates a fresh temporal workspace rather than treating an old
+plan as current intent.
+
+There is at most one active `implementation/` workspace for a feature. Tools must resolve
+`spec.md`, `contracts/`, and `checklists/` from the feature root, while resolving plan-phase and
+implementation-phase artifacts from `implementation/`. No compatibility copy or symlink may place
+`plan.md` or `tasks.md` beside `spec.md`.
+
+### Artifact authority
+
+| Information | Canonical source | Role in the workflow |
+|---|---|---|
+| Feature behavior, requirements, constraints, and representative examples | `spec.md` | Defines what the providing module must make observable. |
+| Feature implementation design and work | `implementation/plan.md` and `implementation/tasks.md` | Temporarily records one chosen delivery approach and its executable work. |
+| Implementation research, technical models, acceptance guidance, and delivery evidence | Other files under `implementation/` | Supports one implementation attempt and never becomes durable feature intent by location. |
+| Module responsibility, feature ownership, contracts, constraints, and decisions | `module.md` and contract Markdown | Defines durable architectural prose at that module level. |
+| Current-level structure and ordered scenario interactions | `architecture.json` | Defines the machine-readable one-level view. |
+| Standard or custom boundary representation | Referenced standard, or maintained schema/grammar and examples | Defines the information that may cross a module boundary. |
+| Implementation and executable evidence | Code and tests | Records what exists and what has been demonstrated. |
+| Rendered diagrams, documentation pages, indexes, and reports | Generated projections | Makes canonical sources reviewable; never becomes maintained intent. |
+
+A feature is defined by its text. Scenarios are representative examples that make the behavior and
+submodule collaboration concrete; they do not define the feature exhaustively.
+
+## End-to-End Workflow and Commands
+
+The command surface supports the workflow but does not become a second feature lifecycle. Canonical
+command intent stays stable even when a coding-agent integration presents it as a skill or slash
+command.
+
+| Stage | Maintainer outcome | Primary operation |
+|---|---|---|
+| 1. Establish the root | Create or review the root module package, its I/O contracts, top-level features, immediate submodules, and one-level view. | `speckit.concorde.init` |
+| 2. Locate ownership | Inspect exactly one bounded module level and decide which module owns the behavior at which abstraction. | `speckit.concorde.context <module-or-feature-id>` |
+| 3. Create or select work | Create one nested feature root under the owning module, or select an existing feature; keep durable specification sources at the root. | `speckit.concorde.feature.create` / `speckit.concorde.feature.select` |
+| 4. Specify behavior | Describe the feature in text, clarify uncertainty, and record representative scenarios, contracts, refinement links, and expected evidence. | Normal Spec Kit specification and clarification phases |
+| 5. Agree on architecture | Review ownership, I/O contracts, immediate participants, dependency direction, and the affected one-level view before approving the implementation structure. | Bounded context plus maintained architecture sources |
+| 6. Open an implementation attempt | Create the feature's temporal `implementation/` workspace, then produce its plan and tasks with explicit architecture, contract, validation, and freshness work where affected. | Normal Spec Kit planning and task phases with Concorde path resolution |
+| 7. Implement with bounded context | Give the coding agent only the relevant module level, feature artifacts, contracts, and evidence expectations; descend one level only when needed. | `speckit.concorde.context` plus normal implementation/convergence phases |
+| 8. Reconcile and validate | Check maintained sources, references, hierarchy, contracts, views, and evidence; report disagreement or unknown evidence rather than silently rewriting intent. | `speckit.concorde.validate [path-or-id]` |
+| 9. Review and publish | Review behavioral and architectural changes together, then reproduce the read-only project site through the separate documentation feature. | Documentation publication workflow |
+
+`feature.create` and `feature.select` are required workflow operations even though the initial
+installed slice currently exposes only `init`, `context`, and `validate`. Until the selectors are
+implemented, maintainers may select the nested workspace through Spec Kit's supported feature-path
+mechanism; this is a temporary capability gap, not a different source layout or a duplicate feature
+store.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Install and Verify Concorde (Priority: P1)
+### User Story 1 - Establish and Navigate the Architecture Hierarchy (Priority: P1)
 
-As a maintainer, I can use the native Spec Kit bundle lifecycle to inspect and install Concorde into a
-new or existing Spec Kit project so that the architecture-aware workflow and its agent skills are
-ready to use without a separate Concorde installer or manual component copying.
+As a maintainer, I can establish the project as a root module and inspect one architectural level at
+a time so that I understand responsibilities, features, I/O contracts, immediate submodules, and
+their organization without being overwhelmed by deeper details.
 
-**Why this priority**: Installation is the entry point for every other Concorde capability. A usable
-starter workflow cannot exist until its exact contents can be inspected, installed, and verified.
+**Why this priority**: The bounded hierarchy is the foundation for every ownership, planning, and
+review decision in Concorde.
 
-**Independent Test**: Starting from a clean supported project, use the textual explanation and
-diagrams to identify the role of each package type, validate and build the Concorde bundle, inspect
-its expanded component plan, install it through the native bundle command, and verify that its preset,
-extension, and three starter commands are active. This delivers a usable integration even before any
-project architecture has been authored.
+**Independent Test**: Initialize a project with a root and two nested module levels, request context
+at the root and then one child, and verify that each result exposes only the current module and its
+immediate children while preserving navigable references to deeper levels.
 
 **Acceptance Scenarios**:
 
-1. **Given** the Concorde bundle source, **When** the maintainer uses the native bundle validation and
-   build lifecycle, **Then** Spec Kit accepts its `bundle.yml` manifest and produces an installable,
-   versioned bundle artifact.
-2. **Given** a supported initialized Spec Kit project, **When** the maintainer inspects the Concorde
-   bundle through the native bundle information command, **Then** the expanded plan identifies the
-   exact preset, extension, versions, dependencies, trust source, and project-facing changes.
-3. **Given** an accepted expanded plan, **When** the maintainer uses the native Spec Kit bundle install
-   command with the bundle ID, local directory, manifest, or built artifact, **Then** the same component
-   set is installed and the active coding-agent integration exposes the Concorde commands.
-4. **Given** a directory that is not yet a Spec Kit project, **When** the maintainer installs the
-   starter bundle through the supported initialization path, **Then** the project is initialized and
-   Concorde reaches the same verified state as an existing project.
-5. **Given** a complete installation, **When** the maintainer repeats installation, **Then** the result
-   is successful and no duplicate components or changes to user-authored files are produced.
-6. **Given** the Feature 001 explanation and diagrams, **When** a maintainer reviews how Concorde is
-   integrated, **Then** they can distinguish the bundle recipe, preset guidance, extension behavior,
-   catalog discovery metadata, and the unchanged Spec Kit feature lifecycle.
+1. **Given** a project without Concorde architecture sources, **When** the maintainer initializes the
+   root, **Then** the proposed package states the root responsibility, explicit provided and required
+   contract sets, current-level features, immediate submodules, and one-level view before any source
+   is written.
+2. **Given** an accepted root package, **When** the maintainer requests root context, **Then** the
+   result includes the root I/O and features, immediate submodules and their I/O, relevant externals,
+   and their organization, but excludes child features and grandchildren.
+3. **Given** a visible child module, **When** the maintainer zooms into it, **Then** the child becomes
+   the current module and the same visibility rule repeats at the next level.
 
 ---
 
-### User Story 2 - Initialize a Root Architecture (Priority: P2)
+### User Story 2 - Place and Specify a Feature at the Right Level (Priority: P1)
 
-As a maintainer using a supported coding agent, I can invoke `speckit.concorde.init` to establish a
-minimal root module, its boundary contracts, and its bounded architecture view so that the next
-feature can be placed before implementation planning.
+As a maintainer, I can choose the providing module, create or select its nested feature workspace,
+and use the normal feature-specification lifecycle so that behavior has one canonical specification
+and explicit architectural ownership.
 
-**Why this priority**: The first useful Concorde action is to establish architectural ownership and
-boundaries. This proves that an installed agent skill can create reviewable Concorde sources.
+**Why this priority**: Concorde cannot control structure if features are specified without first
+deciding where and at what abstraction level they belong.
 
-**Independent Test**: Invoke the initialization command in an installed project without Concorde
-architecture sources, review the proposed root package, accept it, and confirm that it contains one
-root module, explicit provided and required contract sets, stable IDs, and a valid one-level view.
+**Independent Test**: Starting from a hierarchy with a parent and two children, place a behavior that
+spans both children on their nearest common parent, select its nested workspace, specify it through
+the normal lifecycle, and verify that no duplicate flat specification is created.
 
 **Acceptance Scenarios**:
 
-1. **Given** an installed project with no Concorde architecture package, **When** the maintainer asks
-   the agent to initialize Concorde, **Then** the command proposes the root responsibility, boundary,
-   contracts, immediate submodules, and architecture view before writing them.
-2. **Given** an accepted proposal, **When** initialization completes, **Then** every created source has
-   a stable ID, all references resolve, and no deeper-than-immediate module detail appears in the root
-   view.
-3. **Given** an existing Concorde architecture package, **When** initialization runs again, **Then** it
-   reports the existing package and does not overwrite maintained intent without explicit approval.
+1. **Given** proposed behavior owned entirely by one module, **When** the maintainer creates the
+   feature, **Then** its workspace is nested under that module's `features/` directory and becomes the
+   single active Spec Kit workspace.
+2. **Given** behavior spanning multiple child modules, **When** ownership is reviewed, **Then** the
+   feature is owned by their nearest common parent and lower-level features may refine it from the
+   participating children.
+3. **Given** an existing nested feature, **When** the maintainer selects it, **Then** specification
+   phases resolve the canonical root `spec.md`, while delivery phases resolve `implementation/plan.md`
+   and `implementation/tasks.md`, without copying any artifact beside another authority.
+4. **Given** a feature specification, **When** it is reviewed, **Then** its text defines the behavior
+   and its scenarios are clearly presented as representative examples rather than exhaustive
+   definitions.
 
 ---
 
-### User Story 3 - Retrieve and Validate Bounded Context (Priority: P3)
+### User Story 3 - Review Architecture Before Approving the Plan (Priority: P2)
 
-As a maintainer or coding agent, I can invoke `speckit.concorde.context` and
-`speckit.concorde.validate` so that work begins with the correct architectural level and structural
-errors are found before planning or implementation.
+As a maintainer, I can review the feature's ownership, refinement links, boundary contracts, and
+immediate-submodule collaboration before approving its implementation plan so that structural
+decisions remain intentional even when AI writes the code.
 
-**Why this priority**: Bounded context and deterministic validation turn the architecture sources into
-an operational development control rather than passive documentation.
+**Why this priority**: Architecture reviewed only after implementation cannot reliably constrain the
+structure being created.
 
-**Independent Test**: Against a small hierarchy containing one deliberate invalid reference, request
-context for the root and run validation. Confirm that context contains only the root and its immediate
-children and that validation reports the broken reference with a rule, location, and remediation.
+**Independent Test**: Specify a cross-boundary feature, attempt to approve its plan without a
+governing contract and current-level scenario, then add the missing artifacts and confirm that the
+architecture review becomes complete.
 
 **Acceptance Scenarios**:
 
-1. **Given** a valid multi-level architecture, **When** context is requested for one module, **Then**
-   the result includes that module's features and I/O, its immediate children and their I/O, relevant
-   external actors, scenarios, and refinement links, with no grandchildren or child features expanded.
-2. **Given** the same unchanged sources, **When** validation is repeated, **Then** it returns the same
-   findings and outcome regardless of the coding agent used to invoke it.
-3. **Given** an invalid ID, hierarchy, scenario participant, contract reference, or one-level view,
-   **When** validation runs, **Then** every detected violation identifies the governing rule, affected
-   source, and a concrete remediation without silently changing maintained intent.
+1. **Given** a feature crossing a module boundary, **When** architecture readiness is reviewed,
+   **Then** every crossing identifies a provided or required contract and every feature identifies at
+   least one provided contract through which it is available.
+2. **Given** a custom serialized contract, **When** it is reviewed, **Then** its readable schema or
+   grammar, complete information meaning, field semantics, compatibility rules, example, and
+   conformance evidence are available together.
+3. **Given** a commonly adopted contract format, **When** it is reviewed, **Then** the relevant format
+   and version, authoritative definition, and concise explanation of the information passed are
+   available without duplicating the standard.
+4. **Given** a non-leaf feature scenario, **When** its view is reviewed, **Then** it uses only the
+   current module, immediate submodules, and permitted externals, and each boundary interaction names
+   its governing contract.
 
 ---
 
-### User Story 4 - Manage the Installation Lifecycle (Priority: P4)
+### User Story 4 - Implement, Reconcile, and Validate with Bounded Context (Priority: P3)
 
-As a maintainer, I can inspect status, update Concorde, or remove its installed components while
-preserving project-owned architecture sources and components still required by other bundles.
+As a maintainer or coding agent, I can retrieve the smallest sufficient architectural context and
+deterministically validate the result after implementation so that local coding work remains aligned
+with the reviewed hierarchy and contracts.
 
-**Why this priority**: A trustworthy ecosystem integration includes safe maintenance and exit paths,
-not only a successful first installation.
+**Why this priority**: Bounded context and reproducible validation turn the architecture model into a
+development control rather than passive documentation.
 
-**Independent Test**: Install the starter workflow, create project architecture sources, update to a
-compatible release, and remove the bundle. Confirm that component state is accurate throughout and
-that all project-owned sources and shared dependencies remain unchanged.
+**Independent Test**: Implement a feature in a fixture with one deliberate broken refinement and one
+missing evidence reference, then confirm that the agent receives only the requested level and that
+validation reports both problems consistently without changing maintained sources.
 
 **Acceptance Scenarios**:
 
-1. **Given** an installed older compatible release, **When** the maintainer previews and accepts an
-   update, **Then** the reported component versions are refreshed and project-owned architecture
-   sources remain unchanged.
-2. **Given** installed Concorde components, **When** the maintainer removes the starter bundle, **Then**
-   only components owned solely by that bundle are removed and project-authored sources are retained.
-3. **Given** an installation or update that fails partway, **When** recovery completes, **Then** the
-   project is not recorded as successfully updated and any residual partial state is reported.
+1. **Given** an active feature, **When** implementation context is requested, **Then** it contains the
+   feature artifacts, owning module, relevant parent/child refinement links, boundary contracts,
+   current one-level view, and declared evidence, but no unrelated deeper hierarchy.
+2. **Given** unchanged sources, **When** validation is repeated through different supported agent
+   presentations, **Then** findings and ordering are identical.
+3. **Given** a mismatch among specification, architecture, code, tests, or generated projections,
+   **When** validation runs, **Then** the disagreement is reported with its source and remediation;
+   missing implementation evidence remains `unknown` rather than being reported as agreement.
+4. **Given** successful validation and human review, **When** the change is published, **Then** the
+   generated site preserves source provenance and the same architecture hierarchy without becoming
+   a second source of intent.
 
 ### Edge Cases
 
-- The project already has higher-priority local overrides or stacked presets for a template Concorde
-  wants to compose.
-- Another extension or preset provides a command or template with the same identity.
-- The installed Spec Kit version is unsupported, unreadable, or changes during installation.
-- The active coding-agent integration is missing, disabled, or requires a reload before new skills
-  become visible.
-- A bundle component resolves during preview but becomes unavailable before installation.
-- Installation loses access to its source or fails after only some components are written.
-- Initialization encounters a partially authored architecture package or a file with unrelated user
-  content at a proposed target path.
-- Context is requested for an unknown, duplicated, or cyclic module or feature ID.
-- Validation runs when implementation or test evidence is absent; the result must remain `unknown`,
-  not imply agreement.
-- Removal encounters a component shared with another installed bundle or a locally modified component.
+- The correct providing module is unclear, or the behavior spans modules with no obvious common
+  parent.
+- A requested feature workspace already exists, conflicts with unrelated user content, or is selected
+  while another workspace is active.
+- An accepted feature has a stale or completed `implementation/` directory from an earlier delivery
+  attempt.
+- A feature is moved between modules after lower-level refinements already refer to it.
+- A module is a leaf and therefore has no child-level architecture diagram.
+- A scenario requires a participant deeper than the current level or crosses an undeclared boundary.
+- A contract changes representation, version, direction, or ownership while dependent features remain
+  unchanged.
+- A custom contract example no longer conforms to its schema or grammar.
+- Architecture sources are valid individually but contain duplicate IDs, cycles, broken references,
+  or stale generated projections together.
+- Implementation or test evidence is missing, inaccessible, or contradictory.
+- An automated tool proposes a structural change that the maintainer has not approved.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The product MUST provide a native Spec Kit bundle with a schema-versioned `bundle.yml`
-  manifest that composes the initial Concorde preset and Concorde extension into one inspectable,
-  versioned installation unit.
-- **FR-002**: The starter bundle MUST use the standard Spec Kit bundle lifecycle for validation,
-  building, inspection, installation, listing, update, and removal and MUST NOT require a separate
-  Concorde installer.
-- **FR-003**: Before installation or update, maintainers MUST be able to inspect the fully expanded
-  component identities, pinned versions, preset priority and strategy, dependencies, trust sources,
-  compatibility constraints, and intended changes through the native bundle information interface.
-- **FR-004**: The installed component set MUST match the expanded bundle plan accepted by the
-  maintainer.
-- **FR-005**: The initial preset MUST add Concorde's providing-module, stable-ID, refinement, scenario,
-  contract, architecture-view, and evidence expectations to feature specification work.
-- **FR-006**: The initial preset MUST require architecture ownership and boundary review before an
-  implementation plan can be treated as complete.
-- **FR-007**: The initial preset MUST require implementation tasks to cover affected maintained
-  architecture sources, contracts, validation, and generated-output freshness when applicable.
-- **FR-008**: Preset composition MUST preserve Spec Kit's ownership of specification, clarification,
-  planning, tasks, implementation, analysis, and convergence and MUST NOT create a duplicate canonical
-  feature specification.
-- **FR-009**: The initial extension MUST register `speckit.concorde.init`,
-  `speckit.concorde.context`, and `speckit.concorde.validate` through the active agent integration.
-- **FR-010**: The registered commands MUST keep the same intent, inputs, outputs, and failure behavior
-  across all supported agent invocation syntaxes.
-- **FR-011**: `speckit.concorde.init` MUST propose and, after approval, establish a minimal root
-  specification hierarchy under `specs/<root-slug>/` with stable IDs, explicit boundary contract
-  sets, immediate submodules, and a one-level architecture view.
-- **FR-012**: Initialization MUST preserve existing maintained sources unless the maintainer explicitly
-  approves a presented change.
-- **FR-013**: `speckit.concorde.context` MUST return exactly one bounded architectural level for a
-  requested module or feature and MUST expose stable references for deliberate navigation to deeper
-  levels.
-- **FR-014**: `speckit.concorde.validate` MUST deterministically check IDs, references, containment,
-  refinement, scenario participants, boundary contracts, one-level visibility, and explicit evidence
-  status without requiring an LLM.
-- **FR-015**: Every validation finding MUST identify its rule, severity, affected source, and actionable
-  remediation; validation MUST NOT silently modify maintained intent.
-- **FR-016**: The initial release MUST support Spec Kit `0.16.4` and MUST reject unsupported versions
-  before making installation changes.
-- **FR-017**: The starter commands MUST be verified in Codex skills mode and at least one supported
-  slash-command integration before the feature is accepted.
-- **FR-018**: Repeated installation of the same release MUST be idempotent and MUST NOT duplicate
-  registry state or alter user-authored sources.
-- **FR-019**: Update MUST preserve user configuration and project-authored specification sources while applying the
-  maintainer-approved component version plan.
-- **FR-020**: Removal MUST remove only components owned solely by the Concorde bundle and MUST preserve
-  project-authored architecture and feature sources under `specs/` plus shared dependencies.
-- **FR-021**: Failed installation or update MUST NOT record success and MUST report any residual partial
-  state that could not be restored automatically.
-- **FR-022**: Installation status and provenance MUST let maintainers identify the installed bundle,
-  preset, extension, versions, source, and active or disabled state.
-- **FR-023**: The starter workflow MUST include a concise quick start covering the bundle, preset,
-  extension, and catalog roles; preview; installation; command discovery; root initialization;
-  context retrieval; validation; update; and removal.
-- **FR-024**: The architecture package and generated command results MUST distinguish intended design,
-  implementation evidence, and unknown evidence rather than infer agreement among them.
-- **FR-025**: The bundle manifest MUST declare schema version, stable bundle ID, display name, semantic
-  version, role, description, author, license, supported Spec Kit range, component references, and
-  discovery tags in the same contract used by the official Spec Kit bundle examples.
-- **FR-026**: The bundle MUST be integration-agnostic so installation inherits the target project's
-  active coding-agent integration.
-- **FR-027**: The bundle MUST be installable from its local source directory, `bundle.yml` manifest,
-  or built artifact during development and from a trusted catalog ID or approved artifact when
-  distributed.
-- **FR-028**: The first bundle MUST contain exactly one Concorde preset and one Concorde command
-  extension; it MUST NOT declare a dedicated Concorde workflow or reusable steps.
-- **FR-029**: Feature and architecture documentation MUST explain, in plain language, which behavior
-  belongs to Spec Kit, the bundle, the preset, the extension, catalogs, the active coding-agent
-  integration, and Concorde Architecture Core without treating those concepts as interchangeable.
-- **FR-030**: The feature MUST provide validated component and workflow diagrams that show both
-  installation-time composition and the distinct use-time paths for preset guidance and extension
-  commands, with accompanying text that remains usable without the diagrams.
+- **FR-001**: Concorde MUST maintain module architecture, boundary contracts, and feature workspaces
+  in one recursive `specs/` hierarchy that mirrors module ownership.
+- **FR-002**: Every module package MUST identify one responsibility, its current-level features,
+  explicit provided and required contract sets, immediate submodules, and its parent when one exists.
+- **FR-003**: Every non-leaf module MUST maintain one machine-readable architecture view showing only
+  the current module, its features and I/O, immediate submodules and their I/O, permitted externals,
+  and connections among those visible participants.
+- **FR-004**: Selecting a child module MUST repeat the same view at the next level without expanding
+  child features, grandchildren, or deeper implementation details in the parent view.
+- **FR-005**: Every feature MUST have a stable ID, exactly one providing module at its abstraction
+  level, one canonical textual specification, an observable outcome, and relevant provided and
+  required contracts.
+- **FR-006**: A feature spanning multiple modules MUST be owned by their nearest common parent and MAY
+  be refined by features owned by participating immediate children.
+- **FR-007**: Feature refinement links MUST connect adjacent module levels, remain acyclic, and permit
+  one parent feature to be realized by multiple child features and one child feature to support
+  multiple parent features.
+- **FR-008**: Feature scenarios MUST be identified as representative examples and MUST NOT replace or
+  redefine the feature's textual requirements.
+- **FR-009**: Every scenario interaction crossing a module boundary MUST name its governing contract
+  and use only participants visible at that architectural level unless explicitly marked prose-only.
+- **FR-010**: Every contract MUST state its stable ID, owner, provided/required role, flow direction,
+  counterparties, obligations, failure semantics, compatibility expectations, and validation
+  evidence.
+- **FR-011**: A contract using a commonly adopted format MUST name its relevant format and version,
+  link to the authoritative definition, and briefly explain the information passed.
+- **FR-012**: A custom contract MUST use a programmer-observable serialized representation and MUST
+  provide a normative schema or grammar, the complete information meaning, field semantics,
+  compatibility rules, at least one representative example, and conformance evidence.
+- **FR-013**: Concorde MUST establish or propose the root module package before feature work depends on
+  it, and MUST preserve existing maintained intent unless the maintainer approves a presented change.
+- **FR-014**: Concorde MUST let maintainers create a feature workspace under its providing module and
+  select that workspace for subsequent normal Spec Kit lifecycle phases.
+- **FR-015**: Selecting a nested feature workspace MUST preserve one canonical `spec.md` and MUST NOT
+  create a duplicate flat or Concorde-specific feature specification.
+- **FR-016**: Before a feature plan is approved, the workflow MUST review providing-module ownership,
+  abstraction level, parent refinements, participating immediate submodules, governing contracts,
+  dependency direction, affected one-level views, and expected implementation/test evidence.
+- **FR-017**: Planning and task generation MUST include required architecture, contract, validation,
+  traceability, and generated-freshness work whenever the feature changes those concerns.
+- **FR-018**: Concorde MUST return one bounded architectural level for a requested module or feature,
+  with stable references for deliberate navigation to adjacent levels.
+- **FR-019**: Implementation context MUST include only the active feature artifacts and the smallest
+  sufficient set of module, contract, view, refinement, and evidence sources.
+- **FR-020**: Concorde MUST deterministically validate IDs, paths, hierarchy, refinements, scenario
+  boundaries, contracts, custom representations, view depth, references, evidence status, and
+  generated-output freshness without requiring an AI model.
+- **FR-021**: Validation MUST be read-only, repeatable, and explicit about rule, severity, location,
+  and remediation for every finding.
+- **FR-022**: Missing or conflicting implementation evidence MUST be reported as unknown or
+  disagreement and MUST NOT be inferred as conformance from valid architecture alone.
+- **FR-023**: Maintained architecture changes proposed or authored by an agent MUST require human
+  approval and applicable deterministic checks before becoming accepted project intent.
+- **FR-024**: The core workflow MUST preserve Spec Kit's authority for specification, clarification,
+  planning, tasks, implementation, analysis, and convergence while Concorde owns hierarchy,
+  contracts, bounded views, structural traceability, validation, and publication coordination.
+- **FR-025**: Generated diagrams, pages, indexes, and reports MUST be reproducible from maintained
+  sources, identify their provenance, and remain non-authoritative read models.
+- **FR-026**: Each feature root MUST contain only durable feature intent and requirements-quality
+  artifacts; `plan.md`, `tasks.md`, implementation research, technical models, runnable acceptance
+  guidance, and delivery evidence MUST reside under that feature's `implementation/` directory.
+- **FR-027**: The `implementation/` directory MUST represent at most one active delivery attempt and
+  MUST NOT be treated as part of the canonical behavioral specification or architecture merely
+  because it is stored under `specs/`.
+- **FR-028**: Workflow tools MUST resolve `spec.md`, normative feature contracts, and checklists from
+  the feature root, and MUST resolve plan-phase and implementation-phase artifacts from
+  `implementation/` without compatibility copies or symlinks at the root.
+- **FR-029**: After the user accepts an implementation, its temporal workspace MAY be frozen as
+  evidence, archived, or removed according to project policy without changing the feature's stable ID,
+  canonical specification, providing module, or refinement links.
 
 ### Scope
 
 **Included**:
 
-- One native, schema-valid Spec Kit starter bundle that can be validated, built, inspected, installed,
-  updated, and removed through the standard bundle system.
-- One architecture-aware preset covering feature, plan, and task expectations.
-- One extension providing the three starter agent commands.
-- Preview, installation, verification, idempotency, update, status/provenance, failure reporting, and
-  safe removal.
-- Root architecture initialization, one-level context retrieval, and deterministic structural
-  validation.
-- Compatibility acceptance for Spec Kit `0.16.4`, Codex skills mode, and one slash-command integration.
+- The recursive module and feature hierarchy under `specs/`.
+- Module ownership, feature refinement, scenarios, boundary contracts, and one-level views.
+- Root initialization, bounded context retrieval, nested feature creation/selection, and deterministic
+  validation as workflow operations.
+- Separation of durable feature sources from one temporal `implementation/` workspace.
+- Architecture gates around the normal specification, plan, task, implementation, convergence, and
+  review lifecycle.
+- Traceability among maintained intent, implementation, tests, validation, and generated projections.
 
 **Excluded**:
 
-- Automatic reconstruction of architecture from source code.
-- Complete contract-schema authoring assistance beyond the minimal root package.
-- Archify rendering commands and Docusaurus publication commands.
-- Cross-repository catalogs, organizational governance, or runtime topology ingestion.
-- Automatic acceptance of architecture proposed by an agent.
-- Support claims for Spec Kit versions or agent integrations not covered by acceptance evidence.
-- A dedicated Concorde workflow and reusable Spec Kit steps; these require separate future features
-  after the starter preset and commands are proven.
+- Spec Kit bundle/catalog installation, setup, update, removal, and package-role education; these are
+  owned by `feature.concorde.install-with-spec-kit`.
+- The implementation details of Spec Kit, coding-agent integrations, Archify, or the documentation
+  generator.
+- Replacing normal feature specifications with a separate Concorde behavioral artifact.
+- Automatically accepting AI-authored architecture or treating structural validation as proof of
+  implementation correctness.
+- Modeling every class, function, or call edge as an architectural module.
 
 ### Key Entities
 
-- **Concorde Starter Bundle**: The native Spec Kit installation unit identified by its manifest ID and
-  semantic version. It declares role, compatibility, tags, exactly one pinned Concorde preset, and
-  exactly one pinned Concorde command extension; Spec Kit records its lifecycle provenance.
-- **Concorde Core Preset**: The composable rules and artifact guidance that add architecture context
-  and quality gates to existing Spec Kit phases.
-- **Concorde Extension**: The registered capability set that exposes the starter Concorde agent
-  commands and their lifecycle integration.
-- **Architecture Package**: The maintained root module, contracts, feature references, child module
-  boundaries, and one-level architecture view for one project.
-- **Bounded Context**: A deterministic projection of one current module, its features and I/O,
-  immediate children and their I/O, permitted externals, scenarios, and refinement links.
-- **Validation Finding**: A deterministic rule result containing severity, affected source, and
-  remediation.
-- **Installation Record**: Provenance describing installed component identities, versions, ownership,
-  source, active state, and lifecycle outcome.
-- **Component Catalog Entry**: Discovery and trust metadata that identifies an independently packaged
-  bundle, preset, or extension and its later download location without owning behavior.
-- **Supplemental Explanatory View**: A Feature-001-owned visual composition that explains structural
-  roles or temporal flow without becoming a canonical module-level architecture view.
+- **Module**: An architecturally meaningful unit with a stable identity, one responsibility, boundary
+  contracts, current-level features, and optional immediate submodules.
+- **Feature**: Textually specified observable behavior owned by exactly one module at one abstraction
+  level and optionally refined at the adjacent child level.
+- **Feature Workspace**: The single nested location containing the normal lifecycle artifacts for one
+  feature, divided into a durable feature root and a temporal implementation workspace.
+- **Implementation Workspace**: The `implementation/` subdirectory containing the plan, tasks,
+  research, technical model, acceptance guide, and evidence for at most one active delivery attempt.
+- **Scenario**: A representative behavioral example whose participants and interactions are bounded
+  to one architecture level.
+- **Contract**: A directional boundary agreement defining obligations and observable information
+  exchanged between a module and an external counterparty.
+- **Architecture View**: The machine-readable structure and scenario traces for one current module and
+  its immediate children only.
+- **Bounded Context**: The smallest resolved set of current-level architecture and active feature
+  sources required for one decision or implementation task.
+- **Evidence Reference**: A stable link to implementation, tests, or generated validation material,
+  with verified, partial, unknown, or conflicting status.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: A maintainer starting from a clean supported environment can preview, install, discover
-  the commands, initialize a root architecture, and run its first validation in under 10 minutes by
-  following only the quick start.
-- **SC-002**: Across all acceptance fixtures, 100% of successful installations apply exactly the
-  expanded component set shown by the native bundle information command.
-- **SC-003**: Repeating installation three times produces zero duplicate registrations and zero changes
-  to user-authored files after the first successful run.
-- **SC-004**: 100% of seeded invalid architecture fixtures are detected with the expected rule,
-  affected source, and actionable remediation, with zero silent source modifications.
-- **SC-005**: For every context fixture, 100% of returned entities belong to the requested current
-  level, its immediate children, or permitted external actors; no child feature or grandchild is
-  expanded.
-- **SC-006**: The three starter commands are discoverable and successfully complete their primary
-  scenarios in Codex skills mode and at least one slash-command integration.
-- **SC-007**: Update and removal acceptance tests preserve 100% of project-authored architecture
-  sources and shared components.
-- **SC-008**: Three repeated validations of unchanged sources produce byte-equivalent structured
-  findings and the same pass/fail outcome.
-- **SC-009**: At least 90% of first-time pilot maintainers complete the primary install-and-validate
-  journey without assistance beyond the bundled quick start.
-- **SC-010**: A feature specification created after installation records all required Concorde
-  architecture references in its single canonical Spec Kit artifact, with no duplicate feature spec.
-- **SC-011**: At least 90% of first-time pilot maintainers can, after reviewing the explanation and
-  diagrams for no more than five minutes, correctly identify all four ecosystem roles—bundle, preset,
-  extension, and catalog—and describe how Concorde preserves the normal Spec Kit feature lifecycle.
+- **SC-001**: At least 90% of first-time maintainers can identify the correct providing module and
+  create or select the canonical feature workspace within 10 minutes using only the workflow guide.
+- **SC-002**: In a three-level test hierarchy, 100% of bounded context results expose the current
+  module and immediate children while excluding child features and grandchildren.
+- **SC-003**: In acceptance fixtures, 100% of cross-boundary scenario interactions resolve to a
+  documented contract with role, flow, representation, and failure semantics.
+- **SC-004**: A complete normal feature lifecycle produces exactly one canonical feature
+  specification and no duplicate flat or architecture-specific copy.
+- **SC-005**: Repeated validation of unchanged sources produces byte-equivalent ordered findings in
+  100% of supported environments.
+- **SC-006**: Every seeded hierarchy, refinement, contract, scenario-boundary, evidence, and freshness
+  defect is detected and includes an actionable location and remediation.
+- **SC-007**: At least 90% of pilot maintainers can explain, after no more than five minutes of review,
+  that feature text defines behavior, scenarios illustrate it, module prose defines responsibility
+  and contracts, and one-level views define current structure.
+- **SC-008**: All architecture changes in the acceptance sample show explicit human approval and
+  separate behavioral, structural, and implementation evidence before being marked complete.
+- **SC-009**: In 100% of workflow path-resolution tests, specification and contract operations read
+  the feature root, while planning, task, implementation, analysis, and convergence operations read
+  the same feature's `implementation/` workspace; no root-level `plan.md` or `tasks.md` is created.
 
 ## Assumptions
 
-- The native Spec Kit bundle is Concorde's primary distribution and installation unit; its manifest is
-  modeled on the repository's official bundle examples and composes independently versioned preset and
-  extension components without adding runtime behavior of its own.
-- Spec Kit `0.16.4`, already recorded in this project, is the first supported version; expanding the
-  range is a later evidence-based decision.
-- The bundle is integration-agnostic and inherits the target project's active agent integration.
-- Codex is the first skills-mode acceptance target because this repository currently uses the Codex
-  integration; one slash-command integration supplies the portability check.
-- Project-authored architecture sources are user data and remain after component removal.
-- The preset composes only the artifact guidance required for this vertical slice and remains stackable
-  with unrelated presets.
-- Dedicated Concorde workflows and reusable steps are deferred until the preset and command extension
-  have passed the starter bundle's installation and usage acceptance tests.
-- In this specification, "starter workflow" describes the user journey enabled by the bundle; it does
-  not mean that the bundle contains a Spec Kit workflow component.
-- Catalogs are transport and trust metadata for independently versioned packages. They are discussed
-  because installation depends on resolution, but they are not additional Concorde runtime
-  components.
-- The three starter commands may coordinate deterministic project-scoped operations, but architectural
-  changes remain reviewable proposals until the maintainer approves them.
-- The two supplemental explanations are rendered and published by the existing Archify and Docusaurus
-  pipeline. Rendering and publication commands remain outside the starter bundle and extension.
+- Projects already use or intend to use the normal Spec Kit feature lifecycle; Concorde augments that
+  lifecycle rather than providing an independent replacement.
+- Architecturally meaningful module boundaries are chosen by maintainers with agent assistance and do
+  not need to correspond one-to-one with source directories.
+- The root module is the default starting point, while deeper module packages are created only when
+  another abstraction level improves ownership or comprehension.
+- One representative primary scenario is normally sufficient to explain a feature, with alternative,
+  failure, or degraded scenarios added only when they improve understanding.
+- Existing initialization, context, and validation operations form the implemented first slice;
+  nested feature creation and selection remain required follow-up capabilities.
+- One active implementation workspace is sufficient for the first release; the project may later
+  standardize archival naming without changing the durable/temporal authority boundary.
+- Documentation publication consumes validated sources through the separate Documentation feature and
+  does not mutate maintained intent.
 
 ## Dependencies
 
-- A supported Spec Kit distribution with bundle, preset, extension, template-resolution, provenance,
-  and active-integration command registration capabilities.
-- A supported coding-agent integration capable of exposing installed extension commands.
-- The Concorde constitution and root architecture package as the governing source for this feature.
-- Access to a trusted local development source or explicitly approved install source for the starter
-  bundle components during acceptance testing.
+- The Concorde constitution and root module package as governing architectural authority.
+- A supported Spec Kit lifecycle capable of resolving one explicitly selected nested feature
+  workspace.
+- The separately installed Concorde preset and extension described by
+  `feature.concorde.install-with-spec-kit`.
+- The project documentation publication feature for the final read-only review surface.

@@ -67,14 +67,14 @@
   ],
   "connections": [
     {
-      "id": "projectContentDocs",
+      "id": "contract_documentation_project-content__docs",
       "from": "projectDocs",
       "to": "documentation",
       "label": "Markdown • project-content",
       "variant": "emphasis"
     },
     {
-      "id": "projectContentSpecs",
+      "id": "contract_documentation_project-content__specs",
       "from": "projectSpecs",
       "to": "documentation",
       "label": "architecture + feature specs",
@@ -82,7 +82,7 @@
       "labelAt": [260, 413]
     },
     {
-      "id": "architectureViewSources",
+      "id": "contract_documentation_archify-renderer__sources",
       "from": "projectSpecs",
       "to": "archify",
       "label": "architecture.json",
@@ -91,7 +91,7 @@
       "toSide": "left"
     },
     {
-      "id": "archifyViews",
+      "id": "contract_documentation_archify-renderer__views",
       "from": "archify",
       "to": "documentation",
       "label": "rendered views",
@@ -100,18 +100,19 @@
       "toSide": "bottom"
     },
     {
-      "id": "buildRequest",
+      "id": "contract_documentation_build-interface",
       "from": "maintainer",
       "to": "documentation",
-      "label": "inspect / validate / build"
+      "label": "inspect / validate / build",
+      "labelDy": -20
     },
     {
-      "id": "publishedSite",
+      "id": "contract_documentation_architecture-site",
       "from": "documentation",
       "to": "maintainer",
       "label": "HTML + manifest",
       "variant": "emphasis",
-      "labelDy": 28
+      "labelDy": 48
     }
   ],
   "cards": [

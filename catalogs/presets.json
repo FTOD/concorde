@@ -8,11 +8,20 @@
       "id": "concorde-core",
       "license": "MIT",
       "name": "Concorde Core",
-      "provides": {"commands": 0, "templates": 3},
+      "provides": {
+        "commands": 9,
+        "templates": 3
+      },
       "repository": "https://github.com/concorde-workflow/concorde",
-      "requires": {"speckit_version": ">=0.16.4,<0.16.5"},
-      "sha256": "sha256:4f166f1fb614081f7775609e45a164e7136dad19bd1e79a929c4303e40bde28d",
-      "tags": ["architecture", "contracts", "spec-driven-development"],
+      "requires": {
+        "speckit_version": ">=0.16.4,<0.16.5"
+      },
+      "sha256": "sha256:2b2605c6aa96a79d24e0b67978e0f80c1fbe8c167039460738de69190fdd51a5",
+      "tags": [
+        "architecture",
+        "contracts",
+        "spec-driven-development"
+      ],
       "verified": false,
       "version": "0.1.0"
     }

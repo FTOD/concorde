@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "How Concorde Is Installed through Spec Kit",
+    "output": "../../../../generated/architecture/concorde-spec-kit-component-model.html",
+    "quality_profile": "showcase",
+    "viewBox": [1420, 640],
+    "views": [
+      {
+        "id": "bundle-composition",
+        "label": "Bundle composition",
+        "focus": ["catalogs", "specKit", "bundle", "preset", "extension"],
+        "note": "The bundle is an installable recipe that pins one preset and one extension; it does not add behavior by itself."
+      },
+      {
+        "id": "preset-path",
+        "label": "Preset contribution",
+        "focus": ["preset", "featureLifecycle", "specTree"],
+        "note": "The preset appends architecture guidance to the existing specification, plan, and task templates."
+      },
+      {
+        "id": "extension-path",
+        "label": "Extension contribution",
+        "focus": ["extension", "agentHost", "architectureCore", "specTree"],
+        "note": "The extension registers portable agent commands that invoke deterministic Concorde services."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "maintainer",
+      "type": "external",
+      "label": "Maintainer",
+      "sublabel": "Chooses and uses Concorde",
+      "pos": [30, 275],
+      "size": [160, 72]
+    },
+    {
+      "id": "catalogs",
+      "type": "cloud",
+      "label": "Catalogs",
+      "sublabel": "Metadata + download URLs",
+      "pos": [240, 80],
+      "size": [175, 76]
+    },
+    {
+      "id": "specKit",
+      "type": "external",
+      "label": "Spec Kit",
+      "sublabel": "Resolves and installs components",
+      "pos": [240, 273],
+      "size": [175, 76]
+    },
+    {
+      "id": "bundle",
+      "type": "cloud",
+      "label": "concorde-starter",
+      "sublabel": "Bundle: versioned recipe",
+      "pos": [485, 275],
+      "size": [190, 76]
+    },
+    {
+      "id": "preset",
+      "type": "backend",
+      "label": "concorde-core",
+      "sublabel": "Preset: template guidance",
+      "pos": [745, 95],
+      "size": [190, 76]
+    },
+    {
+      "id": "extension",
+      "type": "backend",
+      "label": "concorde",
+      "sublabel": "Extension: commands + runtime",
+      "pos": [745, 455],
+      "size": [190, 76]
+    },
+    {
+      "id": "featureLifecycle",
+      "type": "backend",
+      "label": "Feature Lifecycle",
+      "sublabel": "Specify, plan, tasks",
+      "pos": [1010, 95],
+      "size": [190, 76]
+    },
+    {
+      "id": "architectureCore",
+      "type": "backend",
+      "label": "Architecture Core",
+      "sublabel": "Init, context, validate",
+      "pos": [1010, 275],
+      "size": [190, 76]
+    },
+    {
+      "id": "agentHost",
+      "type": "external",
+      "label": "Coding Agent",
+      "sublabel": "Active Spec Kit integration",
+      "pos": [1010, 455],
+      "size": [190, 76]
+    },
+    {
+      "id": "specTree",
+      "type": "database",
+      "label": "specs/ Hierarchy",
+      "sublabel": "Features + architecture intent",
+      "pos": [1240, 275],
+      "size": [120, 76]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Concorde release",
+      "wraps": ["bundle", "preset", "extension"],
+      "pad": 28
+    },
+    {
+      "kind": "region",
+      "label": "Installed project",
+      "wraps": ["featureLifecycle", "architectureCore", "agentHost", "specTree"],
+      "pad": 28
+    }
+  ],
+  "connections": [
+    {
+      "id": "maintainerUsesSpecKit",
+      "from": "maintainer",
+      "to": "specKit",
+      "label": "inspect / install / use",
+      "variant": "emphasis",
+      "route": "straight",
+      "labelAt": [215, 365]
+    },
+    {
+      "id": "catalogsFeedSpecKit",
+      "from": "catalogs",
+      "to": "specKit",
+      "label": "discover packages",
+      "variant": "dashed",
+      "labelAt": [328, 170]
+    },
+    {
+      "id": "specKitResolvesBundle",
+      "from": "specKit",
+      "to": "bundle",
+      "label": "resolve recipe",
+      "variant": "emphasis",
+      "labelAt": [450, 365]
+    },
+    {
+      "id": "bundlePinsPreset",
+      "from": "bundle",
+      "to": "preset",
+      "label": "pins preset@0.1.0",
+      "variant": "emphasis"
+    },
+    {
+      "id": "bundlePinsExtension",
+      "from": "bundle",
+      "to": "extension",
+      "label": "pins extension@0.1.0",
+      "variant": "emphasis"
+    },
+    {
+      "id": "presetGuidesLifecycle",
+      "from": "preset",
+      "to": "featureLifecycle",
+      "label": "append guidance",
+      "variant": "emphasis",
+      "labelAt": [973, 185]
+    },
+    {
+      "id": "lifecycleWritesSpecs",
+      "from": "featureLifecycle",
+      "to": "specTree",
+      "label": "one canonical spec",
+      "variant": "emphasis"
+    },
+    {
+      "id": "extensionRegistersCommands",
+      "from": "extension",
+      "to": "agentHost",
+      "label": "register commands",
+      "variant": "emphasis",
+      "labelAt": [973, 545]
+    },
+    {
+      "id": "agentInvokesCore",
+      "from": "agentHost",
+      "to": "architectureCore",
+      "label": "invoke services",
+      "variant": "emphasis"
+    },
+    {
+      "id": "coreMaintainsHierarchy",
+      "from": "architectureCore",
+      "to": "specTree",
+      "label": "read / propose / validate",
+      "variant": "emphasis",
+      "labelAt": [1290, 375]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Bundle",
+      "items": [
+        "One installable, inspectable recipe",
+        "Pins compatible preset and extension versions",
+        "Delegates installation to each component system"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Preset",
+      "items": [
+        "Changes guidance, not runtime behavior",
+        "Appends to spec, plan, and task templates",
+        "Keeps Spec Kit's feature lifecycle authoritative"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Extension",
+      "items": [
+        "Adds commands and their deterministic runtime",
+        "Registers through the active coding-agent integration",
+        "Operates on Concorde's hierarchical specs sources"
+      ]
+    }
+  ]
+}

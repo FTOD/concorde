@@ -17,6 +17,12 @@ provides:
     - name: "speckit.concorde.init"
       file: "commands/speckit.concorde.init.md"
       description: "Propose and explicitly apply a root Concorde specification hierarchy"
+    - name: "speckit.concorde.feature-create"
+      file: "commands/speckit.concorde.feature.create.md"
+      description: "Review placement and start one canonical nested feature"
+    - name: "speckit.concorde.feature-select"
+      file: "commands/speckit.concorde.feature.select.md"
+      description: "Select an existing nested feature for normal Spec Kit phases"
     - name: "speckit.concorde.context"
       file: "commands/speckit.concorde.context.md"
       description: "Retrieve exactly one bounded architectural level"
@@ -36,6 +42,10 @@ provides:
       file: "scripts/python/concorde.py"
       runtime: "python"
       description: "Python Concorde runtime launcher"
+    - name: "concorde-workspace-python"
+      file: "scripts/python/workspace.py"
+      runtime: "python"
+      description: "Portable selected-feature phase-path adapter"
 
 effect: "read-write"
 

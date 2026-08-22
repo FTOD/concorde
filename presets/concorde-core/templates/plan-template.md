@@ -10,3 +10,8 @@ behind stable navigation references.
 Authority remains split by artifact meaning: `spec.md` owns feature behavior, module and contract
 Markdown own architecture prose, Archify JSON owns view structure, code owns implementation, and tests
 own executable evidence.
+
+Keep durable feature intent (`spec.md`, `contracts/`, and `checklists/`) at the feature root. Write
+this plan and its research, data model, runnable validation guide, and delivery evidence under the
+feature's `implementation/` directory. That directory represents one temporal delivery attempt and
+must not be mirrored by compatibility copies beside `spec.md`.

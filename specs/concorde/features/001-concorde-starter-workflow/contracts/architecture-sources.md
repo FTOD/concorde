@@ -18,6 +18,48 @@ normative maintained-source representation used by that service, not an addition
   behavioral text coexist there instead of being split across parallel feature documents.
 - Code and tests own implementation and executable evidence. Missing evidence remains `unknown`.
 
+## Feature Workspace Layout
+
+Each feature root separates durable intent from one temporal delivery attempt:
+
+```text
+features/<number-name>/
+├── spec.md
+├── contracts/
+├── checklists/
+└── implementation/
+    ├── plan.md
+    ├── research.md
+    ├── data-model.md
+    ├── quickstart.md
+    ├── tasks.md
+    └── validation.md
+```
+
+`spec.md`, feature-level contract definitions/representations, and requirements-quality checklists
+are durable. The files below `implementation/` describe and evidence at most one active delivery
+attempt. They are not architecture entities and do not amend feature behavior by changing. Root-level
+`plan.md`, `tasks.md`, research, technical models, acceptance guides, or delivery evidence are
+invalid; compatibility copies and symlinks are prohibited.
+
+After acceptance, project policy may freeze, archive, or remove an implementation attempt without
+changing the feature's stable ID, providing module, root `spec.md`, or refinements. An existing
+non-empty attempt requires an explicit resume decision and must never be replaced silently.
+
+## Phase Path Mapping
+
+The selected feature pointer identifies the feature root. Operations resolve from it as follows:
+
+| Operation class | Resolved authority |
+|---|---|
+| specify, clarify, requirements checklists, feature contracts | feature root |
+| plan, research, technical model, quickstart | `implementation/` |
+| tasks, implement, analyze, converge, task-to-issue conversion, delivery validation | `implementation/` |
+
+`.specify/feature.json` is the standard project-scoped selection record. Read-only resolution may
+inspect but not rewrite it. `SPECIFY_FEATURE_DIRECTORY` is the explicit one-command override. Concorde
+does not maintain a second active-feature registry.
+
 ## Package Discovery
 
 `.concorde/config.json` is JSON with this initial shape:
@@ -95,6 +137,10 @@ A lower-level feature without a parent refinement must include `internal: true` 
 `internal_rationale`. Its Markdown body contains the primary textual definition and requirements;
 scenario references supply examples and do not exhaustively define the feature.
 
+The `canonical_spec` path must equal the document's own project-relative path. Its containing feature
+root must match the providing module's package and may contain at most one active
+`implementation/` child. Durable feature metadata must never be inferred from that child.
+
 ### Contract
 
 Required front matter:
@@ -154,6 +200,13 @@ satisfy Concorde visibility rules:
 Every invalid source yields a `Validation Finding` with a stable rule ID, severity, project-relative
 source and optional location, message, and concrete remediation. The validator is read-only and
 reports all independently detectable findings in deterministic order.
+
+Validation also checks feature-workspace layout, selected-root safety, durable/temporal phase paths,
+custom definition/example resolution, scenario boundary contract references, explicit evidence
+references, and generated-output freshness through the responsible deterministic adapter. Unsupported
+custom formats are reported as unsupported rather than treated as conforming. Renderer and
+publication validators retain ownership of their formats; Architecture Core normalizes their
+findings without reimplementing them.
 
 ## Compatibility
 

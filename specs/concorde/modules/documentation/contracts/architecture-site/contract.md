@@ -58,4 +58,4 @@ stable within contract version 2. Removing a route space or provenance field is 
 ## Evidence
 
 Production-build, accessibility, route-inventory, and repeatability tests are maintained under
-`docsite/tests/`; their requirement mapping is recorded in `specs/concorde/features/002-create-project-docsite/validation.md`.
+`docsite/tests/`; their requirement mapping is recorded in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`.

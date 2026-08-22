@@ -3,7 +3,7 @@ id: feature.integration.compose-starter-workflow
 kind: feature
 module: module.concorde.spec-kit-integration
 refines:
-  - feature.concorde.install-starter-workflow
+  - feature.concorde.install-with-spec-kit
 scenarios:
   - scenario.integration.compose-and-register
 contracts:
@@ -17,14 +17,15 @@ evidence_status: verified
 canonical_spec: specs/concorde/modules/spec-kit-integration/features/001-compose-starter-workflow/spec.md
 ---
 
-# Compose the Concorde Starter Workflow
+# Compose Concorde into the Spec Kit Lifecycle
 
-**Status**: Implemented
+**Status**: Implemented for installation composition and starter command registration
 
 ## Outcome
 
 A supported Spec Kit project receives append-only Concorde guidance in its normal feature lifecycle
-and three portable agent commands that invoke the same deterministic architecture services.
+and portable installed commands for deterministic architecture services. Nested feature placement
+and selection are owned separately by `feature.integration.manage-feature-workspace`.
 
 ## Representative Scenario
 

@@ -2,56 +2,13 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 
 from .model import Finding, OperationResult, SourceDocument
+from .projection import module_projection, scenario_projections
 from .repository import ProjectRepository, RepositoryError
-
-
-def _section(body: str, heading: str) -> str:
-    match = re.search(rf"^## {re.escape(heading)}\s*$\n(.*?)(?=^## |\Z)", body, re.MULTILINE | re.DOTALL)
-    return match.group(1).strip() if match else ""
-
-
-def _contract_records(package: Any, identifiers: list[str], role: str) -> list[dict[str, Any]]:
-    records: list[dict[str, Any]] = []
-    for identifier in identifiers:
-        matches = package.by_id.get(identifier, ())
-        metadata = matches[0].metadata if len(matches) == 1 and matches[0].kind == "contract" else {}
-        counterparties = metadata.get("counterparties", [])
-        records.append(
-            {
-                "id": identifier,
-                "role": metadata.get("role", role),
-                "flow": metadata.get("flow", "unknown"),
-                "counterparties": counterparties if isinstance(counterparties, list) else [],
-            }
-        )
-    return records
-
-
-def _module_projection(package: Any, module: SourceDocument, include_text: bool) -> dict[str, Any]:
-    metadata = module.metadata
-    contracts = metadata.get("contracts", {}) if isinstance(metadata.get("contracts"), dict) else {}
-    result: dict[str, Any] = {
-        "id": module.identifier,
-        "contracts": {
-            "provided": _contract_records(package, list(contracts.get("provided", [])), "provided"),
-            "required": _contract_records(package, list(contracts.get("required", [])), "required"),
-        },
-        "organization": (
-            {"parent": metadata.get("parent"), "children": list(metadata.get("children", []))}
-            if include_text
-            else {"parent": metadata.get("parent"), "position": "immediate-child"}
-        ),
-    }
-    if include_text:
-        result["features"] = list(metadata.get("features", []))
-        result["responsibility"] = _section(module.body, "Responsibility")
-        result["boundary"] = _section(module.body, "Boundary")
-    return result
+from .feature_workspace import WorkspaceError, resolve_phase_paths
 
 
 def bounded_context(project_root: str | Path, requested_id: str) -> OperationResult:
@@ -87,9 +44,7 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
             if component.get("type") == "external" and component.get("id")
         }
     )
-    scenarios = sorted(
-        item.get("id") for item in view.get("meta", {}).get("views", []) if isinstance(item, dict) and item.get("id")
-    )
+    scenarios = scenario_projections(view)
     current_features = set(module.metadata.get("features", []))
     child_ids = {child.identifier for child in children}
     links: list[dict[str, str]] = []
@@ -103,11 +58,59 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
     artifacts.update(child.path for child in children)
     context = {
         "requested_id": requested_id,
-        "current_module": _module_projection(package, module, True),
-        "children": [_module_projection(package, child, False) for child in children],
+        "current_module": module_projection(package, module, True),
+        "children": [module_projection(package, child, False) for child in children],
         "externals": externals,
         "scenarios": scenarios,
         "refinement_links": sorted(links, key=lambda item: (item["from"], item["to"])),
         "deeper_references": sorted(child.identifier for child in children),
+        "architecture_readiness": None,
+        "feature_workspace": None,
+        "contracts": [],
+        "evidence": [],
     }
+    if target.kind == "feature":
+        from .readiness import architecture_readiness
+
+        context["architecture_readiness"] = architecture_readiness(project_root, target.identifier)
+        feature_root = Path(target.path).parent.as_posix()
+        try:
+            workspace_paths = resolve_phase_paths(project_root, feature_root)
+            implementation_artifacts = sorted(
+                path for path in package.auxiliary if path.startswith(workspace_paths.implementation_dir + "/")
+            )
+            durable_artifacts = [target.path]
+            root_path = package.project_root / feature_root
+            for directory in ("contracts", "checklists"):
+                candidate = root_path / directory
+                if candidate.is_dir():
+                    durable_artifacts.extend(
+                        path.relative_to(package.project_root).as_posix()
+                        for path in sorted(candidate.rglob("*"))
+                        if path.is_file() and not path.is_symlink()
+                    )
+            context["feature_workspace"] = {
+                **workspace_paths.to_dict(),
+                "durable_artifacts": sorted(durable_artifacts),
+                "implementation_artifacts": implementation_artifacts,
+            }
+            artifacts.update(durable_artifacts)
+            artifacts.update(implementation_artifacts)
+        except WorkspaceError:
+            context["feature_workspace"] = None
+        contract_ids = set()
+        for metadata in (target.metadata, module.metadata):
+            sets = metadata.get("contracts", {}) if isinstance(metadata.get("contracts"), dict) else {}
+            contract_ids.update(sets.get("provided", []))
+            contract_ids.update(sets.get("required", []))
+        contract_sources = []
+        for identifier in sorted(contract_ids):
+            matches = package.by_id.get(identifier, ())
+            if len(matches) == 1 and matches[0].kind == "contract":
+                source = matches[0]
+                contract_sources.append({"id": identifier, "path": source.path, "body": source.body, "metadata": dict(source.metadata)})
+                artifacts.add(source.path)
+        context["contracts"] = contract_sources
+        evidence = target.metadata.get("evidence", [])
+        context["evidence"] = evidence if isinstance(evidence, list) else []
     return OperationResult("context", requested_id, "success", tuple(sorted(artifacts)), result={"context": context})

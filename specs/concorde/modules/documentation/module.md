@@ -59,7 +59,7 @@ compatibility, and evidence can evolve together without duplicating them in this
 - **Evidence**: both maintained architecture views pass all 9 Archify showcase checks; deterministic
   delivery receipts, Chromium containment checks, light/dark screenshots, and perceptual review are
   recorded under `generated/architecture/` and
-  `specs/concorde/features/002-create-project-docsite/validation.md`.
+  `specs/concorde/features/002-create-project-docsite/implementation/validation.md`.
 
 ## Scenario Trace
 
@@ -72,4 +72,4 @@ The publication feature is implemented. Its locked dependency installation, vali
 two-root/three-view source discovery, strict link mapping, canonical-only feature projection, sandboxed
 Archify embedding, local search, accessible presentation, schema-valid manifest, atomic promotion,
 repeatability, and source immutability all
-have executable evidence in `docsite/tests/` and `specs/concorde/features/002-create-project-docsite/validation.md`.
+have executable evidence in `docsite/tests/` and `specs/concorde/features/002-create-project-docsite/implementation/validation.md`.

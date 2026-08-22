@@ -13,14 +13,16 @@ representation:
   definition: https://github.com/github/spec-kit/blob/v0.16.4/presets/ARCHITECTURE.md
 features:
   - feature.integration.compose-starter-workflow
-evidence_status: verified
+  - feature.integration.manage-feature-workspace
+evidence_status: partial
 ---
 
 # Workflow Composition Contract
 
 ## Purpose
 
-Append Concorde architecture guidance to Spec Kit's normal specification, plan, and task artifacts.
+Append Concorde architecture guidance to Spec Kit's normal lifecycle and preserve the selected
+feature's durable/temporal path boundary.
 
 ## Information
 
@@ -28,8 +30,9 @@ The standard preset format carries template identity, source path, priority, and
 
 ## Obligations
 
-Composition preserves core content and one canonical feature `spec.md` while adding ownership,
-contract, view, evidence, and freshness gates.
+Composition preserves core phase semantics and one canonical root `spec.md` while adding ownership,
+contract, view, evidence, and freshness gates. Installed phase adapters resolve planning and delivery
+artifacts below `implementation/` and never create root aliases.
 
 ## Failure Semantics
 
@@ -41,4 +44,5 @@ Validated against the Spec Kit 0.16.4 composition stack.
 
 ## Evidence
 
-Verified by resolver-stack and nested module-owned workspace acceptance tests.
+Append-only templates are verified by resolver-stack tests. Evidence remains partial until public
+preset command composition delivers the complete phase path matrix in clean installed projects.

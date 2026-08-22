@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://concorde.invalid/contracts/feature-workspace-v1.schema.json",
+  "title": "Concorde Feature Workspace Protocol v1",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/response" }
+  ],
+  "$defs": {
+    "operation": {
+      "type": "string",
+      "enum": ["feature.create", "feature.select"]
+    },
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "anyOf": [
+          { "pattern": "^(?:/|[A-Za-z]:[\\\\/])" },
+          { "pattern": "(?:^|/)\\.\\.(?:/|$)" },
+          { "pattern": "\\\\" }
+        ]
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "severity", "source", "message", "remediation"],
+      "properties": {
+        "rule_id": { "type": "string", "pattern": "^CONCORDE-[A-Z]+-[0-9]{3}$" },
+        "severity": { "type": "string", "enum": ["error", "warning", "info"] },
+        "source": { "$ref": "#/$defs/safePath" },
+        "message": { "type": "string", "minLength": 1 },
+        "remediation": { "type": "string", "minLength": 1 }
+      }
+    },
+    "workspacePaths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature_directory", "feature_spec", "implementation_dir", "plan", "tasks"],
+      "properties": {
+        "feature_directory": { "$ref": "#/$defs/safePath" },
+        "feature_spec": { "$ref": "#/$defs/safePath" },
+        "implementation_dir": { "$ref": "#/$defs/safePath" },
+        "plan": { "$ref": "#/$defs/safePath" },
+        "tasks": { "$ref": "#/$defs/safePath" }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "operation", "target", "options"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "operation": { "$ref": "#/$defs/operation" },
+        "target": { "type": "string", "minLength": 1 },
+        "options": {
+          "type": "object",
+          "properties": {
+            "module_id": { "type": "string", "minLength": 1 },
+            "feature_id": { "type": "string", "minLength": 1 },
+            "short_name": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+            "number": { "type": "string", "pattern": "^[0-9]{3,}$" },
+            "approved": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "operation",
+        "target",
+        "status",
+        "workspace",
+        "changes",
+        "artifacts",
+        "findings",
+        "source_digest"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "operation": { "$ref": "#/$defs/operation" },
+        "target": { "type": "string", "minLength": 1 },
+        "status": {
+          "type": "string",
+          "enum": ["proposal", "selected", "unchanged", "invalid", "conflict", "failed"]
+        },
+        "workspace": {
+          "oneOf": [
+            { "$ref": "#/$defs/workspacePaths" },
+            { "type": "null" }
+          ]
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "action", "meaning"],
+            "properties": {
+              "path": { "$ref": "#/$defs/safePath" },
+              "action": { "type": "string", "enum": ["create", "update", "select"] },
+              "meaning": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/safePath" },
+          "uniqueItems": true
+        },
+        "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+        "source_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

@@ -54,14 +54,32 @@
         }
       ],
       "externals": ["external.maintainer"],
-      "scenarios": ["scenario.example.install"],
+      "scenarios": [
+        {
+          "id": "scenario.example.deliver-workflow",
+          "participants": ["external.maintainer", "module.example.api"],
+          "interactions": [
+            {
+              "id": "deliver",
+              "from": "external.maintainer",
+              "to": "module.example.api",
+              "description": "deliver",
+              "contract": "contract.example.workflow"
+            }
+          ]
+        }
+      ],
       "refinement_links": [
         {
           "from": "feature.example.api.expose-commands",
           "to": "feature.example.deliver-workflow"
         }
       ],
-      "deeper_references": ["module.example.api"]
+      "deeper_references": ["module.example.api"],
+      "architecture_readiness": null,
+      "feature_workspace": null,
+      "contracts": [],
+      "evidence": []
     }
   }
 }

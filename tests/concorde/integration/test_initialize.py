@@ -25,6 +25,10 @@ class InitializationTests(unittest.TestCase):
             self.assertEqual(first.status, "proposal")
             proposal = first.result["proposal"]
             self.assertRegex(proposal["project_root_id"], r"^module\.[a-z0-9-]+$")
+            self.assertTrue(proposal["responsibility"])
+            self.assertTrue(proposal["boundary"])
+            self.assertEqual(proposal["provided_contracts"], ())
+            self.assertEqual(proposal["required_contracts"], ())
             self.assertEqual({item["path"] for item in proposal["files"]}, {
                 ".concorde/config.json",
                 f"specs/{proposal['project_root_id'].split('.', 1)[1]}/module.md",

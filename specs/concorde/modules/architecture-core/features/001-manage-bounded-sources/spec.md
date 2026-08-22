@@ -3,7 +3,7 @@ id: feature.architecture-core.manage-bounded-sources
 kind: feature
 module: module.concorde.architecture-core
 refines:
-  - feature.concorde.install-starter-workflow
+  - feature.concorde.core-workflow
 scenarios:
   - scenario.architecture-core.manage-bounded-sources
 contracts:
@@ -21,8 +21,8 @@ canonical_spec: specs/concorde/modules/architecture-core/features/001-manage-bou
 ## Outcome
 
 A maintainer or coding agent can safely propose a root specification hierarchy, retrieve exactly one
-architectural level, and deterministically validate maintained module, feature, contract, scenario,
-and view relationships.
+architectural level for feature placement or implementation, and deterministically validate
+maintained module, feature, contract, scenario, evidence, and view relationships.
 
 ## Representative Scenario
 

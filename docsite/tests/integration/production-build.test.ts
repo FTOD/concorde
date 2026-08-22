@@ -31,11 +31,11 @@ describe('production build', () => {
     const searchIndex = await readFile(resolve(buildDir, 'search-index.json'), 'utf8');
     expect(searchIndex).toContain('Create Unified Project Docsite');
     expect(searchIndex).toContain('Architecture Core');
-    expect(await readFile(resolve(buildDir, 'architecture/concorde-root.html'), 'utf8')).toContain('Concorde — Root Module');
+    expect(await readFile(resolve(buildDir, 'architecture/concorde-root.html'), 'utf8')).toContain('Concorde — Root Features and Invocation');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-spec-kit-component-model.html'), 'utf8'))
-      .toContain('How Concorde Fits into Spec Kit');
+      .toContain('How Concorde Is Installed through Spec Kit');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-starter-installation-flow.html'), 'utf8'))
-      .toContain('Concorde: Install and Use');
+      .toContain('Install and Maintain Concorde');
     const rootModule = await readFile(resolve(buildDir, 'architecture/concorde/module.concorde.html'), 'utf8');
     expect(rootModule).toContain('Interactive architecture view for Concorde');
     expect(rootModule).toContain('/architecture/concorde-root.html');

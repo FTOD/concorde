@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Install and Maintain Concorde",
+    "output": "../../../../generated/architecture/concorde-starter-installation-flow.html",
+    "quality_profile": "showcase",
+    "viewBox": [1080, 600],
+    "views": [
+      {
+        "id": "publish",
+        "label": "Build and publish",
+        "focus": ["componentSources", "releaseArtifacts", "catalogs"],
+        "note": "Independent archives and catalogs make the bundle, preset, and extension discoverable."
+      },
+      {
+        "id": "install",
+        "label": "Inspect and install",
+        "focus": ["catalogs", "inspectPlan", "installBundle", "componentsActive"],
+        "note": "The maintainer reviews the expanded plan before Spec Kit installs each pinned component."
+      },
+      {
+        "id": "use",
+        "label": "Use Concorde",
+        "focus": ["componentsActive", "normalLifecycle", "concordeCommands"],
+        "note": "Normal Spec Kit phases receive guidance while Concorde commands operate on architecture sources."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "release",
+      "label": "Concorde Release"
+    },
+    {
+      "id": "maintainer",
+      "label": "Maintainer"
+    },
+    {
+      "id": "specKit",
+      "label": "Spec Kit"
+    },
+    {
+      "id": "project",
+      "label": "Installed Project"
+    }
+  ],
+  "phases": [
+    {
+      "id": "package",
+      "label": "Package",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "resolve",
+      "label": "Resolve + install",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "operate",
+      "label": "Use",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "componentSources",
+    "releaseArtifacts",
+    "catalogs",
+    "inspectPlan",
+    "installBundle",
+    "componentsActive",
+    "normalLifecycle"
+  ],
+  "nodes": [
+    {
+      "id": "componentSources",
+      "lane": "release",
+      "col": 0,
+      "type": "backend",
+      "label": "Source",
+      "sublabel": "3 types",
+      "width": 52
+    },
+    {
+      "id": "releaseArtifacts",
+      "lane": "release",
+      "col": 1,
+      "type": "cloud",
+      "label": "Zips",
+      "sublabel": "versioned",
+      "width": 52
+    },
+    {
+      "id": "catalogs",
+      "lane": "release",
+      "col": 2,
+      "type": "cloud",
+      "label": "Catalog",
+      "sublabel": "URLs",
+      "width": 52
+    },
+    {
+      "id": "inspectPlan",
+      "lane": "maintainer",
+      "col": 2,
+      "type": "frontend",
+      "label": "Inspect Bundle",
+      "sublabel": "expanded component plan"
+    },
+    {
+      "id": "installBundle",
+      "lane": "specKit",
+      "col": 3,
+      "type": "backend",
+      "label": "Install",
+      "sublabel": "resolve and apply pins"
+    },
+    {
+      "id": "componentsActive",
+      "lane": "project",
+      "col": 4,
+      "type": "backend",
+      "label": "Components",
+      "sublabel": "preset + extension"
+    },
+    {
+      "id": "normalLifecycle",
+      "lane": "specKit",
+      "col": 5,
+      "type": "frontend",
+      "label": "Feature Phases",
+      "sublabel": "preset path"
+    },
+    {
+      "id": "concordeCommands",
+      "lane": "maintainer",
+      "col": 5,
+      "type": "frontend",
+      "label": "Commands",
+      "sublabel": "extension path"
+    }
+  ],
+  "edges": [
+    {
+      "id": "buildArchives",
+      "from": "componentSources",
+      "to": "releaseArtifacts"
+    },
+    {
+      "id": "publishCatalogs",
+      "from": "releaseArtifacts",
+      "to": "catalogs",
+      "variant": "emphasis"
+    },
+    {
+      "id": "discoverBundle",
+      "from": "catalogs",
+      "to": "inspectPlan",
+      "label": "discover",
+      "variant": "emphasis"
+    },
+    {
+      "id": "acceptPlan",
+      "from": "inspectPlan",
+      "to": "installBundle",
+      "label": "accept exact plan",
+      "variant": "emphasis"
+    },
+    {
+      "id": "activateComponents",
+      "from": "installBundle",
+      "to": "componentsActive",
+      "label": "apply exact pins",
+      "variant": "emphasis"
+    },
+    {
+      "id": "composeTemplates",
+      "from": "componentsActive",
+      "to": "normalLifecycle",
+      "variant": "emphasis"
+    },
+    {
+      "id": "registerCommands",
+      "from": "componentsActive",
+      "to": "concordeCommands",
+      "variant": "emphasis",
+      "route": "outside-right",
+      "fromSide": "right",
+      "toSide": "right"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Release-time",
+      "items": [
+        "Bundle, preset, and extension have separate manifests and archives",
+        "Catalogs supply trusted URLs and digests; the bundle pins versions"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Install-time",
+      "items": [
+        "Spec Kit expands the recipe, then applies each native installer",
+        "The target project's active agent integration is inherited"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Use-time",
+      "items": [
+        "The preset guides normal Spec Kit feature phases",
+        "The extension adds deterministic architecture operations"
+      ]
+    }
+  ]
+}

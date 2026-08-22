@@ -27,7 +27,8 @@ rendering, Docusaurus publication, or implementation correctness.
 ## Feature Set
 
 - `feature.architecture-core.manage-bounded-sources` refines
-  `feature.concorde.install-starter-workflow` and owns initialization, context, and validation.
+  `feature.concorde.core-workflow` and owns initialization, bounded feature/module context, and
+  deterministic validation.
 
 ## Canonical Contract Definition
 
@@ -42,43 +43,43 @@ provides bounded context.
 - **Message meaning**: request one deterministic operation over one project architecture package and
   return either a complete result or explicit findings.
 
-#### Normative grammar
-
-```text
-request  = operation, target, options
-response = operation, target, status, artifacts, findings
-operation = "init" | "context" | "validate"
-status = "success" | "proposal" | "unchanged" | "invalid" | "conflict" | "failed"
-```
+The normative JSON Schema is
+`specs/concorde/features/001-concorde-starter-workflow/contracts/architecture-service.schema.json`.
+The outline below is explanatory and does not replace it.
 
 #### Field semantics
 
 | Field | Type | Required | Meaning |
 |---|---|---:|---|
+| `schema_version` | integer | yes | Contract version; exactly `1`. |
 | `operation` | string | yes | One of `init`, `context`, or `validate`. |
 | `target` | string | yes | Project-relative path or stable module/feature ID. |
-| `options` | mapping | yes | Operation-specific, documented options; empty is valid. |
+| `options` | object | request | Operation-specific documented options; empty is valid. |
 | `status` | string | response | Completed outcome: success, proposal, unchanged, invalid source, conflict, or execution failure. |
 | `artifacts` | list | response | Project-relative sources read, created, or returned. |
 | `findings` | list | response | Deterministic diagnostics with rule, location, and remediation. |
+| `result` | object | response | Operation-specific proposal, context, or validation result. |
 
 #### Representative serialized example
 
-```yaml
-operation: context
-target: module.concorde
-options:
-  depth: 1
-status: success
-artifacts:
-  - specs/concorde/module.md
-  - specs/concorde/architecture.json
-findings: []
+```json
+{
+  "schema_version": 1,
+  "operation": "context",
+  "target": "module.concorde",
+  "status": "success",
+  "artifacts": ["specs/concorde/architecture.json", "specs/concorde/module.md"],
+  "findings": [],
+  "result": {"context": {"requested_id": "module.concorde"}}
+}
 ```
+
+The complete representative context and validation values linked by the child contract contain every
+required nested field; this shortened value illustrates only the common envelope.
 
 - **Compatibility**: v1 consumers ignore unknown optional fields; removing or changing a required
   field requires a new major protocol version.
 - **Validation evidence**: verified by schema/example contract tests, deterministic operation tests,
   and zero-finding self-application to Concorde's maintained hierarchy.
-- **Required contracts**: explicit empty set for the starter slice; filesystem access is treated as an
+- **Required contracts**: explicit empty set for the current slice; filesystem access is treated as an
   implementation detail constrained to the project root.

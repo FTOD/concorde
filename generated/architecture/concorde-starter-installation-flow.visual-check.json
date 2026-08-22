@@ -6,8 +6,8 @@
   "visualReview": "pending",
   "artifact": {
     "path": "/home/zhenyu/concorde/generated/architecture/concorde-starter-installation-flow.html",
-    "sha256": "ac808d28ec9bfe2e8a5369be0a27acd67eff9095aee56e64d77f92cd574fd202",
-    "bytes": 635092
+    "sha256": "e96aa14fbb5866d44e7b4007eac39e3634dd24f32ec6f36e77a69aaf808d2954",
+    "bytes": 635104
   },
   "state": {
     "detail": "read",

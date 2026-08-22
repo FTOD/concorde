@@ -11,8 +11,10 @@ and evidence in agreement. This site is the project's generated read model: arch
 specifications share the hierarchical `specs/` tree, while project documentation lives in `docs/`.
 
 Start with the [root Concorde architecture](../specs/concorde/module.md), continue to the
-[starter workflow feature](../specs/concorde/features/001-concorde-starter-workflow/spec.md), or read the
-[docsite contributor guide](contributing/docsite.md) before changing the publication pipeline.
+[core workflow feature](../specs/concorde/features/001-concorde-starter-workflow/spec.md), use the
+[Spec Kit setup feature](../specs/concorde/features/003-install-concorde-speckit/spec.md) for
+installation, or read the [docsite contributor guide](contributing/docsite.md) before changing the
+publication pipeline.
 
 ## Source of truth
 

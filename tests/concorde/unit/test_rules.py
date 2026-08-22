@@ -61,6 +61,20 @@ class ValidationRuleTests(unittest.TestCase):
             self.assertIn("CONCORDE-SCENARIO-002", rules)
             self.assertIn("CONCORDE-VIEW-002", rules)
 
+    def test_module_prose_and_explicit_child_view_identity_are_required(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_copy(temporary)
+            module = root / "specs/example/module.md"
+            module.write_text(module.read_text().replace("## Responsibility", "## Missing Responsibility"))
+            view_path = root / "specs/example/architecture.json"
+            view = json.loads(view_path.read_text())
+            child = next(item for item in view["components"] if item.get("module_id") == "module.example.api")
+            child.pop("module_id")
+            view_path.write_text(json.dumps(view))
+            rules = {finding.rule_id for finding in validate_project(root).findings}
+            self.assertIn("CONCORDE-MODULE-001", rules)
+            self.assertIn("CONCORDE-VIEW-005", rules)
+
 
 if __name__ == "__main__":
     unittest.main()

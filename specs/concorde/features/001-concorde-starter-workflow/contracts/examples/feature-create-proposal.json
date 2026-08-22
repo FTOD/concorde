@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "operation": "feature.create",
+  "target": "module.example.api",
+  "status": "proposal",
+  "workspace": {
+    "feature_directory": "specs/example/modules/api/features/002-add-health-check",
+    "feature_spec": "specs/example/modules/api/features/002-add-health-check/spec.md",
+    "implementation_dir": "specs/example/modules/api/features/002-add-health-check/implementation",
+    "plan": "specs/example/modules/api/features/002-add-health-check/implementation/plan.md",
+    "tasks": "specs/example/modules/api/features/002-add-health-check/implementation/tasks.md"
+  },
+  "changes": [
+    {
+      "path": "specs/example/modules/api/module.md",
+      "action": "update",
+      "meaning": "Register feature.example.api.health-check with its providing module."
+    },
+    {
+      "path": "specs/example/modules/api/features/002-add-health-check/spec.md",
+      "action": "create",
+      "meaning": "Create the one canonical feature specification through the normal specify phase."
+    }
+  ],
+  "artifacts": [
+    "specs/example/modules/api/module.md",
+    "specs/example/modules/api/features/002-add-health-check/spec.md"
+  ],
+  "findings": [],
+  "source_digest": "sha256:3a4b8170a27c10f664308295149c300ef5e98323214b90c2ea365dad061e0f00"
+}

@@ -11,7 +11,7 @@ representation:
   kind: standard
   format: Spec Kit bundle lifecycle
   version: "0.16.4"
-  definition: specs/concorde/features/001-concorde-starter-workflow/contracts/bundle-distribution.md
+  definition: specs/concorde/features/003-install-concorde-speckit/contracts/bundle-distribution.md
 features:
   - feature.distribution.package-starter-bundle
 evidence_status: verified

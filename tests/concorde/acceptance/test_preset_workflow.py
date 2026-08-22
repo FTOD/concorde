@@ -27,8 +27,13 @@ class PresetWorkflowAcceptance(unittest.TestCase):
             environment.pop("VIRTUAL_ENV", None)
             environment["PATH"] = "/usr/local/bin:/usr/bin:/bin"
             workspace = root / "specs/example/modules/api/features/001-add-endpoint"
-            workspace.mkdir(parents=True)
-            for artifact, template in (("spec.md", "spec-template"), ("plan.md", "plan-template"), ("tasks.md", "tasks-template")):
+            implementation = workspace / "implementation"
+            implementation.mkdir(parents=True)
+            for artifact, template in (
+                (workspace / "spec.md", "spec-template"),
+                (implementation / "plan.md", "plan-template"),
+                (implementation / "tasks.md", "tasks-template"),
+            ):
                 result = subprocess.run(
                     [str(root / ".specify/scripts/bash/resolve-template.sh"), template],
                     cwd=root,
@@ -37,11 +42,13 @@ class PresetWorkflowAcceptance(unittest.TestCase):
                     capture_output=True,
                     text=True,
                 )
-                (workspace / artifact).write_text(result.stdout)
+                artifact.write_text(result.stdout)
             self.assertEqual(list(workspace.glob("spec.md")), [workspace / "spec.md"])
             self.assertIn("Concorde Architecture Alignment", (workspace / "spec.md").read_text())
-            self.assertIn("Concorde Architecture Gate", (workspace / "plan.md").read_text())
-            self.assertIn("Concorde Task Coverage", (workspace / "tasks.md").read_text())
+            self.assertIn("Concorde Architecture Gate", (implementation / "plan.md").read_text())
+            self.assertIn("Concorde Task Coverage", (implementation / "tasks.md").read_text())
+            self.assertFalse((workspace / "plan.md").exists())
+            self.assertFalse((workspace / "tasks.md").exists())
             self.assertFalse((root / "architecture").exists())
 
 

@@ -10,13 +10,17 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 class PresetCompositionTests(unittest.TestCase):
     def test_fragments_are_append_only_and_preserve_one_spec(self):
         manifest = (REPOSITORY_ROOT / "presets/concorde-core/preset.yml").read_text()
-        self.assertEqual(manifest.count('strategy: "append"'), 3)
+        self.assertEqual(manifest.count('type: "template"'), 3)
+        self.assertEqual(manifest.count('type: "command"'), 9)
+        self.assertEqual(manifest.count('strategy: "append"'), 12)
         fragments = REPOSITORY_ROOT / "presets/concorde-core/templates"
         combined = "\n".join(path.read_text() for path in fragments.glob("*.md"))
         self.assertIn("single canonical", combined)
         self.assertIn("representative", combined.lower())
         self.assertIn("contracts", combined.lower())
         self.assertNotIn("# Feature Specification:", combined)
+        command_fragments = REPOSITORY_ROOT / "presets/concorde-core/commands"
+        self.assertEqual(len(tuple(command_fragments.glob("*.md"))), 9)
 
     def test_resolver_composes_core_plus_concorde_fragment(self):
         with tempfile.TemporaryDirectory() as temporary:

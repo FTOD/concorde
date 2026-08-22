@@ -13,14 +13,16 @@ representation:
   definition: specs/concorde/features/001-concorde-starter-workflow/contracts/agent-commands.md
 features:
   - feature.integration.compose-starter-workflow
-evidence_status: verified
+  - feature.integration.manage-feature-workspace
+evidence_status: partial
 ---
 
 # Agent Skills Contract
 
 ## Purpose
 
-Expose portable orchestration for Concorde initialization, context, and validation.
+Expose portable orchestration for Concorde initialization, feature placement/selection, bounded
+context, and validation.
 
 ## Information
 
@@ -41,4 +43,5 @@ Command registration follows Spec Kit 0.16.4 and is tested in skills and slash-c
 
 ## Evidence
 
-Verified in installed Codex skills mode and Gemini slash-command mode.
+Initialization, context, and validation are verified in installed Codex skills mode and Gemini
+slash-command mode. Evidence remains partial until feature creation and selection pass the same suite.

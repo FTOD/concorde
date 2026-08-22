@@ -1,14 +1,17 @@
 ---
-id: contract.concorde.starter-workflow
+id: contract.concorde.core-workflow
 kind: contract
 module: module.concorde
 role: provided
 flow: bidirectional
 representation:
-  kind: standard
-  format: Spec Kit bundle, preset, and extension contracts
-  version: 0.16.4
-  definition: spec-kit/docs/community/bundles.md
+  kind: custom
+  format: Concorde Architecture Service Protocol
+  version: "1"
+  definition: specs/concorde/features/001-concorde-starter-workflow/contracts/architecture-service.schema.json
+examples:
+  - specs/concorde/features/001-concorde-starter-workflow/contracts/examples/context-response.json
+  - specs/concorde/features/001-concorde-starter-workflow/contracts/examples/validation-response.json
 counterparties:
   - external.maintainer
   - external.coding-agent
@@ -16,54 +19,69 @@ consumers:
   - external.maintainer
   - external.coding-agent
 features:
-  - feature.concorde.install-starter-workflow
-evidence_status: verified
+  - feature.concorde.core-workflow
+evidence_status: partial
 ---
 
-# Concorde starter workflow contract
+# Concorde Core Workflow Contract
 
 ## Purpose
 
-Let a maintainer install, inspect, update, remove, and use Concorde through the normal Spec Kit
-ecosystem and the active coding-agent integration.
+Let a maintainer and coding agent direct one feature through a recursive specification hierarchy,
+architecture review, bounded implementation context, and deterministic reconciliation while the
+normal Spec Kit lifecycle remains authoritative for behavioral delivery.
 
 ## Information
 
-This contract uses the public Spec Kit bundle, preset, extension, and agent-command formats for version
-`0.16.4`. Their authoritative definitions are the Spec Kit bundle, preset, and extension references.
-The exchanged information consists of component identities and versions, compatibility constraints,
-install plans and results, composed templates, registered command instructions, and diagnostics.
+The deterministic Architecture Core boundary uses Concorde Architecture Service Protocol v1. Its
+normative schema is linked in the front matter, and representative context and validation values are
+maintained with Feature 001. Feature placement and selection use the separately owned
+`contract.integration.feature-workspace` and its Concorde Feature Workspace Protocol v1; normal
+behavioral phases retain Spec Kit's standard contracts. Together these boundaries pass:
 
-The observable composition is one bundle recipe (`concorde-starter`) resolving to one passive
-guidance component (`concorde-core`) and one active command component (`concorde`). Spec Kit applies
-the preset through template resolution, registers the extension through the active agent integration,
-and retains authority for the normal feature lifecycle. "Starter workflow" names the resulting user
-journey; no dedicated Spec Kit workflow or step is part of this contract.
+- the requested operation and stable module, feature, or project-relative target;
+- options controlling proposal/application or bounded output;
+- the operation status and sorted maintained source paths;
+- proposed changes, bounded current-level context, or deterministic validation findings;
+- source digests and explicit evidence state needed for review.
+
+Complete workspace fields are normative in the Feature Workspace schema. Architecture Service v1's
+common envelope is normative in its linked schema; operation-specific result shapes must be tightened
+without changing existing operation meaning as part of this implementation. Active coding-agent
+presentation never changes either contract.
 
 ## Obligations
 
-- Preview MUST identify every component and version that an installation would add.
-- Install MUST produce one usable Concorde preset, one usable Concorde extension, and registered
-  commands for the active agent integration.
-- Repeating install MUST be idempotent.
-- Update MUST preserve user-authored architecture sources and report compatibility failures.
-- Remove MUST remove only Concorde-owned installed components and MUST preserve user-authored sources.
-- `speckit.concorde.init`, `speckit.concorde.context`, and `speckit.concorde.validate` MUST have
-  portable behavior across supported agent command syntaxes.
+- Initialization MUST separate a reviewable proposal from explicit accepted application.
+- Feature work MUST resolve one nested canonical Spec Kit workspace under its providing module.
+- That workspace MUST keep durable intent (`spec.md`, `contracts/`, and `checklists/`) at its feature
+  root and one active delivery attempt (`plan.md`, `tasks.md`, research, data model, validation/run
+  guides, and implementation evidence) under `implementation/`.
+- A completed implementation MAY be frozen, archived, or removed after acceptance without changing
+  the feature identity; root-level compatibility copies or symlinks for plan-phase files MUST NOT be
+  created.
+- Context MUST expose exactly the requested module level and stable navigation references, not deeper
+  hidden detail.
+- Architecture readiness MUST be reviewed before implementation structure is approved.
+- Validation MUST be deterministic, read-only, and explicit about unknown or conflicting evidence.
+- Generated read models MUST preserve provenance and MUST NOT become maintained intent.
 
 ## Failure Semantics
 
-An incompatible Spec Kit version, unresolved component, invalid manifest, or failed command
-registration MUST stop the operation with an actionable diagnostic. A failed installation MUST NOT be
-reported as installed. Any residual partial state MUST be identified explicitly.
+Unknown or duplicated targets, unsafe paths, invalid sources, unresolved contracts, hierarchy cycles,
+stale projections, or changed proposal targets produce structured findings and do not silently mutate
+maintained intent. Unsupported yet-required operations report the capability gap and its temporary
+supported path rather than pretending completion.
 
 ## Compatibility
 
-The starter contract supports Spec Kit `0.16.4`. Broader version ranges require compatibility evidence
-before they are advertised. Command names and architecture IDs remain stable within a Concorde major
-version; incompatible changes require a major version increment and migration guidance.
+Each custom protocol v1 permits additive optional fields within its boundary. Removing a required
+field, changing its meaning, or changing stable command intent requires a new major protocol version
+and migration guidance. Normal Spec Kit artifact meanings remain governed by the supported Spec Kit
+version.
 
 ## Evidence
 
-Verified by clean-project native bundle lifecycle, update/removal, preset composition, Codex skills,
-Gemini slash-command, and installed starter-journey acceptance under `tests/concorde/`.
+Initialization, context, and validation are verified by runtime unit, contract, integration, and
+self-application tests. Nested feature creation and selection remain planned, so the overall contract
+evidence is `partial`.

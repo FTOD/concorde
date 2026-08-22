@@ -29,7 +29,7 @@ unset _paths_output
 
 # Validate required files
 if [[ ! -f "$IMPL_PLAN" ]]; then
-    echo "ERROR: plan.md not found in $FEATURE_DIR" >&2
+    echo "ERROR: plan.md not found in $IMPLEMENTATION_DIR" >&2
     echo "Run \$speckit-plan first to create the implementation plan." >&2
     exit 1
 fi
@@ -42,12 +42,12 @@ fi
 
 # Build available docs list
 docs=()
-[[ -f "$RESEARCH" ]] && docs+=("research.md")
-[[ -f "$DATA_MODEL" ]] && docs+=("data-model.md")
+[[ -f "$RESEARCH" ]] && docs+=("implementation/research.md")
+[[ -f "$DATA_MODEL" ]] && docs+=("implementation/data-model.md")
 if [[ -d "$CONTRACTS_DIR" ]] && [[ -n "$(ls -A "$CONTRACTS_DIR" 2>/dev/null)" ]]; then
     docs+=("contracts/")
 fi
-[[ -f "$QUICKSTART" ]] && docs+=("quickstart.md")
+[[ -f "$QUICKSTART" ]] && docs+=("implementation/quickstart.md")
 
 # Resolve tasks template through override stack
 TASKS_TEMPLATE=$(resolve_template "tasks-template" "$REPO_ROOT") || true
@@ -69,10 +69,14 @@ if $JSON_MODE; then
         fi
         jq -cn \
             --arg feature_dir "$FEATURE_DIR" \
+            --arg implementation_dir "$IMPLEMENTATION_DIR" \
+            --arg feature_spec "$FEATURE_SPEC" \
+            --arg impl_plan "$IMPL_PLAN" \
+            --arg tasks "$TASKS" \
             --argjson docs "$json_docs" \
             --arg tasks_template "${TASKS_TEMPLATE:-}" \
             --arg tasks_template_content "$TASKS_TEMPLATE_CONTENT" \
-            '{FEATURE_DIR:$feature_dir,AVAILABLE_DOCS:$docs,TASKS_TEMPLATE:$tasks_template,TASKS_TEMPLATE_CONTENT:$tasks_template_content}'
+            '{FEATURE_DIR:$feature_dir,IMPLEMENTATION_DIR:$implementation_dir,FEATURE_SPEC:$feature_spec,IMPL_PLAN:$impl_plan,TASKS:$tasks,AVAILABLE_DOCS:$docs,TASKS_TEMPLATE:$tasks_template,TASKS_TEMPLATE_CONTENT:$tasks_template_content}'
     else
         if [[ ${#docs[@]} -eq 0 ]]; then
             json_docs="[]"
@@ -80,15 +84,19 @@ if $JSON_MODE; then
             json_docs=$(for d in "${docs[@]}"; do printf '"%s",' "$(json_escape "$d")"; done)
             json_docs="[${json_docs%,}]"
         fi
-        printf '{"FEATURE_DIR":"%s","AVAILABLE_DOCS":%s,"TASKS_TEMPLATE":"%s","TASKS_TEMPLATE_CONTENT":"%s"}\n' \
-            "$(json_escape "$FEATURE_DIR")" "$json_docs" "$(json_escape "${TASKS_TEMPLATE:-}")" "$(json_escape "$TASKS_TEMPLATE_CONTENT")"
+        printf '{"FEATURE_DIR":"%s","IMPLEMENTATION_DIR":"%s","FEATURE_SPEC":"%s","IMPL_PLAN":"%s","TASKS":"%s","AVAILABLE_DOCS":%s,"TASKS_TEMPLATE":"%s","TASKS_TEMPLATE_CONTENT":"%s"}\n' \
+            "$(json_escape "$FEATURE_DIR")" "$(json_escape "$IMPLEMENTATION_DIR")" "$(json_escape "$FEATURE_SPEC")" "$(json_escape "$IMPL_PLAN")" "$(json_escape "$TASKS")" "$json_docs" "$(json_escape "${TASKS_TEMPLATE:-}")" "$(json_escape "$TASKS_TEMPLATE_CONTENT")"
     fi
 else
     echo "FEATURE_DIR: $FEATURE_DIR"
+    echo "IMPLEMENTATION_DIR: $IMPLEMENTATION_DIR"
+    echo "FEATURE_SPEC: $FEATURE_SPEC"
+    echo "IMPL_PLAN: $IMPL_PLAN"
+    echo "TASKS: $TASKS"
     echo "TASKS_TEMPLATE: ${TASKS_TEMPLATE:-not found}"
     echo "AVAILABLE_DOCS:"
-    check_file "$RESEARCH" "research.md"
-    check_file "$DATA_MODEL" "data-model.md"
+    check_file "$RESEARCH" "implementation/research.md"
+    check_file "$DATA_MODEL" "implementation/data-model.md"
     check_dir "$CONTRACTS_DIR" "contracts/"
-    check_file "$QUICKSTART" "quickstart.md"
+    check_file "$QUICKSTART" "implementation/quickstart.md"
 fi

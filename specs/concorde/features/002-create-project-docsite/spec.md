@@ -105,7 +105,8 @@ canonical files with no generated changes under `specs/`.
    full specification content.
 2. **Given** a canonical feature specification changes, **When** the next build succeeds, **Then** its
    published page reflects that change without requiring a synchronized copy.
-3. **Given** a feature directory also contains plans, tasks, checklists, or other supporting artifacts,
+3. **Given** a feature workspace also contains an `implementation/` directory, root checklists, or
+   other supporting artifacts,
    **When** the first version of the site is built, **Then** those files are not presented as canonical
    feature specifications.
 
@@ -143,8 +144,8 @@ and prevents the incomplete result from being reported as successful.
   specifications.
 - A documentation file or feature specification has no display title, duplicate navigation identity,
   invalid metadata, or a path that would map to an existing site route.
-- A feature directory contains `spec.md` alongside `plan.md`, `tasks.md`, checklists, generated files,
-  or unrelated Markdown.
+- A feature workspace contains root `spec.md` and checklists alongside nested implementation plans,
+  tasks, evidence, generated files, or unrelated Markdown.
 - Documents in different source collections have the same filename or title.
 - A relative link crosses from `docs/` to `specs/`, from a feature specification to `docs/`, or points
   to a source that is not included in the site.
@@ -270,9 +271,9 @@ and prevents the incomplete result from being reported as successful.
   Markdown under `docs/`. Archify JSON remains structural authority and its generated HTML is
   embedded from disposable projection output; API references, source-code extraction, and test reports
   remain later features.
-- A canonical feature specification is the feature directory's `spec.md`. Plans, tasks, checklists,
-  and other supporting artifacts remain authoritative in their existing locations but are outside the
-  first site's Features collection.
+- A canonical feature specification is the feature directory's root `spec.md`. Temporal plans,
+  tasks, and evidence live below `implementation/`; checklists and other supporting artifacts remain
+  outside the first site's Features collection.
 - Docusaurus is a required product constraint selected by the maintainer. The implementation plan may
   choose its supported configuration and content-integration mechanisms while preserving the source
   ownership rules in this specification.

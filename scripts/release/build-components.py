@@ -80,11 +80,11 @@ def build_release(output: Path, base_url: str = DEFAULT_BASE_URL, version: str =
                     "id": "concorde",
                     "name": "Concorde Architecture Workflow",
                     "version": version,
-                    "description": "Initialize, retrieve, and validate bounded hierarchical architecture sources",
+                    "description": "Place, select, retrieve, and validate bounded hierarchical architecture sources",
                     "effect": "read-write",
                     "download_url": f"{base_url}/concorde-{version}.zip",
                     "sha256": f"sha256:{digests[f'concorde-{version}.zip']}",
-                    "provides": {"commands": 3, "scripts": 3},
+                    "provides": {"commands": 5, "scripts": 4},
                     "tags": ["architecture", "context", "validation"],
                 }
             },
@@ -105,7 +105,7 @@ def build_release(output: Path, base_url: str = DEFAULT_BASE_URL, version: str =
                     "description": "Append-only architecture guidance for the Spec Kit feature lifecycle",
                     "download_url": f"{base_url}/concorde-core-{version}.zip",
                     "sha256": f"sha256:{digests[f'concorde-core-{version}.zip']}",
-                    "provides": {"templates": 3, "commands": 0},
+                    "provides": {"templates": 3, "commands": 9},
                     "tags": ["architecture", "contracts", "spec-driven-development"],
                 }
             },

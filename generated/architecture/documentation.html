@@ -4913,12 +4913,12 @@
         <text x="446" y="241" class="t-cloud" font-size="9" font-weight="600">Documentation module</text>
 
         <!-- Connection paths (before components for correct z-order) -->
-        <path data-edge-from="projectDocs" data-edge-to="documentation" data-edge-label="Markdown • project-content" data-edge-key="0" data-edge-id="projectContentDocs" data-composition-points="210,141;345,141;345,307;480,307" d="M 210 141 L 337 141 Q 345 141 345 149 L 345 299 Q 345 307 353 307 L 480 307" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="projectSpecs" data-edge-to="documentation" data-edge-label="architecture + feature specs" data-edge-key="1" data-edge-id="projectContentSpecs" data-composition-points="250,357;365,357;365,307;480,307" d="M 250 357 L 357 357 Q 365 357 365 349 L 365 315 Q 365 307 373 307 L 480 307" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="projectSpecs" data-edge-to="archify" data-edge-label="architecture.json" data-edge-key="2" data-edge-id="architectureViewSources" data-composition-points="145,399;145,423;386,423;386,561;410,561" d="M 145 399 L 145 415 Q 145 423 153 423 L 378 423 Q 386 423 386 431 L 386 553 Q 386 561 394 561 L 410 561" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="archify" data-edge-to="documentation" data-edge-label="rendered views" data-edge-key="3" data-edge-id="archifyViews" data-composition-points="500,525;500,437;580,437;580,349" d="M 500 525 L 500 445 Q 500 437 508 437 L 572 437 Q 580 437 580 429 L 580 349" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="maintainer" data-edge-to="documentation" data-edge-label="inspect / validate / build" data-edge-key="4" data-edge-id="buildRequest" data-composition-points="940,300;680,300" d="M 940 300 L 680 300" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="documentation" data-edge-to="maintainer" data-edge-label="HTML + manifest" data-edge-key="5" data-edge-id="publishedSite" data-composition-points="680,314;940,314" d="M 680 314 L 940 314" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="projectDocs" data-edge-to="documentation" data-edge-label="Markdown • project-content" data-edge-key="0" data-edge-id="contract_documentation_project-content__docs" data-composition-points="210,141;345,141;345,307;480,307" d="M 210 141 L 337 141 Q 345 141 345 149 L 345 299 Q 345 307 353 307 L 480 307" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="projectSpecs" data-edge-to="documentation" data-edge-label="architecture + feature specs" data-edge-key="1" data-edge-id="contract_documentation_project-content__specs" data-composition-points="250,357;365,357;365,307;480,307" d="M 250 357 L 357 357 Q 365 357 365 349 L 365 315 Q 365 307 373 307 L 480 307" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="projectSpecs" data-edge-to="archify" data-edge-label="architecture.json" data-edge-key="2" data-edge-id="contract_documentation_archify-renderer__sources" data-composition-points="145,399;145,423;386,423;386,561;410,561" d="M 145 399 L 145 415 Q 145 423 153 423 L 378 423 Q 386 423 386 431 L 386 553 Q 386 561 394 561 L 410 561" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="archify" data-edge-to="documentation" data-edge-label="rendered views" data-edge-key="3" data-edge-id="contract_documentation_archify-renderer__views" data-composition-points="500,525;500,437;580,437;580,349" d="M 500 525 L 500 445 Q 500 437 508 437 L 572 437 Q 580 437 580 429 L 580 349" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="maintainer" data-edge-to="documentation" data-edge-label="inspect / validate / build" data-edge-key="4" data-edge-id="contract_documentation_build-interface" data-composition-points="940,314;680,314" d="M 940 314 L 680 314" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="documentation" data-edge-to="maintainer" data-edge-label="HTML + manifest" data-edge-key="5" data-edge-id="contract_documentation_architecture-site" data-composition-points="680,300;940,300" d="M 680 300 L 940 300" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
 
         <!-- Components -->
         <g id="node-projectDocs" data-node-id="projectDocs" data-node-label="Project Docs" tabindex="0" role="button" aria-label="Focus Project Docs, docs/**/*.md, Architecture component" aria-pressed="false" data-node-kind="external" data-node-sublabel="docs/**/*.md" data-node-context="Architecture component">
@@ -4984,29 +4984,29 @@
         </g>
 
         <!-- Connection labels -->
-        <g data-detail="context" data-edge-from="projectDocs" data-edge-to="documentation" data-edge-label="Markdown • project-content" data-edge-key="0" data-edge-id="projectContentDocs">
+        <g data-detail="context" data-edge-from="projectDocs" data-edge-to="documentation" data-edge-label="Markdown • project-content" data-edge-key="0" data-edge-id="contract_documentation_project-content__docs">
           <rect x="277.6" y="204" width="134.8" height="14" rx="3" class="c-mask"/>
           <text x="345" y="214" class="t-backend" font-size="8" text-anchor="middle">Markdown • project-content</text>
         </g>
-        <g data-detail="context" data-edge-from="projectSpecs" data-edge-to="documentation" data-edge-label="architecture + feature specs" data-edge-key="1" data-edge-id="projectContentSpecs">
+        <g data-detail="context" data-edge-from="projectSpecs" data-edge-to="documentation" data-edge-label="architecture + feature specs" data-edge-key="1" data-edge-id="contract_documentation_project-content__specs">
           <rect x="187.8" y="403" width="144.4" height="14" rx="3" class="c-mask"/>
           <text x="260" y="413" class="t-backend" font-size="8" text-anchor="middle">architecture + feature specs</text>
         </g>
-        <g data-detail="context" data-edge-from="projectSpecs" data-edge-to="archify" data-edge-label="architecture.json" data-edge-key="2" data-edge-id="architectureViewSources">
+        <g data-detail="context" data-edge-from="projectSpecs" data-edge-to="archify" data-edge-label="architecture.json" data-edge-key="2" data-edge-id="contract_documentation_archify-renderer__sources">
           <rect x="219.7" y="403" width="91.6" height="14" rx="3" class="c-mask"/>
           <text x="265.5" y="413" class="t-messagebus" font-size="8" text-anchor="middle">architecture.json</text>
         </g>
-        <g data-detail="context" data-edge-from="archify" data-edge-to="documentation" data-edge-label="rendered views" data-edge-key="3" data-edge-id="archifyViews">
+        <g data-detail="context" data-edge-from="archify" data-edge-to="documentation" data-edge-label="rendered views" data-edge-key="3" data-edge-id="contract_documentation_archify-renderer__views">
           <rect x="501.4" y="417" width="77.2" height="14" rx="3" class="c-mask"/>
           <text x="540" y="427" class="t-messagebus" font-size="8" text-anchor="middle">rendered views</text>
         </g>
-        <g data-detail="context" data-edge-from="maintainer" data-edge-to="documentation" data-edge-label="inspect / validate / build" data-edge-key="4" data-edge-id="buildRequest">
-          <rect x="742.6" y="280" width="134.8" height="14" rx="3" class="c-mask"/>
-          <text x="810" y="290" class="t-muted" font-size="8" text-anchor="middle">inspect / validate / build</text>
+        <g data-detail="context" data-edge-from="maintainer" data-edge-to="documentation" data-edge-label="inspect / validate / build" data-edge-key="4" data-edge-id="contract_documentation_build-interface">
+          <rect x="742.6" y="274" width="134.8" height="14" rx="3" class="c-mask"/>
+          <text x="810" y="284" class="t-muted" font-size="8" text-anchor="middle">inspect / validate / build</text>
         </g>
-        <g data-detail="context" data-edge-from="documentation" data-edge-to="maintainer" data-edge-label="HTML + manifest" data-edge-key="5" data-edge-id="publishedSite">
-          <rect x="769" y="322" width="82" height="14" rx="3" class="c-mask"/>
-          <text x="810" y="332" class="t-backend" font-size="8" text-anchor="middle">HTML + manifest</text>
+        <g data-detail="context" data-edge-from="documentation" data-edge-to="maintainer" data-edge-label="HTML + manifest" data-edge-key="5" data-edge-id="contract_documentation_architecture-site">
+          <rect x="769" y="328" width="82" height="14" rx="3" class="c-mask"/>
+          <text x="810" y="338" class="t-backend" font-size="8" text-anchor="middle">HTML + manifest</text>
         </g>
 
         <!-- Legend -->

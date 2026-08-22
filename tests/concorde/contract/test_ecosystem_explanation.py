@@ -4,17 +4,17 @@ import unittest
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-FEATURE_ROOT = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow"
+FEATURE_ROOT = REPOSITORY_ROOT / "specs/concorde/features/003-install-concorde-speckit"
 
 
 class EcosystemExplanationContractTests(unittest.TestCase):
     def test_textual_explanations_name_every_ecosystem_role(self):
         sources = [
             FEATURE_ROOT / "spec.md",
-            FEATURE_ROOT / "plan.md",
-            FEATURE_ROOT / "quickstart.md",
+            FEATURE_ROOT / "implementation/quickstart.md",
             FEATURE_ROOT / "contracts/ecosystem-explanation.md",
             REPOSITORY_ROOT / "specs/concorde/module.md",
+            REPOSITORY_ROOT / "specs/concorde/contracts/spec-kit-installation/contract.md",
         ]
         required_terms = (
             "spec kit",
@@ -32,9 +32,9 @@ class EcosystemExplanationContractTests(unittest.TestCase):
                     self.assertIn(term, text)
 
         specification = sources[0].read_text(encoding="utf-8").lower()
-        self.assertIn("it is not executable behavior", specification)
+        self.assertIn("non-executable recipe", specification)
         self.assertIn("it does not register commands", specification)
-        self.assertIn("spec kit remains the host platform", specification)
+        self.assertIn("spec kit is the host platform", specification)
 
     def test_component_view_separates_package_and_runtime_ownership(self):
         source = FEATURE_ROOT / "spec-kit-component-model.json"
@@ -93,8 +93,8 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         self.assertTrue({"bundle", "preset", "extension", "catalogs"}.isdisjoint(root_ids))
 
         outputs = {
-            "concorde-spec-kit-component-model.html": "How Concorde Fits into Spec Kit",
-            "concorde-starter-installation-flow.html": "Concorde: Install and Use",
+            "concorde-spec-kit-component-model.html": "How Concorde Is Installed through Spec Kit",
+            "concorde-starter-installation-flow.html": "Install and Maintain Concorde",
         }
         for filename, title in outputs.items():
             artifact = REPOSITORY_ROOT / "generated/architecture" / filename

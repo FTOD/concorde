@@ -23,15 +23,15 @@ Catalogs are trusted discovery metadata for these independently versioned packag
 fourth installed runtime component. See the interactive
 [component model](generated/architecture/concorde-spec-kit-component-model.html),
 [installation flow](generated/architecture/concorde-starter-installation-flow.html), and the full
-[Feature 001 explanation](specs/concorde/features/001-concorde-starter-workflow/spec.md#how-concorde-fits-into-spec-kit).
+[Feature 003 setup specification](specs/concorde/features/003-install-concorde-speckit/spec.md).
 
 ## Project status
 
-The project docsite and architecture publication pipeline are implemented and tested. Feature 001 now
-provides the native starter bundle, append-only preset, three-command extension, deterministic Python
-runtime, reproducible release/catalog tooling, and clean-project lifecycle acceptance. Its automated
-gates pass; the timed first-use participant pilot remains pending and is reported separately rather
-than inferred from automation.
+The project docsite and architecture publication pipeline are implemented and tested. Feature 003
+owns the native starter bundle, append-only preset, three-command extension, release/catalog tooling,
+and setup lifecycle. Feature 001 now defines the core architecture-aware development workflow; its
+initialization, bounded-context, and validation slice is implemented, while dedicated nested feature
+creation and selection remain planned.
 
 ## Quick start: install Concorde as a Spec Kit bundle
 
@@ -116,7 +116,7 @@ find .agents/skills -maxdepth 2 -name SKILL.md -print | sort
 ```
 
 For catalog-based installation and release acceptance, follow the complete
-[Feature 001 quick start](specs/concorde/features/001-concorde-starter-workflow/quickstart.md).
+[Feature 003 setup quick start](specs/concorde/features/003-install-concorde-speckit/implementation/quickstart.md).
 
 ### 5. Use the Concorde commands
 
@@ -188,5 +188,6 @@ authoring rules and troubleshooting.
 - [Concorde prototype reference](concorde-prototype-reference.md)
 - [Project constitution](.specify/memory/constitution.md)
 - [Root architecture](specs/concorde/module.md)
-- [Starter bundle specification](specs/concorde/features/001-concorde-starter-workflow/spec.md)
+- [Core workflow specification](specs/concorde/features/001-concorde-starter-workflow/spec.md)
 - [Project docsite specification](specs/concorde/features/002-create-project-docsite/spec.md)
+- [Spec Kit installation specification](specs/concorde/features/003-install-concorde-speckit/spec.md)

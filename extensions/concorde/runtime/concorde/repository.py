@@ -98,6 +98,28 @@ class ProjectRepository:
         for source in sources:
             by_id[source.identifier].append(source)
         artifacts = [source.path for source in sources] + list(views)
+        auxiliary: dict[str, str] = {}
+        for feature in (source for source in sources if source.kind == "feature"):
+            implementation = self.resolve(str(PurePosixPath(feature.path).parent / "implementation"))
+            if not implementation.is_dir() or implementation.is_symlink():
+                continue
+            for name in ("plan.md", "tasks.md", "research.md", "data-model.md", "quickstart.md", "validation.md"):
+                path = implementation / name
+                if path.is_file() and not path.is_symlink():
+                    relative = path.relative_to(self.project_root).as_posix()
+                    auxiliary[relative] = path.read_text(encoding="utf-8")
+        receipts: dict[str, Any] = {}
+        receipts_root = self.project_root / ".concorde" / "receipts"
+        if receipts_root.is_dir() and not receipts_root.is_symlink():
+            for path in sorted(receipts_root.glob("*.json")):
+                relative = path.relative_to(self.project_root).as_posix()
+                try:
+                    value = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError) as error:
+                    raise RepositoryError(f"{relative}: invalid freshness receipt JSON: {error}") from error
+                if not isinstance(value, dict):
+                    raise RepositoryError(f"{relative}: freshness receipt must be a JSON object")
+                receipts[relative] = value
         return ArchitecturePackage(
             project_root=self.project_root,
             specification_root=specification_root,
@@ -107,6 +129,8 @@ class ProjectRepository:
             views=views,
             by_id={key: tuple(value) for key, value in sorted(by_id.items())},
             source_digest=digest_sources(self.project_root, artifacts),
+            auxiliary=auxiliary,
+            receipts=receipts,
         )
 
     def stage_and_promote(self, files: dict[str, str]) -> list[str]:

@@ -78,7 +78,7 @@
   ],
   "excludedSources": [
     {
-      "sourcePath": "specs/concorde/features/002-create-project-docsite/plan.md",
+      "sourcePath": "specs/concorde/features/002-create-project-docsite/implementation/plan.md",
       "reason": "not-canonical-feature-artifact"
     }
   ],

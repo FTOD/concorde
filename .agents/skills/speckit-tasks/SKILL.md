@@ -54,11 +54,11 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
-1. **Setup**: Run `.specify/scripts/bash/setup-tasks.sh --json` from repo root and parse FEATURE_DIR, TASKS_TEMPLATE_CONTENT, TASKS_TEMPLATE, and AVAILABLE_DOCS list. `FEATURE_DIR` and `TASKS_TEMPLATE` must be absolute paths when provided. `AVAILABLE_DOCS` is a list of document names/relative paths available under `FEATURE_DIR` (for example `research.md` or `contracts/`). For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. **Setup**: Run `.specify/scripts/bash/setup-tasks.sh --json` from repo root and parse FEATURE_DIR, IMPLEMENTATION_DIR, FEATURE_SPEC, IMPL_PLAN, TASKS, TASKS_TEMPLATE_CONTENT, TASKS_TEMPLATE, and AVAILABLE_DOCS. Path fields must be absolute when provided. `AVAILABLE_DOCS` contains feature-root-relative paths such as `implementation/research.md` and `contracts/`. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
-2. **Load design documents**: Read from FEATURE_DIR:
-   - **Required**: plan.md (tech stack, libraries, structure), spec.md (user stories with priorities)
-   - **Optional**: data-model.md (entities), contracts/ (interface contracts), research.md (decisions), quickstart.md (test scenarios)
+2. **Load design documents** using the returned paths:
+   - **Required**: IMPL_PLAN (tech stack, libraries, structure), FEATURE_SPEC (user stories with priorities)
+   - **Optional**: `IMPLEMENTATION_DIR/data-model.md` (entities), `FEATURE_DIR/contracts/` (durable interface contracts), `IMPLEMENTATION_DIR/research.md` (decisions), `IMPLEMENTATION_DIR/quickstart.md` (test scenarios)
    - **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints
    - Note: Not all projects have all documents. Generate tasks based on what's available.
 
@@ -73,7 +73,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Create parallel execution examples per user story
    - Validate task completeness (each user story has all needed tasks, independently testable)
 
-4. **Generate tasks.md**: Use TASKS_TEMPLATE_CONTENT (from the JSON output above) as the structure. For compatibility with older setup scripts that omit TASKS_TEMPLATE_CONTENT, read TASKS_TEMPLATE instead. Fill with:
+4. **Generate TASKS (`IMPLEMENTATION_DIR/tasks.md`)**: Use TASKS_TEMPLATE_CONTENT (from the JSON output above) as the structure. For compatibility with older setup scripts that omit TASKS_TEMPLATE_CONTENT, read TASKS_TEMPLATE instead. Fill with:
    - Correct feature name from plan.md
    - Phase 1: Setup tasks (project initialization)
    - Phase 2: Foundational tasks (blocking prerequisites for all user stories)
@@ -123,7 +123,7 @@ Check if `.specify/extensions.yml` exists in the project root.
 
 ## Completion Report
 
-Output path to generated tasks.md and summary:
+Output the generated TASKS path and summary:
 - Total task count
 - Task count per user story
 - Parallel opportunities identified

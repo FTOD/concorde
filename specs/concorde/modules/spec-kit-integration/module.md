@@ -5,10 +5,12 @@ parent: module.concorde
 children: []
 features:
   - feature.integration.compose-starter-workflow
+  - feature.integration.manage-feature-workspace
 contracts:
   provided:
     - contract.integration.workflow-composition
     - contract.integration.agent-skills
+    - contract.integration.feature-workspace
   required:
     - contract.integration.spec-kit-platform
     - contract.integration.architecture-services
@@ -18,40 +20,46 @@ contracts:
 
 ## Responsibility
 
-Compose Concorde's architectural rules into the normal Spec Kit lifecycle and expose portable
-Concorde commands through the active coding-agent integration.
+Compose Concorde's architectural rules into the normal Spec Kit lifecycle, resolve the active nested
+feature workspace, and expose portable Concorde commands through the active coding-agent integration.
 
 ## Boundary
 
-This module owns preset and extension packaging, command instructions, hook declarations, and
-translation between Spec Kit lifecycle context and Architecture Core services. It does not own Spec
-Kit core phases, agent-specific runtimes, or architecture validation semantics.
+This module owns preset and extension packaging, nested feature-workspace selection, command
+instructions, hook declarations, and translation between Spec Kit lifecycle context and Architecture
+Core services. It does not own Spec Kit core phases, agent-specific runtimes, or architecture
+validation semantics.
 
 ## Feature Set
 
 - `feature.integration.compose-starter-workflow` refines
-  `feature.concorde.install-starter-workflow` and owns preset composition and command registration.
+  `feature.concorde.install-with-spec-kit`; it owns preset composition and installed command
+  registration at this level.
+- `feature.integration.manage-feature-workspace` refines `feature.concorde.core-workflow`; it owns
+  reviewed nested feature placement, active selection, and phase-specific durable/temporal path
+  routing.
 
 ## Preset and Extension Model
 
 The preset and extension are complementary but not interchangeable:
 
 - `concorde-core` is a passive composition layer. At template-resolution time, its append strategy
-  adds Concorde prompts and gates to Spec Kit's existing spec, plan, and task templates. The resulting
-  artifacts remain the normal canonical Spec Kit artifacts.
+  adds Concorde prompts and gates to Spec Kit's existing spec, plan, and task templates. Their phase
+  meanings remain unchanged, while Concorde's path adapter keeps durable `spec.md` and contracts at
+  the feature root and temporal plan/task artifacts under `implementation/`.
 - `concorde` is an active capability package. At installation time, Spec Kit registers its command
   definitions through the target project's active coding-agent integration. At use time, those agent
   commands invoke the same deterministic Architecture Core runtime regardless of their displayed
   skill or slash-command syntax.
 
 Neither component replaces the core Spec Kit workflow. The bundle merely installs the tested pair.
-See the root feature's
+See the installation feature's
 <a href="/architecture/concorde-spec-kit-component-model.html">component model</a> for the structural
 relationship and
 <a href="/architecture/concorde-starter-installation-flow.html">installation flow</a> for the
 release-to-use sequence. Their maintained sources are
-`specs/concorde/features/001-concorde-starter-workflow/spec-kit-component-model.json` and
-`specs/concorde/features/001-concorde-starter-workflow/starter-installation-flow.json`.
+`specs/concorde/features/003-install-concorde-speckit/spec-kit-component-model.json` and
+`specs/concorde/features/003-install-concorde-speckit/starter-installation-flow.json`.
 
 ## Canonical Contract Definitions
 
@@ -66,9 +74,10 @@ context.
   `0.16.4`.
 - **Information**: architecture ownership, contract, scenario, traceability, and quality-gate guidance.
 - **Guarantees**: composition preserves core lifecycle responsibilities and creates no duplicate
-  canonical feature specification.
+  canonical feature specification; it creates no root-level compatibility copy of plan or tasks.
 - **Failure**: unresolved templates or incompatible composition stop the affected workflow phase.
-- **Evidence**: verified by append-only resolver composition and nested-workspace acceptance.
+- **Evidence**: append-only composition and installed durable/temporal routing are verified in clean
+  Codex skills and Gemini slash-command projects through public preset composition.
 
 ### `contract.integration.agent-skills`
 
@@ -76,10 +85,28 @@ context.
 - **Consumers**: supported coding-agent integrations.
 - **Representation**: commonly adopted Spec Kit extension command Markdown, version `0.16.4`.
 - **Information**: user arguments, bounded project context, requested action, result, and diagnostics.
-- **Guarantees**: canonical commands `speckit.concorde.init`, `speckit.concorde.context`, and
-  `speckit.concorde.validate` register in the active integration without hard-coded invocation syntax.
+- **Guarantees**: canonical commands `speckit.concorde.init`, `speckit.concorde.context`,
+  `speckit.concorde.validate`, `speckit.concorde.feature.create`, and
+  `speckit.concorde.feature.select` register in the active integration without hard-coded invocation
+  syntax.
 - **Failure**: unsupported integrations or missing dependencies produce an actionable diagnostic.
-- **Evidence**: verified in Codex skills mode and Gemini slash-command mode.
+- **Evidence**: all five canonical intents are verified in Codex skills mode and Gemini slash-command
+  mode; the platform-compatible registered spellings use `feature-create` and `feature-select`.
+
+### `contract.integration.feature-workspace`
+
+- **Role / flow**: provided, bidirectional.
+- **Consumers**: maintainers and normal Spec Kit lifecycle commands.
+- **Representation**: custom Concorde Feature Workspace Protocol v1 plus Spec Kit's standard
+  project-local `feature_directory` selection field.
+- **Information**: reviewed placement, exact durable/temporal paths, selection changes, conflicts,
+  findings, and inspected source digest.
+- **Guarantees**: one nested canonical specification, no root-level plan/task aliases, atomic
+  selection, and no silent replacement of an implementation attempt.
+- **Failure**: unsafe, stale, occupied, unknown, or ambiguous targets leave sources and selection
+  unchanged and return actionable findings.
+- **Evidence**: proposal, safe selection, resume conflict, phase routing, clean installation, and
+  no-root-alias behavior are covered by contract, unit, integration, and acceptance tests.
 
 ### `contract.integration.spec-kit-platform`
 
