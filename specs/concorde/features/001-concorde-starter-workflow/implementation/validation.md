@@ -21,15 +21,17 @@ same workflow is installed into a clean project from release archives.
 - `uv run python extensions/concorde/scripts/python/concorde.py --project-root . validate --format json`
   returned `success` over **35 canonical artifacts**, with zero errors, warnings, or informational
   findings. Source digest:
-  `sha256:d10e35da0595ab0a4722be89bfccda4f1ba9fe87ab204a2340b83ced8930685d`.
+  `sha256:8d100c695fedb2fb64d1cbb2664914e86feb17031d1577f9b487e8d0bd7f639c`.
+- The focused self-architecture and core-workflow acceptance run passed **3/3 tests** after the
+  installed-surface/runtime/workspace explanation was expanded.
 
 ### Feature diagram and documentation
 
 - `diagrams/core-workflow-components.json` passed all **9/9 Archify showcase checks** with zero
   composition errors and zero warnings.
 - Delivery produced `generated/architecture/concorde-core-workflow-components.html` from source digest
-  `8d34da58af06a0669daea6ede85ac3aa9565fba894435a534b2719fd211bf128`; artifact digest is
-  `faddcdb170443c3ebe76e2f7a9e49f1b5691001f597ea4a33ebcc8fb58abe4e8`.
+  `003e4b70bfc18ec3e38fc4327404d789c1d6d2d74ee9e34789a559333a5877a2`; artifact digest is
+  `4d82566c16c8afb841fe72c12b83cf7dcb12febdbdbe1332bb4766817da60414`.
 - Archify visual-check was attempted but skipped because Chrome/Chromium is unavailable. The receipt
   truthfully retains `visualReview: pending`; containment, light/dark review, and perceptual polish
   are not claimed.
@@ -50,5 +52,6 @@ same workflow is installed into a clean project from release archives.
 - SC-008 explicit maintainer approval of the acceptance architecture changes: pending.
 - SC-010 browser containment/theme/perceptual portion: pending a Chrome/Chromium environment and
   human inspection; deterministic showcase validation and docsite freshness already pass.
+- SC-011 installed-layer and workspace-authority comprehension pilot: pending real participants.
 
 Automated tests must not be used to infer these outcomes.

@@ -2,28 +2,38 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Concorde Core Workflow — Components and Interactions",
+    "title": "Concorde Core Workflow — Installed Surfaces, Runtime, and Workspace",
     "quality_profile": "showcase",
     "output": "../../../../../generated/architecture/concorde-core-workflow-components.html",
-    "viewBox": [1490, 850],
+    "repository": {
+      "url": "https://github.com/FTOD/concorde.git",
+      "revision": "6c34cc34f8a84d426080178e071df84903262bba"
+    },
+    "viewBox": [1960, 1120],
     "views": [
       {
-        "id": "establish-feature",
-        "label": "Establish and place",
-        "focus": ["maintainer", "agent", "integration", "architecture", "workspace"],
-        "note": "See how reviewed intent becomes a correctly placed and selected feature workspace."
+        "id": "installed-surfaces",
+        "label": "Skills and commands",
+        "focus": ["maintainer", "agent", "phaseCommands", "concordeCommands"],
+        "note": "Package-neutral command Markdown is presented by the active integration as Codex skills or slash commands."
       },
       {
-        "id": "develop-feature",
-        "label": "Specify and implement",
-        "focus": ["agent", "speckit", "architecture", "workspace"],
-        "note": "Spec Kit owns the lifecycle while Concorde supplies structure, selection, and bounded context."
+        "id": "normal-lifecycle",
+        "label": "Normal Spec Kit phases",
+        "focus": ["agent", "phaseCommands", "workspaceAdapter", "controlState", "featureSources", "implementation"],
+        "note": "Nine replaced phase surfaces resolve the selected durable or temporal root before normal Spec Kit work."
       },
       {
-        "id": "reconcile-feature",
-        "label": "Reconcile evidence",
-        "focus": ["agent", "architecture", "workspace", "evidence", "maintainer"],
-        "note": "Independent evidence is compared with durable intent before maintainer acceptance."
+        "id": "concorde-operations",
+        "label": "Concorde operations",
+        "focus": ["agent", "concordeCommands", "launchers", "runtime", "controlState", "architectureSources", "featureSources"],
+        "note": "Five Concorde surfaces reach the installed Python runtime through portable launchers."
+      },
+      {
+        "id": "workspace-map",
+        "label": "Project workspace",
+        "focus": ["controlState", "architectureSources", "featureSources", "implementation", "published"],
+        "note": "Separate control state, architectural intent, durable feature intent, temporal work, and generated evidence."
       }
     ]
   },
@@ -32,155 +42,199 @@
       "id": "maintainer",
       "type": "external",
       "label": "Maintainer",
-      "sublabel": "intent, review, approval",
-      "pos": [30, 360],
+      "sublabel": "intent, invocation, approval",
+      "pos": [30, 475],
       "size": [150, 76]
     },
     {
       "id": "agent",
       "type": "frontend",
-      "label": "Coding Agent",
-      "sublabel": "installed command surface",
-      "pos": [300, 360],
-      "size": [160, 76]
+      "label": "Coding Agent Integration",
+      "sublabel": "Codex skill or slash-command UI",
+      "pos": [245, 475],
+      "size": [190, 76],
+      "sources": [
+        {"path": "tests/concorde/support/installed_command_surface.py", "label": "materialized surfaces"}
+      ]
     },
     {
-      "id": "speckit",
+      "id": "phaseCommands",
       "type": "backend",
-      "label": "Spec Kit Lifecycle",
-      "sublabel": "specify through converge",
-      "pos": [1000, 80],
-      "size": [180, 76]
+      "label": "9 Spec Kit Phase Surfaces",
+      "sublabel": "specify → taskstoissues",
+      "tag": "preset · replace",
+      "pos": [525, 245],
+      "size": [210, 86],
+      "sources": [
+        {"path": "presets/concorde-core/preset.yml", "label": "command inventory"},
+        {"path": "presets/concorde-core/commands/speckit.plan.md", "label": "representative surface"}
+      ]
     },
     {
-      "id": "integration",
+      "id": "concordeCommands",
       "type": "backend",
-      "label": "Spec Kit Integration",
-      "sublabel": "feature create + select",
-      "pos": [580, 360],
-      "size": [180, 76]
+      "label": "5 Concorde Surfaces",
+      "sublabel": "init, feature, context, validate",
+      "tag": "extension commands",
+      "pos": [525, 705],
+      "size": [210, 86],
+      "sources": [
+        {"path": "extensions/concorde/extension.yml", "label": "command inventory"},
+        {"path": "extensions/concorde/commands/speckit.concorde.context.md", "label": "representative surface"}
+      ]
     },
     {
-      "id": "architecture",
+      "id": "workspaceAdapter",
       "type": "security",
-      "label": "Architecture Core",
-      "sublabel": "init, context, validate",
-      "pos": [580, 640],
-      "size": [180, 76]
+      "label": "Selected-Workspace Adapter",
+      "sublabel": "workspace.py --phase",
+      "pos": [825, 245],
+      "size": [200, 86],
+      "sources": [
+        {"path": "extensions/concorde/scripts/python/workspace.py", "label": "portable adapter"},
+        {"path": "extensions/concorde/runtime/concorde/feature_workspace.py", "label": "path semantics"}
+      ]
     },
     {
-      "id": "workspace",
-      "type": "database",
-      "label": "Project Workspace",
-      "sublabel": "specs, implementation, code",
-      "pos": [1000, 360],
-      "size": [180, 76]
-    },
-    {
-      "id": "evidence",
+      "id": "launchers",
       "type": "cloud",
-      "label": "Evidence Producers",
-      "sublabel": "tests, Archify, docsite",
-      "pos": [1000, 640],
-      "size": [180, 76]
+      "label": "Portable Launchers",
+      "sublabel": "Bash, PowerShell, Python",
+      "pos": [825, 705],
+      "size": [200, 86],
+      "sources": [
+        {"path": "extensions/concorde/scripts/bash/concorde.sh", "label": "POSIX launcher"},
+        {"path": "extensions/concorde/scripts/powershell/concorde.ps1", "label": "PowerShell launcher"},
+        {"path": "extensions/concorde/scripts/python/concorde.py", "label": "Python entry point"}
+      ]
+    },
+    {
+      "id": "controlState",
+      "type": "database",
+      "label": "Project Control State",
+      "sublabel": ".concorde/config + .specify/feature",
+      "pos": [1110, 245],
+      "size": [210, 86],
+      "sources": [
+        {"path": ".concorde/config.json", "label": "architecture root"},
+        {"path": "specs/concorde/features/001-concorde-starter-workflow/contracts/feature-workspace.schema.json", "label": "selection format"}
+      ]
+    },
+    {
+      "id": "runtime",
+      "type": "security",
+      "label": "Concorde Python Runtime",
+      "sublabel": "workspace, context, validation",
+      "pos": [1110, 705],
+      "size": [210, 86],
+      "sources": [
+        {"path": "extensions/concorde/runtime/concorde/cli.py", "label": "operation dispatch"},
+        {"path": "extensions/concorde/runtime/concorde/context.py", "label": "bounded context"},
+        {"path": "extensions/concorde/runtime/concorde/validate.py", "label": "validation"}
+      ]
+    },
+    {
+      "id": "architectureSources",
+      "type": "database",
+      "label": "Architecture Sources",
+      "sublabel": "module, contracts, one-level view",
+      "pos": [1400, 755],
+      "size": [210, 86],
+      "sources": [
+        {"path": "specs/concorde/module.md", "label": "module responsibility"},
+        {"path": "specs/concorde/architecture.json", "label": "one-level structure"},
+        {"path": "specs/concorde/contracts/concorde-workflow/contract.md", "label": "boundary contract"}
+      ]
+    },
+    {
+      "id": "featureSources",
+      "type": "database",
+      "label": "Durable Feature Sources",
+      "sublabel": "spec, contracts, diagrams, checklists",
+      "pos": [1400, 245],
+      "size": [210, 86],
+      "sources": [
+        {"path": "specs/concorde/features/001-concorde-starter-workflow/spec.md", "label": "feature behavior"},
+        {"path": "specs/concorde/features/001-concorde-starter-workflow/diagrams/core-workflow-components.json", "label": "feature explanation"}
+      ]
+    },
+    {
+      "id": "implementation",
+      "type": "cloud",
+      "label": "Implementation Attempt",
+      "sublabel": "plan, tasks, code, tests, evidence",
+      "pos": [1400, 505],
+      "size": [210, 86],
+      "sources": [
+        {"path": "specs/concorde/features/001-concorde-starter-workflow/implementation/plan.md", "label": "temporal design"},
+        {"path": "tests/concorde/acceptance/test_core_workflow.py", "label": "executable evidence"}
+      ]
     },
     {
       "id": "published",
       "type": "external",
-      "label": "Reviewable Project View",
-      "sublabel": "Feature 002 projection",
-      "pos": [1320, 360],
-      "size": [150, 76]
+      "label": "Generated Read Models",
+      "sublabel": "Archify HTML + project docsite",
+      "pos": [1660, 505],
+      "size": [210, 86],
+      "sources": [
+        {"path": "docsite/scripts/build.ts", "label": "published project view"}
+      ]
     }
   ],
   "boundaries": [
     {
       "kind": "region",
-      "label": "Concorde workflow services",
-      "wraps": ["integration", "architecture"]
+      "label": "Installed Concorde tooling",
+      "wraps": ["phaseCommands", "concordeCommands", "workspaceAdapter", "launchers", "runtime"]
+    },
+    {
+      "kind": "region",
+      "label": "User project workspace",
+      "wraps": ["controlState", "architectureSources", "featureSources", "implementation", "published"]
     }
   ],
   "connections": [
-    {
-      "id": "direct-work",
-      "from": "maintainer",
-      "to": "agent",
-      "label": "intent + approval",
-      "variant": "emphasis"
-    },
-    {
-      "id": "run-lifecycle",
-      "from": "agent",
-      "to": "speckit",
-      "label": "specify → converge"
-    },
-    {
-      "id": "manage-feature",
-      "from": "agent",
-      "to": "integration",
-      "label": "create / select",
-      "variant": "emphasis",
-      "labelAt": [540, 330]
-    },
-    {
-      "id": "govern-architecture",
-      "from": "agent",
-      "to": "architecture",
-      "label": "init / context / validate",
-      "variant": "security"
-    },
-    {
-      "id": "write-lifecycle-artifacts",
-      "from": "speckit",
-      "to": "workspace",
-      "label": "durable + temporal artifacts",
-      "labelAt": [1090, 230]
-    },
-    {
-      "id": "select-workspace",
-      "from": "integration",
-      "to": "workspace",
-      "label": "workspace state",
-      "labelAt": [880, 330]
-    },
-    {
-      "id": "inspect-and-validate",
-      "from": "architecture",
-      "to": "workspace",
-      "label": "bounded context + findings",
-      "variant": "security"
-    },
-    {
-      "id": "produce-evidence",
-      "from": "evidence",
-      "to": "workspace",
-      "label": "test / render / build receipts",
-      "variant": "dashed"
-    },
-    {
-      "id": "publish-read-model",
-      "from": "workspace",
-      "to": "published",
-      "label": "validated projection"
-    }
+    {"id": "direct-agent", "from": "maintainer", "to": "agent", "label": "invoke + review", "labelAt": [213, 565], "variant": "emphasis"},
+    {"id": "run-phase", "from": "agent", "to": "phaseCommands", "label": "skill / slash command"},
+    {"id": "run-concorde", "from": "agent", "to": "concordeCommands", "label": "skill / slash command"},
+    {"id": "resolve-phase", "from": "phaseCommands", "to": "workspaceAdapter", "label": "resolve before phase", "labelAt": [780, 345], "variant": "security"},
+    {"id": "read-selection", "from": "workspaceAdapter", "to": "controlState", "label": "selection + phase root", "labelAt": [1068, 345]},
+    {"id": "invoke-launcher", "from": "concordeCommands", "to": "launchers", "label": "portable command"},
+    {"id": "load-runtime", "from": "launchers", "to": "runtime", "label": "load relative runtime", "labelAt": [1068, 805], "variant": "security"},
+    {"id": "runtime-state", "from": "runtime", "to": "controlState", "label": "read / update state", "labelAt": [1190, 485]},
+    {"id": "route-durable", "from": "controlState", "to": "featureSources", "label": "selected feature root", "labelAt": [1360, 225]},
+    {"id": "govern-architecture", "from": "runtime", "to": "architectureSources", "label": "init / context / validate", "labelAt": [1360, 855], "variant": "security"},
+    {"id": "manage-feature", "from": "runtime", "to": "featureSources", "label": "create / select / context", "via": [[1370, 748], [1370, 288]], "labelAt": [1295, 575]},
+    {"id": "guide-attempt", "from": "featureSources", "to": "implementation", "label": "implementation phases + evidence", "labelAt": [1515, 430], "variant": "emphasis"},
+    {"id": "publish-evidence", "from": "implementation", "to": "published", "label": "validate + render + build", "labelAt": [1635, 605], "variant": "dashed"}
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "Stable Ownership",
+      "title": "What Is a Skill?",
       "items": [
-        "Spec Kit owns the feature lifecycle",
-        "Integration owns nested feature workspaces",
-        "Architecture Core owns bounded structure and validation"
+        "The package source is command Markdown",
+        "Codex materializes it as .agents/skills/*/SKILL.md",
+        "Slash integrations materialize equivalent command files"
       ]
     },
     {
       "dot": "violet",
-      "title": "Evidence Is Not Intent",
+      "title": "What Actually Executes?",
       "items": [
-        "Feature prose remains behavioral authority",
-        "Diagrams explain component collaboration",
-        "Code, tests, renders, and docs retain separate status"
+        "The coding agent follows the installed command instructions",
+        "Normal phases call workspace.py before Spec Kit work",
+        "Concorde operations call portable launchers and Python runtime"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Workspace Authority",
+      "items": [
+        "module.md, architecture.json, contracts: architecture",
+        "spec.md, diagrams, feature contracts: durable behavior",
+        "implementation/, code, tests, generated/: attempt and evidence"
       ]
     }
   ]

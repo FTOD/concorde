@@ -345,8 +345,8 @@ canonical intent, result contracts, path semantics, or failure behavior.
 | Evidence/freshness | Missing, stale, verified, and disagrees references; Archify/docsite provenance receipts; architecture success never upgrades code evidence. |
 | Determinism/safety | Three byte-equivalent runs, stable exit codes/order, before/after source hashes, staged write rollback. |
 | Self-application | Zero unexplained findings over Concorde sources plus complete Python, Archify, and Docusaurus gates. |
-| Feature diagram | `diagrams/core-workflow-components.json` names the stable components, responsibilities, interactions, and contract calls; 9/9 Archify showcase validation, fresh HTML delivery, automatic feature-page embedding, and truthful visual-check receipt. |
-| Human outcomes | Timed SC-001 placement pilot, five-minute SC-007 authority pilot, and explicit SC-008 review records; never inferred from tests. |
+| Feature diagram | `diagrams/core-workflow-components.json` distinguishes agent-facing skills/commands, phase adapters, portable launchers, Python runtime, workspace authority categories, and their stable interactions; 9/9 Archify showcase validation, fresh HTML delivery, automatic feature-page embedding, and truthful visual-check receipt. |
+| Human outcomes | Timed SC-001 placement pilot, five-minute SC-007 authority pilot, explicit SC-008 review records, and five-minute SC-011 installed-layer/workspace-classification pilot; never inferred from tests. |
 
 ## Post-Design Constitution Re-check
 

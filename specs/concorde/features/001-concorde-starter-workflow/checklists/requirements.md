@@ -6,7 +6,8 @@
 
 ## Content Quality
 
-- [x] No implementation details (languages, frameworks, APIs)
+- [x] No unnecessary internal implementation details; observable installed command, adapter, and
+  runtime boundaries are included because they are part of the requested workflow model
 - [x] Focused on user value and business needs
 - [x] Written for non-technical stakeholders
 - [x] All mandatory sections completed
@@ -29,14 +30,17 @@
 - [x] Cross-component features include a core component-interaction architecture diagram or a clear sufficiency rationale
 - [x] Declared feature diagrams live under `diagrams/` and are automatically embedded on the canonical feature page
 - [x] Feature meets measurable outcomes defined in Success Criteria
-- [x] No implementation details leak into specification
+- [x] Observable implementation boundaries are explicit without turning internal algorithms into
+  behavioral authority
 
 ## Notes
 
-- Validation iteration 2 passed all 17 checks on 2026-08-22 after diagram organization and automatic publication were clarified.
+- Validation iteration 3 passed all 17 checks on 2026-08-22 after installed execution layers and
+  workspace authority categories were clarified.
 - The existing Feature 001 plan, tasks, and implementation evidence predate this scope correction and
   must be revised in the planning phase; that lifecycle work does not reduce specification quality.
 - Product-visible command IDs and the maintained `specs/` artifact model are intentional interface
   requirements, not internal implementation choices.
-- `diagrams/core-workflow-components.json` supplies the core component model and passes all 9 Archify showcase
-  checks with zero errors or warnings.
+- `diagrams/core-workflow-components.json` distinguishes installed agent surfaces, deterministic
+  adapters/runtime, architecture sources, feature sources, temporal work, and generated read models;
+  it passes all 9 Archify showcase checks with zero errors or warnings.

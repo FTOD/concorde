@@ -80,6 +80,7 @@ specs/
     │   └── <number>-<feature>/
     │       ├── spec.md           # durable canonical behavioral specification
     │       ├── contracts/        # durable feature-level boundary representations
+    │       ├── diagrams/         # maintained feature-owned Archify explanations
     │       ├── checklists/       # durable requirements-quality review
     │       └── implementation/   # temporal workspace for one delivery attempt
     │           ├── plan.md
@@ -139,6 +140,91 @@ are encouraged whenever they make those examples easier to understand. They may 
 command surfaces, external systems, artifact stores, and contract crossings involved in a scenario,
 but cannot silently add behavior or obligations absent from the textual specification and contracts.
 
+## How the Installed Workflow Is Realized
+
+Concorde is not one executable and a skill is not a second runtime. The installed workflow has four
+distinct layers. Keeping them distinct lets a maintainer tell which artifact provides instructions,
+which artifact chooses paths, and which code performs deterministic architecture operations.
+
+| Layer | What it is | What it does in a user project |
+|---|---|---|
+| Package-neutral command definition | Markdown shipped by the Concorde preset or extension | Defines the command's agent-readable procedure independently of any one coding-agent UI. |
+| Installed command surface | The active integration's materialization of that Markdown, such as a Codex `SKILL.md` or a slash-command file | Gives the maintainer an invocable name and tells the coding agent which procedure and tools to use. It is an instruction surface, not the Python implementation. |
+| Portable adapter or launcher | Installed Bash, PowerShell, or Python entry scripts under `.specify/extensions/concorde/` | Resolves the selected workspace or locates the installed runtime without depending on this repository's source-tree paths. |
+| Concorde Python runtime | Deterministic Python modules installed with the extension | Implements root initialization, feature creation/selection, bounded context, and validation; reads maintained sources and emits structured results. |
+
+The `concorde-core` preset replaces nine normal Spec Kit command surfaces—`specify`, `clarify`,
+`checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues`—so each phase
+first invokes `workspace.py --phase <phase>`. The adapter reads the active feature selection and
+returns the authoritative phase paths. The coding agent then continues the normal Spec Kit procedure
+against either the durable feature root or its temporal `implementation/` directory. The preset does
+not implement a second specification, planning, or implementation engine.
+
+The `concorde` extension adds five Concorde-specific command surfaces: `init`, `feature-create`,
+`feature-select`, `context`, and `validate`. Their instructions invoke the installed Bash or
+PowerShell launcher, which locates the extension's Python entry point and runtime. The Python runtime
+performs the deterministic operation and returns canonical JSON; the coding agent presents the
+result, requests approval when mutation is proposed, or explains findings to the maintainer.
+
+### The two invocation paths
+
+```text
+Normal Spec Kit phase
+Maintainer → skill or slash command → coding agent follows command Markdown
+           → workspace.py --phase <phase> → .specify/feature.json
+           → feature root OR implementation/ → normal Spec Kit phase
+
+Concorde architecture operation
+Maintainer → skill or slash command → coding agent follows extension command Markdown
+           → concorde.sh or concorde.ps1 → concorde.py → Concorde Python runtime
+           → .concorde/config.json + specs/ → structured result → review or approval
+```
+
+An active coding-agent integration owns only presentation and invocation syntax. Spec Kit owns
+component resolution and its normal lifecycle. The preset owns phase-surface overrides and routing
+instructions. The extension owns the Concorde commands, launchers, adapter, and runtime payload.
+Architecture Core and Spec Kit Integration retain their behavioral ownership as defined by module
+contracts; file packaging does not transfer that ownership.
+
+## Project Workspace Map
+
+The installed tool payload, maintained intent, temporal work, and generated evidence coexist in one
+project, but they do not have equal authority.
+
+```text
+<project>/
+├── .concorde/config.json                 # control: specification root and runtime policy
+├── .specify/feature.json                 # control: selected canonical feature workspace
+├── .specify/extensions/concorde/         # installed adapters, launchers, and Python runtime
+├── .agents/skills/speckit-*/SKILL.md     # example Codex presentation of command surfaces
+├── specs/<module>/
+│   ├── module.md                         # architecture: responsibility and boundaries
+│   ├── architecture.json                 # architecture: one-level component organization
+│   ├── contracts/**/contract.md          # architecture: external I/O obligations
+│   └── features/<feature>/
+│       ├── spec.md                       # feature: durable behavior
+│       ├── contracts/                    # feature: normative interface representations
+│       ├── diagrams/                     # feature: text-backed visual explanations
+│       ├── checklists/                    # feature: durable requirements-quality review
+│       └── implementation/               # temporal: one delivery attempt
+├── <source directories>/                 # implementation and runtime behavior
+├── <test directories>/                   # executable evidence
+├── generated/                            # reproducible diagrams and other projections
+└── <documentation site>/                 # reproducible read model over canonical sources
+```
+
+`.concorde/` and `.specify/` are workflow control or installed-tool locations; they are not feature
+or architecture specifications. Under `specs/`, authority is determined by artifact kind and
+location: module prose, module contracts, and the bounded `architecture.json` describe architecture;
+feature `spec.md`, feature contracts, diagrams, and checklists describe durable feature intent and
+examples. The `implementation/` subtree, source code, tests, and generated outputs provide design or
+evidence for an implementation, but they cannot silently redefine either authority.
+
+Contracts intentionally appear at two levels. A module contract records architectural identity,
+ownership, direction, and boundary obligations. A feature-local contract or schema may define the
+detailed representation needed by that feature. References between them must make the split explicit
+so a reader never has to guess which file owns a fact.
+
 ## End-to-End Workflow and Commands
 
 The command surface supports the workflow but does not become a second feature lifecycle. Canonical
@@ -165,15 +251,18 @@ validation belong to Architecture Core.
 
 The maintained architecture view in `diagrams/core-workflow-components.json` is the feature's core
 diagram and produces `generated/architecture/concorde-core-workflow-components.html`. It answers the
-stable structural question: when a maintainer uses Concorde, which components participate, which
-responsibility each component owns, and through which interactions they collaborate?
+stable structural question: when a maintainer invokes Concorde in an installed project, which parts
+are agent-facing instructions, which parts are executable adapters or Python code, which workspace
+artifacts they read or write, and how those responsibilities interact?
 
-- **Establish and place** focuses the Maintainer, Coding Agent, Spec Kit Integration, Architecture
-  Core, and Project Workspace relationships used for reviewed ownership and nested selection.
-- **Specify and implement** focuses the Coding Agent, Spec Kit lifecycle, Architecture Core, and
-  Project Workspace separation of lifecycle control from bounded architectural context.
-- **Reconcile evidence** focuses the independent Evidence Producers, Architecture Core validation,
-  Project Workspace, and Maintainer review boundary.
+- **Skills and commands** separates the Maintainer and Coding Agent Integration from the nine
+  preset-replaced Spec Kit phase surfaces and five extension-provided Concorde surfaces.
+- **Normal Spec Kit phases** follows a phase surface through the selected-workspace adapter and
+  project control state to durable feature sources and the temporal implementation attempt.
+- **Concorde operations** follows an extension command through portable launchers to the deterministic
+  Python runtime and the architecture or feature sources it manages and validates.
+- **Project workspace** separates control state, architectural intent, durable feature intent,
+  temporal implementation/evidence, and generated read models.
 
 The core view intentionally does not model chronological message order. If a particular user story
 later needs call-by-call timing, retries, or asynchronous returns, it may add a separately declared
@@ -302,6 +391,10 @@ validation reports both problems consistently without changing maintained source
 4. **Given** successful validation and human review, **When** the change is published, **Then** the
    generated site preserves source provenance and the same architecture hierarchy without becoming
    a second source of intent.
+5. **Given** an installed Concorde project, **When** a maintainer inspects the core diagram and its
+   textual counterpart, **Then** the maintainer can trace one normal Spec Kit phase and one Concorde
+   architecture operation from invocation to the files and executable components involved, and can
+   distinguish maintained architecture, durable feature intent, temporal work, and generated evidence.
 
 ### Edge Cases
 
@@ -412,6 +505,18 @@ validation reports both problems consistently without changing maintained source
   type to show stable components, responsibilities, and interactions. Sequence, workflow, data-flow,
   and lifecycle diagrams MUST be supplemental views of narrower dynamic questions and MUST NOT serve
   as the feature's core diagram.
+- **FR-033**: The installed workflow MUST preserve a reviewable distinction among package-neutral
+  command definitions, agent-specific skill or slash-command presentations, portable adapters or
+  launchers, and deterministic Python runtime behavior; an agent presentation MUST NOT be documented
+  as though it independently implements the operation.
+- **FR-034**: Every overridden normal Spec Kit phase MUST resolve the selected feature and its
+  phase-specific durable or temporal path through the installed workspace adapter before accessing
+  lifecycle artifacts, while every Concorde-specific operation MUST reach its installed Python
+  runtime through a project-relative portable launcher rather than this repository's source path.
+- **FR-035**: Workflow explanations, bounded context, and validation findings MUST classify relevant
+  project artifacts as workflow control or installed tooling, maintained architecture, durable
+  feature intent, temporal implementation/evidence, or generated read model, and MUST NOT promote
+  control state, implementation artifacts, or generated projections into specification authority.
 
 ### Scope
 
@@ -427,13 +532,16 @@ validation reports both problems consistently without changing maintained source
 - Traceability among maintained intent, implementation, tests, validation, and generated projections.
 - Text-backed feature-owned diagrams for scenarios whose component collaboration, invocation order,
   state changes, or data movement benefit from visual explanation.
+- The observable installed boundary among command definitions, agent presentations, adapters,
+  launchers, Python runtime, project control state, and maintained workspace artifacts.
 
 **Excluded**:
 
 - Spec Kit bundle/catalog installation, setup, update, removal, and package-role education; these are
   owned by `feature.concorde.install-with-spec-kit`.
-- The implementation details of Spec Kit, coding-agent integrations, Archify, or the documentation
-  generator.
+- Internal algorithms of Spec Kit, coding-agent integrations, Archify, or the documentation generator
+  beyond the observable command, adapter, runtime, source, and projection boundaries needed to use
+  and review Concorde correctly.
 - Replacing normal feature specifications with a separate Concorde behavioral artifact.
 - Automatically accepting AI-authored architecture or treating structural validation as proof of
   implementation correctness.
@@ -449,6 +557,15 @@ validation reports both problems consistently without changing maintained source
   feature, divided into a durable feature root and a temporal implementation workspace.
 - **Implementation Workspace**: The `implementation/` subdirectory containing the plan, tasks,
   research, technical model, acceptance guide, and evidence for at most one active delivery attempt.
+- **Installed Command Surface**: An agent-facing skill or slash-command presentation materialized
+  from package-neutral command Markdown; it instructs an agent but is not itself the deterministic
+  Concorde runtime.
+- **Workspace Adapter and Runtime Launcher**: Project-relative executable entry scripts that resolve
+  phase paths or locate and invoke the installed Python runtime without depending on Concorde's
+  authoring repository.
+- **Workspace Control State**: Project-scoped configuration and active-feature selection used to
+  locate canonical sources; it controls workflow resolution but does not define feature behavior or
+  module architecture.
 - **Scenario**: A representative behavioral example whose participants and interactions are bounded
   to one architecture level.
 - **Contract**: A directional boundary agreement defining obligations and observable information
@@ -492,6 +609,11 @@ validation reports both problems consistently without changing maintained source
   deterministic Archify showcase, provenance, and freshness checks with zero errors or warnings;
   every diagrammed boundary crossing resolves to its textual contract reference, and every declared
   diagram appears on the canonical generated feature page without manual page markup.
+- **SC-011**: After no more than five minutes with the installed-workflow explanation and core
+  diagram, at least 90% of first-time maintainers can correctly trace both invocation paths, identify
+  which steps are agent instructions versus deterministic scripts/runtime, and classify representative
+  project paths into architecture, feature, temporal implementation/evidence, control/tooling, and
+  generated read-model categories.
 
 ## Assumptions
 
