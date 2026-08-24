@@ -16,7 +16,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIPT}` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
@@ -69,8 +69,9 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Goal
 
-Close the gap between what a feature's specification, active implementation plan, and tasks call for
-and what the codebase currently implements. Read root `spec.md` as durable intent and the active
+Close the gap between what a feature's specification, accepted design, active implementation plan,
+and tasks call for and what the codebase currently implements. Read root `spec.md` as durable intent,
+root `design.md` as the accepted realization baseline, and the active
 `implementation/plan.md` plus `implementation/tasks.md` as the chosen delivery approach (with the
 constitution as governing constraints), then assess the current
 state of the code, determine which requirements, acceptance criteria, plan decisions, and
@@ -87,7 +88,7 @@ of the code relative to the feature's artifacts — no git, no branch comparison
 **APPEND-ONLY, NEVER REWRITE**: The command's **only** write is appending a new
 `## Phase N: Convergence` section to `tasks.md`. It MUST NOT:
 
-- modify `spec.md` or `plan.md` in any way;
+- modify `spec.md`, `design.md`, or `plan.md` in any way;
 - rewrite, renumber, reorder, or delete any existing task (including tasks from a prior
   Convergence phase);
 - modify, create, or delete any application code — completing the appended tasks is the
@@ -105,13 +106,14 @@ skip constitution checks gracefully rather than failing.
 
 ### 1. Initialize Convergence Context
 
-Run `{SCRIPT}` once from repo root and parse JSON for FEATURE_DIR, FEATURE_SPEC, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
+Run `{SCRIPT}` once from repo root and parse JSON for FEATURE_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
 
 - SPEC = FEATURE_SPEC
+- DESIGN = FEATURE_DESIGN
 - PLAN = IMPL_PLAN
 - TASKS = TASKS
 - CONSTITUTION = `.specify/memory/constitution.md` (if present)
-If `spec.md`, `plan.md`, or `tasks.md` is missing, STOP with a clear, actionable message naming the
+If `spec.md`, `design.md`, `plan.md`, or `tasks.md` is missing, STOP with a clear, actionable message naming the
 prerequisite command to run (`$speckit-specify` for a missing spec, `$speckit-plan` for a missing plan,
 `$speckit-tasks` for missing tasks). Do not produce partial output.
 For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
@@ -128,6 +130,12 @@ Load only the minimal necessary context from each artifact:
 - User Stories and their Acceptance Scenarios
 - Edge Cases (if present)
 - Required feature diagrams, their core/supplemental roles, textual counterparts, and any explicit sufficiency rationale
+
+**From design.md:**
+
+- Accepted module/feature collaboration and scenario realization
+- Durable implementation decisions and evidence references
+- Known limitations that remain part of the current baseline
 
 **From plan.md:**
 

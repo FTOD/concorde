@@ -6,8 +6,8 @@
   "visualReview": "pending",
   "artifact": {
     "path": "/home/zhenyu/concorde/generated/architecture/concorde-root.html",
-    "sha256": "9cfd1536b77ab7d2c88513d927f18d4e58fb8b7ea42ed2f3bed19159b87b6fe6",
-    "bytes": 646792
+    "sha256": "73e6f842d642eb8cc8703764f3be2788df558e8586d21983cb95c21c60e491d5",
+    "bytes": 646787
   },
   "state": {
     "detail": "read",

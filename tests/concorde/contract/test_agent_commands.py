@@ -16,6 +16,7 @@ class AgentCommandContractTests(unittest.TestCase):
             "speckit.concorde.init.md",
             "speckit.concorde.feature.create.md",
             "speckit.concorde.feature.select.md",
+            "speckit.concorde.feature.harden.md",
             "speckit.concorde.context.md",
             "speckit.concorde.validate.md",
         }
@@ -25,7 +26,7 @@ class AgentCommandContractTests(unittest.TestCase):
             self.assertIn(".specify/extensions/concorde/scripts/", content)
             self.assertNotIn(str(REPOSITORY_ROOT), content)
 
-    def test_distribution_handoff_names_nine_normal_and_five_concorde_intents(self):
+    def test_distribution_handoff_names_nine_normal_and_six_concorde_intents(self):
         contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts"
         command_contract = (contracts / "agent-commands.md").read_text(encoding="utf-8")
         schema = json.loads((contracts / "feature-workspace.schema.json").read_text(encoding="utf-8"))
@@ -41,11 +42,12 @@ class AgentCommandContractTests(unittest.TestCase):
             "taskstoissues",
         ):
             self.assertIn(command, command_contract)
-        for command in ("init", "feature.create", "feature.select", "context", "validate"):
+        for command in ("init", "feature.create", "feature.select", "feature.harden", "context", "validate"):
             self.assertIn(command, command_contract)
         self.assertEqual(schema["$defs"]["workspacePaths"]["required"], [
             "feature_directory",
             "feature_spec",
+            "feature_design",
             "contracts_dir",
             "checklists_dir",
             "diagrams_dir",

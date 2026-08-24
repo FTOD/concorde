@@ -35,7 +35,7 @@
         "id": "publish-architecture",
         "label": "Build and browse the project site",
         "focus": ["maintainer", "publishFeature", "documentation", "architectureCore", "specKit"],
-        "note": "The maintainer invokes the documentation workflow, which reads validated architecture and canonical feature specifications into one site."
+        "note": "Documentation projects validated architecture plus permanent feature specifications and designs into one site."
       }
     ]
   },
@@ -60,7 +60,7 @@
       "id": "agentHost",
       "type": "external",
       "label": "Coding Agent",
-      "sublabel": "Five Concorde commands",
+      "sublabel": "Six Concorde commands",
       "pos": [280, 430],
       "size": [180, 76]
     },
@@ -182,7 +182,7 @@
       "id": "contract_concorde_core-workflow__agent",
       "from": "agentHost",
       "to": "coreWorkflowFeature",
-      "label": "init / create / select / context / validate",
+      "label": "init / create / select / harden / context / validate",
       "fromSide": "right",
       "toSide": "left",
       "via": [[555, 468], [555, 368]],
@@ -237,7 +237,7 @@
     {
       "dot": "emerald",
       "title": "How Concorde is invoked",
-      "items": ["Spec Kit owns bundle operations and the normal feature phases", "The active integration presents nine composed lifecycle surfaces plus five Concorde commands", "Documentation build and browse operations invoke the publication feature"]
+      "items": ["Spec Kit owns bundle operations and the normal feature phases", "The active integration presents nine composed lifecycle surfaces plus six Concorde commands", "Documentation build and browse operations invoke the publication feature"]
     },
     {
       "dot": "violet",

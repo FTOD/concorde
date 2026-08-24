@@ -21,7 +21,7 @@ specified.
 | Selected feature, durable/temporal paths, command intent, results, and failures | Feature 001 Feature Workspace and agent-command contracts |
 | Normal phase responsibility and public composition/materialization behavior | Spec Kit 0.16.4 |
 | Template and command contribution strategy | `concorde-core` preset manifest |
-| Five active command and runtime files | `concorde` extension manifest |
+| Six active command and runtime files | `concorde` extension manifest |
 | Agent-specific filename and invocation syntax | Active coding-agent integration |
 | Installed winner, package version, source/materialized digests, and execution evidence | Spec Kit state plus generated Feature 003 acceptance receipts |
 
@@ -35,8 +35,8 @@ digest.
 
 | Phase root | Canonical command IDs | Required preset strategy |
 |---|---|---|
-| Durable feature root | `speckit.specify`, `speckit.clarify`, `speckit.checklist` | Complete `replace` layer for each command |
-| Temporal `implementation/` workspace | `speckit.plan`, `speckit.tasks`, `speckit.implement`, `speckit.analyze`, `speckit.converge`, `speckit.taskstoissues` | Complete `replace` layer for each command |
+| Durable feature intent plus temporal review state | `speckit.specify`, `speckit.clarify` | Complete `replace` layer for each command |
+| Temporal `implementation/` workspace | `speckit.checklist`, `speckit.plan`, `speckit.tasks`, `speckit.implement`, `speckit.analyze`, `speckit.converge`, `speckit.taskstoissues` | Complete `replace` layer for each command |
 
 Each replacement preserves the corresponding Spec Kit 0.16.4 phase responsibility. It must invoke
 the installed selected-workspace adapter before any setup, prerequisite check, inherited instruction,
@@ -44,7 +44,8 @@ or artifact access that could choose a legacy root-level plan or task path.
 
 `append`, `prepend`, and `wrap` are non-conforming for these nine command entries while the lower
 command can independently resolve legacy paths. The three spec/plan/tasks template contributions
-remain `append` layers because they add guidance and do not perform phase routing.
+remain `append` layers because they add guidance and do not perform phase routing. The Concorde-only
+`design-template` is a fourth, `replace` contribution because Spec Kit core does not define that artifact.
 
 Preset script replacement and installer mutation of managed `.specify/scripts/` are outside the
 supported contract. If public command replacement cannot satisfy the bootstrap ordering, the release
@@ -52,13 +53,14 @@ must reject the host version and require an upstream-supported capability instea
 
 ### Concorde-specific surfaces
 
-The extension supplies these five canonical intents:
+The extension supplies these six canonical intents:
 
 1. `speckit.concorde.init`
 2. `speckit.concorde.feature.create`
 3. `speckit.concorde.feature.select`
-4. `speckit.concorde.context`
-5. `speckit.concorde.validate`
+4. `speckit.concorde.feature.harden`
+5. `speckit.concorde.context`
+6. `speckit.concorde.validate`
 
 Platform-safe spellings may vary in the materialized presentation. Arguments, result envelopes,
 workspace effects, failures, and deterministic runtime behavior must remain equivalent. Every
@@ -82,16 +84,18 @@ unregistered package member is not an installed command surface.
 
 | Command | Required selected paths | Prohibited result |
 |---|---|---|
-| Specify / clarify / checklist | Feature root `spec.md`, root `contracts/`, root `checklists/` | A second spec, contract, or checklist under `implementation/` |
+| Specify / clarify | Feature-root `spec.md` and `contracts/`; generated review state at `implementation/checklists/requirements.md` | A second spec/contract or a root `checklists/` directory |
+| Checklist | Durable feature context plus `implementation/checklists/*.md` output and available attempt context | A root checklist, implementation behavior test, or second active attempt |
 | Plan | `implementation/plan.md`, `research.md`, `data-model.md`, `quickstart.md` | Root `plan.md` or root design copies |
 | Tasks | `implementation/tasks.md` | Root `tasks.md` |
 | Implement / analyze / converge / taskstoissues | Feature-root durable intent plus the same active `implementation/` attempt | Root temporal copies, symlinks, or a second active attempt |
-| Five Concorde commands | Feature 001 contract paths and result envelopes | Checkout-relative runtime or agent-specific semantic drift |
+| Init / feature create / select / context / validate | Feature 001 contract paths and result envelopes | Checkout-relative runtime or agent-specific semantic drift |
+| Feature harden | Root `design.md`, completed `implementation/tasks.md`, resolved `implementation/checklists/*.md`, digest-bound proposal, exact `implementation/` removal | Direct design mutation, unchecked tasks, unresolved checklist items, implicit approval, stale apply, or broader deletion |
 
 ## Acceptance Evidence
 
 Acceptance must run from built release artifacts in a target outside the Concorde checkout. For each
-of the fourteen surfaces it must:
+of the fifteen surfaces it must:
 
 1. identify the active registered artifact and winning source package;
 2. record source, materialized, package, and Feature 001 handoff digests;
@@ -102,8 +106,9 @@ of the fourteen surfaces it must:
 6. compare behavior across one skills-based and one slash-command-based integration.
 
 Acceptance fails on any checkout read, missing required archive member, wrong winner, late workspace
-resolution, root compatibility copy/symlink, mismatched handoff digest, or presentation-specific
-semantic difference. Generated receipts are evidence, not a new public interface.
+resolution, root checklist or other compatibility copy/symlink, mismatched handoff digest, or
+presentation-specific semantic difference. Generated receipts are evidence, not a new public
+interface.
 
 ## Registry State, Recomposition, and Removal
 
@@ -120,6 +125,6 @@ This profile supports Spec Kit 0.16.4 only. A later version is supported only af
 is reviewed against that version's phase inputs, outputs, hooks, prerequisites, failures, and
 registration behavior, followed by the full isolated path and recomposition matrices.
 
-A change to the nine/five inventory, bootstrap order, durable/temporal path split, or stable command
+A change to the nine/six inventory, bootstrap order, durable/temporal path split, or stable command
 intent is a contract change and requires synchronized Feature 001 handoff, package manifests,
 catalogs, diagrams, tests, and evidence.

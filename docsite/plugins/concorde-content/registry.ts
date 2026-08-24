@@ -6,7 +6,7 @@ import fg from 'fast-glob';
 import matter from 'gray-matter';
 
 import type {
-  ArchitectureKind, ArchitectureSource, ContentRegistry, ExcludedSource, FeatureDiagram, FeatureSpecification, ProjectDocument, SourceCollection,
+  ArchitectureKind, ArchitectureSource, ContentRegistry, ExcludedSource, FeatureDesign, FeatureDiagram, FeatureSpecification, ProjectDocument, SourceCollection,
   SourceDocument, ValidationFinding,
 } from './types';
 import {populateLinks} from './links';
@@ -18,6 +18,7 @@ export const collections: SourceCollection[] = [
   },
   {id: 'docs', sourceBase: 'docs', routeBase: '/docs', include: ['**/*.md'], contentKind: 'project-document'},
   {id: 'features', sourceBase: 'specs', routeBase: '/features', include: ['**/spec.md'], contentKind: 'feature-specification'},
+  {id: 'feature-designs', sourceBase: 'specs', routeBase: '/features', include: ['**/design.md'], contentKind: 'feature-design'},
 ];
 
 const posixPath = (value: string) => value.split('\\').join('/');
@@ -140,6 +141,7 @@ async function parseDocument(
     slug: typeof parsed.data.slug === 'string' ? parsed.data.slug : undefined,
   };
   if (collection.id === 'docs') return base as ProjectDocument;
+  if (collection.id === 'feature-designs') return base as FeatureDesign;
   if (collection.id === 'architecture') {
     const architectureKind = parsed.data.kind as ArchitectureKind;
     const view = typeof parsed.data.view === 'string'

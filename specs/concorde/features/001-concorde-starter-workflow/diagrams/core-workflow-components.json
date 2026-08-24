@@ -20,20 +20,26 @@
       {
         "id": "normal-lifecycle",
         "label": "Normal Spec Kit phases",
-        "focus": ["agent", "phaseCommands", "workspaceAdapter", "controlState", "featureSources", "implementation"],
-        "note": "Nine replaced phase surfaces resolve the selected durable or temporal root before normal Spec Kit work."
+        "focus": ["agent", "phaseCommands", "workspaceAdapter", "controlState", "featureSpec", "featureDesign", "implementation"],
+        "note": "Nine replaced phase surfaces resolve durable intent/design or the temporal attempt before normal Spec Kit work."
       },
       {
         "id": "concorde-operations",
         "label": "Concorde operations",
-        "focus": ["agent", "concordeCommands", "launchers", "runtime", "controlState", "architectureSources", "featureSources"],
-        "note": "Five Concorde surfaces reach the installed Python runtime through portable launchers."
+        "focus": ["agent", "concordeCommands", "launchers", "runtime", "controlState", "architectureSources", "featureSpec", "featureDesign"],
+        "note": "Six Concorde surfaces reach the installed Python runtime through portable launchers."
       },
       {
         "id": "workspace-map",
         "label": "Project workspace",
-        "focus": ["controlState", "architectureSources", "featureSources", "implementation", "published"],
-        "note": "Separate control state, architectural intent, durable feature intent, temporal work, and generated evidence."
+        "focus": ["controlState", "architectureSources", "featureSpec", "featureDesign", "implementation"],
+        "note": "Separate control state, module architecture, behavioral intent, accepted feature design, and temporal work."
+      },
+      {
+        "id": "harden-milestone",
+        "label": "Harden a milestone",
+        "focus": ["maintainer", "agent", "concordeCommands", "launchers", "runtime", "featureSpec", "featureDesign", "implementation"],
+        "note": "Only a completed attempt can be reviewed, merged into design.md, and removed with explicit approval."
       }
     ]
   },
@@ -73,8 +79,8 @@
     {
       "id": "concordeCommands",
       "type": "backend",
-      "label": "5 Concorde Surfaces",
-      "sublabel": "init, feature, context, validate",
+      "label": "6 Concorde Surfaces",
+      "sublabel": "init, feature, context, validate, harden",
       "tag": "extension commands",
       "pos": [525, 705],
       "size": [210, 86],
@@ -124,7 +130,7 @@
       "id": "runtime",
       "type": "security",
       "label": "Concorde Python Runtime",
-      "sublabel": "workspace, context, validation",
+      "sublabel": "workspace, context, validation, hardening",
       "pos": [1110, 705],
       "size": [210, 86],
       "sources": [
@@ -147,11 +153,11 @@
       ]
     },
     {
-      "id": "featureSources",
+      "id": "featureSpec",
       "type": "database",
-      "label": "Durable Feature Sources",
-      "sublabel": "spec, contracts, diagrams, checklists",
-      "pos": [1400, 245],
+      "label": "Durable Feature Intent",
+      "sublabel": "spec.md, contracts, diagrams",
+      "pos": [1400, 165],
       "size": [210, 86],
       "sources": [
         {"path": "specs/concorde/features/001-concorde-starter-workflow/spec.md", "label": "feature behavior"},
@@ -159,26 +165,23 @@
       ]
     },
     {
+      "id": "featureDesign",
+      "type": "database",
+      "label": "Durable Feature Design",
+      "sublabel": "design.md · accepted realization",
+      "pos": [1400, 385],
+      "size": [210, 86]
+    },
+    {
       "id": "implementation",
       "type": "cloud",
       "label": "Implementation Attempt",
-      "sublabel": "plan, tasks, code, tests, evidence",
-      "pos": [1400, 505],
+      "sublabel": "implementation/ · checklists, plan, tasks, evidence",
+      "pos": [1400, 605],
       "size": [210, 86],
       "sources": [
         {"path": "specs/concorde/features/001-concorde-starter-workflow/implementation/plan.md", "label": "temporal design"},
         {"path": "tests/concorde/acceptance/test_core_workflow.py", "label": "executable evidence"}
-      ]
-    },
-    {
-      "id": "published",
-      "type": "external",
-      "label": "Generated Read Models",
-      "sublabel": "Archify HTML + project docsite",
-      "pos": [1660, 505],
-      "size": [210, 86],
-      "sources": [
-        {"path": "docsite/scripts/build.ts", "label": "published project view"}
       ]
     }
   ],
@@ -191,7 +194,7 @@
     {
       "kind": "region",
       "label": "User project workspace",
-      "wraps": ["controlState", "architectureSources", "featureSources", "implementation", "published"]
+      "wraps": ["controlState", "architectureSources", "featureSpec", "featureDesign", "implementation"]
     }
   ],
   "connections": [
@@ -203,11 +206,12 @@
     {"id": "invoke-launcher", "from": "concordeCommands", "to": "launchers", "label": "portable command"},
     {"id": "load-runtime", "from": "launchers", "to": "runtime", "label": "load relative runtime", "labelAt": [1068, 805], "variant": "security"},
     {"id": "runtime-state", "from": "runtime", "to": "controlState", "label": "read / update state", "labelAt": [1190, 485]},
-    {"id": "route-durable", "from": "controlState", "to": "featureSources", "label": "selected feature root", "labelAt": [1360, 225]},
+    {"id": "route-durable", "from": "controlState", "to": "featureSpec", "label": "selected feature root", "labelAt": [1360, 145]},
     {"id": "govern-architecture", "from": "runtime", "to": "architectureSources", "label": "init / context / validate", "labelAt": [1360, 855], "variant": "security"},
-    {"id": "manage-feature", "from": "runtime", "to": "featureSources", "label": "create / select / context", "via": [[1370, 748], [1370, 288]], "labelAt": [1295, 575]},
-    {"id": "guide-attempt", "from": "featureSources", "to": "implementation", "label": "implementation phases + evidence", "labelAt": [1515, 430], "variant": "emphasis"},
-    {"id": "publish-evidence", "from": "implementation", "to": "published", "label": "validate + render + build", "labelAt": [1635, 605], "variant": "dashed"}
+    {"id": "manage-feature", "from": "runtime", "to": "featureSpec", "label": "create / select / context", "via": [[1370, 748], [1370, 208]], "labelAt": [1295, 555]},
+    {"id": "guide-attempt", "from": "featureSpec", "to": "implementation", "label": "spec + accepted design baseline", "fromSide": "right", "toSide": "right", "via": [[1760, 208], [1760, 648]], "labelAt": [1840, 520], "variant": "emphasis"},
+    {"id": "harden-design", "from": "implementation", "to": "featureDesign", "label": "approved design + cleanup", "labelAt": [1625, 550], "variant": "security"},
+    {"id": "apply-harden", "from": "runtime", "to": "implementation", "label": "verify tasks + stage removal", "labelAt": [1455, 740], "variant": "security"}
   ],
   "cards": [
     {
@@ -225,7 +229,7 @@
       "items": [
         "The coding agent follows the installed command instructions",
         "Normal phases call workspace.py before Spec Kit work",
-        "Concorde operations call portable launchers and Python runtime"
+        "Concorde operations, including harden, call portable launchers and Python runtime"
       ]
     },
     {
@@ -233,8 +237,8 @@
       "title": "Workspace Authority",
       "items": [
         "module.md, architecture.json, contracts: architecture",
-        "spec.md, diagrams, feature contracts: durable behavior",
-        "implementation/, code, tests, generated/: attempt and evidence"
+        "spec.md defines behavior; design.md records the accepted realization",
+        "implementation/ is disposable after an approved, task-complete harden"
       ]
     }
   ]

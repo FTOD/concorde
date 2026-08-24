@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.dev/contracts/documentation/build-manifest-v2.schema.json",
-  "title": "Concorde Documentation Build Manifest v2",
+  "$id": "https://concorde.dev/contracts/documentation/build-manifest-v3.schema.json",
+  "title": "Concorde Documentation Build Manifest v3",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,7 +15,7 @@
   ],
   "properties": {
     "schemaVersion": {
-      "const": 2
+      "const": 3
     },
     "generator": {
       "type": "object",
@@ -29,15 +29,15 @@
     },
     "collections": {
       "type": "array",
-      "minItems": 3,
-      "maxItems": 3,
+      "minItems": 4,
+      "maxItems": 4,
       "uniqueItems": true,
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["id", "sourceBase", "routeBase", "include"],
         "properties": {
-          "id": { "enum": ["architecture", "docs", "features"] },
+          "id": { "enum": ["architecture", "docs", "features", "feature-designs"] },
           "sourceBase": { "enum": ["docs", "specs"] },
           "routeBase": { "enum": ["/architecture", "/docs", "/features"] },
           "include": {
@@ -164,7 +164,7 @@
         "links"
       ],
       "properties": {
-        "kind": { "enum": ["architecture-source", "project-document", "feature-specification"] },
+        "kind": { "enum": ["architecture-source", "project-document", "feature-specification", "feature-design"] },
         "sourcePath": { "$ref": "#/$defs/sourcePath" },
         "sourceSha256": { "$ref": "#/$defs/sha256" },
         "route": { "$ref": "#/$defs/route" },

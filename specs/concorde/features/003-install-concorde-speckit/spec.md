@@ -36,11 +36,15 @@ canonical_spec: specs/concorde/features/003-install-concorde-speckit/spec.md
 
 **Created**: 2026-08-22
 
-**Status**: Automated installation and installed-command behavior implemented; human and browser visual evidence pending
+**Revised**: 2026-08-23
+
+**Status**: Revised installed checklist routing specified; distribution and clean-project acceptance
+updates remain pending, and human/browser visual evidence is incomplete
 
 **Input**: User description: "Install and set up Concorde through Spec Kit, and ensure the released
 bundle correctly overrides the normal commands and skills so a user's clean project receives the
-same Concorde workflow rather than only this repository's local modifications."
+same Concorde workflow rather than only this repository's local modifications, including temporal
+`implementation/checklists/` placement with no feature-root compatibility directory."
 
 ## How Concorde Is Delivered through Spec Kit
 
@@ -53,7 +57,7 @@ delivered as independently versioned ecosystem parts with different responsibili
 | **Catalog** | Advertises package identity, version, compatibility, download location, integrity, and trust metadata. | It is discovery metadata, not installed product behavior. |
 | **Bundle** | Provides an inspectable recipe that pins the compatible Concorde preset and extension versions. | It is not executable behavior, a template layer, or a replacement workflow. |
 | **Preset** | Composes Concorde guidance into normal templates and authoritative routing into the existing Spec Kit lifecycle commands. | It introduces no new runtime command namespace and creates no second canonical feature specification. It does not register commands by itself; Spec Kit materializes its resolved command layers. |
-| **Extension** | Provides the five Concorde-specific command definitions, the selected-workspace adapter, and their deterministic runtime behavior. | It does not own the normal Spec Kit phases or agent-specific presentation syntax. |
+| **Extension** | Provides the six Concorde-specific command definitions, the selected-workspace adapter, and their deterministic runtime behavior. | It does not own the normal Spec Kit phases or agent-specific presentation syntax. |
 | **Coding-agent integration** | Materializes both resolved core-command overrides and Concorde-specific commands using the active agent's supported skill or slash-command form. | It adapts invocation syntax without changing command intent or path semantics. |
 | **Architecture Core** | Performs project-scoped initialization, bounded context retrieval, and validation after setup. | Its behavior belongs to the core workflow, not to installation. |
 
@@ -66,8 +70,12 @@ catalog/archive location into metadata; it does not contact that URL during the 
 The normal Spec Kit command names remain the user-facing lifecycle. Concorde's preset must provide
 the complete routing layer for `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`,
 `analyze`, `converge`, and `taskstoissues`. Once installed, each resolved command must select the
-nested feature workspace before any phase-specific file is read or written. Durable intent stays at
-the feature root, while temporal planning and delivery artifacts stay under `implementation/`.
+nested feature workspace before any phase-specific file is read or written. Durable intent and
+accepted design stay at the feature root, while requirements-quality checklists, planning, and
+delivery artifacts stay under `implementation/`. The preset also supplies the permanent `design.md`
+template. The extension
+supplies `speckit.concorde.feature.harden`, which proposes and, only after explicit approval,
+atomically promotes a completed attempt into that design and removes `implementation/`.
 Repository-local `.agents/` skills and `.specify/` scripts are self-hosting evidence only: a released
 Concorde installation must work when those checkout files are unavailable.
 
@@ -157,35 +165,44 @@ commands execute the correct phase in the correct nested workspace.
 
 **Independent Test**: Build the release, install its bundle into a pristine supported project that
 cannot read the Concorde source checkout, and execute the normal lifecycle through one skills-based
-and one slash-command-based presentation. Verify every durable and temporal output path, all five
+and one slash-command-based presentation. Verify every durable and temporal output path, all six
 Concorde-specific commands, and restoration after the preset is disabled or removed.
 
 **Acceptance Scenarios**:
 
 1. **Given** a pristine supported Spec Kit project, **When** the released bundle is installed,
    **Then** the active integration contains resolved Concorde-aware forms of all nine normal lifecycle
-   commands and all five Concorde-specific commands declared by the installed manifests.
+   commands and all six Concorde-specific commands declared by the installed manifests.
 2. **Given** a selected nested feature, **When** `specify`, `clarify`, or `checklist` runs, **Then**
-   the canonical `spec.md`, contracts, and checklists remain at the feature root and no duplicate
-   specification is created.
+   the canonical `spec.md` and contracts remain at the feature root, every generated checklist is
+   placed under `implementation/checklists/`, and no duplicate specification or root checklist is
+   created.
 3. **Given** the same selected feature, **When** `plan`, `tasks`, `implement`, `analyze`, `converge`,
    or `taskstoissues` runs, **Then** it uses that feature's single active `implementation/` workspace
    and creates no root-level compatibility copy of temporal artifacts.
-4. **Given** a path-sensitive normal command, **When** its installed presentation is executed,
+4. **Given** a newly created feature, **When** its installed workspace is inspected, **Then** it has
+   permanent root `spec.md` and `design.md` artifacts plus, while specification review or delivery is
+   active, one temporal `implementation/` directory containing its checklists and other attempt
+   artifacts.
+5. **Given** a path-sensitive normal command, **When** its installed presentation is executed,
    **Then** nested-workspace resolution occurs before any lower command layer or helper can select a
    legacy root-level plan or task path.
-5. **Given** one skills-based and one slash-command-based integration, **When** equivalent lifecycle
+6. **Given** one skills-based and one slash-command-based integration, **When** equivalent lifecycle
    and Concorde commands run, **Then** they produce equivalent selected-workspace, phase-path, result,
    and failure behavior.
-6. **Given** the Concorde source checkout is unavailable, **When** clean-project verification runs,
+7. **Given** a completed implementation attempt, **When** the installed hardening command is proposed
+   and explicitly approved, **Then** the reviewed design replaces root `design.md` and the exact
+   `implementation/` directory, including its resolved checklists, is removed; incomplete tasks,
+   unresolved checklist items, or stale proposals make no change.
+8. **Given** the Concorde source checkout is unavailable, **When** clean-project verification runs,
    **Then** every command resolves only files installed from the released preset and extension archives.
-7. **Given** the preset is disabled or reprioritized, **When** Spec Kit updates its preset registry,
+9. **Given** the preset is disabled or reprioritized, **When** Spec Kit updates its preset registry,
    **Then** existing materialized commands remain active as defined by Spec Kit 0.16.4 while future
    template resolution reflects the new state or priority.
-8. **Given** Concorde is updated or removed, **When** Spec Kit rematerializes registered commands,
+10. **Given** Concorde is updated or removed, **When** Spec Kit rematerializes registered commands,
    **Then** it installs the accepted updated layer or restores the next surviving lower-priority layer
    without leaving stale Concorde instructions.
-8. **Given** verified setup, **When** the maintainer starts Feature 001's core workflow, **Then** no
+11. **Given** verified setup, **When** the maintainer starts Feature 001's core workflow, **Then** no
    manual skill edit, extra installer, duplicate feature store, or replacement lifecycle is required.
 
 ---
@@ -245,14 +262,15 @@ project-owned sources.
   priority, trust sources, integration inheritance, and intended changes.
 - **FR-004**: The installed component set and versions MUST match the plan accepted by the maintainer.
 - **FR-005**: The preset MUST compose Concorde architecture guidance into normal feature, plan, and
-  task templates without creating a second canonical feature specification.
+  task templates, supply the permanent feature-design template, and avoid creating a second
+  canonical feature specification.
 - **FR-006**: The preset MUST provide Concorde-aware command layers for `specify`, `clarify`,
   `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues`; these are
   overrides of existing lifecycle command surfaces, not new Concorde runtime command IDs.
 - **FR-007**: Each path-sensitive preset command MUST resolve the selected feature and the correct
   durable or temporal workspace before any inherited instruction or helper can read or write a
   legacy root-level artifact.
-- **FR-008**: The extension MUST register the five Concorde-specific commands and the portable
+- **FR-008**: The extension MUST register the six Concorde-specific commands and the portable
   selected-workspace and runtime support they require through the target project's active
   coding-agent integration.
 - **FR-009**: Setup MUST preserve Spec Kit's authority for its normal lifecycle and MUST NOT install a
@@ -276,8 +294,8 @@ project-owned sources.
   command artifacts materialized for the active integration.
 - **FR-018**: Setup verification MUST execute every normal command whose artifact path is changed by
   Concorde and MUST prove the durable-root/temporal-`implementation/` path matrix without root-level
-  copies or symlinks.
-- **FR-019**: Setup verification MUST exercise all five installed Concorde-specific command intents
+  checklist, plan, task, or other temporal compatibility copies or symlinks.
+- **FR-019**: Setup verification MUST exercise all six installed Concorde-specific command intents
   through each supported presentation style without making installation responsible for their core
   workflow semantics.
 - **FR-020**: Clean-project acceptance MUST install from the built bundle and generated catalogs with
@@ -307,6 +325,12 @@ project-owned sources.
 - **FR-029**: A command-registration check that only finds expected text MUST NOT be accepted as setup
   evidence; verification MUST execute the installed winning command surfaces and compare their
   observable workspace results with the accepted distribution contract.
+- **FR-030**: Clean-project verification MUST prove that feature creation provides root `design.md`
+  and that installed hardening refuses incomplete or stale attempts and applies only an explicitly
+  approved, digest-bound proposal to the selected feature.
+- **FR-031**: Installed `specify`, `clarify`, and `checklist` surfaces MUST route every generated
+  requirements-quality artifact to the selected feature's `implementation/checklists/` directory;
+  they MUST NOT create or preserve a feature-root `checklists/` compatibility location.
 
 ### Scope
 
@@ -362,7 +386,7 @@ project-owned sources.
 - **SC-003**: Three consecutive installations of the same release produce one unchanged installed
   component set and no modifications to project-authored sources.
 - **SC-004**: In 100% of supported coding-agent presentations, the nine affected normal commands and
-  five Concorde-specific commands are materialized from the installed release and expose equivalent
+  six Concorde-specific commands are materialized from the installed release and expose equivalent
   observable behavior.
 - **SC-005**: Every seeded unsupported-version, untrusted-source, missing-component, digest,
   collision, and partial-failure case stops without a false success record and provides actionable
@@ -376,7 +400,8 @@ project-owned sources.
   and freshness checks with zero errors or warnings.
 - **SC-009**: Every command in the phase-path acceptance matrix reads or writes only its specified
   durable feature-root or temporal `implementation/` location in three consecutive clean-project
-  runs, with zero root compatibility copies or symlinks.
+  runs, with every checklist below `implementation/checklists/` and zero root compatibility copies or
+  symlinks.
 - **SC-010**: Clean-project verification succeeds with zero reads from the Concorde checkout and
   fails when any required preset command layer, extension command, adapter, or runtime file is
   removed from the release archive.

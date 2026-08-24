@@ -16,9 +16,11 @@ normative maintained-source representation used by that service, not an addition
   explaining component invocation, workflow, sequence, data flow, or lifecycle for representative
   scenarios; it does not own feature behavior or module boundaries.
 - Each feature has one canonical module-owned specification at
-  `specs/<root-slug>[/modules/<child-slug>...]/features/<number-name>/spec.md`; its textual outcome and
-  requirements are primary, while scenarios are representative examples. Architecture metadata and
-  behavioral text coexist there instead of being split across parallel feature documents.
+  `specs/<root-slug>[/modules/<child-slug>...]/features/<number-name>/spec.md` and one canonical durable
+  realization at the adjacent `design.md`. The specification owns behavior and why it matters;
+  scenarios are representative examples. The design explains how related modules/features and
+  implementation decisions realize that behavior while referring to, never redefining, module
+  architecture.
 - Code and tests own implementation and executable evidence. Missing evidence remains `unknown`.
 
 ## Feature Workspace Layout
@@ -28,11 +30,12 @@ Each feature root separates durable intent from one temporal delivery attempt:
 ```text
 features/<number-name>/
 ├── spec.md
+├── design.md
 ├── diagrams/
 │   └── <scenario-or-question>.json
 ├── contracts/
-├── checklists/
 └── implementation/
+    ├── checklists/
     ├── plan.md
     ├── research.md
     ├── data-model.md
@@ -41,15 +44,17 @@ features/<number-name>/
     └── validation.md
 ```
 
-`spec.md`, declared feature-owned Archify JSON below `diagrams/`, feature-level contract definitions/representations,
-and requirements-quality checklists are durable. The files below `implementation/` describe and evidence at most one active delivery
-attempt. They are not architecture entities and do not amend feature behavior by changing. Root-level
-`plan.md`, `tasks.md`, research, technical models, acceptance guides, or delivery evidence are
-invalid; compatibility copies and symlinks are prohibited.
+`spec.md`, `design.md`, declared feature-owned Archify JSON below `diagrams/`, and feature-level
+contract definitions/representations are durable. Requirements-quality checklists and the other files
+below `implementation/` describe, review, and evidence at most one active delivery attempt. They are
+not architecture entities and do not amend feature behavior or accepted design by changing.
+Root-level `checklists/`, `plan.md`, `tasks.md`, research, technical models, acceptance guides, or
+delivery evidence are invalid; compatibility copies and symlinks are prohibited.
 
-After acceptance, project policy may freeze, archive, or remove an implementation attempt without
-changing the feature's stable ID, providing module, root `spec.md`, or refinements. An existing
-non-empty attempt requires an explicit resume decision and must never be replaced silently.
+After every current task is complete, explicit maintainer approval may harden the accepted realization
+into `design.md` and remove the whole `implementation/` directory. A completed attempt remains
+temporal until this operation succeeds. An existing non-empty attempt requires an explicit resume
+decision and must never be replaced, archived as a second authority, or removed silently.
 
 ## Phase Path Mapping
 
@@ -57,9 +62,11 @@ The selected feature pointer identifies the feature root. Operations resolve fro
 
 | Operation class | Resolved authority |
 |---|---|
-| specify, clarify, requirements checklists, feature contracts | feature root |
-| plan, research, technical model, quickstart | `implementation/` |
+| specify, clarify, feature contracts | feature root for durable inputs/outputs; generated review state goes only to `implementation/checklists/` |
+| custom requirements checklists | read durable root plus available attempt context; write only `implementation/checklists/` |
+| plan, research, technical model, quickstart | read root `spec.md` + `design.md`; write `implementation/` |
 | tasks, implement, analyze, converge, task-to-issue conversion, delivery validation | `implementation/` |
+| feature hardening | read root `spec.md` + `design.md` and all attempt inputs; approved apply updates `design.md` and removes `implementation/` |
 
 `.specify/feature.json` is the standard project-scoped selection record. Read-only resolution may
 inspect but not rewrite it. `SPECIFY_FEATURE_DIRECTORY` is the explicit one-command override. Concorde
@@ -78,7 +85,9 @@ does not maintain a second active-feature registry.
 ```
 
 `specification_root` is the unified subtree recursively containing `module.md`,
-`contracts/**/contract.md`, `features/*/spec.md`, and declared Archify JSON views. Readers MAY accept
+`contracts/**/contract.md`, `features/*/spec.md`, adjacent feature `design.md`, and declared Archify
+JSON views. Temporary requirements-quality checklists remain discoverable below each active feature's
+`implementation/` subtree but are not durable specification sources. Readers MAY accept
 the legacy key `architecture_root` only as an explicitly versioned migration alias; writers emit
 `specification_root`. Paths are project-relative POSIX paths. Absolute paths, backslashes, empty
 segments, `.` segments, `..` segments, and symlink escapes are invalid.
@@ -150,8 +159,26 @@ A lower-level feature without a parent refinement must include `internal: true` 
 scenario references supply examples and do not exhaustively define the feature.
 
 The `canonical_spec` path must equal the document's own project-relative path. Its containing feature
-root must match the providing module's package and may contain at most one active
-`implementation/` child. Durable feature metadata must never be inferred from that child.
+root must match the providing module's package, contain a real non-symlink `design.md`, and may contain
+at most one active `implementation/` child. Durable feature metadata or design decisions must never
+be inferred from that child without explicit hardening.
+
+### Feature design
+
+`design.md` is UTF-8 Markdown at exactly the feature root. It has no independent feature ID and does
+not duplicate `spec.md` front matter. Before the first hardened milestone it explicitly says that no
+realization has been hardened. Once hardened, it contains enough current information to explain:
+
+- how related modules and lower-level features collaborate for the feature's scenarios;
+- which maintained contracts govern boundaries and what data/control moves across them;
+- durable implementation decisions and code/evidence references needed to understand the realization;
+- known limitations, compatibility constraints, and deferred work that remains true after the
+  temporal attempt is removed; and
+- traceability back to behavioral requirements and maintained architecture sources.
+
+The design may quote stable identifiers and summarize the current structure, but module responsibility,
+ownership, contracts, and one-level organization remain authoritative only in module architecture
+sources. Planning and implementation commands read `design.md` as a baseline and must not update it.
 
 `diagrams` is optional for a simple feature with a recorded sufficiency rationale. Each entry has a
 safe `source` immediately below the feature's `diagrams/` directory, a `role` of `core` or

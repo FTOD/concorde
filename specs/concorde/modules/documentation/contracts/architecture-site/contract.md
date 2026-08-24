@@ -15,7 +15,7 @@ consumers:
   - external.project-maintainer
 features:
   - feature.documentation.publish-project-docsite
-version: 2
+version: 3
 evidence:
   tests:
     - docsite/tests/integration/production-build.test.ts
@@ -40,20 +40,21 @@ manifest, and sandboxed delivered Archify views where architecture sources decla
 - `/` links to distinct Architecture, Documentation, and Features collections.
 - `/architecture/**`, `/docs/**`, and `/features/**` each project one canonical source per page.
 - Architecture pages expose stable ID, kind, hierarchy metadata, source provenance, and declared
-  sandboxed Archify views; feature pages expose ID, module, and status.
+  sandboxed Archify views; feature specification pages expose ID, module, and status, while feature
+  design pages expose durable source provenance.
 - Cross-collection links and local discovery span all three route spaces.
 - Failed publication never replaces the last successfully promoted site.
 
 ## Failure Semantics
 
 Source, link, route, rendering, search, manifest, or promotion failure makes the candidate
-unpublishable. This version adds `/architecture`; its three route bases and manifest schema version
-remain stable within contract version 2.
+unpublishable. This version adds permanent feature designs within `/features`; its three route bases
+and manifest schema version remain stable within contract version 3.
 
 ## Compatibility
 
 The Architecture, Documentation, and Features route bases and build-manifest schema version remain
-stable within contract version 2. Removing a route space or provenance field is breaking.
+stable within contract version 3. Removing a route space or provenance field is breaking.
 
 ## Evidence
 

@@ -54,7 +54,7 @@ For installation, the component roles are intentionally distinct:
 - the active integration contract translates canonical extension commands into agent-specific
   presentation without changing their intent.
 
-Concorde relies on all five roles but does not redefine them. The bundle references the preset and
+Concorde relies on all six roles but does not redefine them. The bundle references the preset and
 extension; it does not absorb their contents or behavior into a new component type. After setup, the
 core workflow relies on Spec Kit's normal feature phases and supported selection of a nested feature
 workspace; setup and feature development remain separate responsibilities.

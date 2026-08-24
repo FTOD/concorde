@@ -1,15 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.invalid/contracts/feature-workspace-v1.schema.json",
-  "title": "Concorde Feature Workspace Protocol v1",
+  "$id": "https://concorde.invalid/contracts/feature-workspace-v2.schema.json",
+  "title": "Concorde Feature Workspace Protocol v2",
   "oneOf": [
     { "$ref": "#/$defs/request" },
-    { "$ref": "#/$defs/response" }
+    { "$ref": "#/$defs/response" },
+    { "$ref": "#/$defs/hardeningProposal" }
   ],
   "$defs": {
     "operation": {
       "type": "string",
-      "enum": ["feature.create", "feature.select"]
+      "enum": ["feature.create", "feature.select", "feature.harden"]
     },
     "safePath": {
       "type": "string",
@@ -40,6 +41,7 @@
       "required": [
         "feature_directory",
         "feature_spec",
+        "feature_design",
         "contracts_dir",
         "checklists_dir",
         "diagrams_dir",
@@ -55,13 +57,17 @@
       "properties": {
         "feature_directory": { "$ref": "#/$defs/safePath" },
         "feature_spec": { "$ref": "#/$defs/safePath" },
+        "feature_design": { "$ref": "#/$defs/safePath" },
         "contracts_dir": { "$ref": "#/$defs/safePath" },
-        "checklists_dir": { "$ref": "#/$defs/safePath" },
+        "checklists_dir": {
+          "$ref": "#/$defs/safePath",
+          "description": "Temporal requirements-quality review directory below the selected feature's implementation workspace."
+        },
         "diagrams_dir": { "$ref": "#/$defs/safePath" },
         "implementation_dir": { "$ref": "#/$defs/safePath" },
         "implementation_state": {
           "type": "string",
-          "enum": ["absent", "active", "accepted", "frozen", "archived", "removed"]
+          "enum": ["absent", "active", "ready_to_harden"]
         },
         "plan": { "$ref": "#/$defs/safePath" },
         "research": { "$ref": "#/$defs/safePath" },
@@ -76,7 +82,7 @@
       "additionalProperties": false,
       "required": ["schema_version", "operation", "target", "options"],
       "properties": {
-        "schema_version": { "const": 1 },
+        "schema_version": { "const": 2 },
         "operation": { "$ref": "#/$defs/operation" },
         "target": { "type": "string", "minLength": 1 },
         "options": {
@@ -88,7 +94,9 @@
             "number": { "type": "string", "pattern": "^[0-9]{3,}$" },
             "approved": { "type": "boolean" },
             "proposal_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
-            "resume": { "type": "boolean" }
+            "resume": { "type": "boolean" },
+            "proposal": { "$ref": "#/$defs/safePath" },
+            "apply": { "type": "boolean" }
           }
         }
       }
@@ -108,12 +116,12 @@
         "source_digest"
       ],
       "properties": {
-        "schema_version": { "const": 1 },
+        "schema_version": { "const": 2 },
         "operation": { "$ref": "#/$defs/operation" },
         "target": { "type": "string", "minLength": 1 },
         "status": {
           "type": "string",
-          "enum": ["proposal", "selected", "unchanged", "invalid", "conflict", "failed"]
+          "enum": ["proposal", "eligible", "selected", "hardened", "unchanged", "invalid", "conflict", "failed"]
         },
         "workspace": {
           "oneOf": [
@@ -129,7 +137,7 @@
             "required": ["path", "action", "meaning"],
             "properties": {
               "path": { "$ref": "#/$defs/safePath" },
-              "action": { "type": "string", "enum": ["create", "update", "select"] },
+              "action": { "type": "string", "enum": ["create", "update", "select", "delete"] },
               "meaning": { "type": "string", "minLength": 1 }
             }
           }
@@ -140,7 +148,53 @@
           "uniqueItems": true
         },
         "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
-        "source_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+        "source_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "design_digest_before": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
+        "design_digest_after": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
+        "removed_artifacts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/safePath" },
+          "uniqueItems": true
+        },
+        "retained_artifacts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/safePath" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "hardeningProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proposal_version",
+        "operation",
+        "target",
+        "source_digest",
+        "design",
+        "remove"
+      ],
+      "properties": {
+        "proposal_version": { "const": 1 },
+        "operation": { "const": "feature.harden" },
+        "target": { "type": "string", "minLength": 1 },
+        "source_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "design": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "content"],
+          "properties": {
+            "path": { "$ref": "#/$defs/safePath" },
+            "content": { "type": "string", "minLength": 1 }
+          }
+        },
+        "remove": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/safePath" },
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true
+        }
       }
     }
   }

@@ -14,7 +14,7 @@ from tests.concorde.support.specify_project import SpecifyProject
 
 
 class InstalledCodexWorkflowTests(unittest.TestCase):
-    def test_five_commands_use_installed_runtime_and_missing_adapter_fails(self):
+    def test_six_commands_use_installed_runtime_and_missing_adapter_fails(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
             dist = base / "dist"
@@ -34,7 +34,7 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     len({registered_artifact(root, "codex", command) for command in CONCORDE_COMMANDS}),
-                    5,
+                    6,
                 )
                 launcher = root / ".specify/extensions/concorde/scripts/python/concorde.py"
                 operations = (
@@ -52,6 +52,17 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     )
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                     self.assertIn(json.loads(result.stdout)["status"], statuses)
+                implementation = root / "specs/example/features/001-deliver/implementation"
+                implementation.mkdir()
+                (implementation / "tasks.md").write_text("# Tasks\n\n- [X] T001 Complete installed fixture\n", encoding="utf-8")
+                harden = subprocess.run(
+                    [sys.executable, str(launcher), "--project-root", str(root), "feature", "harden", "--propose"],
+                    cwd=root,
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(harden.returncode, 0, harden.stdout + harden.stderr)
+                self.assertEqual(json.loads(harden.stdout)["status"], "eligible")
                 adapter = root / ".specify/extensions/concorde/scripts/python/workspace.py"
                 adapter.unlink()
                 missing = subprocess.run(

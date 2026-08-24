@@ -21,6 +21,7 @@ class WorkspaceError(ValueError):
 class WorkspacePaths:
     feature_directory: str
     feature_spec: str
+    feature_design: str
     contracts_dir: str
     checklists_dir: str
     diagrams_dir: str
@@ -66,12 +67,16 @@ def resolve_phase_paths(project_root: str | Path, feature_directory: str) -> Wor
     if root.is_symlink():
         raise WorkspaceError("feature root may not be a symlink")
     spec = root / "spec.md"
+    design = root / "design.md"
     if not root.is_dir() or not spec.is_file() or spec.is_symlink():
         raise WorkspaceError(f"selected feature root has no canonical spec.md: {relative}")
+    if not design.is_file() or design.is_symlink():
+        raise WorkspaceError(f"selected feature root has no canonical design.md: {relative}")
     implementation = f"{relative}/implementation"
     return WorkspacePaths(
         feature_directory=relative,
         feature_spec=f"{relative}/spec.md",
+        feature_design=f"{relative}/design.md",
         contracts_dir=f"{relative}/contracts",
         checklists_dir=f"{relative}/checklists",
         diagrams_dir=f"{relative}/diagrams",
@@ -166,6 +171,7 @@ def _planned_paths(relative: str) -> WorkspacePaths:
     return WorkspacePaths(
         feature_directory=relative,
         feature_spec=f"{relative}/spec.md",
+        feature_design=f"{relative}/design.md",
         contracts_dir=f"{relative}/contracts",
         checklists_dir=f"{relative}/checklists",
         diagrams_dir=f"{relative}/diagrams",
@@ -277,6 +283,7 @@ def propose_feature(
     changes = [
         {"path": module.path, "action": "update", "meaning": f"Register {feature_id} with {module_id}."},
         {"path": paths.feature_spec, "action": "create", "meaning": "Create the canonical specification through the normal specify phase."},
+        {"path": paths.feature_design, "action": "create", "meaning": "Create the durable feature design with no hardened realization yet."},
     ]
     return OperationResult(
         "feature.create",

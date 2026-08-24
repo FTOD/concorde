@@ -3,6 +3,7 @@
 **Feature**: `feature.concorde.install-with-speckit`
 **Attempt state**: active
 **Evidence status**: partial
+**Accepted design SHA-256**: `e522513e43f6437d53b49dbf96e533d903b3765519a7cf90f179db4bbd3e55c8`
 
 ## Automated Evidence
 
@@ -17,12 +18,13 @@
 
   | Artifact | SHA-256 |
   |---|---|
-  | `concorde-0.1.0.zip` | `0c2f39ab7f652369dd8463ad20c9564210548c0e2255b14c660f97d29fdbb60a` |
-  | `concorde-core-0.1.0.zip` | `17a4a48644ffdfd083301a1c7570eb2a076a327333343a5527c11d0b3e74a861` |
+  | `concorde-0.1.0.zip` | `cee9da2f0698e93698ec3acad2f0d4a08bf43e8d51e420f0e14b3ded5e27eb36` |
+  | `concorde-core-0.1.0.zip` | `adfd1502a795afa0f9b969f38fa1fcf1b74ee8e9e67a948a077091a4e22fbe94` |
   | `concorde-starter-0.1.0.zip` | `343ecb318685040f0048b63b3dd1178ab79bcc29882cd6c717c5c9796b35ae3a` |
 
-- The preset archive contains exactly three append template layers and nine complete `replace`
-  command layers. The extension archive contains five commands, four scripts, schemas, and the full
+- The preset archive contains exactly three append template layers, one Concorde-owned design
+  template replacement, and nine complete command replacements. The extension archive contains six
+  commands, four scripts, schemas, and the full
   runtime. Release tests reject files outside the maintained component allowlists.
 - Native lifecycle tests cover trusted catalog, source directory, manifest, archive, initialized and
   uninitialized targets; preview/install parity; three-repeat idempotency; compatible update; rollback;
@@ -30,16 +32,20 @@
 
 ### Installed command behavior
 
-- The complete Concorde Python suite passed: **87 tests**.
+- The non-interactive complete Python discovery run passed **93 tests** in 45.505 seconds.
 - Clean targets outside the checkout installed the built bundle through served generated catalogs.
-  Codex skills and Gemini slash-command integrations materialized all **nine normal + five Concorde**
+  Codex skills and Gemini slash-command integrations materialized all **nine normal + six Concorde**
   command surfaces.
 - Every normal command executed its installed workspace bootstrap before phase routing. Three
-  byte-equivalent phase-matrix runs resolved specification/clarification/checklists to the durable
-  feature root and planning/tasks/implementation/analysis/convergence to `implementation/`, with no
-  root plan/task aliases or symlinks.
+  byte-equivalent phase-matrix runs resolved specification/clarification intent to the durable
+  feature root, every generated checklist to `implementation/checklists/`, and planning/tasks/
+  implementation/analysis/convergence to `implementation/`, with no root checklist/plan/task aliases
+  or symlinks.
 - Installed extension commands executed the packaged adapter/runtime. Removing a required adapter
   member failed acceptance, proving there was no repository-local fallback.
+- The clean installed Codex workflow exercised `feature harden --propose` to an `eligible` result;
+  focused runtime tests proved incomplete refusal, stale conflict, approved atomic design promotion,
+  exact attempt removal, and rollback. Both supported presentations materialized the hardening command.
 - A lower-layer fixture verified Spec Kit 0.16.4's actual lifecycle for all nine commands: disable and
   priority changes preserve registered command artifacts while changing future resolution; bundle
   removal restores the surviving lower layer with zero stale Concorde instructions.
@@ -51,16 +57,20 @@
 - Both Feature 003 maintained views passed **9/9 Archify showcase checks** with zero composition
   errors and warnings.
 - Component model source/artifact digests:
-  `a6f787e0581e796d31e29748aa255b58a677abc1120a0f14aea1a477e87e2817` /
-  `3f2b02327654ea0bf40936ddc44ee24fa58ff0571dd63f22492d97eb5998286f`.
+  `28ad60b6151dd4044f1b917c2673eeb32969a850273a94398e05f4a83adc0bb5` /
+  `f0eb2f57ef5e7d6af9649e9ebc9be919421ca42b2dd1657786d152fdab619c4a`.
 - Installation flow source/artifact digests:
-  `bdd306524e5ae34ad23ee6c8bb4531f84aba02a5f7efb3b6019fd8997e5b3194` /
-  `06f1a04adcf029ae9884ebce155e5618daded6eeff37d547a6ee0dec5d2e324d`.
+  `6c60625a0adbf854fe947a3de478c7dc4ad52b5496d178aa1db016dd554bfe6f` /
+  `a8c888acb323c0dd4d0ac5745be5d9785bcffb570f8379004a74f3669afd0ac1`.
 - Browser visual-check was attempted for both outputs but skipped because Chrome/Chromium is
   unavailable. Receipts retain `visualReview: pending`; containment and perceptual review are not
   fabricated.
-- `npm run check` in `docsite/` passed TypeScript, **14 test files / 29 tests**, **31 pages** with
+- `npm run check` in `docsite/` passed TypeScript, **14 test files / 29 tests**, **39 pages** with
   **31 excluded sources**, zero validation errors, automatic diagram embedding, and production build.
+- Concorde self-validation returned `success` over 35 canonical artifacts with zero findings and
+  source digest `sha256:94fda1c23dd680f3b28f2990290afaa91e8c09b4d03d135d6e6a6a2a2e640565`.
+- The requirements checklist is confined to `implementation/checklists/requirements.md`; no root
+  copy or symlink remains.
 
 ## Pending Human or Browser Evidence
 

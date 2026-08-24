@@ -30,6 +30,7 @@ export default function concordeContentPlugin(
           architecture: content.documents.filter((document) => document.collectionId === 'architecture').length,
           docs: content.documents.filter((document) => document.collectionId === 'docs').length,
           features: content.documents.filter((document) => document.collectionId === 'features').length,
+          designs: content.documents.filter((document) => document.collectionId === 'feature-designs').length,
         },
       });
     },

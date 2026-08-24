@@ -1,5 +1,5 @@
-export type CollectionId = 'architecture' | 'docs' | 'features';
-export type ContentKind = 'architecture-source' | 'project-document' | 'feature-specification';
+export type CollectionId = 'architecture' | 'docs' | 'features' | 'feature-designs';
+export type ContentKind = 'architecture-source' | 'project-document' | 'feature-specification' | 'feature-design';
 export type SourceState = 'discovered' | 'parsed' | 'validated' | 'mapped' | 'rendered' | 'invalid';
 
 export interface SourceCollection {
@@ -49,6 +49,10 @@ export interface SourceDocument {
 
 export interface ProjectDocument extends SourceDocument {
   collectionId: 'docs';
+}
+
+export interface FeatureDesign extends SourceDocument {
+  collectionId: 'feature-designs';
 }
 
 export interface FeatureSpecification extends SourceDocument {
@@ -125,7 +129,7 @@ export interface ValidationFinding {
 }
 
 export interface BuildManifest {
-  schemaVersion: 2;
+  schemaVersion: 3;
   generator: {
     name: 'concorde-docsite';
     version: string;

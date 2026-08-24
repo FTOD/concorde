@@ -54,7 +54,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
-1. Run `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks` from repo root and parse FEATURE_DIR, IMPLEMENTATION_DIR, FEATURE_SPEC, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. Run `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks` from repo root and parse FEATURE_DIR, IMPLEMENTATION_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
 2. **Check checklists status** (if FEATURE_DIR/checklists/ exists):
    - Treat checklist markers as a read-only gate: scan checkbox state, report status, and ask before proceeding when needed; do NOT modify checklist files or markers
@@ -91,6 +91,9 @@ You **MUST** consider the user input before proceeding (if not empty).
      - Automatically proceed to step 3
 
 3. Load and analyze the implementation context:
+   - **REQUIRED**: Read FEATURE_SPEC for behavior and FEATURE_DESIGN for the accepted realization
+     baseline. Do not edit `design.md`; only explicit Concorde hardening may promote a completed
+     attempt after all tasks are complete.
    - **REQUIRED**: Read TASKS (`IMPLEMENTATION_DIR/tasks.md`) for the complete task list and execution plan
    - **REQUIRED**: Read IMPL_PLAN (`IMPLEMENTATION_DIR/plan.md`) for tech stack, architecture, and file structure
    - **IF EXISTS**: Read `IMPLEMENTATION_DIR/data-model.md` for entities and relationships
@@ -236,5 +239,6 @@ Report final status with summary of completed work.
 
 - [ ] All tasks in tasks.md completed and marked `[X]`
 - [ ] Implementation validated against specification, plan, and test coverage
+- [ ] Durable `design.md` was not updated and `implementation/` was not removed automatically
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with summary of completed work

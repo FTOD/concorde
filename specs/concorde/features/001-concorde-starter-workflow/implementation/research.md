@@ -41,17 +41,19 @@ one level. Architecture remains part of the specification rather than a parallel
 
 ## Decision 3: Separate durable feature intent from one temporal implementation attempt
 
-**Decision**: Keep `spec.md`, `contracts/`, and `checklists/` at the feature root. Resolve plan,
-tasks, research, technical models, runnable acceptance guidance, and evidence below
-`implementation/`. Do not create root-level aliases or symlinks.
+**Decision**: Keep `spec.md`, permanent `design.md`, contracts, and diagrams at the feature root.
+Resolve requirements-quality checklists, plan, tasks, research, technical models, runnable
+acceptance guidance, and evidence below `implementation/`. A specification or clarification review
+may open `implementation/checklists/` before planning, but no root-level alias or symlink is allowed.
 
-**Rationale**: A feature outlives any chosen implementation. The split lets a maintainer revise or
-retire an implementation attempt without changing the feature identity or confusing delivery detail
-with durable intent.
+**Rationale**: A feature outlives any chosen implementation. Its accepted realization also needs a
+durable review surface independent of transient planning. The split lets a maintainer revise an
+implementation attempt without changing feature identity or confusing proposal details with
+accepted design.
 
 **Alternatives considered**:
 
-- Keeping every artifact beside `spec.md` was rejected because temporal design appears canonical.
+- Keeping every artifact beside `spec.md` was rejected because a temporal plan appears canonical.
 - Moving contracts into `implementation/` was rejected because boundary obligations survive an
   implementation attempt.
 - Multiple simultaneously active implementation directories were deferred; the first release has
@@ -186,10 +188,10 @@ silently choosing a winner and keep failures reproducible without an AI model.
 ## Decision 9: Keep contract evolution additive in the current slice
 
 **Decision**: Keep Concorde Architecture Service Protocol v1 for `init`, `context`, and `validate`.
-Use the separate custom Feature Workspace Protocol v1, owned by Spec Kit Integration, for reviewed
-`feature.create`, atomic `feature.select`, selected-root resolution, and phase-path results. The two
-command presentations may orchestrate existing Architecture Core operations, but they do not add
-create/select enum values to Architecture Service Protocol v1.
+Use the separate custom Feature Workspace Protocol v2, owned by Spec Kit Integration, for reviewed
+`feature.create`, atomic `feature.select`, approval-gated `feature.harden`, selected-root resolution,
+and phase-path results. The command presentations may orchestrate existing Architecture Core
+operations, but they do not add create/select/harden enum values to Architecture Service Protocol v1.
 
 **Rationale**: The missing user workflow can be delivered without forcing existing runtime consumers
 to adopt a new custom protocol version. It also preserves the boundary between agent orchestration
@@ -231,7 +233,7 @@ each declaration to a fresh generated artifact and embeds it automatically on th
 page.
 
 **Rationale**: A dedicated directory keeps durable visual explanations discoverable without mixing
-them with the feature specification, contracts, checklists, or temporal implementation artifacts.
+them with the feature specification, contracts, or temporal checklist and implementation artifacts.
 Declaration-driven publication prevents manual Docusaurus markup from becoming a second registry.
 The explicit role prevents a chronological call trace from being mistaken for the feature's stable
 component model.
@@ -243,18 +245,40 @@ component model.
 - Hand-written iframe markup in each specification was rejected because it duplicates routing,
   provenance, sandboxing, and freshness behavior.
 
+## Decision 12: Harden completed attempts only through an approved deterministic apply
+
+**Decision**: Let the installed agent synthesize a candidate Feature Design from a task-complete
+attempt, but let the deterministic extension runtime own eligibility, path confinement, digest
+checking, exact removal, atomic promotion, and rollback. Store the candidate at the exact
+`implementation/harden-proposal.json` path, present it in full, and apply only after explicit user
+approval. Successful apply replaces root `design.md` and removes the whole `implementation/`.
+
+**Rationale**: Design synthesis benefits from semantic judgment; deletion and authority promotion
+require deterministic, review-bound safety. Keeping the proposal inside the attempt makes its
+temporary status obvious and lets successful compaction remove it with the rest of the attempt.
+
+**Alternatives considered**:
+
+- Automatically hardening when tasks become checked was rejected because completion is eligibility,
+  not acceptance.
+- Letting the agent edit `design.md` and delete files directly was rejected because approval could
+  drift from the applied content or removal set.
+- Keeping archived attempt directories under the feature was rejected because version control and
+  durable evidence references already retain history without a second active-looking workspace.
+
 ## Unknowns Resolved
 
 - The selected workspace is the nested feature root, not its `implementation/` child.
 - Spec Kit selection remains the single active-workspace authority.
-- Contracts and checklists remain durable; plan-phase artifacts are temporal.
+- Contracts, diagrams, and accepted feature design remain durable; checklists and all plan-phase
+  artifacts are temporal under `implementation/`.
 - Feature creation coordinates reviewed placement with the normal specify phase.
 - Feature 001 proves the workspace adapter/command semantics; Feature 003 alone proves their public
   preset/extension delivery. Repository-local core edits are not product evidence.
 - Spec Kit 0.16.4 command composition is public, while preset script replacement is not a supported
   delivery mechanism for this plan.
-- Architecture Core retains three v1 operations unless implementation demonstrates a necessary new
-  deterministic boundary.
+- Architecture Service retains three v1 operations; Feature Workspace Protocol v2 owns the separate
+  create/select/harden lifecycle.
 - Feature 003 owns installation/package education; Feature 002 owns site implementation.
 - Feature-owned Archify JSON lives under `diagrams/` and is published from `spec.md` declarations.
 - All planning questions are resolved.

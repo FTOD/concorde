@@ -76,7 +76,8 @@ class BundleLifecycleTests(unittest.TestCase):
         )
         self.assertEqual(self.project.source_hashes(), source_hashes)
         skills = {path.parent.name for path in (self.root / ".agents/skills").glob("speckit-concorde-*/SKILL.md")}
-        self.assertEqual(len(skills), 5)
+        self.assertEqual(len(skills), 6)
+        self.assertIn("speckit-concorde-feature-harden", skills)
         self.project.run("extension", "disable", "concorde")
         self.assertIn("disabled", self.project.run("extension", "list").stdout.lower())
         self.project.run("extension", "enable", "concorde")

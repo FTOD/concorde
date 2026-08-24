@@ -30,13 +30,18 @@ canonical_spec: specs/concorde/features/001-concorde-starter-workflow/spec.md
 
 **Created**: 2026-08-19
 
-**Revised**: 2026-08-22
+**Revised**: 2026-08-23
 
-**Status**: Implemented for automated workflow behavior; human placement/comprehension evidence pending
+**Status**: Revised checklist lifecycle specified; routing and hardening-gate implementation updates
+remain pending, and human/browser evidence is incomplete
 
 **Input**: User description: "Make Feature 001 describe the actual Concorde workflow, including the
 organization of specifications, the development lifecycle, and the commands that keep architecture
-and feature work aligned. Move Spec Kit installation and setup into a separate feature."
+and feature work aligned. Add a permanent feature `design.md`; keep Spec Kit plan/task artifacts
+temporal; and let users explicitly harden a task-complete milestone into the durable design while
+removing the temporal implementation workspace. Keep requirements-quality checklists inside that
+temporary workspace rather than at the durable feature root. Move Spec Kit installation and setup
+into a separate feature."
 
 ## What the Concorde Workflow Is
 
@@ -79,10 +84,11 @@ specs/
     ├── features/
     │   └── <number>-<feature>/
     │       ├── spec.md           # durable canonical behavioral specification
+    │       ├── design.md         # durable accepted feature realization
     │       ├── contracts/        # durable feature-level boundary representations
     │       ├── diagrams/         # maintained feature-owned Archify explanations
-    │       ├── checklists/       # durable requirements-quality review
     │       └── implementation/   # temporal workspace for one delivery attempt
+    │           ├── checklists/   # temporal requirements-quality review state
     │           ├── plan.md
     │           ├── tasks.md
     │           ├── research.md
@@ -99,39 +105,59 @@ external actors; and the organization and contract-governed interactions among t
 participants. Child features, grandchildren, and deeper implementation details remain hidden until
 the maintainer zooms into that child as the new current module.
 
-### Durable specification and temporal implementation
+### Durable specification, durable design, and temporal implementation
 
 A feature remains valid beyond any one attempt to implement it. Its root therefore contains only
-durable intent: `spec.md`, normative feature contracts and representations, and requirements-quality
-checklists. These artifacts answer what behavior is required, who owns it, and which boundary
-obligations must hold.
+durable sources: `spec.md`, `design.md`, normative feature contracts and representations,
+and feature-owned diagrams. `spec.md` answers what behavior is required and why it matters without
+prescribing its realization. `design.md` records how the accepted implementation realizes that
+feature by composing related modules, lower-level features, contracts, data/control flows, and
+implementation decisions. It references the relevant module architecture rather than redefining
+module boundaries or becoming a second `architecture.json`.
 
 The `implementation/` directory is the active workspace for one delivery attempt. Its plan, research,
-technical model, tasks, runnable acceptance guide, and recorded evidence answer how that attempt will
-realize and verify the feature. They may change substantially while the implementation is in progress
-and do not amend the feature merely by changing. When the user accepts the implementation, the
-workspace may be frozen as historical evidence, archived, or removed according to project policy;
-the feature identity and specification remain at the feature root. A later implementation attempt
-starts from the durable feature and creates a fresh temporal workspace rather than treating an old
-plan as current intent.
+technical model, tasks, requirements-quality checklists, runnable acceptance guide, and recorded
+evidence answer how that attempt will realize, review, and verify the feature. A specification or
+clarification phase may create `implementation/checklists/` before a plan exists; doing so opens the
+temporary attempt without turning review state into durable intent. Checkboxes record the current
+review cycle, while every accepted requirement or design conclusion must be incorporated into
+`spec.md` or, through hardening, `design.md`. Temporal artifacts may change substantially while work
+is in progress and do not amend either durable document merely by changing.
 
-There is at most one active `implementation/` workspace for a feature. Tools must resolve
-`spec.md`, `contracts/`, and `checklists/` from the feature root, while resolving plan-phase and
-implementation-phase artifacts from `implementation/`. No compatibility copy or symlink may place
-`plan.md` or `tasks.md` beside `spec.md`.
+When every task in the current attempt is complete, the maintainer may explicitly **harden** that
+milestone. Hardening is a reviewable compaction, not an automatic end-of-implementation side effect:
+the coding agent proposes the resulting `design.md` and the exact temporal files to remove; Concorde
+binds the proposal to the current source digest and verifies task completion; and only explicit
+approval applies the design update and removes `implementation/` atomically. The hardened design
+retains accepted realization decisions and useful traceability, not the attempt's transient task log.
+If any task is incomplete or any existing checklist item remains unresolved, the operation is
+ineligible and changes nothing.
+
+A later implementation attempt starts from both durable documents—`spec.md` as required behavior and
+`design.md` as the accepted realization baseline—and creates a fresh `implementation/` directory.
+The attempt may propose changes to either, but only specification review changes `spec.md`, and only a
+subsequent approved hardening changes `design.md`. At most one active attempt exists for a feature,
+and a successfully hardened feature has no `implementation/` directory.
+
+Tools must resolve `spec.md`, `design.md`, and `contracts/` from the feature root, while resolving
+checklists, plan-phase artifacts, and implementation-phase artifacts from `implementation/`. No
+compatibility copy or symlink may place `checklists/`, `plan.md`, or `tasks.md` beside the durable
+documents.
 
 ### Artifact authority
 
 | Information | Canonical source | Role in the workflow |
 |---|---|---|
 | Feature behavior, requirements, constraints, and representative examples | `spec.md` | Defines what the providing module must make observable. |
-| Feature implementation design and work | `implementation/plan.md` and `implementation/tasks.md` | Temporarily records one chosen delivery approach and its executable work. |
+| Accepted feature realization | `design.md` | Permanently explains how related modules, features, contracts, flows, and implementation decisions realize the feature, without owning their module architecture. |
+| Requirements-quality review state | `implementation/checklists/` | Temporarily records whether the current specification or implementation attempt is ready to proceed; accepted findings must be reflected in durable sources. |
+| Proposed feature implementation design and work | `implementation/plan.md` and `implementation/tasks.md` | Temporarily records one chosen delivery approach and its executable work until it is rejected or hardened. |
 | Implementation research, technical models, acceptance guidance, and delivery evidence | Other files under `implementation/` | Supports one implementation attempt and never becomes durable feature intent by location. |
 | Module responsibility, feature ownership, contracts, constraints, and decisions | `module.md` and contract Markdown | Defines durable architectural prose at that module level. |
 | Current-level structure and ordered scenario interactions | `architecture.json` | Defines the machine-readable one-level view. |
 | Feature-owned scenario or component explanation | Descriptively named Archify JSON under `diagrams/` | Supplements the text and bounded module view when invocation, collaboration, state, or data movement benefits from a visual explanation. |
 | Standard or custom boundary representation | Referenced standard, or maintained schema/grammar and examples | Defines the information that may cross a module boundary. |
-| Implementation and executable evidence | Code and tests | Records what exists and what has been demonstrated. |
+| Implementation and executable evidence | Code and tests | Records what exists and what has been demonstrated; durable references to accepted evidence may be summarized in `design.md`. |
 | Rendered diagrams, documentation pages, indexes, and reports | Generated projections | Makes canonical sources reviewable; never becomes maintained intent. |
 
 A feature is defined by its text. Scenarios are representative examples that make the behavior and
@@ -160,11 +186,17 @@ returns the authoritative phase paths. The coding agent then continues the norma
 against either the durable feature root or its temporal `implementation/` directory. The preset does
 not implement a second specification, planning, or implementation engine.
 
-The `concorde` extension adds five Concorde-specific command surfaces: `init`, `feature-create`,
-`feature-select`, `context`, and `validate`. Their instructions invoke the installed Bash or
+The `concorde` extension adds six Concorde-specific command surfaces: `init`, `feature-create`,
+`feature-select`, `context`, `validate`, and `feature-harden`. Their instructions invoke the installed Bash or
 PowerShell launcher, which locates the extension's Python entry point and runtime. The Python runtime
 performs the deterministic operation and returns canonical JSON; the coding agent presents the
 result, requests approval when mutation is proposed, or explains findings to the maintainer.
+
+`feature-harden` is deliberately split between agent judgment and deterministic runtime control. The
+agent synthesizes a concise candidate `design.md` from the completed attempt, current code/tests, and
+durable sources. The runtime decides eligibility, verifies that every task is complete, binds the
+proposal to the current sources, confines the design/removal paths, and applies an approved proposal
+without leaving a partially updated design or partially removed attempt.
 
 ### The two invocation paths
 
@@ -178,6 +210,11 @@ Concorde architecture operation
 Maintainer → skill or slash command → coding agent follows extension command Markdown
            → concorde.sh or concorde.ps1 → concorde.py → Concorde Python runtime
            → .concorde/config.json + specs/ → structured result → review or approval
+
+Feature hardening
+Maintainer → feature-harden skill or slash command → agent drafts the accepted feature design
+           → runtime verifies completed tasks + proposal digest → maintainer reviews exact change
+           → approved atomic apply → design.md updated + implementation/ removed
 ```
 
 An active coding-agent integration owns only presentation and invocation syntax. Spec Kit owns
@@ -203,10 +240,11 @@ project, but they do not have equal authority.
 │   ├── contracts/**/contract.md          # architecture: external I/O obligations
 │   └── features/<feature>/
 │       ├── spec.md                       # feature: durable behavior
+│       ├── design.md                     # feature: durable accepted realization
 │       ├── contracts/                    # feature: normative interface representations
 │       ├── diagrams/                     # feature: text-backed visual explanations
-│       ├── checklists/                    # feature: durable requirements-quality review
 │       └── implementation/               # temporal: one delivery attempt
+│           └── checklists/                # temporal: requirements-quality review state
 ├── <source directories>/                 # implementation and runtime behavior
 ├── <test directories>/                   # executable evidence
 ├── generated/                            # reproducible diagrams and other projections
@@ -216,9 +254,11 @@ project, but they do not have equal authority.
 `.concorde/` and `.specify/` are workflow control or installed-tool locations; they are not feature
 or architecture specifications. Under `specs/`, authority is determined by artifact kind and
 location: module prose, module contracts, and the bounded `architecture.json` describe architecture;
-feature `spec.md`, feature contracts, diagrams, and checklists describe durable feature intent and
-examples. The `implementation/` subtree, source code, tests, and generated outputs provide design or
-evidence for an implementation, but they cannot silently redefine either authority.
+feature `spec.md`, feature contracts, and diagrams describe durable feature intent and examples;
+feature `design.md` describes the durable accepted realization. Checklists and the other
+`implementation/` artifacts provide temporary review state, proposals, or evidence; source code,
+tests, and generated outputs likewise cannot silently redefine behavioral, design, or architectural
+authority.
 
 Contracts intentionally appear at two levels. A module contract records architectural identity,
 ownership, direction, and boundary obligations. A feature-local contract or schema may define the
@@ -235,15 +275,16 @@ command.
 |---|---|---|
 | 1. Establish the root | Create or review the root module package, its I/O contracts, top-level features, immediate submodules, and one-level view. | `speckit.concorde.init` |
 | 2. Locate ownership | Inspect exactly one bounded module level and decide which module owns the behavior at which abstraction. | `speckit.concorde.context <module-or-feature-id>` |
-| 3. Create or select work | Create one nested feature root under the owning module, or select an existing feature; keep durable specification sources at the root. | `speckit.concorde.feature.create` / `speckit.concorde.feature.select` |
-| 4. Specify behavior | Describe the feature in text, clarify uncertainty, record representative scenarios, contracts, refinement links, and expected evidence, and add feature-owned diagrams when they improve comprehension. | Normal Spec Kit specification and clarification phases |
+| 3. Create or select work | Create one nested feature root under the owning module, including `spec.md` and `design.md`, or select an existing feature; keep durable sources at the root. | `speckit.concorde.feature.create` / `speckit.concorde.feature.select` |
+| 4. Specify and review behavior | Describe the feature in text, clarify uncertainty, record representative scenarios, contracts, refinement links, and expected evidence, add feature-owned diagrams when they improve comprehension, and record the current requirements-quality review under `implementation/checklists/`. | Normal Spec Kit specification, clarification, and checklist phases |
 | 5. Agree on architecture | Review ownership, I/O contracts, immediate participants, dependency direction, and the affected one-level view before approving the implementation structure. | Bounded context plus maintained architecture sources |
-| 6. Open an implementation attempt | Create the feature's temporal `implementation/` workspace, then produce its plan and tasks with explicit architecture, contract, validation, and freshness work where affected. | Normal Spec Kit planning and task phases with Concorde path resolution |
+| 6. Plan the implementation attempt | Read `spec.md` plus the accepted `design.md` baseline, continue or create the temporal `implementation/` workspace, then produce its plan and tasks with explicit architecture, contract, validation, and freshness work where affected. | Normal Spec Kit planning and task phases with Concorde path resolution |
 | 7. Implement with bounded context | Give the coding agent only the relevant module level, feature artifacts, contracts, and evidence expectations; descend one level only when needed. | `speckit.concorde.context` plus normal implementation/convergence phases |
 | 8. Reconcile and validate | Check maintained sources, references, hierarchy, contracts, views, and evidence; report disagreement or unknown evidence rather than silently rewriting intent. | `speckit.concorde.validate [path-or-id]` |
-| 9. Review and publish | Review behavioral and architectural changes together, then reproduce the read-only project site through the separate documentation feature. | Documentation publication workflow |
+| 9. Harden an accepted milestone | After all current tasks are complete, review a digest-bound proposal that moves accepted realization details into `design.md`; explicitly approve an atomic design update and removal of `implementation/`. | `speckit.concorde.feature.harden` |
+| 10. Review and publish | Review behavioral, design, and architectural changes together, then reproduce the read-only project site through the separate documentation feature. | Documentation publication workflow |
 
-The five Concorde commands support this workflow without replacing the normal Spec Kit phases.
+The six Concorde commands support this workflow without replacing the normal Spec Kit phases.
 Feature creation and selection belong to Spec Kit Integration; initialization, context retrieval, and
 validation belong to Architecture Core.
 
@@ -256,13 +297,15 @@ are agent-facing instructions, which parts are executable adapters or Python cod
 artifacts they read or write, and how those responsibilities interact?
 
 - **Skills and commands** separates the Maintainer and Coding Agent Integration from the nine
-  preset-replaced Spec Kit phase surfaces and five extension-provided Concorde surfaces.
+  preset-replaced Spec Kit phase surfaces and six extension-provided Concorde surfaces.
 - **Normal Spec Kit phases** follows a phase surface through the selected-workspace adapter and
   project control state to durable feature sources and the temporal implementation attempt.
 - **Concorde operations** follows an extension command through portable launchers to the deterministic
   Python runtime and the architecture or feature sources it manages and validates.
-- **Project workspace** separates control state, architectural intent, durable feature intent,
-  temporal implementation/evidence, and generated read models.
+- **Project workspace** separates control state, architectural intent, durable behavioral intent,
+  accepted feature design, and temporal implementation/evidence.
+- **Harden a milestone** shows the task-completion gate and approved movement from a disposable
+  attempt into permanent `design.md`.
 
 The core view intentionally does not model chronological message order. If a particular user story
 later needs call-by-call timing, retries, or asynchronous returns, it may add a separately declared
@@ -317,14 +360,15 @@ the normal lifecycle, and verify that no duplicate flat specification is created
 **Acceptance Scenarios**:
 
 1. **Given** proposed behavior owned entirely by one module, **When** the maintainer creates the
-   feature, **Then** its workspace is nested under that module's `features/` directory and becomes the
-   single active Spec Kit workspace.
+   feature, **Then** its workspace is nested under that module's `features/` directory, contains one
+   canonical `spec.md` and one durable `design.md`, and becomes the single active Spec Kit workspace.
 2. **Given** behavior spanning multiple child modules, **When** ownership is reviewed, **Then** the
    feature is owned by their nearest common parent and lower-level features may refine it from the
    participating children.
 3. **Given** an existing nested feature, **When** the maintainer selects it, **Then** specification
-   phases resolve the canonical root `spec.md`, while delivery phases resolve `implementation/plan.md`
-   and `implementation/tasks.md`, without copying any artifact beside another authority.
+   phases resolve the canonical root `spec.md`, planning reads the root `design.md` as its accepted
+   baseline, and delivery phases resolve `implementation/plan.md` and `implementation/tasks.md`,
+   without copying any artifact beside another authority.
 4. **Given** a feature specification, **When** it is reviewed, **Then** its text defines the behavior
    and its scenarios are clearly presented as representative examples rather than exhaustive
    definitions.
@@ -381,8 +425,9 @@ validation reports both problems consistently without changing maintained source
 **Acceptance Scenarios**:
 
 1. **Given** an active feature, **When** implementation context is requested, **Then** it contains the
-   feature artifacts, owning module, relevant parent/child refinement links, boundary contracts,
-   current one-level view, and declared evidence, but no unrelated deeper hierarchy.
+   feature specification, accepted feature design, active attempt artifacts, owning module, relevant
+   parent/child refinement links, boundary contracts, current one-level view, and declared evidence,
+   but no unrelated deeper hierarchy.
 2. **Given** unchanged sources, **When** validation is repeated through different supported agent
    presentations, **Then** findings and ordering are identical.
 3. **Given** a mismatch among specification, architecture, code, tests, or generated projections,
@@ -396,6 +441,45 @@ validation reports both problems consistently without changing maintained source
    architecture operation from invocation to the files and executable components involved, and can
    distinguish maintained architecture, durable feature intent, temporal work, and generated evidence.
 
+---
+
+### User Story 5 - Harden a Completed Milestone into Durable Design (Priority: P2)
+
+As a maintainer, I can deliberately compact a completed and accepted implementation attempt into the
+feature's permanent `design.md` and remove its temporal planning artifacts so that future maintainers
+see the current realization without mistaking an old task plan for active work.
+
+**Why this priority**: The permanent design is the bridge between behavioral intent and AI-produced
+code. Without an explicit hardening lifecycle, accepted implementation knowledge either disappears
+with temporary files or leaves stale plans that look authoritative.
+
+**Independent Test**: In one fixture with an unchecked task and one with all tasks complete, invoke
+the installed hardening surface. Verify that the first remains byte-identical; the second produces a
+reviewable digest-bound proposal; and explicit approval updates `design.md` and removes only the
+feature's `implementation/` directory without changing architecture, specification, code, or tests.
+
+**Acceptance Scenarios**:
+
+1. **Given** a feature whose current `tasks.md` contains any unchecked or malformed task item,
+   **When** hardening eligibility is checked, **Then** the operation identifies the blocking tasks and
+   makes no source change.
+2. **Given** every task in the current attempt is complete, **When** hardening is requested, **Then**
+   the coding agent proposes a complete `design.md`, the runtime returns the exact design target,
+   temporal removal set, and source digest, and nothing is removed before maintainer approval.
+3. **Given** a hardening proposal, **When** the maintainer reviews its feature realization, **Then**
+   the document explains module/feature collaboration, contract and data/control flow, scenario
+   realization, durable implementation decisions, code/evidence references, and known limitations
+   without copying module architecture into the feature.
+4. **Given** explicit approval of an unchanged proposal, **When** hardening is applied, **Then**
+   `design.md` is created or updated and the complete `implementation/` directory is removed as one
+   recoverable operation, while `spec.md`, architecture sources, code, and tests remain unchanged.
+5. **Given** the sources, task state, candidate design, or removal set changes after proposal,
+   **When** apply is attempted, **Then** the digest or confinement check rejects the stale proposal and
+   leaves both `design.md` and `implementation/` unchanged.
+6. **Given** a hardened feature with no active attempt, **When** a later planning phase starts, **Then**
+   it reads both `spec.md` and `design.md`, creates a fresh `implementation/` workspace, and does not
+   change `design.md` until another approved hardening.
+
 ### Edge Cases
 
 - The correct providing module is unclear, or the behavior spans modules with no obvious common
@@ -404,6 +488,12 @@ validation reports both problems consistently without changing maintained source
   while another workspace is active.
 - An accepted feature has a stale or completed `implementation/` directory from an earlier delivery
   attempt.
+- A hardening request has no `tasks.md`, contains zero recognizable task items, mixes complete and
+  incomplete task syntax, or is made while implementation files are changing.
+- The candidate design is empty, still contains proposal placeholders, attempts to redefine module
+  ownership/contracts, or omits traceability needed to understand the accepted realization.
+- Hardening is interrupted after staging, the design target is a symlink, or a removal path escapes
+  the selected feature's `implementation/` directory.
 - A feature is moved between modules after lower-level refinements already refer to it.
 - A module is a leaf and therefore has no child-level architecture diagram.
 - A scenario requires a participant deeper than the current level or crosses an undeclared boundary.
@@ -429,8 +519,8 @@ validation reports both problems consistently without changing maintained source
 - **FR-004**: Selecting a child module MUST repeat the same view at the next level without expanding
   child features, grandchildren, or deeper implementation details in the parent view.
 - **FR-005**: Every feature MUST have a stable ID, exactly one providing module at its abstraction
-  level, one canonical textual specification, an observable outcome, and relevant provided and
-  required contracts.
+  level, one canonical textual specification, one durable feature design, an observable outcome, and
+  relevant provided and required contracts.
 - **FR-006**: A feature spanning multiple modules MUST be owned by their nearest common parent and MAY
   be refined by features owned by participating immediate children.
 - **FR-007**: Feature refinement links MUST connect adjacent module levels, remain acyclic, and permit
@@ -462,7 +552,8 @@ validation reports both problems consistently without changing maintained source
 - **FR-018**: Concorde MUST return one bounded architectural level for a requested module or feature,
   with stable references for deliberate navigation to adjacent levels.
 - **FR-019**: Implementation context MUST include only the active feature artifacts and the smallest
-  sufficient set of module, contract, view, refinement, and evidence sources.
+  sufficient set of durable specification/design, module, contract, view, refinement, temporal, and
+  evidence sources.
 - **FR-020**: Concorde MUST deterministically validate IDs, paths, hierarchy, refinements, scenario
   boundaries, contracts, custom representations, view depth, references, evidence status, and
   generated-output freshness without requiring an AI model.
@@ -477,18 +568,23 @@ validation reports both problems consistently without changing maintained source
   contracts, bounded views, structural traceability, validation, and publication coordination.
 - **FR-025**: Generated diagrams, pages, indexes, and reports MUST be reproducible from maintained
   sources, identify their provenance, and remain non-authoritative read models.
-- **FR-026**: Each feature root MUST contain only durable feature intent and requirements-quality
-  artifacts; `plan.md`, `tasks.md`, implementation research, technical models, runnable acceptance
-  guidance, and delivery evidence MUST reside under that feature's `implementation/` directory.
+- **FR-026**: Each feature root MUST contain a canonical `spec.md` for durable behavior and a
+  canonical `design.md` for the durable accepted realization, alongside durable contracts, diagrams,
+  and other declared durable representations; requirements-quality checklists, `plan.md`, `tasks.md`,
+  implementation research, technical models, runnable acceptance guidance, and attempt evidence MUST
+  reside only under that feature's `implementation/` directory.
 - **FR-027**: The `implementation/` directory MUST represent at most one active delivery attempt and
-  MUST NOT be treated as part of the canonical behavioral specification or architecture merely
-  because it is stored under `specs/`.
-- **FR-028**: Workflow tools MUST resolve `spec.md`, normative feature contracts, and checklists from
-  the feature root, and MUST resolve plan-phase and implementation-phase artifacts from
-  `implementation/` without compatibility copies or symlinks at the root.
-- **FR-029**: After the user accepts an implementation, its temporal workspace MAY be frozen as
-  evidence, archived, or removed according to project policy without changing the feature's stable ID,
-  canonical specification, providing module, or refinement links.
+  MUST NOT be treated as part of the canonical behavioral specification, accepted design, or module
+  architecture merely because it is stored under `specs/`.
+- **FR-028**: Workflow tools MUST resolve `spec.md`, `design.md`, and normative feature contracts from
+  the feature root; specification, clarification, and custom checklist phases MUST resolve every
+  generated checklist under `implementation/checklists/`; planning MUST read both durable documents;
+  and all other plan-phase and implementation-phase artifacts MUST resolve from `implementation/`
+  without compatibility copies or symlinks at the root.
+- **FR-029**: A completed implementation attempt MUST remain temporal until the maintainer explicitly
+  chooses to harden it; successful hardening MUST preserve the feature's stable ID, specification,
+  providing module, refinement links, architecture sources, code, and tests while updating
+  `design.md` and removing the feature's `implementation/` directory.
 - **FR-030**: Specification and planning workflows MUST evaluate whether a feature's components and
   interactions would be materially clearer as a core architecture diagram and whether individual
   scenarios additionally need workflow, sequence, data-flow, or lifecycle views; every
@@ -510,13 +606,44 @@ validation reports both problems consistently without changing maintained source
   launchers, and deterministic Python runtime behavior; an agent presentation MUST NOT be documented
   as though it independently implements the operation.
 - **FR-034**: Every overridden normal Spec Kit phase MUST resolve the selected feature and its
-  phase-specific durable or temporal path through the installed workspace adapter before accessing
-  lifecycle artifacts, while every Concorde-specific operation MUST reach its installed Python
-  runtime through a project-relative portable launcher rather than this repository's source path.
+  phase-specific durable or temporal path—including the durable design path—through the installed
+  workspace adapter before accessing lifecycle artifacts, while every Concorde-specific operation
+  MUST reach its installed Python runtime through a project-relative portable launcher rather than
+  this repository's source path.
 - **FR-035**: Workflow explanations, bounded context, and validation findings MUST classify relevant
   project artifacts as workflow control or installed tooling, maintained architecture, durable
-  feature intent, temporal implementation/evidence, or generated read model, and MUST NOT promote
-  control state, implementation artifacts, or generated projections into specification authority.
+  behavioral intent, durable accepted feature design, temporal implementation/evidence, or generated
+  read model, and MUST NOT promote control state, implementation artifacts, or generated projections
+  into specification, design, or architecture authority.
+- **FR-036**: `design.md` MUST explain the accepted realization of its feature through related
+  modules/features, contract and data/control flows, representative scenario realization, durable
+  implementation decisions, implementation/evidence references, and known limitations; it MUST
+  reference rather than redefine module responsibilities, boundaries, and architecture views.
+- **FR-037**: Creating a feature MUST establish both root durable documents. Before the first hardened
+  milestone, `design.md` MUST explicitly state that no implementation realization has yet been
+  hardened rather than inventing implementation details.
+- **FR-038**: Concorde MUST provide the canonical command `speckit.concorde.feature.harden` through
+  every supported installed agent presentation, and its package-neutral command definition MUST
+  separate agent-authored design synthesis from deterministic runtime eligibility and mutation.
+- **FR-039**: Hardening eligibility MUST require an existing active `implementation/tasks.md` with at
+  least one recognizable task and every task marked complete, plus every recognizable item in any
+  existing `implementation/checklists/*.md` marked satisfied; missing, unchecked, or malformed task
+  items and unresolved checklist items MUST block hardening without modifying any file.
+- **FR-040**: Before mutation, hardening MUST present the candidate `design.md`, exact temporal removal
+  set, target feature, and digest covering all durable and temporal inputs; approval MUST apply only to
+  those exact unchanged bytes and paths.
+- **FR-041**: Hardening MUST accept only the selected feature's root `design.md` as the durable target
+  and only its complete `implementation/` directory as the removal target; it MUST reject absolute,
+  escaping, symlinked, partial, or cross-feature targets.
+- **FR-042**: Applying an approved hardening proposal MUST be failure-safe: either the new durable
+  design is present and the temporal directory is absent, or the prior design and complete temporal
+  directory remain recoverable without partial cleanup.
+- **FR-043**: A successful hardening result MUST report the hardened feature, prior and resulting
+  design digest, removed artifacts, retained authorities, and any findings in deterministic order.
+- **FR-044**: Normal planning, task, implementation, analysis, and convergence instructions shipped
+  to user projects MUST treat `design.md` as the accepted baseline and `implementation/` as a proposed
+  delta; none may update `design.md` directly or remove the temporal workspace in place of the
+  explicit hardening command.
 
 ### Scope
 
@@ -526,7 +653,10 @@ validation reports both problems consistently without changing maintained source
 - Module ownership, feature refinement, scenarios, boundary contracts, and one-level views.
 - Root initialization, bounded context retrieval, nested feature creation/selection, and deterministic
   validation as workflow operations.
-- Separation of durable feature sources from one temporal `implementation/` workspace.
+- Separation of durable behavioral specification, durable accepted feature design, and one temporal
+  `implementation/` workspace.
+- User-triggered hardening of a task-complete milestone into `design.md`, followed by safe removal of
+  its temporal workspace.
 - Architecture gates around the normal specification, plan, task, implementation, convergence, and
   review lifecycle.
 - Traceability among maintained intent, implementation, tests, validation, and generated projections.
@@ -554,9 +684,15 @@ validation reports both problems consistently without changing maintained source
 - **Feature**: Textually specified observable behavior owned by exactly one module at one abstraction
   level and optionally refined at the adjacent child level.
 - **Feature Workspace**: The single nested location containing the normal lifecycle artifacts for one
-  feature, divided into a durable feature root and a temporal implementation workspace.
+  feature, divided into durable specification/design sources and a temporal implementation workspace.
+- **Feature Design**: The permanent `design.md` account of the currently accepted feature realization,
+  including module/feature collaboration, flows, durable decisions, and evidence references without
+  becoming the owner of module architecture.
 - **Implementation Workspace**: The `implementation/` subdirectory containing the plan, tasks,
-  research, technical model, acceptance guide, and evidence for at most one active delivery attempt.
+  requirements-quality checklists, research, technical model, acceptance guide, and evidence for at
+  most one active delivery attempt.
+- **Hardening Proposal**: A reviewable, digest-bound candidate design and exact cleanup manifest for a
+  task-complete attempt; it grants no mutation authority until explicitly approved.
 - **Installed Command Surface**: An agent-facing skill or slash-command presentation materialized
   from package-neutral command Markdown; it instructs an agent but is not itself the deterministic
   Concorde runtime.
@@ -603,8 +739,10 @@ validation reports both problems consistently without changing maintained source
 - **SC-008**: All architecture changes in the acceptance sample show explicit human approval and
   separate behavioral, structural, and implementation evidence before being marked complete.
 - **SC-009**: In 100% of workflow path-resolution tests, specification and contract operations read
-  the feature root, while planning, task, implementation, analysis, and convergence operations read
-  the same feature's `implementation/` workspace; no root-level `plan.md` or `tasks.md` is created.
+  the feature root, every generated checklist is written below `implementation/checklists/`, planning
+  reads root `spec.md` and `design.md`, and task, implementation, analysis, and convergence operations
+  use the same feature's `implementation/` workspace; no root-level `checklists/`, `plan.md`, or
+  `tasks.md` is created.
 - **SC-010**: Every required feature-owned diagram passes core/supplemental role validation and all
   deterministic Archify showcase, provenance, and freshness checks with zero errors or warnings;
   every diagrammed boundary crossing resolves to its textual contract reference, and every declared
@@ -614,6 +752,18 @@ validation reports both problems consistently without changing maintained source
   which steps are agent instructions versus deterministic scripts/runtime, and classify representative
   project paths into architecture, feature, temporal implementation/evidence, control/tooling, and
   generated read-model categories.
+- **SC-012**: In 100% of hardening fixtures with any incomplete, missing, or malformed task state or
+  unresolved checklist item, the operation returns an actionable blocker and all feature bytes remain
+  unchanged.
+- **SC-013**: In 100% of approved hardening fixtures, the resulting `design.md` matches the reviewed
+  candidate, the complete `implementation/` directory is absent, all out-of-scope files are
+  byte-identical, and an injected apply failure restores the pre-operation state.
+- **SC-014**: In 100% of clean installed-project tests across supported agent presentations, the
+  feature-hardening surface uses only release-installed command/runtime artifacts and returns
+  equivalent eligibility, proposal, stale-digest, and apply results.
+- **SC-015**: At least 90% of pilot maintainers can, after five minutes of review, correctly distinguish
+  what belongs in `spec.md`, `design.md`, module architecture, and `implementation/`, and can identify
+  when a milestone is eligible to harden.
 
 ## Assumptions
 
@@ -625,10 +775,15 @@ validation reports both problems consistently without changing maintained source
   another abstraction level improves ownership or comprehension.
 - One representative primary scenario is normally sufficient to explain a feature, with alternative,
   failure, degraded, or supplemental visual scenarios added only when they improve understanding.
-- Initialization, feature creation/selection, bounded context, and validation form the implemented
-  command surface; the normal Spec Kit phases remain responsible for feature delivery between them.
-- One active implementation workspace is sufficient for the first release; the project may later
-  standardize archival naming without changing the durable/temporal authority boundary.
+- Initialization, feature creation/selection, bounded context, validation, and feature hardening form
+  the Concorde-specific command surface; normal Spec Kit phases remain responsible for feature
+  delivery between them.
+- One active implementation workspace is sufficient; accepted attempt history remains available
+  through version control and durable design/evidence references rather than archived temporal
+  directories inside the canonical feature root.
+- Task completion and resolution of every existing checklist item are deterministic hardening
+  eligibility gates. Maintainer acceptance remains the separate authorization gate and is never
+  inferred from checked boxes or passing validation.
 - Documentation publication consumes validated sources through the separate Documentation feature and
   does not mutate maintained intent.
 

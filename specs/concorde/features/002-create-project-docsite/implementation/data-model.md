@@ -9,15 +9,16 @@ Represents one canonical content authority.
 
 | Field | Type | Rules |
 |---|---|---|
-| `id` | `architecture`, `docs`, or `features` | Unique and stable within manifest version 2. |
+| `id` | `architecture`, `docs`, `features`, or `feature-designs` | Unique and stable within manifest version 3. |
 | `sourceBase` | project-relative path | `specs` for Architecture and Features; `docs` for Documentation. |
 | `routeBase` | site-root path | `/architecture`, `/docs`, or `/features`; values must not overlap. |
-| `include` | ordered glob list | Architecture selects `**/module.md` and `**/contracts/**/contract.md`; docs selects `**/*.md`; features selects `**/spec.md`. |
-| `contentKind` | enum | `architecture-source`, `project-document`, or `feature-specification`. |
+| `include` | ordered glob list | Architecture selects `**/module.md` and `**/contracts/**/contract.md`; docs selects `**/*.md`; features selects `**/spec.md`; feature-designs selects `**/design.md`. |
+| `contentKind` | enum | `architecture-source`, `project-document`, `feature-specification`, or `feature-design`. |
 
-Relationships: one Source Collection contains zero or more Source Documents and maps to exactly one
-Docusaurus docs-plugin instance. Documentation is read directly from `docs/`; Architecture and
-Features reach their instances through disposable Renderer Projections generated from `specs/`.
+Relationships: one Source Collection contains zero or more Source Documents. The four collections
+map to three navigation/plugin families because feature specifications and feature designs share the
+Features family. Documentation is read directly from `docs/`; Architecture and both feature
+collections reach their instances through disposable Renderer Projections generated from `specs/`.
 
 ## 2. Source Document
 
@@ -68,7 +69,20 @@ Extends Source Document with Spec Kit and Concorde identity.
 Only the canonical `spec.md` becomes a Feature Specification. Other files in the feature directory
 become Excluded Source records and are never labeled as feature specifications.
 
-#### 2.2.1 Feature Diagram
+### 2.3 Feature Design
+
+Extends Source Document with the permanent accepted realization paired to one Feature Specification.
+
+| Field | Type | Rules |
+|---|---|---|
+| `featureDirectory` | project-relative directory | Parent directory containing both `design.md` and canonical `spec.md`. |
+| `pairedSpecification` | project-relative path | Exactly the sibling `spec.md`; required and included. |
+| `title` | non-empty string | First level-one heading; used for the design navigation entry. |
+
+Only root `design.md` is eligible. Every Markdown file below the sibling `implementation/` directory,
+including checklists, plans, tasks, and validation, remains an Excluded Source.
+
+### 2.4 Feature Diagram
 
 Maintained visual explanation owned by one Feature Specification but not itself a content page.
 
@@ -86,7 +100,7 @@ The generated HTML must exist before publication. The shared feature layout sand
 diagram, displays source provenance, and provides a standalone-view link. The JSON remains durable
 explanatory intent; HTML and page markup remain generated projections.
 
-### 2.3 Architecture Source
+### 2.5 Architecture Source
 
 Extends Source Document with stable architecture identity, entity kind (`module` or `contract`),
 owning module or parent where applicable, and optional declared-view metadata. Feature `spec.md` files
@@ -94,13 +108,13 @@ belong only to the Features collection. A declared view records its project-rela
 source, SHA-256, and delivered site route. Invalid or missing view sources and generated outputs are
 publication errors.
 
-### 2.4 Renderer Projection
+### 2.6 Renderer Projection
 
 Internal, disposable input used only to isolate Docusaurus plugin loader roots.
 
 | Field | Type | Rules |
 |---|---|---|
-| `collectionId` | `architecture` or `features` | Documentation does not require projection. |
+| `collectionId` | `architecture`, `features`, or `feature-designs` | Documentation does not require projection; both feature collections materialize beneath the shared Features render root. |
 | `canonicalSourcePath` | project-relative path under `specs/` | Resolves to exactly one validated Source Document. |
 | `stagedPath` | path under `docsite/.generated/content/<collection>/` | Preserves the canonical path relative to `specs/`; never appears as provenance. |
 | `sourceSha256` | lowercase hex string | Must equal the canonical source hash after copying. |
@@ -185,7 +199,7 @@ The custom JSON contract is defined by `contracts/build-manifest.schema.json`.
 
 | Field | Type | Rules |
 |---|---|---|
-| `schemaVersion` | integer | `2` after adding architecture publication. |
+| `schemaVersion` | integer | `3` after adding permanent feature-design publication. |
 | `generator` | identity object | Concorde docsite and pinned Docusaurus versions; no timestamp. |
 | `collections` | Source Collection list | Sorted by collection ID. |
 | `pages` | Content Page summaries | Sorted by source path. |

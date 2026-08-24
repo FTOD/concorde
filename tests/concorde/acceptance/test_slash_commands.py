@@ -23,7 +23,7 @@ class SlashCommandAcceptance(unittest.TestCase):
                 capture_output=True,
             )
             registered = list((root / ".gemini").rglob("*concorde*"))
-            self.assertEqual(len([path for path in registered if path.is_file()]), 5)
+            self.assertEqual(len([path for path in registered if path.is_file()]), 6)
             launcher = root / ".specify/extensions/concorde/scripts/bash/concorde.sh"
             result = subprocess.run([str(launcher), "init", "--propose", "--module-id", "module.slash"], cwd=root, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

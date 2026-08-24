@@ -27,7 +27,7 @@ lifecycle while preserving the selected feature's durable/temporal path boundary
 ## Information
 
 The standard preset format carries template or command identity, source path, priority, and
-composition strategy. Concorde contributes three template layers and nine existing-command layers.
+composition strategy. Concorde contributes four template layers and nine existing-command layers.
 
 ## Obligations
 

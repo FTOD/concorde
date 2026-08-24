@@ -91,10 +91,10 @@ context.
 - **Information**: user arguments, bounded project context, requested action, result, and diagnostics.
 - **Guarantees**: canonical commands `speckit.concorde.init`, `speckit.concorde.context`,
   `speckit.concorde.validate`, `speckit.concorde.feature.create`, and
-  `speckit.concorde.feature.select` register in the active integration without hard-coded invocation
+  `speckit.concorde.feature.select`, plus `speckit.concorde.feature.harden`, register in the active integration without hard-coded invocation
   syntax.
 - **Failure**: unsupported integrations or missing dependencies produce an actionable diagnostic.
-- **Evidence**: all five command artifacts register in Codex skills mode; initialization, context,
+- **Evidence**: all six command artifacts register in Codex skills mode; initialization, context,
   and validation execute in Codex skills and Gemini slash-command modes. Evidence remains partial
   until feature creation/selection and the complete normal-command matrix execute from release
   archives in both modes; platform-compatible registered spellings use `feature-create` and
@@ -104,7 +104,7 @@ context.
 
 - **Role / flow**: provided, bidirectional.
 - **Consumers**: maintainers and normal Spec Kit lifecycle commands.
-- **Representation**: custom Concorde Feature Workspace Protocol v1 plus Spec Kit's standard
+- **Representation**: custom Concorde Feature Workspace Protocol v2 plus Spec Kit's standard
   project-local `feature_directory` selection field.
 - **Information**: reviewed placement, exact durable/temporal paths, selection changes, conflicts,
   findings, and inspected source digest.

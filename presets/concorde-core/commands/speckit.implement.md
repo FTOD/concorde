@@ -16,7 +16,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIPT}` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
@@ -64,7 +64,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Outline
 
-1. Run `{SCRIPT}` from repo root and parse FEATURE_DIR, IMPLEMENTATION_DIR, FEATURE_SPEC, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. Run `{SCRIPT}` from repo root and parse FEATURE_DIR, IMPLEMENTATION_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
 2. **Check checklists status** (if FEATURE_DIR/checklists/ exists):
    - Treat checklist markers as a read-only gate: scan checkbox state, report status, and ask before proceeding when needed; do NOT modify checklist files or markers
@@ -101,6 +101,9 @@ For `checklist`, resolve `checklist-template` separately through the same public
      - Automatically proceed to step 3
 
 3. Load and analyze the implementation context:
+   - **REQUIRED**: Read FEATURE_SPEC for behavioral authority and FEATURE_DESIGN for the accepted
+     realization baseline. Implement the plan's delta without editing `design.md`; promotion belongs
+     only to the explicit Concorde feature-hardening command after all tasks are complete.
    - **REQUIRED**: Read TASKS (`IMPLEMENTATION_DIR/tasks.md`) for the complete task list and execution plan
    - **REQUIRED**: Read IMPL_PLAN (`IMPLEMENTATION_DIR/plan.md`) for tech stack, architecture, and file structure
    - **IF EXISTS**: Read `IMPLEMENTATION_DIR/data-model.md` for entities and relationships
@@ -246,5 +249,6 @@ Report final status with summary of completed work.
 
 - [ ] All tasks in tasks.md completed and marked `[X]`
 - [ ] Implementation validated against specification, plan, and test coverage
+- [ ] Durable `design.md` was not updated and `implementation/` was not removed automatically
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with summary of completed work

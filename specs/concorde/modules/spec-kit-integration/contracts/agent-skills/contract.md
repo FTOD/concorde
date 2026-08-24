@@ -48,5 +48,5 @@ Command registration follows Spec Kit 0.16.4 and is tested in skills and slash-c
 ## Evidence
 
 Initialization, context, and validation are verified in installed Codex skills mode and Gemini
-slash-command mode. Evidence remains partial until all five Concorde-specific intents and all nine
+slash-command mode. Evidence remains partial until all six Concorde-specific intents and all nine
 affected normal commands execute from release-installed artifacts in both presentation modes.

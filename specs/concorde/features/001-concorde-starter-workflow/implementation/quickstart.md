@@ -70,8 +70,11 @@ Confirm:
 
 ```text
 <feature-root>/spec.md                         exists
+<feature-root>/design.md                       exists with the accepted baseline or explicit no-hardened-realization state
 <feature-root>/diagrams/                       contains any declared feature-owned Archify JSON
 <feature-root>/implementation/                 may be absent before planning
+<feature-root>/implementation/checklists/      may exist before planning when specification review opened an attempt
+<feature-root>/checklists/                     does not exist
 <feature-root>/plan.md                         does not exist
 <feature-root>/tasks.md                        does not exist
 .specify/feature.json                          points to <feature-root>
@@ -101,7 +104,9 @@ For every phase, capture the path resolver output. The required matrix is:
 
 | Artifact/operation | Required location |
 |---|---|
-| specification, feature contracts, requirements checklists | `<feature-root>/` |
+| specification and feature contracts | `<feature-root>/` |
+| permanent accepted realization | `<feature-root>/design.md` |
+| requirements-quality checklists | `<feature-root>/implementation/checklists/` |
 | plan, research, data model, quickstart | `<feature-root>/implementation/` |
 | tasks, implementation execution, analysis, convergence, validation evidence | `<feature-root>/implementation/` |
 
@@ -137,7 +142,8 @@ Run `speckit.concorde.context <feature-id>` after planning.
 
 Expected context includes:
 
-- root `spec.md`, durable feature contracts/checklists, and current implementation artifacts;
+- root `spec.md` and `design.md`, durable feature contracts, temporal checklists, and current
+  implementation artifacts;
 - providing-module responsibility, boundary, features, and current-level view;
 - relevant parent/child refinements and governing contracts;
 - explicit evidence references and statuses;
@@ -167,7 +173,38 @@ Run `speckit.concorde.validate` three times for each unchanged fixture. Expected
 - all three JSON outputs and exit codes are byte-equivalent;
 - source hashes before and after validation are identical.
 
-## 8. Self-application and full repository gates
+## 8. Propose and explicitly approve feature hardening
+
+After every canonical task in the selected attempt is checked, inspect eligibility through the
+installed runtime:
+
+```bash
+.specify/extensions/concorde/scripts/bash/concorde.sh \
+  feature harden feature.example.deliver --propose
+```
+
+An `eligible` result gives the exact `source_digest`, root `design.md` target, proposal path, and
+whole `implementation/` removal target. The installed hardening skill drafts the complete candidate
+at that proposal path and presents its full contents and removal set. Task completion alone does not
+authorize apply.
+
+Only after the maintainer explicitly approves that exact candidate, apply it:
+
+```bash
+.specify/extensions/concorde/scripts/bash/concorde.sh \
+  feature harden --apply \
+  --proposal specs/example/features/001-deliver/implementation/harden-proposal.json
+```
+
+Expected: root `design.md` matches the approved candidate, the entire `implementation/` directory is
+absent, and the result records design digests plus removed and retained artifacts. An incomplete task,
+unresolved checklist item, malformed task line, changed input, symlink, wrong target, or commit
+failure must preserve both the prior design and attempt.
+
+Do not apply this operation to Feature 001 merely to test eligibility: hardening is a separate user
+decision that removes the current temporal workspace.
+
+## 9. Self-application and full repository gates
 
 Select Feature 001 itself and verify its durable/temporal split. Then run:
 
@@ -183,7 +220,7 @@ view. Generated outputs may be refreshed only from validated sources and must re
 Record results in `implementation/validation.md`. Do not reuse installation evidence from Feature
 003 or claim pending human outcomes from automated commands.
 
-## 9. Human approval and outcome evidence
+## 10. Human approval and outcome evidence
 
 For every AI-authored architecture change in the acceptance sample, record the reviewer, reviewed
 source digest, decision, and separate behavioral, structural, implementation/test, and generated

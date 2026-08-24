@@ -1,8 +1,10 @@
 # Implementation Plan: Deliver Concorde through Spec Kit
 
 **Working branch**: `main` (logical feature selection: `003-install-concorde-speckit`)  
-**Date**: 2026-08-22  
+**Date**: 2026-08-23
 **Spec**: [../spec.md](../spec.md)
+
+**Accepted design baseline**: [../design.md](../design.md)
 
 **Lifecycle**: Active temporal implementation plan. Package manifests and durable contracts remain
 authoritative; this file records one attempt to make the distributed workflow match them.
@@ -10,9 +12,10 @@ authoritative; this file records one attempt to make the distributed workflow ma
 ## Summary
 
 Refactor the already working bundle lifecycle so a release-installed project receives the complete
-Concorde workflow, not merely package files and late command addenda. Keep the three preset template
-layers composable, replace all nine affected normal Spec Kit command surfaces with authoritative
-Concorde-aware forms, package the five Concorde-specific commands plus Feature 001's workspace
+Concorde workflow, not merely package files and late command addenda. Keep the three inherited preset
+template layers composable, supply the permanent design template as the fourth contribution, replace
+all nine affected normal Spec Kit command surfaces with authoritative
+Concorde-aware forms, package the six Concorde-specific commands plus Feature 001's workspace
 adapter/runtime in the extension, materialize both contribution types through the active integration,
 and prove the result from built archives in checkout-isolated skills and slash-command projects.
 
@@ -22,6 +25,11 @@ command intent, architecture behavior, and result/failure semantics. Feature 003
 exact Feature 001 handoff digest it packages and cannot repair a semantic mismatch by changing an
 agent-specific prompt.
 
+The accepted design already covers permanent design creation and hardening. The current delta is to
+distribute the revised checklist lifecycle consistently: `specify` and `clarify` may update durable
+intent but write review state only below `implementation/checklists/`; `checklist` and all later
+attempt phases target `implementation/`; no installed surface may create a root checklist directory.
+
 ## Technical Context
 
 **Language/Version**: Python 3.11+ for release tooling, installed workspace/runtime entry points, and
@@ -29,7 +37,7 @@ acceptance harnesses; Spec Kit command Markdown rendered to agent-specific Markd
 manifests; JSON catalogs, plans, receipts, and Archify sources
 
 **Primary Dependencies**: Specify CLI/Spec Kit 0.16.4 public bundle, preset, catalog, provenance,
-command-composition, and `CommandRegistrar` contracts; Feature 001 Feature Workspace Protocol v1 and
+command-composition, and `CommandRegistrar` contracts; Feature 001 Feature Workspace Protocol v2 and
 installed adapter; Python standard library; `uv`; Archify 2.14; the existing Docusaurus publication
 pipeline
 
@@ -55,7 +63,7 @@ product
 - at least 90% of first-time maintainers inspect and install the starter within 15 minutes;
 - preview and installation agree on component IDs/versions for every supported source form;
 - three repeat installs produce one unchanged component set and zero user-source mutations;
-- all supported presentations materialize nine normal and five Concorde-specific command surfaces;
+- all supported presentations materialize nine normal and six Concorde-specific command surfaces;
 - every phase-path matrix run produces zero root plan/task copies or symlinks;
 - missing release inputs and every seeded failure stop without a false success record;
 - disable and reprioritize preserve all nine registered winners while changing future resolution;
@@ -72,10 +80,11 @@ product
 - command winner, source package, handoff digest, and execution receipt must remain traceable;
 - release building writes `--base-url` metadata and never contacts it;
 - project-authored `.concorde/`, `specs/`, and `docs/` content is never component-owned;
-- diagrams are supplemental maintained sources, and generated HTML remains a projection
+- the component model is the single core architecture diagram, the installation workflow is
+  supplemental, and generated HTML remains a projection
 
-**Scale/Scope**: Three release units at one pinned version, three catalogs, three template layers,
-nine existing command replacements, five extension commands, two agent presentation families, four
+**Scale/Scope**: Three release units at one pinned version, three catalogs, four template layers,
+nine existing command replacements, six extension commands, two agent presentation families, four
 bundle source forms, and the complete install/update/remove lifecycle
 
 ## Constitution Check
@@ -92,7 +101,7 @@ has been replaced by the public nine-command `replace` composition described bel
 | V. Contracts govern every boundary | Bundle lifecycle, ecosystem explanation, installed command surfaces, Feature Workspace handoff, agent skills, and Spec Kit platform contracts identify roles, failures, compatibility, and evidence. | PASS |
 | VI. One authority per fact | Manifests own package content; Feature 001 owns command/path meaning; preset sources own installed override instructions; generated catalogs and registered files are projections with provenance. | PASS |
 | VII. Deterministic validation and reviewed evidence | Release hashes, winner resolution, bootstrap execution, phase paths, source isolation, lifecycle restoration, diagrams, and docs are deterministic. Human comprehension remains separate evidence. | PASS |
-| Architecture documentation standards | Both Feature 003 diagrams remain text-backed supplemental views under `diagrams/`; root architecture remains one-level and bounded. | PASS |
+| Architecture documentation standards | The text-backed component model is the single `role: core` architecture view; the text-backed installation workflow is `role: supplemental`; root architecture remains one-level and bounded. | PASS |
 
 No constitutional exception is planned. If public command replacement cannot establish routing before
 the lower core workflow would select legacy paths, implementation stops and records the required
@@ -105,7 +114,7 @@ upstream Spec Kit capability/version; it must not fall back to installer patchin
 | Module | Child feature | Responsibility in this attempt |
 |---|---|---|
 | `module.concorde.distribution` | `feature.distribution.package-starter-bundle` | Reproducible archives/catalogs, exact pins, preview/install parity, provenance, update/removal, rollback, and clean-target isolation. |
-| `module.concorde.spec-kit-integration` | `feature.integration.compose-starter-workflow` | Three template layers, nine authoritative normal-command replacements, five extension command registrations, active-integration rendering, and lower-layer restoration. |
+| `module.concorde.spec-kit-integration` | `feature.integration.compose-starter-workflow` | Four template layers, nine authoritative normal-command replacements, six extension command registrations, active-integration rendering, and lower-layer restoration. |
 
 `feature.integration.manage-feature-workspace` refines Feature 001 and supplies the protocol/runtime
 handoff consumed here. Architecture Core behavior is packaged but not redefined. Documentation only
@@ -130,16 +139,17 @@ publishes the already declared Feature 003 diagrams through Feature 002.
 ```text
 specs/concorde/features/003-install-concorde-speckit/
 ├── spec.md
+├── design.md
 ├── diagrams/
 │   ├── spec-kit-component-model.json
 │   └── starter-installation-flow.json
-├── checklists/
-│   └── requirements.md
 ├── contracts/
 │   ├── bundle-distribution.md
 │   ├── ecosystem-explanation.md
 │   └── installed-command-surfaces.md
 └── implementation/
+    ├── checklists/
+    │   └── requirements.md
     ├── plan.md
     ├── research.md
     ├── data-model.md
@@ -157,12 +167,12 @@ bundles/concorde-starter/
 
 presets/concorde-core/
 ├── preset.yml
-├── templates/               # three append-composed lifecycle templates
+├── templates/               # three inherited append layers + one design-template replacement
 └── commands/                # nine complete existing-command replacements
 
 extensions/concorde/
 ├── extension.yml
-├── commands/                # five Concorde-specific command sources
+├── commands/                # six Concorde-specific command sources
 ├── scripts/                 # installed launchers + workspace adapter
 └── runtime/concorde/        # Feature 001 deterministic behavior
 
@@ -200,7 +210,7 @@ deliberately absent from release archive construction.
 
 ### Phase 1: Freeze the Feature 001 handoff and baseline the failure
 
-1. Record the Feature Workspace Protocol version, source digest, nine normal phase obligations, five
+1. Record the Feature Workspace Protocol version, source digest, nine normal phase obligations, six
    Concorde command intents, and installed-relative adapter/runtime paths.
 2. Add a regression fixture demonstrating the current defect: an appended routing addendum appears
    after a lower command step has already selected a root-level plan/task path.
@@ -213,15 +223,16 @@ deliberately absent from release archive construction.
    `replace` strategy.
 2. Author a complete command for each normal phase that preserves its Spec Kit responsibility but
    invokes the installed workspace adapter before any path-sensitive setup or prerequisite check.
-3. Route specify/clarify/checklist to durable root artifacts and plan/tasks/implement/analyze/
-   converge/taskstoissues to the single `implementation/` workspace.
+3. Route specification and clarification reads/writes to durable root intent while directing every
+   generated review checklist to `implementation/checklists/`; route checklist, plan, tasks,
+   implement, analyze, converge, and taskstoissues to the single `implementation/` workspace.
 4. Reject an invalid, missing, ambiguous, or incompatible handoff before producing an artifact.
 5. Maintain a compatibility map to the Spec Kit 0.16.4 core command semantics; version expansion
    requires reviewing every replacement against the new upstream command.
 
-### Phase 3: Package the five Concorde-specific intents and runtime
+### Phase 3: Package the six Concorde-specific intents and runtime
 
-1. Ensure the extension manifest declares init, feature create/select, context, and validate plus all
+1. Ensure the extension manifest declares init, feature create/select/harden, context, and validate plus all
    launchers, workspace adapter, and deterministic runtime files they reference.
 2. Resolve every runtime path relative to the installed extension root; prohibit checkout-relative
    imports and undeclared source dependencies.
@@ -242,7 +253,7 @@ deliberately absent from release archive construction.
 1. Build and serve the release, then initialize clean targets outside the checkout for Codex skills
    and one slash-command integration.
 2. Install only through catalogs/built archives and inventory the materialized winning artifacts:
-   nine normal plus five Concorde-specific surfaces.
+   nine normal plus six Concorde-specific surfaces.
 3. For each surface, bind the registered artifact to its package source and handoff digest, execute
    its installed workspace bootstrap, then exercise the phase outcome against a nested feature.
 4. Assert the complete durable/temporal matrix, zero root aliases/symlinks, equivalent result/failure
@@ -270,16 +281,28 @@ deliberately absent from release archive construction.
 4. Conduct SC-001 installation and SC-007 ecosystem-role pilots with real first-time maintainers;
    never infer them from automated checks.
 
+### Phase 8: Distribute permanent feature design and hardening
+
+1. Package the Concorde-only `design-template` as the fourth preset template contribution and ensure
+   all nine normal command replacements read root `design.md` without mutating it.
+2. Package `speckit.concorde.feature.harden` and every referenced runtime file in the extension;
+   never rely on checkout-local `.agents/` skills or `.specify/` scripts.
+3. Exercise installed hardening eligibility in a clean Codex target, prove the command materializes
+   in both Codex and Gemini, and use deterministic integration fixtures for incomplete/stale/apply/
+   rollback semantics.
+4. Rebuild archive digests/catalogs and reconcile the component and installation-flow views with four
+   preset templates, six extension commands, and fifteen installed surfaces.
+
 ## Feature Diagram Strategy
 
 | View | Question and participants | Contracts/text | Delivery and evidence |
 |---|---|---|---|
-| `diagrams/spec-kit-component-model.json` | How catalogs, Spec Kit, bundle, preset, extension, resolved core commands, active integration, Architecture Core, clean specs tree, and excluded self-hosting files relate. | `spec.md` role table, ecosystem explanation, bundle lifecycle, workflow composition, agent skills, and Feature Workspace handoff. | Deliver `generated/architecture/concorde-spec-kit-component-model.html`; require 9/9 showcase checks, source digest/provenance, automatic feature-page embedding, and truthful visual receipt. |
-| `diagrams/starter-installation-flow.json` | How maintained package sources become archives/catalogs, an accepted plan, installed components, 14 materialized surfaces, and clean-target execution. | User Stories 1–4 plus bundle distribution and installed command surface contracts. | Deliver `generated/architecture/concorde-starter-installation-flow.html` with the same validation, publication, freshness, and visual-evidence rules. |
+| `diagrams/spec-kit-component-model.json` (`role: core`, `architecture`) | How catalogs, Spec Kit, bundle, preset, extension, resolved core commands, active integration, Architecture Core, clean specs tree, and excluded self-hosting files relate. | `spec.md` role table, ecosystem explanation, bundle lifecycle, workflow composition, agent skills, and Feature Workspace handoff. | Deliver `generated/architecture/concorde-spec-kit-component-model.html`; require 9/9 showcase checks, source digest/provenance, automatic feature-page embedding, and truthful visual receipt. |
+| `diagrams/starter-installation-flow.json` (`role: supplemental`, `workflow`) | How maintained package sources become archives/catalogs, an accepted plan, installed components, 15 materialized surfaces, and clean-target execution. | User Stories 1–4 plus bundle distribution and installed command surface contracts. | Deliver `generated/architecture/concorde-starter-installation-flow.html` with the same validation, publication, freshness, and visual-evidence rules. |
 
-The diagrams remain supplemental Feature 003 sources. They may explain package/runtime detail but
-cannot add module ownership or behavior absent from textual contracts, and they never replace root
-`architecture.json`.
+Both diagrams remain explanatory Feature 003 sources: the component model is the single core stable
+interaction view and the workflow is supplemental. Neither may add module ownership or behavior
+absent from textual contracts, and neither replaces root `architecture.json`.
 
 ## Test and Evidence Strategy
 
@@ -287,7 +310,7 @@ cannot add module ownership or behavior absent from textual contracts, and they 
 |---|---|
 | Package identity and preview parity | Native validation/info/install across catalog, directory, manifest, and archive forms; exact ID/version comparison. |
 | Nine normal overrides | Registered winner/source inventory, pre-path bootstrap ordering, complete phase execution, and durable/temporal path assertions. |
-| Five Concorde commands | Installed-relative launcher/runtime execution and Feature 001 contract conformance in both presentations. |
+| Six Concorde commands | Installed-relative launcher/runtime execution and Feature 001 contract conformance in both presentations; clean installed hardening eligibility plus deterministic refusal/apply/rollback evidence. |
 | Checkout isolation | Temporary target outside repository, sanitized environment/import path, filesystem access audit, and missing-member negative fixtures. |
 | Host lifecycle | Enable/disable/priority preserve registered winners; update/remove verify accepted or lower-layer hashes for all nine commands. |
 | Release reproducibility | Two-build byte equality, ZIP allowlists, manifest/catalog parity, and digests. |
@@ -302,11 +325,13 @@ Phase 1 separates workflow meaning from delivery mechanics, chooses only support
 and command contracts, prohibits core-script mutation, and makes checkout isolation an acceptance
 property. The design adds a durable installed-command-surface profile, explicit Feature 001 handoff
 digest, reproducible release boundaries, and separate automated/human evidence. The two maintained
-diagrams align with the same package/use-time model and remain supplemental.
+diagrams align with the same package/use-time model: one core architecture view and one supplemental
+workflow.
 
-The current append-only preset and string-presence tests do not satisfy the plan; their `partial`
-status is intentional. No compatibility expansion or evidence upgrade occurs until clean archive
-installation and the complete command/lifecycle matrix pass.
+The former append-only preset and string-presence-only evidence were replaced by complete command
+overrides and executable clean-archive tests. The core/supplemental diagram roles and temporal
+checklist paths now match the durable declaration. Human and browser outcomes remain partial; no
+compatibility expansion or evidence upgrade may infer those outcomes from automation.
 
 ## Complexity Tracking
 

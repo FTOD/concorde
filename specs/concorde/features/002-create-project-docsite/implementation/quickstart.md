@@ -29,15 +29,17 @@ npm run validate
 
 Expected:
 
-- The summary identifies `architecture`, `docs`, and `features` as separate collections.
+- The summary identifies `architecture`, `docs`, `features`, and `feature-designs` as four source
+  collections presented through Architecture, Documentation, and Features navigation.
 - Architecture Markdown sources, bounded module views, and feature-declared Archify views are discoverable.
 - Root features 001 and 002 plus the nested Documentation refinement are discovered from their
   canonical `spec.md` files.
-- Plans, tasks, and checklists are reported as excluded rather than feature pages.
+- Every root `spec.md` and paired `design.md` is included, while all Markdown below
+  `implementation/`—including checklists, plans, tasks, and validation—is reported as excluded.
 - All paths are project-relative and all checks pass with exit status 0.
 
 The required source semantics are defined by
-[`contracts/content-sources.md`](contracts/content-sources.md).
+[`../contracts/content-sources.md`](../contracts/content-sources.md).
 
 ## 3. Run Deterministic Evidence
 
@@ -50,6 +52,7 @@ Expected: unit, contract, and fixture integration tests pass, including:
 - three-collection source discovery and stable ordering;
 - architecture identity and declared-view publication;
 - feature identity/status extraction;
+- feature specification/design pairing and permanent design provenance;
 - documentation-to-feature and feature-to-document link mapping;
 - missing source, duplicate ID, duplicate route, and escaping-path failures;
 - manifest example and generated-manifest schema validation;
@@ -71,7 +74,8 @@ Expected:
   source path.
 - The landing page links to Architecture, Documentation, and Features.
 - Every included page displays its project-relative source provenance.
-- Feature pages display stable ID, owning module, and recorded status.
+- Feature specification pages display stable ID, owning module, and recorded status; paired design
+  pages display durable source provenance and are grouped with their specification.
 - Feature pages automatically embed every fresh diagram declared by `spec.md`, including source
   provenance and an open-standalone-view link.
 - Architecture pages show stable identity and embed declared Archify views in a sandbox.
@@ -87,7 +91,7 @@ npx ajv-cli@5 validate \
 ```
 
 Expected: the manifest is valid. Its normative field meanings are documented in
-[`contracts/build-manifest-contract.md`](contracts/build-manifest-contract.md).
+[`../contracts/build-manifest-contract.md`](../contracts/build-manifest-contract.md).
 
 ## 5. Verify Repeatability
 
@@ -112,8 +116,8 @@ Open the URL printed by Docusaurus and validate:
 1. The landing page reaches Architecture, Documentation, and Features.
 2. A known phrase returns results across all three route spaces in local search.
 3. The root module page shows its stable ID and embeds the delivered root view.
-4. Root feature 001 is visibly Draft, while root feature 002 and its Documentation refinement are
-   visibly Implemented.
+4. Root feature 001 shows its current status, while root feature 002 and its Documentation refinement
+   are visibly Implemented; each permanent design is reachable beside its specification.
 5. A cross-collection link reaches its target and preserves its heading fragment.
 6. Narrow and wide browser layouts keep content, navigation, provenance, and embedded views readable.
 
@@ -131,8 +135,8 @@ Expected:
 - No failed run emits a manifest with `validation.status: "passed"`.
 
 The command and promotion guarantees are defined by
-[`contracts/build-interface.md`](contracts/build-interface.md) and
-[`contracts/published-site.md`](contracts/published-site.md).
+[`../contracts/build-interface.md`](../contracts/build-interface.md) and
+[`../contracts/published-site.md`](../contracts/published-site.md).
 
 ## 8. Run the Complete Gate
 

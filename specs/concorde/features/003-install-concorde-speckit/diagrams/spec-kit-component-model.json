@@ -17,13 +17,13 @@
         "id": "preset-path",
         "label": "Normal command overrides",
         "focus": ["preset", "featureLifecycle", "agentHost", "specTree"],
-        "note": "The preset supplies three template layers and authoritative routing for nine existing lifecycle commands."
+        "note": "The preset supplies four template layers and authoritative routing for nine existing lifecycle commands."
       },
       {
         "id": "extension-path",
         "label": "Extension contribution",
         "focus": ["extension", "agentHost", "architectureCore", "specTree"],
-        "note": "The extension supplies five Concorde-specific commands, the workspace adapter, and deterministic runtime."
+        "note": "The extension supplies six Concorde-specific commands, the workspace adapter, and deterministic runtime."
       }
     ]
   },
@@ -72,7 +72,7 @@
       "id": "preset",
       "type": "backend",
       "label": "concorde-core",
-      "sublabel": "Preset: templates + 9 overrides",
+      "sublabel": "Preset: 4 templates + 9 overrides",
       "pos": [745, 95],
       "size": [190, 76]
     },
@@ -80,7 +80,7 @@
       "id": "extension",
       "type": "backend",
       "label": "concorde",
-      "sublabel": "Extension: 5 commands + runtime",
+      "sublabel": "Extension: 6 commands incl. harden",
       "pos": [745, 455],
       "size": [190, 76]
     },
@@ -95,8 +95,8 @@
     {
       "id": "architectureCore",
       "type": "backend",
-      "label": "Architecture Core",
-      "sublabel": "Init, context, validate",
+      "label": "Concorde Runtime",
+      "sublabel": "Workspace, harden, context, validate",
       "pos": [1010, 275],
       "size": [190, 76]
     },
@@ -112,7 +112,7 @@
       "id": "specTree",
       "type": "database",
       "label": "specs/ Hierarchy",
-      "sublabel": "Features + architecture intent",
+      "sublabel": "spec · design · attempt",
       "pos": [1240, 275],
       "size": [120, 76]
     }
@@ -185,7 +185,7 @@
       "id": "presetGuidesLifecycle",
       "from": "preset",
       "to": "featureLifecycle",
-      "label": "3 templates + 9 overrides",
+      "label": "4 templates + 9 overrides",
       "variant": "emphasis",
       "labelAt": [860, 190]
     },
@@ -204,7 +204,7 @@
       "id": "extensionRegistersCommands",
       "from": "extension",
       "to": "agentHost",
-      "label": "5 commands + adapter/runtime",
+      "label": "6 commands + adapter/runtime",
       "variant": "emphasis",
       "labelAt": [973, 545]
     },
@@ -219,7 +219,7 @@
       "id": "normalCommandsUseSpecs",
       "from": "featureLifecycle",
       "to": "specTree",
-      "label": "durable root / implementation",
+      "label": "root intent / temporal review + work",
       "variant": "emphasis"
     },
     {
@@ -234,7 +234,7 @@
       "id": "coreMaintainsHierarchy",
       "from": "architectureCore",
       "to": "specTree",
-      "label": "read / propose / validate",
+      "label": "create / read / harden / validate",
       "variant": "emphasis",
       "labelAt": [1290, 375]
     }
@@ -253,7 +253,7 @@
       "dot": "emerald",
       "title": "Preset",
       "items": [
-        "Composes three template layers without owning runtime",
+        "Composes four template layers without owning runtime",
         "Overrides nine existing lifecycle command surfaces",
         "Routes before inherited root-path assumptions can run"
       ]
@@ -262,9 +262,9 @@
       "dot": "violet",
       "title": "Extension",
       "items": [
-        "Adds five Concorde-specific commands and runtime",
+        "Adds six Concorde-specific commands, including feature hardening",
         "Registers through the active coding-agent integration",
-        "Ships the selected-workspace adapter used by installed commands"
+        "Ships the selected-workspace adapter and deterministic Python runtime"
       ]
     },
     {

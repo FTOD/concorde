@@ -29,7 +29,7 @@ canonical_spec: specs/concorde/modules/documentation/features/001-publish-projec
 
 ## Outcome
 
-The Documentation module projects architecture and feature specifications from the unified `specs/`
+The Documentation module projects architecture plus permanent feature specifications and designs from the unified `specs/`
 hierarchy plus project Markdown from `docs/` into one searchable, traceable, read-only website, embedding each
 declared delivered Archify view beside its textual architecture source.
 
@@ -46,12 +46,12 @@ module's narrower behavior, contracts, scenario examples, and evidence links.
 As a maintainer, I can build one site from the project's maintained specifications and documentation
 so that I can inspect architecture and feature intent without treating generated pages as authority.
 
-**Independent Test**: Build from a fixture containing a module, a contract, a nested feature spec,
+**Independent Test**: Build from a fixture containing a module, a contract, a nested feature spec/design pair,
 and project documentation; verify three distinct views, canonical provenance, and no source mutation.
 
 **Acceptance Scenarios**:
 
-1. **Given** module, contract, and feature specifications under `specs/`, **When** the site is built,
+1. **Given** module, contract, and permanent feature specifications/designs under `specs/`, **When** the site is built,
    **Then** Architecture and Features are separate views of that same hierarchy.
 2. **Given** project Markdown under `docs/`, **When** the site is built, **Then** Documentation is a
    third view and every page points back to its canonical source.
@@ -63,7 +63,7 @@ and project documentation; verify three distinct views, canonical provenance, an
 **ID**: `publish-project-docsite`
 
 A maintainer invokes the documented build interface. Documentation consumes module and contract
-specifications, project Markdown, and canonical feature `spec.md` files through
+specifications, project Markdown, and canonical feature `spec.md`/`design.md` pairs through
 `contract.documentation.project-content`,
 associates declared Archify JSON with delivered HTML, validates and renders the read model, emits
 `contract.documentation.build-manifest`, and provides
@@ -85,8 +85,8 @@ second child sequence would duplicate those two complementary views.
 - **FR-DOC-001**: The module MUST classify `specs/**/module.md` and
   `specs/**/contracts/**/contract.md` as the
   Architecture view without moving their authority or treating a renderer projection as maintained content.
-- **FR-DOC-002**: The module MUST classify `specs/**/spec.md` as the Features view and exclude supporting feature
-  artifacts such as plans, tasks, and checklists from that view.
+- **FR-DOC-002**: The module MUST classify `specs/**/spec.md` and `specs/**/design.md` as the Features
+  view and exclude temporal implementation artifacts from that view.
 - **FR-DOC-003**: Both views MUST preserve the same module/feature hierarchy expressed by their source paths and IDs.
 - **FR-DOC-004**: The module MUST expose project documentation from `docs/` as a third view while maintaining only
   two canonical source roots: `specs/` and `docs/`.
@@ -95,7 +95,7 @@ second child sequence would duplicate those two complementary views.
 
 ## Success Criteria
 
-- **SC-DOC-001**: Every eligible module, boundary contract, feature specification, and project document
+- **SC-DOC-001**: Every eligible module, boundary contract, feature specification, feature design, and project document
   appears exactly once in the build manifest.
 - **SC-DOC-002**: Two builds from identical inputs produce identical manifests.
 - **SC-DOC-003**: Validation and build operations produce zero changes under `specs/` and `docs/`.

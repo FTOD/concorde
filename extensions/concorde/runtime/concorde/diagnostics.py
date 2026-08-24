@@ -14,7 +14,9 @@ from .model import Finding, OperationResult
 STATUS_EXIT_CODES = {
     "success": 0,
     "proposal": 0,
+    "eligible": 0,
     "selected": 0,
+    "hardened": 0,
     "unchanged": 0,
     "invalid": 1,
     "conflict": 2,
@@ -57,9 +59,9 @@ def envelope(
 
 
 def operation_envelope(value: OperationResult) -> dict[str, Any]:
-    if value.operation in {"feature.create", "feature.select"}:
+    if value.operation in {"feature.create", "feature.select", "feature.harden"}:
         return {
-            "schema_version": 1,
+            "schema_version": 2,
             "operation": value.operation,
             "target": value.target,
             "status": value.status,
@@ -68,6 +70,16 @@ def operation_envelope(value: OperationResult) -> dict[str, Any]:
             "artifacts": sorted(set(value.artifacts)),
             "findings": [finding_dict(item) for item in sorted(value.findings, key=finding_key)],
             "source_digest": value.result.get("source_digest", "sha256:" + "0" * 64),
+            **{
+                key: value.result[key]
+                for key in (
+                    "design_digest_before",
+                    "design_digest_after",
+                    "removed_artifacts",
+                    "retained_artifacts",
+                )
+                if key in value.result
+            },
         }
     return envelope(
         value.operation,

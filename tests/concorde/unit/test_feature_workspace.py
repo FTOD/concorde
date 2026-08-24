@@ -28,6 +28,7 @@ class FeatureWorkspaceTests(unittest.TestCase):
             root = create_feature_root(project)
             paths = resolve_phase_paths(project, root.relative_to(project).as_posix())
             self.assertEqual(paths.feature_spec, "specs/example/features/001-deliver/spec.md")
+            self.assertEqual(paths.feature_design, "specs/example/features/001-deliver/design.md")
             self.assertEqual(paths.contracts_dir, "specs/example/features/001-deliver/contracts")
             self.assertEqual(paths.checklists_dir, "specs/example/features/001-deliver/checklists")
             self.assertEqual(paths.diagrams_dir, "specs/example/features/001-deliver/diagrams")
@@ -64,10 +65,20 @@ class FeatureWorkspaceTests(unittest.TestCase):
             planned = "specs/example/modules/api/features/002-observe-health"
             paths = resolve_planned_phase_paths(project, planned)
             self.assertEqual(paths.feature_spec, f"{planned}/spec.md")
+            self.assertEqual(paths.feature_design, f"{planned}/design.md")
             self.assertEqual(paths.implementation_state, "absent")
             self.assertFalse((project / planned).exists())
             with self.assertRaises(WorkspaceError):
                 resolve_planned_phase_paths(project, "outside/002-observe-health")
+
+            legacy = project / "specs/example/features/001-deliver/design.md"
+            legacy.unlink()
+            repair_paths = resolve_selected_workspace(
+                project,
+                "specs/example/features/001-deliver",
+                allow_missing_spec=True,
+            )
+            self.assertEqual(repair_paths.feature_design, "specs/example/features/001-deliver/design.md")
 
     def test_atomic_persistence_is_idempotent_and_rejects_unsafe_roots(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -94,6 +105,7 @@ class FeatureWorkspaceTests(unittest.TestCase):
                 {
                     "feature_directory",
                     "feature_spec",
+                    "feature_design",
                     "contracts_dir",
                     "checklists_dir",
                     "diagrams_dir",

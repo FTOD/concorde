@@ -7,8 +7,8 @@
 ## Shared Rules
 
 - Canonical names are `speckit.concorde.init`, `speckit.concorde.feature.create`,
-  `speckit.concorde.feature.select`, `speckit.concorde.context`, and
-  `speckit.concorde.validate`.
+  `speckit.concorde.feature.select`, `speckit.concorde.feature.harden`,
+  `speckit.concorde.context`, and `speckit.concorde.validate`.
 - Agent-specific invocation punctuation is presentation only. Codex skills and slash-command outputs
   must preserve the intent, arguments, runtime operation, result schema, and failure behavior below.
 - The command body locates the installed extension runtime relative to the project and invokes it
@@ -16,8 +16,8 @@
 - Architecture operation JSON conforms to `architecture-service.schema.json`; feature placement and
   selection JSON conforms to `feature-workspace.schema.json`. Agent prose may summarize either
   normative result but must not hide findings or claim stronger evidence.
-- Context and validation are read-only. Initialization writes only after an explicit accepted
-  proposal is supplied to apply mode.
+- Context, validation, and hardening eligibility/proposal checks are read-only. Initialization and
+  hardening apply write only after an explicit accepted proposal is supplied to apply mode.
 - Feature creation changes durable intent only after explicit placement approval. Feature selection
   may write only the standard project-local Spec Kit selection record after validating the target.
 
@@ -84,10 +84,11 @@ phase, register it with the providing module, and select it for subsequent phase
 2. Propose the feature root, canonical spec path, module registration, affected contracts/view, and
    any conflict without writing maintained intent.
 3. After explicit approval, invoke the normal Spec Kit specify phase with the exact
-   `SPECIFY_FEATURE_DIRECTORY`; Spec Kit authors the one root `spec.md`.
-4. Apply the approved architecture registration, validate it, and persist the feature root as the
+   `SPECIFY_FEATURE_DIRECTORY`; Spec Kit authors the one root `spec.md` and seeds the adjacent
+   `design.md` with an explicit no-hardened-realization state.
+4. Apply the approved architecture registration, validate both durable paths, and persist the feature root as the
    active selection atomically.
-5. Return Concorde Feature Workspace Protocol v1 paths and findings.
+5. Return Concorde Feature Workspace Protocol v2 paths and findings.
 
 ### Failures
 
@@ -110,9 +111,9 @@ Select one existing nested feature root as the active workspace for normal Spec 
 
 ### Behavior
 
-1. Resolve exactly one feature and verify its canonical root `spec.md`, providing module,
+1. Resolve exactly one feature and verify its canonical root `spec.md`, durable root `design.md`, providing module,
    registration, path confinement, and implementation-attempt state.
-2. Derive root specification/contract/checklist paths and temporal implementation paths.
+2. Derive root specification/design/contract paths and temporal checklist/implementation paths.
 3. Atomically persist only the feature root in `.specify/feature.json`.
 4. Return `selected` or `unchanged` with the complete derived path set.
 
@@ -120,6 +121,51 @@ Select one existing nested feature root as the active workspace for normal Spec 
 
 Unknown, ambiguous, unsafe, stale, or conflicting workspaces and non-explicit attempt resumption leave
 the prior selection unchanged and return actionable findings.
+
+## `speckit.concorde.feature.harden`
+
+### Intent
+
+Review and compact one completed implementation attempt into the feature's durable `design.md`, then
+remove the temporal `implementation/` directory only after explicit approval.
+
+### Inputs
+
+| Argument | Required | Meaning |
+|---|---:|---|
+| `[feature-id-or-root]` | no | Stable feature ID or canonical feature root; defaults to the selected feature. |
+| `--propose` | eligibility | Return task-completion status, current paths, digest, and required proposal shape without mutation. |
+| `--proposal <path>` | apply only | Project-relative reviewed hardening proposal containing the candidate design and exact cleanup manifest. |
+| `--apply` | no | Apply the unchanged reviewed proposal; absent means eligibility/proposal-only. |
+
+### Agent and runtime responsibilities
+
+1. The installed command first invokes proposal mode. The runtime resolves the selected feature,
+   requires a real active `implementation/tasks.md`, parses every Markdown task item, and returns
+   ineligible when no task exists or any task is unchecked or malformed.
+2. When eligible, the coding agent reads `spec.md`, current `design.md`, the complete attempt, relevant
+   architecture/contracts, code, and tests. It drafts a concise current `design.md` covering module and
+   feature collaboration, flows, scenario realization, durable decisions, evidence references, and
+   limitations. It does not copy the transient task log or redefine module architecture.
+3. The agent writes a project-contained proposal that names the exact design path, full candidate
+   content, exact `implementation/` removal target, target feature, and runtime-provided source digest.
+   It presents the candidate design and cleanup manifest to the maintainer.
+4. Silence, checked tasks, passing validation, or prior acceptance do not authorize apply. Only after
+   explicit approval does the agent invoke `--apply --proposal <path>`.
+5. Apply re-resolves every path, task, symlink, target, and digest; stages the design update and
+   recoverable directory move; and commits both outcomes or restores the prior state.
+
+### Success artifacts
+
+- `<feature-root>/design.md` containing the reviewed accepted realization
+- no `<feature-root>/implementation/` directory
+- canonical result listing prior/resulting design digests, removed artifacts, and retained authorities
+
+### Failures
+
+Missing or incomplete tasks, an empty/placeholder candidate design, a stale digest, unsafe or partial
+cleanup targets, symlinked paths, changed sources, or an interrupted apply returns `invalid`,
+`conflict`, or `failed`. The prior `design.md` and complete implementation attempt remain recoverable.
 
 ## `speckit.concorde.context`
 
@@ -200,8 +246,8 @@ Repeated runs over unchanged bytes and arguments produce byte-equivalent JSON an
 
 - Codex skills mode contains one `SKILL.md` per canonical command under the active project-local
   skills root.
-- One slash-command integration contains the five corresponding registered command artifacts.
-- Each surface exercises placement, selection, proposal, context, and validation behavior against the same fixture and
+- One slash-command integration contains the six corresponding registered command artifacts.
+- Each surface exercises placement, selection, hardening eligibility/apply, context, and validation behavior against the same fixture and
   returns equivalent normative runtime JSON.
 - Removal deletes only extension-owned registered artifacts; locally modified or unrelated agent
   content follows Spec Kit's ownership safeguards.
@@ -214,8 +260,8 @@ handoff consists of:
 | Item | Required identity |
 |---|---|
 | Workspace protocol | `feature-workspace.schema.json`, schema version 1, both examples, and their combined source digest |
-| Normal phase obligations | Durable `specify`/`clarify`/`checklist`; temporal `plan`/`tasks`/`implement`/`analyze`/`converge`/`taskstoissues` |
-| Concorde command intents | The five canonical IDs and behavior sections in this contract |
+| Normal phase obligations | `specify`/`clarify` edit durable intent but write review state under `implementation/checklists/`; `checklist` and `plan`/`tasks`/`implement`/`analyze`/`converge`/`taskstoissues` write only temporal attempt artifacts |
+| Concorde command intents | The six canonical IDs and behavior sections in this contract |
 | Installed support | Extension-relative workspace adapter, launchers, schemas, and runtime sources needed by those intents |
 | Acceptance binding | Spec Kit host version, package versions/digests, handoff digest, actual registered winner, selected paths, outputs, and checkout-access result |
 

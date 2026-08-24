@@ -13,9 +13,10 @@ export async function materializeContent(): Promise<void> {
   await rm(generatedContentRoot, {recursive: true, force: true});
 
   for (const document of registry.documents) {
-    if (document.collectionId !== 'architecture' && document.collectionId !== 'features') continue;
+    if (!['architecture', 'features', 'feature-designs'].includes(document.collectionId)) continue;
     const relativeSpecPath = relative(resolve(projectRoot, 'specs'), resolve(projectRoot, document.sourcePath));
-    const destination = resolve(generatedContentRoot, document.collectionId, relativeSpecPath);
+    const collectionDirectory = document.collectionId === 'feature-designs' ? 'features' : document.collectionId;
+    const destination = resolve(generatedContentRoot, collectionDirectory, relativeSpecPath);
     await mkdir(dirname(destination), {recursive: true});
     await copyFile(resolve(projectRoot, document.sourcePath), destination);
   }

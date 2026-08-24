@@ -1,4 +1,4 @@
-# Build Manifest Contract v2
+# Build Manifest Contract v3
 
 **Contract ID**: `contract.documentation.build-manifest`
 
@@ -16,7 +16,7 @@ written; all source, page, exclusion, route, link, and check arrays are determin
 
 ## Semantics
 
-- `schemaVersion`: manifest compatibility version, currently `2`.
+- `schemaVersion`: manifest compatibility version, currently `3`.
 - `generator`: Concorde docsite and Docusaurus version identities; deliberately contains no timestamp.
 - `collections`: logical view definitions, canonical source roots, inclusion patterns, and route bases.
 - `pages`: one record per included source, including hash, route, title, navigation, provenance,

@@ -46,7 +46,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIPT}` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later

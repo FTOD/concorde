@@ -33,14 +33,15 @@ command replacements must be reviewed and rerun against every added host version
 |---|---|---|
 | Catalog | Advertises package identity, version, URL, compatibility, digest, and trust metadata. | Discovery metadata, not installed behavior. |
 | Bundle `concorde-starter` | Pins one tested preset and one extension as an inspectable recipe. | Passive and non-executable. |
-| Preset `concorde-core` | Appends three architecture template layers and replaces nine existing lifecycle command instructions with Concorde-aware routing. | No new runtime namespace; Spec Kit still owns normal phase meaning. |
-| Extension `concorde` | Supplies five Concorde commands, the selected-workspace adapter, launchers, and deterministic runtime. | Does not own the nine normal lifecycle commands or agent syntax. |
+| Preset `concorde-core` | Appends three inherited lifecycle template layers, supplies the permanent design template, and replaces nine existing lifecycle command instructions with Concorde-aware routing. | No new runtime namespace; Spec Kit still owns normal phase meaning. |
+| Extension `concorde` | Supplies six Concorde commands, the selected-workspace adapter, launchers, and deterministic runtime. | Does not own the nine normal lifecycle commands or agent syntax. |
 | Active coding-agent integration | Materializes resolved normal-command winners and extension commands in agent-native form. | Presentation only; it cannot change intent or paths. |
 | Architecture Core | Implements initialization, bounded context, and validation after installation. | Core-workflow behavior owned by Feature 001. |
 
 The preset's template and command contributions use different composition strategies:
 
-- spec, plan, and tasks templates use `append` because they add guidance;
+- spec, plan, and tasks templates use `append` because they add guidance, while the Concorde-owned
+  permanent design template uses `replace`;
 - `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and
   `taskstoissues` use complete `replace` layers because selected-workspace routing must occur before
   any lower instruction can choose legacy paths.
@@ -73,8 +74,9 @@ Expected:
 - separate bundle, preset, and extension archives exist;
 - archive manifests, catalogs, versions, URLs, compatibility, and SHA-256 digests agree;
 - the bundle pins exactly `concorde-core@0.1.0` and `concorde@0.1.0`;
-- the preset contains three append template layers and nine complete replacement commands;
-- the extension contains five command definitions plus every referenced adapter, launcher, schema,
+- the preset contains three append template layers, one permanent design-template replacement, and
+  nine complete replacement commands;
+- the extension contains six command definitions plus every referenced adapter, launcher, schema,
   and runtime file;
 - no `.agents/`, root `.specify/`, test, temporal design, or generated documentation file is in an
   archive; and
@@ -142,9 +144,9 @@ specify bundle info concorde-starter --json > concorde-plan.json
 Review the plan before installing. It must identify:
 
 - bundle `concorde-starter@0.1.0`;
-- preset `concorde-core@0.1.0`, priority `10`, three template append layers, and nine command
-  replacement layers;
-- extension `concorde@0.1.0` and its five command intents;
+- preset `concorde-core@0.1.0`, priority `10`, three inherited template append layers, one permanent
+  design-template replacement, and nine command replacement layers;
+- extension `concorde@0.1.0` and its six command intents;
 - host requirement `>=0.16.4,<0.16.5`;
 - inherited active integration, package provenance, catalog trust, and planned files/state changes;
 - no workflow component, reusable steps, second feature store, or separate installer.
@@ -167,7 +169,7 @@ specify extension list
 Expected:
 
 - one active bundle, one preset, and one extension match the accepted plan;
-- the active integration has fourteen Concorde-owned surfaces: nine normal and five
+- the active integration has fifteen Concorde-owned surfaces: nine normal and six
   Concorde-specific;
 - every surface records its winning source component and materialized artifact;
 - every Concorde-owned surface identifies the Feature 001 handoff version and digest packaged by the
@@ -196,10 +198,11 @@ The selected feature must have this durable/temporal shape:
 ```text
 specs/<root>/modules/<module>/features/<number>-<slug>/
 ├── spec.md
+├── design.md
 ├── contracts/
-├── checklists/
 ├── diagrams/
 └── implementation/
+    ├── checklists/
     ├── plan.md
     ├── research.md
     ├── data-model.md
@@ -212,12 +215,13 @@ Execute every normal installed surface through the target integration:
 
 | Commands | Required location |
 |---|---|
-| Specify, clarify, checklist | Selected feature root |
+| Specify and clarify | Selected feature root for `spec.md`/contracts; generated review state under `implementation/checklists/` |
+| Checklist | Selected feature's `implementation/checklists/` directory |
 | Plan, tasks, implement, analyze, converge, taskstoissues | Selected feature's single `implementation/` workspace |
 
 After each command, verify that workspace resolution occurred before any path-sensitive setup or
-prerequisite action. No root `plan.md`, root `tasks.md`, root design copy, compatibility symlink, or
-second active implementation attempt may exist.
+prerequisite action. No root `checklists/`, root `plan.md`, root `tasks.md`, root design copy,
+compatibility symlink, or second active implementation attempt may exist.
 
 Run the deterministic full matrix three times:
 
@@ -228,7 +232,7 @@ uv run python -m unittest tests.concorde.integration.test_clean_phase_matrix
 Expected: every run produces the same selected paths and observable results, with no root aliases and
 no checkout reads.
 
-## 7. Exercise All Five Concorde Commands
+## 7. Exercise All Six Concorde Commands
 
 Through the installed presentation, exercise:
 
@@ -343,8 +347,9 @@ cd docsite
 npm run check
 ```
 
-The diagrams are supplemental. The prose in the spec and contracts must remain understandable
-without them, and neither diagram may redefine the bounded root module architecture.
+The component model is the core architecture view and the installation flow is supplemental. The
+prose in the spec and contracts must remain understandable without them, and neither diagram may
+redefine the bounded root module architecture.
 
 ## 13. Human Outcomes
 
@@ -362,7 +367,7 @@ participant to explain:
 1. catalog discovery/trust;
 2. the bundle's passive pins;
 3. the preset's template layers and normal-command replacements;
-4. the extension's five active commands/runtime;
+4. the extension's six active commands/runtime;
 5. active-integration presentation;
 6. Architecture Core behavior;
 7. why Spec Kit still owns the normal lifecycle.
@@ -373,7 +378,7 @@ pass. Automated diagram or documentation checks do not substitute for participan
 ## Acceptance Record
 
 Record platform and Spec Kit versions, accepted plan digest, package and catalog digests, Feature 001
-handoff digest, fourteen installed-surface receipts, phase matrix, source-access audit, recomposition,
+handoff digest, fifteen installed-surface receipts, phase matrix, source-access audit, recomposition,
 failure and lifecycle results, diagram/docsite evidence, and human pilot data in
 `implementation/validation.md`.
 

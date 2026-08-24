@@ -16,8 +16,12 @@ $ARGUMENTS
 3. Do not write maintained intent until the user explicitly approves that exact proposal.
 4. After approval, invoke the normal Spec Kit specify operation with
    `SPECIFY_FEATURE_DIRECTORY` set to `workspace.feature_directory`; Spec Kit authors the only
-   canonical `spec.md`.
-5. Register the approved architecture changes, validate them, then invoke
+   canonical `spec.md` and the adjacent durable `design.md`. Before any milestone has been hardened,
+   the design must explicitly say that no implementation realization is hardened yet and must not
+   invent implementation details.
+5. Verify that both `workspace.feature_spec` and `workspace.feature_design` exist as real files.
+   Register the approved architecture changes, validate them, then invoke
    `speckit.concorde.feature.select` for the created feature.
 
-Never silently choose another module or create a flat feature copy.
+Never silently choose another module, create a flat feature copy, or create temporal plan/task files
+at the durable feature root.

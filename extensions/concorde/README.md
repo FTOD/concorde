@@ -1,6 +1,6 @@
 # Concorde extension
 
-The extension registers five integration-neutral commands:
+The extension registers six integration-neutral commands:
 
 - `speckit.concorde.init` proposes a root specification hierarchy and writes only after explicit
   acceptance of an exact proposal.
@@ -8,6 +8,8 @@ The extension registers five integration-neutral commands:
   one canonical specification only after approval.
 - `speckit.concorde.feature.select` atomically selects an existing nested feature for the normal
   Spec Kit phases.
+- `speckit.concorde.feature.harden` verifies task completion, presents a digest-bound durable-design
+  proposal, and only after explicit approval promotes it and removes the temporal attempt.
 - `speckit.concorde.context` returns one bounded architectural level.
 - `speckit.concorde.validate` deterministically validates the configured hierarchy.
 

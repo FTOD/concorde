@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "generator": {
     "name": "concorde-docsite",
     "version": "0.2.0",
@@ -23,6 +23,12 @@
       "sourceBase": "specs",
       "routeBase": "/features",
       "include": ["**/spec.md"]
+    },
+    {
+      "id": "feature-designs",
+      "sourceBase": "specs",
+      "routeBase": "/features",
+      "include": ["**/design.md"]
     }
   ],
   "pages": [
@@ -85,6 +91,18 @@
           "route": "/architecture/project-docsite-publication-flow.html"
         }
       ]
+    },
+    {
+      "kind": "feature-design",
+      "sourcePath": "specs/concorde/features/002-create-project-docsite/design.md",
+      "sourceSha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "route": "/features/concorde/features/002-create-project-docsite/design",
+      "title": "Create Unified Project Docsite",
+      "navigation": {
+        "section": "Features",
+        "label": "Create Unified Project Docsite"
+      },
+      "links": []
     }
   ],
   "excludedSources": [
@@ -99,6 +117,7 @@
     "/architecture/concorde-root.html",
     "/architecture/project-docsite-publication-flow.html",
     "/docs/",
+    "/features/concorde/features/002-create-project-docsite/design",
     "/features/concorde/features/002-create-project-docsite/feature.concorde.publish-project-docsite"
   ],
   "validation": {

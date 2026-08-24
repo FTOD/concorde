@@ -32,7 +32,7 @@ sources.
 
 | Feature ID | Outcome | Parent refinement | Structural definition |
 |---|---|---|---|
-| `feature.documentation.publish-project-docsite` | Architecture sources, project docs, and feature specs become one generated read model. | `feature.concorde.publish-project-docsite` | `features/001-publish-project-docsite/spec.md` |
+| `feature.documentation.publish-project-docsite` | Architecture sources, project docs, feature specs, and accepted feature designs become one generated read model. | `feature.concorde.publish-project-docsite` | `features/001-publish-project-docsite/spec.md` |
 
 ## Boundary Contracts
 
@@ -69,7 +69,7 @@ external providers/consumer, and the governing boundary contracts.
 ## Evidence Status
 
 The publication feature is implemented. Its locked dependency installation, validation interface,
-two-root/three-view source discovery, strict link mapping, canonical-only feature projection, sandboxed
+two-root/three-view source discovery, strict link mapping, permanent feature spec/design projection, sandboxed
 Archify embedding, local search, accessible presentation, schema-valid manifest, atomic promotion,
 repeatability, and source immutability all
 have executable evidence in `docsite/tests/` and `specs/concorde/features/002-create-project-docsite/implementation/validation.md`.

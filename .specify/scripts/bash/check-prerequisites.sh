@@ -112,15 +112,16 @@ if $PATHS_ONLY; then
                 --arg feature_dir "$FEATURE_DIR" \
                 --arg implementation_dir "$IMPLEMENTATION_DIR" \
                 --arg feature_spec "$FEATURE_SPEC" \
+                --arg feature_design "$FEATURE_DESIGN" \
                 --arg impl_plan "$IMPL_PLAN" \
                 --arg tasks "$TASKS" \
                 --arg contracts_dir "$CONTRACTS_DIR" \
                 --arg checklists_dir "$CHECKLISTS_DIR" \
                 --arg diagrams_dir "$DIAGRAMS_DIR" \
-                '{REPO_ROOT:$repo_root,BRANCH:$branch,FEATURE_DIR:$feature_dir,IMPLEMENTATION_DIR:$implementation_dir,FEATURE_SPEC:$feature_spec,IMPL_PLAN:$impl_plan,TASKS:$tasks,CONTRACTS_DIR:$contracts_dir,CHECKLISTS_DIR:$checklists_dir,DIAGRAMS_DIR:$diagrams_dir}'
+                '{REPO_ROOT:$repo_root,BRANCH:$branch,FEATURE_DIR:$feature_dir,IMPLEMENTATION_DIR:$implementation_dir,FEATURE_SPEC:$feature_spec,FEATURE_DESIGN:$feature_design,IMPL_PLAN:$impl_plan,TASKS:$tasks,CONTRACTS_DIR:$contracts_dir,CHECKLISTS_DIR:$checklists_dir,DIAGRAMS_DIR:$diagrams_dir}'
         else
-            printf '{"REPO_ROOT":"%s","BRANCH":"%s","FEATURE_DIR":"%s","IMPLEMENTATION_DIR":"%s","FEATURE_SPEC":"%s","IMPL_PLAN":"%s","TASKS":"%s","CONTRACTS_DIR":"%s","CHECKLISTS_DIR":"%s","DIAGRAMS_DIR":"%s"}\n' \
-                "$(json_escape "$REPO_ROOT")" "$(json_escape "$CURRENT_BRANCH")" "$(json_escape "$FEATURE_DIR")" "$(json_escape "$IMPLEMENTATION_DIR")" "$(json_escape "$FEATURE_SPEC")" "$(json_escape "$IMPL_PLAN")" "$(json_escape "$TASKS")" "$(json_escape "$CONTRACTS_DIR")" "$(json_escape "$CHECKLISTS_DIR")" "$(json_escape "$DIAGRAMS_DIR")"
+            printf '{"REPO_ROOT":"%s","BRANCH":"%s","FEATURE_DIR":"%s","IMPLEMENTATION_DIR":"%s","FEATURE_SPEC":"%s","FEATURE_DESIGN":"%s","IMPL_PLAN":"%s","TASKS":"%s","CONTRACTS_DIR":"%s","CHECKLISTS_DIR":"%s","DIAGRAMS_DIR":"%s"}\n' \
+                "$(json_escape "$REPO_ROOT")" "$(json_escape "$CURRENT_BRANCH")" "$(json_escape "$FEATURE_DIR")" "$(json_escape "$IMPLEMENTATION_DIR")" "$(json_escape "$FEATURE_SPEC")" "$(json_escape "$FEATURE_DESIGN")" "$(json_escape "$IMPL_PLAN")" "$(json_escape "$TASKS")" "$(json_escape "$CONTRACTS_DIR")" "$(json_escape "$CHECKLISTS_DIR")" "$(json_escape "$DIAGRAMS_DIR")"
         fi
     else
         echo "REPO_ROOT: $REPO_ROOT"
@@ -128,6 +129,7 @@ if $PATHS_ONLY; then
         echo "FEATURE_DIR: $FEATURE_DIR"
         echo "IMPLEMENTATION_DIR: $IMPLEMENTATION_DIR"
         echo "FEATURE_SPEC: $FEATURE_SPEC"
+        echo "FEATURE_DESIGN: $FEATURE_DESIGN"
         echo "IMPL_PLAN: $IMPL_PLAN"
         echo "TASKS: $TASKS"
         echo "CONTRACTS_DIR: $CONTRACTS_DIR"
@@ -141,6 +143,12 @@ fi
 if [[ ! -d "$FEATURE_DIR" ]]; then
     echo "ERROR: Feature directory not found: $FEATURE_DIR" >&2
     echo "Run \$speckit-specify first to create the feature structure." >&2
+    exit 1
+fi
+
+if [[ ! -f "$FEATURE_DESIGN" ]]; then
+    echo "ERROR: design.md not found in $FEATURE_DIR" >&2
+    echo "Run \$speckit-specify first to create the durable design baseline." >&2
     exit 1
 fi
 
@@ -159,6 +167,7 @@ fi
 
 # Build list of available documents
 docs=()
+docs+=("design.md")
 
 # Always check these optional docs
 [[ -f "$RESEARCH" ]] && docs+=("implementation/research.md")
@@ -200,20 +209,22 @@ if $JSON_MODE; then
                 --arg feature_dir "$FEATURE_DIR" \
                 --arg implementation_dir "$IMPLEMENTATION_DIR" \
                 --arg feature_spec "$FEATURE_SPEC" \
+                --arg feature_design "$FEATURE_DESIGN" \
                 --arg impl_plan "$IMPL_PLAN" \
                 --arg tasks "$TASKS" \
                 --argjson docs "$json_docs" \
                 --arg template_content "$TEMPLATE_CONTENT" \
-                '{FEATURE_DIR:$feature_dir,IMPLEMENTATION_DIR:$implementation_dir,FEATURE_SPEC:$feature_spec,IMPL_PLAN:$impl_plan,TASKS:$tasks,AVAILABLE_DOCS:$docs,TEMPLATE_CONTENT:$template_content}'
+                '{FEATURE_DIR:$feature_dir,IMPLEMENTATION_DIR:$implementation_dir,FEATURE_SPEC:$feature_spec,FEATURE_DESIGN:$feature_design,IMPL_PLAN:$impl_plan,TASKS:$tasks,AVAILABLE_DOCS:$docs,TEMPLATE_CONTENT:$template_content}'
         else
             jq -cn \
                 --arg feature_dir "$FEATURE_DIR" \
                 --arg implementation_dir "$IMPLEMENTATION_DIR" \
                 --arg feature_spec "$FEATURE_SPEC" \
+                --arg feature_design "$FEATURE_DESIGN" \
                 --arg impl_plan "$IMPL_PLAN" \
                 --arg tasks "$TASKS" \
                 --argjson docs "$json_docs" \
-                '{FEATURE_DIR:$feature_dir,IMPLEMENTATION_DIR:$implementation_dir,FEATURE_SPEC:$feature_spec,IMPL_PLAN:$impl_plan,TASKS:$tasks,AVAILABLE_DOCS:$docs}'
+                '{FEATURE_DIR:$feature_dir,IMPLEMENTATION_DIR:$implementation_dir,FEATURE_SPEC:$feature_spec,FEATURE_DESIGN:$feature_design,IMPL_PLAN:$impl_plan,TASKS:$tasks,AVAILABLE_DOCS:$docs}'
         fi
     else
         if [[ ${#docs[@]} -eq 0 ]]; then
@@ -223,11 +234,11 @@ if $JSON_MODE; then
             json_docs="[${json_docs%,}]"
         fi
         if [[ -n "$TEMPLATE_NAME" ]]; then
-            printf '{"FEATURE_DIR":"%s","IMPLEMENTATION_DIR":"%s","FEATURE_SPEC":"%s","IMPL_PLAN":"%s","TASKS":"%s","AVAILABLE_DOCS":%s,"TEMPLATE_CONTENT":"%s"}\n' \
-                "$(json_escape "$FEATURE_DIR")" "$(json_escape "$IMPLEMENTATION_DIR")" "$(json_escape "$FEATURE_SPEC")" "$(json_escape "$IMPL_PLAN")" "$(json_escape "$TASKS")" "$json_docs" "$(json_escape "$TEMPLATE_CONTENT")"
+            printf '{"FEATURE_DIR":"%s","IMPLEMENTATION_DIR":"%s","FEATURE_SPEC":"%s","FEATURE_DESIGN":"%s","IMPL_PLAN":"%s","TASKS":"%s","AVAILABLE_DOCS":%s,"TEMPLATE_CONTENT":"%s"}\n' \
+                "$(json_escape "$FEATURE_DIR")" "$(json_escape "$IMPLEMENTATION_DIR")" "$(json_escape "$FEATURE_SPEC")" "$(json_escape "$FEATURE_DESIGN")" "$(json_escape "$IMPL_PLAN")" "$(json_escape "$TASKS")" "$json_docs" "$(json_escape "$TEMPLATE_CONTENT")"
         else
-            printf '{"FEATURE_DIR":"%s","IMPLEMENTATION_DIR":"%s","FEATURE_SPEC":"%s","IMPL_PLAN":"%s","TASKS":"%s","AVAILABLE_DOCS":%s}\n' \
-                "$(json_escape "$FEATURE_DIR")" "$(json_escape "$IMPLEMENTATION_DIR")" "$(json_escape "$FEATURE_SPEC")" "$(json_escape "$IMPL_PLAN")" "$(json_escape "$TASKS")" "$json_docs"
+            printf '{"FEATURE_DIR":"%s","IMPLEMENTATION_DIR":"%s","FEATURE_SPEC":"%s","FEATURE_DESIGN":"%s","IMPL_PLAN":"%s","TASKS":"%s","AVAILABLE_DOCS":%s}\n' \
+                "$(json_escape "$FEATURE_DIR")" "$(json_escape "$IMPLEMENTATION_DIR")" "$(json_escape "$FEATURE_SPEC")" "$(json_escape "$FEATURE_DESIGN")" "$(json_escape "$IMPL_PLAN")" "$(json_escape "$TASKS")" "$json_docs"
         fi
     fi
 else

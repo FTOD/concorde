@@ -16,7 +16,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIPT}` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
@@ -64,7 +64,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Goal
 
-Identify inconsistencies, duplications, ambiguities, and underspecified items across durable `spec.md` and the active `implementation/plan.md` and `implementation/tasks.md` before implementation. This command MUST run only after `$speckit-tasks` has successfully produced a complete task list.
+Identify inconsistencies, duplications, ambiguities, and underspecified items across durable `spec.md`, durable accepted `design.md`, and the active `implementation/plan.md` and `implementation/tasks.md` before implementation. This command MUST run only after `$speckit-tasks` has successfully produced a complete task list.
 
 ## Operating Constraints
 
@@ -76,9 +76,10 @@ Identify inconsistencies, duplications, ambiguities, and underspecified items ac
 
 ### 1. Initialize Analysis Context
 
-Run `{SCRIPT}` once from repo root and parse JSON for FEATURE_DIR, FEATURE_SPEC, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
+Run `{SCRIPT}` once from repo root and parse JSON for FEATURE_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
 
 - SPEC = FEATURE_SPEC
+- DESIGN = FEATURE_DESIGN
 - PLAN = IMPL_PLAN
 - TASKS = TASKS
 
@@ -97,6 +98,10 @@ Load only the minimal necessary context from each artifact:
 - User Stories
 - Edge Cases (if present)
 - Feature-diagram roles, maintained JSON paths, textual counterparts, and sufficiency rationales
+
+**From design.md:**
+
+- Accepted realization baseline, durable decisions, scenario realization, traceability, and known limitations
 
 **From plan.md:**
 

@@ -165,7 +165,13 @@ class ProjectRepository:
         artifacts = [source.path for source in sources] + list(views) + list(diagrams)
         auxiliary: dict[str, str] = {}
         for feature in (source for source in sources if source.kind == "feature"):
-            implementation = self.resolve(str(PurePosixPath(feature.path).parent / "implementation"))
+            feature_root = PurePosixPath(feature.path).parent
+            design = self.resolve(str(feature_root / "design.md"))
+            if design.is_file() and not design.is_symlink():
+                relative = design.relative_to(self.project_root).as_posix()
+                auxiliary[relative] = design.read_text(encoding="utf-8")
+                artifacts.append(relative)
+            implementation = self.resolve(str(feature_root / "implementation"))
             if not implementation.is_dir() or implementation.is_symlink():
                 continue
             for name in ("plan.md", "tasks.md", "research.md", "data-model.md", "quickstart.md", "validation.md"):

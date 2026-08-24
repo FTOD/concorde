@@ -46,7 +46,7 @@ The supported platform is exactly Spec Kit 0.16.4 for the starter release.
 
 ## Evidence
 
-Component packaging and registration of five Concorde-specific command artifacts are verified
-against Specify CLI 0.16.4. Evidence is partial until clean-project tests execute those five intents
+Component packaging and registration of six Concorde-specific command artifacts are verified
+against Specify CLI 0.16.4. Evidence is partial until clean-project tests execute those six intents
 and all nine affected normal-command surfaces from release-installed artifacts, prove the complete
-durable/temporal phase-path matrix, and verify lower-layer restoration.
+durable-spec/design/temporal phase-path matrix, and verify lower-layer restoration.

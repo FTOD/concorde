@@ -47,6 +47,12 @@ Observable delivery behavior. Scenarios below are representative examples.
 """,
             encoding="utf-8",
         )
+    design_path = root / "design.md"
+    if not design_path.exists():
+        design_path.write_text(
+            "# Feature Design: Fixture\n\n**Design status**: Accepted fixture baseline.\n",
+            encoding="utf-8",
+        )
     return root
 
 

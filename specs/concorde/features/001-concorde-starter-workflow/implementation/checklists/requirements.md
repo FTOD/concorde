@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-08-22
-**Feature**: [spec.md](../spec.md)
+**Feature**: [spec.md](../../spec.md)
 
 ## Content Quality
 
@@ -32,15 +32,25 @@
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] Observable implementation boundaries are explicit without turning internal algorithms into
   behavioral authority
+- [x] `spec.md`, `design.md`, module architecture, and temporal `implementation/` have distinct,
+  non-overlapping authority
+- [x] Requirements-quality checklists are explicitly temporary, resolve only below
+  `implementation/checklists/`, and leave accepted conclusions in `spec.md` or `design.md`
+- [x] Hardening eligibility, proposal review, explicit approval, cleanup confinement, stale-input
+  rejection, checklist resolution, and recovery behavior are testable
+- [x] Installed preset, extension command, agent presentation, adapter, and runtime obligations cover
+  user projects rather than only repository-local skills
 
 ## Notes
 
-- Validation iteration 3 passed all 17 checks on 2026-08-22 after installed execution layers and
-  workspace authority categories were clarified.
-- The existing Feature 001 plan, tasks, and implementation evidence predate this scope correction and
-  must be revised in the planning phase; that lifecycle work does not reduce specification quality.
+- Validation iteration 5 passed all 21 checks on 2026-08-23 after checklist review state was moved
+  into the temporal implementation workspace and added to the hardening eligibility boundary.
+- The existing Feature 001 plan, tasks, and implementation evidence predate the hardening scope and
+  must be revised in the planning phase; that temporal lifecycle work does not reduce specification
+  quality and must not be mistaken for the new durable `design.md`.
 - Product-visible command IDs and the maintained `specs/` artifact model are intentional interface
   requirements, not internal implementation choices.
 - `diagrams/core-workflow-components.json` distinguishes installed agent surfaces, deterministic
-  adapters/runtime, architecture sources, feature sources, temporal work, and generated read models;
+  adapters/runtime, architecture sources, behavioral specification, accepted feature design, and
+  temporal work, including the hardening gate;
   it passes all 9 Archify showcase checks with zero errors or warnings.

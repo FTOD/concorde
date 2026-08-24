@@ -11,7 +11,7 @@
         "id": "publish-project-docsite",
         "label": "Publish project docsite",
         "focus": ["projectDocs", "projectSpecs", "archify", "documentation", "maintainer"],
-        "note": "One hierarchical specs tree and project Markdown become three verified, read-only site views."
+        "note": "The specs tree supplies architecture and permanent feature specs/designs; project Markdown completes three read-only views."
       }
     ]
   },

@@ -57,14 +57,15 @@ answers only the narrower call-order question.
 ### User Story 1 - Browse the Whole Project in One Site (Priority: P1)
 
 As a maintainer, contributor, or reviewer, I can open one project website and browse the maintained
-architecture, project documentation, and every canonical feature specification so that I can
-understand the product and its active feature work without navigating the repository manually.
+architecture, project documentation, and every feature's permanent specification and design so that
+I can understand both intended behavior and accepted realization without navigating the repository manually.
 
 **Why this priority**: A unified, browsable read model is the primary value of the feature. Without
-all three source collections in one coherent site, the docsite does not represent the project as requested.
+all three navigation families and all four source collections in one coherent site, the docsite does
+not represent the project as requested.
 
 **Independent Test**: Populate `specs/` with a module, boundary contract, delivered view, and two
-feature specifications, and `docs/` with a small documentation hierarchy; build and open the site, then
+feature specifications and designs, and `docs/` with a small documentation hierarchy; build and open the site, then
 confirm that every eligible source is reachable through distinct Architecture, Documentation, and
 Features navigation paths and project-wide discovery.
 
@@ -72,13 +73,13 @@ Features navigation paths and project-wide discovery.
 
 1. **Given** eligible architecture and feature sources in the hierarchical `specs/` tree and Markdown
    documents in `docs/`, **When** a visitor opens the generated site, **Then**
-   the visitor can reach all three collections from a
+   the visitor can reach all three navigation families from a
    project landing page without knowing their repository paths.
 2. **Given** multiple nested documentation pages and multiple features, **When** the visitor browses
    the site navigation, **Then** documentation hierarchy is preserved and feature specifications are
-   grouped under a clearly labeled Features area.
-3. **Given** a feature specification with an ID, title, and lifecycle status, **When** its page is
-   displayed, **Then** those identifying facts and its source provenance are visible.
+   grouped with their permanent designs under a clearly labeled Features area.
+3. **Given** a feature specification and design, **When** their pages are displayed, **Then** the
+   specification's identifying facts and both pages' source provenance are visible.
 4. **Given** a visitor looking for a known phrase, module, or feature, **When** the visitor uses the
    site's discovery facilities, **Then** matching project documentation and feature specifications can
    both be found.

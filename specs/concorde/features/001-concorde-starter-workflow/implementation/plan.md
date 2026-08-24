@@ -1,11 +1,16 @@
 # Implementation Plan: Complete the Concorde Core Workflow
 
-**Working branch**: `main` (logical feature selection: `001-concorde-starter-workflow`)  
-**Date**: 2026-08-22  
+**Working branch**: `main` (logical feature selection: `001-concorde-starter-workflow`)
+
+**Date**: 2026-08-23
+
 **Spec**: [../spec.md](../spec.md)
 
+**Accepted design baseline**: [../design.md](../design.md)
+
 **Lifecycle**: Active temporal implementation plan. It describes one delivery attempt and is not
-durable feature or architecture authority.
+durable feature or architecture authority. Normal implementation work never updates `design.md`;
+only an explicitly approved hardening operation can promote this completed attempt into it.
 
 ## Summary
 
@@ -14,7 +19,15 @@ initialization, one-level context, structural validation, append-only guidance, 
 foundation. This attempt adds reviewed nested feature creation and selection, defines and implements
 the durable-root/temporal-implementation path service consumed by installed commands, makes
 architecture readiness verifiable before plan approval, enriches active-feature implementation
-context, and completes deterministic contract/evidence/freshness reconciliation.
+context, and completes deterministic contract/evidence/freshness reconciliation. This milestone also
+introduces the permanent feature-design layer and the task-complete, digest-bound, approval-gated
+hardening operation distributed through the Concorde preset and extension.
+
+Relative to the accepted `design.md` baseline, this attempt also changes checklist authority and
+routing: requirements-quality checklists move from the feature root to
+`implementation/checklists/`, may open the temporal attempt before planning, and must all be resolved
+before the attempt is eligible to harden. The durable design remains unchanged until that completed
+delta is explicitly reviewed and hardened.
 
 Feature 001 owns the command semantics and workflow behavior. Feature 003 remains responsible for
 the preset's nine normal-command overrides, extension/package manifests, release archives, catalogs,
@@ -36,7 +49,8 @@ standard library for the deterministic runtime/workspace adapter; existing Archi
 validators as delegated freshness owners
 
 **Storage**: `.concorde/config.json` for source-profile configuration; `.specify/feature.json` for the
-single project-scoped selected feature root; recursive maintained intent under `specs/`; one temporal
+single project-scoped selected feature root; recursive maintained `spec.md` intent and `design.md`
+accepted realization under `specs/`; one temporal
 `implementation/` child per active feature; code/tests as implementation evidence; generated
 Archify/Docusaurus outputs and manifests as reproducible projections
 
@@ -59,13 +73,14 @@ Spec Kit; Feature 003 separately packages its preset and extension; no server or
 - unchanged validation produces byte-equivalent ordered output in all repeated supported-environment
   runs;
 - path routing creates one canonical root spec and zero root plan/task aliases;
-- first-time maintainers preserve all four artifact-authority distinctions after at most five minutes
+- first-time maintainers preserve all five artifact-authority distinctions after at most five minutes
   of review in at least 90% of pilot runs
 
 **Constraints**:
 
 - no parallel Concorde feature lifecycle or second active-feature registry;
-- durable feature intent at the feature root, all delivery details under `implementation/`;
+- durable feature intent and accepted realization at the feature root, all active delivery details
+  under `implementation/`;
 - at most one active implementation attempt and no silent resume/replacement;
 - no LLM in path resolution, context projection, validation, conformance, or freshness decisions;
 - all paths project-relative and confined; no symlink escape, traversal, compatibility copy, or alias;
@@ -79,8 +94,8 @@ Spec Kit; Feature 003 separately packages its preset and extension; no server or
   sufficiency rationale, while dynamic scenario diagrams remain `role: supplemental`
 
 **Scale/Scope**: One recursively nested specification package per project; one selected feature and
-one active attempt; five canonical Concorde command intents; module/feature/contract/scenario/view/evidence
-validation; one versioned handoff to Feature 003 for nine normal and five Concorde-specific installed
+one active attempt; six canonical Concorde command intents; module/feature/contract/scenario/view/evidence
+validation; one versioned handoff to Feature 003 for nine normal and six Concorde-specific installed
 surfaces; Concorde self-application
 
 ## Constitution Check
@@ -95,7 +110,7 @@ below is a blocking implementation checkpoint; failure stops the attempt before 
 | III. Recursive, bounded architecture | Placement resolves one providing module; context and views expose only the current module and immediate children. Three-level root→child acceptance is required. | PASS |
 | IV. Explicit ownership and feature alignment | A new Integration refinement, `feature.integration.manage-feature-workspace`, owns create/select/routing. Distribution now refines only installation; Architecture Core retains bounded source semantics. | PASS |
 | V. Contracts govern every boundary | Phase 1 adds the Feature Workspace Protocol and extends agent/source contracts. Scenario crossings, custom conformance, failures, and evidence remain explicit implementation gates. | PASS |
-| VI. One authority per fact | Root spec/contracts/checklists are durable; implementation artifacts are temporal; `.specify/feature.json` is the only selection pointer; generated outputs remain projections. Existing feature workspaces must be migrated or recorded as finite bootstrap debt before completion. | PASS |
+| VI. One authority per fact | Root `spec.md`, contracts, diagrams, and `design.md` are durable; requirements-quality checklists and all other attempt artifacts are temporal under `implementation/`; `.specify/feature.json` is the only selection pointer; generated outputs remain projections. Existing feature workspaces must be migrated or recorded as finite bootstrap debt before completion. | PASS |
 | VII. Deterministic validation and reviewed evidence | Proposal/apply or atomic selection protects mutations; validators remain sorted/read-only; approval, evidence disagreement, and freshness receipts are separately tested. | PASS |
 | Architecture documentation standards | Root view stays one-level. Scenario IDs/interactions and governing contracts stay stable; the feature has a separate text-backed core architecture view for stable component interaction, while dynamic views remain supplemental. | PASS |
 | Pre-implementation ownership gate | Feature 001 is correctly root-owned because it coordinates Spec Kit Integration and Architecture Core; Documentation is a downstream publication handoff, not an unmodeled owned implementation. | PASS |
@@ -109,7 +124,7 @@ updates are stop conditions, not deferred waivers.
 
 | Module | Child feature | Responsibility in this implementation |
 |---|---|---|
-| `module.concorde.spec-kit-integration` | `feature.integration.manage-feature-workspace` | Reviewed placement, nested feature selection, phase-specific path semantics, workspace adapter, and portable create/select commands. |
+| `module.concorde.spec-kit-integration` | `feature.integration.manage-feature-workspace` | Reviewed placement, nested feature selection, phase-specific path semantics, workspace adapter, and portable create/select/harden commands. |
 | `module.concorde.architecture-core` | `feature.architecture-core.manage-bounded-sources` | Root proposal/apply, source semantics, placement-supporting bounded context, enriched active-feature context, deterministic validation, evidence/freshness normalization. |
 
 `feature.integration.compose-starter-workflow` now refines Feature 003 only. Distribution therefore
@@ -124,7 +139,7 @@ Feature 002 and does not become a hidden Feature 001 implementation owner.
 | `contract.concorde.core-workflow` | root Concorde | User-facing composition of the post-installation workflow. |
 | `contract.integration.feature-workspace` | Spec Kit Integration | Normative create/select paths, proposal, selection, collision, and active-attempt semantics. |
 | `contract.integration.workflow-composition` | Spec Kit Integration | Feature 001 supplies phase-path semantics; Feature 003 owns their public preset composition and materialization. |
-| `contract.integration.agent-skills` | Spec Kit Integration | Five portable command intents from Feature 001; Feature 003 owns installed presentations. |
+| `contract.integration.agent-skills` | Spec Kit Integration | Six portable command intents from Feature 001; Feature 003 owns installed presentations. |
 | `contract.core.architecture-services` | Architecture Core | Existing custom v1 init/context/validate JSON boundary. |
 | `contract.integration.spec-kit-platform` | external Spec Kit | Supported preset, command, selection, and lifecycle behavior required by Concorde. |
 
@@ -152,10 +167,9 @@ remain navigation targets and are never embedded in the root view.
 ```text
 specs/concorde/features/001-concorde-starter-workflow/
 ├── spec.md
+├── design.md
 ├── diagrams/
 │   └── core-workflow-components.json
-├── checklists/
-│   └── requirements.md
 ├── contracts/
 │   ├── agent-commands.md
 │   ├── architecture-service.schema.json
@@ -165,8 +179,11 @@ specs/concorde/features/001-concorde-starter-workflow/
 │       ├── context-response.json
 │       ├── validation-response.json
 │       ├── feature-create-proposal.json
-│       └── feature-select-response.json
+│       ├── feature-select-response.json
+│       └── feature-harden-proposal.json
 └── implementation/
+    ├── checklists/
+    │   └── requirements.md
     ├── plan.md
     ├── research.md
     ├── data-model.md
@@ -188,6 +205,7 @@ extensions/concorde/
 │   ├── speckit.concorde.init.md
 │   ├── speckit.concorde.feature.create.md
 │   ├── speckit.concorde.feature.select.md
+│   ├── speckit.concorde.feature.harden.md
 │   ├── speckit.concorde.context.md
 │   └── speckit.concorde.validate.md
 ├── scripts/
@@ -200,6 +218,7 @@ extensions/concorde/
     ├── cli.py
     ├── context.py
     ├── feature_workspace.py
+    ├── feature_hardening.py
     ├── repository.py
     ├── validate.py
     ├── validation/
@@ -223,6 +242,7 @@ tests/concorde/
 │   └── test_structured_results.py
 ├── integration/
 │   ├── test_feature_workspace.py
+│   ├── test_feature_hardening.py
 │   ├── test_implementation_workspace.py
 │   ├── test_context.py
 │   ├── test_validation.py
@@ -255,7 +275,7 @@ canonical intent, result contracts, path semantics, or failure behavior.
 
 1. Finalize the Feature Workspace Protocol and the distribution-neutral adapter result containing the
    feature root, `implementation/` root, and every phase path.
-2. Define the nine normal-command routing obligations and five Concorde-specific command intents in
+2. Define the nine normal-command routing obligations and six Concorde-specific command intents in
    durable contracts without embedding agent-specific filenames or preset composition strategy.
 3. Prove the adapter and command semantics in self-hosting/source fixtures, including explicit
    selection, read-only resolution, conflict handling, and no root aliases.
@@ -296,8 +316,9 @@ canonical intent, result contracts, path semantics, or failure behavior.
 
 ### Phase 5: Enrich bounded implementation context
 
-1. Add active feature root paths, durable contracts/checklists, current implementation artifacts,
-   adjacent refinements, relevant contract bodies, and evidence references.
+1. Add active feature root paths, durable contracts and design, temporal
+   `implementation/checklists/`, current implementation artifacts, adjacent refinements, relevant
+   contract bodies, and evidence references.
 2. Load declared feature-diagram JSON as durable feature sources, include it in the canonical source
    digest, and project its scenario, kind, output, and title into active-feature context without
    treating it as a module-level architecture view.
@@ -331,12 +352,31 @@ canonical intent, result contracts, path semantics, or failure behavior.
    deliver it through Archify, publish it through the existing docsite artifact route, and preserve
    truthful pending visual status when no browser is available.
 
+### Phase 8: Permanent design and explicit milestone hardening
+
+1. Establish root `design.md` beside every `spec.md`; treat it as the accepted realization baseline
+   read by planning and implementation but never mutated by those normal phases.
+2. Extend the Feature Workspace Protocol and deterministic runtime with `feature.harden`: eligibility
+   requires a real task file with every canonical task checked, no malformed task evidence, and every
+   existing item under `implementation/checklists/` resolved.
+3. Have the installed agent synthesize the complete candidate design, but bind its exact content,
+   feature target, removal set, and source digest in `implementation/harden-proposal.json`.
+4. Require explicit approval before apply; reject changed inputs, symlinks, escaping paths, alternate
+   design targets, or any removal set other than the selected feature's whole `implementation/`.
+5. Commit by staged rename and restore the prior design and attempt on failure. Report retained,
+   removed, and digest evidence deterministically.
+6. Distribute the design template and normal-phase rules through `concorde-core`, and distribute the
+   command plus runtime through the `concorde` extension. Prove behavior in clean installed targets.
+7. Publish permanent designs in the Features docsite area while continuing to record temporal
+   implementation Markdown as excluded source.
+
 ## Test and Evidence Strategy
 
 | Requirement area | Evidence |
 |---|---|
-| Distribution handoff | Validate the Feature Workspace Protocol, adapter examples, nine phase obligations, and five command intents; consume Feature 003's clean-install acceptance receipt rather than reproducing package tests here. |
+| Distribution handoff | Validate the Feature Workspace Protocol, adapter examples, nine phase obligations, and six command intents; consume Feature 003's clean-install acceptance receipt rather than reproducing package tests here. |
 | Durable/temporal routing | Exhaustive phase-path matrix, explicit override/persisted selection, read-only no-persist, no root files/symlinks, resume/conflict tests. |
+| Permanent design/hardening | Creation and layout require root design; incomplete/malformed tasks block; stale proposals conflict; approved apply replaces only design and removes only the attempt; injected commit failure restores both; clean installed skills/slash surfaces expose the sixth command. |
 | Initialization/hierarchy | Existing proposal/apply/rollback tests plus three-level root→child bounded-context assertions. |
 | Feature placement/selection | Proposal digest, nearest-common-parent fixture, collision/unsafe/stale/duplicate failures, atomic state, idempotent reselection, one complete normal lifecycle. |
 | Architecture readiness | Failing cross-boundary fixture missing contracts/scenario/evidence, then passing after durable sources are supplied. |
@@ -357,7 +397,7 @@ clean-install public-composition risk is now planned and evidenced only by Featu
 duplicate authority, or unexplained exception is permitted.
 
 Implementation and human evidence remain incomplete by design. Contract evidence for feature
-workspace selection and five-command portability is `unknown`/`partial` until the tasks execute; this
+workspace selection and six-command portability is `unknown`/`partial` until the tasks execute; this
 is honest evidence status, not a constitution gate failure.
 
 ## Complexity Tracking

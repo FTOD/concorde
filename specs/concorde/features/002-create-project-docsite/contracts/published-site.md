@@ -1,4 +1,4 @@
-# Published Project Site Contract v2
+# Published Project Site Contract v3
 
 **Contract ID**: `contract.documentation.architecture-site`
 
@@ -11,7 +11,7 @@
 ## Purpose
 
 Provide one browsable, searchable, read-only projection of canonical architecture sources, project
-documentation, and Spec Kit feature specifications.
+documentation, and permanent feature specifications and accepted designs.
 
 ## Representation
 
@@ -25,14 +25,14 @@ JavaScript, assets, a local search index, and `build-manifest.json`.
 | `/` | Project landing page with Architecture, Documentation, and Features entry points and source counts |
 | `/architecture/**` | Architecture module and contract Markdown plus declared embedded views |
 | `/docs/**` | Project documents sourced from `docs/**/*.md` |
-| `/features/**` | Canonical feature specifications sourced from `specs/**/spec.md`, including their declared feature diagrams |
+| `/features/**` | Permanent feature specifications from `specs/**/spec.md` and accepted designs from `specs/**/design.md`; specification pages include their declared feature diagrams |
 | `/build-manifest.json` | Machine-readable successful-build inventory |
 
 Every source-derived page displays its content kind and project-relative source path. Architecture
 pages also display stable entity identity, hierarchy metadata, and declared-view provenance; feature
-pages display stable feature ID, owning module, recorded lifecycle status, and every declared fresh
-feature diagram with source provenance and a standalone-view link. Draft status is visible and does
-not imply approval or implementation agreement.
+specification pages display stable feature ID, owning module, recorded lifecycle status, and every
+declared fresh feature diagram, while feature-design pages identify their durable source provenance.
+Draft status is visible and does not imply approval or implementation agreement.
 
 ## Guarantees
 
@@ -57,7 +57,7 @@ build interface and the prior successful output remains untouched.
 ## Compatibility
 
 The three top-level route spaces and manifest schema version remain stable within published-site
-contract version 2. Source renames may change their derived routes unless a later redirect feature is
+contract version 3. Source renames may change their derived routes unless a later redirect feature is
 specified. Adding new content pages is compatible; changing a route base or removing provenance is
 breaking.
 

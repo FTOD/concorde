@@ -38,8 +38,9 @@ second Concorde installer.
 
 ## Decision 3: Use `replace` for all nine affected core commands
 
-**Decision**: Keep the three template entries `append`, but make all nine existing-command entries
-authoritative `replace` layers. Each replacement preserves its Spec Kit phase responsibility and
+**Decision**: Keep the three inherited template entries `append`, add the Concorde-only permanent
+design template as `replace`, and make all nine existing-command entries authoritative `replace`
+layers. Each command replacement preserves its Spec Kit phase responsibility and
 invokes the installed Feature 001 workspace adapter before any path-sensitive setup, prerequisite,
 or artifact read/write.
 
@@ -73,9 +74,9 @@ range makes divergence visible rather than silently claiming compatibility.
 - Advertising a broad range based on manifest parsing alone was rejected because command semantics
   can change without package schema changes.
 
-## Decision 5: Package five Concorde-specific commands in the extension
+## Decision 5: Package six Concorde-specific commands in the extension
 
-**Decision**: The extension contains init, feature create, feature select, context, and validate
+**Decision**: The extension contains init, feature create, feature select, feature harden, context, and validate
 commands plus every launcher, workspace adapter, and runtime file they reference. All paths resolve
 from the installed extension root.
 
@@ -84,7 +85,7 @@ boundary. The preset should modify normal workflow instructions but own no runti
 
 **Alternatives considered**:
 
-- Putting the five commands in the preset was rejected because they introduce active capabilities.
+- Putting the six commands in the preset was rejected because they introduce active capabilities.
 - Depending on repository-local Python imports was rejected because a user project does not contain
   the source checkout.
 
@@ -184,11 +185,12 @@ roles or completes setup without assistance.
 - Inferring human outcomes from passing docs/tests was rejected.
 - Making human review a prerequisite for deterministic release hashes was rejected.
 
-## Decision 12: Maintain two supplemental Feature 003 diagrams
+## Decision 12: Maintain one core and one supplemental Feature 003 diagram
 
-**Decision**: Keep the component model for ownership/static composition and the installation flow for
-release-to-clean-use order. Both remain declared under `diagrams/`, text-backed, showcase validated,
-delivered with provenance, and automatically embedded by the existing docsite.
+**Decision**: Keep the component model as the feature's single `role: core` Archify architecture view
+for ownership and stable composition, and keep the installation flow as a `role: supplemental`
+workflow for release-to-clean-use order. Both remain declared under `diagrams/`, text-backed,
+showcase validated, delivered with provenance, and automatically embedded by the existing docsite.
 
 **Rationale**: Package roles and temporal installation/use are different questions. Combining them
 into root `architecture.json` would overload the bounded module view.
@@ -198,14 +200,36 @@ into root `architecture.json` would overload the bounded module view.
 - Prose only was rejected because the package and invocation split is materially visual.
 - Diagrams only were rejected because behavior and contracts need searchable accessible authority.
 
+## Decision 13: Route checklist state through the temporal implementation workspace
+
+**Decision**: The installed `specify` and `clarify` replacements resolve root `spec.md`, `design.md`,
+and durable contracts but write generated requirements-quality state only below
+`implementation/checklists/`. The installed `checklist` replacement also targets that temporal
+directory. No command creates a root checklist alias, copy, or symlink.
+
+**Rationale**: A checklist records readiness for the current review or delivery attempt; it is not
+permanent feature intent. Routing every checklist through the same attempt preserves the authority
+split and gives hardening one deterministic location in which to verify that all review items are
+resolved before removing the attempt.
+
+**Alternatives considered**:
+
+- Keep root checklists as durable feature content: rejected because checked state belongs to one
+  implementation/review cycle and would outlive the conclusions it was evaluating.
+- Maintain a root compatibility link: rejected because it creates a second observable path and makes
+  clean-project routing evidence ambiguous.
+
 ## Unknowns Resolved
 
 - Feature 001 owns semantic handoff; Feature 003 owns installed materialization and lifecycle.
-- The three templates remain append-composed; all nine affected normal commands use replacement.
+- Three inherited templates remain append-composed, the permanent design template is replaced, and
+  all nine affected normal commands use replacement.
 - Core scripts are not replaced or patched by the bundle.
-- The extension archive contains all five commands, workspace adapter, launchers, and runtime.
+- The extension archive contains all six commands—including task-complete, approval-gated
+  hardening—plus the workspace adapter, launchers, and runtime.
 - Clean-install evidence is built-artifact based, checkout-isolated, and executes the winning surface's
   bootstrap rather than matching snippets.
 - Initial compatibility remains exactly Spec Kit 0.16.4.
-- Both feature diagrams remain supplemental and declaration-published.
+- The component model is core, the installation flow is supplemental, and both are declaration-published.
+- Every installed checklist-producing surface writes only below `implementation/checklists/`.
 - All planning questions are resolved.

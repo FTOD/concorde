@@ -10,13 +10,14 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         examples = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts/examples"
         for name in ("feature-create-proposal.json", "feature-select-response.json"):
             payload = json.loads((examples / name).read_text(encoding="utf-8"))
-            self.assertEqual(payload["schema_version"], 1)
+            self.assertEqual(payload["schema_version"], 2)
             self.assertIn(payload["operation"], {"feature.create", "feature.select"})
             self.assertEqual(
                 set(payload["workspace"]),
                 {
                     "feature_directory",
                     "feature_spec",
+                    "feature_design",
                     "contracts_dir",
                     "checklists_dir",
                     "diagrams_dir",
@@ -44,8 +45,21 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts"
         workspace = json.loads((contracts / "feature-workspace.schema.json").read_text())
         architecture = json.loads((contracts / "architecture-service.schema.json").read_text())
-        self.assertEqual(workspace["$defs"]["operation"]["enum"], ["feature.create", "feature.select"])
+        self.assertEqual(workspace["$defs"]["operation"]["enum"], ["feature.create", "feature.select", "feature.harden"])
+        self.assertEqual(workspace["$defs"]["request"]["properties"]["schema_version"]["const"], 2)
+        self.assertEqual(workspace["$defs"]["response"]["properties"]["schema_version"]["const"], 2)
         self.assertEqual(architecture["$defs"]["operation"]["enum"], ["init", "context", "validate"])
+
+    def test_hardening_proposal_binds_one_design_and_one_removal_target(self):
+        path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts/examples/feature-harden-proposal.json"
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(proposal["proposal_version"], 1)
+        self.assertEqual(proposal["operation"], "feature.harden")
+        design = Path(proposal["design"]["path"])
+        removal = Path(proposal["remove"][0])
+        self.assertEqual(design.name, "design.md")
+        self.assertEqual(removal.name, "implementation")
+        self.assertEqual(design.parent, removal.parent)
 
 
 if __name__ == "__main__":

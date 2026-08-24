@@ -8,7 +8,7 @@ representation:
   kind: custom
   format: JSON
   serialization: JSON
-  version: 2
+  version: 3
   definition: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json
   schema: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json
   example: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.example.json
@@ -18,7 +18,7 @@ consumers:
   - external.project-maintainer
 features:
   - feature.documentation.publish-project-docsite
-version: 2
+version: 3
 evidence:
   tests:
     - docsite/tests/contract/build-manifest.test.ts
@@ -36,16 +36,17 @@ complete field semantics live beside it. They are referenced here rather than co
 
 ## Information
 
-The manifest records generator versions, all three source collections, included page provenance and
+The manifest records generator versions, all four source collections, included page provenance and
 routes, deliberate exclusions, rendered routes, and passed deterministic checks. Architecture page
 records additionally carry stable entity and declared-view metadata.
 
 ## Obligations
 
 - All arrays are stably sorted and all paths are project-relative.
-- Feature pages carry stable ID, module, and status; architecture pages carry stable ID, kind,
+- Feature specification pages carry stable ID, module, and status; feature-design pages carry durable
+  design provenance; architecture pages carry stable ID, kind,
   hierarchy metadata, view source hash, and delivered-view route when applicable.
-- A successful manifest contains no timestamp and validates against schema version 2.
+- A successful manifest contains no timestamp and validates against schema version 3.
 - Only actual rendered routes enter the verified route inventory.
 
 ## Failure Semantics
@@ -55,8 +56,8 @@ missing fields, unsorted projections, and unverified routes fail publication.
 
 ## Compatibility
 
-Incompatible field-meaning changes require a new schema version. Version 2 adds architecture page and
-view metadata; readers reject unsupported schema versions.
+Incompatible field-meaning changes require a new schema version. Version 3 adds the Feature Designs
+source collection and `feature-design` page kind; readers reject unsupported schema versions.
 
 ## Evidence
 

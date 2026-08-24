@@ -1,10 +1,10 @@
 # Phase 1 Data Model: Concorde Core Workflow
 
 **Feature**: `feature.concorde.core-workflow`  
-**Date**: 2026-08-22
+**Date**: 2026-08-23
 
 This is the technical model for the active implementation attempt. Durable semantics remain in
-`spec.md`, module/contract Markdown, Archify JSON, and the referenced contract representations.
+`spec.md`, `design.md`, module/contract Markdown, Archify JSON, and the referenced contract representations.
 
 ## Relationship Summary
 
@@ -12,7 +12,7 @@ This is the technical model for the active implementation attempt. Durable seman
 Specification Package
 └── Root Module
     ├── Contract *
-    ├── Feature * ── Feature Workspace ── Implementation Workspace (0..1 active)
+    ├── Feature * ── Feature Design (1) ── Feature Workspace ── Implementation Workspace (0..1 active)
     │             └── Feature Diagram *
     ├── Immediate Module * ── repeats Specification Package
     └── Architecture View (required when non-leaf)
@@ -22,6 +22,7 @@ Feature ── refines Feature at adjacent parent level (0..*)
 Feature ── illustrated by Scenario (1..*)
 Scenario Interaction ── governed by Contract when it crosses a boundary
 Feature Selection ── points to exactly one Feature Workspace
+Hardening Proposal ── promotes one completed Implementation Workspace into Feature Design
 Workflow Distribution Handoff ── exposes Feature Selection + phase paths to Feature 003
 Architecture Readiness Review ── gates plan approval for one Feature/source digest
 Bounded Context ── projection of Feature + one Module level + relevant Contracts/Evidence
@@ -40,7 +41,7 @@ The configured recursive source subtree for one Concorde project.
 | `source_digest` | `sha256:<hex>` | Deterministic digest of maintained source bytes and relative paths. |
 
 The package discovers module Markdown, contract Markdown and representations, feature-root
-`spec.md`, and declared Archify JSON. Files below `implementation/` are addressable for active feature
+`spec.md`, paired `design.md`, and declared Archify JSON. Files below `implementation/` are addressable for active feature
 context but are not parsed as durable architecture entities merely because they live under `specs/`.
 
 ## 2. Module
@@ -78,6 +79,25 @@ Durable observable behavior at one abstraction level.
 
 A lower-level feature without a parent refinement must be marked internal with a non-empty rationale.
 
+### 3a. Feature Design
+
+The permanent accepted account of how related modules, lower-level features, contracts, and
+implementation decisions realize one Feature without redefining module architecture.
+
+| Field | Type | Rules |
+|---|---|---|
+| `path` | safe path | Exactly `<feature-workspace>/design.md`; required with `spec.md`. |
+| `feature_id` | derived stable ID | Agrees with the paired feature specification. |
+| `realization_overview` | Markdown | Concise accepted implementation shape. |
+| `module_feature_collaboration` | Markdown | Uses maintained module/feature IDs and contracts without replacing architecture authority. |
+| `scenario_realization` | Markdown | Explains how representative scenarios are achieved. |
+| `durable_decisions` | Markdown | Retains accepted decisions, not transient task ordering or discarded alternatives. |
+| `traceability_evidence` | Markdown | References reviewable code, tests, contracts, and generated evidence. |
+| `known_limitations` | Markdown | States remaining accepted limits; no unresolved proposal placeholders. |
+
+Normal specify, plan, tasks, implement, analyze, and converge operations may read this baseline but
+must never update it. Only approved Feature Hardening may replace it.
+
 ## 4. Feature Workspace
 
 The single nested location selected for the normal lifecycle.
@@ -86,8 +106,8 @@ The single nested location selected for the normal lifecycle.
 |---|---|---|
 | `root` | safe project-relative directory | `<module-package>/features/<number-name>/`. |
 | `specification` | path | Exactly `<root>/spec.md`; required after specify. |
+| `design` | path | Exactly `<root>/design.md`; required after specify and paired with the specification. |
 | `contracts` | directory | Optional durable feature-level representations at `<root>/contracts/`. |
-| `checklists` | directory | Optional durable requirements-quality artifacts at `<root>/checklists/`. |
 | `diagrams` | path list | Optional descriptively named Archify JSON under `diagrams/`; never named `architecture.json`. |
 | `implementation` | directory or null | Exactly `<root>/implementation/` when an attempt exists. |
 | `module_id` | stable ID | Must agree with the spec and containing module. |
@@ -109,17 +129,17 @@ One temporal delivery attempt for a durable feature.
 | `data_model` | path | Optional Phase 1 technical model. |
 | `quickstart` | path | Optional runnable acceptance guide. |
 | `validation` | path | Optional evidence record. |
-| `lifecycle` | derived/recorded enum | `absent`, `active`, `accepted`, `frozen`, `archived`, or `removed`. Archive naming is outside this slice. |
+| `checklists` | directory | Optional requirements-quality review state at `checklists/`; every checklist is temporal and blocks hardening while any item is unresolved. |
+| `lifecycle` | derived/recorded enum | `absent`, `active`, `task-complete`, or `hardened`; `hardened` means the directory is absent after promotion. |
 
-The first release permits at most one `active` directory. Acceptance may freeze, archive, or remove
-the directory without changing Feature fields. A later attempt must not silently inherit a stale
-plan as current design.
+The first release permits at most one `active` directory. Task completion makes the attempt eligible
+for hardening but is not user approval. Successful hardening removes the complete directory; history
+belongs to version control and durable design/evidence references, not an archived attempt below the feature.
 
 ```text
-absent -> active -> accepted -> frozen
-                    |          \-> archived
-                    \------------> removed
-frozen -> archived | removed
+absent -> active -> task-complete -> hardened (implementation/ absent)
+             \-> active when any task remains incomplete
+hardened -> active (a later implementation attempt, with design as baseline)
 ```
 
 ## 6. Feature Placement Proposal
@@ -149,6 +169,24 @@ requested -> proposed -> approved -> specified -> selected
 
 Approval is explicit. If source bytes change after proposal, application returns `conflict` and a
 new proposal is required.
+
+### 6a. Feature Hardening Proposal
+
+A reviewable, digest-bound promotion of one task-complete attempt into permanent Feature Design.
+
+| Field | Type | Rules |
+|---|---|---|
+| `proposal_version` | integer | Exactly `1` for the initial proposal representation. |
+| `operation` | string | Exactly `feature.harden`. |
+| `target` | stable feature ID | Resolves exactly to the selected Feature Workspace. |
+| `source_digest` | digest | Covers the current design, maintained inputs, and attempt, excluding the proposal file itself. |
+| `design.path` | safe path | Exactly the selected root `design.md`. |
+| `design.content` | Markdown string | Complete candidate with every required Feature Design section. |
+| `remove` | one-item path list | Exactly the selected feature's `implementation/` directory. |
+
+Apply rechecks task completion and source digest. It stages the new design, renames the prior design
+and attempt to bounded recovery paths, commits the design, then removes recovery artifacts. Any
+commit failure restores both prior authorities.
 
 ## 7. Architecture Readiness Review
 
@@ -181,8 +219,9 @@ The ephemeral project context used by subsequent Spec Kit phases.
 | `feature_directory` | safe project-relative directory | Points to one existing Feature Workspace root. |
 | `source` | enum | `explicit-override` or `persisted-selection`. |
 | `feature_spec` | derived path | `<feature_directory>/spec.md`. |
+| `feature_design` | derived path | `<feature_directory>/design.md`. |
 | `implementation_dir` | derived path | `<feature_directory>/implementation/`. |
-| `plan`, `tasks`, `research`, `data_model`, `quickstart` | derived paths | Always below `implementation_dir`. |
+| `checklists`, `plan`, `tasks`, `research`, `data_model`, `quickstart` | derived paths | Always below `implementation_dir`; checklist generation may create the directory before a plan exists. |
 
 Persistence uses `.specify/feature.json`; Concorde does not create a parallel active-feature file.
 Read-only resolution may inspect but must not rewrite the persisted selection.
@@ -314,10 +353,10 @@ The versioned, presentation-neutral boundary through which Feature 003 packages 
 
 | Field | Type | Rules |
 |---|---|---|
-| `protocol_version` | integer | Initially `1`; incompatible versions fail before command materialization. |
+| `protocol_version` | integer | Initially `2`; incompatible versions fail before command materialization. |
 | `workspace_adapter` | installed-relative path | Resolves from the extension package, never the Concorde source checkout. |
 | `normal_phase_obligations` | ordered command/phase list | Exactly the nine normal Spec Kit surfaces and their durable or temporal target. |
-| `concorde_command_intents` | ordered command list | Exactly init, feature create/select, context, and validate with presentation-neutral semantics. |
+| `concorde_command_intents` | ordered command list | Exactly init, feature create/select/harden, context, and validate with presentation-neutral semantics. |
 | `request_example` | durable contract reference | Demonstrates explicit/persisted selection input. |
 | `result_example` | durable contract reference | Demonstrates root, implementation, phase target, status, and failures. |
 | `source_digest` | digest | Binds the handoff to Feature 001 runtime/contract sources. |
@@ -330,7 +369,7 @@ but cannot change path meanings or command intent without a reviewed Feature 001
 ## Cross-Entity Invariants
 
 1. Every Feature is owned by exactly one Module and registered by that Module.
-2. Every selected Feature Workspace resolves to exactly one root `spec.md`.
+2. Every selected Feature Workspace resolves to exactly one root `spec.md` and one root `design.md`.
 3. Durable and temporal files never occupy each other's authority locations.
 4. Every cross-boundary Scenario interaction resolves one declared Contract.
 5. Feature refinement and Module containment graphs are acyclic and adjacent-level.
@@ -343,3 +382,5 @@ but cannot change path meanings or command intent without a reviewed Feature 001
 10. Every release-installed command receipt from Feature 003 identifies the exact Workflow
     Distribution Handoff digest it implements; registration evidence cannot silently upgrade a
     changed handoff to verified.
+11. Hardening can mutate only root `design.md` and the complete selected `implementation/`; incomplete
+    tasks, absent/malformed task evidence, stale digests, or missing explicit approval preserve both.

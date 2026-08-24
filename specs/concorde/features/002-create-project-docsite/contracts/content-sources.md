@@ -1,4 +1,4 @@
-# Content Sources Contract v2
+# Content Sources Contract v3
 
 **Contract ID**: `contract.documentation.project-content`
 
@@ -10,7 +10,7 @@
 
 ## Purpose
 
-Provide canonical architecture sources, project documentation, and feature specifications to the
+Provide canonical architecture sources, project documentation, feature specifications, and feature designs to the
 generated site without copying or modifying their maintained sources.
 
 ## Representation
@@ -27,9 +27,11 @@ generated site without copying or modifying their maintained sources.
 | Architecture | `specs/` | Every regular file matching `**/module.md` or `**/contracts/**/contract.md` | `/architecture` |
 | Project documentation | `docs/` | Every regular file matching `**/*.md` | `/docs` |
 | Feature specifications | `specs/` | Every regular file matching `**/spec.md` | `/features` |
+| Feature designs | `specs/` | Every regular file matching `**/design.md` | `/features` |
 
 Symbolic links are not followed. Normalized source paths must remain beneath their declared root.
-The Architecture and Features collections are disjoint projections of the same specification tree.
+Architecture, Feature Specifications, and Feature Designs are disjoint projections of the same
+specification tree. Specifications and designs share the public Features navigation family.
 
 ## Field Semantics
 
@@ -54,7 +56,14 @@ The Architecture and Features collections are disjoint projections of the same s
   scenarios or question, and generated output. A feature may declare at most one core diagram, and
   its kind must be `architecture`; dynamic kinds are supplemental. The JSON `diagram_type` and
   `meta.output` must agree with the declaration.
-- Parent directory: the feature directory; only its `spec.md` is canonical site content in version 1.
+- Parent directory: the feature directory; its `spec.md` and `design.md` are permanent site content.
+
+### Feature Designs
+
+- first level-one heading: required feature-design title.
+- Parent directory: the feature directory containing the paired `spec.md`.
+- Content: the accepted durable realization of the feature; temporal files beneath
+  `implementation/` remain excluded.
 
 ### Architecture Sources
 
@@ -92,8 +101,8 @@ candidate publication.
 
 ## Compatibility
 
-This is contract version 2; it includes Architecture collection views and feature-declared diagram
-projection. Adding optional metadata is backward compatible. Changing source roots,
+This is contract version 3; it adds permanent feature-design publication while preserving the three
+public navigation families. Adding optional metadata is backward compatible. Changing source roots,
 eligibility globs, required fields, route bases, path semantics, or exclusion meaning requires a new
 contract version and a route/content migration decision.
 

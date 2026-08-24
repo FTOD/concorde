@@ -1,19 +1,31 @@
 # Implementation Plan: Create Unified Project Docsite
 
-**Branch**: `002-create-project-docsite` | **Date**: 2026-08-20 | **Spec**: [spec.md](spec.md)
+**Branch**: `002-create-project-docsite` | **Date**: 2026-08-23 | **Spec**: [../spec.md](../spec.md)
+
+**Accepted design baseline**: [../design.md](../design.md)
+
+**Lifecycle**: Active temporal reconciliation plan. It records the remaining delta and validation
+work for the current attempt; it does not amend the accepted design.
 
 **Input**: Feature specification from `specs/concorde/features/002-create-project-docsite/spec.md`
 
 ## Summary
 
 Create an independent TypeScript Docusaurus project under `docsite/` that presents three logical
-collections from two maintained roots: module and contract specifications plus canonical feature
-specifications from the unified `specs/` hierarchy, and project Markdown from `docs/`. A shared
+navigation families and four source collections from two maintained roots: module and contract
+specifications plus permanent feature specifications and accepted feature designs from the unified
+`specs/` hierarchy, and project Markdown from `docs/`. A shared
 registry classifies canonical files by path and meaning. Because Docusaurus cannot safely run the
 Architecture and Features docs instances over the same physical source directory, the build creates
 two ignored, disposable projections while retaining provenance to canonical `specs/` paths. A local
 Concorde content plugin validates metadata and cross-collection links, emits a deterministic build
 manifest, and verifies the rendered route inventory before candidate output is promoted.
+
+The accepted design already establishes permanent design publication. This attempt reconciles the
+temporal plan, model, contracts, fixtures, and validation guidance with that baseline, including
+manifest v3 and explicit exclusion of every file under `implementation/`. The existing Feature 002
+root checklist is finite bootstrap layout debt: task generation must migrate it to
+`implementation/checklists/` and retain zero root compatibility copy.
 
 ## Technical Context
 
@@ -46,9 +58,9 @@ recreated from the registry; no writes under `docs/` or `specs/`; no LLM or host
 deterministic routes and manifest; failed builds preserve the last successful site; paths and manifest
 entries remain canonical and project-relative; Docusaurus and plugin versions are lockfile pinned
 
-**Scale/Scope**: Three content collections, up to 1,000 Markdown sources and 250 canonical feature
-specifications in the initial design; one English-language, unversioned project site; local preview and
-production build only
+**Scale/Scope**: Four content collections presented through three navigation families, up to 1,000
+Markdown sources and 250 feature specification/design pairs; one English-language, unversioned
+project site; local preview and production build only
 
 ## Constitution Check
 
@@ -56,12 +68,12 @@ production build only
 
 | Gate | Pre-design evaluation | Post-design evaluation |
 |---|---|---|
-| Concorde is the workflow product and proving ground | PASS — feature 002 publishes Concorde's own architecture, maintained docs, and Spec Kit features. | PASS — quickstart validates all three collections and declared views against this repository. |
+| Concorde is the workflow product and proving ground | PASS — feature 002 publishes Concorde's own architecture, maintained docs, and permanent feature artifacts. | PASS — quickstart validates all four source collections, three navigation families, and declared views against this repository. |
 | Spec Kit-native and composable | PASS — Spec Kit remains authoritative for each feature `spec.md`; Concorde architecture artifacts share `specs/` without creating a parallel feature source. | PASS — path-based classification preserves the authority of module, contract, view, and feature artifacts while generated projections point back to canonical paths. |
 | Recursive, bounded architecture | PASS — the root feature uses the root publication trace and is realized by Documentation. | PASS — the adjacent Documentation refinement and its bounded one-level view exist without exposing child internals at the root. |
 | Explicit ownership and feature alignment | PASS — `feature.concorde.publish-project-docsite` owns the project outcome at the root level. | PASS — `feature.documentation.publish-project-docsite` is owned by `module.concorde.documentation` and refines only the adjacent root feature. |
 | Contracts govern every boundary | PASS — publication is already exposed through `contract.documentation.architecture-site`; source and build details require design contracts. | PASS — content-source, build-command, published-site, and manifest contracts now define inputs, outputs, failures, compatibility, and evidence. |
-| One authority per fact | PASS — feature `spec.md` owns behavioral intent, module/contract Markdown owns architectural prose, module and feature-owned Archify JSON own their distinct structural/explanatory views, and `docs/` owns project documentation. | PASS — canonical-path provenance, ignored staging/build directories, and disposable projections/indexes preserve those authorities; the site and Archify HTML remain generated read models. |
+| One authority per fact | PASS — feature `spec.md` owns behavioral intent, feature `design.md` owns accepted realization, module/contract Markdown owns architectural prose, module and feature-owned Archify JSON own their distinct structural/explanatory views, and `docs/` owns project documentation. | PASS — canonical-path provenance, explicit exclusion of temporal `implementation/`, ignored staging/build directories, and disposable projections/indexes preserve those authorities; the site and Archify HTML remain generated read models. |
 | Deterministic validation and reviewed evidence | PASS — the feature requires reproducible builds and explicit diagnostics without an LLM. | PASS — sorted registries, schema checks, fixture tests, route verification, and atomic promotion supply deterministic evidence. |
 | Accessibility, provenance, and textual representation | PASS — all initial sources are textual and the specification requires provenance. | PASS — the shared page wrapper exposes content kind, source path, ID/status where applicable, and semantic text outside presentation chrome. |
 
@@ -76,22 +88,25 @@ visual review remains separately recorded as pending where the required browser 
 ```text
 specs/concorde/features/002-create-project-docsite/
 ├── spec.md
+├── design.md
 ├── diagrams/
 │   └── project-docsite-publication-flow.json
 ├── contracts/
-└── implementation/
-    ├── plan.md
-    ├── research.md
-    ├── data-model.md
-    ├── quickstart.md
-    └── tasks.md
 │   ├── build-interface.md
 │   ├── build-manifest-contract.md
 │   ├── build-manifest.schema.json
 │   ├── build-manifest.example.json
 │   ├── content-sources.md
 │   └── published-site.md
-└── tasks.md                         # created later by $speckit-tasks
+└── implementation/
+    ├── checklists/
+    │   └── requirements.md
+    ├── plan.md
+    ├── research.md
+    ├── data-model.md
+    ├── quickstart.md
+    ├── tasks.md
+    └── validation.md
 ```
 
 ### Source Code (repository root)
@@ -178,7 +193,9 @@ specs/concorde/
     │   ├── build-manifest/contract.md
     │   └── project-content/contract.md
     └── features/
-        └── 001-publish-project-docsite/spec.md
+        └── 001-publish-project-docsite/
+            ├── spec.md
+            └── design.md
 
 generated/architecture/
 ├── concorde-root.html               # regenerated Archify projection, never edited
@@ -197,7 +214,7 @@ site until a later Concorde extension feature extracts a reusable publication co
 ### Content Pipeline
 
 ```text
-specs/**/module.md + specs/**/contracts/**/contract.md + specs/**/spec.md + docs/**/*.md + delivered Archify HTML
+specs/**/module.md + specs/**/contracts/**/contract.md + specs/**/{spec,design}.md + docs/**/*.md + delivered Archify HTML
   -> discover and parse
   -> validate identities, metadata, links, and routes
   -> recreate ignored Architecture and Features renderer projections from canonical specs paths
@@ -221,7 +238,8 @@ project-relative canonical path, so filesystem enumeration order cannot change t
 - The classic preset's default docs instance reads `../docs`, publishes below `/docs`, accepts `*.md`,
   and uses an autogenerated documentation sidebar.
 - A second `@docusaurus/plugin-content-docs` instance with ID `features` reads a disposable projection
-  of canonical `**/spec.md` files, publishes below `/features`, and generates labels from feature titles.
+  of permanent `**/spec.md` and `**/design.md` files, publishes below `/features`, groups each pair,
+  and generates labels from feature titles.
 - The blog is disabled. The root landing page is a maintained presentation component in `docsite/`,
   not copied content.
 - Docusaurus link, anchor, Markdown-link, and duplicate-route severities are all configured to throw.
@@ -233,9 +251,10 @@ project-relative canonical path, so filesystem enumeration order cannot change t
 
 The Concorde plugin validates sources before page rendering. Project documents require a unique
 project-relative path and a title from front matter or the first level-one heading. Feature
-specifications additionally require a unique stable feature ID, `kind: feature`, owning module, title,
-and recorded status. A shared page wrapper obtains registry data by route and displays content kind,
-source path, and feature ID/status without changing the source document.
+specifications additionally require a unique stable feature ID, `kind: feature`, owning module,
+title, and recorded status. Feature designs require a paired canonical specification and a non-empty
+title. A shared page wrapper obtains registry data by route and displays content kind, source path,
+and feature ID/status where applicable without changing the source document.
 
 Markdown file links are resolved against the canonical source file first. When the target belongs to
 any of the three logical collections, the link transformer maps it through the registry to its site
@@ -273,6 +292,20 @@ The architecture-complete design is now represented by:
    expanding either module view; and
 7. validated, regenerated HTML projections and recorded executable publication evidence.
 
+## Feature Diagram Strategy
+
+Feature 002 preserves an explicit core-view sufficiency rationale: the bounded root
+`specs/concorde/architecture.json` already shows the stable Documentation, Architecture Core, Spec
+Kit Integration, maintainer, and coding-agent relationships at this feature's ownership level, so a
+second feature-owned core architecture view would duplicate canonical structure.
+
+| Role and source | Narrow question and textual counterpart | Delivery and validation |
+|---|---|---|
+| Supplemental sequence: `diagrams/project-docsite-publication-flow.json` | Call order for `publish-architecture`, explained by the spec's “Scenario and Component Diagram” section plus the content-source, build-interface, manifest, and published-site contracts. | Deliver `generated/architecture/project-docsite-publication-flow.html`; require Archify 9/9 showcase validation, source provenance, declaration-driven feature-page embedding, source/output freshness, and a truthful visual-review receipt that remains pending when no browser is available. |
+
+The supplemental sequence cannot redefine source ownership, contracts, or the stable module
+organization. Its JSON remains below `diagrams/`; the generated HTML remains a disposable read model.
+
 ## Implementation Phases
 
 ### Phase A — Architecture and Contracts
@@ -295,9 +328,10 @@ and atomic candidate promotion.
 
 ### Phase D — Evidence and Self-Hosting
 
-Add unit, contract, fixture, integration, source-immutability, repeatability, and atomic-failure tests.
-Run the production build against Concorde's real `docs/` and `specs/`, then verify the generated site
-and manifest without committing generated site output.
+Add unit, contract, fixture, integration, source-immutability, repeatability, and atomic-failure tests,
+including permanent feature-design inclusion and temporal implementation exclusion. Run the
+production build against Concorde's real `docs/` and `specs/`, then verify manifest v3 and the
+generated site without committing generated site output.
 
 ## Complexity Tracking
 

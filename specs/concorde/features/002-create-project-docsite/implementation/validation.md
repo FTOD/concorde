@@ -1,39 +1,41 @@
 # Validation Record: Unified Project Docsite
 
-**Validated**: 2026-08-20  
+**Validated**: 2026-08-23
 **Environment**: Node.js 22.22.3, npm lockfile, Linux  
-**Result**: Automated implementation gates and both architecture visual reviews pass; the timed
-SC-006 participant exercise remains a release-level manual check because no participant pool was
-available.
+**Accepted design SHA-256**: `4997088cdfaa455393de68707fbbe6ea851ffcc5b7a1c5351e1669fc7dde31ee`
+**Result**: Automated implementation and showcase-delivery gates pass. Current browser perceptual
+review and the timed SC-006 participant exercise remain manual checks because Chromium and a
+participant pool were unavailable.
 
 ## Command Evidence
 
 | Gate | Result | Evidence |
 |---|---|---|
 | Locked install | PASS | `npm ci` installed the lockfile successfully without maintained-source writes. |
-| Inspect | PASS | 19 architecture sources, 2 project documents, and 6 canonical feature specs discovered; 22 supporting Markdown files are reported as excluded. |
-| Validate | PASS | 27 included real-repository pages and all declared architecture views validated with zero findings. |
+| Inspect | PASS | 21 architecture sources, 2 project documents, and 8 permanent feature specification/design pairs discovered; 31 supporting Markdown files are reported as excluded. |
+| Validate | PASS | 39 included real-repository pages and all declared architecture views validated with zero findings. |
 | Type check | PASS | Strict `tsc --noEmit`. |
 | Test suite | PASS | 14 files and 29 tests: architecture publication, unit, contracts, fixtures, immutability, atomicity, accessibility, scale, and two production renders. |
 | Scale | PASS | 1,000 documents plus 250 specs discovered and validated in 0.613 seconds in the final measured gate. |
-| Production build | PASS | Three-collection Docusaurus render, sandboxed view embedding, strict route verification, local-search generation, manifest v2 validation, and atomic promotion. |
+| Production build | PASS | Four-source-collection Docusaurus render through three navigation families, sandboxed view embedding, strict route verification, local-search generation, manifest v3 validation, and atomic promotion. |
 | Repeatability | PASS | Two unchanged production renders emitted byte-identical manifests. |
 | Complete gate | PASS | Final `npm run check` completed successfully: typecheck, 14 files/29 tests, validation, and production build. |
 | Preview | PASS | Validation ran before the server; landing, Architecture index, root/Documentation modules, both delivered views, Documentation index, and Feature 002 returned HTTP 200 on `127.0.0.1:3010`. |
+| Checklist confinement | PASS | `requirements.md` was moved to `implementation/checklists/`; no root copy or symlink remains. |
 | Architecture | PASS | Reconciled root and Documentation views each passed 9/9 Archify showcase checks with 0 errors and 0 warnings and were freshly delivered. |
-| Architecture visual review | PASS | Chromium containment and light/dark captures pass at 1440×900, 1600×1000, 1920×1080, and 2048×1320 for both views. Perceptual inspection found no clipping, crossings, unreadable labels, or unbalanced large-screen composition. The root view required two focused card-copy corrections; Documentation required none. |
+| Architecture visual review | PENDING | The current delivered bytes do not reuse older perceptual receipts. Chromium was unavailable in this execution environment, so containment, light/dark, and perceptual outcomes for the current artifacts are not claimed. |
 | Feature publication sequence | PASS / visual pending | `diagrams/project-docsite-publication-flow.json` passed 9/9 showcase checks with zero errors or warnings and was freshly delivered and embedded on the canonical feature page. Chrome/Chromium was unavailable for its new visual-check receipt, so no perceptual claim is made. |
 
 The final generated manifest is `docsite/build/build-manifest.json`. Build output is ignored and
 disposable. Its recorded SHA-256 is
-`49e8097c300fa97c85245f9e4e388f7af1f7b370daa7279d5720aff3bfa592a4` and can be reproduced with
+`669740626374f2cc7a593dc16318263d422d19e44207a8aa747055f0c32715fb` and can be reproduced with
 `sha256sum`.
 
-The reviewed Archify artifacts are `generated/architecture/concorde-root.html` at SHA-256
-`04649fed737b3b891f26f34f50190593afc3cbcd64efab201262d91fc30fd134` and
+The current Archify artifacts are `generated/architecture/concorde-root.html` at SHA-256
+`73e6f842d642eb8cc8703764f3be2788df558e8586d21983cb95c21c60e491d5` and
 `generated/architecture/documentation.html` at SHA-256
-`a4e88271bc7c566bc420551ded3836d926c4bc8901c7ae64ae5ec34c40a9655c`. Their adjacent visual-check
-receipts and light/dark screenshots bind the inspection to those exact delivered bytes.
+`8d2231b853f3b88b1f87e35a9fca33a511e1b4a78e750cc469de9864bb3fddad`.
+Older visual receipts do not bind these bytes, so a fresh browser review remains pending.
 
 The supplemental publication sequence is `generated/architecture/project-docsite-publication-flow.html`.
 Its maintained-source SHA-256 is
@@ -62,9 +64,10 @@ write canonical fixture sources.
 
 ### User Story 3
 
-Feature tests recursively discover only `**/spec.md`, extract feature ID, module, status, and feature
-directory, and reject duplicate IDs. The real site renders all six current specifications with their
-recorded lifecycle status and never labels plans, tasks, checklists, or contracts as feature pages.
+Feature tests recursively discover permanent `**/spec.md` and paired `**/design.md`, extract feature
+ID, module, status, and feature directory, and reject duplicate IDs or invalid pairings. The real
+site renders all eight current specification/design pairs with provenance and never labels temporal
+plans, tasks, checklists, validation, or feature-local contracts as permanent feature pages.
 
 ### User Story 4
 
@@ -115,14 +118,14 @@ production test performs two builds and compares the complete manifest bytes.
 | Criterion | Status | Evidence |
 |---|---|---|
 | SC-001 | PASS | Locked install plus complete build finished well under five minutes. |
-| SC-002 | PASS | Registry/manifest cardinality covers 19 architecture, 2 documentation, and 6 feature pages; actual-route assertions pass. |
+| SC-002 | PASS | Registry/manifest cardinality covers 21 architecture sources, 2 documentation pages, and 8 feature specification/design pairs; actual-route assertions pass. |
 | SC-003 | PASS | Add/rename/remove authoring integration test. |
 | SC-004 | PASS | Byte-identical unchanged-build manifest comparison. |
 | SC-005 | PASS | Invalid fixture matrix and command diagnostic contract tests. |
-| SC-006 | MANUAL | Landing, three-section navigation, route reachability, and search index are automated acceptance proxies; the specified 90%-of-participants exercise was not run. |
+| SC-006 | MANUAL | Landing, three-section navigation, route reachability, and search index are automated acceptance proxies; the specified 90%-of-participants exercise was not run because no participant pool was available. |
 | SC-007 | PASS | Production HTML checks every feature source plus ID/module/status provenance; Feature 001 displays `Implemented; timed first-use pilot pending`, and Feature 002 plus its Documentation refinement display `Implemented`. |
 | SC-008 | PASS | Before/after source hashing and ignored-output repository audit show zero generated copies or mutations under `docs/` or `specs/`. |
-| SC-009 | PASS | The publication sequence passes all 9 Archify showcase checks with zero errors or warnings, has a fresh provenance-bound delivery, and is embedded on its canonical feature page. |
+| SC-009 | PARTIAL | The publication sequence passes all 9 Archify showcase checks with zero errors or warnings, has a fresh provenance-bound delivery, and is embedded on its canonical feature page; browser perceptual review remains pending. |
 
 ## Security and Output Audit
 

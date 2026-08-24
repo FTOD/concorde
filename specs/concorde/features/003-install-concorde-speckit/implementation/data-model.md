@@ -34,7 +34,7 @@ A release-bound reference to the Feature 001 semantics being distributed.
 | `source_digest` | SHA-256 | Digest of the accepted workspace/command handoff sources. |
 | `workspace_adapter` | installed-relative path | Entry point used before path-sensitive work. |
 | `normal_phase_obligations` | ordered set | Nine normal command intents and their durable or temporal roots. |
-| `concorde_command_intents` | ordered set | Five Feature 001 command IDs and result contracts. |
+| `concorde_command_intents` | ordered set | Six Feature 001 command IDs and result contracts. |
 | `compatibility` | version constraint | Supported Spec Kit host range. |
 
 Feature 003 packages and presents this handoff. It may not change its paths, failures, or command
@@ -63,7 +63,7 @@ The passive contribution that modifies normal Spec Kit lifecycle surfaces.
 |---|---|---|
 | `id` | stable ID | `concorde-core`. |
 | `version` | semantic version | Preset release version. |
-| `template_layers` | three references | Append-composed spec, plan, and tasks guidance. |
+| `template_layers` | four references | Append-composed spec, plan, and tasks guidance plus the replaced permanent design template. |
 | `command_overrides` | nine references | Complete authoritative replacements for affected normal commands. |
 | `priority` | integer | Precedence within the resolved preset stack. |
 | `compatibility_map` | map | Per-command parity with Spec Kit 0.16.4 responsibilities. |
@@ -89,17 +89,20 @@ These layers add architecture guidance without redefining normal phase execution
 | `command_id` | enum | One of the nine normal Spec Kit lifecycle commands. |
 | `strategy` | constant | `replace`. |
 | `source_path` | package-relative path | Complete maintained command source. |
-| `phase_kind` | enum | `durable` or `temporal`. |
-| `required_root` | path rule | Feature root or its `implementation/` workspace. |
+| `phase_kind` | enum | `durable-intent-with-temporal-review` or `temporal`. |
+| `required_root` | path rule | Feature root for durable intent reads/writes, with generated review state and all attempt work confined to `implementation/`. |
 | `bootstrap_order` | invariant | Workspace resolution precedes every path-sensitive action. |
 | `upstream_version` | version | Spec Kit command version reviewed for parity. |
 | `source_digest` | SHA-256 | Exact replacement source. |
 
 The nine IDs are:
 
-- durable: `speckit.specify`, `speckit.clarify`, `speckit.checklist`;
-- temporal: `speckit.plan`, `speckit.tasks`, `speckit.implement`, `speckit.analyze`,
+- durable intent with temporal review: `speckit.specify`, `speckit.clarify`;
+- temporal: `speckit.checklist`, `speckit.plan`, `speckit.tasks`, `speckit.implement`, `speckit.analyze`,
   `speckit.converge`, and `speckit.taskstoissues`.
+
+Every generated requirements-quality file, including output produced while specifying or clarifying,
+resolves below `implementation/checklists/`; a feature-root `checklists/` directory is invalid.
 
 ## 6. Extension Package
 
@@ -109,7 +112,7 @@ The active contribution containing new command intents and deterministic support
 |---|---|---|
 | `id` | stable ID | `concorde`. |
 | `version` | semantic version | Extension release version. |
-| `commands` | five references | Init, feature create/select, context, and validate. |
+| `commands` | six references | Init, feature create/select/harden, context, and validate. |
 | `scripts` | declared file set | Platform launchers and workspace adapter. |
 | `runtime` | declared file set | Project-local deterministic Concorde implementation. |
 | `handoff_digest` | SHA-256 | Feature 001 handoff implemented by the package. |
@@ -240,11 +243,12 @@ Receipts are generated validation evidence. They are not a new public command pr
 
 The record is written only after the complete plan and command materialization succeed.
 
-## 15. Supplemental Explanatory View
+## 15. Feature Explanatory View
 
 | Field | Type | Meaning |
 |---|---|---|
 | `source_path` | feature-relative path | Maintained Archify JSON under `diagrams/`. |
+| `role` | enum | One `core` architecture view and zero or more `supplemental` dynamic views. |
 | `kind` | enum | Component architecture or installation workflow. |
 | `question_answered` | text | Static ownership or temporal invocation flow. |
 | `textual_counterpart` | paths | Spec/contract prose that remains accessible authority. |
@@ -252,7 +256,8 @@ The record is written only after the complete plan and command materialization s
 | `source_digest` / `generator_version` | provenance | Freshness inputs. |
 | `validation_receipt` | reference | Showcase, containment, theme, and publication evidence. |
 
-These views are feature-owned explanations, not canonical module `architecture.json` views.
+These views are feature-owned explanations, not canonical module `architecture.json` views. For
+Feature 003, the component model is core and the installation workflow is supplemental.
 
 ## State Transitions
 
@@ -295,7 +300,7 @@ lower layer -> Concorde replacement wins -> materialized -> executed/receipted
 
 1. One bundle version pins exactly one preset version and one extension version.
 2. The preset has exactly three append-composed template layers and nine `replace` command layers.
-3. The extension has exactly five Concorde-specific command intents and every referenced support
+3. The extension has exactly six Concorde-specific command intents and every referenced support
    file is present in its archive.
 4. Every Concorde-owned resolved surface identifies one Feature 001 handoff digest.
 5. Durable phases resolve the feature root; temporal phases resolve its single active

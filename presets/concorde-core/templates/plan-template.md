@@ -17,11 +17,14 @@ references, automatic feature-page embedding, deterministic validation/delivery,
 freshness. Feature diagrams remain explanatory and must not overload the module's canonical
 `architecture.json` or become behavioral authority.
 
-Authority remains split by artifact meaning: `spec.md` owns feature behavior, module and contract
-Markdown own architecture prose, Archify JSON owns view structure, code owns implementation, and tests
-own executable evidence.
+Authority remains split by artifact meaning: `spec.md` owns feature behavior; `design.md` records the
+accepted feature realization; module and contract Markdown own architecture prose; Archify JSON owns
+view structure; code owns implementation; and tests own executable evidence.
 
-Keep durable feature intent (`spec.md`, `contracts/`, and `checklists/`) at the feature root. Write
+Read the root `design.md` as the accepted baseline and identify the proposed realization delta. Never
+update it during planning or implementation; only the explicit Concorde hardening command may
+promote a task-complete, user-approved milestone. Keep durable feature sources (`spec.md`,
+`design.md`, `contracts/`, and `checklists/`) at the feature root. Write
 this plan and its research, data model, runnable validation guide, and delivery evidence under the
 feature's `implementation/` directory. That directory represents one temporal delivery attempt and
 must not be mirrored by compatibility copies beside `spec.md`.

@@ -80,7 +80,7 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
             implementation_artifacts = sorted(
                 path for path in package.auxiliary if path.startswith(workspace_paths.implementation_dir + "/")
             )
-            durable_artifacts = [target.path]
+            durable_artifacts = [target.path, workspace_paths.feature_design]
             diagram_projections = []
             for declaration in target.metadata.get("diagrams", []):
                 if not isinstance(declaration, dict):

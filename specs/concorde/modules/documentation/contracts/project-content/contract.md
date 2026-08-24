@@ -19,7 +19,7 @@ providers:
   - external.spec-kit
 features:
   - feature.documentation.publish-project-docsite
-version: 2
+version: 3
 evidence:
   tests:
     - docsite/tests/contract/content-sources.test.ts
@@ -30,10 +30,10 @@ evidence_status: verified
 
 ## Purpose
 
-Provide UTF-8 architecture sources and canonical feature specifications from the unified `specs/`
+Provide UTF-8 architecture sources and canonical feature specifications and designs from the unified `specs/`
 hierarchy, plus project documentation from `docs/**/*.md`, without relocating or modifying any
 authority. Architecture publication selects `**/module.md` and `**/contracts/**/contract.md`; feature
-publication selects `**/spec.md`. Markdown follows
+publication selects `**/spec.md` and `**/design.md`. Markdown follows
 [CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/); optional front matter follows
 [YAML 1.2.2](https://yaml.org/spec/1.2.2/). Complete field, inclusion, link, failure, and compatibility
 semantics are defined once in `specs/concorde/features/002-create-project-docsite/contracts/content-sources.md`.
@@ -46,10 +46,12 @@ links, stable feature and architecture identity, and declared Archify JSON view 
 ## Obligations
 
 - Every eligible valid source is included exactly once and retains its authored meaning.
-- Feature IDs are unique; feature kind, module, title, and lifecycle status are present.
+- Feature IDs are unique; feature kind, module, title, and lifecycle status are present, and every
+  permanent feature design is published with source provenance.
 - Architecture IDs and kinds are explicit; declared JSON views resolve to delivered Archify HTML.
 - Project-relative links resolve within or across the two accepted source roots and three published views.
-- Plans, tasks, and checklists are observable exclusions, not feature specifications.
+- Temporal plans, tasks, and supporting implementation files are observable exclusions, not
+  permanent feature documentation.
 - Reads do not change source bytes, metadata, or timestamps.
 
 ## Failure Semantics
@@ -59,7 +61,7 @@ route-colliding sources stop publication with rule, source, reason, and remediat
 
 ## Compatibility
 
-Version 2 adds the Architecture route space and view metadata; further changes to source roots, inclusion
+Version 3 adds permanent feature-design publication; further changes to source roots, inclusion
 globs, required fields, or path semantics require a new major contract version.
 
 ## Evidence

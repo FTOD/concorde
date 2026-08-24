@@ -48,27 +48,30 @@ continue to point to canonical `specs/` source paths.
 **Sources**: [Docs plugin configuration](https://docusaurus.io/docs/api/plugins/%40docusaurus/plugin-content-docs),
 [multi-instance plugins](https://docusaurus.io/docs/next/using-plugins)
 
-## R3. Canonical Feature Inclusion
+## R3. Permanent Feature Inclusion
 
-**Decision**: Include only `**/spec.md` from `specs/` in the first Features collection. Record other
-Markdown artifacts as deliberately excluded in the manifest.
+**Decision**: Include `**/spec.md` and the paired `**/design.md` from `specs/` as two permanent
+collections presented under the Features navigation family. Record every Markdown file below
+`implementation/` and any other supporting feature artifact as deliberately excluded in manifest v3.
 
-**Rationale**: Spec Kit's canonical behavioral artifact for a feature is `spec.md`; plans, tasks, and
-checklists have distinct lifecycle responsibilities. A narrow include glob satisfies the feature
-specification and prevents a plan from being mislabeled as a feature specification. Recursive
-matching preserves compatibility with an explicitly configured nested feature directory.
+**Rationale**: `spec.md` is the canonical behavioral artifact and `design.md` is Concorde's permanent
+accepted-realization artifact. Checklists, plans, tasks, and evidence describe one temporal attempt.
+Two narrow include globs publish the durable pair without allowing a temporal file to be mislabeled
+as permanent feature content. Recursive matching preserves nested feature workspaces.
 
 **Alternatives considered**:
 
-- Include all Markdown below `specs/`: rejected because it conflates specifications with planning and
-  evidence artifacts.
+- Include all Markdown below `specs/`: rejected because it conflates specifications and accepted
+  designs with temporal review, planning, and evidence artifacts.
+- Publish `spec.md` only: rejected because the accepted Feature 002 design requires readers to browse
+  both intended behavior and accepted realization.
 - Require manual feature registration: rejected because new canonical specifications must be
   discovered automatically.
 
 ## R4. Validation, Provenance, and Manifest Ownership
 
 **Decision**: Add one local `concorde-content` Docusaurus plugin backed by a pure source-registry
-library. It scans all three collections, validates metadata and routes, exposes sorted metadata as global
+library. It scans all four source collections, validates metadata and routes, exposes sorted metadata as global
 data for presentation, and verifies actual routes in `postBuild` before writing the manifest.
 
 **Rationale**: Docusaurus lifecycle APIs are designed for reading filesystem content, exposing global

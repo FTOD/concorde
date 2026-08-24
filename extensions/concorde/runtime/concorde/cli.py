@@ -46,6 +46,13 @@ def create_parser() -> argparse.ArgumentParser:
     select.add_argument("target")
     select.add_argument("--resume", action="store_true")
     select.add_argument("--format", choices=["json"], default="json")
+    harden = feature_commands.add_parser("harden")
+    harden.add_argument("target", nargs="?")
+    harden_mode = harden.add_mutually_exclusive_group(required=True)
+    harden_mode.add_argument("--propose", action="store_true")
+    harden_mode.add_argument("--apply", action="store_true")
+    harden.add_argument("--proposal")
+    harden.add_argument("--format", choices=["json"], default="json")
     return parser
 
 
@@ -69,6 +76,7 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
 
         return bounded_context(root, arguments.target)
     if arguments.operation == "feature":
+        from .feature_hardening import apply_hardening, propose_hardening
         from .feature_workspace import propose_feature, select_feature
 
         if arguments.feature_operation == "create":
@@ -80,7 +88,18 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
                 arguments.number,
                 tuple(arguments.participant_module),
             )
-        return select_feature(root, arguments.target, arguments.resume)
+        if arguments.feature_operation == "select":
+            return select_feature(root, arguments.target, arguments.resume)
+        if arguments.apply:
+            if not arguments.proposal:
+                return OperationResult(
+                    "feature.harden",
+                    arguments.target or ".",
+                    "invalid",
+                    findings=(Finding("CONCORDE-HARDEN-008", "error", ".specify/feature.json", "--apply requires --proposal.", "Pass the project-relative reviewed hardening proposal."),),
+                )
+            return apply_hardening(root, arguments.proposal)
+        return propose_hardening(root, arguments.target)
     from .validate import validate_project
 
     return validate_project(root, arguments.target)

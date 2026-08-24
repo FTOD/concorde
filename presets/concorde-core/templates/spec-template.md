@@ -4,6 +4,10 @@
 Record this feature in its single canonical `spec.md` inside the providing module's
 `features/<number-name>/` workspace.
 
+Keep one adjacent durable `design.md`. Specification work may read it to avoid confusing accepted
+realization with required behavior, but must never update it. New features start with the resolved
+design template's explicit “no hardened realization” state.
+
 - **Stable feature ID**: `feature.<namespace>.<outcome>`
 - **Providing module**: exactly one current-level module
 - **Observable textual outcome**: primary definition of the feature

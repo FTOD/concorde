@@ -52,7 +52,7 @@ provide the behavior:
 | Entry path | Root feature invoked | Immediate modules involved |
 |---|---|---|
 | A maintainer uses Spec Kit's bundle inspect, install, update, or removal operations. | `feature.concorde.install-with-spec-kit` | Distribution owns the bundle lifecycle; Spec Kit Integration supplies and activates the preset and command extension. |
-| A maintainer or coding agent runs normal Spec Kit phases, together with `speckit.concorde.init`, `feature.create`, `feature.select`, `context`, or `validate`. | `feature.concorde.core-workflow` | Spec Kit Integration selects the nested workspace and composes phase guidance; Architecture Core initializes, projects bounded context, and validates architecture. |
+| A maintainer or coding agent runs normal Spec Kit phases, together with `speckit.concorde.init`, `feature.create`, `feature.select`, `feature.harden`, `context`, or `validate`. | `feature.concorde.core-workflow` | Spec Kit Integration selects the nested workspace and composes phase guidance; Architecture Core initializes, projects bounded context, validates architecture, and safely promotes completed milestones into durable feature design. |
 | A maintainer validates, builds, serves, or browses the generated project site. | `feature.concorde.publish-project-docsite` | Documentation builds the read model from validated Architecture Core sources and canonical Spec Kit feature specifications. |
 
 The root view intentionally stops here. Zooming into an immediate module reveals that module's own
@@ -97,7 +97,7 @@ types divide responsibility as follows:
 | Component catalogs | Advertise independently packaged bundle, preset, and extension archives with location, compatibility, digest, and trust metadata. |
 | `concorde-starter` bundle | Pins and groups the accepted Concorde components as one inspectable installation recipe. |
 | `concorde-core` preset | Composes architecture-aware templates and selected-workspace routing into nine existing Spec Kit lifecycle commands. |
-| `concorde` extension | Supplies five portable Concorde-specific commands, the workspace adapter, and deterministic Architecture Core runtime. |
+| `concorde` extension | Supplies six portable Concorde-specific commands, the workspace adapter, and deterministic Architecture Core runtime. |
 | Coding-agent integration | Materializes resolved normal-command overrides and Concorde-specific commands in its native skill or slash-command syntax. |
 | Concorde Architecture Core | Maintains bounded hierarchy, context, and validation under the shared `specs/` tree. |
 
@@ -135,7 +135,7 @@ light/dark perceptual review of the current root and Documentation artifacts rem
 Chrome/Chromium is unavailable in the validation environment; structural checks are not treated as
 perceptual evidence.
 The Spec Kit bundle lifecycle and component registration are implemented, while the installation
-feature remains `partial` until all nine normal command overrides and five Concorde-specific commands
+feature remains `partial` until all nine normal command overrides and six Concorde-specific commands
 execute from release-installed artifacts in clean skills and slash-command projects, preset
 recomposition is verified, and the timed first-use and comprehension pilot is conducted. The core workflow has verified
 initialization, nested feature placement/selection, public preset command composition, bounded

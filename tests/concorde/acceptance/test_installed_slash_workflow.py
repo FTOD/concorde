@@ -39,7 +39,7 @@ class InstalledSlashWorkflowTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     len({registered_artifact(root, "gemini", command) for command in CONCORDE_COMMANDS}),
-                    5,
+                    6,
                 )
                 for command, phase in NORMAL_PHASES.items():
                     receipt = execute_workspace_surface(

@@ -17,7 +17,7 @@ including install-time composition and the two distinct use-time paths.
 | Catalog | Carries discovery and trust metadata for independently packaged bundle, preset, and extension archives. |
 | Bundle | Is a passive, non-executable recipe pinning exactly one preset and one extension. |
 | Preset | Composes architecture guidance into templates and authoritative selected-workspace routing into nine existing lifecycle commands. It introduces no new runtime command namespace. |
-| Extension | Actively contributes five Concorde-specific command intents, a selected-workspace adapter, and the deterministic runtime they invoke. |
+| Extension | Actively contributes six Concorde-specific command intents, a selected-workspace adapter, and the deterministic runtime they invoke. |
 | Active coding-agent integration | Materializes resolved core-command overrides and Concorde-specific commands in agent-native syntax without owning their behavior. |
 | Architecture Core | Implements deterministic initialization, bounded-context projection, and validation. |
 
@@ -46,9 +46,10 @@ that a clean target actually receives from release archives.
 | What are the ecosystem components, and who owns what? | `diagrams/spec-kit-component-model.json` | `/architecture/concorde-spec-kit-component-model.html` |
 | What happens during release/install and along each use-time path? | `diagrams/starter-installation-flow.json` | `/architecture/concorde-starter-installation-flow.html` |
 
-These are supplemental Feature 003 explanations. They are not module-owned `architecture.json`
-views, do not participate in Architecture Core source profile 1, and must not redefine the root
-module's one-level participants or contracts.
+These are feature-owned Feature 003 explanations: the component model is the single `role: core`
+architecture view and the installation flow is `role: supplemental`. Both supplement rather than
+replace module-owned `architecture.json` views, do not participate in Architecture Core source
+profile 1, and must not redefine the root module's one-level participants or contracts.
 
 ## Accessibility and Evidence
 

@@ -54,11 +54,13 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
-1. **Setup**: Run `.specify/scripts/bash/setup-plan.sh --json` from repo root and parse JSON for FEATURE_SPEC, IMPL_PLAN, IMPLEMENTATION_DIR, SPECS_DIR, BRANCH. `FEATURE_SPEC` and feature contracts are durable specifications at the feature root; `IMPL_PLAN` and the other plan-phase artifacts belong to the temporal `IMPLEMENTATION_DIR`. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. **Setup**: Run `.specify/scripts/bash/setup-plan.sh --json` from repo root and parse JSON for FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, IMPLEMENTATION_DIR, SPECS_DIR, BRANCH. `FEATURE_SPEC`, `FEATURE_DESIGN`, and feature contracts are durable sources at the feature root; `IMPL_PLAN` and the other plan-phase artifacts belong to the temporal `IMPLEMENTATION_DIR`. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
-2. **Load context**: Read FEATURE_SPEC and `.specify/memory/constitution.md`. Load IMPL_PLAN template
-   (already copied). Also read every feature-owned Archify JSON source referenced by the specification;
-   keep it distinct from the providing module's canonical `architecture.json`.
+2. **Load context**: Read FEATURE_SPEC, FEATURE_DESIGN, and `.specify/memory/constitution.md`. Treat
+   FEATURE_DESIGN as the accepted realization baseline and plan an explicit delta from it without
+   updating the durable design. Load IMPL_PLAN template (already copied). Also read every
+   feature-owned Archify JSON source referenced by the specification; keep it distinct from the
+   providing module's canonical `architecture.json`.
 
 3. **Execute plan workflow**: Follow the structure in IMPL_PLAN template to:
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
@@ -171,6 +173,7 @@ Command ends after Phase 1 design. Report branch, IMPL_PLAN path, and generated 
 ## Done When
 
 - [ ] Plan workflow executed and design artifacts generated
+- [ ] Durable `design.md` was used as the accepted baseline and remained byte-for-byte unchanged
 - [ ] Required feature diagrams or explicit sufficiency rationales are covered by the plan; diagram
       sources remain under `diagrams/` and their automatic feature-page publication is verified
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
