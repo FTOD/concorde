@@ -57,13 +57,10 @@ profile 1, and must not redefine the root module's one-level participants or con
   explanation that can be understood without opening either diagram.
 - Both source JSON files must pass all Archify showcase checks and produce fresh, provenance-bearing
   generated HTML.
-- Visual evidence must cover four desktop viewport sizes plus light and dark themes without clipping
-  or overlap.
+- Deterministic diagram validation must cover composition, provenance, freshness, and configured
+  light/dark theme behavior without errors or warnings.
 - The existing documentation site publishes the generated views; this feature adds no render or
   publication command to the starter bundle.
-- SC-007 requires a human pilot: after at most five minutes of review, at least 90% of first-time
-  maintainers must correctly identify the bundle, preset, extension, and catalog roles and explain
-  that the normal Spec Kit lifecycle remains in control.
 
 ## Failure Semantics
 

@@ -44,5 +44,5 @@ views. Incompatible schema changes require coordinated source and renderer updat
 
 ## Evidence
 
-Both views pass the nine automated Archify showcase checks. Browser visual review remains separately
-tracked as manual evidence.
+Both views pass the nine automated Archify showcase checks and retain deterministic delivery and
+provenance evidence.

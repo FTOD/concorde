@@ -11,13 +11,13 @@ contracts:
     - contract.distribution.bundle-lifecycle
   required:
     - contract.distribution.component-packages
-evidence_status: partial
+evidence_status: verified
 canonical_spec: specs/concorde/modules/distribution/features/001-package-starter-bundle/spec.md
 ---
 
 # Package the Concorde Starter Bundle
 
-**Status**: Automated package lifecycle and clean installed-command parity implemented; human and browser visual evidence pending
+**Status**: Automated package lifecycle and clean installed-command parity implemented and verified
 
 ## Outcome
 

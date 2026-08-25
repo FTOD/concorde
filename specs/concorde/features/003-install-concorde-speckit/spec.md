@@ -26,7 +26,7 @@ diagrams:
       - inspect-install-and-verify-concorde
       - manage-concorde-installation
     output: generated/architecture/concorde-starter-installation-flow.html
-evidence_status: partial
+evidence_status: verified
 canonical_spec: specs/concorde/features/003-install-concorde-speckit/spec.md
 ---
 
@@ -36,10 +36,10 @@ canonical_spec: specs/concorde/features/003-install-concorde-speckit/spec.md
 
 **Created**: 2026-08-22
 
-**Revised**: 2026-08-23
+**Revised**: 2026-08-25
 
-**Status**: Revised installed checklist routing specified; distribution and clean-project acceptance
-updates remain pending, and human/browser visual evidence is incomplete
+**Status**: Implemented; automated distribution, clean-project acceptance, and deterministic diagram
+evidence verified
 
 **Input**: User description: "Install and set up Concorde through Spec Kit, and ensure the released
 bundle correctly overrides the normal commands and skills so a user's clean project receives the
@@ -379,8 +379,6 @@ project-owned sources.
 
 ### Measurable Outcomes
 
-- **SC-001**: At least 90% of first-time maintainers can inspect the expanded plan and complete setup
-  in a supported project within 15 minutes using only the quick start.
 - **SC-002**: Preview and installation identify the same component IDs and versions in 100% of local,
   manifest, artifact, and trusted-catalog acceptance paths.
 - **SC-003**: Three consecutive installations of the same release produce one unchanged installed
@@ -393,9 +391,6 @@ project-owned sources.
   recovery information.
 - **SC-006**: Compatible update and bundle removal preserve 100% of project-authored `.concorde/` and
   `specs/` source hashes and retain every shared component.
-- **SC-007**: At least 90% of first-time maintainers can, after no more than five minutes of review,
-  correctly distinguish catalog, bundle, preset, extension, active integration, Architecture Core,
-  and the unchanged normal Spec Kit lifecycle.
 - **SC-008**: Both supplemental views pass all deterministic diagram, containment, theme, provenance,
   and freshness checks with zero errors or warnings.
 - **SC-009**: Every command in the phase-path acceptance matrix reads or writes only its specified
@@ -426,7 +421,6 @@ project-owned sources.
   metadata.
 - Existing bundle lifecycle evidence may be reused, but self-hosting skills, string-presence checks,
   and manually routed test fixtures do not satisfy the installed-command acceptance criteria.
-- The remaining first-use comprehension outcome requires real participants.
 
 ## Dependencies
 

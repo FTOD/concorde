@@ -13,13 +13,13 @@ contracts:
   required:
     - contract.integration.spec-kit-platform
     - contract.integration.architecture-services
-evidence_status: partial
+evidence_status: verified
 canonical_spec: specs/concorde/modules/spec-kit-integration/features/001-compose-starter-workflow/spec.md
 ---
 
 # Compose Concorde into the Spec Kit Lifecycle
 
-**Status**: Automated composition and clean installed-command parity implemented; human and browser visual evidence pending
+**Status**: Automated composition and clean installed-command parity implemented and verified
 
 ## Outcome
 

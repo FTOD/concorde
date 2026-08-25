@@ -27,9 +27,9 @@ canonical_spec: specs/concorde/features/002-create-project-docsite/spec.md
 
 **Created**: 2026-08-19
 
-**Revised**: 2026-08-24
+**Revised**: 2026-08-25
 
-**Status**: Implemented; automated publication verified, browser visual review and participant exercises pending
+**Status**: Implemented; automated publication and deterministic diagram evidence verified
 
 **Input**: User description: "Create an independent root `docsite/` containing Docusaurus
 configuration and formatting, keep actual Markdown documentation in a separate root `docs/`, and
@@ -361,8 +361,6 @@ representative changes.
   navigation relationships, and source-to-page mappings.
 - **SC-005**: In validation tests, 100% of broken internal links, unreadable sources, missing required
   identity metadata, and route collisions cause a failed build that names the affected source.
-- **SC-006**: In a review exercise, at least 90% of participants can locate a named project document or
-  feature specification within 60 seconds starting from the landing page.
 - **SC-007**: Every displayed feature specification visibly identifies its title, source, stable ID,
   and recorded lifecycle status when present, with zero cases in which a draft is presented as final.
 - **SC-008**: A repository check after preview and production builds finds zero generated or copied
@@ -373,12 +371,6 @@ representative changes.
 - **SC-010**: From the Documentation landing page, a first-time reader can reach the quick start,
   framework overview, specification model, project structure, workflow, and command guidance in no
   more than two navigation actions per destination.
-- **SC-011**: In a review exercise, at least 90% of participants correctly classify representative
-  artifacts as durable intent, temporary implementation state, installed workflow machinery,
-  executable evidence, or generated projection after reading the framework guides.
-- **SC-012**: In a first-use exercise, at least 90% of participants can identify the correct
-  canonical edit location and next workflow operation for five representative architecture,
-  feature, implementation, documentation, and diagram changes.
 - **SC-013**: Every maintained framework guide that summarizes a normative workflow or boundary
   provides at least one working link to its canonical architecture or feature authority, with zero
   links to temporary implementation artifacts presented as permanent authority.

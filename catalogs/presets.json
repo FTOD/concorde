@@ -10,7 +10,7 @@
       "name": "Concorde Core",
       "provides": {
         "commands": 9,
-        "templates": 3
+        "templates": 4
       },
       "repository": "https://github.com/concorde-workflow/concorde",
       "requires": {

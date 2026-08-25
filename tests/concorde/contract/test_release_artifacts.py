@@ -40,6 +40,32 @@ class ReleaseArtifactTests(unittest.TestCase):
                     json.loads((REPOSITORY_ROOT / "catalogs" / name).read_text()),
                 )
 
+    def test_catalog_capability_counts_match_component_manifests(self):
+        builder = load_builder()
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            builder.build_release(output, builder.DEFAULT_BASE_URL)
+            preset_catalog = json.loads((output / "presets.json").read_text(encoding="utf-8"))
+            extension_catalog = json.loads((output / "extensions.json").read_text(encoding="utf-8"))
+            preset_manifest = (REPOSITORY_ROOT / "presets/concorde-core/preset.yml").read_text(
+                encoding="utf-8"
+            )
+            extension_manifest = (REPOSITORY_ROOT / "extensions/concorde/extension.yml").read_text(
+                encoding="utf-8"
+            )
+
+            self.assertEqual(
+                preset_catalog["presets"]["concorde-core"]["provides"],
+                {
+                    "templates": preset_manifest.count('type: "template"'),
+                    "commands": preset_manifest.count('type: "command"'),
+                },
+            )
+            self.assertEqual(
+                extension_catalog["extensions"]["concorde"]["provides"]["commands"],
+                extension_manifest.count('- name: "speckit.concorde.'),
+            )
+
     def test_archives_match_explicit_allowlists_and_installed_handoff(self):
         builder = load_builder()
         sources = {
