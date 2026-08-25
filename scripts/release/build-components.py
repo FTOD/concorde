@@ -106,11 +106,11 @@ def build_release(output: Path, base_url: str = DEFAULT_BASE_URL, version: str =
                     "id": "concorde",
                     "name": "Concorde Architecture Workflow",
                     "version": version,
-                    "description": "Initialize, place, select, retrieve, validate, and harden bounded hierarchical feature work",
+                    "description": "Initialize, place, select, retrieve, validate, harden, and explain bounded hierarchical feature work",
                     "effect": "read-write",
                     "download_url": f"{base_url}/concorde-{version}.zip",
                     "sha256": f"sha256:{digests[f'concorde-{version}.zip']}",
-                    "provides": {"commands": 6, "scripts": 4},
+                    "provides": {"commands": 7, "scripts": 4},
                     "tags": ["architecture", "context", "validation"],
                 }
             },

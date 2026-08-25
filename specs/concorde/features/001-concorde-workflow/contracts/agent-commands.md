@@ -8,7 +8,7 @@
 
 - Canonical names are `speckit.concorde.init`, `speckit.concorde.feature.create`,
   `speckit.concorde.feature.select`, `speckit.concorde.feature.harden`,
-  `speckit.concorde.context`, and `speckit.concorde.validate`.
+  `speckit.concorde.context`, `speckit.concorde.validate`, and `speckit.concorde.ask`.
 - Agent-specific invocation punctuation is presentation only. Codex skills and slash-command outputs
   must preserve the intent, arguments, runtime operation, result schema, and failure behavior below.
 - The command body locates the installed extension runtime relative to the project and invokes it
@@ -18,6 +18,9 @@
   normative result but must not hide findings or claim stronger evidence.
 - Context, validation, and hardening eligibility/proposal checks are read-only. Initialization and
   hardening apply write only after an explicit accepted proposal is supplied to apply mode.
+- The question command is agent-answered and read-only. It does not claim deterministic runtime
+  execution and does not invoke another lifecycle operation merely because that operation would help
+  answer the question.
 - Feature creation changes durable intent only after explicit placement approval. Feature selection
   may write only the standard project-local Spec Kit selection record after validating the target.
 
@@ -208,6 +211,42 @@ It must not contain child feature bodies, grandchildren, or deeper implementatio
 An unknown or duplicate ID, invalid source profile, cyclic hierarchy, or unreadable current-level view
 returns `invalid` with findings. It never guesses a target or modifies a source.
 
+## `speckit.concorde.ask`
+
+### Intent
+
+Answer a maintainer's natural-language question about the Concorde workflow or framework from the
+authoritative guidance installed in the project and, when relevant, the smallest bounded set of
+maintained project sources.
+
+### Inputs
+
+| Argument | Required | Meaning |
+|---|---:|---|
+| `<question>` | yes | A question about Concorde concepts, lifecycle stages, command usage, artifact authority, or application of the workflow to the current project. |
+
+### Result
+
+The agent-facing answer contains:
+
+- a direct answer that remains understandable without opening its cited files;
+- the relevant lifecycle stage or command when the question is about what to do next;
+- project-relative source citations for every installed guidance or maintained project fact used;
+- an explicit distinction among general framework rules, project-specific observations, agent
+  inference, and unresolved uncertainty; and
+- one focused clarification question instead of an answer when the target module, feature, lifecycle
+  stage, or intended meaning cannot be safely inferred.
+
+The command reads installed Concorde guidance and only the project sources needed for the question.
+It does not write files, change active feature selection, regenerate outputs, invoke an implementation
+phase, or present model memory as a framework authority.
+
+### Failures
+
+An empty question requests a question from the maintainer. Unknown project identifiers, unavailable
+sources, version mismatches, and conflicting authorities remain visible in the response. Unsupported
+questions are bounded explicitly rather than answered as though they were Concorde guidance.
+
 ## `speckit.concorde.validate`
 
 ### Intent
@@ -252,9 +291,11 @@ Repeated runs over unchanged bytes and arguments produce byte-equivalent JSON an
 
 - Codex skills mode contains one `SKILL.md` per canonical command under the active project-local
   skills root.
-- One slash-command integration contains the six corresponding registered command artifacts.
-- Each surface exercises placement, selection, hardening eligibility/apply, context, and validation behavior against the same fixture and
-  returns equivalent normative runtime JSON.
+- One slash-command integration contains the seven corresponding registered command artifacts.
+- Each supported presentation exercises placement, selection, hardening eligibility/apply, context,
+  validation, and read-only workflow questions against the same fixture. Runtime-backed operations
+  return equivalent normative JSON, and the question surface preserves equivalent grounding,
+  citation, uncertainty, bounded-context, and non-mutation behavior.
 - Removal deletes only extension-owned registered artifacts; locally modified or unrelated agent
   content follows Spec Kit's ownership safeguards.
 
@@ -267,7 +308,7 @@ handoff consists of:
 |---|---|
 | Workspace protocol | `feature-workspace.schema.json`, schema version 1, both examples, and their combined source digest |
 | Normal phase obligations | `specify`/`clarify` edit durable intent but write review state under `implementation/checklists/`; `checklist` and `plan`/`tasks`/`implement`/`analyze`/`converge`/`taskstoissues` write only temporal attempt artifacts |
-| Concorde command intents | The six canonical IDs and behavior sections in this contract |
+| Concorde command intents | The seven canonical IDs and behavior sections in this contract; six are runtime-backed and `ask` is agent-followed/read-only |
 | Installed support | Extension-relative workspace adapter, launchers, schemas, and runtime sources needed by those intents |
 | Acceptance binding | Spec Kit host version, package versions/digests, handoff digest, actual registered winner, selected paths, outputs, and checkout-access result |
 

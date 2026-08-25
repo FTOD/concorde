@@ -54,14 +54,21 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
         )
         return root
 
-    def test_release_materializes_nine_normal_and_six_concorde_surfaces(self):
+    def test_release_materializes_nine_normal_and_seven_concorde_surfaces(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.installed_project(temporary)
             normal = {registered_artifact(root, "codex", command) for command in NORMAL_PHASES}
             concorde = {registered_artifact(root, "codex", command) for command in CONCORDE_COMMANDS}
             self.assertEqual(len(normal), 9)
-            self.assertEqual(len(concorde), 6)
+            self.assertEqual(len(concorde), 7)
             self.assertTrue(all(path.is_file() for path in normal | concorde))
+            ask = registered_artifact(root, "codex", "speckit.concorde.ask")
+            content = ask.read_text(encoding="utf-8")
+            for requirement in ("$ARGUMENTS", "citation", "uncertainty", "read-only"):
+                self.assertIn(requirement, content)
+            for executable in ("concorde.sh", "concorde.ps1", "concorde.py", "workspace.py"):
+                self.assertNotIn(executable, content)
+            self.assertNotIn(str(REPOSITORY_ROOT), content)
 
     def test_every_normal_winner_executes_the_installed_workspace_bootstrap(self):
         with tempfile.TemporaryDirectory() as temporary:

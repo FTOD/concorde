@@ -4840,7 +4840,7 @@
       </div>
     </div>
 
-    <script id="archify-guided-views-data" type="application/json">[{"id":"publish","label":"Build and publish","focus":["componentSources","releaseArtifacts","catalogs"],"note":"Independent archives and catalogs make the bundle, preset, and extension discoverable."},{"id":"install","label":"Inspect and install","focus":["catalogs","inspectPlan","installBundle","componentsActive"],"note":"The maintainer reviews the plan before Spec Kit installs packages and materializes their winning command layers."},{"id":"use","label":"Use Concorde","focus":["componentsActive","normalLifecycle","concordeCommands"],"note":"A clean target executes nine lifecycle overrides and six Concorde commands, including hardening, without the source checkout."},{"id":"maintain","label":"Maintain or remove","focus":["installBundle","componentsActive","normalLifecycle"],"note":"Disable and priority changes keep registered commands; removal restores the surviving lower layer."}]</script>
+    <script id="archify-guided-views-data" type="application/json">[{"id":"publish","label":"Build and publish","focus":["componentSources","releaseArtifacts","catalogs"],"note":"Independent archives and catalogs make the bundle, preset, and extension discoverable."},{"id":"install","label":"Inspect and install","focus":["catalogs","inspectPlan","installBundle","componentsActive"],"note":"The maintainer reviews the plan before Spec Kit installs packages and materializes their winning command layers."},{"id":"use","label":"Use Concorde","focus":["componentsActive","normalLifecycle","concordeCommands"],"note":"A clean target exercises nine lifecycle overrides, six runtime-backed Concorde operations, and read-only ask without the source checkout."},{"id":"maintain","label":"Maintain or remove","focus":["installBundle","componentsActive","normalLifecycle"],"note":"Disable and priority changes keep registered commands; removal restores the surviving lower layer."}]</script>
 
     <div class="guided-views no-print" id="guided-views" hidden aria-label="Guided diagram views">
       <button id="guided-view-prev" type="button" aria-label="Previous guided view" title="Previous guided view ([)">&#8592;</button>
@@ -4942,7 +4942,7 @@
         <path data-edge-from="inspectPlan" data-edge-to="installBundle" data-edge-label="accept exact plan" data-edge-key="3" data-edge-id="acceptPlan" data-composition-points="346,243;346,290;384,290;384,367" d="M 346 243 L 346 290 L 384 290 L 384 367" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="installBundle" data-edge-to="componentsActive" data-edge-label="install + compose" data-edge-key="4" data-edge-id="activateComponents" data-composition-points="476,367;476,414;454,414;454,491" d="M 476 367 L 476 414 L 454 414 L 454 491" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="componentsActive" data-edge-to="normalLifecycle" data-edge-label="9 winning surfaces" data-edge-key="5" data-edge-id="materializeLifecycle" data-composition-points="546,491;579,491" d="M 546 491 L 579 491" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="componentsActive" data-edge-to="concordeCommands" data-edge-label="6 commands + runtime" data-edge-key="6" data-edge-id="materializeConcordeCommands" data-composition-points="500,517;500,550;720,550;720,243;671,243" d="M 500 517 L 500 550 L 720 550 L 720 243 L 671 243" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="componentsActive" data-edge-to="concordeCommands" data-edge-label="7 surfaces · 6 runtime-backed" data-edge-key="6" data-edge-id="materializeConcordeCommands" data-composition-points="500,517;500,550;720,550;720,243;671,243" d="M 500 517 L 500 550 L 720 550 L 720 243 L 671 243" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
 
         <!-- Nodes -->
         <g id="node-componentSources" data-node-id="componentSources" data-node-label="Source" tabindex="0" role="button" aria-label="Focus Source, 3 types, Concorde Release › Package" aria-pressed="false" data-node-kind="backend" data-node-sublabel="3 types" data-node-context="Concorde Release › Package">
@@ -5003,8 +5003,8 @@
           <text data-detail="context" x="430" y="379" class="t-muted" font-size="6.3" text-anchor="middle">resolve and apply pins</text>
         </g>
 
-        <g id="node-componentsActive" data-node-id="componentsActive" data-node-label="Integration" tabindex="0" role="button" aria-label="Focus Integration, 15 command surfaces, Clean Target Project › Use" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="15 command surfaces" data-node-context="Clean Target Project › Use">
-          <title>Integration · 15 command surfaces · Clean Target Project › Use</title>
+        <g id="node-componentsActive" data-node-id="componentsActive" data-node-label="Integration" tabindex="0" role="button" aria-label="Focus Integration, 16 command surfaces, Clean Target Project › Use" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="16 command surfaces" data-node-context="Clean Target Project › Use">
+          <title>Integration · 16 command surfaces · Clean Target Project › Use</title>
           <rect x="454" y="465" width="92" height="52" rx="6" class="c-mask"/>
           <rect x="454" y="465" width="92" height="52" rx="6" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(460 471) scale(0.6875)">
@@ -5014,7 +5014,7 @@
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
           <text data-detail-anchor x="500" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Integration</text>
-          <text data-detail="context" x="500" y="503" class="t-muted" font-size="7.3" text-anchor="middle">15 command surfaces</text>
+          <text data-detail="context" x="500" y="503" class="t-muted" font-size="7.3" text-anchor="middle">16 command surfaces</text>
         </g>
 
         <g id="node-normalLifecycle" data-node-id="normalLifecycle" data-node-label="Phase Check" tabindex="0" role="button" aria-label="Focus Phase Check, 9 commands · paths, Clean Target Project › Use" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="9 commands · paths" data-node-context="Clean Target Project › Use">
@@ -5031,8 +5031,8 @@
           <text data-detail="context" x="625" y="503" class="t-muted" font-size="7.7" text-anchor="middle">9 commands · paths</text>
         </g>
 
-        <g id="node-concordeCommands" data-node-id="concordeCommands" data-node-label="Concorde Check" tabindex="0" role="button" aria-label="Focus Concorde Check, 6 commands · harden, Maintainer › Use" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="6 commands · harden" data-node-context="Maintainer › Use">
-          <title>Concorde Check · 6 commands · harden · Maintainer › Use</title>
+        <g id="node-concordeCommands" data-node-id="concordeCommands" data-node-label="Concorde Check" tabindex="0" role="button" aria-label="Focus Concorde Check, 7 · ask + 6 ops, Maintainer › Use" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="7 · ask + 6 ops" data-node-context="Maintainer › Use">
+          <title>Concorde Check · 7 · ask + 6 ops · Maintainer › Use</title>
           <rect x="579" y="217" width="92" height="52" rx="6" class="c-mask"/>
           <rect x="579" y="217" width="92" height="52" rx="6" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(585 223) scale(0.6875)">
@@ -5042,7 +5042,7 @@
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
           <text data-detail-anchor x="625" y="238" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Concorde Check</text>
-          <text data-detail="context" x="625" y="255" class="t-muted" font-size="7.3" text-anchor="middle">6 commands · harden</text>
+          <text data-detail="context" x="625" y="255" class="t-muted" font-size="8" text-anchor="middle">7 · ask + 6 ops</text>
         </g>
 
         <!-- Edge labels -->
@@ -5064,9 +5064,9 @@
           <rect x="514.8" y="521" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
           <text x="563" y="531" class="t-backend" font-size="8" text-anchor="middle">9 winning surfaces</text>
         </g>
-        <g data-detail="context" data-edge-from="componentsActive" data-edge-to="concordeCommands" data-edge-label="6 commands + runtime" data-edge-key="6" data-edge-id="materializeConcordeCommands">
-          <rect x="727" y="340" width="106" height="14" rx="3" class="c-mask"/>
-          <text x="780" y="350" class="t-backend" font-size="8" text-anchor="middle">6 commands + runtime</text>
+        <g data-detail="context" data-edge-from="componentsActive" data-edge-to="concordeCommands" data-edge-label="7 surfaces · 6 runtime-backed" data-edge-key="6" data-edge-id="materializeConcordeCommands">
+          <rect x="705.4" y="340" width="149.2" height="14" rx="3" class="c-mask"/>
+          <text x="780" y="350" class="t-backend" font-size="8" text-anchor="middle">7 surfaces · 6 runtime-backed</text>
         </g>
 
         <!-- Legend -->
@@ -5299,7 +5299,7 @@
         </div>
         <ul>
           <li>&bull; Nine normal commands route before legacy root-path assumptions</li>
-          <li>&bull; Six Concorde commands invoke the installed adapter and runtime, including feature hardening</li>
+          <li>&bull; Six Concorde operations invoke installed runtime; ask reads cited sources</li>
           <li>&bull; Disable and priority changes retain registered command artifacts</li>
           <li>&bull; Removal restores the next surviving layer with no stale instructions</li>
         </ul>

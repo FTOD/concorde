@@ -27,8 +27,9 @@ agent registration services.
 ## Information
 
 The platform exchanges manifests, resolved template/command stacks, installed component records,
-active integration identity, registered command artifacts, explicit feature-directory selection, and
-the normal lifecycle phase context.
+active integration identity, seven registered Concorde command artifacts, explicit feature-directory
+selection, and the normal lifecycle phase context. Six Concorde artifacts describe runtime-backed
+operations; `speckit.concorde.ask` is package-neutral agent guidance with no launcher registration.
 
 ## Obligations
 
@@ -46,7 +47,8 @@ The supported platform is exactly Spec Kit 0.16.4 for the starter release.
 
 ## Evidence
 
-Component packaging and registration of six Concorde-specific command artifacts are verified
-against Specify CLI 0.16.4. Evidence is partial until clean-project tests execute those six intents
-and all nine affected normal-command surfaces from release-installed artifacts, prove the complete
+Component packaging and registration of seven Concorde-specific command artifacts are verified
+against Specify CLI 0.16.4. Evidence is partial until clean-project tests execute the six runtime
+intents, review the read-only question intent in both supported presentations, and execute all nine
+affected normal-command surfaces from release-installed artifacts, prove the complete
 durable-spec/design/temporal phase-path matrix, and verify lower-layer restoration.

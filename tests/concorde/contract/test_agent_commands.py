@@ -10,7 +10,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, VALID_PROJECT
 
 
 class AgentCommandContractTests(unittest.TestCase):
-    def test_all_canonical_commands_have_portable_runtime_references(self):
+    def test_six_operations_have_launchers_and_ask_is_agent_only(self):
         commands = REPOSITORY_ROOT / "extensions/concorde/commands"
         expected = {
             "speckit.concorde.init.md",
@@ -19,14 +19,34 @@ class AgentCommandContractTests(unittest.TestCase):
             "speckit.concorde.feature.harden.md",
             "speckit.concorde.context.md",
             "speckit.concorde.validate.md",
+            "speckit.concorde.ask.md",
         }
         self.assertEqual({path.name for path in commands.glob("*.md")}, expected)
-        for path in commands.glob("*.md"):
+        ask = commands / "speckit.concorde.ask.md"
+        runtime_commands = expected - {ask.name}
+        for filename in runtime_commands:
+            path = commands / filename
             content = path.read_text()
             self.assertIn(".specify/extensions/concorde/scripts/", content)
             self.assertNotIn(str(REPOSITORY_ROOT), content)
+        ask_content = ask.read_text(encoding="utf-8")
+        for invariant in (
+            "$ARGUMENTS",
+            ".specify/extensions/concorde/",
+            ".specify/presets/concorde-core/",
+            "project-relative",
+            "citation",
+            "bounded",
+            "clarification",
+            "uncertainty",
+            "read-only",
+        ):
+            self.assertIn(invariant, ask_content)
+        for executable in ("concorde.sh", "concorde.ps1", "concorde.py", "workspace.py"):
+            self.assertNotIn(executable, ask_content)
+        self.assertNotIn(str(REPOSITORY_ROOT), ask_content)
 
-    def test_distribution_handoff_names_nine_normal_and_six_concorde_intents(self):
+    def test_distribution_handoff_names_nine_normal_and_seven_concorde_intents(self):
         contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts"
         command_contract = (contracts / "agent-commands.md").read_text(encoding="utf-8")
         schema = json.loads((contracts / "feature-workspace.schema.json").read_text(encoding="utf-8"))
@@ -42,7 +62,7 @@ class AgentCommandContractTests(unittest.TestCase):
             "taskstoissues",
         ):
             self.assertIn(command, command_contract)
-        for command in ("init", "feature.create", "feature.select", "feature.harden", "context", "validate"):
+        for command in ("init", "feature.create", "feature.select", "feature.harden", "context", "validate", "ask"):
             self.assertIn(command, command_contract)
         self.assertEqual(schema["$defs"]["workspacePaths"]["required"], [
             "feature_directory",

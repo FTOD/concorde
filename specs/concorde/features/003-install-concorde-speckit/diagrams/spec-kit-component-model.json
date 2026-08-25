@@ -23,7 +23,7 @@
         "id": "extension-path",
         "label": "Extension contribution",
         "focus": ["extension", "agentHost", "architectureCore", "specTree"],
-        "note": "The extension supplies six Concorde-specific commands, the workspace adapter, and deterministic runtime."
+        "note": "The extension supplies seven Concorde-specific surfaces: six runtime-backed operations plus read-only ask."
       }
     ]
   },
@@ -80,7 +80,7 @@
       "id": "extension",
       "type": "backend",
       "label": "concorde",
-      "sublabel": "Extension: 6 commands incl. harden",
+      "sublabel": "7 surfaces · 6 runtime-backed",
       "pos": [745, 455],
       "size": [190, 76]
     },
@@ -204,7 +204,7 @@
       "id": "extensionRegistersCommands",
       "from": "extension",
       "to": "agentHost",
-      "label": "6 commands + adapter/runtime",
+      "label": "7 surfaces · 6 runtime-backed",
       "variant": "emphasis",
       "labelAt": [973, 545]
     },
@@ -262,9 +262,9 @@
       "dot": "violet",
       "title": "Extension",
       "items": [
-        "Adds six Concorde-specific commands, including feature hardening",
+        "Adds seven Concorde-specific surfaces, including read-only ask",
         "Registers through the active coding-agent integration",
-        "Ships the selected-workspace adapter and deterministic Python runtime"
+        "Ships the adapter/runtime used only by six operations"
       ]
     },
     {

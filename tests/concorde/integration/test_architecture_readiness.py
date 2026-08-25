@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT
+from tests.concorde.support.paths import CONTEXT_PROJECT, REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
@@ -30,6 +30,29 @@ class ArchitectureReadinessTests(unittest.TestCase):
             self.assertEqual(ready["status"], "ready")
             self.assertEqual(ready["providing_module"], "module.example")
             self.assertEqual(ready["source_digest"].split(":", 1)[0], "sha256")
+
+    def test_question_contract_preserves_source_authority_and_bounded_context(self):
+        contract = (
+            REPOSITORY_ROOT
+            / "specs/concorde/features/001-concorde-workflow/contracts/agent-commands.md"
+        ).read_text(encoding="utf-8")
+        question = contract.split("## `speckit.concorde.ask`", 1)[1].split(
+            "## `speckit.concorde.validate`", 1
+        )[0]
+        normalized_question = " ".join(question.split())
+        for requirement in (
+            "natural-language question",
+            "project-relative source citations",
+            "general framework rules",
+            "project-specific observations",
+            "agent inference",
+            "unresolved uncertainty",
+            "smallest bounded set",
+            "does not write files",
+        ):
+            self.assertIn(requirement, normalized_question)
+        self.assertNotIn("Architecture Service Protocol", question)
+        self.assertNotIn("normative JSON", question)
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ specified.
 | Selected feature, durable/temporal paths, command intent, results, and failures | Feature 001 Feature Workspace and agent-command contracts |
 | Normal phase responsibility and public composition/materialization behavior | Spec Kit 0.16.4 |
 | Template and command contribution strategy | `concorde-core` preset manifest |
-| Six active command and runtime files | `concorde` extension manifest |
+| Seven active command surfaces and four runtime/adapter scripts | `concorde` extension manifest |
 | Agent-specific filename and invocation syntax | Active coding-agent integration |
 | Installed winner, package version, source/materialized digests, and execution evidence | Spec Kit state plus generated Feature 003 acceptance receipts |
 
@@ -53,7 +53,7 @@ must reject the host version and require an upstream-supported capability instea
 
 ### Concorde-specific surfaces
 
-The extension supplies these six canonical intents:
+The extension supplies these seven canonical intents:
 
 1. `speckit.concorde.init`
 2. `speckit.concorde.feature.create`
@@ -61,11 +61,15 @@ The extension supplies these six canonical intents:
 4. `speckit.concorde.feature.harden`
 5. `speckit.concorde.context`
 6. `speckit.concorde.validate`
+7. `speckit.concorde.ask`
 
-Platform-safe spellings may vary in the materialized presentation. Arguments, result envelopes,
-workspace effects, failures, and deterministic runtime behavior must remain equivalent. Every
-launcher, adapter, schema, and runtime file referenced by a command must be present in the extension
-archive and resolved relative to the installed extension, never the Concorde checkout.
+Platform-safe spellings may vary in the materialized presentation. Arguments, workspace effects,
+failures, and semantics must remain equivalent. The first six intents are runtime-backed operations
+with deterministic result envelopes. `ask` is an agent-followed Markdown procedure that requires
+installed-source grounding, citations, bounded project context, explicit uncertainty, and
+non-mutation without a launcher or runtime verb. Every launcher, adapter, schema, and runtime file
+referenced by an operational command must be present in the extension archive and resolved relative
+to the installed extension, never the Concorde checkout.
 
 ## Resolution and Materialization
 
@@ -91,16 +95,18 @@ unregistered package member is not an installed command surface.
 | Implement / analyze / converge / taskstoissues | Feature-root durable intent plus the same active `implementation/` attempt | Root temporal copies, symlinks, or a second active attempt |
 | Init / feature create / select / context / validate | Feature 001 contract paths and result envelopes | Checkout-relative runtime or agent-specific semantic drift |
 | Feature harden | Root `design.md`, completed `implementation/tasks.md`, resolved `implementation/checklists/*.md`, returned `proposal_path`, `task_summary`, and `checklist_summary`, digest-bound proposal, exact `implementation/` removal | Agent-derived proposal path, direct design mutation, unchecked tasks, unresolved checklist items, implicit approval, stale apply, or broader deletion |
+| Ask | Installed extension/preset guidance plus the smallest relevant bounded maintained project sources | Launcher/runtime invocation, checkout dependency, uncited facts, unrelated deeper context, mutation, or implicit lifecycle work |
 
 ## Acceptance Evidence
 
 Acceptance must run from built release artifacts in a target outside the Concorde checkout. For each
-of the fifteen surfaces it must:
+of the sixteen surfaces it must:
 
 1. identify the active registered artifact and winning source package;
 2. record source, materialized, package, and Feature 001 handoff digests;
-3. execute the installed workspace/bootstrap path before phase behavior;
-4. exercise the bounded phase outcome or Concorde operation;
+3. execute the installed workspace/bootstrap path before phase behavior where that surface has one;
+4. exercise the bounded phase outcome or Concorde operation, or inspect and semantically review the
+   agent-only question procedure;
 5. record selected feature root, implementation root, accessed/output paths, exit status, and
    checkout access;
 6. compare behavior across one skills-based and one slash-command-based integration.
@@ -130,6 +136,6 @@ This profile supports Spec Kit 0.16.4 only. A later version is supported only af
 is reviewed against that version's phase inputs, outputs, hooks, prerequisites, failures, and
 registration behavior, followed by the full isolated path and recomposition matrices.
 
-A change to the nine/six inventory, bootstrap order, durable/temporal path split, or stable command
+A change to the nine/seven inventory, bootstrap order, durable/temporal path split, or stable command
 intent is a contract change and requires synchronized Feature 001 handoff, package manifests,
 catalogs, diagrams, tests, and evidence.

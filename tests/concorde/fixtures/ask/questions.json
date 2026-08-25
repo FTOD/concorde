@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "general-command-timing",
+      "kind": "general",
+      "question": "When should I use concorde-context instead of feature-select?",
+      "required_basis": ["framework-rule"],
+      "requires_citations": true,
+      "expected": "Distinguish read-only bounded context from changing active feature selection."
+    },
+    {
+      "id": "project-artifact-placement",
+      "kind": "project-specific",
+      "question": "In this project, where should the implementation checklist for the selected feature live?",
+      "required_basis": ["framework-rule", "project-observation"],
+      "requires_citations": true,
+      "expected": "Use installed routing guidance and only the selected feature's relevant sources."
+    },
+    {
+      "id": "ambiguous-target",
+      "kind": "ambiguous",
+      "question": "How should I change the module?",
+      "required_basis": ["uncertainty"],
+      "requires_citations": false,
+      "expected": "Ask one focused clarification about the module, feature, or intended behavior."
+    },
+    {
+      "id": "conflicting-sources",
+      "kind": "conflict",
+      "question": "Which Concorde commands are installed when the manifest and project documentation disagree?",
+      "required_basis": ["framework-rule", "project-observation", "uncertainty"],
+      "requires_citations": true,
+      "expected": "Expose the disagreement and source versions without silently choosing agreement."
+    },
+    {
+      "id": "unsupported-scope",
+      "kind": "unsupported",
+      "question": "Write a database migration for my application.",
+      "required_basis": ["uncertainty"],
+      "requires_citations": false,
+      "expected": "State that general implementation work is outside the question surface and do not execute it."
+    }
+  ]
+}

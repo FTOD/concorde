@@ -8,7 +8,8 @@ Concorde is designed to be installed as a native Spec Kit bundle containing:
 
 - the `concorde-core` preset, which appends architecture guidance to templates and replaces nine
   normal command instructions with Concorde-aware workspace routing;
-- the `concorde` extension, which supplies six Concorde commands, the workspace adapter, and runtime; and
+- the `concorde` extension, which supplies seven Concorde surfaces—six runtime-backed operations plus
+  the read-only `ask` procedure—the workspace adapter, and runtime; and
 - no replacement workflow: Spec Kit continues to own specification, planning, tasks, and
   implementation.
 
@@ -18,7 +19,7 @@ The three Spec Kit package concepts have different jobs:
 |---|---|---|
 | Bundle | `concorde-starter` | An installation recipe that pins the tested preset and extension versions. |
 | Preset | `concorde-core` | Three append template layers plus nine complete normal-command replacements for nested workspace routing. |
-| Extension | `concorde` | Six Concorde-specific commands, the selected-workspace adapter, and deterministic runtime behavior. |
+| Extension | `concorde` | Seven Concorde-specific surfaces: six deterministic operations and one agent-followed, read-only question procedure. |
 
 Catalogs are trusted discovery metadata for these independently versioned packages; they are not a
 fourth installed runtime component. See the interactive
@@ -29,7 +30,7 @@ fourth installed runtime component. See the interactive
 ## Project status
 
 The project docsite and architecture publication pipeline are implemented and tested. Feature 003
-owns the native starter bundle, preset command composition, six-command extension, release/catalog
+owns the native starter bundle, preset command composition, seven-surface extension, release/catalog
 tooling, and setup lifecycle. Feature 001 defines the Concorde architecture-aware development workflow;
 its initialization, nested feature placement/selection, bounded context, architecture readiness, and
 deterministic validation behavior are implemented. Timed human pilots and browser-based diagram
@@ -131,6 +132,7 @@ $speckit-concorde-feature-select feature.<project-slug>.<name>
 $speckit-concorde-feature-harden feature.<project-slug>.<name>
 $speckit-concorde-context module.<project-slug>
 $speckit-concorde-validate
+$speckit-concorde-ask When should I use context instead of feature-select?
 ```
 
 - `init` proposes a root architecture package and writes it only after explicit approval.
@@ -141,6 +143,13 @@ $speckit-concorde-validate
 - `context` returns one bounded architectural level without expanding child internals.
 - `validate` deterministically checks identities, hierarchy, references, contracts, views, and
   evidence status.
+- `ask` answers questions about Concorde concepts, command timing, artifact authority, or this
+  project's use of the workflow from cited installed guidance and bounded maintained sources. It is
+  agent-followed and read-only: it has no Python runtime verb and does not execute recommended work.
+
+Use `ask` whenever the uncertainty is about how Concorde itself works or applies to the current
+project. Use `context` when you need the deterministic one-level architecture projection, and use
+the normal Spec Kit phases when you intend to change specifications or implementation.
 
 Project-authored `.concorde/` configuration and the unified `specs/` hierarchy are retained when the
 bundle is updated or removed.

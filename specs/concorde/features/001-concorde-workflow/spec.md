@@ -32,8 +32,8 @@ canonical_spec: specs/concorde/features/001-concorde-workflow/spec.md
 
 **Revised**: 2026-08-25
 
-**Status**: Concorde workflow, nested checklist routing, and hardening gate implemented; human/browser
-evidence remains incomplete
+**Status**: Concorde workflow, nested checklist routing, hardening gate, and distributed read-only
+workflow-question surface implemented; human/browser evidence remains incomplete
 
 **Input**: User description: "Make Feature 001 describe the actual Concorde workflow, including the
 organization of specifications, the development lifecycle, and the commands that keep architecture
@@ -41,7 +41,8 @@ and feature work aligned. Add a permanent feature `design.md`; keep Spec Kit pla
 temporal; and let users explicitly harden a task-complete milestone into the durable design while
 removing the temporal implementation workspace. Keep requirements-quality checklists inside that
 temporary workspace rather than at the durable feature root. Move Spec Kit installation and setup
-into a separate feature."
+into a separate feature. Add an installed command/skill through which users can ask grounded,
+read-only questions about the Concorde workflow and framework."
 
 ## What the Concorde Workflow Is
 
@@ -186,11 +187,13 @@ returns the authoritative phase paths. The coding agent then continues the norma
 against either the durable feature root or its temporal `implementation/` directory. The preset does
 not implement a second specification, planning, or implementation engine.
 
-The `concorde` extension adds six Concorde-specific command surfaces: `init`, `feature-create`,
-`feature-select`, `context`, `validate`, and `feature-harden`. Their instructions invoke the installed Bash or
-PowerShell launcher, which locates the extension's Python entry point and runtime. The Python runtime
-performs the deterministic operation and returns canonical JSON; the coding agent presents the
-result, requests approval when mutation is proposed, or explains findings to the maintainer.
+The `concorde` extension provides seven Concorde-specific command surfaces. Six operational
+surfaces—`init`, `feature-create`, `feature-select`, `context`, `validate`, and `feature-harden`—use
+the installed launchers and deterministic runtime where their behavior requires project operations.
+The seventh, `ask`, is a read-only explanatory surface followed by the coding agent. It answers
+questions about the Concorde workflow or framework from the installed guidance and relevant
+maintained project sources, identifies the sources supporting its answer, and does not pretend to be
+a deterministic runtime operation.
 
 `feature-harden` is deliberately split between agent judgment and deterministic runtime control. The
 agent synthesizes a concise candidate `design.md` from the completed attempt, current code/tests, and
@@ -198,7 +201,7 @@ durable sources. The runtime decides eligibility, verifies that every task is co
 proposal to the current sources, confines the design/removal paths, and applies an approved proposal
 without leaving a partially updated design or partially removed attempt.
 
-### The two invocation paths
+### The three invocation paths
 
 ```text
 Normal Spec Kit phase
@@ -210,6 +213,11 @@ Concorde architecture operation
 Maintainer → skill or slash command → coding agent follows extension command Markdown
            → concorde.sh or concorde.ps1 → concorde.py → Concorde Python runtime
            → .concorde/config.json + specs/ → structured result → review or approval
+
+Concorde workflow question
+Maintainer → ask skill or slash command → coding agent follows extension command Markdown
+           → installed Concorde guidance + relevant maintained project sources
+           → cited answer, explicit uncertainty, or a focused clarification question
 
 Feature hardening
 Maintainer → feature-harden skill or slash command → agent drafts the accepted feature design
@@ -275,6 +283,7 @@ command.
 |---|---|---|
 | 1. Establish the root | Create or review the root module package, its I/O contracts, top-level features, immediate submodules, and one-level view. | `speckit.concorde.init` |
 | 2. Locate ownership | Inspect exactly one bounded module level and decide which module owns the behavior at which abstraction. | `speckit.concorde.context <module-or-feature-id>` |
+| Any stage: understand the workflow | Ask what a Concorde concept means, when to use a command, where an artifact belongs, or how the framework applies to the current project; receive a source-grounded, read-only answer. | `speckit.concorde.ask <question>` |
 | 3. Create or select work | Create one nested feature root under the owning module, including `spec.md` and `design.md`, or select an existing feature; keep durable sources at the root. | `speckit.concorde.feature.create` / `speckit.concorde.feature.select` |
 | 4. Specify and review behavior | Describe the feature in text, clarify uncertainty, record representative scenarios, contracts, refinement links, and expected evidence, add feature-owned diagrams when they improve comprehension, and record the current requirements-quality review under `implementation/checklists/`. | Normal Spec Kit specification, clarification, and checklist phases |
 | 5. Agree on architecture | Review ownership, I/O contracts, immediate participants, dependency direction, and the affected one-level view before approving the implementation structure. | Bounded context plus maintained architecture sources |
@@ -284,24 +293,27 @@ command.
 | 9. Harden an accepted milestone | After all current tasks are complete, review a digest-bound proposal that moves accepted realization details into `design.md`; explicitly approve an atomic design update and removal of `implementation/`. | `speckit.concorde.feature.harden` |
 | 10. Review and publish | Review behavioral, design, and architectural changes together, then reproduce the read-only project site through the separate documentation feature. | Documentation publication workflow |
 
-The six Concorde commands support this workflow without replacing the normal Spec Kit phases.
-Feature creation and selection belong to Spec Kit Integration; initialization, context retrieval, and
-validation belong to Architecture Core.
+The seven Concorde commands support this workflow without replacing the normal Spec Kit phases.
+Feature creation and selection belong to Spec Kit Integration; initialization, context retrieval,
+and validation belong to Architecture Core; the question surface explains those authorities without
+becoming a new authority itself.
 
 ## Core Component and Interaction Diagram
 
-The maintained architecture view in `diagrams/concorde-workflow-components.json` is the feature's core
-diagram and produces `generated/architecture/concorde-workflow-components.html`. It answers the
-stable structural question: when a maintainer invokes Concorde in an installed project, which parts
-are agent-facing instructions, which parts are executable adapters or Python code, which workspace
-artifacts they read or write, and how those responsibilities interact?
+The maintained architecture view in `diagrams/concorde-workflow-components.json` is the
+feature's core diagram and produces `generated/architecture/concorde-workflow-components.html`. It
+answers the stable structural question: when a maintainer invokes Concorde in an installed project,
+which parts are agent-facing instructions, which parts are executable adapters or Python code, which
+workspace artifacts they read or write, and how those responsibilities interact? Its `ask` path is
+the implemented agent-only read path and is visibly separate from the six runtime operations.
 
 - **Skills and commands** separates the Maintainer and Coding Agent Integration from the nine
-  preset-replaced Spec Kit phase surfaces and six extension-provided Concorde surfaces.
+  preset-replaced Spec Kit phase surfaces and seven extension-provided Concorde surfaces.
 - **Normal Spec Kit phases** follows a phase surface through the selected-workspace adapter and
   project control state to durable feature sources and the temporal implementation attempt.
 - **Concorde operations** follows an extension command through portable launchers to the deterministic
-  Python runtime and the architecture or feature sources it manages and validates.
+  Python runtime and the architecture or feature sources it manages and validates, while separating
+  the read-only question surface that the agent answers directly from maintained sources.
 - **Project workspace** separates control state, architectural intent, durable behavioral intent,
   accepted feature design, and temporal implementation/evidence.
 - **Harden a milestone** shows the task-completion gate and approved movement from a disposable
@@ -480,6 +492,42 @@ feature's `implementation/` directory without changing architecture, specificati
    it reads both `spec.md` and `design.md`, creates a fresh `implementation/` workspace, and does not
    change `design.md` until another approved hardening.
 
+---
+
+### User Story 6 - Ask About the Concorde Workflow (Priority: P2)
+
+As a maintainer, I can invoke one Concorde question command with a natural-language question about
+the workflow or framework so that I can understand concepts, command timing, artifact authority, or
+how the workflow applies to my project without first knowing which document to open.
+
+**Why this priority**: The workflow spans normal Spec Kit phases, Concorde-specific operations, and
+several kinds of durable and temporal artifacts. A discoverable explanation surface reduces misuse
+without turning explanatory guidance into another source of intent.
+
+**Independent Test**: In an installed fixture, ask one general question about when to use a Concorde
+command and one project-specific question about where an artifact belongs. Verify that both answers
+cite their supporting installed or maintained sources, distinguish general framework guidance from
+project observations, expose uncertainty, and leave every workspace byte unchanged.
+
+**Acceptance Scenarios**:
+
+1. **Given** an installed Concorde project, **When** a maintainer asks what a Concorde concept means
+   or when a command should be used, **Then** the answer uses the authoritative installed workflow
+   guidance, names the relevant command or lifecycle stage, and cites the supporting source paths.
+2. **Given** a question about the current project's modules, features, contracts, or artifact
+   placement, **When** the question surface answers it, **Then** it combines general framework rules
+   with only the relevant bounded maintained project sources and clearly labels project-specific
+   observations.
+3. **Given** an ambiguous question whose answer depends on the target module, feature, or lifecycle
+   stage, **When** no safe interpretation is available, **Then** the surface asks one focused
+   clarification question rather than inventing missing project facts.
+4. **Given** missing, stale, or conflicting sources, **When** the question is answered, **Then** the
+   response identifies the uncertainty or disagreement and does not present an unsupported answer as
+   established fact.
+5. **Given** any workflow question, **When** the answer is produced, **Then** no maintained source,
+   control file, temporal artifact, generated output, code, or test is modified and no implementation
+   phase is started implicitly.
+
 ### Edge Cases
 
 - The correct providing module is unclear, or the behavior spans modules with no obvious common
@@ -504,6 +552,10 @@ feature's `implementation/` directory without changing architecture, specificati
   or stale generated projections together.
 - Implementation or test evidence is missing, inaccessible, or contradictory.
 - An automated tool proposes a structural change that the maintainer has not approved.
+- A workflow question uses an unknown feature/module name, combines several unrelated questions, or
+  asks for project facts outside the available bounded sources.
+- Installed guidance and maintained project sources describe different framework versions or
+  disagree about command availability or artifact authority.
 
 ## Requirements *(mandatory)*
 
@@ -644,6 +696,22 @@ feature's `implementation/` directory without changing architecture, specificati
   to user projects MUST treat `design.md` as the accepted baseline and `implementation/` as a proposed
   delta; none may update `design.md` directly or remove the temporal workspace in place of the
   explicit hardening command.
+- **FR-045**: Concorde MUST provide the canonical command `speckit.concorde.ask` through every
+  supported installed agent presentation so a maintainer can ask a natural-language question about
+  Concorde concepts, lifecycle stages, commands, artifact authority, or application of the workflow
+  to the current project.
+- **FR-046**: Every answer from the question surface MUST identify the installed Concorde guidance
+  and relevant maintained project sources that support it, distinguish general framework rules from
+  project-specific observations and agent inference, and remain understandable without opening those
+  sources.
+- **FR-047**: The question surface MUST be read-only and MUST NOT change any maintained source,
+  project control state, temporal artifact, generated output, code, or test, nor implicitly start or
+  apply another lifecycle operation.
+- **FR-048**: When a question is ambiguous, unsupported, or affected by missing, stale, or conflicting
+  sources, the question surface MUST request the smallest necessary clarification or report the
+  uncertainty and disagreement rather than inventing facts or claiming stronger evidence.
+- **FR-049**: The question surface MUST use only the smallest relevant bounded project context and
+  MUST NOT expose unrelated deeper module details merely because they exist in the workspace.
 
 ### Scope
 
@@ -653,6 +721,8 @@ feature's `implementation/` directory without changing architecture, specificati
 - Module ownership, feature refinement, scenarios, boundary contracts, and one-level views.
 - Root initialization, bounded context retrieval, nested feature creation/selection, and deterministic
   validation as workflow operations.
+- Read-only, source-grounded questions about Concorde concepts, command usage, artifact authority,
+  lifecycle stages, and their application to the current project.
 - Separation of durable behavioral specification, durable accepted feature design, and one temporal
   `implementation/` workspace.
 - User-triggered hardening of a task-complete milestone into `design.md`, followed by safe removal of
@@ -676,6 +746,8 @@ feature's `implementation/` directory without changing architecture, specificati
 - Automatically accepting AI-authored architecture or treating structural validation as proof of
   implementation correctness.
 - Modeling every class, function, or call edge as an architectural module.
+- General-purpose programming assistance or execution of feature work through the explanatory
+  question surface.
 
 ### Key Entities
 
@@ -696,6 +768,9 @@ feature's `implementation/` directory without changing architecture, specificati
 - **Installed Command Surface**: An agent-facing skill or slash-command presentation materialized
   from package-neutral command Markdown; it instructs an agent but is not itself the deterministic
   Concorde runtime.
+- **Workflow Question and Answer**: A natural-language request and read-only, source-grounded response
+  that distinguishes framework guidance, project observations, agent inference, and unresolved
+  uncertainty.
 - **Workspace Adapter and Runtime Launcher**: Project-relative executable entry scripts that resolve
   phase paths or locate and invoke the installed Python runtime without depending on Concorde's
   authoring repository.
@@ -764,6 +839,12 @@ feature's `implementation/` directory without changing architecture, specificati
 - **SC-015**: At least 90% of pilot maintainers can, after five minutes of review, correctly distinguish
   what belongs in `spec.md`, `design.md`, module architecture, and `implementation/`, and can identify
   when a milestone is eligible to harden.
+- **SC-016**: In 100% of question-surface acceptance cases, the response cites every authoritative
+  source used, labels general guidance and project-specific observations correctly, reports seeded
+  ambiguity or disagreement, and leaves a byte-for-byte unchanged project workspace.
+- **SC-017**: At least 90% of first-time maintainers can use the question surface to correctly answer
+  one command-timing question and one artifact-placement question within five minutes without first
+  locating the relevant documentation manually.
 
 ## Assumptions
 
@@ -775,9 +856,12 @@ feature's `implementation/` directory without changing architecture, specificati
   another abstraction level improves ownership or comprehension.
 - One representative primary scenario is normally sufficient to explain a feature, with alternative,
   failure, degraded, or supplemental visual scenarios added only when they improve understanding.
-- Initialization, feature creation/selection, bounded context, validation, and feature hardening form
-  the Concorde-specific command surface; normal Spec Kit phases remain responsible for feature
-  delivery between them.
+- Initialization, feature creation/selection, bounded context, validation, feature hardening, and
+  read-only workflow questions form the Concorde-specific command surface; normal Spec Kit phases
+  remain responsible for feature delivery between them.
+- The question surface answers from the Concorde guidance installed for the current project and the
+  smallest relevant maintained project context; it does not rely on undocumented model memory as an
+  authority for framework behavior.
 - One active implementation workspace is sufficient; accepted attempt history remains available
   through version control and durable design/evidence references rather than archived temporal
   directories inside the canonical feature root.
@@ -794,4 +878,8 @@ feature's `implementation/` directory without changing architecture, specificati
   workspace.
 - The separately installed Concorde preset and extension described by
   `feature.concorde.install-with-spec-kit`.
+- Reconciliation of `feature.concorde.install-with-spec-kit` so its current specification,
+  contracts, diagrams, tests, and documentation distribute the question surface in every supported
+  presentation; its prior six-command accepted design requires a separate Feature 003 attempt and
+  hardening review.
 - The project documentation publication feature for the final read-only review surface.

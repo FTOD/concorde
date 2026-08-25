@@ -6,8 +6,8 @@
   "visualReview": "pending",
   "artifact": {
     "path": "/home/zhenyu/concorde/generated/architecture/concorde-spec-kit-component-model.html",
-    "sha256": "f0eb2f57ef5e7d6af9649e9ebc9be919421ca42b2dd1657786d152fdab619c4a",
-    "bytes": 644949
+    "sha256": "bf062f7b6d156c47204ff968ad00b18a92576a1c233b6d566fccd88058074768",
+    "bytes": 644921
   },
   "state": {
     "detail": "read",

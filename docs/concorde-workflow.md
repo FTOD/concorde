@@ -13,6 +13,13 @@ The authoritative workflow, including requirements and edge cases, is
 [Feature 001](../specs/concorde/features/001-concorde-workflow/spec.md). The stages below
 explain how to apply it in a project.
 
+At any stage, invoke `speckit.concorde.ask <question>` when the uncertainty is about the workflow
+itself rather than the product being implemented. The agent grounds its read-only answer in the
+installed extension/preset guidance and, for project-specific questions, only the smallest relevant
+maintained project sources. It cites those paths, distinguishes framework rules from project
+observations and inference, and asks for focused clarification when it cannot safely resolve the
+target. It does not run another stage on your behalf.
+
 ## Before feature work: establish the root
 
 Run `speckit.concorde.init` after Concorde has been installed in a Spec Kit project. Initialization

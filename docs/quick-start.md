@@ -116,7 +116,7 @@ components:
 | Installed component | Responsibility |
 |---|---|
 | `concorde-core` preset | Adds architecture-aware templates and complete selected-workspace routing for nine normal Spec Kit phases |
-| `concorde` extension | Adds six Concorde-specific command definitions, portable adapters and launchers, and the deterministic Python runtime |
+| `concorde` extension | Adds seven Concorde-specific surfaces: six runtime-backed operations, one read-only agent question procedure, portable adapters and launchers, and the deterministic Python runtime |
 
 Spec Kit resolves and installs those components and asks the active coding-agent integration to
 materialize skills or slash commands. The bundle itself does not execute the workflow.
@@ -125,6 +125,15 @@ materialize skills or slash commands. The bundle itself does not execute the wor
 
 The next examples belong in the coding-agent conversation, not in Bash. The `$...` notation invokes
 an installed agent skill.
+
+If you are unsure which command or artifact applies, ask before changing the project:
+
+```text
+$speckit-concorde-ask Where should planning artifacts for the selected feature live?
+```
+
+The answer should cite installed guidance and any bounded project sources it uses. The question
+surface does not select a feature, create files, or begin implementation.
 
 First establish and inspect the root architecture:
 

@@ -6,8 +6,8 @@
   "visualReview": "pending",
   "artifact": {
     "path": "/home/zhenyu/concorde/generated/architecture/concorde-workflow-components.html",
-    "sha256": "76f20f92bd921f038564a32bb679a913663f9bee5b21c641f898b22ad191105f",
-    "bytes": 653573
+    "sha256": "e42580274313ff0b1b9cc4a9b71409fd5302ad811ad2400256a53f7586354fbb",
+    "bytes": 654500
   },
   "state": {
     "detail": "read",

@@ -4,7 +4,7 @@ extension:
   id: "concorde"
   name: "Concorde Architecture Workflow"
   version: "0.1.0"
-  description: "Initialize, place, select, retrieve, validate, and harden bounded hierarchical feature work"
+  description: "Initialize, place, select, retrieve, validate, harden, and explain bounded hierarchical feature work"
   author: "Concorde maintainers"
   repository: "https://github.com/concorde-workflow/concorde"
   license: "MIT"
@@ -32,6 +32,9 @@ provides:
     - name: "speckit.concorde.validate"
       file: "commands/speckit.concorde.validate.md"
       description: "Deterministically validate Concorde architecture sources"
+    - name: "speckit.concorde.ask"
+      file: "commands/speckit.concorde.ask.md"
+      description: "Answer a grounded, read-only question about the Concorde workflow or framework"
   scripts:
     - name: "concorde-bash"
       file: "scripts/bash/concorde.sh"

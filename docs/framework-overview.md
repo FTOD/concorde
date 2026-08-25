@@ -19,6 +19,11 @@ Concorde therefore makes four things explicit and reviewable:
 
 The normative definition is [Feature 001](../specs/concorde/features/001-concorde-workflow/spec.md).
 
+The installed `speckit.concorde.ask` surface makes that framework discoverable from inside the agent
+conversation. It answers from version-aligned extension/preset guidance and relevant maintained
+project sources, labels its basis and uncertainty, and is strictly read-only. It complements rather
+than replaces deterministic `context`/`validate` operations or normal Spec Kit delivery phases.
+
 ## Two ideas combined
 
 Concorde takes inspiration from two related practices.

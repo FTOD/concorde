@@ -4840,7 +4840,7 @@
       </div>
     </div>
 
-    <script id="archify-guided-views-data" type="application/json">[{"id":"bundle-composition","label":"Bundle composition","focus":["catalogs","specKit","bundle","preset","extension","selfHosting"],"note":"The bundle pins release archives; checkout-local skills and scripts are not distribution inputs."},{"id":"preset-path","label":"Normal command overrides","focus":["preset","featureLifecycle","agentHost","specTree"],"note":"The preset supplies four template layers and authoritative routing for nine existing lifecycle commands."},{"id":"extension-path","label":"Extension contribution","focus":["extension","agentHost","architectureCore","specTree"],"note":"The extension supplies six Concorde-specific commands, the workspace adapter, and deterministic runtime."}]</script>
+    <script id="archify-guided-views-data" type="application/json">[{"id":"bundle-composition","label":"Bundle composition","focus":["catalogs","specKit","bundle","preset","extension","selfHosting"],"note":"The bundle pins release archives; checkout-local skills and scripts are not distribution inputs."},{"id":"preset-path","label":"Normal command overrides","focus":["preset","featureLifecycle","agentHost","specTree"],"note":"The preset supplies four template layers and authoritative routing for nine existing lifecycle commands."},{"id":"extension-path","label":"Extension contribution","focus":["extension","agentHost","architectureCore","specTree"],"note":"The extension supplies seven Concorde-specific surfaces: six runtime-backed operations plus read-only ask."}]</script>
 
     <div class="guided-views no-print" id="guided-views" hidden aria-label="Guided diagram views">
       <button id="guided-view-prev" type="button" aria-label="Previous guided view" title="Previous guided view ([)">&#8592;</button>
@@ -4924,7 +4924,7 @@
         <path data-edge-from="bundle" data-edge-to="extension" data-edge-label="pins extension@0.1.0" data-edge-key="5" data-edge-id="bundlePinsExtension" data-composition-points="675,320;710,320;710,493;745,493" d="M 675 320 L 702 320 Q 710 320 710 328 L 710 485 Q 710 493 718 493 L 745 493" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="preset" data-edge-to="featureLifecycle" data-edge-label="4 templates + 9 overrides" data-edge-key="6" data-edge-id="presetGuidesLifecycle" data-composition-points="935,133;1010,133" d="M 935 133 L 1010 133" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="featureLifecycle" data-edge-to="agentHost" data-edge-label="materialize winning layer" data-edge-key="7" data-edge-id="commandsMaterialize" data-composition-points="1010,133;970,133;970,493;1010,493" d="M 1010 133 L 978 133 Q 970 133 970 141 L 970 485 Q 970 493 978 493 L 1010 493" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="extension" data-edge-to="agentHost" data-edge-label="6 commands + adapter/runtime" data-edge-key="8" data-edge-id="extensionRegistersCommands" data-composition-points="935,493;1010,493" d="M 935 493 L 1010 493" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="extension" data-edge-to="agentHost" data-edge-label="7 surfaces · 6 runtime-backed" data-edge-key="8" data-edge-id="extensionRegistersCommands" data-composition-points="935,493;1010,493" d="M 935 493 L 1010 493" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="selfHosting" data-edge-to="bundle" data-edge-label="excluded from release" data-edge-key="9" data-edge-id="selfHostingExcluded" data-composition-points="580,500;580,351" d="M 580 500 L 580 351" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="featureLifecycle" data-edge-to="specTree" data-edge-label="root intent / temporal review + work" data-edge-key="10" data-edge-id="normalCommandsUseSpecs" data-composition-points="1200,133;1220,133;1220,313;1240,313" d="M 1200 133 L 1212 133 Q 1220 133 1220 141 L 1220 305 Q 1220 313 1228 313 L 1240 313" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="agentHost" data-edge-to="architectureCore" data-edge-label="invoke services" data-edge-key="11" data-edge-id="agentInvokesCore" data-composition-points="1105,455;1105,351" d="M 1105 455 L 1105 351" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
@@ -5000,15 +5000,15 @@
         <text data-detail="context" x="840" y="147" class="t-muted" font-size="9" text-anchor="middle">Preset: 4 templates + 9 overrides</text>
         </g>
 
-        <g id="node-extension" data-node-id="extension" data-node-label="concorde" tabindex="0" role="button" aria-label="Focus concorde, Extension: 6 commands incl. harden, Concorde release" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Extension: 6 commands incl. harden" data-node-context="Concorde release">
-          <title>concorde · Extension: 6 commands incl. harden · Concorde release</title>
+        <g id="node-extension" data-node-id="extension" data-node-label="concorde" tabindex="0" role="button" aria-label="Focus concorde, 7 surfaces · 6 runtime-backed, Concorde release" aria-pressed="false" data-node-kind="backend" data-node-sublabel="7 surfaces · 6 runtime-backed" data-node-context="Concorde release">
+          <title>concorde · 7 surfaces · 6 runtime-backed · Concorde release</title>
           <rect x="745" y="455" width="190" height="76" rx="6" class="c-mask"/>
           <rect x="745" y="455" width="190" height="76" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(751 461) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-detail-anchor x="840" y="491" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">concorde</text>
-        <text data-detail="context" x="840" y="507" class="t-muted" font-size="8.9" text-anchor="middle">Extension: 6 commands incl. harden</text>
+        <text data-detail="context" x="840" y="507" class="t-muted" font-size="9" text-anchor="middle">7 surfaces · 6 runtime-backed</text>
         </g>
 
         <g id="node-featureLifecycle" data-node-id="featureLifecycle" data-node-label="Resolved Core Commands" tabindex="0" role="button" aria-label="Focus Resolved Core Commands, Nine existing phase surfaces, Clean installed project" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Nine existing phase surfaces" data-node-context="Clean installed project">
@@ -5090,9 +5090,9 @@
           <rect x="830" y="305" width="130" height="14" rx="3" class="c-mask"/>
           <text x="895" y="315" class="t-backend" font-size="8" text-anchor="middle">materialize winning layer</text>
         </g>
-        <g data-detail="context" data-edge-from="extension" data-edge-to="agentHost" data-edge-label="6 commands + adapter/runtime" data-edge-key="8" data-edge-id="extensionRegistersCommands">
-          <rect x="900.8" y="535" width="144.4" height="14" rx="3" class="c-mask"/>
-          <text x="973" y="545" class="t-backend" font-size="8" text-anchor="middle">6 commands + adapter/runtime</text>
+        <g data-detail="context" data-edge-from="extension" data-edge-to="agentHost" data-edge-label="7 surfaces · 6 runtime-backed" data-edge-key="8" data-edge-id="extensionRegistersCommands">
+          <rect x="898.4" y="535" width="149.2" height="14" rx="3" class="c-mask"/>
+          <text x="973" y="545" class="t-backend" font-size="8" text-anchor="middle">7 surfaces · 6 runtime-backed</text>
         </g>
         <g data-detail="context" data-edge-from="selfHosting" data-edge-to="bundle" data-edge-label="excluded from release" data-edge-key="9" data-edge-id="selfHostingExcluded">
           <rect x="524.6" y="480" width="110.8" height="14" rx="3" class="c-mask"/>
@@ -5344,9 +5344,9 @@
           <h3>Extension</h3>
         </div>
         <ul>
-          <li>&bull; Adds six Concorde-specific commands, including feature hardening</li>
+          <li>&bull; Adds seven Concorde-specific surfaces, including read-only ask</li>
           <li>&bull; Registers through the active coding-agent integration</li>
-          <li>&bull; Ships the selected-workspace adapter and deterministic Python runtime</li>
+          <li>&bull; Ships the adapter/runtime used only by six operations</li>
         </ul>
       </div>
 

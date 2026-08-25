@@ -1,3 +1,4 @@
+import json
 import sys
 import unittest
 
@@ -34,6 +35,27 @@ class SelfArchitectureTests(unittest.TestCase):
         refinements = {(item["from"], item["to"]) for item in projection["refinement_links"]}
         self.assertIn(("feature.distribution.package-starter-bundle", "feature.concorde.install-with-spec-kit"), refinements)
         self.assertIn(("feature.architecture-core.manage-bounded-sources", "feature.concorde.workflow"), refinements)
+
+    def test_question_surface_is_visible_but_not_a_runtime_operation(self):
+        manifest = (REPOSITORY_ROOT / "extensions/concorde/extension.yml").read_text(encoding="utf-8")
+        command_names = [
+            line.split('"', 2)[1]
+            for line in manifest.splitlines()
+            if line.strip().startswith('- name: "speckit.concorde.')
+        ]
+        self.assertEqual(len(command_names), 7)
+        self.assertIn("speckit.concorde.ask", command_names)
+
+        diagram = json.loads((
+            REPOSITORY_ROOT
+            / "specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json"
+        ).read_text(encoding="utf-8"))
+        command_component = next(item for item in diagram["components"] if item["id"] == "concordeCommands")
+        self.assertIn("7 Concorde Surfaces", command_component["label"])
+        self.assertIn("6 operations", command_component["sublabel"])
+
+        cli_source = (REPOSITORY_ROOT / "extensions/concorde/runtime/concorde/cli.py").read_text(encoding="utf-8")
+        self.assertNotIn('add_parser("ask")', cli_source)
 
 
 if __name__ == "__main__":

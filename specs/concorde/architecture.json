@@ -60,7 +60,7 @@
       "id": "agentHost",
       "type": "external",
       "label": "Coding Agent",
-      "sublabel": "Six Concorde commands",
+      "sublabel": "7 surfaces · 6 runtime-backed",
       "pos": [280, 430],
       "size": [180, 76]
     },
@@ -182,7 +182,7 @@
       "id": "contract_concorde_workflow__agent",
       "from": "agentHost",
       "to": "concordeWorkflowFeature",
-      "label": "init / create / select / harden / context / validate",
+      "label": "6 operations + read-only ask",
       "fromSide": "right",
       "toSide": "left",
       "via": [[555, 468], [555, 368]],
@@ -237,7 +237,7 @@
     {
       "dot": "emerald",
       "title": "How Concorde is invoked",
-      "items": ["Spec Kit owns bundle operations and the normal feature phases", "The active integration presents nine composed lifecycle surfaces plus six Concorde commands", "Documentation build and browse operations invoke the publication feature"]
+      "items": ["Spec Kit owns bundle operations and the normal feature phases", "The active integration presents nine composed lifecycle surfaces plus seven Concorde surfaces", "Six Concorde operations use the runtime; ask is cited and read-only", "Documentation build and browse operations invoke the publication feature"]
     },
     {
       "dot": "violet",

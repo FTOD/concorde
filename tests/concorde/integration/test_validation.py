@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.paths import RUNTIME_ROOT, VALID_PROJECT
+from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT, VALID_PROJECT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
@@ -14,6 +14,28 @@ from concorde.validate import validate_project  # noqa: E402
 
 
 class ValidationIntegrationTests(unittest.TestCase):
+    def test_seven_surfaces_do_not_expand_runtime_dispatch_or_leave_current_inventory_stale(self):
+        manifest = (REPOSITORY_ROOT / "extensions/concorde/extension.yml").read_text(encoding="utf-8")
+        self.assertEqual(manifest.count('- name: "speckit.concorde.'), 7)
+        self.assertEqual(manifest.count('runtime: "'), 4)
+        cli = (REPOSITORY_ROOT / "extensions/concorde/runtime/concorde/cli.py").read_text(encoding="utf-8")
+        self.assertNotIn('add_parser("ask")', cli)
+
+        current_authorities = (
+            REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/spec.md",
+            REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/agent-commands.md",
+            REPOSITORY_ROOT / "specs/concorde/features/003-install-concorde-speckit/spec.md",
+            REPOSITORY_ROOT / "specs/concorde/features/003-install-concorde-speckit/contracts/installed-command-surfaces.md",
+            REPOSITORY_ROOT / "specs/concorde/contracts/spec-kit-installation/contract.md",
+            REPOSITORY_ROOT / "README.md",
+            REPOSITORY_ROOT / "docs/commands.md",
+        )
+        for source in current_authorities:
+            content = source.read_text(encoding="utf-8")
+            with self.subTest(source=source.relative_to(REPOSITORY_ROOT)):
+                self.assertNotIn("six Concorde-specific commands", content)
+                self.assertIn("ask", content)
+
     def test_three_runs_are_byte_equivalent_and_non_mutating(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"

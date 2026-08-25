@@ -22,20 +22,25 @@ evidence_status: partial
 ## Purpose
 
 Expose portable orchestration for Concorde initialization, feature placement/selection, bounded
-context, and validation, while presenting the preset's resolved normal-command overrides through the
-same active integration.
+context, validation, and source-grounded workflow questions, while presenting the preset's resolved
+normal-command overrides through the same active integration.
 
 ## Information
 
 Command Markdown carries user arguments, operation intent, selected-workspace routing, runtime
 invocation, approval rules, structured output handling, and failure behavior. Registered artifacts
-may be skill or slash-command presentations.
+may be skill or slash-command presentations. The workflow-question surface additionally carries the
+rules for source grounding, citations, uncertainty, bounded context, and non-mutation without
+pretending that an agent-authored answer is deterministic runtime output.
 
 ## Obligations
 
-Every integration preserves the canonical operation contract, selected-workspace and phase-path
-semantics, and project-relative runtime paths. Registration must materialize the currently winning
-composed layer rather than merely retain matching text in an inactive source.
+Every integration preserves the canonical command contract, selected-workspace and phase-path
+semantics, and project-relative runtime paths for the six operational surfaces. The `ask` artifact
+instead reads installed guidance and the smallest relevant bounded project context, cites framework
+and project facts, distinguishes inference and uncertainty, asks one focused clarification when
+necessary, and performs no mutation or implicit lifecycle operation. Registration must materialize
+the currently winning composed layer rather than merely retain matching text in an inactive source.
 
 ## Failure Semantics
 
@@ -48,5 +53,6 @@ Command registration follows Spec Kit 0.16.4 and is tested in skills and slash-c
 ## Evidence
 
 Initialization, context, and validation are verified in installed Codex skills mode and Gemini
-slash-command mode. Evidence remains partial until all six Concorde-specific intents and all nine
-affected normal commands execute from release-installed artifacts in both presentation modes.
+slash-command mode. Evidence remains partial until all seven Concorde-specific intents—including the
+read-only question intent—and all nine affected normal commands execute from release-installed
+artifacts in both presentation modes.

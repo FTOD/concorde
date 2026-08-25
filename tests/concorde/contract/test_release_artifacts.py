@@ -65,6 +65,10 @@ class ReleaseArtifactTests(unittest.TestCase):
                 extension_catalog["extensions"]["concorde"]["provides"]["commands"],
                 extension_manifest.count('- name: "speckit.concorde.'),
             )
+            self.assertEqual(extension_catalog["extensions"]["concorde"]["provides"], {
+                "commands": 7,
+                "scripts": 4,
+            })
 
     def test_archives_match_explicit_allowlists_and_installed_handoff(self):
         builder = load_builder()
@@ -105,6 +109,7 @@ class ReleaseArtifactTests(unittest.TestCase):
                     digest.update(b"\0")
                 self.assertEqual(len(digest.hexdigest()), 64)
                 self.assertIn("scripts/python/workspace.py", handoff_members)
+                self.assertIn("commands/speckit.concorde.ask.md", handoff_members)
                 self.assertNotIn(".agents/", "\n".join(handoff_members))
 
 

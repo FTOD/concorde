@@ -23,7 +23,7 @@
         "id": "use",
         "label": "Use Concorde",
         "focus": ["componentsActive", "normalLifecycle", "concordeCommands"],
-        "note": "A clean target executes nine lifecycle overrides and six Concorde commands, including hardening, without the source checkout."
+        "note": "A clean target exercises nine lifecycle overrides, six runtime-backed Concorde operations, and read-only ask without the source checkout."
       },
       {
         "id": "maintain",
@@ -132,7 +132,7 @@
       "col": 4,
       "type": "frontend",
       "label": "Integration",
-      "sublabel": "15 command surfaces"
+      "sublabel": "16 command surfaces"
     },
     {
       "id": "normalLifecycle",
@@ -148,7 +148,7 @@
       "col": 5,
       "type": "frontend",
       "label": "Concorde Check",
-      "sublabel": "6 commands · harden"
+      "sublabel": "7 · ask + 6 ops"
     }
   ],
   "edges": [
@@ -196,7 +196,7 @@
       "id": "materializeConcordeCommands",
       "from": "componentsActive",
       "to": "concordeCommands",
-      "label": "6 commands + runtime",
+      "label": "7 surfaces · 6 runtime-backed",
       "variant": "emphasis",
       "fromSide": "bottom",
       "toSide": "right",
@@ -228,7 +228,7 @@
       "title": "Use-time",
       "items": [
         "Nine normal commands route before legacy root-path assumptions",
-        "Six Concorde commands invoke the installed adapter and runtime, including feature hardening",
+        "Six Concorde operations invoke installed runtime; ask reads cited sources",
         "Disable and priority changes retain registered command artifacts",
         "Removal restores the next surviving layer with no stale instructions"
       ]

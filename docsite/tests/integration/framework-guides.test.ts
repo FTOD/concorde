@@ -60,4 +60,17 @@ describe('maintained Concorde framework guides', () => {
     const manifest = createManifest(await buildRegistry(projectRoot));
     expect(manifest.pages.some((page) => page.sourcePath.includes('/implementation/'))).toBe(false);
   });
+
+  it('documents ask as a cited read-only agent surface rather than a runtime operation', async () => {
+    const registry = await buildRegistry(projectRoot);
+    const commands = registry.documents.find((document) => document.sourcePath === 'docs/commands.md');
+    if (!commands) throw new Error('Expected docs/commands.md in the documentation registry.');
+    const text = commands.content.toLowerCase();
+    expect(text).toContain('speckit-concorde-ask');
+    expect(text).toContain('project-relative');
+    expect(text).toContain('read-only');
+    expect(text).toContain('no launcher or python runtime');
+    expect(text).toContain('six');
+    expect(text).toContain('seven');
+  });
 });

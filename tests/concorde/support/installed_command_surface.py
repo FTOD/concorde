@@ -25,7 +25,7 @@ NORMAL_PHASES = {
     "speckit.taskstoissues": "taskstoissues",
 }
 
-CONCORDE_COMMANDS = (
+CONCORDE_RUNTIME_COMMANDS = (
     "speckit.concorde.init",
     "speckit.concorde.feature-create",
     "speckit.concorde.feature-select",
@@ -33,6 +33,9 @@ CONCORDE_COMMANDS = (
     "speckit.concorde.context",
     "speckit.concorde.validate",
 )
+
+CONCORDE_AGENT_COMMANDS = ("speckit.concorde.ask",)
+CONCORDE_COMMANDS = CONCORDE_RUNTIME_COMMANDS + CONCORDE_AGENT_COMMANDS
 
 
 @dataclass(frozen=True)

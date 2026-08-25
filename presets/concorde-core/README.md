@@ -7,8 +7,8 @@ At priority 10, its three spec/plan/tasks template contributions use `append`, w
 design template uses `replace`. Its nine normal lifecycle command contributions use
 `replace`: each complete command preserves the corresponding Spec Kit 0.16.4 phase while resolving
 Concorde's selected feature and durable/temporal paths before any path-sensitive work. The installed
-extension supplies that workspace adapter and the six Concorde-specific commands, including
-task-complete feature hardening.
+extension supplies that workspace adapter and seven Concorde-specific surfaces: six runtime-backed
+operations, including task-complete feature hardening, plus the agent-only, read-only `ask` procedure.
 
 A feature keeps canonical module-owned `spec.md` and `design.md` at `features/<number-name>/`; the
 specification defines behavior, the design records the accepted realization, and scenarios remain

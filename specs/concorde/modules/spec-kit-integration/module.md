@@ -49,10 +49,11 @@ The preset and extension are complementary but not interchangeable:
   inherited root-path assumption. Phase meanings remain unchanged: durable `spec.md` and contracts
   stay at the feature root, while requirements-quality checklists and all planning/delivery artifacts
   stay under `implementation/`.
-- `concorde` is an active capability package. At installation time, Spec Kit registers its command
-  definitions through the target project's active coding-agent integration. At use time, those agent
-  commands invoke the same deterministic Architecture Core runtime regardless of their displayed
-  skill or slash-command syntax.
+- `concorde` is an active capability package. At installation time, Spec Kit registers its seven
+  command definitions through the target project's active coding-agent integration. At use time, six
+  operational surfaces invoke the same deterministic Architecture Core runtime regardless of their
+  displayed skill or slash-command syntax. The seventh, `ask`, is followed directly by the coding
+  agent to produce a cited, bounded, read-only explanation; it has no runtime verb.
 
 Neither component replaces the core Spec Kit workflow. The bundle merely installs the tested pair.
 See the installation feature's
@@ -91,14 +92,17 @@ context.
 - **Information**: user arguments, bounded project context, requested action, result, and diagnostics.
 - **Guarantees**: canonical commands `speckit.concorde.init`, `speckit.concorde.context`,
   `speckit.concorde.validate`, `speckit.concorde.feature.create`, and
-  `speckit.concorde.feature.select`, plus `speckit.concorde.feature.harden`, register in the active integration without hard-coded invocation
-  syntax.
+  `speckit.concorde.feature.select`, plus `speckit.concorde.feature.harden` and the agent-only
+  `speckit.concorde.ask`, register in the active integration without hard-coded invocation syntax.
+  Framework rules, project observations, inference, and uncertainty remain visibly distinguished in
+  question answers, which inspect only the smallest relevant installed and maintained sources.
 - **Failure**: unsupported integrations or missing dependencies produce an actionable diagnostic.
-- **Evidence**: all six command artifacts register in Codex skills mode; initialization, context,
+- **Evidence**: all seven command artifacts register in Codex skills mode; the six runtime-backed
+  operations remain distinct from `ask`; initialization, context,
   and validation execute in Codex skills and Gemini slash-command modes. Evidence remains partial
-  until feature creation/selection and the complete normal-command matrix execute from release
-  archives in both modes; platform-compatible registered spellings use `feature-create` and
-  `feature-select`.
+  until feature creation/selection, question-surface semantic review, and the complete normal-command
+  matrix execute from release archives in both modes; platform-compatible registered spellings use
+  `feature-create` and `feature-select`.
 
 ### `contract.integration.feature-workspace`
 

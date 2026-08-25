@@ -1,6 +1,6 @@
 # Concorde extension
 
-The extension registers six integration-neutral commands:
+The extension registers seven integration-neutral command surfaces:
 
 - `speckit.concorde.init` proposes a root specification hierarchy and writes only after explicit
   acceptance of an exact proposal.
@@ -12,8 +12,11 @@ The extension registers six integration-neutral commands:
   proposal, and only after explicit approval promotes it and removes the temporal attempt.
 - `speckit.concorde.context` returns one bounded architectural level.
 - `speckit.concorde.validate` deterministically validates the configured hierarchy.
+- `speckit.concorde.ask` tells the coding agent how to answer a Concorde workflow or framework
+  question from cited installed guidance and bounded project sources without changing the workspace.
 
 The extension also provides the selected-workspace adapter used by the preset's nine normal command
-replacements. Every command invokes the installed, standard-library Python runtime through
-project-relative paths. Target projects need Python 3.11 or newer; they do not need `uv` or
-third-party Python packages.
+replacements. The six operational surfaces invoke the installed, standard-library Python runtime
+through project-relative paths. `ask` is agent-followed Markdown and deliberately invokes no launcher
+or runtime verb. Target projects need Python 3.11 or newer for operational surfaces; they do not need
+`uv` or third-party Python packages.

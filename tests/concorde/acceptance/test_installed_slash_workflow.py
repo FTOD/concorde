@@ -39,8 +39,13 @@ class InstalledSlashWorkflowTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     len({registered_artifact(root, "gemini", command) for command in CONCORDE_COMMANDS}),
-                    6,
+                    7,
                 )
+                ask = registered_artifact(root, "gemini", "speckit.concorde.ask").read_text(encoding="utf-8")
+                for requirement in ("{{args}}", "citation", "uncertainty", "read-only"):
+                    self.assertIn(requirement, ask)
+                for executable in ("concorde.sh", "concorde.ps1", "concorde.py", "workspace.py"):
+                    self.assertNotIn(executable, ask)
                 for command, phase in NORMAL_PHASES.items():
                     receipt = execute_workspace_surface(
                         root,

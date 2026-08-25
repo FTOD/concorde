@@ -3,21 +3,21 @@
   "extensions": {
     "concorde": {
       "author": "Concorde maintainers",
-      "description": "Initialize, place, select, retrieve, validate, and harden bounded hierarchical feature work",
+      "description": "Initialize, place, select, retrieve, validate, harden, and explain bounded hierarchical feature work",
       "download_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/concorde-0.1.0.zip",
       "effect": "read-write",
       "id": "concorde",
       "license": "MIT",
       "name": "Concorde Architecture Workflow",
       "provides": {
-        "commands": 6,
+        "commands": 7,
         "scripts": 4
       },
       "repository": "https://github.com/concorde-workflow/concorde",
       "requires": {
         "speckit_version": ">=0.16.4,<0.16.5"
       },
-      "sha256": "sha256:27bfbe03771930d0f0d74bcedb1c230440d38dac4a43e48e3ec84d5093d953da",
+      "sha256": "sha256:8aa61ab7bd6c34449bcf5e0fca52009d9f5e09e4df6b5b4eda893026018ffc19",
       "tags": [
         "architecture",
         "context",

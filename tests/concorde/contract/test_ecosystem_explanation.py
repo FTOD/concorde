@@ -36,6 +36,15 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         self.assertIn("it does not register commands", specification)
         self.assertIn("spec kit is the host platform", specification)
 
+        current_sources = [source for source in sources if source.name != "design.md"]
+        for source in current_sources:
+            text = source.read_text(encoding="utf-8").lower()
+            with self.subTest(question_surface=source.relative_to(REPOSITORY_ROOT)):
+                self.assertIn("seven", text)
+                self.assertIn("ask", text)
+                self.assertIn("six", text)
+                self.assertIn("read-only", text)
+
     def test_component_view_separates_package_and_runtime_ownership(self):
         source = FEATURE_ROOT / "diagrams" / "spec-kit-component-model.json"
         diagram = json.loads(source.read_text(encoding="utf-8"))
@@ -60,7 +69,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         self.assertIn(("bundle", "preset", "pins preset@0.1.0"), edges)
         self.assertIn(("bundle", "extension", "pins extension@0.1.0"), edges)
         self.assertIn(("preset", "featureLifecycle", "4 templates + 9 overrides"), edges)
-        self.assertIn(("extension", "agentHost", "6 commands + adapter/runtime"), edges)
+        self.assertIn(("extension", "agentHost", "7 surfaces · 6 runtime-backed"), edges)
         self.assertIn(("selfHosting", "bundle", "excluded from release"), edges)
         self.assertIn(("featureLifecycle", "agentHost", "materialize winning layer"), edges)
         self.assertIn(("agentHost", "architectureCore", "invoke services"), edges)
@@ -88,7 +97,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         self.assertIn(("componentsActive", "concordeCommands"), edges)
         labels = {edge.get("label") for edge in diagram["edges"]}
         self.assertIn("9 winning surfaces", labels)
-        self.assertIn("6 commands + runtime", labels)
+        self.assertIn("7 surfaces · 6 runtime-backed", labels)
 
     def test_supplemental_views_are_delivered_but_not_root_module_participants(self):
         root_view = json.loads(

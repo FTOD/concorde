@@ -8,13 +8,17 @@ from pathlib import Path
 
 from tests.concorde.contract.test_installed_command_surfaces import _builder
 from tests.concorde.support.catalog_server import CatalogServer
-from tests.concorde.support.installed_command_surface import CONCORDE_COMMANDS, registered_artifact
+from tests.concorde.support.installed_command_surface import (
+    CONCORDE_COMMANDS,
+    CONCORDE_RUNTIME_COMMANDS,
+    registered_artifact,
+)
 from tests.concorde.support.paths import CONTEXT_PROJECT
 from tests.concorde.support.specify_project import SpecifyProject
 
 
 class InstalledCodexWorkflowTests(unittest.TestCase):
-    def test_six_commands_use_installed_runtime_and_missing_adapter_fails(self):
+    def test_seven_surfaces_preserve_six_runtime_operations_and_hardening(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
             dist = base / "dist"
@@ -34,8 +38,9 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     len({registered_artifact(root, "codex", command) for command in CONCORDE_COMMANDS}),
-                    6,
+                    7,
                 )
+                self.assertEqual(len(CONCORDE_RUNTIME_COMMANDS), 6)
                 workspace_adapter = root / ".specify/extensions/concorde/scripts/python/workspace.py"
                 checklist_paths = subprocess.run(
                     [sys.executable, str(workspace_adapter), "--project-root", str(root), "--phase", "checklist"],

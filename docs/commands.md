@@ -6,8 +6,9 @@ sidebar_position: 7
 # Commands and Installed Surfaces
 
 Concorde has two command families. Nine familiar Spec Kit phases continue to own feature delivery;
-six Concorde-specific operations manage architecture, nested workspace selection, validation, and
-hardening.
+seven Concorde-specific surfaces manage architecture, nested workspace selection, validation,
+hardening, and workflow questions. Six are deterministic runtime-backed operations. `ask` is a
+read-only procedure followed directly by the coding agent.
 
 In an agent integration, names such as `$speckit-plan` or `$speckit-concorde-context` are **skills or
 slash commands invoked in the agent conversation**. They are not commands to paste into Bash. The
@@ -22,6 +23,23 @@ installed surfaces is defined by
 ## Concorde-specific operations
 
 Agent integrations may render dots as hyphens. The examples below use Codex-style skill names.
+
+### `$speckit-concorde-ask <question>`
+
+Use at any lifecycle stage when the uncertainty is about Concorde itself: what a concept means, when
+to use a command, where an artifact belongs, which source is authoritative, or how the workflow
+applies to a named module or feature in the current project.
+
+The agent reads the smallest relevant installed sources under `.specify/extensions/concorde/` and
+`.specify/presets/concorde-core/`. For project-specific questions it additionally reads only the
+needed constitution, module, one-level architecture, contract, feature specification, and accepted
+design sources. Its Markdown answer cites project-relative paths and distinguishes framework rules,
+project observations, inference, and uncertainty. Ambiguous questions receive one focused
+clarification instead of guessed project facts.
+
+Unlike the six operations below, `ask` invokes no launcher or Python runtime. It never changes
+selection, files, generated output, or lifecycle state, and a recommended command remains advice
+until you invoke it separately.
 
 ### `$speckit-concorde-init`
 
@@ -142,8 +160,9 @@ The installed workflow has four distinct layers:
    selection, bounded-context projection, validation, and hardening controls.
 
 For a normal Spec Kit phase, the agent invokes the workspace adapter, obtains the selected durable
-and temporary paths, and continues the normal phase. For a Concorde-specific operation, the agent
-invokes a portable launcher, which calls the Python runtime and returns canonical JSON.
+and temporary paths, and continues the normal phase. For one of the six Concorde-specific operations,
+the agent invokes a portable launcher, which calls the Python runtime and returns canonical JSON. For
+`ask`, the agent follows the installed Markdown directly and returns cited prose without execution.
 
 Repository-local `.agents/` skills are useful while Concorde develops itself, but users receive the
 supported command surfaces from the installed preset and extension. Editing only a checkout-local
@@ -153,6 +172,7 @@ skill does not change the distributed framework.
 
 | Situation | Next operation |
 |---|---|
+| You are unsure how Concorde works, when to use a command, or where an artifact belongs | `concorde-ask` |
 | No root architecture exists | `concorde-init` |
 | You do not know which module owns the behavior | `concorde-context` and architecture review |
 | Ownership is known and the feature is new | `concorde-feature-create` |

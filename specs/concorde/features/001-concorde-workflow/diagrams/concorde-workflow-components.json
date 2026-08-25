@@ -7,7 +7,7 @@
     "output": "../../../../../generated/architecture/concorde-workflow-components.html",
     "repository": {
       "url": "https://github.com/FTOD/concorde.git",
-      "revision": "6c34cc34f8a84d426080178e071df84903262bba"
+      "revision": "65e2c59bfa74b3173a7fd6af284bfdfacbee0dea"
     },
     "viewBox": [1960, 1120],
     "views": [
@@ -27,7 +27,7 @@
         "id": "concorde-operations",
         "label": "Concorde operations",
         "focus": ["agent", "concordeCommands", "launchers", "runtime", "controlState", "architectureSources", "featureSpec", "featureDesign"],
-        "note": "Six Concorde surfaces reach the installed Python runtime through portable launchers."
+        "note": "Six operations reach the runtime; the implemented ask surface reads maintained guidance without mutation."
       },
       {
         "id": "workspace-map",
@@ -56,7 +56,7 @@
       "id": "agent",
       "type": "frontend",
       "label": "Coding Agent Integration",
-      "sublabel": "Codex skill or slash-command UI",
+      "sublabel": "command UI + read-only Q&A",
       "pos": [245, 475],
       "size": [190, 76],
       "sources": [
@@ -79,9 +79,9 @@
     {
       "id": "concordeCommands",
       "type": "backend",
-      "label": "6 Concorde Surfaces",
-      "sublabel": "init, feature, context, validate, harden",
-      "tag": "extension commands",
+      "label": "7 Concorde Surfaces",
+      "sublabel": "6 operations + read-only ask",
+      "tag": "extension command intent",
       "pos": [525, 705],
       "size": [210, 86],
       "sources": [
@@ -197,11 +197,12 @@
     {"id": "run-concorde", "from": "agent", "to": "concordeCommands", "label": "skill / slash command"},
     {"id": "resolve-phase", "from": "phaseCommands", "to": "workspaceAdapter", "label": "resolve before phase", "labelAt": [780, 345], "variant": "security"},
     {"id": "read-selection", "from": "workspaceAdapter", "to": "controlState", "label": "selection + phase root", "labelAt": [1068, 345]},
-    {"id": "invoke-launcher", "from": "concordeCommands", "to": "launchers", "label": "portable command"},
+    {"id": "invoke-launcher", "from": "concordeCommands", "to": "launchers", "label": "6 runtime-backed operations", "labelAt": [780, 805]},
     {"id": "load-runtime", "from": "launchers", "to": "runtime", "label": "load relative runtime", "labelAt": [1068, 805], "variant": "security"},
     {"id": "runtime-state", "from": "runtime", "to": "controlState", "label": "read / update state", "labelAt": [1190, 485]},
     {"id": "route-durable", "from": "controlState", "to": "featureSpec", "label": "selected feature root", "labelAt": [1360, 145]},
     {"id": "govern-architecture", "from": "runtime", "to": "architectureSources", "label": "init / context / validate", "labelAt": [1360, 855], "variant": "security"},
+    {"id": "answer-question", "from": "concordeCommands", "to": "architectureSources", "label": "ask: cited read-only guidance", "fromSide": "bottom", "toSide": "bottom", "via": [[630, 930], [1505, 930]], "labelAt": [1000, 930], "variant": "dashed"},
     {"id": "manage-feature", "from": "runtime", "to": "featureSpec", "label": "create / select / context", "via": [[1370, 748], [1370, 208]], "labelAt": [1295, 555]},
     {"id": "guide-attempt", "from": "featureSpec", "to": "implementation", "label": "spec + accepted design baseline", "fromSide": "right", "toSide": "right", "via": [[1760, 208], [1760, 648]], "labelAt": [1840, 520], "variant": "emphasis"},
     {"id": "harden-design", "from": "implementation", "to": "featureDesign", "label": "approved design + cleanup", "labelAt": [1625, 550], "variant": "security"},
@@ -223,7 +224,8 @@
       "items": [
         "The coding agent follows the installed command instructions",
         "Normal phases call workspace.py before Spec Kit work",
-        "Concorde operations, including harden, call portable launchers and Python runtime"
+        "Six Concorde operations call portable launchers and Python runtime",
+        "The ask surface answers from cited sources without changing the workspace"
       ]
     },
     {
