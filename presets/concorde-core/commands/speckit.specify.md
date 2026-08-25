@@ -18,6 +18,7 @@ Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIP
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
 the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
+Bind `CHECKLISTS_DIR` to the returned `workspace.checklists_dir`; never derive it from `FEATURE_DIR`.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
 step says to run `{SCRIPT}`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
@@ -169,7 +170,7 @@ Given that feature description, do this:
 
 8. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
 
-   a. **Create Spec Quality Checklist**: Generate a checklist file at `SPECIFY_FEATURE_DIRECTORY/checklists/requirements.md` using the checklist template structure with these validation items:
+   a. **Create Spec Quality Checklist**: Generate a checklist file at `CHECKLISTS_DIR/requirements.md` using the checklist template structure with these validation items:
 
       ```markdown
       # Specification Quality Checklist: [FEATURE NAME]

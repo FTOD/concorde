@@ -18,6 +18,7 @@ Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIP
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
 the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
+Bind `CHECKLISTS_DIR` to the returned `workspace.checklists_dir`; never derive it from `FEATURE_DIR`.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
 step says to run `{SCRIPT}`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
@@ -217,7 +218,7 @@ Execution steps:
 8. Write the updated spec back to `FEATURE_SPEC`.
 
 9. **Re-validate Spec Quality Checklist** (if it exists):
-   - Check if `FEATURE_DIR/checklists/requirements.md` exists.
+   - Check if `CHECKLISTS_DIR/requirements.md` exists.
    - If it does NOT exist, skip this step silently.
    - If it exists:
      1. Read the checklist file.
@@ -288,7 +289,7 @@ Report completion (after questioning loop ends or early termination):
 - Number of questions asked & answered.
 - Path to updated spec.
 - Sections touched (list names).
-- Spec quality checklist status (if `FEATURE_DIR/checklists/requirements.md` was re-validated): show before/after pass counts (e.g., "Spec Quality Checklist: 12/16 → 15/16 items passing") and list any items that changed state — both newly checked (unchecked → checked) and any regressions (checked → unchecked). If any items remain unchecked, list them as areas needing attention.
+- Spec quality checklist status (if `CHECKLISTS_DIR/requirements.md` was re-validated): show before/after pass counts (e.g., "Spec Quality Checklist: 12/16 → 15/16 items passing") and list any items that changed state — both newly checked (unchecked → checked) and any regressions (checked → unchecked). If any items remain unchecked, list them as areas needing attention.
 - Coverage summary table listing each taxonomy category with Status: Resolved (was Partial/Missing and addressed), Deferred (exceeds question quota or better suited for planning), Clear (already sufficient), Outstanding (still Partial/Missing but low impact).
 - If any Outstanding or Deferred remain, recommend whether to proceed to `$speckit-plan` or run `$speckit-clarify` again later post-plan.
 - Suggested next command.
@@ -296,6 +297,6 @@ Report completion (after questioning loop ends or early termination):
 ## Done When
 
 - [ ] Spec ambiguities identified and clarifications integrated into spec file
-- [ ] Spec quality checklist re-validated against updated spec (if `FEATURE_DIR/checklists/requirements.md` exists)
+- [ ] Spec quality checklist re-validated against updated spec (if `CHECKLISTS_DIR/requirements.md` exists)
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with questions answered, sections touched, checklist status, and coverage summary

@@ -16,7 +16,7 @@
       "requires": {
         "speckit_version": ">=0.16.4,<0.16.5"
       },
-      "sha256": "sha256:adfd1502a795afa0f9b969f38fa1fcf1b74ee8e9e67a948a077091a4e22fbe94",
+      "sha256": "sha256:9e0a20553bb072508db83f47f220612da78ad0a66088ec93bc37a1db4a21ba53",
       "tags": [
         "architecture",
         "contracts",

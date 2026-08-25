@@ -90,7 +90,7 @@ unregistered package member is not an installed command surface.
 | Tasks | `implementation/tasks.md` | Root `tasks.md` |
 | Implement / analyze / converge / taskstoissues | Feature-root durable intent plus the same active `implementation/` attempt | Root temporal copies, symlinks, or a second active attempt |
 | Init / feature create / select / context / validate | Feature 001 contract paths and result envelopes | Checkout-relative runtime or agent-specific semantic drift |
-| Feature harden | Root `design.md`, completed `implementation/tasks.md`, resolved `implementation/checklists/*.md`, digest-bound proposal, exact `implementation/` removal | Direct design mutation, unchecked tasks, unresolved checklist items, implicit approval, stale apply, or broader deletion |
+| Feature harden | Root `design.md`, completed `implementation/tasks.md`, resolved `implementation/checklists/*.md`, returned `proposal_path`, `task_summary`, and `checklist_summary`, digest-bound proposal, exact `implementation/` removal | Agent-derived proposal path, direct design mutation, unchecked tasks, unresolved checklist items, implicit approval, stale apply, or broader deletion |
 
 ## Acceptance Evidence
 
@@ -104,6 +104,11 @@ of the fifteen surfaces it must:
 5. record selected feature root, implementation root, accessed/output paths, exit status, and
    checkout access;
 6. compare behavior across one skills-based and one slash-command-based integration.
+
+For an eligible installed hardening proposal, acceptance also records the runtime-returned
+`proposal_path`, `task_summary`, and `checklist_summary`. The proposal path must be exactly
+`<workspace.implementation_dir>/harden-proposal.json`; installed agents must consume it without
+derivation, and apply must revalidate both summaries before mutation.
 
 Acceptance fails on any checkout read, missing required archive member, wrong winner, late workspace
 resolution, root checklist or other compatibility copy/symlink, mismatched handoff digest, or

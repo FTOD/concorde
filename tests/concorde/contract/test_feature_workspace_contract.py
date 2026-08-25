@@ -40,6 +40,10 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
                 self.assertFalse(Path(value).is_absolute())
                 self.assertNotIn("\\", value)
                 self.assertNotIn("..", Path(value).parts)
+            self.assertEqual(
+                payload["workspace"]["checklists_dir"],
+                payload["workspace"]["implementation_dir"] + "/checklists",
+            )
 
     def test_schema_keeps_workspace_protocol_separate_from_architecture_v1(self):
         contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts"
@@ -48,6 +52,10 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         self.assertEqual(workspace["$defs"]["operation"]["enum"], ["feature.create", "feature.select", "feature.harden"])
         self.assertEqual(workspace["$defs"]["request"]["properties"]["schema_version"]["const"], 2)
         self.assertEqual(workspace["$defs"]["response"]["properties"]["schema_version"]["const"], 2)
+        response_properties = workspace["$defs"]["response"]["properties"]
+        self.assertIn("proposal_path", response_properties)
+        self.assertIn("task_summary", response_properties)
+        self.assertIn("checklist_summary", response_properties)
         self.assertEqual(architecture["$defs"]["operation"]["enum"], ["init", "context", "validate"])
 
     def test_hardening_proposal_binds_one_design_and_one_removal_target(self):
@@ -60,6 +68,18 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         self.assertEqual(design.name, "design.md")
         self.assertEqual(removal.name, "implementation")
         self.assertEqual(design.parent, removal.parent)
+
+    def test_hardening_eligibility_example_exposes_review_metadata(self):
+        path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts/examples/feature-harden-eligible-response.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(payload["status"], "eligible")
+        self.assertEqual(
+            payload["proposal_path"],
+            payload["workspace"]["implementation_dir"] + "/harden-proposal.json",
+        )
+        self.assertEqual(payload["task_summary"]["incomplete"], 0)
+        self.assertEqual(payload["checklist_summary"]["incomplete"], 0)
+        self.assertEqual(payload["checklist_summary"]["malformed"], 0)
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ class FeatureWorkspaceTests(unittest.TestCase):
             self.assertEqual(paths.feature_spec, "specs/example/features/001-deliver/spec.md")
             self.assertEqual(paths.feature_design, "specs/example/features/001-deliver/design.md")
             self.assertEqual(paths.contracts_dir, "specs/example/features/001-deliver/contracts")
-            self.assertEqual(paths.checklists_dir, "specs/example/features/001-deliver/checklists")
+            self.assertEqual(paths.checklists_dir, "specs/example/features/001-deliver/implementation/checklists")
             self.assertEqual(paths.diagrams_dir, "specs/example/features/001-deliver/diagrams")
             self.assertEqual(paths.plan, "specs/example/features/001-deliver/implementation/plan.md")
             self.assertEqual(paths.research, "specs/example/features/001-deliver/implementation/research.md")
@@ -45,6 +45,7 @@ class FeatureWorkspaceTests(unittest.TestCase):
             self.assertEqual(phase_target(paths, "converge"), paths.implementation_dir)
             self.assertFalse((root / "plan.md").exists())
             self.assertFalse((root / "tasks.md").exists())
+            self.assertFalse((root / "checklists").exists())
 
     def test_explicit_selection_precedes_persisted_state_and_is_read_only(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -66,6 +67,7 @@ class FeatureWorkspaceTests(unittest.TestCase):
             paths = resolve_planned_phase_paths(project, planned)
             self.assertEqual(paths.feature_spec, f"{planned}/spec.md")
             self.assertEqual(paths.feature_design, f"{planned}/design.md")
+            self.assertEqual(paths.checklists_dir, f"{planned}/implementation/checklists")
             self.assertEqual(paths.implementation_state, "absent")
             self.assertFalse((project / planned).exists())
             with self.assertRaises(WorkspaceError):

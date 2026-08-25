@@ -32,7 +32,7 @@ scripts:
 - `[x]` does NOT mean implementation work is complete.
 - This command generates or appends checklist items; it MUST NOT mark generated items `[x]`.
 - An agent may assist with evaluating items only when explicitly asked by the reviewer.
-- `checklists/requirements.md` is a separate built-in spec-quality checklist maintained by `$speckit-specify` and `$speckit-clarify`; do not treat that exception as applying to custom checklists generated here.
+- `CHECKLISTS_DIR/requirements.md` is a separate built-in spec-quality checklist maintained by `$speckit-specify` and `$speckit-clarify`; do not treat that exception as applying to custom checklists generated here.
 
 ## User Input
 
@@ -48,6 +48,7 @@ Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIP
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
 the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
+Bind `CHECKLISTS_DIR` to the returned `workspace.checklists_dir`; never derive it from `FEATURE_DIR`.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
 step says to run `{SCRIPT}`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
@@ -150,7 +151,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - If source docs are large, generate interim summary items instead of embedding raw text
 
 6. **Generate checklist** - Use TEMPLATE_CONTENT as the structural template and create "Unit Tests for Requirements":
-   - Create `FEATURE_DIR/checklists/` directory if it doesn't exist
+   - Create `CHECKLISTS_DIR/` if it doesn't exist
    - Generate unique checklist filename:
      - Use short, descriptive name based on domain (e.g., `ux.md`, `api.md`, `security.md`)
      - Format: `[domain].md`

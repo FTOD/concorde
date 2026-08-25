@@ -1,0 +1,53 @@
+{
+  "schema_version": 2,
+  "operation": "feature.harden",
+  "target": "feature.example.api.health-check",
+  "status": "eligible",
+  "workspace": {
+    "feature_directory": "specs/example/modules/api/features/002-add-health-check",
+    "feature_spec": "specs/example/modules/api/features/002-add-health-check/spec.md",
+    "feature_design": "specs/example/modules/api/features/002-add-health-check/design.md",
+    "contracts_dir": "specs/example/modules/api/features/002-add-health-check/contracts",
+    "checklists_dir": "specs/example/modules/api/features/002-add-health-check/implementation/checklists",
+    "diagrams_dir": "specs/example/modules/api/features/002-add-health-check/diagrams",
+    "implementation_dir": "specs/example/modules/api/features/002-add-health-check/implementation",
+    "implementation_state": "ready_to_harden",
+    "plan": "specs/example/modules/api/features/002-add-health-check/implementation/plan.md",
+    "research": "specs/example/modules/api/features/002-add-health-check/implementation/research.md",
+    "data_model": "specs/example/modules/api/features/002-add-health-check/implementation/data-model.md",
+    "quickstart": "specs/example/modules/api/features/002-add-health-check/implementation/quickstart.md",
+    "tasks": "specs/example/modules/api/features/002-add-health-check/implementation/tasks.md",
+    "validation": "specs/example/modules/api/features/002-add-health-check/implementation/validation.md"
+  },
+  "changes": [
+    {
+      "path": "specs/example/modules/api/features/002-add-health-check/design.md",
+      "action": "update",
+      "meaning": "Replace the durable design with the reviewed accepted realization."
+    },
+    {
+      "path": "specs/example/modules/api/features/002-add-health-check/implementation",
+      "action": "delete",
+      "meaning": "Remove the complete temporal implementation attempt after design promotion."
+    }
+  ],
+  "artifacts": [
+    "specs/example/modules/api/features/002-add-health-check/design.md",
+    "specs/example/modules/api/features/002-add-health-check/implementation/tasks.md",
+    "specs/example/modules/api/features/002-add-health-check/spec.md"
+  ],
+  "findings": [],
+  "source_digest": "sha256:3a4b8170a27c10f664308295149c300ef5e98323214b90c2ea365dad061e0f00",
+  "proposal_path": "specs/example/modules/api/features/002-add-health-check/implementation/harden-proposal.json",
+  "task_summary": {
+    "complete": 27,
+    "incomplete": 0,
+    "malformed": 0
+  },
+  "checklist_summary": {
+    "files": 1,
+    "complete": 22,
+    "incomplete": 0,
+    "malformed": 0
+  }
+}

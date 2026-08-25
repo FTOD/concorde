@@ -46,11 +46,14 @@ Complete field types and allowed values are defined by the linked schema and exa
 - Selection resolves an existing root `spec.md`/`design.md` pair, verifies its module ownership and safe path, and
   atomically persists that root as the active Spec Kit workspace.
 - Derived planning and task paths always use the selected root's `implementation/` child.
+- The derived checklist path is exactly `<implementation>/checklists`; no root checklist alias or
+  symlink is created.
 - Read-only resolution never changes `.specify/feature.json`, and no operation creates root-level
   `plan.md` or `tasks.md` aliases.
-- Hardening proves every canonical task is complete, binds the reviewed design and exact removal set
-  to a source digest, requires explicit approval, atomically replaces root `design.md`, and removes
-  only the selected feature's complete `implementation/` directory.
+- Hardening proves every canonical task is complete and every recognizable existing checklist item
+  is satisfied, binds the reviewed design and exact removal set to a source digest, returns the exact
+  proposal path and task/checklist summaries, requires explicit approval, atomically replaces root
+  `design.md`, and removes only the selected feature's complete `implementation/` directory.
 
 ## Failure Semantics
 

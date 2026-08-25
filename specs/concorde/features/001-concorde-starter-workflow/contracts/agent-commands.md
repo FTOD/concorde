@@ -134,25 +134,31 @@ remove the temporal `implementation/` directory only after explicit approval.
 | Argument | Required | Meaning |
 |---|---:|---|
 | `[feature-id-or-root]` | no | Stable feature ID or canonical feature root; defaults to the selected feature. |
-| `--propose` | eligibility | Return task-completion status, current paths, digest, and required proposal shape without mutation. |
+| `--propose` | eligibility | Return task/checklist completion status, current paths, digest, and required proposal shape without mutation. |
 | `--proposal <path>` | apply only | Project-relative reviewed hardening proposal containing the candidate design and exact cleanup manifest. |
 | `--apply` | no | Apply the unchanged reviewed proposal; absent means eligibility/proposal-only. |
 
 ### Agent and runtime responsibilities
 
 1. The installed command first invokes proposal mode. The runtime resolves the selected feature,
-   requires a real active `implementation/tasks.md`, parses every Markdown task item, and returns
-   ineligible when no task exists or any task is unchecked or malformed.
-2. When eligible, the coding agent reads `spec.md`, current `design.md`, the complete attempt, relevant
+   requires a real active `implementation/tasks.md`, parses every Markdown task item and every real
+   Markdown file directly under `implementation/checklists/`, and returns ineligible when no task
+   exists, a task is unchecked or malformed, or an existing checklist item is unresolved or
+   malformed. A missing optional checklist directory represents zero checklist items; symlinked
+   checklist paths are unsafe and invalid.
+2. An eligible schema-v2 result directly returns `proposal_path`, `task_summary`, and
+   `checklist_summary` alongside `workspace` and `source_digest`; the agent never derives or guesses
+   the proposal location.
+3. When eligible, the coding agent reads `spec.md`, current `design.md`, the complete attempt, relevant
    architecture/contracts, code, and tests. It drafts a concise current `design.md` covering module and
    feature collaboration, flows, scenario realization, durable decisions, evidence references, and
    limitations. It does not copy the transient task log or redefine module architecture.
-3. The agent writes a project-contained proposal that names the exact design path, full candidate
+4. The agent writes a project-contained proposal at the returned `proposal_path` that names the exact design path, full candidate
    content, exact `implementation/` removal target, target feature, and runtime-provided source digest.
    It presents the candidate design and cleanup manifest to the maintainer.
-4. Silence, checked tasks, passing validation, or prior acceptance do not authorize apply. Only after
+5. Silence, checked tasks and checklists, passing validation, or prior acceptance do not authorize apply. Only after
    explicit approval does the agent invoke `--apply --proposal <path>`.
-5. Apply re-resolves every path, task, symlink, target, and digest; stages the design update and
+6. Apply re-resolves every path, task, checklist, symlink, target, and digest; stages the design update and
    recoverable directory move; and commits both outcomes or restores the prior state.
 
 ### Success artifacts
@@ -163,8 +169,8 @@ remove the temporal `implementation/` directory only after explicit approval.
 
 ### Failures
 
-Missing or incomplete tasks, an empty/placeholder candidate design, a stale digest, unsafe or partial
-cleanup targets, symlinked paths, changed sources, or an interrupted apply returns `invalid`,
+Missing or incomplete tasks, unresolved or malformed checklist items, an empty/placeholder candidate
+design, a stale digest, unsafe or partial cleanup targets, symlinked paths, changed sources, or an interrupted apply returns `invalid`,
 `conflict`, or `failed`. The prior `design.md` and complete implementation attempt remain recoverable.
 
 ## `speckit.concorde.context`

@@ -7,7 +7,8 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT, VALID_PR
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.diagnostics import Finding, canonical_json, envelope, exit_code  # noqa: E402
+from concorde.diagnostics import Finding, canonical_json, envelope, exit_code, operation_envelope  # noqa: E402
+from concorde.model import OperationResult  # noqa: E402
 from concorde.context import bounded_context  # noqa: E402
 from concorde.validate import validate_project  # noqa: E402
 
@@ -32,6 +33,24 @@ class StructuredResultTests(unittest.TestCase):
         self.assertEqual(exit_code("invalid"), 1)
         self.assertEqual(exit_code("conflict"), 2)
         self.assertEqual(exit_code("failed"), 3)
+
+    def test_hardening_eligibility_envelope_preserves_proposal_metadata(self):
+        result = OperationResult(
+            "feature.harden",
+            "feature.example.deliver",
+            "eligible",
+            result={
+                "workspace": {"implementation_dir": "specs/example/features/001-deliver/implementation"},
+                "source_digest": "sha256:" + "1" * 64,
+                "proposal_path": "specs/example/features/001-deliver/implementation/harden-proposal.json",
+                "task_summary": {"complete": 1, "incomplete": 0, "malformed": 0},
+                "checklist_summary": {"files": 1, "complete": 2, "incomplete": 0, "malformed": 0},
+            },
+        )
+        payload = operation_envelope(result)
+        self.assertEqual(payload["proposal_path"], result.result["proposal_path"])
+        self.assertEqual(payload["task_summary"], result.result["task_summary"])
+        self.assertEqual(payload["checklist_summary"], result.result["checklist_summary"])
 
     def test_checked_in_examples_have_safe_paths(self):
         examples = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts/examples"

@@ -62,6 +62,39 @@ class AgentCommandContractTests(unittest.TestCase):
         ])
         self.assertIn("Workflow Distribution Handoff", command_contract)
 
+    def test_checklist_surfaces_use_only_temporal_checklist_path(self):
+        package_surfaces = [
+            REPOSITORY_ROOT / "presets/concorde-core/commands" / f"speckit.{name}.md"
+            for name in ("specify", "clarify", "checklist", "implement")
+        ]
+        local_surfaces = [
+            REPOSITORY_ROOT / ".agents/skills" / f"speckit-{name}" / "SKILL.md"
+            for name in ("specify", "clarify", "checklist", "implement")
+        ]
+        for path in package_surfaces:
+            content = path.read_text(encoding="utf-8")
+            self.assertNotIn("FEATURE_DIR/checklists", content, path.as_posix())
+            self.assertIn("CHECKLISTS_DIR", content, path.as_posix())
+        for path in local_surfaces:
+            content = path.read_text(encoding="utf-8")
+            self.assertNotIn("FEATURE_DIR/checklists", content, path.as_posix())
+            self.assertTrue(
+                "implementation/checklists" in content or "IMPLEMENTATION_DIR/checklists" in content,
+                path.as_posix(),
+            )
+
+    def test_hardening_surfaces_require_checklists_and_return_review_metadata(self):
+        surfaces = (
+            REPOSITORY_ROOT / "extensions/concorde/commands/speckit.concorde.feature.harden.md",
+            REPOSITORY_ROOT / ".agents/skills/speckit-concorde-feature-harden/SKILL.md",
+        )
+        for path in surfaces:
+            content = path.read_text(encoding="utf-8")
+            self.assertIn("implementation/checklists", content, path.as_posix())
+            self.assertIn("proposal_path", content, path.as_posix())
+            self.assertIn("task_summary", content, path.as_posix())
+            self.assertIn("checklist_summary", content, path.as_posix())
+
     def test_python_launcher_preserves_exit_and_handles_quoted_root(self):
         launcher = REPOSITORY_ROOT / "extensions/concorde/scripts/python/concorde.py"
         result = subprocess.run(

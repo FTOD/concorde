@@ -47,7 +47,7 @@ provides:
     - type: "command"
       name: "speckit.checklist"
       file: "commands/speckit.checklist.md"
-      description: "Keep requirements checklists at the durable feature root"
+      description: "Route requirements checklists to temporal implementation/checklists/"
       strategy: "replace"
     - type: "command"
       name: "speckit.plan"

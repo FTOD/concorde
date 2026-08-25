@@ -22,6 +22,7 @@ from .repository import ProjectRepository, RepositoryError, safe_relative_path
 
 TASK_LINE = re.compile(r"^\s*-\s+\[([ xX])\]\s+(T\d{3,})\b")
 TASK_REFERENCE = re.compile(r"\bT\d{3,}\b")
+CHECKLIST_LINE = re.compile(r"^\s*-\s+\[([ xX])\](?:\s+.*)?$")
 CHECKBOX_LIKE_LINE = re.compile(r"^\s*-\s+\[[^\]]*\]")
 REQUIRED_DESIGN_HEADINGS = (
     "## Realization Overview",
@@ -92,6 +93,39 @@ def _task_state(project: Path, tasks_path: str) -> tuple[list[str], list[str], l
     return complete, incomplete, malformed
 
 
+def _checklist_state(
+    project: Path,
+    checklists_dir: str,
+) -> tuple[int, list[str], list[str], list[str]]:
+    directory = project / checklists_dir
+    if directory.is_symlink():
+        raise WorkspaceError(f"hardening checklist directory may not be a symlink: {checklists_dir}")
+    if not directory.exists():
+        return 0, [], [], []
+    if not directory.is_dir():
+        raise WorkspaceError(f"hardening checklist path is not a directory: {checklists_dir}")
+
+    complete: list[str] = []
+    incomplete: list[str] = []
+    malformed: list[str] = []
+    files = 0
+    for path in sorted(directory.glob("*.md")):
+        relative = path.relative_to(project).as_posix()
+        if path.is_symlink():
+            raise WorkspaceError(f"hardening checklist input may not be a symlink: {relative}")
+        if not path.is_file():
+            continue
+        files += 1
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            match = CHECKLIST_LINE.match(line)
+            reference = f"{relative}:line {number}"
+            if match:
+                (complete if match.group(1).lower() == "x" else incomplete).append(reference)
+            elif CHECKBOX_LIKE_LINE.match(line):
+                malformed.append(reference)
+    return files, complete, incomplete, malformed
+
+
 def propose_hardening(
     project_root: str | Path,
     target: str | None = None,
@@ -102,6 +136,10 @@ def propose_hardening(
         package = ProjectRepository(project).load()
         feature, paths = _resolve_target(project, package, target)
         complete, incomplete, malformed = _task_state(project, paths.tasks)
+        checklist_files, checklist_complete, checklist_incomplete, checklist_malformed = _checklist_state(
+            project,
+            paths.checklists_dir,
+        )
         source_digest = _hardening_digest(project, package, paths, ignored_proposal)
     except (RepositoryError, WorkspaceError, OSError, UnicodeError) as error:
         return OperationResult(
@@ -115,6 +153,10 @@ def propose_hardening(
         findings.append(_finding("CONCORDE-HARDEN-002", paths.tasks, "Unchecked tasks block hardening: " + ", ".join(incomplete), "Complete or deliberately remove the blocking work through the normal task workflow."))
     if malformed:
         findings.append(_finding("CONCORDE-HARDEN-003", paths.tasks, "Task completion cannot be proven: " + ", ".join(malformed), "Use canonical '- [ ] T###' or '- [X] T###' task items and complete every task."))
+    if checklist_incomplete:
+        findings.append(_finding("CONCORDE-HARDEN-009", paths.checklists_dir, "Unchecked checklist items block hardening: " + ", ".join(checklist_incomplete), "Resolve every existing checklist item through the normal specification and implementation workflow."))
+    if checklist_malformed:
+        findings.append(_finding("CONCORDE-HARDEN-010", paths.checklists_dir, "Checklist completion cannot be proven: " + ", ".join(checklist_malformed), "Use canonical '- [ ]' or '- [X]' checklist markers and resolve every item."))
     changes = [
         {"path": paths.feature_design, "action": "update", "meaning": "Replace the durable design with the reviewed accepted realization."},
         {"path": paths.implementation_dir, "action": "delete", "meaning": "Remove the complete temporal implementation attempt after design promotion."},
@@ -124,6 +166,12 @@ def propose_hardening(
         "changes": changes,
         "source_digest": source_digest,
         "task_summary": {"complete": len(complete), "incomplete": len(incomplete), "malformed": len(malformed)},
+        "checklist_summary": {
+            "files": checklist_files,
+            "complete": len(checklist_complete),
+            "incomplete": len(checklist_incomplete),
+            "malformed": len(checklist_malformed),
+        },
         "proposal_path": f"{paths.implementation_dir}/harden-proposal.json",
     }
     return OperationResult(

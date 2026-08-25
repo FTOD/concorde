@@ -68,9 +68,10 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
             root = self.installed_project(temporary)
             receipts = []
             for command, phase in NORMAL_PHASES.items():
+                artifact = registered_artifact(root, "codex", command)
                 receipt = execute_workspace_surface(
                     root,
-                    registered_artifact(root, "codex", command),
+                    artifact,
                     command,
                     phase,
                     REPOSITORY_ROOT,
@@ -79,6 +80,14 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
                 self.assertEqual(receipt.exit_status, 0)
                 expected = receipt.workspace["feature_directory"] if phase in {"specify", "clarify", "checklist"} else receipt.workspace["implementation_dir"]
                 self.assertEqual(receipt.phase_root, expected)
+                self.assertEqual(
+                    receipt.workspace["checklists_dir"],
+                    receipt.workspace["implementation_dir"] + "/checklists",
+                )
+                if phase in {"specify", "clarify", "checklist", "implement"}:
+                    content = artifact.read_text(encoding="utf-8")
+                    self.assertNotIn("FEATURE_DIR/checklists", content)
+                    self.assertIn("CHECKLISTS_DIR", content)
                 self.assertEqual(receipt.checkout_reads, ())
             self.assertEqual(len({item.handoff_digest for item in receipts}), 1)
 

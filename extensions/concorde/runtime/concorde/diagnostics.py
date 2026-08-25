@@ -73,6 +73,9 @@ def operation_envelope(value: OperationResult) -> dict[str, Any]:
             **{
                 key: value.result[key]
                 for key in (
+                    "proposal_path",
+                    "task_summary",
+                    "checklist_summary",
                     "design_digest_before",
                     "design_digest_after",
                     "removed_artifacts",

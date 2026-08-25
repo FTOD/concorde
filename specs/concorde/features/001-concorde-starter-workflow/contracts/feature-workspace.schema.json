@@ -77,6 +77,27 @@
         "validation": { "$ref": "#/$defs/safePath" }
       }
     },
+    "taskSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complete", "incomplete", "malformed"],
+      "properties": {
+        "complete": { "type": "integer", "minimum": 0 },
+        "incomplete": { "type": "integer", "minimum": 0 },
+        "malformed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "checklistSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "complete", "incomplete", "malformed"],
+      "properties": {
+        "files": { "type": "integer", "minimum": 0 },
+        "complete": { "type": "integer", "minimum": 0 },
+        "incomplete": { "type": "integer", "minimum": 0 },
+        "malformed": { "type": "integer", "minimum": 0 }
+      }
+    },
     "request": {
       "type": "object",
       "additionalProperties": false,
@@ -149,6 +170,9 @@
         },
         "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
         "source_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "proposal_path": { "$ref": "#/$defs/safePath" },
+        "task_summary": { "$ref": "#/$defs/taskSummary" },
+        "checklist_summary": { "$ref": "#/$defs/checklistSummary" },
         "design_digest_before": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
         "design_digest_after": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
         "removed_artifacts": {

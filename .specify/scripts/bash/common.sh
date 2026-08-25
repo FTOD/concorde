@@ -232,7 +232,7 @@ get_feature_paths() {
     printf 'QUICKSTART=%q\n' "$implementation_dir/quickstart.md"
     printf 'VALIDATION=%q\n' "$implementation_dir/validation.md"
     printf 'CONTRACTS_DIR=%q\n' "$feature_dir/contracts"
-    printf 'CHECKLISTS_DIR=%q\n' "$feature_dir/checklists"
+    printf 'CHECKLISTS_DIR=%q\n' "$implementation_dir/checklists"
     printf 'DIAGRAMS_DIR=%q\n' "$feature_dir/diagrams"
 }
 

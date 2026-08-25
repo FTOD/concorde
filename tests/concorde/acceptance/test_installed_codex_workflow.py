@@ -36,6 +36,19 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     len({registered_artifact(root, "codex", command) for command in CONCORDE_COMMANDS}),
                     6,
                 )
+                workspace_adapter = root / ".specify/extensions/concorde/scripts/python/workspace.py"
+                checklist_paths = subprocess.run(
+                    [sys.executable, str(workspace_adapter), "--project-root", str(root), "--phase", "checklist"],
+                    cwd=root,
+                    text=True,
+                    capture_output=True,
+                    check=True,
+                )
+                workspace_payload = json.loads(checklist_paths.stdout)["workspace"]
+                self.assertEqual(
+                    workspace_payload["checklists_dir"],
+                    workspace_payload["implementation_dir"] + "/checklists",
+                )
                 launcher = root / ".specify/extensions/concorde/scripts/python/concorde.py"
                 operations = (
                     (["validate"], {"success"}),
@@ -62,8 +75,18 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     capture_output=True,
                 )
                 self.assertEqual(harden.returncode, 0, harden.stdout + harden.stderr)
-                self.assertEqual(json.loads(harden.stdout)["status"], "eligible")
-                adapter = root / ".specify/extensions/concorde/scripts/python/workspace.py"
+                harden_payload = json.loads(harden.stdout)
+                self.assertEqual(harden_payload["status"], "eligible")
+                self.assertEqual(
+                    harden_payload["proposal_path"],
+                    harden_payload["workspace"]["implementation_dir"] + "/harden-proposal.json",
+                )
+                self.assertEqual(harden_payload["task_summary"], {"complete": 1, "incomplete": 0, "malformed": 0})
+                self.assertEqual(
+                    harden_payload["checklist_summary"],
+                    {"files": 0, "complete": 0, "incomplete": 0, "malformed": 0},
+                )
+                adapter = workspace_adapter
                 adapter.unlink()
                 missing = subprocess.run(
                     [sys.executable, str(adapter), "--project-root", str(root), "--phase", "plan"],

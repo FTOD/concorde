@@ -36,7 +36,7 @@ metadata:
 - `[x]` does NOT mean implementation work is complete.
 - This command generates or appends checklist items; it MUST NOT mark generated items `[x]`.
 - An agent may assist with evaluating items only when explicitly asked by the reviewer.
-- `checklists/requirements.md` is a separate built-in spec-quality checklist maintained by `$speckit-specify` and `$speckit-clarify`; do not treat that exception as applying to custom checklists generated here.
+- `IMPLEMENTATION_DIR/checklists/requirements.md` is a separate built-in spec-quality checklist maintained by `$speckit-specify` and `$speckit-clarify`; do not treat that exception as applying to custom checklists generated here.
 
 ## User Input
 
@@ -140,7 +140,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - If source docs are large, generate interim summary items instead of embedding raw text
 
 6. **Generate checklist** - Use TEMPLATE_CONTENT as the structural template and create "Unit Tests for Requirements":
-   - Create `FEATURE_DIR/checklists/` directory if it doesn't exist
+   - Create `IMPLEMENTATION_DIR/checklists/` if it doesn't exist
    - Generate unique checklist filename:
      - Use short, descriptive name based on domain (e.g., `ux.md`, `api.md`, `security.md`)
      - Format: `[domain].md`

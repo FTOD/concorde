@@ -30,10 +30,10 @@ canonical_spec: specs/concorde/features/001-concorde-starter-workflow/spec.md
 
 **Created**: 2026-08-19
 
-**Revised**: 2026-08-23
+**Revised**: 2026-08-25
 
-**Status**: Revised checklist lifecycle specified; routing and hardening-gate implementation updates
-remain pending, and human/browser evidence is incomplete
+**Status**: Core workflow, nested checklist routing, and hardening gate implemented; human/browser
+evidence remains incomplete
 
 **Input**: User description: "Make Feature 001 describe the actual Concorde workflow, including the
 organization of specifications, the development lifecycle, and the commands that keep architecture

@@ -49,16 +49,18 @@
 ```text
 specs/[###-feature]/
 ├── spec.md              # Durable feature intent ($speckit-specify output)
+├── design.md            # Durable accepted realization (hardening output)
 ├── diagrams/            # Optional maintained feature-owned Archify explanations
 │   └── <scenario>.json
 ├── contracts/           # Durable external interface specifications
-├── checklists/          # Specification-quality review artifacts
 └── implementation/      # One temporal delivery attempt
+    ├── checklists/      # Temporal requirements-quality review state
     ├── plan.md          # This file ($speckit-plan command output)
     ├── research.md      # Phase 0 output ($speckit-plan command)
     ├── data-model.md    # Phase 1 output ($speckit-plan command)
     ├── quickstart.md    # Phase 1 validation/run guide
-    └── tasks.md         # Phase 2 output ($speckit-tasks; not created by $speckit-plan)
+    ├── tasks.md         # Phase 2 output ($speckit-tasks; not created by $speckit-plan)
+    └── validation.md    # Attempt evidence and outstanding validation
 ```
 
 ### Source Code (repository root)

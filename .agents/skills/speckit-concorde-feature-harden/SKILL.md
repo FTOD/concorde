@@ -16,7 +16,8 @@ $ARGUMENTS
 
 Compact the selected feature's completed implementation attempt into its permanent `design.md`, then
 remove the temporal `implementation/` directory. This is an explicit milestone operation. Checked
-tasks establish eligibility; they do not grant approval.
+tasks and every existing item under `implementation/checklists/` establish eligibility; they do not
+grant approval.
 
 ## Workflow
 
@@ -24,8 +25,9 @@ tasks establish eligibility; they do not grant approval.
    `.specify/extensions/concorde/scripts/bash/concorde.sh feature harden --propose` (or the installed
    PowerShell launcher on PowerShell projects). Pass a user-supplied stable feature ID or canonical
    feature-root path before `--propose`; otherwise use the selected feature.
-2. Stop on any status other than `eligible`. Present every finding. Never repair, check off, delete,
-   or reinterpret tasks merely to make the feature eligible.
+2. Read the returned `proposal_path`, `task_summary`, and `checklist_summary` directly. Stop on any
+   status other than `eligible` and present every finding. Never repair, check off, delete, or
+   reinterpret tasks or `implementation/checklists/*.md` merely to make the feature eligible.
 3. Read only the returned feature root, its `spec.md` and current `design.md`, relevant maintained
    architecture/contracts, every artifact under its `implementation/` directory, and the code/tests
    cited by those sources. Draft a complete current feature design with these exact sections:
@@ -35,7 +37,7 @@ tasks establish eligibility; they do not grant approval.
    the feature. Reference module architecture instead of redefining module responsibilities,
    boundaries, contracts, or one-level organization. Retain durable decisions and useful evidence
    links; omit transient task ordering, discarded alternatives, and raw validation logs.
-5. Write the candidate to the exact project-contained proposal path returned by the runtime. The JSON
+5. Write the candidate to the exact project-contained `proposal_path` returned by the runtime. The JSON
    must conform to the installed Feature Workspace Protocol and contain the returned target, source
    digest, durable design path/content, and exactly one implementation-directory removal target.
 6. Present the entire candidate design, exact removal target, and retained authorities. Ask for

@@ -35,10 +35,11 @@ class ImplementationWorkspaceIntegration(unittest.TestCase):
         self.assertEqual(paths["IMPL_PLAN"], str(implementation / "plan.md"))
         self.assertEqual(paths["TASKS"], str(implementation / "tasks.md"))
         self.assertEqual(paths["CONTRACTS_DIR"], str(feature_root / "contracts"))
-        self.assertEqual(paths["CHECKLISTS_DIR"], str(feature_root / "checklists"))
+        self.assertEqual(paths["CHECKLISTS_DIR"], str(implementation / "checklists"))
         self.assertEqual(paths["DIAGRAMS_DIR"], str(feature_root / "diagrams"))
         self.assertFalse((feature_root / "plan.md").exists())
         self.assertFalse((feature_root / "tasks.md").exists())
+        self.assertFalse((feature_root / "checklists").exists())
 
 
 if __name__ == "__main__":

@@ -66,6 +66,19 @@ class ManifestContractTests(unittest.TestCase):
             "taskstoissues",
         ):
             self.assertIn(f'name: "speckit.{command}"', manifest)
+        self.assertIn("temporal implementation/checklists/", manifest)
+        self.assertNotIn("checklists at the durable feature root", manifest)
+
+    def test_plan_and_checklist_templates_preserve_temporal_checklist_authority(self):
+        preset_plan = (REPOSITORY_ROOT / "presets/concorde-core/templates/plan-template.md").read_text(encoding="utf-8")
+        local_plan = (REPOSITORY_ROOT / ".specify/templates/plan-template.md").read_text(encoding="utf-8")
+        checklist = (REPOSITORY_ROOT / ".specify/templates/checklist-template.md").read_text(encoding="utf-8")
+        self.assertIn("implementation/checklists/", preset_plan)
+        self.assertNotIn("`contracts/`, and `checklists/`", preset_plan)
+        self.assertIn("├── design.md", local_plan)
+        self.assertIn("    ├── checklists/", local_plan)
+        self.assertNotIn("\n├── checklists/", local_plan)
+        self.assertIn("implementation/checklists/requirements.md", checklist)
 
 
 if __name__ == "__main__":

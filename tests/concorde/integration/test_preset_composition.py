@@ -27,6 +27,10 @@ class PresetCompositionTests(unittest.TestCase):
             self.assertIn("Concorde Installed Workspace Gate", content)
             self.assertIn(".specify/extensions/concorde/scripts/python/workspace.py", content)
             self.assertGreater(len(content.splitlines()), 50)
+        for name in ("speckit.specify.md", "speckit.clarify.md", "speckit.checklist.md", "speckit.implement.md"):
+            content = (command_fragments / name).read_text(encoding="utf-8")
+            self.assertNotIn("FEATURE_DIR/checklists", content)
+            self.assertIn("CHECKLISTS_DIR", content)
 
     def test_resolver_composes_core_plus_concorde_fragment(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -52,7 +52,12 @@ class PresetWorkflowAcceptance(unittest.TestCase):
             self.assertIn("For each required feature-owned diagram", (implementation / "tasks.md").read_text())
             self.assertFalse((workspace / "plan.md").exists())
             self.assertFalse((workspace / "tasks.md").exists())
+            self.assertFalse((workspace / "checklists").exists())
             self.assertFalse((root / "architecture").exists())
+            for skill in ("speckit-specify", "speckit-clarify", "speckit-checklist", "speckit-implement"):
+                content = (root / ".agents/skills" / skill / "SKILL.md").read_text(encoding="utf-8")
+                self.assertNotIn("FEATURE_DIR/checklists", content)
+                self.assertIn("CHECKLISTS_DIR", content)
 
 
 if __name__ == "__main__":

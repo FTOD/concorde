@@ -46,9 +46,9 @@ The preset and extension are complementary but not interchangeable:
 - `concorde-core` is a composition layer without its own runtime. Its template layers add Concorde
   prompts and gates to Spec Kit's existing spec, plan, and task templates. Its command layers override
   the nine affected normal lifecycle surfaces so selected-workspace routing occurs before any
-  inherited root-path assumption. Phase meanings remain unchanged: durable `spec.md`, contracts, and
-  checklists stay at the feature root, while temporal planning and delivery artifacts stay under
-  `implementation/`.
+  inherited root-path assumption. Phase meanings remain unchanged: durable `spec.md` and contracts
+  stay at the feature root, while requirements-quality checklists and all planning/delivery artifacts
+  stay under `implementation/`.
 - `concorde` is an active capability package. At installation time, Spec Kit registers its command
   definitions through the target project's active coding-agent integration. At use time, those agent
   commands invoke the same deterministic Architecture Core runtime regardless of their displayed

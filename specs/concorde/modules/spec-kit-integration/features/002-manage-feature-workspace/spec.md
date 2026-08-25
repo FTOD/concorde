@@ -47,7 +47,8 @@ component boundary.
 
 - Creation must not silently choose or change architectural ownership.
 - Selection must use Spec Kit's supported project-scoped feature pointer rather than a Concorde copy.
-- Specify, contracts, and checklists resolve from the feature root.
+- Specify and contracts resolve from the feature root; every generated checklist resolves from
+  `implementation/checklists/` while reading the durable specification as context.
 - Permanent accepted realization resolves from root `design.md` and is never changed by normal phases.
 - Plan, tasks, implement, analyze, and converge resolve from `implementation/`.
 - Existing active or accepted delivery attempts require an explicit resume or conflict decision.
