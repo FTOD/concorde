@@ -5,89 +5,168 @@ sidebar_position: 6
 
 # Core Workflow
 
-Concorde wraps the normal Spec Kit lifecycle with architectural ownership, bounded context,
-validation, and durable-design review. It does not replace specification, planning, tasks, or
-implementation.
+Concorde surrounds the normal Spec Kit lifecycle with architectural ownership, bounded context,
+deterministic validation, and durable-design review. It does not replace specification, planning,
+tasks, or implementation.
 
-## 1. Establish the root architecture
+The authoritative workflow, including requirements and edge cases, is
+[Feature 001](../specs/concorde/features/001-concorde-starter-workflow/spec.md). The stages below
+explain how to apply it in a project.
 
-Run the Concorde initialization command in a Spec Kit project. Review the proposed root module ID,
-responsibility, top-level features, immediate submodules, boundary contracts, and one-level
-architecture view. Concorde writes only after explicit approval.
+## Before feature work: establish the root
 
-The result establishes where architecture and nested feature specifications live; it is not a
-complete decomposition of the future system.
+Run `speckit.concorde.init` after Concorde has been installed in a Spec Kit project. Initialization
+does not attempt to decompose the whole future system. It proposes the minimum root package needed
+to reason safely: a stable module ID, responsibility and boundary, explicit provided and required
+contract sets, current-level features, immediate children, and a one-level view.
 
-## 2. Find the right ownership level
+The proposal is reviewable and no maintained architecture is written until it is explicitly
+approved. Re-running the accepted initialization is idempotent; conflicting existing content is not
+silently overwritten.
 
-Request bounded context for the root or a child module. At each level, ask whether the desired
-behavior belongs to the current module or one of its immediate children. Descend only when the next
-level owns a meaningful boundary.
+## 1. Find the owning level
 
-This decision determines where the feature workspace lives and which contracts its implementation
-must respect.
+Request context for the root module. Ask whether the new behavior is provided by that module or by
+one visible child:
 
-## 3. Create or select the feature
+- If one child owns the whole behavior, zoom into that child and repeat the question.
+- If multiple immediate children collaborate, place the feature on their nearest common parent.
+- If no existing module has a coherent responsibility for it, review the architecture instead of
+  letting the agent invent ownership while planning code.
 
-Create the feature beneath its providing module, or select an existing feature by stable ID. The
-feature root contains durable `spec.md` and `design.md`; Concorde records the active selection so
-normal Spec Kit phases do not depend on a flat directory convention or branch name.
+`speckit.concorde.context` returns exactly one bounded level. It gives the agent the current module,
+its features and I/O, immediate children and their I/O, externals, current-level scenarios,
+refinement links, and deeper navigation references. It does not select a feature or permanently load
+the entire hierarchy.
 
-## 4. Specify behavior and representative scenarios
+## 2. Create or select the feature workspace
 
-Use the normal specification, clarification, and checklist phases. Describe the feature in text:
-actors, value, observable behavior, boundaries, failures, and measurable outcomes. Scenarios are
-examples, not the exhaustive definition.
+For a new feature, `speckit.concorde.feature.create` first proposes the providing module, canonical
+feature path, module registration, affected contracts/view, and source digest. After approval it
+uses the normal specification phase to establish root `spec.md` and a `design.md` that explicitly
+states no realization has yet been hardened.
 
-For cross-component behavior, add a core component-interaction view or state why the bounded module
-view and prose are sufficient. Use supplemental sequence or workflow diagrams only when timing or
-order adds information. Requirements-quality checklists belong to the temporary implementation
-attempt.
+For an existing feature, `speckit.concorde.feature.select` verifies its identity, providing module,
+durable files, path confinement, and attempt state before updating `.specify/feature.json`. If a
+non-empty implementation attempt already exists, resuming it must be explicit.
 
-## 5. Agree on architecture before planning code
+Selection is what routes later Spec Kit phases. Context retrieval is only a read operation.
 
-Review the owning module, affected contracts, immediate participants, dependency direction, and
-current-level architecture view. If the feature changes a boundary, update the architecture sources
-as part of the same reviewed change.
+## 3. Specify observable behavior
 
-This gate gives the coding agent freedom over code details without making module structure
-accidental.
+Use the normal `specify` and `clarify` phases to describe:
 
-## 6. Plan and execute one implementation attempt
+- actors and value;
+- observable behavior and constraints;
+- expected failures and degraded behavior;
+- measurable outcomes;
+- boundary contracts; and
+- representative user or system scenarios.
 
-Normal planning reads both durable documents: `spec.md` for required behavior and `design.md` for the
-accepted realization baseline. It writes research, plan, tasks, technical models, quick-start
-instructions, checklists, and validation records under `implementation/`.
+Keep the distinction clear: the prose defines the feature; scenarios illustrate it. When multiple
+components collaborate, add one core Archify architecture diagram showing stable participants,
+responsibilities, interactions, and contracts, or state why the bounded module view plus prose is
+sufficient. Add sequence, workflow, data-flow, or lifecycle diagrams only as supplemental answers to
+narrower dynamic questions.
 
-During implementation, provide only the selected feature, its owning module level, relevant
-contracts, and necessary evidence. Use convergence and analysis to expose omissions rather than
-silently changing intent to match the code.
+Requirements-quality checklists belong under `implementation/checklists/`. A checklist records the
+current review cycle; accepted behavioral conclusions must be incorporated into `spec.md`.
 
-## 7. Validate and reconcile
+## 4. Approve architecture before planning implementation
 
-Run Concorde validation throughout the attempt. It checks stable identities, hierarchy, references,
-contract declarations, views, scenario traces, evidence status, and freshness deterministically.
+Before accepting a plan, review the structure that the agent will be allowed to realize:
 
-Validation reports disagreement or unknown evidence; it does not infer that code is correct merely
-because it exists. Review behavioral, architectural, implementation, and evidence changes together.
+- Is the providing module and abstraction level correct?
+- Does a parent feature need child-level refinements?
+- Which immediate submodules participate?
+- Does every boundary crossing name a provided or required contract?
+- Are contract direction, obligations, failures, representation, and compatibility explicit?
+- Does the current-level view show only permitted participants?
+- What implementation and test evidence will demonstrate agreement?
+
+For a custom serialized contract, require a readable schema or grammar, field meanings, examples,
+compatibility rules, and conformance evidence. For an adopted standard, identify the standard and
+version and briefly explain the information passed.
+
+Architecture review happens before code planning because a structurally valid implementation can
+still embody the wrong ownership or dependency direction.
+
+## 5. Plan one implementation attempt
+
+The normal `plan` phase reads two durable inputs:
+
+- `spec.md`, which defines required behavior; and
+- `design.md`, which records the accepted realization baseline.
+
+It writes the proposed delta beneath `implementation/`: research, plan, technical model, quick start,
+and related artifacts. `tasks` then creates dependency-ordered executable work in the same attempt.
+If architecture, contracts, diagrams, traceability, validation, or generated freshness are affected,
+the plan and tasks must include that work explicitly.
+
+Run `analyze` after task generation to check consistency among the durable behavior, accepted design,
+plan, and tasks before code changes begin.
+
+## 6. Implement with bounded context
+
+`implement` executes the selected task set. Give the coding agent the selected feature, its owning
+module level, relevant contracts and diagrams, and the evidence expected for the current tasks. Only
+descend into a child module when the work actually requires that child's internal level.
+
+This keeps an agent from treating the whole repository as undifferentiated context. It also makes
+structural deviations visible: the agent can choose low-level code details, but it should not invent
+new cross-module dependencies or silently change contracts.
+
+After implementation, use `converge` to compare code with intended behavior and append genuinely
+unbuilt work. Convergence must not rewrite the specification to make incomplete code appear correct.
+
+## 7. Validate and reconcile disagreement
+
+Run `speckit.concorde.validate` after maintained structural changes, during implementation, and
+before hardening. It deterministically checks source parsing, unique identities, containment and
+refinement, feature ownership, contract completeness, scenario scope, view depth, references,
+evidence status, and generated freshness.
+
+Validation is read-only. It reports rule, severity, location, and remediation in stable order. Valid
+architecture does not prove that code conforms; missing evidence remains `unknown`, and conflicting
+specification, design, code, tests, or projections are reported as disagreement.
+
+Review behavioral, architectural, implementation, and evidence changes together. Do not resolve a
+finding by weakening the wrong authority.
 
 ## 8. Harden an accepted milestone
 
-When all tasks and checklist items are complete and the user is satisfied, request feature
-hardening. The agent synthesizes the accepted realization into a proposed `design.md`. The runtime
-checks eligibility, binds the proposal to current source digests, and shows both the design update
-and files to remove.
+Hardening is appropriate only when:
 
-Explicit approval atomically promotes the design and removes the temporary implementation attempt.
-If work is incomplete, sources changed after the proposal, or approval is absent, nothing is
-applied.
+- the active attempt has a real `implementation/tasks.md` with at least one task;
+- every recognizable task is complete;
+- every existing checklist item is satisfied;
+- validation and evidence have been reviewed; and
+- the maintainer accepts the implementation as the new durable baseline.
+
+The agent first synthesizes a proposed `design.md` from the complete attempt, relevant architecture,
+contracts, code, and tests. The proposal names the exact design target, the complete
+`implementation/` removal target, and a digest of the source bytes reviewed.
+
+Checked boxes do not grant approval. Only explicit acceptance of that exact proposal authorizes the
+runtime to update `design.md` and remove `implementation/` atomically. A stale digest, changed path,
+symlink, incomplete task, unresolved checklist, or failed apply leaves the previous state
+recoverable.
 
 ## 9. Publish the read model
 
-The docsite presents module and contract sources, feature specifications and accepted designs, and
-hand-written guides in one read-only website. Publication is a projection: correct the canonical
-source, rebuild, and never edit generated pages.
+The docsite publishes module and contract architecture, durable feature specifications and designs,
+and explanatory project guides. It excludes the active implementation attempt from the Features
+view. Publication is deterministic and read-only; generated pages and diagram deliveries never
+become a second source of project intent.
 
-The [command reference](commands.md) maps these stages to installed commands. The canonical
-[Feature 001 specification](../specs/concorde/features/001-concorde-starter-workflow/spec.md) defines
-the complete workflow and acceptance criteria.
+The publication behavior is specified separately by
+[Feature 002](../specs/concorde/features/002-create-project-docsite/spec.md).
+
+## Starting the next change
+
+A hardened feature has no active `implementation/` directory. Select it again, revise `spec.md` if
+the required behavior changes, review any affected architecture, and start a fresh plan. The current
+`design.md` remains the accepted realization until another complete attempt is explicitly hardened.
+
+Use [Commands and installed surfaces](commands.md) for exact command timing, side effects, and the
+difference between agent skills and terminal commands.

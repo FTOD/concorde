@@ -1,77 +1,111 @@
 ---
-title: What Concorde Is
+title: What Concorde Controls
 sidebar_position: 3
 ---
 
-# What Concorde Is
+# What Concorde Controls
 
-Concorde is a spec-driven workflow for projects where coding agents produce much of the code but
-people still need confidence in the system's intent and structure. It combines two ideas:
+Concorde is designed for a development model in which people decide what the system should do and
+how it should be structured, while coding agents may produce most of the implementation. In that
+model, reviewing every generated line is neither a scalable architecture practice nor a reliable way
+to recover intent.
 
-- **Spec-driven development** keeps required behavior and reasons explicit before implementation.
-- **Architecture as Code** keeps module ownership, boundaries, contracts, and component interaction
-  in versioned, machine-checkable sources.
+Concorde therefore makes four things explicit and reviewable:
 
-Spec Kit already gives a feature a specification, plan, tasks, and implementation workflow. Concorde
-retains that lifecycle and adds a hierarchical architectural view plus a permanent record of the
-accepted feature realization.
+1. the behavior a feature must provide;
+2. the module and abstraction level that own it;
+3. the contracts and immediate components involved in realizing it; and
+4. the design that was actually accepted after implementation.
 
-## The problem it addresses
+The normative definition is [Feature 001](../specs/concorde/features/001-concorde-starter-workflow/spec.md).
 
-Feature-only specifications answer what users need, but they do not always let a reviewer answer:
+## Two ideas combined
 
-- Which module owns this behavior?
-- Which immediate submodules collaborate to provide it?
-- What information crosses each boundary?
-- Which parts of a large system can be ignored at the current level?
-- After a coding agent finishes, which implementation decisions were accepted and should survive the
-  temporary plan?
+Concorde takes inspiration from two related practices.
 
-Reading generated source code is not a scalable substitute for those answers. Concorde makes them
-reviewable before, during, and after implementation.
+**Spec-driven development** makes behavior and purpose explicit before implementation. In Concorde,
+the durable feature specification describes observable behavior, constraints, failures, and
+measurable outcomes. It does not prescribe code structure.
 
-## One recursive model
+**Architecture as Code** makes responsibilities, boundaries, contracts, and component organization
+versioned and machine-checkable. Architecture is not kept in a disconnected diagram folder: it is
+part of the same recursive `specs/` hierarchy as feature behavior.
 
-A module provides a cohesive set of features through documented contracts. A feature is primarily
-defined by text; scenarios are representative examples that show how the feature behaves and how
-visible components collaborate. A module may contain child modules, and a feature may be refined by
-lower-level features.
+Neither practice is sufficient alone. A feature list can leave the agent free to create accidental
+module boundaries. An architecture model can be internally valid while saying nothing about whether
+the implementation provides the required behavior. Concorde keeps the two connected without
+pretending they are the same authority.
 
-At any one level, a reader sees only:
+## The model: modules provide features
 
-- the current module's responsibility, features, and provided or required I/O contracts;
-- its immediate child modules and their boundary I/O;
-- the organization and permitted interactions among those visible participants; and
-- external actors or systems that cross the current boundary.
+A **module** is an architecturally meaningful unit with one responsibility and explicit provided and
+required contracts. It normally groups correlated features so they can share internal realization
+without exposing that realization across the boundary.
 
-Zooming into a child repeats the same model. This bounded view provides useful abstraction without
-pretending that the deeper structure does not exist.
+A **feature** is observable behavior provided by exactly one module at its current abstraction
+level. Its text is the definition. User and system scenarios are representative examples that make
+the behavior and component collaboration concrete; they are not an exhaustive substitute for the
+requirements.
 
-## Human intent and agent execution
+A feature that spans multiple immediate children belongs to their nearest common parent. Child-level
+features may then refine that parent feature. This produces a feature hierarchy aligned with the
+module hierarchy rather than one flat backlog detached from architecture.
 
-Concorde assigns different roles to different artifacts:
+## One level at a time
 
-| Concern | Human-reviewable authority |
+Large systems require abstraction. At one Concorde architecture level, a maintainer sees:
+
+- the current module's responsibility, features, and provided/required I/O contracts;
+- its immediate submodules and concise summaries of their I/O;
+- permitted external actors or systems;
+- the organization of those visible participants; and
+- contract-governed interactions for current-level scenarios.
+
+Child feature bodies, grandchildren, classes, and deeper implementation details remain hidden. When
+the maintainer deliberately zooms into a child, that child becomes the current module and the same
+visibility rule repeats.
+
+This is the purpose of bounded context in Concorde: not to summarize the whole repository, but to
+return the smallest architectural slice needed for the current ownership, planning, or implementation
+decision.
+
+## Four durable questions, four authorities
+
+| Question | Authority |
 |---|---|
-| Required behavior and purpose | Feature `spec.md` |
-| Accepted feature realization | Feature `design.md` |
-| Module responsibility and ownership | `module.md` |
-| Boundary obligations and representations | Contract documentation, schemas, and examples |
-| Current-level component organization | Maintained Archify JSON |
-| One implementation attempt | Files beneath `implementation/` |
-| Executable reality and evidence | Source code and tests |
+| What must the feature do, and why? | Feature `spec.md` |
+| Which module owns it, what are its boundaries, and how are immediate children organized? | `module.md`, module contracts, and `architecture.json` |
+| How does the accepted implementation realize this feature across those boundaries? | Feature `design.md` |
+| What exists and has been demonstrated? | Code, tests, and explicit evidence references |
 
-The coding agent can choose low-level code details within these boundaries. The maintainer controls
-behavior, structure, contracts, accepted design, and approval gates.
+The current plan, task list, checklist state, research, and validation notes are useful during a
+delivery attempt, but they are not permanent intent. Concorde keeps them in `implementation/` and
+requires an explicit hardening decision before accepted realization knowledge enters `design.md`.
 
-## What Concorde does not replace
+## What Concorde adds to Spec Kit
 
-Concorde is not a second package manager, coding agent, diagram renderer, documentation generator,
-or feature lifecycle. Spec Kit owns component installation and normal feature phases. The active
-coding-agent integration presents commands as skills or slash commands. Archify renders maintained
-diagram sources. Docusaurus publishes a read-only site.
+Spec Kit continues to own specification, clarification, planning, tasks, implementation, analysis,
+and convergence. Concorde adds architectural controls around that lifecycle:
 
-Concorde connects those systems through a starter bundle, preset, extension, workspace conventions,
-and deterministic validation. See the [command reference](commands.md) for the exact responsibility
-of each layer and the [root architecture](../specs/concorde/module.md) for the normative module
-boundary.
+- root architecture initialization;
+- bounded context retrieval;
+- placement and selection of nested feature workspaces;
+- phase routing between durable feature files and a temporary implementation attempt;
+- deterministic validation of identity, hierarchy, contracts, views, scenarios, references, and
+  evidence status; and
+- approval-gated hardening of a completed attempt into durable design.
+
+Installation is also Spec Kit-native. A bundle pins a preset and extension; the active coding-agent
+integration presents their command definitions as skills or slash commands. The detailed boundary is
+specified by [Feature 003](../specs/concorde/features/003-install-concorde-speckit/spec.md).
+
+## What Concorde deliberately does not do
+
+Concorde does not replace Spec Kit, choose architecture without maintainer review, model every class
+or function, or treat valid diagrams as proof that code works. It also does not turn Docusaurus or
+generated HTML into a source of intent. The documentation site specified by
+[Feature 002](../specs/concorde/features/002-create-project-docsite/spec.md) is a reproducible read
+model over the maintained sources.
+
+The next guide, [Specifications, design, and architecture](specification-model.md), explains how these
+authorities are represented and how their lifetimes differ.

@@ -5,58 +5,163 @@ sidebar_position: 7
 
 # Commands and Installed Surfaces
 
-Concorde has two command families. Normal Spec Kit phases keep their familiar names but gain nested
-workspace routing from the Concorde preset. Concorde-specific operations are added by the extension.
+Concorde has two command families. Nine familiar Spec Kit phases continue to own feature delivery;
+six Concorde-specific operations manage architecture, nested workspace selection, validation, and
+hardening.
 
-## Normal Spec Kit phases
+In an agent integration, names such as `$speckit-plan` or `$speckit-concorde-context` are **skills or
+slash commands invoked in the agent conversation**. They are not commands to paste into Bash. The
+installed instructions may direct the agent to run actual shell or Python programs as part of the
+workflow.
 
-| Phase | Durable or temporary target in Concorde |
-|---|---|
-| `specify` | Creates or updates durable `spec.md`, preserves existing `design.md`, and opens temporary checklist state when needed. |
-| `clarify` | Resolves ambiguity in durable feature behavior. |
-| `checklist` | Writes review state beneath `implementation/checklists/`. |
-| `plan` | Builds the current attempt beneath `implementation/` from `spec.md` and the accepted `design.md`. |
-| `tasks` | Writes dependency-ordered work to `implementation/tasks.md`. |
-| `implement` | Executes the current task set using bounded architecture context. |
-| `analyze` | Checks consistency across durable behavior/design and the temporary plan/tasks. |
-| `converge` | Assesses code against intent and appends genuinely unbuilt work. |
-| `taskstoissues` | Projects the active task set into issue-ready work items. |
+The normative command behavior is defined by
+[Feature 001](../specs/concorde/features/001-concorde-starter-workflow/spec.md); distribution of the
+installed surfaces is defined by
+[Feature 003](../specs/concorde/features/003-install-concorde-speckit/spec.md).
 
-The preset replaces the agent instructions for these phases so each one first resolves the active
-nested feature. It does not reimplement Spec Kit's lifecycle.
+## Concorde-specific operations
 
-## Concorde-specific commands
+Agent integrations may render dots as hyphens. The examples below use Codex-style skill names.
 
-In package-neutral form, the extension owns six commands:
+### `$speckit-concorde-init`
 
-| Command | Purpose | Mutation rule |
+Use once when a Spec Kit project has no Concorde root architecture. It proposes the root module,
+configuration, contracts, and one-level view. Review the proposal before approval; it does not
+silently overwrite existing maintained content.
+
+Do not use it to create every module in advance. Decompose only when another abstraction level has a
+meaningful responsibility and boundary.
+
+### `$speckit-concorde-context <module-or-feature-id>`
+
+Use before deciding feature ownership, reviewing a boundary, or giving an agent architectural
+context for implementation. A module target returns that module and its immediate level. A feature
+target resolves through its providing module and additionally returns feature workspace paths,
+declared diagrams, relevant contract content, evidence, and architecture readiness.
+
+The runtime output is automatically available to the agent that invoked the skill. The operation is
+read-only and does not select the feature. Conversation context may retain the result temporarily,
+but future sessions should retrieve it again.
+
+The actual POSIX launcher used underneath the skill is:
+
+```bash
+.specify/extensions/concorde/scripts/bash/concorde.sh \
+  context module.example --format json
+```
+
+Running the launcher manually returns canonical JSON; the skill adds agent interpretation and
+presentation.
+
+### `$speckit-concorde-feature-create ...`
+
+Use after bounded-context review has identified the providing module for new behavior. Supply the
+module ID, stable feature ID, and short directory name. Concorde proposes placement and affected
+architecture first; after approval it creates one nested feature root, establishes `spec.md` and
+`design.md`, registers the feature, and selects it.
+
+```text
+$speckit-concorde-feature-create \
+  --module-id module.example.checkout \
+  --feature-id feature.example.checkout.refunds \
+  --short-name checkout-refunds
+```
+
+Do not use it when the feature already exists; select the existing feature instead.
+
+### `$speckit-concorde-feature-select <feature-id-or-root>`
+
+Use before running normal phases on an existing nested feature. Selection validates the workspace
+and atomically updates `.specify/feature.json`; subsequent Spec Kit commands derive all durable and
+temporary paths from that record.
+
+If a non-empty implementation attempt already exists, explicitly choose to resume it. Selection does
+not create a second attempt or move artifacts to a flat feature directory.
+
+### `$speckit-concorde-validate [path-or-id]`
+
+Use after architecture, contract, feature metadata, diagram, or evidence changes; use it again before
+hardening. With no target it validates the configured package. A path or stable ID requests a safely
+bounded validation scope.
+
+Validation is deterministic and read-only. A successful runtime exit can still contain warnings;
+errors produce an invalid result. It reports unknown evidence rather than treating structurally
+valid sources as proof of implementation agreement.
+
+### `$speckit-concorde-feature-harden [feature-id-or-root]`
+
+Use only when the selected implementation attempt is task-complete, all existing checklist items are
+satisfied, evidence has been reviewed, and the maintainer accepts the result as a milestone.
+
+The skill first asks the runtime for eligibility, then the agent drafts the candidate durable
+`design.md`. The runtime returns a digest-bound proposal and exact cleanup target. Nothing is changed
+until the maintainer explicitly approves those exact bytes and paths. Successful apply updates the
+design and removes the complete `implementation/` directory; stale or unsafe proposals change
+nothing.
+
+## Normal Spec Kit phases under Concorde
+
+The `concorde-core` preset replaces the agent instructions for these phases so selected-workspace
+resolution happens before any phase can choose a legacy flat path. It does not create a second
+planning or implementation engine.
+
+| Skill | Run it when | Concorde path behavior |
 |---|---|---|
-| `speckit.concorde.init` | Propose the root module package and Concorde configuration. | Writes only an explicitly approved proposal. |
-| `speckit.concorde.feature.create` | Propose a feature beneath a reviewed owning module. | Creates one canonical feature root only after approval. |
-| `speckit.concorde.feature.select` | Select an existing nested feature for normal phases. | Atomically updates workflow control state. |
-| `speckit.concorde.context` | Return one bounded module or feature context. | Read-only. |
-| `speckit.concorde.validate` | Check hierarchy, identities, references, contracts, views, scenarios, and evidence. | Read-only. |
-| `speckit.concorde.feature.harden` | Propose and promote accepted implementation detail into durable design. | Requires complete tasks, resolved checklists, current digests, and explicit approval. |
+| `$speckit-specify` | Creating or revising required behavior and representative scenarios | Updates root `spec.md`; preserves accepted `design.md`; review state goes under `implementation/checklists/` |
+| `$speckit-clarify` | Important behavioral ambiguity remains before planning | Updates durable specification answers; keeps checklist state temporary |
+| `$speckit-checklist` | You need a requirements-quality review focused on a domain such as contracts, security, or UX | Reads durable context and writes only `implementation/checklists/*.md` |
+| `$speckit-plan` | Behavior and architectural boundaries are ready for one implementation proposal | Reads root `spec.md` and `design.md`; writes plan artifacts under `implementation/` |
+| `$speckit-tasks` | The plan is ready to become dependency-ordered executable work | Writes `implementation/tasks.md` |
+| `$speckit-analyze` | Tasks exist and you want a read-only consistency check before coding | Compares durable spec/design with the active plan/tasks; does not edit them |
+| `$speckit-implement` | The reviewed plan and tasks are ready to execute | Works from the selected durable sources and active attempt |
+| `$speckit-converge` | Code exists and you need to discover what remains unbuilt | Assesses code against intent and appends missing work to the same tasks file |
+| `$speckit-taskstoissues` | The active work should be executed as external issues | Converts the selected attempt's tasks without changing their authority |
 
-An integration may present dots as hyphens. For example, Codex skills use names such as
-`$speckit-concorde-feature-select`. The presentation changes; command intent does not.
+A common order is:
 
-## Skill, command, launcher, and runtime
+```text
+specify → clarify → checklist → plan → tasks → analyze
+        → implement → converge → validate → harden
+```
 
-These terms refer to different layers:
+The order is not a blind pipeline. `clarify` and custom checklists are used when needed; validation
+may run repeatedly; convergence can add tasks that require another implementation pass. Hardening is
+never automatic.
 
-1. A **package-neutral command definition** is Markdown shipped in the preset or extension.
-2. An **installed skill or slash command** is the active coding-agent integration's presentation of
-   that definition. It tells the agent what procedure to follow; it is not the implementation.
-3. A **workspace adapter or launcher** resolves selected feature paths or locates the installed
-   extension payload using project-relative locations.
-4. The **Concorde Python runtime** performs deterministic initialization, feature selection, context,
-   validation, and hardening controls.
+## What actually runs
 
-This separation lets the same Concorde package work across supported coding-agent integrations while
-keeping path resolution and validation reproducible. It also prevents repository-local skill edits
-from masquerading as a distributable framework change: user projects receive the command overrides
-through the installed preset and extension.
+The installed workflow has four distinct layers:
 
-For installation details, see the [quick start](quick-start.md). For the normative package boundary,
-see the [Feature 003 specification](../specs/concorde/features/003-install-concorde-speckit/spec.md).
+1. **Package-neutral command Markdown** defines the procedure and behavior independent of any agent
+   UI.
+2. **An installed skill or slash command** presents that definition to the active coding-agent
+   integration. It instructs the agent; it is not the Python implementation.
+3. **A workspace adapter or portable launcher** resolves phase paths or locates the installed
+   extension runtime using project-relative paths.
+4. **The Concorde Python runtime** performs deterministic initialization, feature placement and
+   selection, bounded-context projection, validation, and hardening controls.
+
+For a normal Spec Kit phase, the agent invokes the workspace adapter, obtains the selected durable
+and temporary paths, and continues the normal phase. For a Concorde-specific operation, the agent
+invokes a portable launcher, which calls the Python runtime and returns canonical JSON.
+
+Repository-local `.agents/` skills are useful while Concorde develops itself, but users receive the
+supported command surfaces from the installed preset and extension. Editing only a checkout-local
+skill does not change the distributed framework.
+
+## Short decision guide
+
+| Situation | Next operation |
+|---|---|
+| No root architecture exists | `concorde-init` |
+| You do not know which module owns the behavior | `concorde-context` and architecture review |
+| Ownership is known and the feature is new | `concorde-feature-create` |
+| The feature exists but normal phases target something else | `concorde-feature-select` |
+| Behavior is unclear | `specify` or `clarify` |
+| Behavior is clear but no delivery approach exists | `plan` |
+| The plan exists but is not executable | `tasks` |
+| Tasks may not cover the durable intent | `analyze` |
+| Approved tasks are ready | `implement` |
+| Code may still be incomplete | `converge`, then implement remaining tasks |
+| Architecture or evidence may be inconsistent | `concorde-validate` |
+| The completed result is accepted as a milestone | `concorde-feature-harden` |
