@@ -31,6 +31,8 @@ Expected:
 
 - The summary identifies `architecture`, `docs`, `features`, and `feature-designs` as four source
   collections presented through Architecture, Documentation, and Features navigation.
+- The Documentation collection contains exactly the maintained eight-page baseline: the landing
+  page, six framework learning guides, and the nested docsite contributor guide.
 - Architecture Markdown sources, bounded module views, and feature-declared Archify views are discoverable.
 - Root features 001 and 002 plus the nested Documentation refinement are discovered from their
   canonical `spec.md` files.
@@ -49,7 +51,8 @@ npm test
 
 Expected: unit, contract, and fixture integration tests pass, including:
 
-- three-collection source discovery and stable ordering;
+- four-source-collection discovery through three navigation families with stable ordering;
+- framework-guide baseline inventory, landing-page links, routes, and canonical authority links;
 - architecture identity and declared-view publication;
 - feature identity/status extraction;
 - feature specification/design pairing and permanent design provenance;
@@ -73,6 +76,8 @@ Expected:
   as ignored renderer inputs, while every page and manifest record retains the canonical `specs/`
   source path.
 - The landing page links to Architecture, Documentation, and Features.
+- The Documentation landing page links directly to the quick start, framework overview,
+  specification model, project structure, core workflow, and command reference.
 - Every included page displays its project-relative source provenance.
 - Feature specification pages display stable ID, owning module, and recorded status; paired design
   pages display durable source provenance and are grouped with their specification.
@@ -121,7 +126,29 @@ Open the URL printed by Docusaurus and validate:
 5. A cross-collection link reaches its target and preserves its heading fragment.
 6. Narrow and wide browser layouts keep content, navigation, provenance, and embedded views readable.
 
-## 7. Run Failure Contracts
+Then perform the two reader exercises without using repository search:
+
+7. Classify representative paths as durable intent, temporary implementation state, installed
+   workflow machinery, executable evidence, or generated projection. Record the participant count
+   and percentage correct for SC-011.
+8. For five representative architecture, feature, implementation, documentation, and diagram
+   changes, identify the canonical edit path and next workflow operation. Record the participant
+   count and percentage correct for SC-012.
+
+Do not mark either participant criterion complete from automated route or content checks alone.
+
+## 7. Verify the Framework Guide Contract
+
+```bash
+npm test -- --run tests/integration/framework-guides.test.ts
+npm run validate
+```
+
+Expected: every baseline guide is present exactly once, the Documentation landing page reaches all
+six learning guides, canonical authority links resolve to published Architecture or Features pages,
+and no temporal implementation artifact is presented as permanent authority.
+
+## 8. Run Failure Contracts
 
 ```bash
 npm test -- --run tests/integration/atomic-promotion.test.ts
@@ -138,7 +165,7 @@ The command and promotion guarantees are defined by
 [`../contracts/build-interface.md`](../contracts/build-interface.md) and
 [`../contracts/published-site.md`](../contracts/published-site.md).
 
-## 8. Run the Complete Gate
+## 9. Run the Complete Gate
 
 ```bash
 npm run check

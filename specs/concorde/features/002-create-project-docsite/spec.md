@@ -27,12 +27,16 @@ canonical_spec: specs/concorde/features/002-create-project-docsite/spec.md
 
 **Created**: 2026-08-19
 
-**Status**: Implemented
+**Revised**: 2026-08-24
+
+**Status**: Implemented; automated publication verified, browser visual review and participant exercises pending
 
 **Input**: User description: "Create an independent root `docsite/` containing Docusaurus
 configuration and formatting, keep actual Markdown documentation in a separate root `docs/`, and
 present those documents, feature specifications under `specs/`, and Concorde architecture sources
-and views as one project website."
+and views as one project website. Maintain a useful custom documentation baseline—including a quick
+start, project description, conceptual model, project structure, workflow, and command guidance—so
+the generated site teaches the Concorde framework rather than presenting specifications alone."
 
 ## Scenario and Component Diagram
 
@@ -167,6 +171,39 @@ and prevents the incomplete result from being reported as successful.
    reviews the build path, **Then** they can identify which component validates sources, renders
    diagrams, materializes content, builds the site, validates the candidate, and promotes output.
 
+---
+
+### User Story 5 - Learn and Adopt Concorde from Maintained Guides (Priority: P2)
+
+As a prospective user, maintainer, or contributor, I can follow a coherent set of project-authored
+guides that explains Concorde, gets me started, and tells me where workflow artifacts belong so that
+I do not have to reconstruct the framework from feature specifications or repository source alone.
+
+**Why this priority**: Specifications are the primary content of a spec-driven project, but they are
+organized as normative feature authorities rather than a progressive learning path. A useful
+Documentation collection must orient readers and connect concepts, tasks, and canonical sources.
+
+**Independent Test**: Give a reader only the generated site's landing page and ask them to explain
+Concorde's purpose, distinguish architecture/specification/design/implementation artifacts, locate a
+quick-start path, identify the two command families, and name the canonical file to edit for five
+representative changes.
+
+**Acceptance Scenarios**:
+
+1. **Given** a first-time visitor on the Documentation landing page, **When** they follow the
+   recommended path, **Then** they can reach a quick start, framework overview, specification model,
+   project structure guide, core workflow, and command reference without browsing repository files.
+2. **Given** a reader learning Concorde's concepts, **When** they use the maintained guides, **Then**
+   they can distinguish Spec Kit's normal lifecycle from Concorde's architectural controls and
+   explain the roles of durable specifications, durable designs, temporary implementation attempts,
+   contracts, diagrams, and generated projections.
+3. **Given** a reader preparing a first project or contribution, **When** they follow the quick start
+   and workflow guidance, **Then** they can identify prerequisites, the next command or validation
+   step, the expected review gate, and the canonical source to change.
+4. **Given** a guide that summarizes normative project behavior, **When** a reader needs complete or
+   authoritative detail, **Then** the guide links to the relevant architecture or feature source and
+   does not claim authority over it.
+
 ### Edge Cases
 
 - `docs/` exists but contains no eligible Markdown pages, or `specs/` contains no canonical feature
@@ -184,6 +221,12 @@ and prevents the incomplete result from being reported as successful.
 - Site output or staging content from an earlier build is stale, incomplete, or accidentally placed
   beside canonical Markdown sources.
 - Repository paths contain spaces or non-ASCII characters that are valid for maintained sources.
+- The Documentation collection technically publishes but contains only a landing page, forcing new
+  readers to infer the framework from normative specifications.
+- A guide repeats a setup detail that changes while its linked canonical specification remains
+  current, creating an obvious documentation-freshness disagreement.
+- A reader mistakes installed skills, workflow-control state, temporary implementation files, or
+  generated output for durable project intent.
 
 ## Requirements *(mandatory)*
 
@@ -261,11 +304,36 @@ and prevents the incomplete result from being reported as successful.
   the candidate failure boundary, and the generated output with deterministic provenance and
   freshness validation. The canonical feature page MUST discover the declaration automatically,
   embed the interactive diagram with source provenance, and retain an open-standalone-view link.
+- **FR-034**: The maintained Documentation collection MUST include a project overview that explains
+  the problem Concorde addresses, its combination of spec-driven development and Architecture as
+  Code, its hierarchical abstraction model, and the responsibilities it leaves to Spec Kit and
+  adjacent tools.
+- **FR-035**: The maintained Documentation collection MUST include a quick-start path that lets a
+  reader preview the project read model and follow the supported installation and first-feature path,
+  including prerequisites, verification, and approval boundaries.
+- **FR-036**: The maintained Documentation collection MUST explain the different authority and
+  lifecycle of architecture sources, feature specifications, permanent feature designs, contracts,
+  diagrams, current implementation attempts, workflow control, code/tests, and generated
+  projections.
+- **FR-037**: The maintained Documentation collection MUST provide a project structure guide that
+  maps the major workspace locations to their purpose, ownership, maintenance status, and correct
+  edit path.
+- **FR-038**: The maintained Documentation collection MUST explain the end-to-end Concorde workflow
+  from root architecture and feature placement through specification, architecture review,
+  implementation, validation, hardening, and publication.
+- **FR-039**: The maintained Documentation collection MUST distinguish normal Spec Kit lifecycle
+  phases from Concorde-specific operations and distinguish agent-facing command presentation from
+  adapters, launchers, and deterministic runtime behavior.
+- **FR-040**: The Documentation landing page MUST provide a progressive reading path through the
+  framework guides, and each guide that summarizes normative behavior MUST link readers to the
+  relevant canonical architecture or feature sources for complete authority.
 
 ### Key Entities
 
 - **Project Document**: A maintained Markdown file under `docs/`, identified by its source path, title,
   navigation metadata, links, and content.
+- **Framework Guide**: A project document that progressively explains adoption, concepts, workflow,
+  or contribution without replacing the normative architecture and feature sources it references.
 - **Feature Specification**: A feature's canonical `spec.md` under `specs/`, identified by its feature
   directory, stable ID, title, lifecycle status, requirements, scenarios, and source path.
 - **Architecture Source**: Maintained module or boundary-contract Markdown under `specs/`, identified
@@ -302,6 +370,18 @@ and prevents the incomplete result from being reported as successful.
 - **SC-009**: The publication sequence view passes all deterministic Archify showcase, provenance,
   and freshness checks with zero errors or warnings and appears automatically on the canonical
   Feature 002 page with source provenance and a standalone-view link.
+- **SC-010**: From the Documentation landing page, a first-time reader can reach the quick start,
+  framework overview, specification model, project structure, workflow, and command guidance in no
+  more than two navigation actions per destination.
+- **SC-011**: In a review exercise, at least 90% of participants correctly classify representative
+  artifacts as durable intent, temporary implementation state, installed workflow machinery,
+  executable evidence, or generated projection after reading the framework guides.
+- **SC-012**: In a first-use exercise, at least 90% of participants can identify the correct
+  canonical edit location and next workflow operation for five representative architecture,
+  feature, implementation, documentation, and diagram changes.
+- **SC-013**: Every maintained framework guide that summarizes a normative workflow or boundary
+  provides at least one working link to its canonical architecture or feature authority, with zero
+  links to temporary implementation artifacts presented as permanent authority.
 
 ## Assumptions
 
@@ -325,3 +405,6 @@ and prevents the incomplete result from being reported as successful.
   structural trace for this project-wide feature. The feature-owned publication sequence explains
   deeper invocation without expanding child internals in the root view; the Documentation-module
   feature and view remain the adjacent architectural refinement.
+- The hand-written Documentation collection is intentionally explanatory and task-oriented. It may
+  summarize README material and canonical specifications for a progressive reader journey, but
+  architecture and feature sources remain authoritative when wording or detail disagrees.

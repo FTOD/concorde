@@ -33,10 +33,13 @@
 
 ## Notes
 
-- Validation iteration 2 passed all 17 checks. Docusaurus and the required root directory names are
+- Validation iteration 3 passed all 17 checks after adding the maintained framework-orientation and
+  adoption requirements. Docusaurus and the required root directory names are
   explicit product constraints supplied by the maintainer, not implementation decisions selected by
   this specification.
 - The specification distinguishes canonical feature specifications from other Spec Kit artifacts and
   places architecture and features in one hierarchical `specs/` tree while preserving distinct views.
+- The Documentation baseline is outcome-focused: it requires a progressive learning path and
+  authority distinctions without making the explanatory guides a second normative source.
 - `diagrams/project-docsite-publication-flow.json` supplements the textual publication scenario and passes all
   9 Archify showcase checks with zero errors or warnings.

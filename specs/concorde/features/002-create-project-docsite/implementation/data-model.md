@@ -53,6 +53,32 @@ Extends Source Document with optional navigation metadata.
 | `sidebarPosition` | optional finite number | Orders siblings; path order is the deterministic fallback. |
 | `slug` | optional route segment | Must remain within `/docs` and must not collide. |
 
+#### 2.1.1 Framework Guide Baseline
+
+A planning-time content set composed of ordinary Project Documents. It does not add a manifest kind
+or runtime registry field.
+
+| Field | Type | Rules |
+|---|---|---|
+| `purpose` | enum | `landing`, `quick-start`, `overview`, `specification-model`, `project-structure`, `workflow`, `commands`, or `contributing`. Exactly one maintained document fulfills each purpose in the Concorde self-hosting site. |
+| `sourcePath` | Project Document path | Must be one of the eight maintained baseline paths recorded in the plan and remain beneath `docs/`. |
+| `journeyPosition` | finite number or landing | The six learning guides have unique positions after the landing page; the contributor guide remains a nested task guide. |
+| `canonicalAuthorityLinks` | Link Reference list | Every guide that summarizes normative behavior contains at least one included-source link to a module or feature authority. |
+| `readerOutcome` | testable statement | Identifies what a first-time reader can explain or do after using the guide; validated by the Feature 002 scenarios rather than emitted in the manifest. |
+
+Validation rules:
+
+- `docs/index.md` links to every learning-guide source and distinguishes Architecture,
+  Documentation, and Features.
+- Every baseline source is discovered exactly once as `project-document`, maps below `/docs`, and
+  appears in the successful build manifest and rendered route inventory.
+- Canonical authority links pass the same cross-collection resolution and exclusion rules as every
+  other Markdown link.
+- The guide set summarizes canonical intent but does not become an alternate architecture, feature,
+  contract, or command-definition authority.
+- Participant outcomes remain evidence records; they are not inferred from source presence or a
+  successful build.
+
 ### 2.2 Feature Specification
 
 Extends Source Document with Spec Kit and Concorde identity.

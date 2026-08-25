@@ -43,6 +43,11 @@ specification tree. Specifications and designs share the public Features navigat
 - `slug`: optional route override constrained to the `/docs` route space.
 - Markdown links: repository-relative links to included Markdown are mapped to their published routes;
   fragments are preserved.
+- Concorde's self-hosting documentation baseline: `docs/index.md`, six framework learning guides,
+  and `docs/contributing/docsite.md`; all remain ordinary Project Documents rather than a new content
+  kind.
+- Canonical authority links: a framework guide that summarizes normative architecture, feature, or
+  command behavior includes at least one repository-relative link to the relevant included source.
 
 ### Feature Specifications
 
@@ -89,6 +94,9 @@ specification tree. Specifications and designs share the public Features navigat
   their source hashes and routes in the manifest, and embed every declared view on the canonical
   feature page with a standalone-view link.
 - Providers MUST keep stable feature IDs unique and internal Markdown targets resolvable.
+- The Concorde self-hosting provider MUST keep the eight-page framework guide baseline discoverable,
+  keep the landing page linked to all six learning guides, and retain resolvable canonical-authority
+  links from guides that summarize normative behavior.
 
 ## Failure Semantics
 
@@ -101,10 +109,12 @@ candidate publication.
 
 ## Compatibility
 
-This is contract version 3; it adds permanent feature-design publication while preserving the three
-public navigation families. Adding optional metadata is backward compatible. Changing source roots,
-eligibility globs, required fields, route bases, path semantics, or exclusion meaning requires a new
-contract version and a route/content migration decision.
+This remains contract version 3. The framework baseline adds required project-document instances for
+Concorde's self-hosting site without changing content kinds, source roots, eligibility globs, field
+representation, route bases, path semantics, or manifest schema. Adding optional metadata or more
+project documents is backward compatible. Changing source roots, eligibility globs, required
+fields, route bases, path semantics, or exclusion meaning requires a new contract version and a
+route/content migration decision.
 
 ## Evidence
 

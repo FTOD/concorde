@@ -39,6 +39,9 @@ manifest, and sandboxed delivered Archify views where architecture sources decla
 
 - `/` links to distinct Architecture, Documentation, and Features collections.
 - `/architecture/**`, `/docs/**`, and `/features/**` each project one canonical source per page.
+- The self-hosting `/docs` landing page provides a progressive path to the quick start, framework
+  overview, specification model, project structure, core workflow, and command reference; those
+  guides retain working links to their canonical Architecture or Features authorities.
 - Architecture pages expose stable ID, kind, hierarchy metadata, source provenance, and declared
   sandboxed Archify views; feature specification pages expose ID, module, and status, while feature
   design pages expose durable source provenance.
@@ -54,7 +57,8 @@ and manifest schema version remain stable within contract version 3.
 ## Compatibility
 
 The Architecture, Documentation, and Features route bases and build-manifest schema version remain
-stable within contract version 3. Removing a route space or provenance field is breaking.
+stable within contract version 3. Adding the named self-hosting pages within `/docs` is compatible;
+removing a route space or provenance field is breaking.
 
 ## Evidence
 

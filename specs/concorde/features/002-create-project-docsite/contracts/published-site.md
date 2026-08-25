@@ -28,6 +28,19 @@ JavaScript, assets, a local search index, and `build-manifest.json`.
 | `/features/**` | Permanent feature specifications from `specs/**/spec.md` and accepted designs from `specs/**/design.md`; specification pages include their declared feature diagrams |
 | `/build-manifest.json` | Machine-readable successful-build inventory |
 
+For the Concorde self-hosting site, the Documentation route space includes this maintained baseline:
+
+| Route | Reader outcome |
+|---|---|
+| `/docs/` | Documentation overview and progressive reading path |
+| `/docs/quick-start` | Project-site preview, local framework installation, and first feature |
+| `/docs/framework-overview` | Concorde purpose, influences, hierarchy, and adjacent-tool boundaries |
+| `/docs/specification-model` | Durable architecture/specification/design and temporal implementation model |
+| `/docs/project-structure` | Workspace authority and correct edit locations |
+| `/docs/core-workflow` | End-to-end architecture-aware development lifecycle |
+| `/docs/commands` | Normal Spec Kit phases, Concorde operations, and installed command layers |
+| `/docs/contributing/docsite` | Docsite authoring, validation, build, and troubleshooting |
+
 Every source-derived page displays its content kind and project-relative source path. Architecture
 pages also display stable entity identity, hierarchy metadata, and declared-view provenance; feature
 specification pages display stable feature ID, owning module, recorded lifecycle status, and every
@@ -42,6 +55,8 @@ Draft status is visible and does not imply approval or implementation agreement.
 - Delivered Archify HTML is sandboxed and paired with accessible, searchable architecture or feature
   Markdown; feature diagrams are embedded automatically from `spec.md` declarations.
 - Cross-collection source links resolve to the corresponding site pages with fragments preserved.
+- The Documentation landing page links directly to all six framework learning guides, and guides
+  that summarize normative behavior link to the relevant canonical Architecture or Features page.
 - Presentation does not change canonical prose or write to the source trees.
 - The site includes accessible textual content and provenance independent of decorative formatting.
 - The manifest identifies included pages, deliberate exclusions, verified routes, generator versions,
@@ -57,9 +72,10 @@ build interface and the prior successful output remains untouched.
 ## Compatibility
 
 The three top-level route spaces and manifest schema version remain stable within published-site
-contract version 3. Source renames may change their derived routes unless a later redirect feature is
-specified. Adding new content pages is compatible; changing a route base or removing provenance is
-breaking.
+contract version 3. The named self-hosting Documentation baseline adds compatible pages within the
+existing `/docs` route space and does not change the representation or manifest schema. Source
+renames may change their derived routes unless a later redirect feature is specified. Adding new
+content pages is compatible; changing a route base or removing provenance is breaking.
 
 ## Evidence
 

@@ -189,8 +189,9 @@ npm run check
 ```
 
 This runs TypeScript checking, the full test suite, source validation, manifest validation, and a
-production Docusaurus build. See the [docsite contributor guide](docs/contributing/docsite.md) for
-authoring rules and troubleshooting.
+production Docusaurus build. Start with the maintained [documentation overview](docs/index.md) and
+[framework quick start](docs/quick-start.md); see the
+[docsite contributor guide](docs/contributing/docsite.md) for authoring rules and troubleshooting.
 
 ## Project orientation
 

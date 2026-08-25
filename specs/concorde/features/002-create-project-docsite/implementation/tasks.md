@@ -9,12 +9,15 @@ description: "Dependency-ordered implementation tasks for the unified Concorde p
 
 **Tests**: Required because this feature specifies deterministic discovery, link and route failures, source immutability, manifest repeatability, diagram publication, accessibility, and atomic build promotion.
 
-**Organization**: Tasks implement the current plan's reconciliation delta: four source collections presented through three navigation families, paired permanent feature specification/design publication, manifest v3, temporal checklist migration, and complete supplemental-diagram delivery. The accepted `../design.md` is not edited by these tasks.
+**Organization**: Tasks retain the completed publication-engine history and append the current
+reconciliation delta: an eight-page maintained Documentation baseline, progressive reader journey,
+canonical-authority links, focused guide-contract evidence, and truthful participant status. The
+accepted `../design.md` is not edited by these tasks.
 
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel because it targets different files and has no dependency on an incomplete task
-- **[Story]**: Maps the task to `US1` through `US4` from `../spec.md`
+- **[Story]**: Maps the task to `US1` through `US5` from `../spec.md`
 - Every task names exact maintained-source, implementation, test, or evidence paths
 
 ## Phase 1: Setup and Reconciliation Baseline
@@ -175,6 +178,56 @@ description: "Dependency-ordered implementation tasks for the unified Concorde p
 
 ---
 
+## Phase 8: User Story 5 - Learn and Adopt Concorde from Maintained Guides (Priority: P2)
+
+**Goal**: Publish a progressive eight-page Documentation baseline that teaches Concorde, directs
+readers to the correct source authority and workflow operation, and remains ordinary recursively
+discovered project documentation.
+
+**Independent Test**: Starting from `docs/index.md`, verify that all six learning guides are directly
+reachable, all eight baseline documents are published exactly once below `/docs`, normative summaries
+link to included Architecture or Features authorities, and no temporal implementation artifact is
+presented as permanent authority.
+
+### Tests for User Story 5
+
+- [X] T068 [P] [US5] Add eight-page inventory, stable routes, landing-page journey, canonical-authority-link, and temporal-authority assertions in `docsite/tests/integration/framework-guides.test.ts`
+
+### Implementation for User Story 5
+
+- [X] T069 [US5] Expand the Documentation view summary, progressive reading path, source-of-truth rule, and canonical Feature 001-003 links in `docs/index.md`
+- [X] T070 [P] [US5] Add project-site preview, verified local bundle installation, first-feature commands, validation, and hardening boundaries in `docs/quick-start.md`
+- [X] T071 [P] [US5] Explain Concorde's problem, spec-driven and Architecture-as-Code influences, bounded hierarchy, human/agent boundary, and adjacent-tool non-goals in `docs/framework-overview.md`
+- [X] T072 [P] [US5] Explain module packages, durable feature specification/design, temporal attempts, hardening, contracts, and core-versus-supplemental diagrams in `docs/specification-model.md`
+- [X] T073 [P] [US5] Map workflow control, installed payload, durable intent, temporary work, code/tests, generated projections, and correct edit locations in `docs/project-structure.md`
+- [X] T074 [P] [US5] Document the end-to-end root, ownership, feature, specification, architecture-review, implementation, validation, hardening, and publication lifecycle in `docs/core-workflow.md`
+- [X] T075 [P] [US5] Distinguish nine normal Spec Kit phases, six Concorde operations, integration presentation, workspace adapters, launchers, and deterministic runtime in `docs/commands.md`
+- [X] T076 [P] [US5] Point repository readers to the maintained Documentation overview and quick start from `README.md`
+- [X] T077 [US5] Reconcile framework-guide input and published-site guarantees across `specs/concorde/features/002-create-project-docsite/contracts/content-sources.md`, `specs/concorde/features/002-create-project-docsite/contracts/published-site.md`, `specs/concorde/modules/documentation/contracts/project-content/contract.md`, and `specs/concorde/modules/documentation/contracts/architecture-site/contract.md`
+- [X] T078 [US5] Run the focused guide contract, registry validation, and production route checks and record the eight-page inventory and canonical-link results in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`
+- [ ] T079 [US5] Conduct the SC-011 and SC-012 participant artifact-classification and correct-edit/workflow exercises and record participant counts, outcomes, and thresholds in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`
+- [X] T080 [US5] Reconcile automated and participant-dependent status without inferring human comprehension from build success in `specs/concorde/features/002-create-project-docsite/spec.md` and `specs/concorde/features/002-create-project-docsite/implementation/validation.md`
+
+**Checkpoint**: The maintained guide baseline is complete and deterministically published; human
+outcomes are either directly recorded or remain explicitly pending.
+
+---
+
+## Phase 9: Documentation Delta Final Quality Gates
+
+**Purpose**: Verify the revised specification, plan, contracts, guide set, diagram strategy, and
+generated read model agree without changing the accepted design.
+
+- [X] T081 Verify the core-view sufficiency rationale, supplemental sequence role, aligned prose, declaration, fresh generated delivery, automatic embedding, and truthful visual status across `specs/concorde/features/002-create-project-docsite/spec.md`, `specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json`, `generated/architecture/project-docsite-publication-flow.html`, and `specs/concorde/features/002-create-project-docsite/implementation/validation.md`
+- [X] T082 Run `npm run check` from `docsite/` and record test, page, exclusion, link, route, manifest, and production-build results in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`
+- [X] T083 Run targeted Concorde validation for `feature.concorde.publish-project-docsite` and `git diff --check`, then record zero-finding or actionable failure evidence in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`
+- [X] T084 Verify the accepted `specs/concorde/features/002-create-project-docsite/design.md` digest is unchanged and audit `git status` for generated-site, cache, projection, copied-source, or unexpected mutations in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`
+
+**Checkpoint**: All automatable Feature 002 documentation work and deterministic gates are complete;
+only directly observed participant evidence may remain open.
+
+---
+
 ## Dependencies and Execution Order
 
 ### Phase Dependencies
@@ -186,6 +239,9 @@ description: "Dependency-ordered implementation tasks for the unified Concorde p
 - **US3 (Phase 5)**: Depends on US1's registry/projection foundation and may proceed in parallel with US2.
 - **US4 (Phase 6)**: Command and atomic-build work may begin after US1; final all-content verification depends on US2 and US3.
 - **Quality gates (Phase 7)**: Depend on all desired story checkpoints.
+- **US5 reconciliation (Phase 8)**: Uses the completed US1/US2 publication and authoring foundation;
+  its guide files and focused test can be authored in parallel before contract/evidence reconciliation.
+- **Documentation delta gates (Phase 9)**: Depend on the US5 automated work and truthful manual status.
 
 ### User Story Dependency Graph
 
@@ -193,12 +249,15 @@ description: "Dependency-ordered implementation tasks for the unified Concorde p
 Setup -> Foundation -> US1 (MVP) -> US2 --------|
                               |-> US3 ---------|-> US4 -> Quality gates
                               `-> US4 command -'
+Completed publication baseline -> US5 guide delta -> Documentation delta gates
 ```
 
 ### Parallel Opportunities
 
 - T003-T005, T007-T009, T012-T015, T019-T021, T027-T029, T031-T033, T036-T037, T039-T041, T048-T050, and T056-T059 target independent files or fixtures.
 - After US1, documentation authoring work in US2 and feature-pair publication work in US3 may proceed in parallel.
+- T068 and T070-T076 target separate test/documentation files and may proceed in parallel before
+  T077-T080 reconcile contracts and evidence.
 
 ## Parallel Example: User Story 3
 
@@ -206,6 +265,19 @@ Setup -> Foundation -> US1 (MVP) -> US2 --------|
 Task T039: feature identity and pair tests in docsite/tests/unit/feature-specifications.test.ts
 Task T040: permanent inclusion and temporal exclusion tests in docsite/tests/integration/feature-publication.test.ts
 Task T041: manifest v3 feature-kind and pairing tests in docsite/tests/contract/build-manifest.test.ts
+```
+
+## Parallel Example: User Story 5
+
+```text
+Task T068: framework-guide contract tests in docsite/tests/integration/framework-guides.test.ts
+Task T070: quick start in docs/quick-start.md
+Task T071: framework overview in docs/framework-overview.md
+Task T072: specification model in docs/specification-model.md
+Task T073: project structure in docs/project-structure.md
+Task T074: core workflow in docs/core-workflow.md
+Task T075: command reference in docs/commands.md
+Task T076: repository entry points in README.md
 ```
 
 ## Implementation Strategy
@@ -222,6 +294,7 @@ Task T041: manifest v3 feature-kind and pairing tests in docsite/tests/contract/
 2. Add US3 permanent specification/design pairing and temporal exclusion.
 3. Add US4 deterministic, failure-safe maintainer commands and manifest v3.
 4. Complete the supplemental diagram lifecycle, accessibility, scale, self-hosting, and human evidence gates.
+5. Add the US5 framework-guide baseline and rerun the documentation delta quality gates.
 
 ## Notes
 
@@ -229,3 +302,5 @@ Task T041: manifest v3 feature-kind and pairing tests in docsite/tests/contract/
 - Module/contract Markdown, feature `spec.md`, feature `design.md`, Archify JSON, code, tests, and generated projections retain distinct authority.
 - `docsite/.generated/`, `docsite/build/`, and generated diagram HTML are disposable outputs and never maintained intent.
 - Browser perceptual and participant-navigation outcomes remain pending until directly observed.
+- Automated guide publication is not evidence that SC-006, SC-011, or SC-012 participant thresholds
+  have been met.

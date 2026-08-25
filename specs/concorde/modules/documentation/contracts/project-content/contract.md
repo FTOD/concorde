@@ -46,6 +46,11 @@ links, stable feature and architecture identity, and declared Archify JSON view 
 ## Obligations
 
 - Every eligible valid source is included exactly once and retains its authored meaning.
+- Concorde's self-hosting input retains its eight-page framework-guide baseline as ordinary project
+  documentation: one landing page, six progressive learning guides, and one nested docsite
+  contributor guide.
+- The Documentation landing page links to all six learning guides, and every guide that summarizes
+  normative architecture, feature, or command behavior links to its included canonical authority.
 - Feature IDs are unique; feature kind, module, title, and lifecycle status are present, and every
   permanent feature design is published with source provenance.
 - Architecture IDs and kinds are explicit; declared JSON views resolve to delivered Archify HTML.
@@ -61,8 +66,10 @@ route-colliding sources stop publication with rule, source, reason, and remediat
 
 ## Compatibility
 
-Version 3 adds permanent feature-design publication; further changes to source roots, inclusion
-globs, required fields, or path semantics require a new major contract version.
+Version 3 includes permanent feature-design publication. The self-hosting guide baseline adds
+required document instances without changing the CommonMark/YAML representation, source roots,
+inclusion globs, content kinds, or path semantics. Further changes to those structural contract
+elements require a new major contract version.
 
 ## Evidence
 
