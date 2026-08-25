@@ -11,7 +11,7 @@ feature design, and explanatory diagrams share one recursive hierarchy because t
 same system from different viewpoints.
 
 The complete source profile is governed by
-[Feature 001](../specs/concorde/features/001-concorde-starter-workflow/spec.md). This guide explains
+[Feature 001](../specs/concorde/features/001-concorde-workflow/spec.md). This guide explains
 how to use it.
 
 ## Module packages define architectural levels

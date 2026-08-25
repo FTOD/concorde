@@ -42,7 +42,7 @@ If you are already working in a Concorde project:
 1. Use [Specifications, design, and architecture](specification-model.md) to decide what kind of
    information you are changing.
 2. Use [Project structure and source authority](project-structure.md) to find its canonical file.
-3. Follow the [Core workflow](core-workflow.md) from ownership and specification through validation
+3. Follow the [Concorde workflow](concorde-workflow.md) from ownership and specification through validation
    and hardening.
 4. Consult [Commands and installed surfaces](commands.md) to choose the right operation and
    understand what actually executes it.
@@ -55,7 +55,7 @@ These guides explain the framework; they do not replace its specifications. Comp
 edge cases, status, and acceptance criteria live in:
 
 - the [root Concorde architecture](../specs/concorde/module.md);
-- [Feature 001: the core workflow](../specs/concorde/features/001-concorde-starter-workflow/spec.md);
+- [Feature 001: the Concorde workflow](../specs/concorde/features/001-concorde-workflow/spec.md);
 - [Feature 002: project docsite publication](../specs/concorde/features/002-create-project-docsite/spec.md); and
 - [Feature 003: installation through Spec Kit](../specs/concorde/features/003-install-concorde-speckit/spec.md).
 

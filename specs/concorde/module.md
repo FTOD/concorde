@@ -9,12 +9,12 @@ children:
   - module.concorde.architecture-core
   - module.concorde.documentation
 features:
-  - feature.concorde.core-workflow
+  - feature.concorde.workflow
   - feature.concorde.publish-project-docsite
   - feature.concorde.install-with-spec-kit
 contracts:
   provided:
-    - contract.concorde.core-workflow
+    - contract.concorde.workflow
     - contract.documentation.architecture-site
     - contract.concorde.spec-kit-installation
   required:
@@ -39,7 +39,7 @@ Docusaurus itself.
 
 | Feature ID | Outcome | Canonical specification |
 |---|---|---|
-| `feature.concorde.core-workflow` | A maintainer directs feature development through a recursive specification hierarchy, architecture review gates, bounded context, and deterministic validation. | `specs/concorde/features/001-concorde-starter-workflow/spec.md` |
+| `feature.concorde.workflow` | A maintainer directs feature development through a recursive specification hierarchy, architecture review gates, bounded context, and deterministic validation. | `specs/concorde/features/001-concorde-workflow/spec.md` |
 | `feature.concorde.publish-project-docsite` | A maintainer browses architecture sources and views, project documentation, and Spec Kit feature specifications in one generated site. | `specs/concorde/features/002-create-project-docsite/spec.md` |
 | `feature.concorde.install-with-spec-kit` | A maintainer inspects, installs, verifies, updates, and removes Concorde through the native Spec Kit ecosystem. | `specs/concorde/features/003-install-concorde-speckit/spec.md` |
 
@@ -52,7 +52,7 @@ provide the behavior:
 | Entry path | Root feature invoked | Immediate modules involved |
 |---|---|---|
 | A maintainer uses Spec Kit's bundle inspect, install, update, or removal operations. | `feature.concorde.install-with-spec-kit` | Distribution owns the bundle lifecycle; Spec Kit Integration supplies and activates the preset and command extension. |
-| A maintainer or coding agent runs normal Spec Kit phases, together with `speckit.concorde.init`, `feature.create`, `feature.select`, `feature.harden`, `context`, or `validate`. | `feature.concorde.core-workflow` | Spec Kit Integration selects the nested workspace and composes phase guidance; Architecture Core initializes, projects bounded context, validates architecture, and safely promotes completed milestones into durable feature design. |
+| A maintainer or coding agent runs normal Spec Kit phases, together with `speckit.concorde.init`, `feature.create`, `feature.select`, `feature.harden`, `context`, or `validate`. | `feature.concorde.workflow` | Spec Kit Integration selects the nested workspace and composes phase guidance; Architecture Core initializes, projects bounded context, validates architecture, and safely promotes completed milestones into durable feature design. |
 | A maintainer validates, builds, serves, or browses the generated project site. | `feature.concorde.publish-project-docsite` | Documentation builds the read model from validated Architecture Core sources and canonical Spec Kit feature specifications. |
 
 The root view intentionally stops here. Zooming into an immediate module reveals that module's own
@@ -62,7 +62,7 @@ features, contracts, and submodules without exposing them prematurely at the roo
 
 | Contract ID | Role | Flow | Counterparty | Canonical definition |
 |---|---|---|---|---|
-| `contract.concorde.core-workflow` | provided | bidirectional | Maintainer and coding agent | `contracts/concorde-workflow/contract.md` |
+| `contract.concorde.workflow` | provided | bidirectional | Maintainer and coding agent | `contracts/concorde-workflow/contract.md` |
 | `contract.documentation.architecture-site` | provided through Documentation | output | Maintainer browser | `modules/documentation/contracts/architecture-site/contract.md` |
 | `contract.concorde.spec-kit-installation` | provided | bidirectional | Maintainer and Spec Kit | `contracts/spec-kit-installation/contract.md` |
 | `contract.concorde.spec-kit-platform` | required | bidirectional | Spec Kit | `contracts/spec-kit-platform/contract.md` |
@@ -107,14 +107,14 @@ supplemental Feature 003 explanatory views. Their maintained sources are
 `features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` and
 `features/003-install-concorde-speckit/diagrams/starter-installation-flow.json`. `architecture.json` remains
 the canonical one-level root module view. Feature 001 owns the core
-`features/001-concorde-starter-workflow/diagrams/core-workflow-components.json` component-interaction model, and Feature
+`features/001-concorde-workflow/diagrams/concorde-workflow-components.json` component-interaction model, and Feature
 002 owns `features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json`. Feature-owned
 views are encouraged explanations of scenario collaboration; they do not expand or replace the root
 module view.
 
 ## Scenario Trace
 
-The core-workflow, installation, and publication scenarios are maintained in their respective feature
+The Concorde workflow, installation, and publication scenarios are maintained in their respective feature
 specifications and traced in `architecture.json`. They show only this module's immediate children and
 permitted external actors.
 
@@ -137,7 +137,7 @@ perceptual evidence.
 The Spec Kit bundle lifecycle and component registration are implemented, while the installation
 feature remains `partial` until all nine normal command overrides and six Concorde-specific commands
 execute from release-installed artifacts in clean skills and slash-command projects, preset
-recomposition is verified, and the timed first-use and comprehension pilot is conducted. The core workflow has verified
+recomposition is verified, and the timed first-use and comprehension pilot is conducted. The Concorde workflow has verified
 initialization, nested feature placement/selection, public preset command composition, bounded
 active-feature context, architecture readiness, contract example conformance, evidence disagreement,
 freshness normalization, and deterministic validation. Its human placement, mental-model, and final

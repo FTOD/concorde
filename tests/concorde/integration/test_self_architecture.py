@@ -25,7 +25,7 @@ class SelfArchitectureTests(unittest.TestCase):
         }
         self.assertTrue(
             {
-                "feature.concorde.core-workflow",
+                "feature.concorde.workflow",
                 "feature.concorde.publish-project-docsite",
                 "feature.concorde.install-with-spec-kit",
             }.issubset(participants)
@@ -33,7 +33,7 @@ class SelfArchitectureTests(unittest.TestCase):
         self.assertNotIn("feature.documentation.publish-project-docsite", repr(projection["children"]))
         refinements = {(item["from"], item["to"]) for item in projection["refinement_links"]}
         self.assertIn(("feature.distribution.package-starter-bundle", "feature.concorde.install-with-spec-kit"), refinements)
-        self.assertIn(("feature.architecture-core.manage-bounded-sources", "feature.concorde.core-workflow"), refinements)
+        self.assertIn(("feature.architecture-core.manage-bounded-sources", "feature.concorde.workflow"), refinements)
 
 
 if __name__ == "__main__":

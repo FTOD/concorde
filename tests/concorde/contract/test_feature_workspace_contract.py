@@ -7,7 +7,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 class FeatureWorkspaceContractTests(unittest.TestCase):
     def test_examples_share_safe_complete_workspace_shape(self):
-        examples = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts/examples"
+        examples = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples"
         for name in ("feature-create-proposal.json", "feature-select-response.json"):
             payload = json.loads((examples / name).read_text(encoding="utf-8"))
             self.assertEqual(payload["schema_version"], 2)
@@ -46,7 +46,7 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
             )
 
     def test_schema_keeps_workspace_protocol_separate_from_architecture_v1(self):
-        contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts"
+        contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts"
         workspace = json.loads((contracts / "feature-workspace.schema.json").read_text())
         architecture = json.loads((contracts / "architecture-service.schema.json").read_text())
         self.assertEqual(workspace["$defs"]["operation"]["enum"], ["feature.create", "feature.select", "feature.harden"])
@@ -59,7 +59,7 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         self.assertEqual(architecture["$defs"]["operation"]["enum"], ["init", "context", "validate"])
 
     def test_hardening_proposal_binds_one_design_and_one_removal_target(self):
-        path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts/examples/feature-harden-proposal.json"
+        path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples/feature-harden-proposal.json"
         proposal = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(proposal["proposal_version"], 1)
         self.assertEqual(proposal["operation"], "feature.harden")
@@ -70,7 +70,7 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         self.assertEqual(design.parent, removal.parent)
 
     def test_hardening_eligibility_example_exposes_review_metadata(self):
-        path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts/examples/feature-harden-eligible-response.json"
+        path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples/feature-harden-eligible-response.json"
         payload = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(payload["status"], "eligible")
         self.assertEqual(

@@ -192,7 +192,7 @@ representative changes.
 
 1. **Given** a first-time visitor on the Documentation landing page, **When** they follow the
    recommended path, **Then** they can reach a quick start, framework overview, specification model,
-   project structure guide, core workflow, and command reference without browsing repository files.
+   project structure guide, Concorde workflow, and command reference without browsing repository files.
 2. **Given** a reader learning Concorde's concepts, **When** they use the maintained guides, **Then**
    they can distinguish Spec Kit's normal lifecycle from Concorde's architectural controls and
    explain the roles of durable specifications, durable designs, temporary implementation attempts,

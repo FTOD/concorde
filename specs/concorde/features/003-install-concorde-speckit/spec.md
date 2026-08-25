@@ -59,7 +59,7 @@ delivered as independently versioned ecosystem parts with different responsibili
 | **Preset** | Composes Concorde guidance into normal templates and authoritative routing into the existing Spec Kit lifecycle commands. | It introduces no new runtime command namespace and creates no second canonical feature specification. It does not register commands by itself; Spec Kit materializes its resolved command layers. |
 | **Extension** | Provides the six Concorde-specific command definitions, the selected-workspace adapter, and their deterministic runtime behavior. | It does not own the normal Spec Kit phases or agent-specific presentation syntax. |
 | **Coding-agent integration** | Materializes both resolved core-command overrides and Concorde-specific commands using the active agent's supported skill or slash-command form. | It adapts invocation syntax without changing command intent or path semantics. |
-| **Architecture Core** | Performs project-scoped initialization, bounded context retrieval, and validation after setup. | Its behavior belongs to the core workflow, not to installation. |
+| **Architecture Core** | Performs project-scoped initialization, bounded context retrieval, and validation after setup. | Its behavior belongs to the Concorde workflow, not to installation. |
 
 The `concorde-starter` bundle pins exactly the tested `concorde-core` preset and `concorde` extension.
 Spec Kit expands the recipe before installation, installs each part through its native component
@@ -133,7 +133,7 @@ existing supported project so that the architecture-aware guidance and Concorde 
 available without a separate installer.
 
 **Why this priority**: Installation is the sole outcome of this feature and the prerequisite for
-using the separately specified core workflow.
+using the separately specified Concorde workflow.
 
 **Independent Test**: Approve the expanded plan, install the starter bundle into both a clean
 initialized project and a supported uninitialized directory, then verify that the installed preset,
@@ -202,7 +202,7 @@ Concorde-specific commands, and restoration after the preset is disabled or remo
 10. **Given** Concorde is updated or removed, **When** Spec Kit rematerializes registered commands,
    **Then** it installs the accepted updated layer or restores the next surviving lower-priority layer
    without leaving stale Concorde instructions.
-11. **Given** verified setup, **When** the maintainer starts Feature 001's core workflow, **Then** no
+11. **Given** verified setup, **When** the maintainer starts Feature 001's Concorde workflow, **Then** no
    manual skill edit, extra installer, duplicate feature store, or replacement lifecycle is required.
 
 ---
@@ -428,4 +428,4 @@ project-owned sources.
   integration capabilities.
 - A supported coding-agent integration capable of presenting installed extension commands.
 - The Concorde distribution and Spec Kit Integration modules and their boundary contracts.
-- Feature 001 for the core workflow used after setup.
+- Feature 001 for the Concorde workflow used after setup.

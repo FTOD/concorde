@@ -1,16 +1,16 @@
 ---
-title: Core Workflow
+title: Concorde Workflow
 sidebar_position: 6
 ---
 
-# Core Workflow
+# Concorde Workflow
 
 Concorde surrounds the normal Spec Kit lifecycle with architectural ownership, bounded context,
 deterministic validation, and durable-design review. It does not replace specification, planning,
 tasks, or implementation.
 
 The authoritative workflow, including requirements and edge cases, is
-[Feature 001](../specs/concorde/features/001-concorde-starter-workflow/spec.md). The stages below
+[Feature 001](../specs/concorde/features/001-concorde-workflow/spec.md). The stages below
 explain how to apply it in a project.
 
 ## Before feature work: establish the root

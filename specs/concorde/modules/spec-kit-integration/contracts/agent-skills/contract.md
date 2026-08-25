@@ -10,7 +10,7 @@ representation:
   kind: standard
   format: Spec Kit extension command Markdown
   version: "0.16.4"
-  definition: specs/concorde/features/001-concorde-starter-workflow/contracts/agent-commands.md
+  definition: specs/concorde/features/001-concorde-workflow/contracts/agent-commands.md
 features:
   - feature.integration.compose-starter-workflow
   - feature.integration.manage-feature-workspace

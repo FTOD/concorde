@@ -3,7 +3,7 @@ id: feature.architecture-core.manage-bounded-sources
 kind: feature
 module: module.concorde.architecture-core
 refines:
-  - feature.concorde.core-workflow
+  - feature.concorde.workflow
 scenarios:
   - scenario.architecture-core.manage-bounded-sources
 contracts:
@@ -32,7 +32,7 @@ does not replace this textual definition.
 
 ## Diagram Decision
 
-The parent feature's `diagrams/core-workflow-components.json` core architecture view shows Architecture
+The parent feature's `diagrams/concorde-workflow-components.json` core architecture view shows Architecture
 Core's responsibility and its interactions with the agent, workspace, Integration, and evidence
 producers. A separate child diagram would repeat those same component boundaries; this specification
 relies on that text-backed parent view plus the Architecture Core module contract.

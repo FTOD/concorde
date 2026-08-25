@@ -1,4 +1,4 @@
-# Contract: Concorde Core Workflow Agent Commands
+# Contract: Concorde Workflow Agent Commands
 
 **Contract ID**: `contract.integration.agent-skills`
 
@@ -185,7 +185,7 @@ Return exactly one bounded architectural level for a module or feature.
 |---|---:|---|
 | `<module-or-feature-id>` | yes | Stable ID to resolve. A feature resolves through its providing module. |
 | `--project-root <path>` | no | Project root; defaults to current Spec Kit project. |
-| `--format json` | no | Canonical format; JSON is the default for the core workflow. |
+| `--format json` | no | Canonical format; JSON is the default for the Concorde workflow. |
 
 ### Result
 

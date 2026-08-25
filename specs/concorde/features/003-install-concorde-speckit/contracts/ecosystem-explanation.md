@@ -53,7 +53,7 @@ profile 1, and must not redefine the root module's one-level participants or con
 
 ## Accessibility and Evidence
 
-- `spec.md`, `quickstart.md`, `plan.md`, and the relevant module/contract prose must contain a complete
+- `spec.md`, `design.md`, and the relevant module/contract prose must contain a complete
   explanation that can be understood without opening either diagram.
 - Both source JSON files must pass all Archify showcase checks and produce fresh, provenance-bearing
   generated HTML.

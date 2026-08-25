@@ -11,11 +11,11 @@ representation:
   kind: custom
   format: Concorde Feature Workspace Protocol
   version: "2"
-  definition: specs/concorde/features/001-concorde-starter-workflow/contracts/feature-workspace.schema.json
+  definition: specs/concorde/features/001-concorde-workflow/contracts/feature-workspace.schema.json
 examples:
-  - specs/concorde/features/001-concorde-starter-workflow/contracts/examples/feature-create-proposal.json
-  - specs/concorde/features/001-concorde-starter-workflow/contracts/examples/feature-select-response.json
-  - specs/concorde/features/001-concorde-starter-workflow/contracts/examples/feature-harden-proposal.json
+  - specs/concorde/features/001-concorde-workflow/contracts/examples/feature-create-proposal.json
+  - specs/concorde/features/001-concorde-workflow/contracts/examples/feature-select-response.json
+  - specs/concorde/features/001-concorde-workflow/contracts/examples/feature-harden-proposal.json
 features:
   - feature.integration.manage-feature-workspace
 evidence_status: partial

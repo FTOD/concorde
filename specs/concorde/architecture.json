@@ -10,13 +10,13 @@
       {
         "id": "scenario-concorde-establish-and-place-feature",
         "label": "Establish and place a feature",
-        "focus": ["maintainer", "specKit", "agentHost", "coreWorkflowFeature", "integration", "architectureCore"],
-        "note": "Normal Spec Kit phases and Concorde commands meet at the core workflow, which selects a workspace and retrieves bounded architecture."
+        "focus": ["maintainer", "specKit", "agentHost", "concordeWorkflowFeature", "integration", "architectureCore"],
+        "note": "Normal Spec Kit phases and Concorde commands meet at the Concorde workflow, which selects a workspace and retrieves bounded architecture."
       },
       {
         "id": "scenario-concorde-review-implement-and-reconcile",
         "label": "Review, implement, and reconcile",
-        "focus": ["maintainer", "specKit", "agentHost", "coreWorkflowFeature", "integration", "architectureCore", "documentation"],
+        "focus": ["maintainer", "specKit", "agentHost", "concordeWorkflowFeature", "integration", "architectureCore", "documentation"],
         "note": "Plan and implement through Spec Kit; use agent commands for bounded context and validation; publish validated architecture for review."
       },
       {
@@ -74,10 +74,10 @@
       "size": [230, 86]
     },
     {
-      "id": "coreWorkflowFeature",
-      "tag": "feature.concorde.core-workflow",
+      "id": "concordeWorkflowFeature",
+      "tag": "feature.concorde.workflow",
       "type": "backend",
-      "label": "Core Development Workflow",
+      "label": "Concorde Workflow",
       "sublabel": "Root feature · direct development",
       "pos": [650, 320],
       "size": [230, 96]
@@ -132,7 +132,7 @@
     {
       "kind": "region",
       "label": "Concorde root · current features + immediate modules",
-      "wraps": ["installFeature", "coreWorkflowFeature", "publishFeature", "distribution", "integration", "architectureCore", "documentation"],
+      "wraps": ["installFeature", "concordeWorkflowFeature", "publishFeature", "distribution", "integration", "architectureCore", "documentation"],
       "pad": 34
     }
   ],
@@ -172,16 +172,16 @@
       "variant": "emphasis"
     },
     {
-      "id": "contract_concorde_core-workflow__spec-kit",
+      "id": "contract_concorde_workflow__spec-kit",
       "from": "specKit",
-      "to": "coreWorkflowFeature",
+      "to": "concordeWorkflowFeature",
       "label": "specify → converge",
       "variant": "dashed"
     },
     {
-      "id": "contract_concorde_core-workflow__agent",
+      "id": "contract_concorde_workflow__agent",
       "from": "agentHost",
-      "to": "coreWorkflowFeature",
+      "to": "concordeWorkflowFeature",
       "label": "init / create / select / harden / context / validate",
       "fromSide": "right",
       "toSide": "left",
@@ -191,13 +191,13 @@
     },
     {
       "id": "contract_integration_feature-workspace",
-      "from": "coreWorkflowFeature",
+      "from": "concordeWorkflowFeature",
       "to": "integration",
       "label": "workspace + phase routing"
     },
     {
       "id": "contract_core_architecture-services",
-      "from": "coreWorkflowFeature",
+      "from": "concordeWorkflowFeature",
       "to": "architectureCore",
       "label": "bounded architecture services",
       "variant": "emphasis"
@@ -232,7 +232,7 @@
     {
       "dot": "cyan",
       "title": "Three root-level features",
-      "items": ["Install with Spec Kit prepares the project", "Core Development Workflow directs feature delivery", "Publish Project Docsite exposes the generated read model"]
+      "items": ["Install with Spec Kit prepares the project", "Concorde Workflow directs feature delivery", "Publish Project Docsite exposes the generated read model"]
     },
     {
       "dot": "emerald",

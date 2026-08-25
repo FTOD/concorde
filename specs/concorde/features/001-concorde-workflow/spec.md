@@ -1,5 +1,5 @@
 ---
-id: feature.concorde.core-workflow
+id: feature.concorde.workflow
 kind: feature
 module: module.concorde
 refines: []
@@ -8,23 +8,23 @@ scenarios:
   - scenario-concorde-review-implement-and-reconcile
 contracts:
   provided:
-    - contract.concorde.core-workflow
+    - contract.concorde.workflow
   required:
     - contract.concorde.spec-kit-platform
 architecture_view: specs/concorde/architecture.json
 diagrams:
-  - source: specs/concorde/features/001-concorde-starter-workflow/diagrams/core-workflow-components.json
+  - source: specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json
     role: core
     kind: architecture
     scenarios:
       - scenario-concorde-establish-and-place-feature
       - scenario-concorde-review-implement-and-reconcile
-    output: generated/architecture/concorde-core-workflow-components.html
+    output: generated/architecture/concorde-workflow-components.html
 evidence_status: partial
-canonical_spec: specs/concorde/features/001-concorde-starter-workflow/spec.md
+canonical_spec: specs/concorde/features/001-concorde-workflow/spec.md
 ---
 
-# Feature Specification: Direct Development with the Concorde Core Workflow
+# Feature Specification: Concorde Workflow
 
 **Feature Branch**: Not created; no `before_specify` branch hook is configured
 
@@ -32,7 +32,7 @@ canonical_spec: specs/concorde/features/001-concorde-starter-workflow/spec.md
 
 **Revised**: 2026-08-25
 
-**Status**: Core workflow, nested checklist routing, and hardening gate implemented; human/browser
+**Status**: Concorde workflow, nested checklist routing, and hardening gate implemented; human/browser
 evidence remains incomplete
 
 **Input**: User description: "Make Feature 001 describe the actual Concorde workflow, including the
@@ -290,8 +290,8 @@ validation belong to Architecture Core.
 
 ## Core Component and Interaction Diagram
 
-The maintained architecture view in `diagrams/core-workflow-components.json` is the feature's core
-diagram and produces `generated/architecture/concorde-core-workflow-components.html`. It answers the
+The maintained architecture view in `diagrams/concorde-workflow-components.json` is the feature's core
+diagram and produces `generated/architecture/concorde-workflow-components.html`. It answers the
 stable structural question: when a maintainer invokes Concorde in an installed project, which parts
 are agent-facing instructions, which parts are executable adapters or Python code, which workspace
 artifacts they read or write, and how those responsibilities interact?
@@ -563,7 +563,7 @@ feature's `implementation/` directory without changing architecture, specificati
   disagreement and MUST NOT be inferred as conformance from valid architecture alone.
 - **FR-023**: Maintained architecture changes proposed or authored by an agent MUST require human
   approval and applicable deterministic checks before becoming accepted project intent.
-- **FR-024**: The core workflow MUST preserve Spec Kit's authority for specification, clarification,
+- **FR-024**: The Concorde workflow MUST preserve Spec Kit's authority for specification, clarification,
   planning, tasks, implementation, analysis, and convergence while Concorde owns hierarchy,
   contracts, bounded views, structural traceability, validation, and publication coordination.
 - **FR-025**: Generated diagrams, pages, indexes, and reports MUST be reproducible from maintained

@@ -5,9 +5,9 @@
   "status": "skipped",
   "visualReview": "pending",
   "artifact": {
-    "path": "/home/zhenyu/concorde/generated/architecture/concorde-core-workflow-components.html",
-    "sha256": "58f1b6a211bdb3da928ff6c924b01404f02eb172411b66724bdad0d4b5c6ce5e",
-    "bytes": 654739
+    "path": "/home/zhenyu/concorde/generated/architecture/concorde-workflow-components.html",
+    "sha256": "76f20f92bd921f038564a32bb679a913663f9bee5b21c641f898b22ad191105f",
+    "bytes": 653573
   },
   "state": {
     "detail": "read",
@@ -27,8 +27,8 @@
     "contactSheet": null
   },
   "sidecars": {
-    "receipt": "concorde-core-workflow-components.visual-check.json",
-    "contactSheet": "concorde-core-workflow-components.visual-check.html"
+    "receipt": "concorde-workflow-components.visual-check.json",
+    "contactSheet": "concorde-workflow-components.visual-check.html"
   },
   "error": "Chrome or Chromium is unavailable. Set ARCHIFY_CHROME to its executable path."
 }

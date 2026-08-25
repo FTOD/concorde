@@ -37,7 +37,7 @@ For the Concorde self-hosting site, the Documentation route space includes this 
 | `/docs/framework-overview` | Concorde purpose, influences, hierarchy, and adjacent-tool boundaries |
 | `/docs/specification-model` | Durable architecture/specification/design and temporal implementation model |
 | `/docs/project-structure` | Workspace authority and correct edit locations |
-| `/docs/core-workflow` | End-to-end architecture-aware development lifecycle |
+| `/docs/concorde-workflow` | End-to-end architecture-aware development lifecycle |
 | `/docs/commands` | Normal Spec Kit phases, Concorde operations, and installed command layers |
 | `/docs/contributing/docsite` | Docsite authoring, validation, build, and troubleshooting |
 

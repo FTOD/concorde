@@ -177,5 +177,5 @@ The first result is a proposal, not a mutation. Review the full candidate `desig
 `implementation/` removal target, and the source digest. Only explicit approval applies that
 unchanged proposal. On success, the durable design remains and the temporary attempt is removed.
 
-Continue with the [Core workflow](core-workflow.md) for the review gates and
+Continue with the [Concorde workflow](concorde-workflow.md) for the review gates and
 [Commands and installed surfaces](commands.md) for command-by-command behavior.

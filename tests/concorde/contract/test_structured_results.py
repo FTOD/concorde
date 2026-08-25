@@ -53,7 +53,7 @@ class StructuredResultTests(unittest.TestCase):
         self.assertEqual(payload["checklist_summary"], result.result["checklist_summary"])
 
     def test_checked_in_examples_have_safe_paths(self):
-        examples = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts/examples"
+        examples = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples"
         for path in examples.glob("*.json"):
             payload = json.loads(path.read_text())
             if "schema_version" not in payload:
@@ -68,7 +68,7 @@ class StructuredResultTests(unittest.TestCase):
 
     def test_context_example_tracks_runtime_projection_shape(self):
         example = json.loads(
-            (REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts/examples/context-response.json").read_text()
+            (REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples/context-response.json").read_text()
         )
         actual = bounded_context(VALID_PROJECT, "module.example")
         context = actual.result["context"]

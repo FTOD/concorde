@@ -27,7 +27,7 @@ rendering, Docusaurus publication, or implementation correctness.
 ## Feature Set
 
 - `feature.architecture-core.manage-bounded-sources` refines
-  `feature.concorde.core-workflow` and owns initialization, bounded feature/module context, and
+  `feature.concorde.workflow` and owns initialization, bounded feature/module context, and
   deterministic validation.
 
 ## Canonical Contract Definition
@@ -44,7 +44,7 @@ provides bounded context.
   return either a complete result or explicit findings.
 
 The normative JSON Schema is
-`specs/concorde/features/001-concorde-starter-workflow/contracts/architecture-service.schema.json`.
+`specs/concorde/features/001-concorde-workflow/contracts/architecture-service.schema.json`.
 The outline below is explanatory and does not replace it.
 
 #### Field semantics

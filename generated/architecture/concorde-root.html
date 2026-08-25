@@ -4840,7 +4840,7 @@
       </div>
     </div>
 
-    <script id="archify-guided-views-data" type="application/json">[{"id":"scenario-concorde-establish-and-place-feature","label":"Establish and place a feature","focus":["maintainer","specKit","agentHost","coreWorkflowFeature","integration","architectureCore"],"note":"Normal Spec Kit phases and Concorde commands meet at the core workflow, which selects a workspace and retrieves bounded architecture."},{"id":"scenario-concorde-review-implement-and-reconcile","label":"Review, implement, and reconcile","focus":["maintainer","specKit","agentHost","coreWorkflowFeature","integration","architectureCore","documentation"],"note":"Plan and implement through Spec Kit; use agent commands for bounded context and validation; publish validated architecture for review."},{"id":"inspect-install-and-verify-concorde","label":"Install and verify Concorde","focus":["maintainer","specKit","installFeature","distribution","integration","agentHost"],"note":"Use Spec Kit's bundle lifecycle; Distribution packages Concorde and Integration registers its commands."},{"id":"manage-concorde-installation","label":"Manage Concorde installation","focus":["maintainer","specKit","installFeature","distribution","integration"],"note":"Spec Kit previews updates and removal while Distribution preserves provenance and Integration supplies independently packaged components."},{"id":"publish-architecture","label":"Build and browse the project site","focus":["maintainer","publishFeature","documentation","architectureCore","specKit"],"note":"Documentation projects validated architecture plus permanent feature specifications and designs into one site."}]</script>
+    <script id="archify-guided-views-data" type="application/json">[{"id":"scenario-concorde-establish-and-place-feature","label":"Establish and place a feature","focus":["maintainer","specKit","agentHost","concordeWorkflowFeature","integration","architectureCore"],"note":"Normal Spec Kit phases and Concorde commands meet at the Concorde workflow, which selects a workspace and retrieves bounded architecture."},{"id":"scenario-concorde-review-implement-and-reconcile","label":"Review, implement, and reconcile","focus":["maintainer","specKit","agentHost","concordeWorkflowFeature","integration","architectureCore","documentation"],"note":"Plan and implement through Spec Kit; use agent commands for bounded context and validation; publish validated architecture for review."},{"id":"inspect-install-and-verify-concorde","label":"Install and verify Concorde","focus":["maintainer","specKit","installFeature","distribution","integration","agentHost"],"note":"Use Spec Kit's bundle lifecycle; Distribution packages Concorde and Integration registers its commands."},{"id":"manage-concorde-installation","label":"Manage Concorde installation","focus":["maintainer","specKit","installFeature","distribution","integration"],"note":"Spec Kit previews updates and removal while Distribution preserves provenance and Integration supplies independently packaged components."},{"id":"publish-architecture","label":"Build and browse the project site","focus":["maintainer","publishFeature","documentation","architectureCore","specKit"],"note":"Documentation projects validated architecture plus permanent feature specifications and designs into one site."}]</script>
 
     <div class="guided-views no-print" id="guided-views" hidden aria-label="Guided diagram views">
       <button id="guided-view-prev" type="button" aria-label="Previous guided view" title="Previous guided view ([)">&#8592;</button>
@@ -4918,10 +4918,10 @@
         <path data-edge-from="installFeature" data-edge-to="distribution" data-edge-label="bundle lifecycle" data-edge-key="2" data-edge-id="contract_distribution_bundle-lifecycle" data-composition-points="880,96;1070,96" d="M 880 96 L 1070 96" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="integration" data-edge-to="distribution" data-edge-label="preset + extension packages" data-edge-key="3" data-edge-id="contract_distribution_component-packages" data-composition-points="1175,220;1175,128" d="M 1175 220 L 1175 128" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="installFeature" data-edge-to="integration" data-edge-label="compose overrides + commands" data-edge-key="4" data-edge-id="contract_integration_agent-skills" data-composition-points="880,110;975,110;975,252;1070,252" d="M 880 110 L 967 110 Q 975 110 975 118 L 975 244 Q 975 252 983 252 L 1070 252" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="specKit" data-edge-to="coreWorkflowFeature" data-edge-label="specify → converge" data-edge-key="5" data-edge-id="contract_concorde_core-workflow__spec-kit" data-composition-points="460,275;555,275;555,368;650,368" d="M 460 275 L 547 275 Q 555 275 555 283 L 555 360 Q 555 368 563 368 L 650 368" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="agentHost" data-edge-to="coreWorkflowFeature" data-edge-label="init / create / select / harden / context / validate" data-edge-key="6" data-edge-id="contract_concorde_core-workflow__agent" data-composition-points="460,468;555,468;555,368;650,368" d="M 460 468 L 547 468 Q 555 468 555 460 L 555 376 Q 555 368 563 368 L 650 368" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="coreWorkflowFeature" data-edge-to="integration" data-edge-label="workspace + phase routing" data-edge-key="7" data-edge-id="contract_integration_feature-workspace" data-composition-points="880,361;975,361;975,266;1070,266" d="M 880 361 L 967 361 Q 975 361 975 353 L 975 274 Q 975 266 983 266 L 1070 266" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="coreWorkflowFeature" data-edge-to="architectureCore" data-edge-label="bounded architecture services" data-edge-key="8" data-edge-id="contract_core_architecture-services" data-composition-points="880,375;975,375;975,439;1070,439" d="M 880 375 L 967 375 Q 975 375 975 383 L 975 431 Q 975 439 983 439 L 1070 439" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="specKit" data-edge-to="concordeWorkflowFeature" data-edge-label="specify → converge" data-edge-key="5" data-edge-id="contract_concorde_workflow__spec-kit" data-composition-points="460,275;555,275;555,368;650,368" d="M 460 275 L 547 275 Q 555 275 555 283 L 555 360 Q 555 368 563 368 L 650 368" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="agentHost" data-edge-to="concordeWorkflowFeature" data-edge-label="init / create / select / harden / context / validate" data-edge-key="6" data-edge-id="contract_concorde_workflow__agent" data-composition-points="460,468;555,468;555,368;650,368" d="M 460 468 L 547 468 Q 555 468 555 460 L 555 376 Q 555 368 563 368 L 650 368" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="concordeWorkflowFeature" data-edge-to="integration" data-edge-label="workspace + phase routing" data-edge-key="7" data-edge-id="contract_integration_feature-workspace" data-composition-points="880,361;975,361;975,266;1070,266" d="M 880 361 L 967 361 Q 975 361 975 353 L 975 274 Q 975 266 983 266 L 1070 266" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="concordeWorkflowFeature" data-edge-to="architectureCore" data-edge-label="bounded architecture services" data-edge-key="8" data-edge-id="contract_core_architecture-services" data-composition-points="880,375;975,375;975,439;1070,439" d="M 880 375 L 967 375 Q 975 375 975 383 L 975 431 Q 975 439 983 439 L 1070 439" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="maintainer" data-edge-to="publishFeature" data-edge-label="build / browse site" data-edge-key="9" data-edge-id="contract_documentation_architecture-site__maintainer" data-composition-points="125,406;125,710;765,710;765,666" d="M 125 406 L 125 702 Q 125 710 133 710 L 757 710 Q 765 710 765 702 L 765 666" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="publishFeature" data-edge-to="documentation" data-edge-label="validate / build / serve" data-edge-key="10" data-edge-id="contract_documentation_build-interface" data-composition-points="880,623;1070,623" d="M 880 623 L 1070 623" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="architectureCore" data-edge-to="documentation" data-edge-label="validated architecture" data-edge-key="11" data-edge-id="contract_documentation_project-content__core" data-composition-points="1175,478;1175,590" d="M 1175 478 L 1175 590" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
@@ -4975,16 +4975,16 @@
         <text data-detail="fine" x="765" y="138" class="t-cloud" font-size="7" text-anchor="middle">feature.concorde.install-with-spec-kit</text>
         </g>
 
-        <g id="node-coreWorkflowFeature" data-node-id="coreWorkflowFeature" data-node-label="Core Development Workflow" tabindex="0" role="button" aria-label="Focus Core Development Workflow, Root feature · direct development, Concorde root · current features + immediate modules" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Root feature · direct development" data-node-tag="feature.concorde.core-workflow" data-node-context="Concorde root · current features + immediate modules">
-          <title>Core Development Workflow · Root feature · direct development · Concorde root · current features + immediate modules · feature.concorde.core-workflow</title>
+        <g id="node-concordeWorkflowFeature" data-node-id="concordeWorkflowFeature" data-node-label="Concorde Workflow" tabindex="0" role="button" aria-label="Focus Concorde Workflow, Root feature · direct development, Concorde root · current features + immediate modules" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Root feature · direct development" data-node-tag="feature.concorde.workflow" data-node-context="Concorde root · current features + immediate modules">
+          <title>Concorde Workflow · Root feature · direct development · Concorde root · current features + immediate modules · feature.concorde.workflow</title>
           <rect x="650" y="320" width="230" height="96" rx="6" class="c-mask"/>
           <rect x="650" y="320" width="230" height="96" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(656 326) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-detail-anchor x="765" y="366" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Core Development Workflow</text>
+          <text data-detail-anchor x="765" y="366" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Concorde Workflow</text>
         <text data-detail="context" x="765" y="382" class="t-muted" font-size="9" text-anchor="middle">Root feature · direct development</text>
-        <text data-detail="fine" x="765" y="408" class="t-backend" font-size="7" text-anchor="middle">feature.concorde.core-workflow</text>
+        <text data-detail="fine" x="765" y="408" class="t-backend" font-size="7" text-anchor="middle">feature.concorde.workflow</text>
         </g>
 
         <g id="node-publishFeature" data-node-id="publishFeature" data-node-label="Publish Project Docsite" tabindex="0" role="button" aria-label="Focus Publish Project Docsite, Root feature · generated read model, Concorde root · current features + immediate modules" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="Root feature · generated read model" data-node-tag="feature.concorde.publish-project-docsite" data-node-context="Concorde root · current features + immediate modules">
@@ -5074,19 +5074,19 @@
           <rect x="902.8" y="161" width="144.4" height="14" rx="3" class="c-mask"/>
           <text x="975" y="171" class="t-backend" font-size="8" text-anchor="middle">compose overrides + commands</text>
         </g>
-        <g data-detail="context" data-edge-from="specKit" data-edge-to="coreWorkflowFeature" data-edge-label="specify → converge" data-edge-key="5" data-edge-id="contract_concorde_core-workflow__spec-kit">
+        <g data-detail="context" data-edge-from="specKit" data-edge-to="concordeWorkflowFeature" data-edge-label="specify → converge" data-edge-key="5" data-edge-id="contract_concorde_workflow__spec-kit">
           <rect x="506.8" y="301.5" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
           <text x="555" y="311.5" class="t-messagebus" font-size="8" text-anchor="middle">specify → converge</text>
         </g>
-        <g data-detail="context" data-edge-from="agentHost" data-edge-to="coreWorkflowFeature" data-edge-label="init / create / select / harden / context / validate" data-edge-key="6" data-edge-id="contract_concorde_core-workflow__agent">
+        <g data-detail="context" data-edge-from="agentHost" data-edge-to="concordeWorkflowFeature" data-edge-label="init / create / select / harden / context / validate" data-edge-key="6" data-edge-id="contract_concorde_workflow__agent">
           <rect x="425.2" y="510" width="259.6" height="14" rx="3" class="c-mask"/>
           <text x="555" y="520" class="t-backend" font-size="8" text-anchor="middle">init / create / select / harden / context / validate</text>
         </g>
-        <g data-detail="context" data-edge-from="coreWorkflowFeature" data-edge-to="integration" data-edge-label="workspace + phase routing" data-edge-key="7" data-edge-id="contract_integration_feature-workspace">
+        <g data-detail="context" data-edge-from="concordeWorkflowFeature" data-edge-to="integration" data-edge-label="workspace + phase routing" data-edge-key="7" data-edge-id="contract_integration_feature-workspace">
           <rect x="910" y="293.5" width="130" height="14" rx="3" class="c-mask"/>
           <text x="975" y="303.5" class="t-muted" font-size="8" text-anchor="middle">workspace + phase routing</text>
         </g>
-        <g data-detail="context" data-edge-from="coreWorkflowFeature" data-edge-to="architectureCore" data-edge-label="bounded architecture services" data-edge-key="8" data-edge-id="contract_core_architecture-services">
+        <g data-detail="context" data-edge-from="concordeWorkflowFeature" data-edge-to="architectureCore" data-edge-label="bounded architecture services" data-edge-key="8" data-edge-id="contract_core_architecture-services">
           <rect x="900.4" y="387" width="149.2" height="14" rx="3" class="c-mask"/>
           <text x="975" y="397" class="t-backend" font-size="8" text-anchor="middle">bounded architecture services</text>
         </g>
@@ -5313,7 +5313,7 @@
         </div>
         <ul>
           <li>&bull; Install with Spec Kit prepares the project</li>
-          <li>&bull; Core Development Workflow directs feature delivery</li>
+          <li>&bull; Concorde Workflow directs feature delivery</li>
           <li>&bull; Publish Project Docsite exposes the generated read model</li>
         </ul>
       </div>

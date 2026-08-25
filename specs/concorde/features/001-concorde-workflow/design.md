@@ -1,12 +1,12 @@
-# Feature Design: Concorde Core Workflow
+# Feature Design: Concorde Workflow
 
-**Feature**: `feature.concorde.core-workflow`
+**Feature**: `feature.concorde.workflow`
 
 **Design status**: Accepted realization of the architecture-aware Spec Kit workflow, including nested feature workspaces, durable feature design, temporal checklist and implementation artifacts, bounded architecture services, deterministic validation, and review-first feature hardening.
 
 ## Realization Overview
 
-The Concorde core workflow combines normal Spec Kit phases with deterministic architecture and workspace controls. Spec Kit remains responsible for specification, clarification, planning, tasks, implementation, analysis, convergence, and task-to-issue conversion. Concorde adds reviewed module ownership, nested feature placement and selection, phase-specific workspace routing, bounded architectural context, deterministic validation, feature-owned diagrams, and explicit promotion of a completed implementation milestone into durable design.
+The Concorde workflow combines normal Spec Kit phases with deterministic architecture and workspace controls. Spec Kit remains responsible for specification, clarification, planning, tasks, implementation, analysis, convergence, and task-to-issue conversion. Concorde adds reviewed module ownership, nested feature placement and selection, phase-specific workspace routing, bounded architectural context, deterministic validation, feature-owned diagrams, and explicit promotion of a completed implementation milestone into durable design.
 
 A feature root separates permanent sources from one active delivery attempt. `spec.md`, `design.md`, feature contracts, and maintained Archify JSON under `diagrams/` are durable. Requirements-quality review state, planning artifacts, tasks, research, technical models, acceptance guidance, and validation evidence live only under `implementation/`. The selected feature root is stored in Spec Kit's project-local `.specify/feature.json`; Concorde derives all other paths rather than maintaining a parallel workspace registry.
 
@@ -39,7 +39,7 @@ For every normal phase, the installed command first invokes `workspace.py --phas
 
 Planning treats `design.md` as the accepted baseline and records only the proposed realization delta in `implementation/`. Architecture review checks the providing module, adjacent refinements, immediate participants, dependency direction, governing contracts, affected one-level views, feature-diagram needs, and expected evidence. During implementation, the agent requests bounded context only for the relevant level. Deterministic validation reports disagreement or unknown evidence rather than inferring correctness from structurally valid architecture.
 
-The maintained core Archify architecture diagram, `diagrams/core-workflow-components.json`, shows the stable collaboration among the maintainer, coding-agent integration, nine phase surfaces, six Concorde surfaces, adapters, launchers, runtime, control state, architecture sources, durable feature intent/design, and the temporal attempt. The documentation feature embeds its fresh generated projection automatically on the canonical feature page.
+The maintained core Archify architecture diagram, `diagrams/concorde-workflow-components.json`, shows the stable collaboration among the maintainer, coding-agent integration, nine phase surfaces, six Concorde surfaces, adapters, launchers, runtime, control state, architecture sources, durable feature intent/design, and the temporal attempt. The documentation feature embeds its fresh generated projection automatically on the canonical feature page.
 
 ### Harden an accepted milestone
 
@@ -66,7 +66,7 @@ An eligible schema-v2 result returns the exact `proposal_path`, separate task an
 - Runtime realization is centered in `extensions/concorde/runtime/concorde/feature_workspace.py`, `feature_hardening.py`, `context.py`, `validate.py`, and `diagnostics.py`, reached through the portable scripts in `extensions/concorde/scripts/`.
 - User-project routing is shipped by `presets/concorde-core/`; Concorde's self-hosting command skills and templates exercise the same durable/temporal split. Deterministic release catalogs bind the current preset and extension archives.
 - Unit, contract, integration, acceptance, clean-install, and release tests cover nested workspace derivation, no-root aliases, command materialization, bounded context, deterministic validation, checklist eligibility, proposal metadata, stale input rejection, atomic apply, and rollback. The accepted milestone passed 103 Python tests, strict Feature Workspace examples, Concorde self-validation with no findings, and the Docusaurus type, test, validation, and production-build gates.
-- `diagrams/core-workflow-components.json` passed all 9 Archify showcase checks with zero errors or warnings and has a fresh provenance-bearing generated delivery embedded by the documentation build.
+- `diagrams/concorde-workflow-components.json` passed all 9 Archify showcase checks with zero errors or warnings and has a fresh provenance-bearing generated delivery embedded by the documentation build.
 
 ## Known Limitations
 

@@ -1,5 +1,5 @@
 ---
-id: contract.concorde.core-workflow
+id: contract.concorde.workflow
 kind: contract
 module: module.concorde
 role: provided
@@ -8,10 +8,10 @@ representation:
   kind: custom
   format: Concorde Architecture Service Protocol
   version: "1"
-  definition: specs/concorde/features/001-concorde-starter-workflow/contracts/architecture-service.schema.json
+  definition: specs/concorde/features/001-concorde-workflow/contracts/architecture-service.schema.json
 examples:
-  - specs/concorde/features/001-concorde-starter-workflow/contracts/examples/context-response.json
-  - specs/concorde/features/001-concorde-starter-workflow/contracts/examples/validation-response.json
+  - specs/concorde/features/001-concorde-workflow/contracts/examples/context-response.json
+  - specs/concorde/features/001-concorde-workflow/contracts/examples/validation-response.json
 counterparties:
   - external.maintainer
   - external.coding-agent
@@ -19,11 +19,11 @@ consumers:
   - external.maintainer
   - external.coding-agent
 features:
-  - feature.concorde.core-workflow
+  - feature.concorde.workflow
 evidence_status: partial
 ---
 
-# Concorde Core Workflow Contract
+# Concorde Workflow Contract
 
 ## Purpose
 

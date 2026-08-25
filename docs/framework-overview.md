@@ -17,7 +17,7 @@ Concorde therefore makes four things explicit and reviewable:
 3. the contracts and immediate components involved in realizing it; and
 4. the design that was actually accepted after implementation.
 
-The normative definition is [Feature 001](../specs/concorde/features/001-concorde-starter-workflow/spec.md).
+The normative definition is [Feature 001](../specs/concorde/features/001-concorde-workflow/spec.md).
 
 ## Two ideas combined
 

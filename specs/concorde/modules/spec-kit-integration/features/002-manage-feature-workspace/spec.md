@@ -3,7 +3,7 @@ id: feature.integration.manage-feature-workspace
 kind: feature
 module: module.concorde.spec-kit-integration
 refines:
-  - feature.concorde.core-workflow
+  - feature.concorde.workflow
 scenarios:
   - scenario.integration.place-and-select-feature
 contracts:
@@ -36,7 +36,7 @@ specification and phase-specific path routing. It is an example, not the feature
 
 ## Diagram Decision
 
-The parent feature's `diagrams/core-workflow-components.json` core architecture view shows the Coding
+The parent feature's `diagrams/concorde-workflow-components.json` core architecture view shows the Coding
 Agent invoking this Integration-owned workspace service through
 `feature.create`/`feature.select`/`feature.harden`,
 with the selected workspace shared with the normal Spec Kit lifecycle and Architecture Core. It is

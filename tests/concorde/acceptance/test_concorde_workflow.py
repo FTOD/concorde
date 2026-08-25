@@ -10,7 +10,7 @@ from pathlib import Path
 from tests.concorde.support.paths import CONTEXT_PROJECT, REPOSITORY_ROOT
 
 
-class CoreWorkflowAcceptance(unittest.TestCase):
+class ConcordeWorkflowAcceptance(unittest.TestCase):
     def test_propose_select_and_route_nested_feature_without_root_aliases(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"

@@ -11,7 +11,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
     def test_textual_explanations_name_every_ecosystem_role(self):
         sources = [
             FEATURE_ROOT / "spec.md",
-            FEATURE_ROOT / "implementation/quickstart.md",
+            FEATURE_ROOT / "design.md",
             FEATURE_ROOT / "contracts/ecosystem-explanation.md",
             REPOSITORY_ROOT / "specs/concorde/module.md",
             REPOSITORY_ROOT / "specs/concorde/contracts/spec-kit-installation/contract.md",

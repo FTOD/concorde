@@ -27,7 +27,7 @@ class AgentCommandContractTests(unittest.TestCase):
             self.assertNotIn(str(REPOSITORY_ROOT), content)
 
     def test_distribution_handoff_names_nine_normal_and_six_concorde_intents(self):
-        contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-starter-workflow/contracts"
+        contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts"
         command_contract = (contracts / "agent-commands.md").read_text(encoding="utf-8")
         schema = json.loads((contracts / "feature-workspace.schema.json").read_text(encoding="utf-8"))
         for command in (

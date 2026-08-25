@@ -30,7 +30,7 @@ fourth installed runtime component. See the interactive
 
 The project docsite and architecture publication pipeline are implemented and tested. Feature 003
 owns the native starter bundle, preset command composition, six-command extension, release/catalog
-tooling, and setup lifecycle. Feature 001 defines the core architecture-aware development workflow;
+tooling, and setup lifecycle. Feature 001 defines the Concorde architecture-aware development workflow;
 its initialization, nested feature placement/selection, bounded context, architecture readiness, and
 deterministic validation behavior are implemented. Timed human pilots and browser-based diagram
 review remain pending and are kept separate from automated evidence.
@@ -198,6 +198,6 @@ production Docusaurus build. Start with the maintained [documentation overview](
 - [Concorde prototype reference](concorde-prototype-reference.md)
 - [Project constitution](.specify/memory/constitution.md)
 - [Root architecture](specs/concorde/module.md)
-- [Core workflow specification](specs/concorde/features/001-concorde-starter-workflow/spec.md)
+- [Concorde workflow specification](specs/concorde/features/001-concorde-workflow/spec.md)
 - [Project docsite specification](specs/concorde/features/002-create-project-docsite/spec.md)
 - [Spec Kit installation specification](specs/concorde/features/003-install-concorde-speckit/spec.md)

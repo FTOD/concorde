@@ -11,10 +11,10 @@ representation:
   kind: custom
   format: Concorde Architecture Service Protocol
   version: "1"
-  definition: specs/concorde/features/001-concorde-starter-workflow/contracts/architecture-service.schema.json
+  definition: specs/concorde/features/001-concorde-workflow/contracts/architecture-service.schema.json
 examples:
-  - specs/concorde/features/001-concorde-starter-workflow/contracts/examples/context-response.json
-  - specs/concorde/features/001-concorde-starter-workflow/contracts/examples/validation-response.json
+  - specs/concorde/features/001-concorde-workflow/contracts/examples/context-response.json
+  - specs/concorde/features/001-concorde-workflow/contracts/examples/validation-response.json
 features:
   - feature.architecture-core.manage-bounded-sources
 evidence_status: verified

@@ -2,9 +2,9 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Concorde Core Workflow — Installed Surfaces, Runtime, and Workspace",
+    "title": "Concorde Workflow — Installed Surfaces, Runtime, and Workspace",
     "quality_profile": "showcase",
-    "output": "../../../../../generated/architecture/concorde-core-workflow-components.html",
+    "output": "../../../../../generated/architecture/concorde-workflow-components.html",
     "repository": {
       "url": "https://github.com/FTOD/concorde.git",
       "revision": "6c34cc34f8a84d426080178e071df84903262bba"
@@ -122,8 +122,7 @@
       "pos": [1110, 245],
       "size": [210, 86],
       "sources": [
-        {"path": ".concorde/config.json", "label": "architecture root"},
-        {"path": "specs/concorde/features/001-concorde-starter-workflow/contracts/feature-workspace.schema.json", "label": "selection format"}
+        {"path": ".concorde/config.json", "label": "architecture root"}
       ]
     },
     {
@@ -158,11 +157,7 @@
       "label": "Durable Feature Intent",
       "sublabel": "spec.md, contracts, diagrams",
       "pos": [1400, 165],
-      "size": [210, 86],
-      "sources": [
-        {"path": "specs/concorde/features/001-concorde-starter-workflow/spec.md", "label": "feature behavior"},
-        {"path": "specs/concorde/features/001-concorde-starter-workflow/diagrams/core-workflow-components.json", "label": "feature explanation"}
-      ]
+      "size": [210, 86]
     },
     {
       "id": "featureDesign",
@@ -180,8 +175,7 @@
       "pos": [1400, 605],
       "size": [210, 86],
       "sources": [
-        {"path": "specs/concorde/features/001-concorde-starter-workflow/implementation/plan.md", "label": "temporal design"},
-        {"path": "tests/concorde/acceptance/test_core_workflow.py", "label": "executable evidence"}
+        {"path": "tests/concorde/integration/test_implementation_workspace.py", "label": "workspace evidence"}
       ]
     }
   ],

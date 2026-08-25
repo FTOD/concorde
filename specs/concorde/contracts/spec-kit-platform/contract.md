@@ -13,7 +13,7 @@ counterparties:
   - external.spec-kit
 provider: external.spec-kit
 features:
-  - feature.concorde.core-workflow
+  - feature.concorde.workflow
   - feature.concorde.install-with-spec-kit
 evidence_status: partial
 ---
@@ -38,7 +38,7 @@ This contract adopts the public formats and behaviors documented for Spec Kit `0
 The authoritative definitions are maintained by the Spec Kit project in its bundle, preset, and
 extension reference documentation.
 
-For the core workflow, Concorde additionally relies on the public preset command-composition stack,
+For the Concorde workflow, Concorde additionally relies on the public preset command-composition stack,
 the project-local `.specify/feature.json` `feature_directory` selection field, explicit
 `SPECIFY_FEATURE_DIRECTORY` overrides, and the unchanged meanings of normal specify/clarify/plan/
 tasks/implement/analyze/converge phases. Concorde adapts where their artifacts are resolved; it does
@@ -56,7 +56,7 @@ For installation, the component roles are intentionally distinct:
 
 Concorde relies on all six roles but does not redefine them. The bundle references the preset and
 extension; it does not absorb their contents or behavior into a new component type. After setup, the
-core workflow relies on Spec Kit's normal feature phases and supported selection of a nested feature
+Concorde workflow relies on Spec Kit's normal feature phases and supported selection of a nested feature
 workspace; setup and feature development remain separate responsibilities.
 
 ## Preconditions

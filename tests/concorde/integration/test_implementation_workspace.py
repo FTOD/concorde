@@ -6,7 +6,7 @@ import unittest
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-FEATURE_RELATIVE = "specs/concorde/features/001-concorde-starter-workflow"
+FEATURE_RELATIVE = "specs/concorde/features/001-concorde-workflow"
 
 
 class ImplementationWorkspaceIntegration(unittest.TestCase):

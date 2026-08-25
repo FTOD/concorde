@@ -14,7 +14,7 @@ const baseline = new Map([
   ['docs/framework-overview.md', '/docs/framework-overview'],
   ['docs/specification-model.md', '/docs/specification-model'],
   ['docs/project-structure.md', '/docs/project-structure'],
-  ['docs/core-workflow.md', '/docs/core-workflow'],
+  ['docs/concorde-workflow.md', '/docs/concorde-workflow'],
   ['docs/commands.md', '/docs/commands'],
   ['docs/contributing/docsite.md', '/docs/contributing/docsite'],
 ]);
@@ -59,9 +59,5 @@ describe('maintained Concorde framework guides', () => {
   it('does not present temporal implementation artifacts as permanent guide authority', async () => {
     const manifest = createManifest(await buildRegistry(projectRoot));
     expect(manifest.pages.some((page) => page.sourcePath.includes('/implementation/'))).toBe(false);
-    expect(manifest.excludedSources.some((source) =>
-      source.sourcePath === 'specs/concorde/features/002-create-project-docsite/implementation/plan.md' &&
-      source.reason === 'not-canonical-feature-artifact',
-    )).toBe(true);
   });
 });

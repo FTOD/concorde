@@ -15,7 +15,7 @@ installed instructions may direct the agent to run actual shell or Python progra
 workflow.
 
 The normative command behavior is defined by
-[Feature 001](../specs/concorde/features/001-concorde-starter-workflow/spec.md); distribution of the
+[Feature 001](../specs/concorde/features/001-concorde-workflow/spec.md); distribution of the
 installed surfaces is defined by
 [Feature 003](../specs/concorde/features/003-install-concorde-speckit/spec.md).
 
