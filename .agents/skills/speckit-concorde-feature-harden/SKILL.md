@@ -1,9 +1,10 @@
 ---
-name: "speckit-concorde-feature-harden"
-description: "Harden a completed Concorde implementation attempt into durable design after explicit review and approval."
+name: speckit-concorde-feature-harden
+description: Harden a completed Concorde implementation attempt into the durable feature design.
+compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: "concorde"
-  source: "extensions/concorde/commands/speckit.concorde.feature.harden.md"
+  author: github-spec-kit
+  source: concorde:commands/speckit.concorde.feature.harden.md
 ---
 
 ## User Input
@@ -38,11 +39,16 @@ grant approval.
    boundaries, contracts, or one-level organization. Retain durable decisions and useful evidence
    links; omit transient task ordering, discarded alternatives, and raw validation logs.
 5. Write the candidate to the exact project-contained `proposal_path` returned by the runtime. The JSON
-   must conform to the installed Feature Workspace Protocol and contain the returned target, source
-   digest, durable design path/content, and exactly one implementation-directory removal target.
-6. Present the entire candidate design, exact removal target, and retained authorities. Ask for
-   explicit approval of this exact proposal. Silence, checked tasks, passing validation, or prior
-   milestone acceptance are not approval.
+   must conform to the installed Feature Workspace Protocol and contain:
+   - `proposal_version: 1` and `operation: "feature.harden"`;
+   - the resolved stable feature ID as `target`;
+   - the exact returned `source_digest`;
+   - `design.path` equal to the returned `workspace.feature_design` and `design.content` equal to the
+     complete candidate Markdown; and
+   - `remove` containing exactly the returned `workspace.implementation_dir`.
+6. Present the entire candidate design, exact removal target, and retained `spec.md`, architecture,
+   code, and test authorities. Ask for explicit approval of this exact proposal. Do not treat silence,
+   prior milestone acceptance, passing validation, or checked tasks as approval.
 7. Only after approval, invoke the same installed launcher with
    `feature harden --apply --proposal <returned-project-relative-proposal-path>`. Present the complete
    normative result, including stale-digest conflicts, warnings, removed artifacts, and design
@@ -51,13 +57,15 @@ grant approval.
 ## Safety Invariants
 
 - Do not edit `design.md` directly; only the approved runtime apply promotes the candidate.
-- Do not remove individual implementation files, keep an archived attempt below the feature root, or
-  target any path outside the selected feature.
-- Do not modify `spec.md`, module architecture, code, tests, or generated projections during hardening.
-- On conflict or failure, stop. Never retry apply against changed sources without regenerating and
-  re-presenting the proposal.
+- Do not remove individual implementation files, keep a second archived attempt below the feature
+  root, or target any path outside the selected feature.
+- Do not modify `spec.md`, module architecture, code, tests, or generated projections during
+  hardening.
+- On any conflict or failure, stop and preserve the proposal for review. Never retry apply against a
+  changed digest without regenerating and re-presenting the proposal.
 
 ## Completion Report
 
-Report the feature ID, durable design path, resulting design digest, removed artifact count, retained
-authorities, findings, and whether the feature now has no active implementation workspace.
+Report the feature ID, durable design path, resulting design digest, removed implementation artifact
+count, retained authorities, findings, and whether the feature now has no active implementation
+workspace.

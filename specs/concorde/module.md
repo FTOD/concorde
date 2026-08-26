@@ -12,6 +12,7 @@ features:
   - feature.concorde.workflow
   - feature.concorde.publish-project-docsite
   - feature.concorde.install-with-spec-kit
+  - feature.concorde.self-host-framework
 contracts:
   provided:
     - contract.concorde.workflow
@@ -42,6 +43,7 @@ Docusaurus itself.
 | `feature.concorde.workflow` | A maintainer directs feature development through a recursive specification hierarchy, architecture review gates, bounded context, and deterministic validation. | `specs/concorde/features/001-concorde-workflow/spec.md` |
 | `feature.concorde.publish-project-docsite` | A maintainer browses architecture sources and views, project documentation, and Spec Kit feature specifications in one generated site. | `specs/concorde/features/002-create-project-docsite/spec.md` |
 | `feature.concorde.install-with-spec-kit` | A maintainer inspects, installs, verifies, updates, and removes Concorde through the native Spec Kit ecosystem. | `specs/concorde/features/003-install-concorde-speckit/spec.md` |
+| `feature.concorde.self-host-framework` | A maintainer installs, refreshes, and verifies the current Concorde framework sources in this same checkout so framework improvements are used during Concorde's own development. | `specs/concorde/features/004-self-host-concorde/spec.md` |
 
 ## Invocation at the Root Level
 
@@ -52,6 +54,7 @@ provide the behavior:
 | Entry path | Root feature invoked | Immediate modules involved |
 |---|---|---|
 | A maintainer uses Spec Kit's bundle inspect, install, update, or removal operations. | `feature.concorde.install-with-spec-kit` | Distribution owns the bundle lifecycle; Spec Kit Integration supplies and activates the preset and command extension. |
+| A maintainer installs, refreshes, or verifies the current framework sources in the Concorde checkout itself. | `feature.concorde.self-host-framework` | Distribution identifies the authoritative local component set; Spec Kit Integration materializes it through the active integration; Architecture Core contributes deterministic freshness findings. |
 | A maintainer or coding agent runs normal Spec Kit phases, invokes one of six runtime-backed Concorde operations (`init`, `feature.create`, `feature.select`, `feature.harden`, `context`, or `validate`), or asks a read-only workflow question through `ask`. | `feature.concorde.workflow` | Spec Kit Integration selects the nested workspace, composes phase guidance, and presents all seven Concorde surfaces; Architecture Core executes the six deterministic operations, while the coding agent answers `ask` directly from cited installed guidance and bounded project sources. |
 | A maintainer validates, builds, serves, or browses the generated project site. | `feature.concorde.publish-project-docsite` | Documentation builds the read model from validated Architecture Core sources and canonical Spec Kit feature specifications. |
 
@@ -108,7 +111,9 @@ supplemental Feature 003 explanatory views. Their maintained sources are
 `features/003-install-concorde-speckit/diagrams/starter-installation-flow.json`. `architecture.json` remains
 the canonical one-level root module view. Feature 001 owns the core
 `features/001-concorde-workflow/diagrams/concorde-workflow-components.json` component-interaction model, and Feature
-002 owns `features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json`. Feature-owned
+002 owns `features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json`, and
+Feature 004 owns the core `features/004-self-host-concorde/diagrams/concorde-self-hosting-components.json`
+self-hosting view. Feature-owned
 views are encouraged explanations of scenario collaboration; they do not expand or replace the root
 module view.
 

@@ -1,9 +1,10 @@
 ---
-name: "speckit-concorde-ask"
-description: "Answer a grounded, read-only question about the Concorde workflow or framework"
+name: speckit-concorde-ask
+description: Answer a grounded, read-only question about the Concorde workflow or framework
+compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: "concorde"
-  source: "extensions/concorde/commands/speckit.concorde.ask.md"
+  author: github-spec-kit
+  source: concorde:commands/speckit.concorde.ask.md
 ---
 
 # Ask About Concorde

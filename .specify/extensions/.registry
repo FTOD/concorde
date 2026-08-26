@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "concorde": {
+      "version": "0.1.0",
+      "source": "local",
+      "manifest_hash": "sha256:596cc0216ba5517436cd6d86ad9fd81c558ca193cfb58fd5a27be58f6537e570",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "codex": [
+          "speckit.concorde.init",
+          "speckit.concorde.feature-create",
+          "speckit.concorde.feature-select",
+          "speckit.concorde.feature-harden",
+          "speckit.concorde.context",
+          "speckit.concorde.validate",
+          "speckit.concorde.ask"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-08-26T06:38:39.433310+00:00"
+    }
+  }
+}

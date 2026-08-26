@@ -1,12 +1,13 @@
 ---
-name: "speckit-checklist"
-description: "Generate a custom checklist for the current feature based on user requirements."
-compatibility: "Requires spec-kit project structure with .specify/ directory"
+name: speckit-checklist
+description: Generate a custom requirements-quality checklist for the selected feature.
+compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: "github-spec-kit"
-  source: "templates/commands/checklist.md"
+  author: github-spec-kit
+  source: preset:concorde-core
 ---
 
+# Speckit Checklist Skill
 
 ## Checklist Purpose: "Unit Tests for English"
 
@@ -36,7 +37,7 @@ metadata:
 - `[x]` does NOT mean implementation work is complete.
 - This command generates or appends checklist items; it MUST NOT mark generated items `[x]`.
 - An agent may assist with evaluating items only when explicitly asked by the reviewer.
-- `IMPLEMENTATION_DIR/checklists/requirements.md` is a separate built-in spec-quality checklist maintained by `$speckit-specify` and `$speckit-clarify`; do not treat that exception as applying to custom checklists generated here.
+- `CHECKLISTS_DIR/requirements.md` is a separate built-in spec-quality checklist maintained by `$speckit-specify` and `$speckit-clarify`; do not treat that exception as applying to custom checklists generated here.
 
 ## User Input
 
@@ -45,6 +46,21 @@ $ARGUMENTS
 ```
 
 You **MUST** consider the user input before proceeding (if not empty).
+
+## Concorde Installed Workspace Gate
+
+Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase checklist` from the target
+project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
+`workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
+Bind `CHECKLISTS_DIR` to the returned `workspace.checklists_dir`; never derive it from `FEATURE_DIR`.
+
+Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
+step says to run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase checklist`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
+by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
+`implementation_dir` when absent and seed a missing artifact from the active `plan-template` or
+`tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
+For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
 
 ## Pre-Execution Checks
 
@@ -84,7 +100,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Execution Steps
 
-1. **Setup**: Run `.specify/scripts/bash/check-prerequisites.sh --json --template checklist-template` from repo root and parse JSON for FEATURE_DIR, IMPLEMENTATION_DIR, FEATURE_SPEC, IMPL_PLAN, TASKS, AVAILABLE_DOCS, and TEMPLATE_CONTENT.
+1. **Setup**: Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase checklist` from repo root and parse JSON for FEATURE_DIR, IMPLEMENTATION_DIR, FEATURE_SPEC, IMPL_PLAN, TASKS, AVAILABLE_DOCS, and TEMPLATE_CONTENT.
    - All file paths must be absolute.
    - For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
@@ -140,7 +156,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - If source docs are large, generate interim summary items instead of embedding raw text
 
 6. **Generate checklist** - Use TEMPLATE_CONTENT as the structural template and create "Unit Tests for Requirements":
-   - Create `IMPLEMENTATION_DIR/checklists/` if it doesn't exist
+   - Create `CHECKLISTS_DIR/` if it doesn't exist
    - Generate unique checklist filename:
      - Use short, descriptive name based on domain (e.g., `ux.md`, `api.md`, `security.md`)
      - Format: `[domain].md`

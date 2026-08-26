@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Concorde Self-Hosting Components",
+    "quality_profile": "showcase",
+    "output": "../../../../../generated/architecture/concorde-self-hosting-components.html",
+    "viewBox": [1900, 850],
+    "repository": {
+      "url": "https://github.com/FTOD/concorde",
+      "revision": "7bce921138d3eac46627110aab7bb1f9a4879ab0"
+    },
+    "views": [
+      {
+        "id": "install-current-framework",
+        "label": "Install current framework",
+        "focus": ["maintainer", "frameworkSources", "selfHostFeature", "specKitLifecycle", "activeInstallation"],
+        "note": "Install the checkout's authoritative preset, extension, and bundle into this same project through the supported component lifecycle."
+      },
+      {
+        "id": "develop-with-self-hosted-workflow",
+        "label": "Develop through Concorde",
+        "focus": ["activeInstallation", "codingAgent", "projectSources", "frameworkSources"],
+        "note": "The coding agent loads materialized Concorde surfaces while changing the project and its framework sources."
+      },
+      {
+        "id": "verify-no-drift",
+        "label": "Verify no drift",
+        "focus": ["frameworkSources", "activeInstallation", "driftGate", "selfHostFeature"],
+        "note": "Compare authoritative inputs with active materialization and require refresh before self-application is claimed."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "maintainer",
+      "type": "external",
+      "label": "Maintainer",
+      "sublabel": "Approves self-installation",
+      "pos": [40, 330],
+      "size": [180, 76]
+    },
+    {
+      "id": "frameworkSources",
+      "type": "cloud",
+      "label": "Framework Sources",
+      "sublabel": "Preset · extension · bundle",
+      "tag": "Authoritative development inputs",
+      "sources": [
+        {"path": "presets/concorde-core/preset.yml", "label": "preset manifest"},
+        {"path": "extensions/concorde/extension.yml", "label": "extension manifest"},
+        {"path": "bundles/concorde-starter/bundle.yml", "label": "bundle recipe"}
+      ],
+      "pos": [350, 60],
+      "size": [220, 92]
+    },
+    {
+      "id": "selfHostFeature",
+      "type": "backend",
+      "label": "Self-Host Concorde",
+      "sublabel": "Install · refresh · verify",
+      "tag": "feature.concorde.self-host-framework",
+      "pos": [350, 320],
+      "size": [230, 96]
+    },
+    {
+      "id": "specKitLifecycle",
+      "type": "external",
+      "label": "Spec Kit Lifecycle",
+      "sublabel": "Resolve · preview · materialize",
+      "tag": "contract.concorde.spec-kit-platform",
+      "pos": [750, 320],
+      "size": [220, 92]
+    },
+    {
+      "id": "activeInstallation",
+      "type": "database",
+      "label": "Active Project Installation",
+      "sublabel": ".specify + agent surfaces",
+      "tag": "Materialized, not authoritative",
+      "sources": [
+        {"path": ".specify/init-options.json", "label": "project integration state"},
+        {"path": ".agents/skills/speckit-concorde-ask/SKILL.md", "label": "materialized skill example"}
+      ],
+      "pos": [1150, 320],
+      "size": [230, 96]
+    },
+    {
+      "id": "codingAgent",
+      "type": "external",
+      "label": "Coding Agent",
+      "sublabel": "Loads active Concorde surfaces",
+      "pos": [1550, 326],
+      "size": [220, 84]
+    },
+    {
+      "id": "projectSources",
+      "type": "frontend",
+      "label": "Concorde Project Sources",
+      "sublabel": "Specs · code · tests · docs",
+      "tag": "Preserved project authority",
+      "sources": [
+        {"path": "specs/concorde/module.md", "label": "root specification"},
+        {"path": "tests/concorde/integration/test_self_architecture.py", "label": "executable evidence"}
+      ],
+      "pos": [1550, 570],
+      "size": [230, 84]
+    },
+    {
+      "id": "driftGate",
+      "type": "security",
+      "label": "Self-Hosting Drift Gate",
+      "sublabel": "Source ↔ active installation",
+      "tag": "No false freshness claim",
+      "pos": [1155, 60],
+      "size": [220, 84]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Concorde development checkout",
+      "wraps": ["frameworkSources", "selfHostFeature", "activeInstallation", "projectSources", "driftGate"],
+      "pad": 32
+    }
+  ],
+  "connections": [
+    {
+      "id": "maintainerRequestsSelfHost",
+      "from": "maintainer",
+      "to": "selfHostFeature",
+      "label": "install / refresh / verify",
+      "variant": "emphasis",
+      "labelDy": -42
+    },
+    {
+      "id": "sourcesProvideLocalComponents",
+      "from": "frameworkSources",
+      "to": "selfHostFeature",
+      "label": "authoritative local components",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "selfHostUsesSpecKit",
+      "from": "selfHostFeature",
+      "to": "specKitLifecycle",
+      "label": "approved component plan"
+    },
+    {
+      "id": "specKitMaterializes",
+      "from": "specKitLifecycle",
+      "to": "activeInstallation",
+      "label": "materialize winning layers",
+      "variant": "emphasis"
+    },
+    {
+      "id": "activeGuidesAgent",
+      "from": "activeInstallation",
+      "to": "codingAgent",
+      "label": "skills and commands"
+    },
+    {
+      "id": "agentDevelopsProject",
+      "from": "codingAgent",
+      "to": "projectSources",
+      "label": "develop through Concorde",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "sourceExpectation",
+      "from": "frameworkSources",
+      "to": "driftGate",
+      "label": "expected source state"
+    },
+    {
+      "id": "activeObservation",
+      "from": "activeInstallation",
+      "to": "driftGate",
+      "label": "observed installed state",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "One source of framework truth",
+      "items": ["Preset, extension, and bundle sources remain authoritative", "Installed copies are replaceable project materializations"]
+    },
+    {
+      "dot": "emerald",
+      "title": "Self-application loop",
+      "items": ["Concorde develops itself through its active installed workflow", "Accepted framework changes must be refreshed before use is claimed"]
+    },
+    {
+      "dot": "rose",
+      "title": "Safety boundary",
+      "items": ["Preview and approval precede mutation", "Project-authored specs, docs, code, tests, and unrelated agent assets are preserved"]
+    }
+  ]
+}

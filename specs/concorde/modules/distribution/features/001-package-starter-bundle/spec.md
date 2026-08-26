@@ -4,6 +4,7 @@ kind: feature
 module: module.concorde.distribution
 refines:
   - feature.concorde.install-with-spec-kit
+  - feature.concorde.self-host-framework
 scenarios:
   - scenario.distribution.install-bundle
 contracts:
@@ -23,7 +24,9 @@ canonical_spec: specs/concorde/modules/distribution/features/001-package-starter
 
 A maintainer can inspect, install, update, and remove one native Spec Kit bundle whose resolved plan
 contains exactly the compatible Concorde preset and command extension, while project-owned sources
-and shared components remain safe.
+and shared components remain safe. The same maintained bundle recipe also constrains development
+self-hosting: it proves that the local preset and extension identities and versions remain the pair
+distributed to user projects, without turning the bundle into a self-hosting runtime.
 
 ## Representative Scenario
 

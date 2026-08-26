@@ -4,6 +4,7 @@ kind: feature
 module: module.concorde.spec-kit-integration
 refines:
   - feature.concorde.install-with-spec-kit
+  - feature.concorde.self-host-framework
 scenarios:
   - scenario.integration.compose-and-register
 contracts:
@@ -26,7 +27,9 @@ canonical_spec: specs/concorde/modules/spec-kit-integration/features/001-compose
 A supported Spec Kit project receives composed Concorde guidance and authoritative selected-workspace
 routing in its normal feature lifecycle, plus portable installed commands for deterministic
 architecture services. Nested feature placement and selection semantics are owned separately by
-`feature.integration.manage-feature-workspace`.
+`feature.integration.manage-feature-workspace`. In Concorde's own checkout, the same public preset
+and extension development lifecycle materializes current local sources; the root self-hosting
+feature owns approval, recovery, receipts, drift comparison, and activation reporting.
 
 ## Representative Scenario
 
@@ -53,3 +56,5 @@ contracts fully cover this refinement; a separate child diagram would repeat the
 - Installed launchers resolve the runtime relative to the extension and require only Python 3.11.
 - Clean-project evidence installs from the release bundle with the Concorde checkout unavailable;
   local self-hosting skills and scripts are not accepted as product evidence.
+- Development self-hosting uses public local preset/extension installation and remains behaviorally
+  equivalent to the same component contents installed through the release bundle.

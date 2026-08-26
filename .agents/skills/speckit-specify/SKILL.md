@@ -1,12 +1,14 @@
 ---
-name: "speckit-specify"
-description: "Create or update the feature specification from a natural language feature description."
-compatibility: "Requires spec-kit project structure with .specify/ directory"
+name: speckit-specify
+description: Create or update the feature specification from a natural language feature
+  description.
+compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: "github-spec-kit"
-  source: "templates/commands/specify.md"
+  author: github-spec-kit
+  source: preset:concorde-core
 ---
 
+# Speckit Specify Skill
 
 ## User Input
 
@@ -15,6 +17,21 @@ $ARGUMENTS
 ```
 
 You **MUST** consider the user input before proceeding (if not empty).
+
+## Concorde Installed Workspace Gate
+
+Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase specify` from the target
+project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
+`workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
+Bind `CHECKLISTS_DIR` to the returned `workspace.checklists_dir`; never derive it from `FEATURE_DIR`.
+
+Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
+step says to run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase specify`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
+by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
+`implementation_dir` when absent and seed a missing artifact from the active `plan-template` or
+`tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
+For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
 
 ## Pre-Execution Checks
 
@@ -96,8 +113,9 @@ Given that feature description, do this:
    - Copy the resolved `spec-template` file to `SPECIFY_FEATURE_DIRECTORY/spec.md` as the starting point
    - Set `SPEC_FILE` to `SPECIFY_FEATURE_DIRECTORY/spec.md`
    - Resolve `design-template` through the same public preset/template stack
-   - If `SPECIFY_FEATURE_DIRECTORY/design.md` does not exist, copy the template there and set
-     `DESIGN_FILE`; otherwise preserve the existing durable design byte-for-byte
+   - If `SPECIFY_FEATURE_DIRECTORY/design.md` does not exist, copy the resolved `design-template` to
+     that path and set `DESIGN_FILE` accordingly. If it already exists, preserve it byte-for-byte;
+     specification revision never updates accepted implementation design.
    - Persist the resolved path to `.specify/feature.json`:
      ```json
      {
@@ -112,8 +130,9 @@ Given that feature description, do this:
    - The spec directory name and the git branch name are independent — they may be the same but that is the user's choice
    - The spec directory and file are always created by this command, never by the hook
 
-4. Load the resolved active `spec-template` file to understand required sections. Treat adjacent
-   `design.md` as read-only accepted realization context; specification work must not update it.
+4. Load the resolved active `spec-template` file to understand required sections. Treat the adjacent
+   `design.md` as read-only accepted realization context when it is relevant; do not move design or
+   implementation details into `spec.md` and do not update `design.md` from this command.
 
 5. **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints.
 
@@ -157,7 +176,7 @@ Given that feature description, do this:
 
 8. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
 
-   a. **Create Spec Quality Checklist**: Generate a checklist file at `SPECIFY_FEATURE_DIRECTORY/implementation/checklists/requirements.md` using the checklist template structure with these validation items:
+   a. **Create Spec Quality Checklist**: Generate a checklist file at `CHECKLISTS_DIR/requirements.md` using the checklist template structure with these validation items:
 
       ```markdown
       # Specification Quality Checklist: [FEATURE NAME]

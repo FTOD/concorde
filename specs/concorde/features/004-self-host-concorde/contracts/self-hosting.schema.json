@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://concorde.invalid/contracts/development-self-hosting-v1.schema.json",
+  "title": "Concorde Development Self-Hosting Protocol v1",
+  "oneOf": [
+    {"$ref": "#/$defs/proposal"},
+    {"$ref": "#/$defs/result"},
+    {"$ref": "#/$defs/status"}
+  ],
+  "$defs": {
+    "safePath": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "anyOf": [
+          {"pattern": "^(?:/|[A-Za-z]:[\\\\/])"},
+          {"pattern": "(?:^|/)\\.\\.(?:/|$)"},
+          {"pattern": "\\\\"},
+          {"pattern": "/$"}
+        ]
+      }
+    },
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "version", "source"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["preset", "extension", "bundle"]},
+        "version": {"type": "string", "minLength": 1},
+        "source": {"$ref": "#/$defs/safePath"},
+        "priority": {"type": "integer", "minimum": 1}
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "action", "meaning"],
+      "properties": {
+        "path": {"$ref": "#/$defs/safePath"},
+        "action": {"enum": ["create", "update", "adopt"]},
+        "meaning": {"type": "string", "minLength": 1}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "stage", "path", "message", "remediation"],
+      "properties": {
+        "code": {"type": "string", "pattern": "^CONCORDE-SELF-HOST-[0-9]{3}$"},
+        "severity": {"enum": ["error", "warning", "info"]},
+        "stage": {"enum": ["source", "proposal", "preflight", "apply", "verify", "rollback", "activation"]},
+        "path": {"$ref": "#/$defs/safePath"},
+        "message": {"type": "string", "minLength": 1},
+        "expected": {},
+        "observed": {},
+        "remediation": {"type": "string", "minLength": 1}
+      }
+    },
+    "proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proposal_version", "operation", "target", "status", "source_digest", "integration", "components", "changes", "preserved", "activation", "proposal_path", "findings"],
+      "properties": {
+        "proposal_version": {"const": 1},
+        "operation": {"const": "self-host.apply"},
+        "target": {"const": "feature.concorde.self-host-framework"},
+        "status": {"enum": ["eligible", "invalid"]},
+        "source_digest": {"$ref": "#/$defs/digest"},
+        "integration": {"type": "string", "minLength": 1},
+        "components": {"type": "array", "maxItems": 3, "items": {"$ref": "#/$defs/component"}},
+        "changes": {"type": "array", "items": {"$ref": "#/$defs/change"}},
+        "preserved": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "activation": {"const": "reload_required"},
+        "proposal_path": {"const": ".specify/self-hosting-proposal.json"},
+        "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "operation", "target", "status", "source_digest", "integration", "activation", "changes", "receipt_path", "findings"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "operation": {"const": "self-host.apply"},
+        "target": {"const": "feature.concorde.self-host-framework"},
+        "status": {"enum": ["applied", "unchanged", "conflict", "invalid", "failed", "rolled_back"]},
+        "source_digest": {"$ref": "#/$defs/digest"},
+        "integration": {"type": "string", "minLength": 1},
+        "activation": {"enum": ["reload_required", "unknown"]},
+        "changes": {"type": "array", "items": {"$ref": "#/$defs/change"}},
+        "receipt_path": {"const": ".specify/self-hosting.json"},
+        "installed_digest": {"$ref": "#/$defs/digest"},
+        "registry_digest": {"$ref": "#/$defs/digest"},
+        "surface_digest": {"$ref": "#/$defs/digest"},
+        "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}}
+      }
+    },
+    "dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "message"],
+      "properties": {
+        "status": {"enum": ["matching", "changed", "drift", "missing", "extra_owned", "invalid", "unknown", "reload_required", "externally_verified"]},
+        "message": {"type": "string", "minLength": 1}
+      }
+    },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "operation", "target", "status", "source_digest", "integration", "dimensions", "findings"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "operation": {"const": "self-host.status"},
+        "target": {"const": "feature.concorde.self-host-framework"},
+        "status": {"enum": ["current", "drift", "absent", "unknown"]},
+        "source_digest": {"$ref": "#/$defs/digest"},
+        "integration": {"type": "string", "minLength": 1},
+        "dimensions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "installed", "registry", "surfaces", "activation"],
+          "properties": {
+            "source": {"$ref": "#/$defs/dimension"},
+            "installed": {"$ref": "#/$defs/dimension"},
+            "registry": {"$ref": "#/$defs/dimension"},
+            "surfaces": {"$ref": "#/$defs/dimension"},
+            "activation": {"$ref": "#/$defs/dimension"}
+          }
+        },
+        "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}}
+      }
+    }
+  }
+}

@@ -4917,14 +4917,16 @@
         <path data-edge-from="specKit" data-edge-to="installFeature" data-edge-label="inspect / install / update" data-edge-key="1" data-edge-id="contract_concorde_spec-kit-installation__invoke" data-composition-points="460,261;555,261;555,103;650,103" d="M 460 261 L 547 261 Q 555 261 555 253 L 555 111 Q 555 103 563 103 L 650 103" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="installFeature" data-edge-to="distribution" data-edge-label="bundle lifecycle" data-edge-key="2" data-edge-id="contract_distribution_bundle-lifecycle" data-composition-points="880,96;1070,96" d="M 880 96 L 1070 96" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="integration" data-edge-to="distribution" data-edge-label="preset + extension packages" data-edge-key="3" data-edge-id="contract_distribution_component-packages" data-composition-points="1175,220;1175,128" d="M 1175 220 L 1175 128" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="installFeature" data-edge-to="integration" data-edge-label="compose overrides + commands" data-edge-key="4" data-edge-id="contract_integration_agent-skills" data-composition-points="880,110;975,110;975,252;1070,252" d="M 880 110 L 967 110 Q 975 110 975 118 L 975 244 Q 975 252 983 252 L 1070 252" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="specKit" data-edge-to="concordeWorkflowFeature" data-edge-label="specify → converge" data-edge-key="5" data-edge-id="contract_concorde_workflow__spec-kit" data-composition-points="460,275;555,275;555,368;650,368" d="M 460 275 L 547 275 Q 555 275 555 283 L 555 360 Q 555 368 563 368 L 650 368" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="agentHost" data-edge-to="concordeWorkflowFeature" data-edge-label="6 operations + read-only ask" data-edge-key="6" data-edge-id="contract_concorde_workflow__agent" data-composition-points="460,468;555,468;555,368;650,368" d="M 460 468 L 547 468 Q 555 468 555 460 L 555 376 Q 555 368 563 368 L 650 368" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="concordeWorkflowFeature" data-edge-to="integration" data-edge-label="workspace + phase routing" data-edge-key="7" data-edge-id="contract_integration_feature-workspace" data-composition-points="880,361;975,361;975,266;1070,266" d="M 880 361 L 967 361 Q 975 361 975 353 L 975 274 Q 975 266 983 266 L 1070 266" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="concordeWorkflowFeature" data-edge-to="architectureCore" data-edge-label="bounded architecture services" data-edge-key="8" data-edge-id="contract_core_architecture-services" data-composition-points="880,375;975,375;975,439;1070,439" d="M 880 375 L 967 375 Q 975 375 975 383 L 975 431 Q 975 439 983 439 L 1070 439" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="maintainer" data-edge-to="publishFeature" data-edge-label="build / browse site" data-edge-key="9" data-edge-id="contract_documentation_architecture-site__maintainer" data-composition-points="125,406;125,710;765,710;765,666" d="M 125 406 L 125 702 Q 125 710 133 710 L 757 710 Q 765 710 765 702 L 765 666" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="publishFeature" data-edge-to="documentation" data-edge-label="validate / build / serve" data-edge-key="10" data-edge-id="contract_documentation_build-interface" data-composition-points="880,623;1070,623" d="M 880 623 L 1070 623" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="architectureCore" data-edge-to="documentation" data-edge-label="validated architecture" data-edge-key="11" data-edge-id="contract_documentation_project-content__core" data-composition-points="1175,478;1175,590" d="M 1175 478 L 1175 590" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="specKit" data-edge-to="selfHostFeature" data-edge-label="local install / refresh" data-edge-key="4" data-edge-id="contract_concorde_spec-kit-installation__self-hosting" data-composition-points="460,268;555,268;555,233;650,233" d="M 460 268 L 547 268 Q 555 268 555 260 L 555 241 Q 555 233 563 233 L 650 233" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="selfHostFeature" data-edge-to="integration" data-edge-label="materialize + verify" data-edge-key="5" data-edge-id="contract_integration_agent-skills__self-hosting" data-composition-points="880,233;975,233;975,259;1070,259" d="M 880 233 L 967 233 Q 975 233 975 241 L 975 251 Q 975 259 983 259 L 1070 259" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="installFeature" data-edge-to="integration" data-edge-label="compose overrides + commands" data-edge-key="6" data-edge-id="contract_integration_agent-skills" data-composition-points="880,110;975,110;975,252;1070,252" d="M 880 110 L 967 110 Q 975 110 975 118 L 975 244 Q 975 252 983 252 L 1070 252" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="specKit" data-edge-to="concordeWorkflowFeature" data-edge-label="specify → converge" data-edge-key="7" data-edge-id="contract_concorde_workflow__spec-kit" data-composition-points="460,275;555,275;555,368;650,368" d="M 460 275 L 547 275 Q 555 275 555 283 L 555 360 Q 555 368 563 368 L 650 368" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="agentHost" data-edge-to="concordeWorkflowFeature" data-edge-label="6 operations + read-only ask" data-edge-key="8" data-edge-id="contract_concorde_workflow__agent" data-composition-points="460,468;555,468;555,368;650,368" d="M 460 468 L 547 468 Q 555 468 555 460 L 555 376 Q 555 368 563 368 L 650 368" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="concordeWorkflowFeature" data-edge-to="integration" data-edge-label="workspace + phase routing" data-edge-key="9" data-edge-id="contract_integration_feature-workspace" data-composition-points="880,361;975,361;975,266;1070,266" d="M 880 361 L 967 361 Q 975 361 975 353 L 975 274 Q 975 266 983 266 L 1070 266" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="concordeWorkflowFeature" data-edge-to="architectureCore" data-edge-label="bounded architecture services" data-edge-key="10" data-edge-id="contract_core_architecture-services" data-composition-points="880,375;975,375;975,439;1070,439" d="M 880 375 L 967 375 Q 975 375 975 383 L 975 431 Q 975 439 983 439 L 1070 439" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="maintainer" data-edge-to="publishFeature" data-edge-label="build / browse site" data-edge-key="11" data-edge-id="contract_documentation_architecture-site__maintainer" data-composition-points="125,406;125,710;765,710;765,666" d="M 125 406 L 125 702 Q 125 710 133 710 L 757 710 Q 765 710 765 702 L 765 666" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="publishFeature" data-edge-to="documentation" data-edge-label="validate / build / serve" data-edge-key="12" data-edge-id="contract_documentation_build-interface" data-composition-points="880,623;1070,623" d="M 880 623 L 1070 623" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="architectureCore" data-edge-to="documentation" data-edge-label="validated architecture" data-edge-key="13" data-edge-id="contract_documentation_project-content__core" data-composition-points="1175,478;1175,590" d="M 1175 478 L 1175 590" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
 
         <!-- Components -->
         <g id="node-maintainer" data-node-id="maintainer" data-node-label="Maintainer" tabindex="0" role="button" aria-label="Focus Maintainer, Chooses a Concorde capability, Architecture component" aria-pressed="false" data-node-kind="external" data-node-sublabel="Chooses a Concorde capability" data-node-context="Architecture component">
@@ -4985,6 +4987,19 @@
           <text data-detail-anchor x="765" y="366" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Concorde Workflow</text>
         <text data-detail="context" x="765" y="382" class="t-muted" font-size="9" text-anchor="middle">Root feature · direct development</text>
         <text data-detail="fine" x="765" y="408" class="t-backend" font-size="7" text-anchor="middle">feature.concorde.workflow</text>
+        </g>
+
+        <g id="node-selfHostFeature" data-node-id="selfHostFeature" data-node-label="Self-Host Concorde" tabindex="0" role="button" aria-label="Focus Self-Host Concorde, Root feature · development install, Concorde root · current features + immediate modules" aria-pressed="false" data-node-kind="security" data-node-sublabel="Root feature · development install" data-node-tag="feature.concorde.self-host-framework" data-node-context="Concorde root · current features + immediate modules">
+          <title>Self-Host Concorde · Root feature · development install · Concorde root · current features + immediate modules · feature.concorde.self-host-framework</title>
+          <rect x="650" y="190" width="230" height="86" rx="6" class="c-mask"/>
+          <rect x="650" y="190" width="230" height="86" rx="6" class="c-security" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(656 196) scale(0.6875)">
+            <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
+            <path d="m5.8 8 1.5 1.5 3-3"/>
+          </g>
+          <text data-detail-anchor x="765" y="231" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Self-Host Concorde</text>
+        <text data-detail="context" x="765" y="247" class="t-muted" font-size="9" text-anchor="middle">Root feature · development install</text>
+        <text data-detail="fine" x="765" y="268" class="t-security" font-size="7" text-anchor="middle">feature.concorde.self-host-framework</text>
         </g>
 
         <g id="node-publishFeature" data-node-id="publishFeature" data-node-label="Publish Project Docsite" tabindex="0" role="button" aria-label="Focus Publish Project Docsite, Root feature · generated read model, Concorde root · current features + immediate modules" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="Root feature · generated read model" data-node-tag="feature.concorde.publish-project-docsite" data-node-context="Concorde root · current features + immediate modules">
@@ -5070,35 +5085,43 @@
           <rect x="1105.2" y="200" width="139.6" height="14" rx="3" class="c-mask"/>
           <text x="1175" y="210" class="t-muted" font-size="8" text-anchor="middle">preset + extension packages</text>
         </g>
-        <g data-detail="context" data-edge-from="installFeature" data-edge-to="integration" data-edge-label="compose overrides + commands" data-edge-key="4" data-edge-id="contract_integration_agent-skills">
+        <g data-detail="context" data-edge-from="specKit" data-edge-to="selfHostFeature" data-edge-label="local install / refresh" data-edge-key="4" data-edge-id="contract_concorde_spec-kit-installation__self-hosting">
+          <rect x="599.8" y="290" width="120.39999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="660" y="300" class="t-muted" font-size="8" text-anchor="middle">local install / refresh</text>
+        </g>
+        <g data-detail="context" data-edge-from="selfHostFeature" data-edge-to="integration" data-edge-label="materialize + verify" data-edge-key="5" data-edge-id="contract_integration_agent-skills__self-hosting">
+          <rect x="1027" y="305" width="106" height="14" rx="3" class="c-mask"/>
+          <text x="1080" y="315" class="t-security" font-size="8" text-anchor="middle">materialize + verify</text>
+        </g>
+        <g data-detail="context" data-edge-from="installFeature" data-edge-to="integration" data-edge-label="compose overrides + commands" data-edge-key="6" data-edge-id="contract_integration_agent-skills">
           <rect x="902.8" y="161" width="144.4" height="14" rx="3" class="c-mask"/>
           <text x="975" y="171" class="t-backend" font-size="8" text-anchor="middle">compose overrides + commands</text>
         </g>
-        <g data-detail="context" data-edge-from="specKit" data-edge-to="concordeWorkflowFeature" data-edge-label="specify → converge" data-edge-key="5" data-edge-id="contract_concorde_workflow__spec-kit">
+        <g data-detail="context" data-edge-from="specKit" data-edge-to="concordeWorkflowFeature" data-edge-label="specify → converge" data-edge-key="7" data-edge-id="contract_concorde_workflow__spec-kit">
           <rect x="506.8" y="301.5" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
           <text x="555" y="311.5" class="t-messagebus" font-size="8" text-anchor="middle">specify → converge</text>
         </g>
-        <g data-detail="context" data-edge-from="agentHost" data-edge-to="concordeWorkflowFeature" data-edge-label="6 operations + read-only ask" data-edge-key="6" data-edge-id="contract_concorde_workflow__agent">
+        <g data-detail="context" data-edge-from="agentHost" data-edge-to="concordeWorkflowFeature" data-edge-label="6 operations + read-only ask" data-edge-key="8" data-edge-id="contract_concorde_workflow__agent">
           <rect x="482.8" y="510" width="144.4" height="14" rx="3" class="c-mask"/>
           <text x="555" y="520" class="t-backend" font-size="8" text-anchor="middle">6 operations + read-only ask</text>
         </g>
-        <g data-detail="context" data-edge-from="concordeWorkflowFeature" data-edge-to="integration" data-edge-label="workspace + phase routing" data-edge-key="7" data-edge-id="contract_integration_feature-workspace">
+        <g data-detail="context" data-edge-from="concordeWorkflowFeature" data-edge-to="integration" data-edge-label="workspace + phase routing" data-edge-key="9" data-edge-id="contract_integration_feature-workspace">
           <rect x="910" y="293.5" width="130" height="14" rx="3" class="c-mask"/>
           <text x="975" y="303.5" class="t-muted" font-size="8" text-anchor="middle">workspace + phase routing</text>
         </g>
-        <g data-detail="context" data-edge-from="concordeWorkflowFeature" data-edge-to="architectureCore" data-edge-label="bounded architecture services" data-edge-key="8" data-edge-id="contract_core_architecture-services">
+        <g data-detail="context" data-edge-from="concordeWorkflowFeature" data-edge-to="architectureCore" data-edge-label="bounded architecture services" data-edge-key="10" data-edge-id="contract_core_architecture-services">
           <rect x="900.4" y="387" width="149.2" height="14" rx="3" class="c-mask"/>
           <text x="975" y="397" class="t-backend" font-size="8" text-anchor="middle">bounded architecture services</text>
         </g>
-        <g data-detail="context" data-edge-from="maintainer" data-edge-to="publishFeature" data-edge-label="build / browse site" data-edge-key="9" data-edge-id="contract_documentation_architecture-site__maintainer">
+        <g data-detail="context" data-edge-from="maintainer" data-edge-to="publishFeature" data-edge-label="build / browse site" data-edge-key="11" data-edge-id="contract_documentation_architecture-site__maintainer">
           <rect x="449.4" y="690" width="101.2" height="14" rx="3" class="c-mask"/>
           <text x="500" y="700" class="t-messagebus" font-size="8" text-anchor="middle">build / browse site</text>
         </g>
-        <g data-detail="context" data-edge-from="publishFeature" data-edge-to="documentation" data-edge-label="validate / build / serve" data-edge-key="10" data-edge-id="contract_documentation_build-interface">
+        <g data-detail="context" data-edge-from="publishFeature" data-edge-to="documentation" data-edge-label="validate / build / serve" data-edge-key="12" data-edge-id="contract_documentation_build-interface">
           <rect x="912.4" y="603" width="125.19999999999999" height="14" rx="3" class="c-mask"/>
           <text x="975" y="613" class="t-backend" font-size="8" text-anchor="middle">validate / build / serve</text>
         </g>
-        <g data-detail="context" data-edge-from="architectureCore" data-edge-to="documentation" data-edge-label="validated architecture" data-edge-key="11" data-edge-id="contract_documentation_project-content__core">
+        <g data-detail="context" data-edge-from="architectureCore" data-edge-to="documentation" data-edge-label="validated architecture" data-edge-key="13" data-edge-id="contract_documentation_project-content__core">
           <rect x="1117.2" y="495" width="115.6" height="14" rx="3" class="c-mask"/>
           <text x="1175" y="505" class="t-muted" font-size="8" text-anchor="middle">validated architecture</text>
         </g>
@@ -5118,9 +5141,13 @@
             <rect x="245" y="735" width="16" height="10" rx="2.5" class="c-cloud" stroke-width="1"/>
             <text x="267" y="744" class="t-muted" font-size="10" font-weight="500">Cloud</text>
           </g>
-          <g data-legend-semantic-kind="external" data-legend-kind="external" data-legend-label="External" data-legend-x="335" data-legend-baseline="744" data-legend-width="83">
-            <rect x="335" y="735" width="16" height="10" rx="2.5" class="c-external" stroke-width="1"/>
-            <text x="357" y="744" class="t-muted" font-size="10" font-weight="500">External</text>
+          <g data-legend-semantic-kind="security" data-legend-kind="security" data-legend-label="Security" data-legend-x="335" data-legend-baseline="744" data-legend-width="83">
+            <rect x="335" y="735" width="16" height="10" rx="2.5" class="c-security" stroke-width="1"/>
+            <text x="357" y="744" class="t-muted" font-size="10" font-weight="500">Security</text>
+          </g>
+          <g data-legend-semantic-kind="external" data-legend-kind="external" data-legend-label="External" data-legend-x="440" data-legend-baseline="744" data-legend-width="83">
+            <rect x="440" y="735" width="16" height="10" rx="2.5" class="c-external" stroke-width="1"/>
+            <text x="462" y="744" class="t-muted" font-size="10" font-weight="500">External</text>
           </g>
         </g>
       </svg>
@@ -5309,10 +5336,11 @@
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>Three root-level features</h3>
+          <h3>Four root-level features</h3>
         </div>
         <ul>
-          <li>&bull; Install with Spec Kit prepares the project</li>
+          <li>&bull; Install with Spec Kit prepares user projects</li>
+          <li>&bull; Self-Host Concorde activates current sources here</li>
           <li>&bull; Concorde Workflow directs feature delivery</li>
           <li>&bull; Publish Project Docsite exposes the generated read model</li>
         </ul>

@@ -1,12 +1,13 @@
 ---
-name: "speckit-plan"
-description: "Execute the implementation planning workflow using the plan template to generate design artifacts."
-compatibility: "Requires spec-kit project structure with .specify/ directory"
+name: speckit-plan
+description: Execute implementation planning for the selected Concorde feature workspace.
+compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: "github-spec-kit"
-  source: "templates/commands/plan.md"
+  author: github-spec-kit
+  source: preset:concorde-core
 ---
 
+# Speckit Plan Skill
 
 ## User Input
 
@@ -15,6 +16,20 @@ $ARGUMENTS
 ```
 
 You **MUST** consider the user input before proceeding (if not empty).
+
+## Concorde Installed Workspace Gate
+
+Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase plan` from the target
+project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
+`workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
+
+Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
+step says to run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase plan`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
+by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
+`implementation_dir` when absent and seed a missing artifact from the active `plan-template` or
+`tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
+For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
 
 ## Pre-Execution Checks
 
@@ -54,13 +69,13 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
-1. **Setup**: Run `.specify/scripts/bash/setup-plan.sh --json` from repo root and parse JSON for FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, IMPLEMENTATION_DIR, SPECS_DIR, BRANCH. `FEATURE_SPEC`, `FEATURE_DESIGN`, and feature contracts are durable sources at the feature root; `IMPL_PLAN` and the other plan-phase artifacts belong to the temporal `IMPLEMENTATION_DIR`. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. **Setup**: Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase plan` from repo root and parse JSON for FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, IMPLEMENTATION_DIR, SPECS_DIR, BRANCH. `FEATURE_SPEC`, `FEATURE_DESIGN`, and feature contracts are durable sources at the feature root; `IMPL_PLAN` and the other plan-phase artifacts belong to the temporal `IMPLEMENTATION_DIR`. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
 2. **Load context**: Read FEATURE_SPEC, FEATURE_DESIGN, and `.specify/memory/constitution.md`. Treat
-   FEATURE_DESIGN as the accepted realization baseline and plan an explicit delta from it without
-   updating the durable design. Load IMPL_PLAN template (already copied). Also read every
-   feature-owned Archify JSON source referenced by the specification; keep it distinct from the
-   providing module's canonical `architecture.json`.
+   FEATURE_DESIGN as the accepted realization baseline and plan the current attempt as an explicit
+   delta from it; do not update the durable design during planning. Load IMPL_PLAN template (already
+   copied). Also read every feature-owned Archify JSON source referenced by the specification; keep it
+   distinct from the providing module's canonical `architecture.json`.
 
 3. **Execute plan workflow**: Follow the structure in IMPL_PLAN template to:
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
@@ -76,6 +91,8 @@ You **MUST** consider the user input before proceeding (if not empty).
      its textual counterpart, generated delivery, showcase validation, truthful visual-review
      evidence, and freshness check.
    - Re-evaluate Constitution Check post-design
+   - Identify which accepted design sections remain unchanged and which implementation decisions the
+     current attempt proposes to replace or extend, so a later hardening can compact the result.
 
 ## Mandatory Post-Execution Hooks
 

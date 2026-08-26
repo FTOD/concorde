@@ -1,12 +1,13 @@
 ---
-name: "speckit-converge"
-description: "Assess the current codebase against the feature's spec, plan, and tasks, then append any remaining unbuilt work as new tasks to tasks.md so implement can complete it."
-compatibility: "Requires spec-kit project structure with .specify/ directory"
+name: speckit-converge
+description: Append remaining implementation work to the selected temporal task list.
+compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
-  author: "github-spec-kit"
-  source: "templates/commands/converge.md"
+  author: github-spec-kit
+  source: preset:concorde-core
 ---
 
+# Speckit Converge Skill
 
 ## User Input
 
@@ -15,6 +16,20 @@ $ARGUMENTS
 ```
 
 You **MUST** consider the user input before proceeding (if not empty).
+
+## Concorde Installed Workspace Gate
+
+Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase converge` from the target
+project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
+`workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
+
+Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
+step says to run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase converge`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
+by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
+`implementation_dir` when absent and seed a missing artifact from the active `plan-template` or
+`tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
+For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
 
 ## Pre-Execution Checks
 
@@ -96,7 +111,7 @@ skip constitution checks gracefully rather than failing.
 
 ### 1. Initialize Convergence Context
 
-Run `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks` once from repo root and parse JSON for FEATURE_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
+Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase converge` once from repo root and parse JSON for FEATURE_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
 
 - SPEC = FEATURE_SPEC
 - DESIGN = FEATURE_DESIGN

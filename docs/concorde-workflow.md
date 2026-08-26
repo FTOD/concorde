@@ -9,6 +9,10 @@ Concorde surrounds the normal Spec Kit lifecycle with architectural ownership, b
 deterministic validation, and durable-design review. It does not replace specification, planning,
 tasks, or implementation.
 
+Contributors changing the Concorde framework itself must also use the explicit local synchronization
+described in [Developing Concorde with Concorde](self-hosting.md). Updating checked-in preset or
+extension sources does not hot-reload their installed copies or the current agent session.
+
 The authoritative workflow, including requirements and edge cases, is
 [Feature 001](../specs/concorde/features/001-concorde-workflow/spec.md). The stages below
 explain how to apply it in a project.

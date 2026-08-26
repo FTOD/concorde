@@ -7,3 +7,9 @@ feature.json
 
 # Per-machine extension config overrides.
 extensions/*/local-config.yml
+
+# Concorde review proposals and self-hosting evidence are checkout-local.
+initialization-proposal.json
+harden-proposal.json
+self-hosting-proposal.json
+self-hosting.json

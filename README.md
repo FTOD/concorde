@@ -36,6 +36,10 @@ its initialization, nested feature placement/selection, bounded context, archite
 deterministic validation behavior are implemented. Timed human pilots and browser-based diagram
 review remain pending and are kept separate from automated evidence.
 
+Concorde can also install the current checkout's framework sources into this repository for
+development self-application. That review-first path is deliberately separate from the release
+bundle used by other projects; see [Developing Concorde with Concorde](docs/self-hosting.md).
+
 ## Quick start: install Concorde as a Spec Kit bundle
 
 ### Prerequisites
@@ -210,3 +214,4 @@ production Docusaurus build. Start with the maintained [documentation overview](
 - [Concorde workflow specification](specs/concorde/features/001-concorde-workflow/spec.md)
 - [Project docsite specification](specs/concorde/features/002-create-project-docsite/spec.md)
 - [Spec Kit installation specification](specs/concorde/features/003-install-concorde-speckit/spec.md)
+- [Development self-hosting specification](specs/concorde/features/004-self-host-concorde/spec.md)

@@ -33,8 +33,9 @@ validation semantics.
 ## Feature Set
 
 - `feature.integration.compose-starter-workflow` refines
-  `feature.concorde.install-with-spec-kit`; it owns preset composition and installed command
-  registration at this level.
+  `feature.concorde.install-with-spec-kit` and `feature.concorde.self-host-framework`; it owns preset
+  composition and installed command registration for both released and development-local sources at
+  this level.
 - `feature.integration.manage-feature-workspace` refines `feature.concorde.workflow`; it owns
   reviewed nested feature placement, active selection, and phase-specific durable/temporal path
   routing.

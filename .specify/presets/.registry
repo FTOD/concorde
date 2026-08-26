@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "presets": {
+    "concorde-core": {
+      "version": "0.1.0",
+      "source": "local",
+      "manifest_hash": "sha256:a90310f1a11fe3e519ed1254171764e5fe62c6be07424f1afaae4786587478a4",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "codex": [
+          "speckit.specify",
+          "speckit.clarify",
+          "speckit.checklist",
+          "speckit.plan",
+          "speckit.tasks",
+          "speckit.implement",
+          "speckit.analyze",
+          "speckit.converge",
+          "speckit.taskstoissues"
+        ]
+      },
+      "registered_skills": {
+        "codex": [
+          "speckit-specify",
+          "speckit-clarify",
+          "speckit-checklist",
+          "speckit-plan",
+          "speckit-tasks",
+          "speckit-implement",
+          "speckit-analyze",
+          "speckit-converge",
+          "speckit-taskstoissues"
+        ]
+      },
+      "installed_at": "2026-08-26T06:38:39.098239+00:00"
+    }
+  }
+}

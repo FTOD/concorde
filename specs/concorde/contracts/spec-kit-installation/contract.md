@@ -17,6 +17,7 @@ consumers:
   - external.spec-kit
 features:
   - feature.concorde.install-with-spec-kit
+  - feature.concorde.self-host-framework
 evidence_status: partial
 ---
 
@@ -25,7 +26,8 @@ evidence_status: partial
 ## Purpose
 
 Let a maintainer inspect, install, verify, update, and remove Concorde through the normal Spec Kit
-ecosystem without a separate installer or a replacement feature lifecycle.
+ecosystem without a separate installer or replacement feature lifecycle, including installing and
+refreshing the current trusted Concorde sources in the Concorde development checkout itself.
 
 ## Information
 
@@ -42,6 +44,11 @@ winning normal-command layers, and registers the extension's Concorde-specific c
 active coding-agent integration. None of those setup roles owns Feature 001's Concorde workflow
 semantics; Architecture Core begins handling project architecture only after setup activates the
 installed command surfaces.
+
+For development self-hosting, the accepted local preset, extension, and bundle source state replaces
+a published archive as the expected component input. The same component roles, compatibility,
+preview, ownership, and active-integration obligations continue to apply. Project-local installed
+copies remain replaceable materializations and cannot become release or source authority.
 
 ## Obligations
 
@@ -62,6 +69,12 @@ installed command surfaces.
 - Repeated installation MUST be idempotent.
 - Update and removal MUST preserve project-authored `.concorde/` and `specs/` sources and shared
   components.
+- Development self-hosting MUST preview and bind the accepted local source state, preserve all
+  project-authored content and unrelated agent assets, and report whether an agent reload or new
+  session is required before refreshed instructions are active.
+- A read-only self-hosting check MUST report source, materialization, registration, compatibility,
+  and activation disagreements without claiming that file equality proves the running agent loaded
+  the current instructions.
 
 ## Failure Semantics
 

@@ -38,11 +38,14 @@ describe('production build', () => {
       .toContain('Install, Materialize, and Prove Concorde');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-workflow-components.html'), 'utf8'))
       .toContain('Concorde Workflow — Installed Surfaces, Runtime, and Workspace');
+    expect(await readFile(resolve(buildDir, 'architecture/concorde-self-hosting-components.html'), 'utf8'))
+      .toContain('Concorde Self-Hosting Components');
     expect(await readFile(resolve(buildDir, 'architecture/project-docsite-publication-flow.html'), 'utf8'))
       .toContain('Project Docsite — Publication Invocation');
     const concordeFeature = manifest.pages.find((page: {featureId?: string}) => page.featureId === 'feature.concorde.workflow');
     const docsiteFeature = manifest.pages.find((page: {featureId?: string}) => page.featureId === 'feature.concorde.publish-project-docsite');
-    if (!concordeFeature || !docsiteFeature) throw new Error('Expected Feature 001 and Feature 002 in the build manifest.');
+    const selfHostingFeature = manifest.pages.find((page: {featureId?: string}) => page.featureId === 'feature.concorde.self-host-framework');
+    if (!concordeFeature || !docsiteFeature || !selfHostingFeature) throw new Error('Expected Features 001, 002, and 004 in the build manifest.');
     expect(concordeFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
       source: 'specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json',
       role: 'core',
@@ -53,14 +56,24 @@ describe('production build', () => {
       source: 'specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json',
       route: '/architecture/project-docsite-publication-flow.html',
     })]));
+    expect(selfHostingFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
+      source: 'specs/concorde/features/004-self-host-concorde/diagrams/concorde-self-hosting-components.json',
+      role: 'core',
+      kind: 'architecture',
+      route: '/architecture/concorde-self-hosting-components.html',
+    })]));
     const concordeFeatureHtml = await readFile(resolve(buildDir, `${concordeFeature.route.slice(1)}.html`), 'utf8');
     const docsiteFeatureHtml = await readFile(resolve(buildDir, `${docsiteFeature.route.slice(1)}.html`), 'utf8');
+    const selfHostingFeatureHtml = await readFile(resolve(buildDir, `${selfHostingFeature.route.slice(1)}.html`), 'utf8');
     expect(concordeFeatureHtml).toContain('Feature diagrams');
     expect(concordeFeatureHtml).toContain('Concorde Workflow — Installed Surfaces, Runtime, and Workspace');
     expect(concordeFeatureHtml).toContain('/architecture/concorde-workflow-components.html');
     expect(docsiteFeatureHtml).toContain('Feature diagrams');
     expect(docsiteFeatureHtml).toContain('Project Docsite — Publication Invocation');
     expect(docsiteFeatureHtml).toContain('/architecture/project-docsite-publication-flow.html');
+    expect(selfHostingFeatureHtml).toContain('Feature diagrams');
+    expect(selfHostingFeatureHtml).toContain('Concorde Self-Hosting Components');
+    expect(selfHostingFeatureHtml).toContain('/architecture/concorde-self-hosting-components.html');
     const rootModule = await readFile(resolve(buildDir, 'architecture/concorde/module.concorde.html'), 'utf8');
     expect(rootModule).toContain('Interactive architecture view for Concorde');
     expect(rootModule).toContain('/architecture/concorde-root.html');

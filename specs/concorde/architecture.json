@@ -83,6 +83,15 @@
       "size": [230, 96]
     },
     {
+      "id": "selfHostFeature",
+      "tag": "feature.concorde.self-host-framework",
+      "type": "security",
+      "label": "Self-Host Concorde",
+      "sublabel": "Root feature · development install",
+      "pos": [650, 190],
+      "size": [230, 86]
+    },
+    {
       "id": "publishFeature",
       "tag": "feature.concorde.publish-project-docsite",
       "type": "frontend",
@@ -132,7 +141,7 @@
     {
       "kind": "region",
       "label": "Concorde root · current features + immediate modules",
-      "wraps": ["installFeature", "concordeWorkflowFeature", "publishFeature", "distribution", "integration", "architectureCore", "documentation"],
+      "wraps": ["installFeature", "selfHostFeature", "concordeWorkflowFeature", "publishFeature", "distribution", "integration", "architectureCore", "documentation"],
       "pad": 34
     }
   ],
@@ -163,6 +172,21 @@
       "from": "integration",
       "to": "distribution",
       "label": "preset + extension packages"
+    },
+    {
+      "id": "contract_concorde_spec-kit-installation__self-hosting",
+      "from": "specKit",
+      "to": "selfHostFeature",
+      "label": "local install / refresh",
+      "labelAt": [660, 300]
+    },
+    {
+      "id": "contract_integration_agent-skills__self-hosting",
+      "from": "selfHostFeature",
+      "to": "integration",
+      "label": "materialize + verify",
+      "labelAt": [1080, 315],
+      "variant": "security"
     },
     {
       "id": "contract_integration_agent-skills",
@@ -231,8 +255,8 @@
   "cards": [
     {
       "dot": "cyan",
-      "title": "Three root-level features",
-      "items": ["Install with Spec Kit prepares the project", "Concorde Workflow directs feature delivery", "Publish Project Docsite exposes the generated read model"]
+      "title": "Four root-level features",
+      "items": ["Install with Spec Kit prepares user projects", "Self-Host Concorde activates current sources here", "Concorde Workflow directs feature delivery", "Publish Project Docsite exposes the generated read model"]
     },
     {
       "dot": "emerald",

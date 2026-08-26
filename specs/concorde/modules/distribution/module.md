@@ -28,7 +28,9 @@ or user-authored architecture sources.
 ## Feature Set
 
 - `feature.distribution.package-starter-bundle` refines
-  `feature.concorde.install-with-spec-kit` and owns bundle lifecycle behavior at this level.
+  `feature.concorde.install-with-spec-kit` and `feature.concorde.self-host-framework`; it owns the
+  versioned recipe used to compare the self-hosted local composition with the released product, while
+  the root self-hosting feature owns checkout mutation and freshness.
 
 ## Bundle and Catalog Model
 

@@ -99,7 +99,9 @@ class AgentCommandContractTests(unittest.TestCase):
             content = path.read_text(encoding="utf-8")
             self.assertNotIn("FEATURE_DIR/checklists", content, path.as_posix())
             self.assertTrue(
-                "implementation/checklists" in content or "IMPLEMENTATION_DIR/checklists" in content,
+                "implementation/checklists" in content
+                or "IMPLEMENTATION_DIR/checklists" in content
+                or "CHECKLISTS_DIR" in content,
                 path.as_posix(),
             )
 

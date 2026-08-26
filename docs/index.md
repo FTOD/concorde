@@ -46,6 +46,8 @@ If you are already working in a Concorde project:
    and hardening.
 4. Consult [Commands and installed surfaces](commands.md) to choose the right operation and
    understand what actually executes it.
+5. If you are contributing to Concorde itself, read
+   [Developing Concorde with Concorde](self-hosting.md) before changing framework sources.
 
 If you are modifying the publication system, read [Contributing to the docsite](contributing/docsite.md).
 
@@ -57,7 +59,8 @@ edge cases, status, and acceptance criteria live in:
 - the [root Concorde architecture](../specs/concorde/module.md);
 - [Feature 001: the Concorde workflow](../specs/concorde/features/001-concorde-workflow/spec.md);
 - [Feature 002: project docsite publication](../specs/concorde/features/002-create-project-docsite/spec.md); and
-- [Feature 003: installation through Spec Kit](../specs/concorde/features/003-install-concorde-speckit/spec.md).
+- [Feature 003: installation through Spec Kit](../specs/concorde/features/003-install-concorde-speckit/spec.md); and
+- [Feature 004: development self-hosting](../specs/concorde/features/004-self-host-concorde/spec.md).
 
 Feature status is shown rather than interpreted. A published draft remains a draft; publication does
 not imply approval, implementation, or verified evidence.

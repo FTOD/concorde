@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "operation": "self-host.apply",
+  "target": "feature.concorde.self-host-framework",
+  "status": "applied",
+  "source_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "integration": "codex",
+  "activation": "reload_required",
+  "changes": [
+    {"path": ".specify/extensions/concorde", "action": "create", "meaning": "Materialized the local Concorde extension through Spec Kit."},
+    {"path": ".specify/presets/concorde-core", "action": "create", "meaning": "Materialized the local Concorde preset through Spec Kit."}
+  ],
+  "receipt_path": ".specify/self-hosting.json",
+  "installed_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "registry_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "surface_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "findings": []
+}
