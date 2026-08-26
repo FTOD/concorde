@@ -51,3 +51,10 @@ automated receipt as completed human review.
 
 The complete authoring and troubleshooting workflow is in
 [`../docs/contributing/docsite.md`](../docs/contributing/docsite.md).
+
+## Concorde repository deployment
+
+This package does not define deployment behavior for projects that adopt Concorde. For this
+repository only, `.github/workflows/deploy-docsite.yml` checks out the pinned public Archify 2.14.0
+release, runs the verified build on every push to `main`, and deploys `build/` to
+`https://ftod.github.io/concorde/` with GitHub Pages. The workflow can also be run manually.

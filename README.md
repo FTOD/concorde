@@ -166,6 +166,10 @@ bundle is updated or removed.
 
 ## Run this project's documentation site
 
+The published site is available at [ftod.github.io/concorde](https://ftod.github.io/concorde/).
+Every push to `main` rebuilds the canonical sources and deploys the verified output through the
+repository's GitHub Pages workflow; generated site files are not committed.
+
 The independent [`docsite/`](docsite/) package builds Concorde's own read-only Docusaurus site from
 two canonical source roots, presented through three reader-facing navigation families:
 

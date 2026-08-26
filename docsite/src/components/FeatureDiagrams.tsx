@@ -1,6 +1,9 @@
+import {useBaseUrlUtils} from '@docusaurus/useBaseUrl';
+
 import type {ContentPage} from '../../plugins/concorde-content/types';
 
 export default function FeatureDiagrams({page}: {page: ContentPage}) {
+  const {withBaseUrl} = useBaseUrlUtils();
   if (!page.diagrams?.length) return null;
   return (
     <section className="featureDiagrams" aria-labelledby="feature-diagrams-heading">
@@ -12,6 +15,7 @@ export default function FeatureDiagrams({page}: {page: ContentPage}) {
       <div className="featureDiagrams__list">
         {page.diagrams.map((diagram, index) => {
           const headingId = `feature-diagram-${index + 1}`;
+          const diagramUrl = withBaseUrl(diagram.route);
           return (
             <article className="featureDiagram" key={diagram.source} aria-labelledby={headingId}>
               <div className="featureDiagram__heading">
@@ -19,11 +23,11 @@ export default function FeatureDiagrams({page}: {page: ContentPage}) {
                   <p className="featureDiagram__kind">{diagram.role} · {diagram.kind} diagram</p>
                   <h3 id={headingId}>{diagram.title}</h3>
                 </div>
-                <a href={diagram.route} target="_blank" rel="noreferrer">Open full view</a>
+                <a href={diagramUrl} target="_blank" rel="noreferrer">Open full view</a>
               </div>
               <iframe
                 className="featureDiagram__frame"
-                src={diagram.route}
+                src={diagramUrl}
                 title={`${diagram.title} for ${page.title}`}
                 loading="lazy"
                 sandbox="allow-downloads allow-scripts"

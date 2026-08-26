@@ -1,0 +1,68 @@
+name: Deploy Concorde docsite
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Concorde
+        uses: actions/checkout@v6
+
+      - name: Check out Archify 2.14.0
+        uses: actions/checkout@v6
+        with:
+          repository: tt-a1i/archify
+          ref: a3bf80c25a824f5d5c46dfdbfdb96cc52dd4742a
+          path: _archify
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            docsite/package-lock.json
+            _archify/archify/package-lock.json
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Install dependencies
+        run: |
+          npm ci --prefix docsite
+          npm ci --prefix _archify/archify
+
+      - name: Build verified docsite
+        env:
+          ARCHIFY_ROOT: ${{ github.workspace }}/_archify/archify
+        run: npm --prefix docsite run build
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docsite/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
