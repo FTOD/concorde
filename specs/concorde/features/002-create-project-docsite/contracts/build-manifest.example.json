@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "generator": {
     "name": "concorde-docsite",
     "version": "0.2.0",
@@ -80,6 +80,9 @@
       "featureId": "feature.concorde.publish-project-docsite",
       "moduleId": "module.concorde",
       "status": "Implemented",
+      "featureLevel": "feature",
+      "subfeatures": [],
+      "siblings": [],
       "diagrams": [
         {
           "source": "specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json",

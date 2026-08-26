@@ -18,6 +18,22 @@
       "expected": "Use installed routing guidance and only the selected feature's relevant sources."
     },
     {
+      "id": "subfeature-versus-refinement",
+      "kind": "general",
+      "question": "When should I use a sub-feature instead of a feature refinement?",
+      "required_basis": ["framework-rule"],
+      "requires_citations": true,
+      "expected": "Distinguish one-module two-level containment from adjacent-module architectural refinement."
+    },
+    {
+      "id": "selected-subfeature-context",
+      "kind": "project-specific",
+      "question": "What parent and sibling sources may I read while implementing the selected sub-feature?",
+      "required_basis": ["framework-rule", "project-observation"],
+      "requires_citations": true,
+      "expected": "Read parent durable spec/design as aggregate context, use sibling summaries only, and exclude parent or sibling attempts."
+    },
+    {
       "id": "ambiguous-target",
       "kind": "ambiguous",
       "question": "How should I change the module?",

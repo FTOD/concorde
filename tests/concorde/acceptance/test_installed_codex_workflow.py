@@ -13,7 +13,7 @@ from tests.concorde.support.installed_command_surface import (
     CONCORDE_RUNTIME_COMMANDS,
     registered_artifact,
 )
-from tests.concorde.support.paths import CONTEXT_PROJECT
+from tests.concorde.support.paths import TWO_LEVEL_PROJECT
 from tests.concorde.support.specify_project import SpecifyProject
 
 
@@ -30,10 +30,10 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 project.initialize()
                 project.register_catalogs(server.base_url)
                 project.run("bundle", "install", "concorde-starter")
-                shutil.copytree(CONTEXT_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
-                shutil.copytree(CONTEXT_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
+                shutil.copytree(TWO_LEVEL_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
+                shutil.copytree(TWO_LEVEL_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
                 (root / ".specify/feature.json").write_text(
-                    json.dumps({"feature_directory": "specs/example/features/001-deliver"}, separators=(",", ":")) + "\n",
+                    json.dumps({"feature_directory": "specs/example/features/001-checkout/subfeatures/001-authorize-payment"}, separators=(",", ":")) + "\n",
                     encoding="utf-8",
                 )
                 self.assertEqual(
@@ -50,6 +50,8 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     check=True,
                 )
                 workspace_payload = json.loads(checklist_paths.stdout)["workspace"]
+                self.assertEqual(workspace_payload["workspace_kind"], "subfeature")
+                self.assertEqual(workspace_payload["parent_context"]["feature_id"], "feature.example.checkout")
                 self.assertEqual(
                     workspace_payload["checklists_dir"],
                     workspace_payload["implementation_dir"] + "/checklists",
@@ -58,8 +60,8 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 operations = (
                     (["validate"], {"success"}),
                     (["context", "module.example"], {"success"}),
-                    (["feature", "create", "--module-id", "module.example.api", "--feature-id", "feature.example.api.observe", "--short-name", "observe"], {"proposal"}),
-                    (["feature", "select", "feature.example.deliver"], {"selected", "unchanged"}),
+                    (["feature", "create", "--parent-feature", "feature.example.checkout", "--feature-id", "feature.example.checkout.capture", "--short-name", "capture"], {"proposal"}),
+                    (["feature", "select", "feature.example.checkout.authorize", "--resume"], {"selected", "unchanged"}),
                 )
                 for arguments, statuses in operations:
                     result = subprocess.run(
@@ -70,8 +72,8 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     )
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                     self.assertIn(json.loads(result.stdout)["status"], statuses)
-                implementation = root / "specs/example/features/001-deliver/implementation"
-                implementation.mkdir()
+                implementation = root / "specs/example/features/001-checkout/subfeatures/001-authorize-payment/implementation"
+                implementation.mkdir(exist_ok=True)
                 (implementation / "tasks.md").write_text("# Tasks\n\n- [X] T001 Complete installed fixture\n", encoding="utf-8")
                 harden = subprocess.run(
                     [sys.executable, str(launcher), "--project-root", str(root), "feature", "harden", "--propose"],

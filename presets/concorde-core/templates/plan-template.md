@@ -29,3 +29,9 @@ requirements-quality checklist under `implementation/checklists/`. Write this pl
 data model, runnable validation guide, and delivery evidence under the feature's `implementation/`
 directory. That directory represents one temporal delivery attempt and must not be mirrored by
 compatibility copies beside `spec.md`.
+
+When the selected root is an immediate sub-feature, also read the Protocol v3 parent `spec.md` and
+`design.md` only as aggregate context. Plan and write exclusively beneath the selected child root.
+Sibling summaries are navigation context; sibling bodies and all parent/sibling attempts are out of
+scope unless the maintainer explicitly selects them in a separate lifecycle operation. Reject any
+plan that creates a third feature level or duplicates a parent-owned invariant as child authority.

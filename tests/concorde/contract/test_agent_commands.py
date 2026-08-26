@@ -65,6 +65,11 @@ class AgentCommandContractTests(unittest.TestCase):
         for command in ("init", "feature.create", "feature.select", "feature.harden", "context", "validate", "ask"):
             self.assertIn(command, command_contract)
         self.assertEqual(schema["$defs"]["workspacePaths"]["required"], [
+            "workspace_kind",
+            "feature_id",
+            "providing_module",
+            "parent_context",
+            "siblings",
             "feature_directory",
             "feature_spec",
             "feature_design",

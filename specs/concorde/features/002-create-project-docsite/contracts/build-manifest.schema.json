@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.dev/contracts/documentation/build-manifest-v3.schema.json",
-  "title": "Concorde Documentation Build Manifest v3",
+  "$id": "https://concorde.dev/contracts/documentation/build-manifest-v4.schema.json",
+  "title": "Concorde Documentation Build Manifest v4",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,7 +15,7 @@
   ],
   "properties": {
     "schemaVersion": {
-      "const": 3
+      "const": 4
     },
     "generator": {
       "type": "object",
@@ -151,6 +151,18 @@
         }
       ]
     },
+    "featureRelation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["featureId", "title", "outcome", "status", "route"],
+      "properties": {
+        "featureId": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "outcome": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "minLength": 1 },
+        "route": { "$ref": "#/$defs/route" }
+      }
+    },
     "page": {
       "type": "object",
       "additionalProperties": false,
@@ -177,6 +189,11 @@
         "featureId": { "type": "string", "minLength": 1 },
         "moduleId": { "type": "string", "minLength": 1 },
         "status": { "type": "string", "minLength": 1 },
+        "featureLevel": { "enum": ["feature", "subfeature"] },
+        "parentFeatureId": { "type": "string", "minLength": 1 },
+        "parentFeatureRoute": { "$ref": "#/$defs/route" },
+        "subfeatures": { "type": "array", "items": { "$ref": "#/$defs/featureRelation" } },
+        "siblings": { "type": "array", "items": { "$ref": "#/$defs/featureRelation" } },
         "diagrams": {
           "type": "array",
           "items": { "$ref": "#/$defs/featureDiagram" },
@@ -202,7 +219,16 @@
             "required": ["kind"]
           },
           "then": {
-            "required": ["featureId", "moduleId", "status", "diagrams"]
+            "required": ["featureId", "moduleId", "status", "diagrams", "featureLevel", "subfeatures", "siblings"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "featureLevel": { "const": "subfeature" } },
+            "required": ["featureLevel"]
+          },
+          "then": {
+            "required": ["parentFeatureId", "parentFeatureRoute"]
           }
         },
         {

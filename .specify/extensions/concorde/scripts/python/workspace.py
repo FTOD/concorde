@@ -33,12 +33,12 @@ def main() -> int:
             allow_missing_spec=arguments.phase == "specify",
         )
         status = persist_selection(arguments.project_root, paths.feature_directory) if arguments.persist else "resolved"
-        payload = {"schema_version": 2, "status": status, "workspace": paths.to_dict()}
+        payload = {"schema_version": 3, "status": status, "workspace": paths.to_dict()}
         if arguments.phase:
             payload["phase"] = arguments.phase
             payload["phase_root"] = phase_target(paths, arguments.phase)
     except WorkspaceError as error:
-        payload = {"schema_version": 2, "status": "invalid", "error": str(error)}
+        payload = {"schema_version": 3, "status": "invalid", "error": str(error)}
         print(json.dumps(payload, sort_keys=True, separators=(",", ":")))
         return 1
     print(json.dumps(payload, sort_keys=True, separators=(",", ":")))

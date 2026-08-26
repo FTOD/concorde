@@ -53,6 +53,13 @@ export interface ProjectDocument extends SourceDocument {
 
 export interface FeatureDesign extends SourceDocument {
   collectionId: 'feature-designs';
+  featureId?: string;
+  moduleId?: string;
+  featureLevel?: 'feature' | 'subfeature';
+  parentFeatureId?: string;
+  parentFeatureRoute?: string;
+  subfeatures?: FeatureRelation[];
+  siblings?: FeatureRelation[];
 }
 
 export interface FeatureSpecification extends SourceDocument {
@@ -63,6 +70,21 @@ export interface FeatureSpecification extends SourceDocument {
   status: string;
   featureDirectory: string;
   diagrams: FeatureDiagram[];
+  featureLevel: 'feature' | 'subfeature';
+  parentFeatureId?: string;
+  parentFeatureRoute?: string;
+  outcome: string;
+  subfeatureIds: string[];
+  subfeatures: FeatureRelation[];
+  siblings: FeatureRelation[];
+}
+
+export interface FeatureRelation {
+  featureId: string;
+  title: string;
+  outcome: string;
+  status: string;
+  route: string;
 }
 
 export interface FeatureDiagram {
@@ -105,6 +127,11 @@ export interface ContentPage {
   featureId?: string;
   moduleId?: string;
   status?: string;
+  featureLevel?: 'feature' | 'subfeature';
+  parentFeatureId?: string;
+  parentFeatureRoute?: string;
+  subfeatures?: FeatureRelation[];
+  siblings?: FeatureRelation[];
   diagrams?: FeatureDiagram[];
   architectureId?: string;
   architectureKind?: ArchitectureKind;
@@ -129,7 +156,7 @@ export interface ValidationFinding {
 }
 
 export interface BuildManifest {
-  schemaVersion: 3;
+  schemaVersion: 4;
   generator: {
     name: 'concorde-docsite';
     version: string;

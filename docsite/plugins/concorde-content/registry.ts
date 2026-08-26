@@ -29,6 +29,12 @@ function headingTitle(content: string): string {
   return content.match(/^#\s+(.+?)\s*$/m)?.[1]?.replace(/^Feature Specification:\s*/i, '').trim() ?? '';
 }
 
+function sectionText(content: string, heading: string): string {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return content.match(new RegExp(`^##\\s+${escaped}\\s*$\\n([\\s\\S]*?)(?=^##\\s+|$)`, 'm'))?.[1]
+    ?.replace(/\s+/g, ' ').trim() ?? '';
+}
+
 function routeFor(collection: SourceCollection, relativePath: string, slug?: unknown, sourceId?: unknown): string {
   if (typeof slug === 'string' && slug.trim()) {
     const clean = slug.trim().replace(/^\/+|\/+$/g, '');
@@ -192,7 +198,86 @@ async function parseDocument(
     status: parsed.content.match(/^\*\*Status\*\*:\s*(.+?)\s*$/m)?.[1]?.trim() ?? '',
     featureDirectory: posix.dirname(sourcePath),
     diagrams: await parseFeatureDiagrams(projectRoot, sourcePath, parsed.data.diagrams),
+    featureLevel: typeof parsed.data.parent_feature === 'string' ? 'subfeature' : 'feature',
+    parentFeatureId: typeof parsed.data.parent_feature === 'string' ? parsed.data.parent_feature.trim() : undefined,
+    outcome: sectionText(parsed.content, 'Outcome') || title,
+    subfeatureIds: Array.isArray(parsed.data.subfeatures)
+      ? parsed.data.subfeatures.filter((value): value is string => typeof value === 'string')
+      : [],
+    subfeatures: [],
+    siblings: [],
   } as FeatureSpecification;
+}
+
+function resolveFeatureRelations(documents: SourceDocument[], findings: ValidationFinding[]): void {
+  const features = documents.filter((document): document is FeatureSpecification => document.collectionId === 'features');
+  const byId = new Map(features.map((feature) => [feature.featureId, feature]));
+  const byDirectory = new Map(features.map((feature) => [feature.featureDirectory, feature]));
+  for (const feature of features) {
+    const childPath = /\/subfeatures\/[^/]+$/.test(`/${feature.featureDirectory}`);
+    if ((feature.featureLevel === 'subfeature') !== childPath) {
+      findings.push({
+        ruleId: 'feature.containment.path', severity: 'error', sourcePath: feature.sourcePath,
+        message: 'Sub-feature metadata and canonical subfeatures/<NNN-name>/ path disagree.',
+        remediation: 'Use parent_feature only at one immediate canonical sub-feature level.',
+      });
+    }
+    if (feature.featureLevel === 'subfeature' && feature.subfeatureIds.length) {
+      findings.push({
+        ruleId: 'feature.containment.depth', severity: 'error', sourcePath: feature.sourcePath,
+        message: 'A sub-feature cannot register another sub-feature.',
+        remediation: 'Keep feature containment to one immediate level.',
+      });
+    }
+    if (feature.featureLevel !== 'subfeature') continue;
+    const parent = feature.parentFeatureId ? byId.get(feature.parentFeatureId) : undefined;
+    const expectedParentDirectory = posix.dirname(posix.dirname(feature.featureDirectory));
+    if (!parent || parent.featureDirectory !== expectedParentDirectory) {
+      findings.push({
+        ruleId: 'feature.containment.parent', severity: 'error', sourcePath: feature.sourcePath,
+        message: `Parent feature "${feature.parentFeatureId ?? '<missing>'}" does not match the canonical parent directory.`,
+        remediation: 'Declare one existing top-level parent and place the child directly beneath its subfeatures/ directory.',
+      });
+      continue;
+    }
+    if (parent.moduleId !== feature.moduleId || !parent.subfeatureIds.includes(feature.featureId)) {
+      findings.push({
+        ruleId: 'feature.containment.registration', severity: 'error', sourcePath: feature.sourcePath,
+        message: 'Parent registration, child back-reference, or providing module disagrees.',
+        remediation: 'Make the parent subfeatures list, child parent_feature, and module agree bidirectionally.',
+      });
+      continue;
+    }
+    feature.parentFeatureRoute = parent.route;
+  }
+  for (const parent of features.filter((feature) => feature.featureLevel === 'feature')) {
+    parent.subfeatures = parent.subfeatureIds.flatMap((childId) => {
+      const child = byId.get(childId);
+      if (!child) {
+        findings.push({
+          ruleId: 'feature.containment.child', severity: 'error', sourcePath: parent.sourcePath,
+          message: `Registered sub-feature "${childId}" does not resolve.`,
+          remediation: 'Create the canonical child or remove the dangling registration.',
+        });
+        return [];
+      }
+      return [{featureId: child.featureId, title: child.title, outcome: child.outcome, status: child.status, route: child.route}];
+    });
+    for (const child of features.filter((feature) => feature.parentFeatureId === parent.featureId)) {
+      child.siblings = parent.subfeatures.filter((item) => item.featureId !== child.featureId);
+    }
+  }
+  for (const design of documents.filter((document): document is FeatureDesign => document.collectionId === 'feature-designs')) {
+    const specification = byDirectory.get(posix.dirname(design.sourcePath));
+    if (!specification) continue;
+    design.featureId = specification.featureId;
+    design.moduleId = specification.moduleId;
+    design.featureLevel = specification.featureLevel;
+    design.parentFeatureId = specification.parentFeatureId;
+    design.parentFeatureRoute = specification.parentFeatureRoute;
+    design.subfeatures = specification.subfeatures;
+    design.siblings = specification.siblings;
+  }
 }
 
 export async function buildRegistry(projectRoot: string): Promise<ContentRegistry> {
@@ -232,6 +317,7 @@ export async function buildRegistry(projectRoot: string): Promise<ContentRegistr
   }
 
   documents.sort((left, right) => left.sourcePath.localeCompare(right.sourcePath));
+  resolveFeatureRelations(documents, findings);
   return populateLinks({projectRoot: root, collections, documents, excludedSources, findings});
 }
 

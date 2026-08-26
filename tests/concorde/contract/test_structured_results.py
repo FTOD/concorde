@@ -62,7 +62,7 @@ class StructuredResultTests(unittest.TestCase):
                 proposal_paths = [payload["design"]["path"], *payload["remove"]]
                 self.assertFalse(any(Path(item).is_absolute() or "\\" in item for item in proposal_paths))
                 continue
-            expected_version = 2 if payload["operation"].startswith("feature.") else 1
+            expected_version = 3 if payload["operation"].startswith("feature.") else 1
             self.assertEqual(payload["schema_version"], expected_version)
             self.assertFalse(any(Path(item).is_absolute() or "\\" in item for item in payload["artifacts"]))
 

@@ -46,7 +46,7 @@ class CommandSurfaceReceipt:
     source_digest: str
     materialized_digest: str
     handoff_digest: str
-    workspace: dict[str, str]
+    workspace: dict[str, object]
     phase_root: str
     exit_status: int
     checkout_reads: tuple[str, ...] = ()
@@ -78,8 +78,8 @@ def handoff_digest(extension_root: Path, preset_root: Path) -> str:
     """Digest installed Feature 001 behavior plus the nine routing surfaces."""
     digest = hashlib.sha256()
     for component, root, members in (
-        ("extension", extension_root, ("commands", "runtime", "scripts")),
-        ("preset", preset_root, ("commands",)),
+        ("extension", extension_root, ("commands", "runtime", "scripts", "schemas")),
+        ("preset", preset_root, ("commands", "templates")),
     ):
         for path in _files(root, members):
             relative = path.relative_to(root).as_posix()

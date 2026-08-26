@@ -38,6 +38,7 @@ export default function concordeContentPlugin(
       return [
         resolve(projectRoot, 'specs/**/*.md'), resolve(projectRoot, 'specs/**/architecture.json'),
         resolve(projectRoot, 'specs/**/features/*/diagrams/*.json'),
+        resolve(projectRoot, 'specs/**/features/*/subfeatures/*/diagrams/*.json'),
         resolve(projectRoot, 'docs/**/*.md'), resolve(projectRoot, 'generated/architecture/**/*.html'),
       ];
     },

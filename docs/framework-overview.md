@@ -43,6 +43,12 @@ pretending they are the same authority.
 
 ## The model: modules provide features
 
+Features have one optional decomposition level. A large correlated feature may own immediate
+sub-features with focused specs/designs, but those children remain subordinate to the parent,
+inherit its module, and cannot contain more children. This is not module-level feature refinement:
+containment simplifies behavioral documentation inside one feature, while `refines` explains
+realization across adjacent architecture levels.
+
 A **module** is an architecturally meaningful unit with one responsibility and explicit provided and
 required contracts. It normally groups correlated features so they can share internal realization
 without exposing that realization across the boundary.

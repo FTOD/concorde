@@ -15,17 +15,19 @@ normative maintained-source representation used by that service, not an addition
   named scenario views. Descriptively named feature-owned Archify JSON may supplement that view by
   explaining component invocation, workflow, sequence, data flow, or lifecycle for representative
   scenarios; it does not own feature behavior or module boundaries.
-- Each feature has one canonical module-owned specification at
-  `specs/<root-slug>[/modules/<child-slug>...]/features/<number-name>/spec.md` and one canonical durable
-  realization at the adjacent `design.md`. The specification owns behavior and why it matters;
-  scenarios are representative examples. The design explains how related modules/features and
-  implementation decisions realize that behavior while referring to, never redefining, module
-  architecture.
+- Each top-level feature has one canonical module-owned specification at
+  `specs/<root-slug>[/modules/<child-slug>...]/features/<number-name>/spec.md`. It may declare
+  immediate sub-features at `subfeatures/<number-name>/spec.md`; no deeper feature containment is
+  valid. Every selected lifecycle root has one adjacent durable `design.md`. A parent specification
+  owns aggregate outcomes and shared constraints; a sub-feature specification owns its focused
+  outcome. The design at each root explains that root's accepted realization while referring to,
+  never redefining, parent intent or module architecture.
 - Code and tests own implementation and executable evidence. Missing evidence remains `unknown`.
 
 ## Feature Workspace Layout
 
-Each feature root separates durable intent from one temporal delivery attempt:
+Each feature or immediate sub-feature root separates durable intent from one temporal delivery
+attempt:
 
 ```text
 features/<number-name>/
@@ -34,6 +36,13 @@ features/<number-name>/
 ├── diagrams/
 │   └── <scenario-or-question>.json
 ├── contracts/
+├── subfeatures/
+│   └── <number-name>/
+│       ├── spec.md
+│       ├── design.md
+│       ├── diagrams/
+│       ├── contracts/
+│       └── implementation/
 └── implementation/
     ├── checklists/
     ├── plan.md
@@ -44,7 +53,9 @@ features/<number-name>/
     └── validation.md
 ```
 
-`spec.md`, `design.md`, declared feature-owned Archify JSON below `diagrams/`, and feature-level
+The `subfeatures/` directory is optional and valid only at a top-level feature root. A sub-feature
+cannot contain or register another sub-feature. `spec.md`, `design.md`, declared feature-owned
+Archify JSON below `diagrams/`, and feature-level
 contract definitions/representations are durable. Requirements-quality checklists and the other files
 below `implementation/` describe, review, and evidence at most one active delivery attempt. They are
 not architecture entities and do not amend feature behavior or accepted design by changing.
@@ -68,9 +79,12 @@ The selected feature pointer identifies the feature root. Operations resolve fro
 | tasks, implement, analyze, converge, task-to-issue conversion, delivery validation | `implementation/` |
 | feature hardening | read root `spec.md` + `design.md` and all attempt inputs; approved apply updates `design.md` and removes `implementation/` |
 
-`.specify/feature.json` is the standard project-scoped selection record. Read-only resolution may
-inspect but not rewrite it. `SPECIFY_FEATURE_DIRECTORY` is the explicit one-command override. Concorde
-does not maintain a second active-feature registry.
+`.specify/feature.json` is the standard project-scoped selection record and may point to a valid
+top-level feature or immediate sub-feature root. Read-only resolution may inspect but not rewrite it.
+`SPECIFY_FEATURE_DIRECTORY` is the explicit one-command override. Concorde does not maintain a
+second active-feature registry. When the selected root is a sub-feature, workspace resolution returns
+the parent feature's stable ID and durable `spec.md`/`design.md` paths as read-only context plus
+bounded sibling summaries; it never exposes sibling bodies or parent/sibling attempt paths.
 
 ## Package Discovery
 
@@ -85,8 +99,10 @@ does not maintain a second active-feature registry.
 ```
 
 `specification_root` is the unified subtree recursively containing `module.md`,
-`contracts/**/contract.md`, `features/*/spec.md`, adjacent feature `design.md`, and declared Archify
-JSON views. Temporary requirements-quality checklists remain discoverable below each active feature's
+`contracts/**/contract.md`, `features/*/spec.md`,
+`features/*/subfeatures/*/spec.md`, adjacent feature/sub-feature `design.md`, and declared Archify
+JSON views. A feature-like `spec.md` at another depth is invalid rather than silently ignored.
+Temporary requirements-quality checklists remain discoverable below each active lifecycle root's
 `implementation/` subtree but are not durable specification sources. Readers MAY accept
 the legacy key `architecture_root` only as an explicitly versioned migration alias; writers emit
 `specification_root`. Paths are project-relative POSIX paths. Absolute paths, backslashes, empty
@@ -136,6 +152,8 @@ id: feature.example.outcome
 kind: feature
 module: module.example
 refines: []
+subfeatures:
+  - feature.example.outcome.focused-part
 scenarios:
   - scenario.example.primary
 contracts:
@@ -154,9 +172,20 @@ evidence_status: unknown
 canonical_spec: specs/example/features/001-outcome/spec.md
 ```
 
-A lower-level feature without a parent refinement must include `internal: true` and a non-empty
-`internal_rationale`. Its Markdown body contains the primary textual definition and requirements;
-scenario references supply examples and do not exhaustively define the feature.
+A direct sub-feature uses the same `kind: feature` and stable ID namespace but declares:
+
+```yaml
+parent_feature: feature.example.outcome
+subfeatures: []
+canonical_spec: specs/example/features/001-outcome/subfeatures/001-focused-part/spec.md
+```
+
+Its providing module must equal its parent's module, the parent must register its ID exactly once,
+and it must not be registered as a top-level module feature. Its Markdown body includes a non-empty
+`## Outcome` section used for bounded summaries. A lower-module feature without a parent refinement
+must include `internal: true` and a non-empty `internal_rationale`; containment never substitutes for
+the existing adjacent-module refinement rule. Every feature body contains the primary textual
+definition and requirements; scenario references supply examples and do not exhaustively define it.
 
 The `canonical_spec` path must equal the document's own project-relative path. Its containing feature
 root must match the providing module's package, contain a real non-symlink `design.md`, and may contain
@@ -252,7 +281,7 @@ containment/captures but never substitutes for human perceptual review.
 - IDs are unique across all documents of the same kind and may not be reassigned to a different
   meaning within the same Concorde major version.
 - References use IDs, not titles or inferred filenames.
-- Module containment and feature refinement are acyclic.
+- Module containment, feature refinement, and feature containment are independently acyclic.
 - Feature refinements cross one adjacent module level only.
 
 ## Diagnostics

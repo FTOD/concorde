@@ -8,7 +8,7 @@ from typing import Any
 from .model import Finding, OperationResult, SourceDocument
 from .projection import module_projection, scenario_projections
 from .repository import ProjectRepository, RepositoryError
-from .feature_workspace import WorkspaceError, resolve_phase_paths
+from .feature_workspace import WorkspaceError, _summary, resolve_phase_paths
 
 
 def bounded_context(project_root: str | Path, requested_id: str) -> OperationResult:
@@ -63,6 +63,9 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
         "externals": externals,
         "scenarios": scenarios,
         "refinement_links": sorted(links, key=lambda item: (item["from"], item["to"])),
+        "subfeatures": [],
+        "parent_feature": None,
+        "siblings": [],
         "deeper_references": sorted(child.identifier for child in children),
         "architecture_readiness": None,
         "feature_workspace": None,
@@ -72,6 +75,32 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
     }
     if target.kind == "feature":
         from .readiness import architecture_readiness
+
+        parent_id = target.metadata.get("parent_feature")
+        if isinstance(parent_id, str) and parent_id:
+            parent_matches = package.by_id.get(parent_id, ())
+            if len(parent_matches) == 1 and parent_matches[0].kind == "feature":
+                parent = parent_matches[0]
+                context["parent_feature"] = _summary(parent)
+                siblings = []
+                for child_id in parent.metadata.get("subfeatures", []):
+                    if child_id == target.identifier:
+                        continue
+                    child_matches = package.by_id.get(child_id, ())
+                    if len(child_matches) == 1 and child_matches[0].kind == "feature":
+                        siblings.append(_summary(child_matches[0]))
+                context["siblings"] = siblings
+                artifacts.add(parent.path)
+                parent_design = f"{Path(parent.path).parent.as_posix()}/design.md"
+                if (package.project_root / parent_design).is_file():
+                    artifacts.add(parent_design)
+        else:
+            children = []
+            for child_id in target.metadata.get("subfeatures", []):
+                child_matches = package.by_id.get(child_id, ())
+                if len(child_matches) == 1 and child_matches[0].kind == "feature":
+                    children.append(_summary(child_matches[0]))
+            context["subfeatures"] = children
 
         context["architecture_readiness"] = architecture_readiness(project_root, target.identifier)
         feature_root = Path(target.path).parent.as_posix()

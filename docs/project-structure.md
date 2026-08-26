@@ -31,6 +31,10 @@ evidence, and generated read models. They must not be treated as interchangeable
 │   │   ├── design.md
 │   │   ├── contracts/
 │   │   ├── diagrams/
+│   │   ├── subfeatures/<number>-<sub-feature>/ # optional; one level only
+│   │   │   ├── spec.md
+│   │   │   ├── design.md
+│   │   │   └── implementation/
 │   │   └── implementation/
 │   └── modules/<child-module>/           # repeats the module package
 ├── docs/                                 # explanatory project guides
@@ -84,8 +88,13 @@ for you.
 ## Nested feature selection
 
 Normal Spec Kit originally assumes a relatively flat feature workspace. Concorde allows a selected
-feature to live under any providing module in the recursive hierarchy. The project-scoped
+feature to live under any providing module in the recursive hierarchy and to be either a top-level
+feature or one immediate sub-feature. The project-scoped
 `.specify/feature.json` stores that canonical feature root.
+
+Protocol v3 classifies the selected root. For a sub-feature it also returns the parent durable
+spec/design as read-only context and concise sibling summaries; no parent/sibling attempt is an
+implicit input or output.
 
 The installed workspace adapter derives phase-specific paths from the selection:
 

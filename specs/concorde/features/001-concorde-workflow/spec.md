@@ -30,10 +30,10 @@ canonical_spec: specs/concorde/features/001-concorde-workflow/spec.md
 
 **Created**: 2026-08-19
 
-**Revised**: 2026-08-25
+**Revised**: 2026-08-26
 
-**Status**: Concorde workflow, nested checklist routing, hardening gate, and distributed read-only
-workflow-question surface implemented; human/browser evidence remains incomplete
+**Status**: Two-level feature/sub-feature support implemented and covered by deterministic runtime,
+installed-workflow, publication, and release evidence; human comprehension and browser review remain pending
 
 **Input**: User description: "Make Feature 001 describe the actual Concorde workflow, including the
 organization of specifications, the development lifecycle, and the commands that keep architecture
@@ -42,7 +42,9 @@ temporal; and let users explicitly harden a task-complete milestone into the dur
 removing the temporal implementation workspace. Keep requirements-quality checklists inside that
 temporary workspace rather than at the durable feature root. Move Spec Kit installation and setup
 into a separate feature. Add an installed command/skill through which users can ask grounded,
-read-only questions about the Concorde workflow and framework."
+read-only questions about the Concorde workflow and framework. Add first-class sub-features so a
+large correlated feature can be decomposed into simpler specifications and documentation at exactly
+one subordinate level, with no nested sub-features beyond that level."
 
 ## What the Concorde Workflow Is
 
@@ -57,7 +59,8 @@ specification, clarification, planning, task generation, implementation, analysi
 Concorde surrounds those phases with four architectural controls:
 
 1. locate the providing module and abstraction level before specifying or planning a change;
-2. keep feature workspaces inside the providing module's specification package;
+2. keep feature workspaces inside the providing module's specification package and allow a large
+   feature to own one level of correlated sub-feature workspaces;
 3. review affected module boundaries, contracts, refinements, and one-level views before approving
    implementation structure; and
 4. provide bounded context and deterministic validation throughout implementation and review.
@@ -88,6 +91,13 @@ specs/
     │       ├── design.md         # durable accepted feature realization
     │       ├── contracts/        # durable feature-level boundary representations
     │       ├── diagrams/         # maintained feature-owned Archify explanations
+    │       ├── subfeatures/      # optional first-class decomposition; exactly one level
+    │       │   └── <number>-<sub-feature>/
+    │       │       ├── spec.md       # focused subordinate behavior
+    │       │       ├── design.md     # accepted subordinate realization
+    │       │       ├── contracts/
+    │       │       ├── diagrams/
+    │       │       └── implementation/
     │       └── implementation/   # temporal workspace for one delivery attempt
     │           ├── checklists/   # temporal requirements-quality review state
     │           ├── plan.md
@@ -103,8 +113,40 @@ specs/
 At one architectural level, a maintainer sees the current module's responsibility, features, and
 provided/required I/O contracts; its immediate submodules and their I/O summaries; permitted
 external actors; and the organization and contract-governed interactions among those visible
-participants. Child features, grandchildren, and deeper implementation details remain hidden until
-the maintainer zooms into that child as the new current module.
+participants. Lower-module feature refinements, grandchildren, and deeper implementation details
+remain hidden until the maintainer zooms into that module as the new current module. A requested
+feature may additionally expose concise summaries and navigation for its own immediate sub-features;
+it never expands their full bodies automatically.
+
+### Two-level feature decomposition
+
+A feature may remain atomic or may declare first-class sub-features when one specification would
+otherwise mix several correlated outcomes at an unhelpful level of detail. The parent feature owns
+the aggregate outcome, shared vocabulary and invariants, cross-sub-feature relationships, ordering or
+dependency constraints, and the reason the work belongs together. Each sub-feature owns one focused
+observable outcome, its requirements and representative scenarios, and its accepted realization.
+Neither level duplicates the other's canonical facts.
+
+Sub-features are not module-level feature refinements. A refinement connects features owned by
+adjacent modules to explain architectural realization. A sub-feature is contained by exactly one
+parent feature, inherits that parent's providing module, and cannot itself contain a sub-feature.
+The two relationships use distinct metadata, validation rules, context projections, and
+documentation labels.
+
+Each sub-feature has a stable ID, a real `spec.md` and `design.md`, and the same optional contracts,
+diagrams, and temporal `implementation/` layout as a feature. A maintainer can create, select,
+specify, plan, implement, validate, and harden either a parent feature or one of its immediate
+sub-features through the normal lifecycle. When a sub-feature is selected, the parent specification
+and design are read-only aggregate context, sibling sub-features are represented only by concise
+summaries and stable links, and unrelated sibling bodies are excluded. Selection still identifies
+exactly one lifecycle root at a time.
+
+The canonical containment path is
+`features/<number-name>/subfeatures/<number-name>/`. A directory named `subfeatures/` beneath a
+sub-feature, a sub-feature that names another sub-feature as its parent, or a containment cycle is
+invalid. Parent features register their direct sub-features explicitly, and each sub-feature points
+back to the same parent so missing, duplicate, dangling, or disagreeing relationships can be
+diagnosed deterministically.
 
 ### Durable specification, durable design, and temporal implementation
 
@@ -149,7 +191,8 @@ documents.
 
 | Information | Canonical source | Role in the workflow |
 |---|---|---|
-| Feature behavior, requirements, constraints, and representative examples | `spec.md` | Defines what the providing module must make observable. |
+| Aggregate feature behavior, shared invariants, decomposition, and representative examples | Parent `spec.md` | Defines the correlated outcome and the boundaries among its immediate sub-features without duplicating their focused requirements. |
+| Focused sub-feature behavior, requirements, constraints, and representative examples | Sub-feature `spec.md` | Defines one subordinate outcome and links to its parent context. |
 | Accepted feature realization | `design.md` | Permanently explains how related modules, features, contracts, flows, and implementation decisions realize the feature, without owning their module architecture. |
 | Requirements-quality review state | `implementation/checklists/` | Temporarily records whether the current specification or implementation attempt is ready to proceed; accepted findings must be reflected in durable sources. |
 | Proposed feature implementation design and work | `implementation/plan.md` and `implementation/tasks.md` | Temporarily records one chosen delivery approach and its executable work until it is rejected or hardened. |
@@ -284,8 +327,8 @@ command.
 | 1. Establish the root | Create or review the root module package, its I/O contracts, top-level features, immediate submodules, and one-level view. | `speckit.concorde.init` |
 | 2. Locate ownership | Inspect exactly one bounded module level and decide which module owns the behavior at which abstraction. | `speckit.concorde.context <module-or-feature-id>` |
 | Any stage: understand the workflow | Ask what a Concorde concept means, when to use a command, where an artifact belongs, or how the framework applies to the current project; receive a source-grounded, read-only answer. | `speckit.concorde.ask <question>` |
-| 3. Create or select work | Create one nested feature root under the owning module, including `spec.md` and `design.md`, or select an existing feature; keep durable sources at the root. | `speckit.concorde.feature.create` / `speckit.concorde.feature.select` |
-| 4. Specify and review behavior | Describe the feature in text, clarify uncertainty, record representative scenarios, contracts, refinement links, and expected evidence, add feature-owned diagrams when they improve comprehension, and record the current requirements-quality review under `implementation/checklists/`. | Normal Spec Kit specification, clarification, and checklist phases |
+| 3. Create or select work | Create one nested feature root under the owning module, optionally create one level of correlated sub-features beneath it, or select exactly one existing feature/sub-feature lifecycle root; keep durable sources at the selected root. | `speckit.concorde.feature.create` / `speckit.concorde.feature.select` |
+| 4. Specify and review behavior | Describe aggregate behavior at the parent and focused behavior at each sub-feature, clarify uncertainty, record representative scenarios, contracts, decomposition/refinement links, and expected evidence, add feature-owned diagrams when they improve comprehension, and record the current requirements-quality review under the selected root's `implementation/checklists/`. | Normal Spec Kit specification, clarification, and checklist phases |
 | 5. Agree on architecture | Review ownership, I/O contracts, immediate participants, dependency direction, and the affected one-level view before approving the implementation structure. | Bounded context plus maintained architecture sources |
 | 6. Plan the implementation attempt | Read `spec.md` plus the accepted `design.md` baseline, continue or create the temporal `implementation/` workspace, then produce its plan and tasks with explicit architecture, contract, validation, and freshness work where affected. | Normal Spec Kit planning and task phases with Concorde path resolution |
 | 7. Implement with bounded context | Give the coding agent only the relevant module level, feature artifacts, contracts, and evidence expectations; descend one level only when needed. | `speckit.concorde.context` plus normal implementation/convergence phases |
@@ -315,7 +358,7 @@ the implemented agent-only read path and is visibly separate from the six runtim
   Python runtime and the architecture or feature sources it manages and validates, while separating
   the read-only question surface that the agent answers directly from maintained sources.
 - **Project workspace** separates control state, architectural intent, durable behavioral intent,
-  accepted feature design, and temporal implementation/evidence.
+  accepted feature design, optional one-level sub-feature roots, and temporal implementation/evidence.
 - **Harden a milestone** shows the task-completion gate and approved movement from a disposable
   attempt into permanent `design.md`.
 
@@ -356,18 +399,20 @@ immediate children while preserving navigable references to deeper levels.
 
 ---
 
-### User Story 2 - Place and Specify a Feature at the Right Level (Priority: P1)
+### User Story 2 - Place, Decompose, and Specify Correlated Work (Priority: P1)
 
 As a maintainer, I can choose the providing module, create or select its nested feature workspace,
-and use the normal feature-specification lifecycle so that behavior has one canonical specification
-and explicit architectural ownership.
+and optionally decompose a large feature into one level of first-class sub-features so that each
+specification and documentation page stays focused while the correlated outcome remains explicit.
 
 **Why this priority**: Concorde cannot control structure if features are specified without first
 deciding where and at what abstraction level they belong.
 
 **Independent Test**: Starting from a hierarchy with a parent and two children, place a behavior that
-spans both children on their nearest common parent, select its nested workspace, specify it through
-the normal lifecycle, and verify that no duplicate flat specification is created.
+spans both children on their nearest common parent, create two sub-features beneath its workspace,
+select and specify each lifecycle root, and verify that the parent retains the aggregate behavior,
+each sub-feature retains one focused outcome, and no third feature depth or duplicate flat
+specification is accepted.
 
 **Acceptance Scenarios**:
 
@@ -388,6 +433,18 @@ the normal lifecycle, and verify that no duplicate flat specification is created
    specification is reviewed, **Then** a text-backed feature diagram identifies the involved
    components and contract-governed interactions, or the specification records why a diagram would
    not improve understanding.
+6. **Given** a feature whose specification combines several correlated but independently reviewable
+   outcomes, **When** the maintainer approves its decomposition, **Then** each direct sub-feature has
+   a stable identity, focused specification and design, explicit parent link, and inherited providing
+   module while the parent retains the aggregate outcome and shared constraints.
+7. **Given** a selected sub-feature, **When** any normal lifecycle phase runs, **Then** it uses that
+   sub-feature's durable and temporal paths while exposing the parent as read-only aggregate context
+   and excluding unrelated sibling bodies.
+8. **Given** an existing sub-feature, **When** a maintainer attempts to create another sub-feature
+   beneath it, **Then** Concorde rejects the third feature level without changing maintained intent.
+9. **Given** a parent feature and its registered sub-features, **When** documentation is published,
+   **Then** the parent page summarizes and links its immediate sub-features and every sub-feature page
+   links back to the parent without duplicating either specification.
 
 ---
 
@@ -712,15 +769,64 @@ project observations, expose uncertainty, and leave every workspace byte unchang
   uncertainty and disagreement rather than inventing facts or claiming stronger evidence.
 - **FR-049**: The question surface MUST use only the smallest relevant bounded project context and
   MUST NOT expose unrelated deeper module details merely because they exist in the workspace.
+- **FR-050**: A feature MAY declare zero or more immediate sub-features, and every sub-feature MUST
+  have one stable ID, exactly one parent feature, the same providing module as its parent, one
+  focused observable outcome, one canonical `spec.md`, and one adjacent durable `design.md`.
+- **FR-051**: Sub-feature containment MUST be limited to exactly two feature levels: a feature MAY
+  contain sub-features, while a sub-feature MUST NOT contain, register, or parent another
+  sub-feature.
+- **FR-052**: Every sub-feature MUST live at
+  `features/<number-name>/subfeatures/<number-name>/`, and discovery MUST reject alternate-depth,
+  escaping, symlinked, duplicate, or ambiguous canonical paths.
+- **FR-053**: Parent registration and sub-feature parent metadata MUST agree bidirectionally;
+  containment IDs MUST be unique and acyclic, and every missing, dangling, duplicated, or
+  disagreeing relationship MUST produce a deterministic actionable finding.
+- **FR-054**: A parent feature specification MUST own the aggregate outcome, shared vocabulary and
+  invariants, cross-sub-feature relationships, and decomposition rationale, while each sub-feature
+  specification MUST own only its focused behavior, requirements, constraints, and representative
+  scenarios without duplicating canonical parent or sibling facts.
+- **FR-055**: Feature containment and cross-module feature refinement MUST remain distinct:
+  sub-features inherit their parent's module, while refinement links continue to connect features at
+  adjacent module levels; commands, validation, context, and documentation MUST label each
+  relationship unambiguously.
+- **FR-056**: Concorde MUST let maintainers propose, review, create, and select an immediate
+  sub-feature through the normal Spec Kit lifecycle without creating a top-level sibling feature or
+  a second parent specification.
+- **FR-057**: Selection MUST resolve exactly one feature or sub-feature lifecycle root. When a
+  sub-feature is selected, every phase MUST resolve its own durable and temporal paths while treating
+  the parent `spec.md` and `design.md` as read-only aggregate context.
+- **FR-058**: Bounded context for a parent feature MUST expose its immediate sub-feature IDs, outcomes,
+  status, and navigation references without expanding their specification bodies; sub-feature
+  context MUST expose its parent and concise sibling summaries while excluding unrelated sibling
+  bodies and any impossible third level.
+- **FR-059**: Deterministic validation MUST cover sub-feature identity, path depth, parent agreement,
+  module inheritance, selection safety, authority separation, containment cycles, and forbidden
+  third-level descendants without requiring an AI model.
+- **FR-060**: Each feature or sub-feature lifecycle root MUST independently enforce the durable and
+  temporal workspace rules, including at most one active `implementation/` attempt and explicit,
+  failure-safe hardening into that root's own `design.md`.
+- **FR-061**: Hardening a sub-feature MUST preserve its parent and siblings byte-for-byte except for
+  separately reviewed aggregate updates, and hardening a parent MUST NOT silently harden, remove, or
+  rewrite a sub-feature attempt.
+- **FR-062**: Generated documentation MUST give every parent feature one canonical page containing
+  concise ordered sub-feature summaries and links, and every sub-feature one canonical page linking
+  to its parent and siblings while excluding temporary implementation artifacts and duplicated
+  specification text.
+- **FR-063**: Installed templates and lifecycle guidance MUST explain when to keep a feature atomic,
+  when to introduce sub-features, which facts belong at each level, and that a sub-feature cannot be
+  decomposed further.
+- **FR-064**: Release-installed Codex and slash-command presentations MUST provide equivalent
+  two-level discovery, creation, selection, phase routing, context, validation, and hardening
+  behavior using only installed preset and extension artifacts.
 
 ### Scope
 
 **Included**:
 
-- The recursive module and feature hierarchy under `specs/`.
+- The recursive module hierarchy and exactly two-level feature/sub-feature containment under `specs/`.
 - Module ownership, feature refinement, scenarios, boundary contracts, and one-level views.
-- Root initialization, bounded context retrieval, nested feature creation/selection, and deterministic
-  validation as workflow operations.
+- Root initialization, bounded context retrieval, feature and sub-feature creation/selection, and
+  deterministic validation as workflow operations.
 - Read-only, source-grounded questions about Concorde concepts, command usage, artifact authority,
   lifecycle stages, and their application to the current project.
 - Separation of durable behavioral specification, durable accepted feature design, and one temporal
@@ -734,6 +840,7 @@ project observations, expose uncertainty, and leave every workspace byte unchang
   state changes, or data movement benefit from visual explanation.
 - The observable installed boundary among command definitions, agent presentations, adapters,
   launchers, Python runtime, project control state, and maintained workspace artifacts.
+- Parent/sub-feature documentation navigation and authority-preserving summaries.
 
 **Excluded**:
 
@@ -746,6 +853,8 @@ project observations, expose uncertainty, and leave every workspace byte unchang
 - Automatically accepting AI-authored architecture or treating structural validation as proof of
   implementation correctness.
 - Modeling every class, function, or call edge as an architectural module.
+- More than one sub-feature level, free-standing sub-features without a parent, or automatic semantic
+  decomposition of a feature without maintainer approval.
 - General-purpose programming assistance or execution of feature work through the explanatory
   question surface.
 
@@ -753,10 +862,16 @@ project observations, expose uncertainty, and leave every workspace byte unchang
 
 - **Module**: An architecturally meaningful unit with a stable identity, one responsibility, boundary
   contracts, current-level features, and optional immediate submodules.
-- **Feature**: Textually specified observable behavior owned by exactly one module at one abstraction
-  level and optionally refined at the adjacent child level.
+- **Feature**: Textually specified aggregate or atomic observable behavior owned by exactly one module
+  at one abstraction level, optionally refined at the adjacent child-module level, and optionally
+  decomposed into one level of immediate sub-features.
+- **Sub-feature**: A first-class but subordinate lifecycle root with one focused outcome, one parent
+  feature, the parent's providing module, its own durable specification/design, and no children.
+- **Feature Containment**: The bidirectional, acyclic parent/sub-feature relationship within one
+  module and one parent workspace; it is distinct from cross-module feature refinement.
 - **Feature Workspace**: The single nested location containing the normal lifecycle artifacts for one
-  feature, divided into durable specification/design sources and a temporal implementation workspace.
+  selected feature or sub-feature, divided into durable specification/design sources and a temporal
+  implementation workspace.
 - **Feature Design**: The permanent `design.md` account of the currently accepted feature realization,
   including module/feature collaboration, flows, durable decisions, and evidence references without
   becoming the owner of module architecture.
@@ -845,6 +960,21 @@ project observations, expose uncertainty, and leave every workspace byte unchang
 - **SC-017**: At least 90% of first-time maintainers can use the question surface to correctly answer
   one command-timing question and one artifact-placement question within five minutes without first
   locating the relevant documentation manually.
+- **SC-018**: In 100% of two-level fixtures, parent features and immediate sub-features are discovered,
+  created, selected, routed, validated, and hardened at their canonical paths, while every attempted
+  third feature level is rejected without changing maintained bytes.
+- **SC-019**: In 100% of seeded sub-feature fixtures, validation detects missing or conflicting parent
+  registration, module mismatch, duplicate identity, invalid depth, containment cycles, unsafe paths,
+  and cross-root hardening targets with deterministic actionable findings.
+- **SC-020**: In 100% of sub-feature phase-routing tests, the selected sub-feature's durable and
+  temporal paths are used, its parent durable sources are exposed read-only, and no sibling body or
+  parent/sibling temporal artifact is read or written implicitly.
+- **SC-021**: Every generated parent feature page lists and links all immediate sub-features exactly
+  once, every generated sub-feature page links to its parent, and no page publishes an
+  `implementation/` artifact or duplicates another level's canonical requirements.
+- **SC-022**: At least 90% of first-time maintainers can classify five representative statements as
+  parent-owned, sub-feature-owned, cross-module refinement, or implementation-attempt detail and can
+  create the intended two-level decomposition within ten minutes using only installed guidance.
 
 ## Assumptions
 
@@ -865,6 +995,14 @@ project observations, expose uncertainty, and leave every workspace byte unchang
 - One active implementation workspace is sufficient; accepted attempt history remains available
   through version control and durable design/evidence references rather than archived temporal
   directories inside the canonical feature root.
+- Parent and sub-feature lifecycle roots may each have an implementation attempt, but selection and
+  hardening operate on exactly one root and never mutate another root implicitly.
+- Sub-features are introduced only when decomposition makes both parent and child specifications
+  materially simpler; small features remain atomic.
+- A sub-feature inherits its parent's providing module and boundary context. Architectural behavior
+  that belongs to another module continues to use the existing adjacent-level refinement model.
+- Sub-feature specifications may reference shared parent facts but do not restate them as independent
+  normative requirements.
 - Task completion and resolution of every existing checklist item are deterministic hardening
   eligibility gates. Maintainer acceptance remains the separate authorization gate and is never
   inferred from checked boxes or passing validation.
@@ -874,12 +1012,13 @@ project observations, expose uncertainty, and leave every workspace byte unchang
 ## Dependencies
 
 - The Concorde constitution and root module package as governing architectural authority.
-- A supported Spec Kit lifecycle capable of resolving one explicitly selected nested feature
-  workspace.
+- A supported Spec Kit lifecycle capable of resolving one explicitly selected feature or immediate
+  sub-feature workspace while accepting parent context as read-only lifecycle input.
 - The separately installed Concorde preset and extension described by
   `feature.concorde.install-with-spec-kit`.
 - Reconciliation of `feature.concorde.install-with-spec-kit` so its current specification,
   contracts, diagrams, tests, and documentation distribute the question surface in every supported
   presentation; its prior six-command accepted design requires a separate Feature 003 attempt and
   hardening review.
-- The project documentation publication feature for the final read-only review surface.
+- The project documentation publication feature for parent/sub-feature navigation on the final
+  read-only review surface.

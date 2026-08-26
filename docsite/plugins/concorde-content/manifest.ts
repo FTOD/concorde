@@ -1,6 +1,7 @@
-import type {ArchitectureSource, BuildManifest, ContentPage, ContentRegistry, FeatureSpecification, SourceDocument} from './types';
+import type {ArchitectureSource, BuildManifest, ContentPage, ContentRegistry, FeatureDesign, FeatureSpecification, SourceDocument} from './types';
 
 const isFeature = (document: SourceDocument): document is FeatureSpecification => document.collectionId === 'features';
+const isFeatureDesign = (document: SourceDocument): document is FeatureDesign => document.collectionId === 'feature-designs';
 const isArchitecture = (document: SourceDocument): document is ArchitectureSource => document.collectionId === 'architecture';
 
 function navigationFor(document: SourceDocument) {
@@ -11,6 +12,9 @@ function navigationFor(document: SourceDocument) {
         ? 'Features' as const
         : 'Architecture' as const,
     label: document.sidebarLabel || document.title,
+    ...((isFeature(document) || isFeatureDesign(document)) && document.parentFeatureRoute
+      ? {parentRoute: document.parentFeatureRoute}
+      : {}),
   };
 }
 
@@ -35,6 +39,18 @@ export function pageFromDocument(document: SourceDocument): ContentPage {
     ...(isFeature(document) ? {
       featureId: document.featureId, moduleId: document.moduleId, status: document.status,
       diagrams: document.diagrams,
+      featureLevel: document.featureLevel,
+      parentFeatureId: document.parentFeatureId,
+      parentFeatureRoute: document.parentFeatureRoute,
+      subfeatures: document.subfeatures,
+      siblings: document.siblings,
+    } : {}),
+    ...(isFeatureDesign(document) ? {
+      featureLevel: document.featureLevel,
+      parentFeatureId: document.parentFeatureId,
+      parentFeatureRoute: document.parentFeatureRoute,
+      subfeatures: document.subfeatures,
+      siblings: document.siblings,
     } : {}),
     ...(isArchitecture(document) ? {
       architectureId: document.architectureId,
@@ -51,7 +67,7 @@ export function pageFromDocument(document: SourceDocument): ContentPage {
 export function createManifest(registry: ContentRegistry, routeInventory?: string[]): BuildManifest {
   const pages = registry.documents.map(pageFromDocument).sort((a, b) => a.sourcePath.localeCompare(b.sourcePath));
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     generator: {name: 'concorde-docsite', version: '0.2.0', docusaurusVersion: '3.10.2'},
     collections: registry.collections.map(({id, sourceBase, routeBase, include}) => ({id, sourceBase, routeBase, include})),
     pages,

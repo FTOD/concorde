@@ -10,8 +10,9 @@ Concorde's selected feature and durable/temporal paths before any path-sensitive
 extension supplies that workspace adapter and seven Concorde-specific surfaces: six runtime-backed
 operations, including task-complete feature hardening, plus the agent-only, read-only `ask` procedure.
 
-A feature keeps canonical module-owned `spec.md` and `design.md` at `features/<number-name>/`; the
-specification defines behavior, the design records the accepted realization, and scenarios remain
+A feature keeps canonical module-owned `spec.md` and `design.md` at `features/<number-name>/`; it may
+own one level of immediate sub-features at `subfeatures/<number-name>/`, each with a focused durable
+pair and no children. The specification defines behavior, the design records the accepted realization, and scenarios remain
 representative examples. The preset encourages
 descriptively named, text-backed feature-owned Archify diagrams when component interaction,
 invocation, boundary crossings, state, or data flow benefit from visual explanation. A
@@ -20,3 +21,7 @@ that prose and the bounded module view are sufficient. Dynamic views are `role: 
 sequence diagram can never be the core view. Maintained JSON lives under the feature's `diagrams/`
 directory, is declared by `spec.md`, and is embedded
 automatically by the project docsite; generated HTML never becomes specification authority.
+
+Parent specifications own aggregate outcomes and shared constraints; sub-feature specifications own
+focused behavior and inherit the parent module. Protocol v3 routes normal phases to exactly one
+selected root and exposes parent durable context read-only without sibling bodies or attempts.

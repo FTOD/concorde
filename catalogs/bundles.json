@@ -18,7 +18,7 @@
         "speckit_version": ">=0.16.4,<0.16.5"
       },
       "role": "developer",
-      "sha256": "sha256:1bc7ab13051a3f01c1491ca475e7b29664f0c04754e532ea1949b5104f6b5af2",
+      "sha256": "sha256:0243b637123bfb8187dc17ea11ce373cfb6df23a6635a97783b3048099de69c7",
       "tags": [
         "architecture",
         "context",

@@ -54,6 +54,11 @@ specification tree. Specifications and designs share the public Features navigat
 - `id`: required globally unique stable feature ID.
 - `kind`: required and equal to `feature`.
 - `module`: required owning module ID.
+- `subfeatures`: optional ordered IDs on a top-level feature. Each ID resolves to one immediate child
+  beneath that feature's `subfeatures/<number-name>/` directory.
+- `parent_feature`: required on an immediate sub-feature and absent on a top-level feature. The child
+  inherits its parent's module, cannot register children, and owns one non-empty `## Outcome` used in
+  concise navigation summaries.
 - first level-one heading: required feature title.
 - `Status` metadata line: required lifecycle status and displayed without changing its meaning.
 - `diagrams`: optional list of feature-owned Archify declarations. Every source must be directly
@@ -61,7 +66,8 @@ specification tree. Specifications and designs share the public Features navigat
   scenarios or question, and generated output. A feature may declare at most one core diagram, and
   its kind must be `architecture`; dynamic kinds are supplemental. The JSON `diagram_type` and
   `meta.output` must agree with the declaration.
-- Parent directory: the feature directory; its `spec.md` and `design.md` are permanent site content.
+- Parent directory: the feature or immediate sub-feature directory; its `spec.md` and `design.md` are
+  permanent site content. No third feature level is publishable.
 
 ### Feature Designs
 
@@ -94,6 +100,9 @@ specification tree. Specifications and designs share the public Features navigat
   their source hashes and routes in the manifest, and embed every declared view on the canonical
   feature page with a standalone-view link.
 - Providers MUST keep stable feature IDs unique and internal Markdown targets resolvable.
+- Providers MUST keep parent registration and child back-references bidirectionally consistent.
+  Consumers publish ordered child summaries on the parent and parent/sibling links on the child,
+  without copying requirements or publishing any `implementation/` source.
 - The Concorde self-hosting provider MUST keep the eight-page framework guide baseline discoverable,
   keep the landing page linked to all six learning guides, and retain resolvable canonical-authority
   links from guides that summarize normative behavior.

@@ -9,6 +9,7 @@ import type {ContentPage} from '../../../../plugins/concorde-content/types';
 import ArchitectureView from '../../../components/ArchitectureView';
 import ContentProvenance from '../../../components/ContentProvenance';
 import FeatureDiagrams from '../../../components/FeatureDiagrams';
+import FeatureRelations from '../../../components/FeatureRelations';
 
 type Props = WrapperProps<typeof OriginalLayoutType>;
 interface GlobalData {pages: ContentPage[]}
@@ -20,6 +21,7 @@ export default function LayoutWrapper(props: Props) {
   const page = data.pages.find((candidate) => normalize(candidate.route) === normalize(location.pathname));
   return <>
     {page && <div className="provenanceShell"><ContentProvenance page={page} /></div>}
+    {page && <div className="featureRelationsShell"><FeatureRelations page={page} /></div>}
     {page?.architectureViewRoute && <div className="architectureViewShell"><ArchitectureView page={page} /></div>}
     {page?.diagrams?.length ? <div className="featureDiagramsShell"><FeatureDiagrams page={page} /></div> : null}
     <OriginalLayout {...props} />

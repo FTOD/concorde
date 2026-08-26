@@ -14,10 +14,15 @@ describe('content registry', () => {
     expect(validateRegistry(registry)).toEqual([]);
     expect(registry.documents.map((item) => item.sourcePath)).toEqual([
       'docs/guide/intro.md', 'docs/index.md', 'specs/001-alpha/design.md',
-      'specs/001-alpha/spec.md', 'specs/example/module.md',
+      'specs/001-alpha/spec.md',
+      'specs/001-alpha/subfeatures/001-prepare/design.md',
+      'specs/001-alpha/subfeatures/001-prepare/spec.md',
+      'specs/001-alpha/subfeatures/002-finish/design.md',
+      'specs/001-alpha/subfeatures/002-finish/spec.md',
+      'specs/example/module.md',
       'specs/nested/002-beta/design.md', 'specs/nested/002-beta/spec.md',
     ]);
-    expect(new Set(registry.documents.map((item) => item.route)).size).toBe(7);
+    expect(new Set(registry.documents.map((item) => item.route)).size).toBe(11);
     expect(registry.documents.every((item) => item.sourceSha256.length === 64)).toBe(true);
   });
 
@@ -26,7 +31,8 @@ describe('content registry', () => {
     const manifest = createManifest(registry);
     expect(manifest.pages).toHaveLength(registry.documents.length);
     expect(manifest.pages.map((page) => page.navigation.section)).toEqual([
-      'Documentation', 'Documentation', 'Features', 'Features', 'Architecture', 'Features', 'Features',
+      'Documentation', 'Documentation', 'Features', 'Features', 'Features', 'Features', 'Features',
+      'Features', 'Architecture', 'Features', 'Features',
     ]);
   });
 });

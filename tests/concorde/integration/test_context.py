@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT
+from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT, TWO_LEVEL_PROJECT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
@@ -78,6 +78,18 @@ class ContextTests(unittest.TestCase):
             self.assertIn("specs/example/features/001-deliver/diagrams/delivery-sequence.json", workspace["durable_artifacts"])
             self.assertIn("## Obligations", context["contracts"][0]["body"])
             self.assertNotIn("module.example.api.store", repr(workspace))
+
+    def test_parent_and_child_context_are_bounded_to_one_containment_level(self):
+        parent = bounded_context(TWO_LEVEL_PROJECT, "feature.example.checkout").result["context"]
+        self.assertEqual(
+            [item["feature_id"] for item in parent["subfeatures"]],
+            ["feature.example.checkout.authorize", "feature.example.checkout.confirm"],
+        )
+        self.assertNotIn("implementation/plan.md", repr(parent["subfeatures"]))
+        child = bounded_context(TWO_LEVEL_PROJECT, "feature.example.checkout.authorize").result["context"]
+        self.assertEqual(child["parent_feature"]["feature_id"], "feature.example.checkout")
+        self.assertEqual([item["feature_id"] for item in child["siblings"]], ["feature.example.checkout.confirm"])
+        self.assertNotIn("Confirmation preserves", repr(child["siblings"]))
 
 
 if __name__ == "__main__":

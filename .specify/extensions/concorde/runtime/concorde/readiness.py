@@ -42,6 +42,9 @@ def architecture_readiness(project_root: str | Path, feature_id: str) -> dict[st
     ]
     return {
         "feature_id": feature.identifier,
+        "workspace_kind": "subfeature" if feature.metadata.get("parent_feature") else "feature",
+        "parent_feature": feature.metadata.get("parent_feature"),
+        "subfeatures": list(feature.metadata.get("subfeatures", [])),
         "providing_module": module_id,
         "abstraction_level": module_id,
         "participating_children": sorted(module.metadata.get("children", [])) if module else [],

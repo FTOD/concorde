@@ -63,6 +63,20 @@ contracts and enough scenario information to explain their collaboration.
 
 ## A feature has two durable documents
 
+### Optional one-level sub-features
+
+A feature stays atomic by default. When one specification mixes several correlated outcomes, the
+parent may declare an ordered set of immediate sub-features under
+`subfeatures/<number-name>/`. The parent owns the aggregate outcome, shared invariants, dependencies,
+and decomposition rationale. Each child owns one focused `## Outcome`, requirements, scenarios, and
+accepted design, while inheriting the parent module. A sub-feature cannot contain another
+sub-feature. This containment is separate from `refines`, which relates features across adjacent
+module levels.
+
+Any parent or child can be the one selected lifecycle root. A selected child uses its own durable
+and temporal paths; its parent spec/design is read-only aggregate context and siblings are concise
+navigation summaries only.
+
 ```text
 <feature>/
 ├── spec.md

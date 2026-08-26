@@ -19,3 +19,8 @@ work for the active delivery attempt, not as durable feature intent, and do not 
 copy or symlink. Generate tasks against both `spec.md` and the accepted `design.md` baseline, but do
 not generate a task that edits `design.md` or removes `implementation/`; after every task is complete,
 the user may invoke the separate Concorde hardening command.
+
+For a selected sub-feature, every task path must remain beneath that child root except explicit
+read-only references to the parent durable specification/design. Do not generate tasks that mutate or
+harden a parent/sibling root, read a parent/sibling attempt implicitly, or create another
+`subfeatures/` directory beneath the child.

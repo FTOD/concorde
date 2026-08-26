@@ -11,7 +11,7 @@ from tests.concorde.support.installed_command_surface import (
     execute_workspace_surface,
     registered_artifact,
 )
-from tests.concorde.support.paths import CONTEXT_PROJECT, REPOSITORY_ROOT
+from tests.concorde.support.paths import REPOSITORY_ROOT, TWO_LEVEL_PROJECT
 from tests.concorde.support.specify_project import SpecifyProject
 
 
@@ -28,9 +28,9 @@ class CleanPhaseMatrixTests(unittest.TestCase):
                 project.initialize()
                 project.register_catalogs(server.base_url)
                 project.run("bundle", "install", "concorde-starter")
-                shutil.copytree(CONTEXT_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
-                shutil.copytree(CONTEXT_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
-                selected = "specs/example/features/001-deliver"
+                shutil.copytree(TWO_LEVEL_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
+                shutil.copytree(TWO_LEVEL_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
+                selected = "specs/example/features/001-checkout/subfeatures/001-authorize-payment"
                 (root / ".specify/feature.json").write_text(
                     json.dumps({"feature_directory": selected}, separators=(",", ":")) + "\n",
                     encoding="utf-8",
@@ -47,6 +47,8 @@ class CleanPhaseMatrixTests(unittest.TestCase):
                             REPOSITORY_ROOT,
                         )
                         receipts.append(json.dumps(receipt.to_dict(), sort_keys=True, separators=(",", ":")))
+                        self.assertEqual(receipt.workspace["workspace_kind"], "subfeature")
+                        self.assertEqual(receipt.workspace["parent_context"]["feature_id"], "feature.example.checkout")
                     runs.append(receipts)
                 self.assertEqual(runs[0], runs[1])
                 self.assertEqual(runs[1], runs[2])

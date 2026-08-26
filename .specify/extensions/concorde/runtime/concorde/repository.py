@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import posixpath
+import re
 from collections import defaultdict
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -15,6 +16,49 @@ from .model import ArchitecturePackage, SourceDocument
 
 class RepositoryError(ValueError):
     pass
+
+
+FEATURE_DIRECTORY = re.compile(r"^\d{3,}-[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+
+def classify_feature_spec_path(relative: str, specification_root: str) -> tuple[str, str | None]:
+    """Classify one canonical feature spec path and return its level and parent root."""
+    safe = safe_relative_path(relative)
+    root = PurePosixPath(safe_relative_path(specification_root))
+    path = PurePosixPath(safe)
+    try:
+        local = path.relative_to(root)
+    except ValueError as error:
+        raise RepositoryError(f"feature specification escapes configured root: {relative}") from error
+    parts = local.parts
+    feature_indexes = [index for index, part in enumerate(parts) if part == "features"]
+    if len(feature_indexes) != 1:
+        raise RepositoryError(f"feature specification has invalid features/ placement: {relative}")
+    index = feature_indexes[0]
+    tail = parts[index:]
+    if len(tail) == 3 and tail[0] == "features" and tail[2] == "spec.md":
+        if not FEATURE_DIRECTORY.fullmatch(tail[1]):
+            raise RepositoryError(f"feature directory must use <NNN>-<name>: {relative}")
+        return "feature", None
+    if (
+        len(tail) == 5
+        and tail[0] == "features"
+        and tail[2] == "subfeatures"
+        and tail[4] == "spec.md"
+    ):
+        if not FEATURE_DIRECTORY.fullmatch(tail[1]) or not FEATURE_DIRECTORY.fullmatch(tail[3]):
+            raise RepositoryError(f"feature and sub-feature directories must use <NNN>-<name>: {relative}")
+        parent = root.joinpath(*parts[: index + 2]).as_posix()
+        return "subfeature", parent
+    raise RepositoryError(
+        "feature specification must be features/<NNN-name>/spec.md or "
+        f"features/<NNN-name>/subfeatures/<NNN-name>/spec.md: {relative}"
+    )
+
+
+def classify_feature_root(relative: str, specification_root: str) -> tuple[str, str | None]:
+    root = safe_relative_path(relative.rstrip("/"))
+    return classify_feature_spec_path(f"{root}/spec.md", specification_root)
 
 
 def safe_relative_path(value: str) -> str:
@@ -63,7 +107,18 @@ class ProjectRepository:
             raise RepositoryError(f"specification root does not exist: {specification_root}")
         candidates = set(root.rglob("module.md"))
         candidates.update(root.glob("**/contracts/**/contract.md"))
-        candidates.update(root.glob("**/features/*/spec.md"))
+        for path in sorted(root.rglob("spec.md")):
+            relative = path.relative_to(self.project_root).as_posix()
+            local_parts = path.relative_to(root).parts
+            if "features" not in local_parts:
+                continue
+            classify_feature_spec_path(relative, specification_root)
+            current = path
+            while current != root:
+                if current.is_symlink():
+                    raise RepositoryError(f"feature source path may not contain a symlink: {relative}")
+                current = current.parent
+            candidates.add(path)
         return sorted(candidates, key=lambda item: item.relative_to(self.project_root).as_posix())
 
     def load(self) -> ArchitecturePackage:

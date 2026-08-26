@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ..model import Finding
-from ..repository import ProjectRepository, RepositoryError, safe_relative_path
+from ..repository import ProjectRepository, RepositoryError, classify_feature_root, safe_relative_path
 
 
 FORBIDDEN_ROOT_FILES = ("plan.md", "tasks.md", "research.md", "data-model.md", "quickstart.md", "validation.md")
@@ -17,6 +17,15 @@ def validate_layout(package: Any) -> list[Finding]:
     findings: list[Finding] = []
     for feature in package.documents("feature"):
         root = package.project_root / Path(feature.path).parent
+        try:
+            level, parent_root = classify_feature_root(Path(feature.path).parent.as_posix(), package.specification_root)
+        except RepositoryError as error:
+            findings.append(Finding("CONCORDE-LAYOUT-006", "error", feature.path, str(error), "Use exactly one canonical feature or immediate sub-feature root.", subject_id=feature.identifier))
+            level, parent_root = "invalid", None
+        if level == "feature" and feature.metadata.get("parent_feature"):
+            findings.append(Finding("CONCORDE-LAYOUT-006", "error", feature.path, "Top-level canonical path declares parent_feature.", "Remove parent_feature or move the source beneath its parent's subfeatures/ directory.", subject_id=feature.identifier))
+        if level == "subfeature" and not feature.metadata.get("parent_feature"):
+            findings.append(Finding("CONCORDE-LAYOUT-006", "error", feature.path, "Sub-feature canonical path has no parent_feature.", "Declare the immediate parent feature ID.", subject_id=feature.identifier))
         if feature.metadata.get("canonical_spec") != feature.path:
             findings.append(Finding("CONCORDE-LAYOUT-002", "error", feature.path, "canonical_spec does not equal this feature's own spec.md path.", "Set canonical_spec to the one durable feature specification.", subject_id=feature.identifier))
         design = root / "design.md"
@@ -36,8 +45,11 @@ def validate_layout(package: Any) -> list[Finding]:
             value = json.loads(selection.read_text(encoding="utf-8"))
             selected = safe_relative_path(value["feature_directory"])
             resolved = ProjectRepository(package.project_root).resolve(selected)
+            classify_feature_root(selected, package.specification_root)
             if not (resolved / "spec.md").is_file() or not (resolved / "design.md").is_file():
                 raise RepositoryError("selected root has no canonical spec.md and design.md pair")
+            if not any(Path(feature.path).parent.as_posix() == selected for feature in package.documents("feature")):
+                raise RepositoryError("selected root is not one discovered canonical lifecycle root")
         except (OSError, json.JSONDecodeError, KeyError, TypeError, RepositoryError) as error:
             findings.append(Finding("CONCORDE-LAYOUT-004", "error", ".specify/feature.json", f"Selected feature workspace is invalid: {error}", "Select one existing safe canonical feature root."))
     return findings

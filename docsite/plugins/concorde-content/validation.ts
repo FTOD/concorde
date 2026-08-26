@@ -90,6 +90,11 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
         message: 'Canonical feature specifications require a lifecycle status.',
         remediation: 'Add a **Status** field to the specification body.',
       });
+      if (document.featureLevel === 'subfeature' && (!document.parentFeatureId || !document.outcome)) findings.push({
+        ruleId: 'feature.containment.summary', severity: 'error', sourcePath: document.sourcePath,
+        message: 'Sub-feature pages require one parent and a non-empty Outcome section.',
+        remediation: 'Declare parent_feature and add one concise ## Outcome section.',
+      });
       for (const diagram of document.diagrams) {
         featureDiagramRoutes.set(diagram.route, [...(featureDiagramRoutes.get(diagram.route) ?? []), document]);
       }

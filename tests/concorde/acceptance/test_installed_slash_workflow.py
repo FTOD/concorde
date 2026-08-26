@@ -14,7 +14,7 @@ from tests.concorde.support.installed_command_surface import (
     execute_workspace_surface,
     registered_artifact,
 )
-from tests.concorde.support.paths import CONTEXT_PROJECT, REPOSITORY_ROOT
+from tests.concorde.support.paths import REPOSITORY_ROOT, TWO_LEVEL_PROJECT
 from tests.concorde.support.specify_project import SpecifyProject
 
 
@@ -31,10 +31,10 @@ class InstalledSlashWorkflowTests(unittest.TestCase):
                 project.initialize()
                 project.register_catalogs(server.base_url)
                 project.run("bundle", "install", "concorde-starter")
-                shutil.copytree(CONTEXT_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
-                shutil.copytree(CONTEXT_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
+                shutil.copytree(TWO_LEVEL_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
+                shutil.copytree(TWO_LEVEL_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
                 (root / ".specify/feature.json").write_text(
-                    json.dumps({"feature_directory": "specs/example/features/001-deliver"}, separators=(",", ":")) + "\n",
+                    json.dumps({"feature_directory": "specs/example/features/001-checkout/subfeatures/001-authorize-payment"}, separators=(",", ":")) + "\n",
                     encoding="utf-8",
                 )
                 self.assertEqual(
@@ -56,6 +56,8 @@ class InstalledSlashWorkflowTests(unittest.TestCase):
                     )
                     self.assertEqual(receipt.exit_status, 0)
                     self.assertEqual(receipt.checkout_reads, ())
+                    self.assertEqual(receipt.workspace["workspace_kind"], "subfeature")
+                    self.assertEqual(receipt.workspace["parent_context"]["feature_id"], "feature.example.checkout")
                 launcher = root / ".specify/extensions/concorde/scripts/python/concorde.py"
                 result = subprocess.run(
                     [sys.executable, str(launcher), "--project-root", str(root), "validate"],

@@ -4,7 +4,7 @@
     "concorde": {
       "version": "0.1.0",
       "source": "local",
-      "manifest_hash": "sha256:596cc0216ba5517436cd6d86ad9fd81c558ca193cfb58fd5a27be58f6537e570",
+      "manifest_hash": "sha256:ca430d0c40f60e69fbf732307ca9408cedd7eed9dc7fa3b13674e981e8356400",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
@@ -19,7 +19,7 @@
         ]
       },
       "registered_skills": [],
-      "installed_at": "2026-08-26T06:38:39.433310+00:00"
+      "installed_at": "2026-08-26T07:56:50.977756+00:00"
     }
   }
 }

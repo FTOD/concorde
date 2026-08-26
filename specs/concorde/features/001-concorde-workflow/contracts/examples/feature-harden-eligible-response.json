@@ -1,9 +1,14 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "operation": "feature.harden",
   "target": "feature.example.api.health-check",
   "status": "eligible",
   "workspace": {
+    "workspace_kind": "feature",
+    "feature_id": "feature.example.api.health-check",
+    "providing_module": "module.example.api",
+    "parent_context": null,
+    "siblings": [],
     "feature_directory": "specs/example/modules/api/features/002-add-health-check",
     "feature_spec": "specs/example/modules/api/features/002-add-health-check/spec.md",
     "feature_design": "specs/example/modules/api/features/002-add-health-check/design.md",

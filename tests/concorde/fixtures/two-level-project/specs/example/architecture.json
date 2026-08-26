@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Example",
+    "views": [
+      {"id": "scenario.example.checkout", "label": "Checkout", "focus": []},
+      {"id": "scenario.example.checkout.authorize", "label": "Authorize", "focus": []},
+      {"id": "scenario.example.checkout.confirm", "label": "Confirm", "focus": []},
+      {"id": "scenario.example.atomic", "label": "Atomic", "focus": []}
+    ]
+  },
+  "components": [],
+  "connections": []
+}

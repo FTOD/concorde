@@ -36,7 +36,9 @@ def create_parser() -> argparse.ArgumentParser:
     feature = subparsers.add_parser("feature")
     feature_commands = feature.add_subparsers(dest="feature_operation", required=True)
     create = feature_commands.add_parser("create")
-    create.add_argument("--module-id", required=True)
+    placement = create.add_mutually_exclusive_group(required=True)
+    placement.add_argument("--module-id")
+    placement.add_argument("--parent-feature")
     create.add_argument("--feature-id", required=True)
     create.add_argument("--short-name", required=True)
     create.add_argument("--number")
@@ -87,6 +89,7 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
                 arguments.short_name,
                 arguments.number,
                 tuple(arguments.participant_module),
+                arguments.parent_feature,
             )
         if arguments.feature_operation == "select":
             return select_feature(root, arguments.target, arguments.resume)

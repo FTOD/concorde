@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tests.concorde.support.feature_workspace import tree_hashes, write_selection
-from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT
+from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT, TWO_LEVEL_PROJECT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
@@ -241,6 +241,27 @@ class FeatureHardeningIntegrationTests(unittest.TestCase):
             self.assertEqual(result.status, "failed")
             self.assertEqual((feature / "design.md").read_bytes(), old_design)
             self.assertTrue((feature / "implementation/tasks.md").is_file())
+
+    def test_subfeature_hardening_preserves_parent_and_sibling(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "project"
+            shutil.copytree(TWO_LEVEL_PROJECT, root)
+            child = root / "specs/example/features/001-checkout/subfeatures/001-authorize-payment"
+            (child / "implementation/tasks.md").write_text("# Tasks\n\n- [X] T001 Complete child\n", encoding="utf-8")
+            write_selection(root, child.relative_to(root).as_posix())
+            parent = root / "specs/example/features/001-checkout"
+            sibling = parent / "subfeatures/002-confirm-order"
+            parent_bytes = {(parent / name).relative_to(root): (parent / name).read_bytes() for name in ("spec.md", "design.md")}
+            sibling_before = tree_hashes(sibling)
+            eligibility = propose_hardening(root)
+            self.assertEqual(eligibility.status, "eligible")
+            proposal = self.write_proposal(root, eligibility)
+            result = apply_hardening(root, proposal.relative_to(root).as_posix())
+            self.assertEqual(result.status, "hardened")
+            self.assertFalse((child / "implementation").exists())
+            self.assertEqual(sibling_before, tree_hashes(sibling))
+            self.assertEqual(parent_bytes, {(parent / name).relative_to(root): (parent / name).read_bytes() for name in ("spec.md", "design.md")})
+            self.assertIn("specs/example/features/001-checkout/spec.md", result.result["retained_artifacts"])
 
 
 if __name__ == "__main__":

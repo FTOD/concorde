@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT, VALID_PROJECT
+from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT, TWO_LEVEL_PROJECT, VALID_PROJECT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
@@ -24,6 +24,28 @@ class RepositoryTests(unittest.TestCase):
         package = ProjectRepository(VALID_PROJECT).load()
         self.assertEqual(package.by_id["module.example"][0].kind, "module")
         self.assertEqual(len(package.source_digest), len("sha256:") + 64)
+
+    def test_discovers_exactly_two_feature_levels(self):
+        package = ProjectRepository(TWO_LEVEL_PROJECT).load()
+        self.assertEqual(
+            [item.identifier for item in package.documents("feature")],
+            [
+                "feature.example.checkout",
+                "feature.example.checkout.authorize",
+                "feature.example.checkout.confirm",
+                "feature.example.atomic",
+            ],
+        )
+
+    def test_rejects_third_feature_level_instead_of_ignoring_it(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "project"
+            shutil.copytree(TWO_LEVEL_PROJECT, root)
+            third = root / "specs/example/features/001-checkout/subfeatures/001-authorize-payment/subfeatures/001-retry"
+            third.mkdir(parents=True)
+            (third / "spec.md").write_text("---\nid: feature.example.retry\nkind: feature\n---\n# Retry\n", encoding="utf-8")
+            with self.assertRaisesRegex(RepositoryError, "must be features"):
+                ProjectRepository(root).load()
 
     def test_rejects_absolute_traversal_and_backslash_paths(self):
         for value in ("/tmp/file", "../file", "a/../../file", "a\\b"):

@@ -21,7 +21,7 @@
         "id": "normal-lifecycle",
         "label": "Normal Spec Kit phases",
         "focus": ["agent", "phaseCommands", "workspaceAdapter", "controlState", "featureSpec", "featureDesign", "implementation"],
-        "note": "Nine replaced phase surfaces resolve durable intent/design or the temporal attempt before normal Spec Kit work."
+        "note": "Nine phase surfaces resolve one feature/sub-feature root; a child also receives read-only parent durable context."
       },
       {
         "id": "concorde-operations",
@@ -33,7 +33,7 @@
         "id": "workspace-map",
         "label": "Project workspace",
         "focus": ["controlState", "architectureSources", "featureSpec", "featureDesign", "implementation"],
-        "note": "Separate control state, module architecture, behavioral intent, accepted feature design, and temporal work."
+        "note": "Separate control, architecture, selected intent, read-only parent context, accepted design, and root-local temporal work."
       },
       {
         "id": "harden-milestone",
@@ -154,8 +154,8 @@
     {
       "id": "featureSpec",
       "type": "database",
-      "label": "Durable Feature Intent",
-      "sublabel": "spec.md, contracts, diagrams",
+      "label": "Selected Lifecycle Intent",
+      "sublabel": "feature/sub-feature · parent read-only",
       "pos": [1400, 165],
       "size": [210, 86]
     },
@@ -200,11 +200,11 @@
     {"id": "invoke-launcher", "from": "concordeCommands", "to": "launchers", "label": "6 runtime-backed operations", "labelAt": [780, 805]},
     {"id": "load-runtime", "from": "launchers", "to": "runtime", "label": "load relative runtime", "labelAt": [1068, 805], "variant": "security"},
     {"id": "runtime-state", "from": "runtime", "to": "controlState", "label": "read / update state", "labelAt": [1190, 485]},
-    {"id": "route-durable", "from": "controlState", "to": "featureSpec", "label": "selected feature root", "labelAt": [1360, 145]},
+    {"id": "route-durable", "from": "controlState", "to": "featureSpec", "label": "selected feature/sub-feature root", "labelAt": [1360, 145]},
     {"id": "govern-architecture", "from": "runtime", "to": "architectureSources", "label": "init / context / validate", "labelAt": [1360, 855], "variant": "security"},
     {"id": "answer-question", "from": "concordeCommands", "to": "architectureSources", "label": "ask: cited read-only guidance", "fromSide": "bottom", "toSide": "bottom", "via": [[630, 930], [1505, 930]], "labelAt": [1000, 930], "variant": "dashed"},
-    {"id": "manage-feature", "from": "runtime", "to": "featureSpec", "label": "create / select / context", "via": [[1370, 748], [1370, 208]], "labelAt": [1295, 555]},
-    {"id": "guide-attempt", "from": "featureSpec", "to": "implementation", "label": "spec + accepted design baseline", "fromSide": "right", "toSide": "right", "via": [[1760, 208], [1760, 648]], "labelAt": [1840, 520], "variant": "emphasis"},
+    {"id": "manage-feature", "from": "runtime", "to": "featureSpec", "label": "create / select / contain / context", "via": [[1370, 748], [1370, 208]], "labelAt": [1360, 555]},
+    {"id": "guide-attempt", "from": "featureSpec", "to": "implementation", "label": "selected spec + parent durable baseline", "fromSide": "right", "toSide": "right", "via": [[1760, 208], [1760, 648]], "labelAt": [1840, 520], "variant": "emphasis"},
     {"id": "harden-design", "from": "implementation", "to": "featureDesign", "label": "approved design + cleanup", "labelAt": [1625, 550], "variant": "security"},
     {"id": "apply-harden", "from": "runtime", "to": "implementation", "label": "verify tasks + stage removal", "labelAt": [1455, 740], "variant": "security"}
   ],
@@ -233,8 +233,8 @@
       "title": "Workspace Authority",
       "items": [
         "module.md, architecture.json, contracts: architecture",
-        "spec.md defines behavior; design.md records the accepted realization",
-        "implementation/ is disposable after an approved, task-complete harden"
+        "parent spec owns aggregate facts; child spec owns focused behavior",
+        "design.md and implementation/ remain isolated to one selected root"
       ]
     }
   ]

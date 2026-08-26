@@ -15,10 +15,15 @@ $ARGUMENTS
 
 ## Purpose
 
-Compact the selected feature's completed implementation attempt into its permanent `design.md`, then
+Compact the selected feature or immediate sub-feature's completed implementation attempt into its permanent `design.md`, then
 remove the temporal `implementation/` directory. This is an explicit milestone operation. Checked
 tasks and every existing item under `implementation/checklists/` establish eligibility; they do not
 grant approval.
+
+Protocol v3 classifies the selected lifecycle root. For a sub-feature, parent durable paths and
+sibling summaries are read-only retained authorities. Apply may update only the selected child's
+`design.md` and remove only that child's complete `implementation/`; parent, siblings, and their
+attempts remain byte-identical.
 
 ## Workflow
 
@@ -57,8 +62,8 @@ grant approval.
 ## Safety Invariants
 
 - Do not edit `design.md` directly; only the approved runtime apply promotes the candidate.
-- Do not remove individual implementation files, keep a second archived attempt below the feature
-  root, or target any path outside the selected feature.
+- Do not remove individual implementation files, keep a second archived attempt below the selected
+  root, or target a parent, sibling, child, or any path outside the selected lifecycle root.
 - Do not modify `spec.md`, module architecture, code, tests, or generated projections during
   hardening.
 - On any conflict or failure, stop and preserve the proposal for review. Never retry apply against a

@@ -75,6 +75,9 @@
           "to": "feature.example.deliver-workflow"
         }
       ],
+      "subfeatures": [],
+      "parent_feature": null,
+      "siblings": [],
       "deeper_references": ["module.example.api"],
       "architecture_readiness": null,
       "feature_workspace": null,

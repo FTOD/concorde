@@ -127,6 +127,9 @@ def validate_project(project_root: str | Path, target: str | None = None) -> Ope
         elif source.kind == "feature":
             references.append(("providing module", metadata.get("module")))
             references += [("refined feature", item) for item in _as_list(metadata.get("refines"))]
+            references += [("sub-feature", item) for item in _as_list(metadata.get("subfeatures"))]
+            if metadata.get("parent_feature"):
+                references.append(("parent feature", metadata.get("parent_feature")))
             for scenario in _as_list(metadata.get("scenarios")):
                 if scenario not in known and scenario not in scenario_ids and not (isinstance(scenario, str) and scenario.startswith("scenario.")):
                     findings.append(_finding("CONCORDE-SCENARIO-001", source, f"Scenario reference '{scenario}' does not resolve in the current-level view.", "Add the scenario to the owning view or correct the reference."))
@@ -152,6 +155,45 @@ def validate_project(project_root: str | Path, target: str | None = None) -> Ope
             feature = features.get(feature_id)
             if feature and feature.metadata.get("module") != module_id:
                 findings.append(_finding("CONCORDE-OWN-001", feature, f"Feature is listed by '{module_id}' but declares provider '{feature.metadata.get('module')}'.", "Make the feature and module ownership declarations agree."))
+    containment_edges: dict[str, list[str]] = {}
+    for identifier, feature in features.items():
+        raw_children = feature.metadata.get("subfeatures", [])
+        if not isinstance(raw_children, list) or not all(isinstance(item, str) for item in raw_children):
+            findings.append(_finding("CONCORDE-CONTAIN-001", feature, "subfeatures must be an ordered list of stable feature IDs.", "Use [] or a unique ordered list of immediate sub-feature IDs."))
+            children: list[str] = []
+        else:
+            children = list(raw_children)
+        containment_edges[identifier] = children
+        if len(children) != len(set(children)):
+            findings.append(_finding("CONCORDE-CONTAIN-001", feature, "A parent registers the same sub-feature more than once.", "Keep every immediate sub-feature ID exactly once in authored order."))
+        parent_id = feature.metadata.get("parent_feature")
+        is_child = isinstance(parent_id, str) and bool(parent_id)
+        module = modules.get(feature.metadata.get("module"))
+        module_features = _as_list(module.metadata.get("features")) if module else []
+        if is_child and children:
+            findings.append(_finding("CONCORDE-CONTAIN-005", feature, "A sub-feature cannot register another sub-feature.", "Remove the third feature level and keep decomposition beneath one top-level feature."))
+        if is_child and not re.search(r"^## Outcome\s*$\n(?:\s*\n)*\S", feature.body, re.MULTILINE):
+            findings.append(_finding("CONCORDE-CONTAIN-007", feature, "Sub-feature has no non-empty ## Outcome section for bounded summaries.", "Add one concise observable outcome owned by this sub-feature."))
+        if is_child and feature.identifier in module_features:
+            findings.append(_finding("CONCORDE-CONTAIN-005", feature, "A sub-feature is registered as a top-level module feature.", "Register it only in its parent feature's subfeatures list."))
+        if not is_child and feature.identifier not in module_features:
+            findings.append(_finding("CONCORDE-CONTAIN-002", feature, "A top-level feature is not registered by its providing module.", "Register the feature in the module's features list."))
+        if is_child:
+            parent = features.get(parent_id)
+            if parent:
+                if feature.identifier not in _as_list(parent.metadata.get("subfeatures")):
+                    findings.append(_finding("CONCORDE-CONTAIN-002", feature, f"Parent '{parent_id}' does not register this sub-feature.", "Make parent registration and child parent_feature agree bidirectionally."))
+                if parent.metadata.get("module") != feature.metadata.get("module"):
+                    findings.append(_finding("CONCORDE-CONTAIN-003", feature, "Sub-feature providing module differs from its parent.", "Use the same providing module as the parent feature."))
+                expected_parent_root = Path(feature.path).parent.parent.parent.as_posix()
+                if Path(parent.path).parent.as_posix() != expected_parent_root:
+                    findings.append(_finding("CONCORDE-CONTAIN-004", feature, "Sub-feature canonical path is not directly beneath its declared parent.", "Move it to <parent>/subfeatures/<NNN-name>/spec.md and update canonical_spec."))
+        for child_id in children:
+            child = features.get(child_id)
+            if child and child.metadata.get("parent_feature") != identifier:
+                findings.append(_finding("CONCORDE-CONTAIN-002", feature, f"Registered sub-feature '{child_id}' points to a different parent.", "Make parent registration and child parent_feature agree bidirectionally."))
+    for identifier in sorted(_cycles(containment_edges)):
+        findings.append(_finding("CONCORDE-CONTAIN-006", features[identifier], f"Feature '{identifier}' participates in a containment cycle.", "Remove a containment edge and preserve exactly one parent level."))
     refinement_edges = {identifier: _as_list(source.metadata.get("refines")) for identifier, source in features.items()}
     for identifier in sorted(_cycles(refinement_edges)):
         findings.append(_finding("CONCORDE-REFINE-002", features[identifier], f"Feature '{identifier}' participates in a refinement cycle.", "Remove a refinement edge so the graph is acyclic."))

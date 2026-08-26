@@ -32,6 +32,9 @@ Read the smallest relevant set in this order:
 3. For project-specific questions only, the project constitution and the smallest bounded set of
    maintained `specs/` sources needed to answer: the current module's `module.md`, one-level
    `architecture.json`, relevant contracts, and the named feature's durable `spec.md` and `design.md`.
+   For a sub-feature question, include its parent durable spec/design as aggregate context and only
+   concise sibling summaries; do not read sibling bodies or parent/sibling attempts merely because
+   they exist. Distinguish two-level feature containment from adjacent-module `refines` links.
 4. Use `.concorde/config.json` and `.specify/feature.json` only to locate configured or selected
    sources. They are control state, not behavioral authority.
 5. Use generated pages only to locate canonical sources when necessary. Prefer maintained sources in

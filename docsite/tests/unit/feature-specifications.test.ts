@@ -12,8 +12,16 @@ describe('feature specifications', () => {
     const features = registry.documents.filter((item): item is FeatureSpecification => item.collectionId === 'features');
     expect(features.map((item) => [item.featureId, item.moduleId, item.status, item.featureDirectory])).toEqual([
       ['feature.fixture.alpha', 'module.fixture', 'Draft', 'specs/001-alpha'],
+      ['feature.fixture.alpha.prepare', 'module.fixture', 'Ready', 'specs/001-alpha/subfeatures/001-prepare'],
+      ['feature.fixture.alpha.finish', 'module.fixture', 'Planned', 'specs/001-alpha/subfeatures/002-finish'],
       ['feature.fixture.beta', 'module.fixture', 'Approved', 'specs/nested/002-beta'],
     ]);
+    const parent = features[0];
+    expect(parent.subfeatures.map((item) => item.featureId)).toEqual([
+      'feature.fixture.alpha.prepare', 'feature.fixture.alpha.finish',
+    ]);
+    expect(features[1].parentFeatureRoute).toBe(parent.route);
+    expect(features[1].siblings.map((item) => item.featureId)).toEqual(['feature.fixture.alpha.finish']);
   });
 
   it('rejects duplicate feature IDs deterministically', async () => {
@@ -21,5 +29,10 @@ describe('feature specifications', () => {
     expect(validateRegistry(registry).map((finding) => finding.ruleId)).toEqual([
       'feature.id.duplicate', 'feature.id.duplicate',
     ]);
+  });
+
+  it('rejects disagreeing parent and child registration', async () => {
+    const registry = await buildRegistry(resolve(__dirname, '../fixtures/invalid-projects/subfeature-registration'));
+    expect(validateRegistry(registry).map((finding) => finding.ruleId)).toContain('feature.containment.registration');
   });
 });

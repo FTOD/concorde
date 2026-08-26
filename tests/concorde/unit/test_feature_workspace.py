@@ -105,6 +105,11 @@ class FeatureWorkspaceTests(unittest.TestCase):
             self.assertEqual(
                 set(result.result["workspace"]),
                 {
+                    "workspace_kind",
+                    "feature_id",
+                    "providing_module",
+                    "parent_context",
+                    "siblings",
                     "feature_directory",
                     "feature_spec",
                     "feature_design",

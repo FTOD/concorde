@@ -288,6 +288,20 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
         design_backup.unlink(missing_ok=True)
     except OSError as error:
         cleanup_findings.append(Finding("CONCORDE-HARDEN-007", "warning", paths["feature_directory"], f"Hardening committed but recovery cleanup is pending: {error}", "Remove the hidden Concorde backup after confirming the durable design and version-control recovery."))
+    retained_artifacts = [paths["feature_spec"], paths["feature_design"]]
+    parent_context = paths.get("parent_context")
+    if isinstance(parent_context, dict):
+        retained_artifacts.extend(
+            item for item in (parent_context.get("feature_spec"), parent_context.get("feature_design"))
+            if isinstance(item, str)
+        )
+    for sibling in paths.get("siblings", []):
+        sibling_root = sibling.get("feature_directory") if isinstance(sibling, dict) else None
+        if isinstance(sibling_root, str):
+            for name in ("spec.md", "design.md"):
+                candidate = f"{sibling_root}/{name}"
+                if (project / candidate).is_file():
+                    retained_artifacts.append(candidate)
     return OperationResult(
         "feature.harden",
         target,
@@ -301,6 +315,6 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
             "design_digest_before": _sha256_text(old_content),
             "design_digest_after": _sha256_text(content),
             "removed_artifacts": removed_artifacts,
-            "retained_artifacts": [paths["feature_spec"], paths["feature_design"]],
+            "retained_artifacts": sorted(set(retained_artifacts)),
         },
     )

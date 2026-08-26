@@ -5,11 +5,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT
+from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT, TWO_LEVEL_PROJECT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.feature_workspace import select_feature  # noqa: E402
+from concorde.feature_workspace import propose_feature, select_feature  # noqa: E402
 
 
 class FeatureWorkspaceIntegrationTests(unittest.TestCase):
@@ -54,6 +54,37 @@ class FeatureWorkspaceIntegrationTests(unittest.TestCase):
             result = select_feature(root, "feature.missing")
             self.assertEqual(result.status, "invalid")
             self.assertEqual(state.read_bytes(), before)
+
+    def test_create_and_select_immediate_subfeature(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "project"
+            shutil.copytree(TWO_LEVEL_PROJECT, root)
+            proposal = propose_feature(
+                root,
+                None,
+                "feature.example.checkout.capture",
+                "capture-payment",
+                parent_feature="feature.example.checkout",
+            )
+            self.assertEqual(proposal.status, "proposal")
+            self.assertEqual(proposal.result["workspace"]["workspace_kind"], "subfeature")
+            self.assertTrue(proposal.result["workspace"]["feature_directory"].endswith("subfeatures/003-capture-payment"))
+            child = select_feature(root, "feature.example.checkout.confirm", resume=True)
+            self.assertEqual(child.status, "selected")
+            self.assertEqual(child.result["workspace"]["workspace_kind"], "subfeature")
+            self.assertEqual(child.result["workspace"]["parent_context"]["feature_id"], "feature.example.checkout")
+            self.assertEqual([item["feature_id"] for item in child.result["workspace"]["siblings"]], ["feature.example.checkout.authorize"])
+
+    def test_subfeature_cannot_parent_a_third_level(self):
+        result = propose_feature(
+            TWO_LEVEL_PROJECT,
+            None,
+            "feature.example.checkout.authorize.retry",
+            "retry-authorization",
+            parent_feature="feature.example.checkout.authorize",
+        )
+        self.assertEqual(result.status, "invalid")
+        self.assertEqual(result.findings[0].rule_id, "CONCORDE-WORKSPACE-014")
 
 
 if __name__ == "__main__":

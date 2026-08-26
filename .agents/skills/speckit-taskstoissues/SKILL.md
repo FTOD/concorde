@@ -24,6 +24,11 @@ Before any hook, setup step, prerequisite check, or artifact access, run `.venv/
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
 the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
+Require Protocol v3 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+`workspace.parent_context`, and bounded `workspace.siblings`. When `workspace_kind` is `subfeature`,
+read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
+sibling specification/design body or any parent/sibling `implementation/` artifact implicitly, and
+write only through the selected sub-feature's returned paths.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
 step says to run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase taskstoissues`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`

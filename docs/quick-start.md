@@ -158,6 +158,17 @@ $speckit-concorde-feature-select feature.<project>.<name>
 
 Then use the normal Spec Kit lifecycle, now routed through the selected feature workspace:
 
+When that feature needs a simpler correlated decomposition, create an immediate child rather than a
+new unrelated top-level feature:
+
+```text
+speckit.concorde.feature.create --parent-feature feature.example.outcome \
+  --feature-id feature.example.outcome.focused-part --short-name focused-part
+```
+
+Review the exact proposal before apply. Only one child level is valid; the parent keeps aggregate
+facts and each child keeps its focused outcome.
+
 ```text
 $speckit-specify Describe the feature's required behavior and why it matters.
 $speckit-clarify

@@ -22,6 +22,12 @@ installed surfaces is defined by
 
 ## Concorde-specific operations
 
+Feature operations use Feature Workspace Protocol v3. `feature.create` accepts either module
+placement for a top-level feature or parent placement for one immediate sub-feature; the modes are
+mutually exclusive. `feature.select` and `feature.harden` accept either valid level while operating on
+exactly one lifecycle root. `context` reports containment summaries separately from cross-module
+refinement, and `validate` rejects a third feature level.
+
 Agent integrations may render dots as hyphens. The examples below use Codex-style skill names.
 
 ### `$speckit-concorde-ask <question>`

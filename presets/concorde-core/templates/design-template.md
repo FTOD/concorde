@@ -2,6 +2,9 @@
 
 **Design status**: No implementation realization has been hardened yet.
 
+**Selected level**: [Top-level feature or immediate sub-feature. For a sub-feature, name the parent
+feature and treat its `spec.md`/`design.md` as read-only aggregate context; do not restate parent facts.]
+
 ## Realization Overview
 
 No accepted implementation design is recorded yet. Create a temporal `implementation/` workspace

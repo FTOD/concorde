@@ -63,6 +63,12 @@ non-empty implementation attempt already exists, resuming it must be explicit.
 
 Selection is what routes later Spec Kit phases. Context retrieval is only a read operation.
 
+If the behavior is too broad for one clear specification, keep one aggregate parent and create one
+level of immediate sub-features beneath it. Use `feature.create --parent-feature <id>` for a reviewed
+child proposal. The child inherits the parent module and cannot have children. Select either level
+for normal phases; selecting a child keeps parent durable context read-only and never opens sibling
+bodies or attempts implicitly.
+
 ## 3. Specify observable behavior
 
 Use the normal `specify` and `clarify` phases to describe:

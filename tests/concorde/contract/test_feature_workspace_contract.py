@@ -8,13 +8,18 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 class FeatureWorkspaceContractTests(unittest.TestCase):
     def test_examples_share_safe_complete_workspace_shape(self):
         examples = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples"
-        for name in ("feature-create-proposal.json", "feature-select-response.json"):
+        for name in ("feature-create-proposal.json", "subfeature-create-proposal.json", "feature-select-response.json"):
             payload = json.loads((examples / name).read_text(encoding="utf-8"))
-            self.assertEqual(payload["schema_version"], 2)
+            self.assertEqual(payload["schema_version"], 3)
             self.assertIn(payload["operation"], {"feature.create", "feature.select"})
             self.assertEqual(
                 set(payload["workspace"]),
                 {
+                    "workspace_kind",
+                    "feature_id",
+                    "providing_module",
+                    "parent_context",
+                    "siblings",
                     "feature_directory",
                     "feature_spec",
                     "feature_design",
@@ -32,9 +37,8 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
                 },
             )
             path_values = (
-                value
-                for key, value in payload["workspace"].items()
-                if key != "implementation_state"
+                value for key, value in payload["workspace"].items()
+                if key not in {"workspace_kind", "feature_id", "providing_module", "parent_context", "siblings", "implementation_state"}
             )
             for value in (*path_values, *payload["artifacts"]):
                 self.assertFalse(Path(value).is_absolute())
@@ -50,8 +54,8 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         workspace = json.loads((contracts / "feature-workspace.schema.json").read_text())
         architecture = json.loads((contracts / "architecture-service.schema.json").read_text())
         self.assertEqual(workspace["$defs"]["operation"]["enum"], ["feature.create", "feature.select", "feature.harden"])
-        self.assertEqual(workspace["$defs"]["request"]["properties"]["schema_version"]["const"], 2)
-        self.assertEqual(workspace["$defs"]["response"]["properties"]["schema_version"]["const"], 2)
+        self.assertEqual(workspace["$defs"]["request"]["properties"]["schema_version"]["const"], 3)
+        self.assertEqual(workspace["$defs"]["response"]["properties"]["schema_version"]["const"], 3)
         response_properties = workspace["$defs"]["response"]["properties"]
         self.assertIn("proposal_path", response_properties)
         self.assertIn("task_summary", response_properties)

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.invalid/contracts/feature-workspace-v2.schema.json",
-  "title": "Concorde Feature Workspace Protocol v2",
+  "$id": "https://concorde.invalid/contracts/feature-workspace-v3.schema.json",
+  "title": "Concorde Feature Workspace Protocol v3",
   "oneOf": [
     { "$ref": "#/$defs/request" },
     { "$ref": "#/$defs/response" },
@@ -35,10 +35,38 @@
         "remediation": { "type": "string", "minLength": 1 }
       }
     },
+    "featureSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature_id", "title", "outcome", "evidence_status", "feature_directory"],
+      "properties": {
+        "feature_id": { "type": "string", "pattern": "^feature\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)+$" },
+        "title": { "type": "string", "minLength": 1 },
+        "outcome": { "type": "string", "minLength": 1 },
+        "evidence_status": { "type": "string", "enum": ["unknown", "partial", "verified", "disagrees"] },
+        "feature_directory": { "$ref": "#/$defs/safePath" }
+      }
+    },
+    "parentContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature_id", "feature_directory", "feature_spec", "feature_design"],
+      "properties": {
+        "feature_id": { "type": "string", "pattern": "^feature\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)+$" },
+        "feature_directory": { "$ref": "#/$defs/safePath" },
+        "feature_spec": { "$ref": "#/$defs/safePath" },
+        "feature_design": { "$ref": "#/$defs/safePath" }
+      }
+    },
     "workspacePaths": {
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "workspace_kind",
+        "feature_id",
+        "providing_module",
+        "parent_context",
+        "siblings",
         "feature_directory",
         "feature_spec",
         "feature_design",
@@ -55,6 +83,20 @@
         "validation"
       ],
       "properties": {
+        "workspace_kind": { "type": "string", "enum": ["feature", "subfeature"] },
+        "feature_id": { "type": ["string", "null"], "pattern": "^feature\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)+$" },
+        "providing_module": { "type": ["string", "null"] },
+        "parent_context": {
+          "oneOf": [
+            { "$ref": "#/$defs/parentContext" },
+            { "type": "null" }
+          ]
+        },
+        "siblings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/featureSummary" },
+          "uniqueItems": true
+        },
         "feature_directory": { "$ref": "#/$defs/safePath" },
         "feature_spec": { "$ref": "#/$defs/safePath" },
         "feature_design": { "$ref": "#/$defs/safePath" },
@@ -103,13 +145,14 @@
       "additionalProperties": false,
       "required": ["schema_version", "operation", "target", "options"],
       "properties": {
-        "schema_version": { "const": 2 },
+        "schema_version": { "const": 3 },
         "operation": { "$ref": "#/$defs/operation" },
         "target": { "type": "string", "minLength": 1 },
         "options": {
           "type": "object",
           "properties": {
             "module_id": { "type": "string", "minLength": 1 },
+            "parent_feature": { "type": "string", "pattern": "^feature\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)+$" },
             "feature_id": { "type": "string", "minLength": 1 },
             "short_name": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
             "number": { "type": "string", "pattern": "^[0-9]{3,}$" },
@@ -137,7 +180,7 @@
         "source_digest"
       ],
       "properties": {
-        "schema_version": { "const": 2 },
+        "schema_version": { "const": 3 },
         "operation": { "$ref": "#/$defs/operation" },
         "target": { "type": "string", "minLength": 1 },
         "status": {

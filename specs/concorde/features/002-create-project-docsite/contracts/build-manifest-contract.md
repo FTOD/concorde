@@ -1,4 +1,4 @@
-# Build Manifest Contract v3
+# Build Manifest Contract v4
 
 **Contract ID**: `contract.documentation.build-manifest`
 
@@ -16,11 +16,13 @@ written; all source, page, exclusion, route, link, and check arrays are determin
 
 ## Semantics
 
-- `schemaVersion`: manifest compatibility version, currently `3`.
+- `schemaVersion`: manifest compatibility version, currently `4`.
 - `generator`: Concorde docsite and Docusaurus version identities; deliberately contains no timestamp.
 - `collections`: logical view definitions, canonical source roots, inclusion patterns, and route bases.
 - `pages`: one record per included source, including hash, route, title, navigation, provenance,
-  optional feature identity/status, and architecture identity/view metadata.
+  optional feature identity/status and parent/sub-feature relationships, and architecture
+  identity/view metadata. Relationship summaries contain stable identity, title, source-owned
+  outcome, status, and route without copying specification bodies.
 - `excludedSources`: Markdown artifacts considered during discovery but deliberately not published.
 - `routeInventory`: all verified public routes relevant to this contract.
 - `validation`: `passed` only after every named deterministic check succeeds.
@@ -43,5 +45,6 @@ status requires a new schema version. The schema and representative example chan
 ## Evidence
 
 - The representative example validates against the normative schema.
-- Unit tests validate sorting, relative paths, source hashes, and feature conditional fields.
+- Unit tests validate sorting, relative paths, source hashes, feature conditional fields, authored
+  child order, parent/sibling navigation, and exclusion of parent/child attempts.
 - Production integration validates the emitted manifest and compares two unchanged builds.
