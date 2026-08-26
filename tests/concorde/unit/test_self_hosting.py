@@ -21,7 +21,7 @@ class SelfHostingUnitTests(unittest.TestCase):
     def test_source_model_is_complete_ordered_and_deterministic(self):
         components, first, integration = self_host.component_model(self.root)
         self.assertEqual([item["kind"] for item in components], ["preset", "extension", "bundle"])
-        self.assertEqual([item["id"] for item in components], ["concorde-core", "concorde", "concorde-starter"])
+        self.assertEqual([item["id"] for item in components], ["concorde-core", "concorde", "concorde-bundle"])
         self.assertEqual(integration, "codex")
         self.assertEqual(first, self_host.component_model(self.root)[1])
 
@@ -41,7 +41,7 @@ class SelfHostingUnitTests(unittest.TestCase):
             self_host.resolve_project_path(self.root, "linked/file")
 
     def test_source_inventory_rejects_symlinks(self):
-        (self.root / "presets/concorde-core/linked").symlink_to(self.root / "bundles/concorde-starter")
+        (self.root / "presets/concorde-core/linked").symlink_to(self.root / "bundles/concorde-bundle")
         with self.assertRaises(self_host.SelfHostError) as raised:
             self_host.component_model(self.root)
         self.assertEqual(raised.exception.finding["code"], "CONCORDE-SELF-HOST-002")

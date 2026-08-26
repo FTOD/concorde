@@ -46,7 +46,7 @@ describe('production build', () => {
     expect(await readFile(resolve(buildDir, 'architecture/concorde-root.html'), 'utf8')).toContain('Concorde — Root Features and Invocation');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-spec-kit-component-model.html'), 'utf8'))
       .toContain('How Concorde Commands Reach a Clean Project');
-    expect(await readFile(resolve(buildDir, 'architecture/concorde-starter-installation-flow.html'), 'utf8'))
+    expect(await readFile(resolve(buildDir, 'architecture/concorde-bundle-installation-flow.html'), 'utf8'))
       .toContain('Install, Materialize, and Prove Concorde');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-workflow-components.html'), 'utf8'))
       .toContain('Concorde Workflow — Installed Surfaces, Runtime, and Workspace');

@@ -3,7 +3,7 @@
   "diagram_type": "workflow",
   "meta": {
     "title": "Install, Materialize, and Prove Concorde",
-    "output": "../../../../../generated/architecture/concorde-starter-installation-flow.html",
+    "output": "../../../../../generated/architecture/concorde-bundle-installation-flow.html",
     "quality_profile": "showcase",
     "viewBox": [1080, 714],
     "views": [

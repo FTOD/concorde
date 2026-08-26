@@ -34,7 +34,7 @@ def _allowed_member(component: str, relative: Path) -> bool:
             or (path.startswith("runtime/concorde/") and path.endswith(".py"))
             or (path.startswith("schemas/") and path.endswith(".json"))
         )
-    if component == "concorde-starter":
+    if component == "concorde-bundle":
         return path in {"README.md", "bundle.yml"}
     return False
 
@@ -81,7 +81,7 @@ def build_release(output: Path, base_url: str = DEFAULT_BASE_URL, version: str =
     archives = {
         f"concorde-core-{version}.zip": ("concorde-core", REPOSITORY_ROOT / "presets/concorde-core"),
         f"concorde-{version}.zip": ("concorde", REPOSITORY_ROOT / "extensions/concorde"),
-        f"concorde-starter-{version}.zip": ("concorde-starter", REPOSITORY_ROOT / "bundles/concorde-starter"),
+        f"concorde-bundle-{version}.zip": ("concorde-bundle", REPOSITORY_ROOT / "bundles/concorde-bundle"),
     }
     digests = {
         name: deterministic_zip(source, output / name, component, version)
@@ -144,15 +144,15 @@ def build_release(output: Path, base_url: str = DEFAULT_BASE_URL, version: str =
             "updated_at": "2026-08-20T00:00:00Z",
             "catalog_url": f"{base_url}/bundles.json",
             "bundles": {
-                "concorde-starter": {
+                "concorde-bundle": {
                     **common,
-                    "id": "concorde-starter",
-                    "name": "Concorde Starter",
+                    "id": "concorde-bundle",
+                    "name": "Concorde Bundle",
                     "version": version,
                     "role": "developer",
-                    "description": "Architecture-aware Spec Kit starter workflow",
-                    "download_url": f"{base_url}/concorde-starter-{version}.zip",
-                    "sha256": f"sha256:{digests[f'concorde-starter-{version}.zip']}",
+                    "description": "Pinned Concorde preset and extension installation recipe for Spec Kit",
+                    "download_url": f"{base_url}/concorde-bundle-{version}.zip",
+                    "sha256": f"sha256:{digests[f'concorde-bundle-{version}.zip']}",
                     "provides": {"extensions": 1, "presets": 1, "steps": 0, "workflows": 0},
                     "tags": ["architecture", "context", "validation", "spec-driven-development"],
                 }

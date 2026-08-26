@@ -19,13 +19,13 @@ diagrams:
     scenarios:
       - inspect-install-and-verify-concorde
     output: generated/architecture/concorde-spec-kit-component-model.html
-  - source: specs/concorde/features/003-install-concorde-speckit/diagrams/starter-installation-flow.json
+  - source: specs/concorde/features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json
     role: supplemental
     kind: workflow
     scenarios:
       - inspect-install-and-verify-concorde
       - manage-concorde-installation
-    output: generated/architecture/concorde-starter-installation-flow.html
+    output: generated/architecture/concorde-bundle-installation-flow.html
 evidence_status: verified
 canonical_spec: specs/concorde/features/003-install-concorde-speckit/spec.md
 ---
@@ -36,7 +36,7 @@ canonical_spec: specs/concorde/features/003-install-concorde-speckit/spec.md
 
 **Created**: 2026-08-22
 
-**Revised**: 2026-08-25
+**Revised**: 2026-08-26
 
 **Status**: Implemented; automated distribution, clean-project acceptance, and deterministic diagram
 evidence verified
@@ -61,7 +61,7 @@ delivered as independently versioned ecosystem parts with different responsibili
 | **Coding-agent integration** | Materializes both resolved core-command overrides and Concorde-specific commands using the active agent's supported skill or slash-command form. | It adapts invocation syntax without changing command intent or path semantics. |
 | **Architecture Core** | Performs project-scoped initialization, bounded context retrieval, and validation after setup. | Its behavior belongs to the Concorde workflow, not to installation. |
 
-The `concorde-starter` bundle pins exactly the tested `concorde-core` preset and `concorde` extension.
+The `concorde-bundle` bundle pins exactly the tested `concorde-core` preset and `concorde` extension.
 Spec Kit expands the recipe before installation, installs each part through its native component
 lifecycle, resolves the preset command stack, materializes the result for the active coding-agent
 integration, and records ownership for later update or removal. Release building writes the future
@@ -83,7 +83,7 @@ Two supplemental, text-backed views explain this boundary:
 
 - `diagrams/spec-kit-component-model.json` and its generated component view show the package roles,
   command-composition boundary, active integration, and clean installed project.
-- `diagrams/starter-installation-flow.json` and its generated workflow view show release, discovery,
+- `diagrams/bundle-installation-flow.json` and its generated workflow view show release, discovery,
   preview, installation, command materialization, clean-project verification, update, and removal.
 
 The component model supports User Stories 1 and 3 by distinguishing discovery, template guidance,
@@ -108,7 +108,7 @@ each behavior.
 than opaque component copying.
 
 **Independent Test**: Starting with a supported Spec Kit project and an approved Concorde source,
-inspect the starter bundle and verify that the plan names the bundle, preset, extension, versions,
+inspect the Concorde bundle and verify that the plan names the bundle, preset, extension, versions,
 compatibility range, composition strategy, integration inheritance, trust source, and intended
 project-facing changes.
 
@@ -117,7 +117,7 @@ project-facing changes.
 1. **Given** the Concorde release source, **When** the maintainer validates and builds it, **Then** the
    result contains independently identifiable bundle, preset, and extension packages plus catalog
    entries with integrity metadata.
-2. **Given** a supported project, **When** the maintainer previews `concorde-starter`, **Then** the
+2. **Given** a supported project, **When** the maintainer previews `concorde-bundle`, **Then** the
    expanded plan identifies exactly one `concorde-core` preset and one `concorde` extension with their
    pinned versions, compatibility, provenance, and effects.
 3. **Given** the textual explanation and diagrams, **When** a first-time maintainer reviews setup,
@@ -135,7 +135,7 @@ available without a separate installer.
 **Why this priority**: Installation is the sole outcome of this feature and the prerequisite for
 using the separately specified Concorde workflow.
 
-**Independent Test**: Approve the expanded plan, install the starter bundle into both a clean
+**Independent Test**: Approve the expanded plan, install the Concorde bundle into both a clean
 initialized project and a supported uninitialized directory, then verify that the installed preset,
 extension, provenance, and command presentation match the accepted plan.
 
@@ -215,7 +215,7 @@ preserving project-authored sources and components shared with other installatio
 
 **Why this priority**: Safe maintenance and exit paths are part of a trustworthy setup lifecycle.
 
-**Independent Test**: Install the starter bundle, author project architecture sources, update to a
+**Independent Test**: Install the Concorde bundle, author project architecture sources, update to a
 compatible release, and remove the bundle; verify accurate component state throughout and unchanged
 project-owned sources.
 
@@ -256,7 +256,7 @@ project-owned sources.
 
 - **FR-001**: Concorde MUST provide one native, schema-versioned Spec Kit bundle as the primary
   installation unit and MUST NOT require a separate Concorde installer.
-- **FR-002**: The starter bundle MUST be a non-executable recipe that pins exactly one independently
+- **FR-002**: The Concorde bundle MUST be a non-executable recipe that pins exactly one independently
   versioned Concorde preset and one independently versioned Concorde extension.
 - **FR-003**: Before installation or update, maintainers MUST be able to inspect the fully expanded
   component identities, versions, dependencies, compatibility constraints, preset strategy and
@@ -342,7 +342,7 @@ project-owned sources.
 - Release validation/build, catalogs, preview, installation, provenance, verification, update, and
   removal.
 - One preset and one extension installed together through one bundle recipe.
-- Command discovery and cross-integration equivalence checks for the installed starter operations.
+- Command discovery and cross-integration equivalence checks for the installed Concorde operations.
 - Authoritative composition of all affected normal Spec Kit commands and clean-project execution of
   their durable/temporal path matrix.
 
@@ -412,8 +412,8 @@ project-owned sources.
   acceptance evidence before it is advertised.
 - Spec Kit's public preset command-composition and install-time registration contracts are the
   supported integration boundary. Arbitrary replacement of Spec Kit's installed core scripts is not
-  assumed to be distributable by the starter bundle.
-- `concorde-starter` remains integration-agnostic and lets Spec Kit inherit the target project's
+  assumed to be distributable by the Concorde bundle.
+- `concorde-bundle` remains integration-agnostic and lets Spec Kit inherit the target project's
   active coding-agent integration.
 - Project-authored architecture sources are user data, not installed component files.
 - The first bundle deliberately contains one composition component and one active capability

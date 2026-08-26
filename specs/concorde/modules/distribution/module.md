@@ -4,7 +4,7 @@ kind: module
 parent: module.concorde
 children: []
 features:
-  - feature.distribution.package-starter-bundle
+  - feature.distribution.package-concorde-bundle
 contracts:
   provided:
     - contract.distribution.bundle-lifecycle
@@ -27,14 +27,14 @@ or user-authored architecture sources.
 
 ## Feature Set
 
-- `feature.distribution.package-starter-bundle` refines
+- `feature.distribution.package-concorde-bundle` refines
   `feature.concorde.install-with-spec-kit` and `feature.concorde.self-host-framework`; it owns the
   versioned recipe used to compare the self-hosted local composition with the released product, while
   the root self-hosting feature owns checkout mutation and freshness.
 
 ## Bundle and Catalog Model
 
-A bundle is a versioned recipe, not a runtime. `concorde-starter` names and pins the independently
+A bundle is a versioned recipe, not a runtime. `concorde-bundle` names and pins the independently
 versioned `concorde-core` preset and `concorde` extension that have been tested together. Bundle
 inspection expands that recipe before installation; installation delegates each component to Spec
 Kit's preset or extension machinery and records ownership for safe update and removal.
@@ -48,9 +48,9 @@ installed state.
 
 See the installation feature's
 <a href="/architecture/concorde-spec-kit-component-model.html">component model</a> and
-<a href="/architecture/concorde-starter-installation-flow.html">installation flow</a>. Their
+<a href="/architecture/concorde-bundle-installation-flow.html">installation flow</a>. Their
 maintained sources are `specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` and
-`specs/concorde/features/003-install-concorde-speckit/diagrams/starter-installation-flow.json`.
+`specs/concorde/features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json`.
 
 ## Canonical Contract Definitions
 

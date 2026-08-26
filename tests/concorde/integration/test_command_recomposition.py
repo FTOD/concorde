@@ -29,7 +29,7 @@ class CommandRecompositionTests(unittest.TestCase):
                 project.run("preset", "add", "--dev", str(lower), "--priority", "20")
                 self.assert_all_winners(root, "LOWER_LAYER_MARKER")
                 project.register_catalogs(server.base_url)
-                project.run("bundle", "install", "concorde-starter")
+                project.run("bundle", "install", "concorde-bundle")
                 self.assert_all_winners(root, "Concorde Installed Workspace Gate")
 
                 project.run("preset", "disable", "concorde-core")
@@ -42,7 +42,7 @@ class CommandRecompositionTests(unittest.TestCase):
                 project.run("preset", "set-priority", "concorde-core", "5")
                 self.assert_all_winners(root, "Concorde Installed Workspace Gate")
 
-                project.run("bundle", "remove", "concorde-starter")
+                project.run("bundle", "remove", "concorde-bundle")
                 self.assert_all_winners(root, "LOWER_LAYER_MARKER")
 
 

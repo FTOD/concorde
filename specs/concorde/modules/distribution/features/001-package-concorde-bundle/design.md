@@ -1,4 +1,4 @@
-# Feature Design: Package Starter Bundle
+# Feature Design: Package Concorde Bundle
 
 **Design status**: Accepted implementation baseline.
 
@@ -25,4 +25,3 @@ Release tests and receipts provide evidence for archive membership and provenanc
 ## Known Limitations
 
 External catalog publication remains a separate release action.
-

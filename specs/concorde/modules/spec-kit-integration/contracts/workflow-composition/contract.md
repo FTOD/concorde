@@ -12,7 +12,7 @@ representation:
   version: "0.16.4"
   definition: https://github.com/github/spec-kit/blob/v0.16.4/presets/ARCHITECTURE.md
 features:
-  - feature.integration.compose-starter-workflow
+  - feature.integration.compose-concorde-workflow
   - feature.integration.manage-feature-workspace
 evidence_status: partial
 ---

@@ -49,7 +49,7 @@
       "sources": [
         {"path": "presets/concorde-core/preset.yml", "label": "preset manifest"},
         {"path": "extensions/concorde/extension.yml", "label": "extension manifest"},
-        {"path": "bundles/concorde-starter/bundle.yml", "label": "bundle recipe"}
+        {"path": "scripts/release/build-components.py", "label": "bundle packaging"}
       ],
       "pos": [350, 60],
       "size": [220, 92]

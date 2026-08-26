@@ -1,4 +1,4 @@
-# Contract: Concorde Starter Distribution
+# Contract: Concorde Bundle Distribution
 
 **Contract ID**: `contract.distribution.bundle-lifecycle`
 
@@ -24,7 +24,7 @@ used by other Spec Kit ecosystem packages.
 
 | Unit | Stable ID | Initial version | Required content |
 |---|---|---:|---|
-| Bundle | `concorde-starter` | `0.1.0` | One preset reference and one extension reference only. |
+| Bundle | `concorde-bundle` | `0.1.0` | One preset reference and one extension reference only. |
 | Preset | `concorde-core` | `0.1.0` | Four template contributions and authoritative layers for nine existing lifecycle commands. |
 | Extension | `concorde` | `0.1.0` | Seven Concorde-specific surfaces: six runtime-backed operations, one agent-followed `ask` procedure, selected-workspace adapter, and project-local runtime. |
 
@@ -43,7 +43,7 @@ The bundle pins the exact preset and extension versions it has passed acceptance
 | Active integration | Materializes both resolved normal-command overrides and Concorde-specific commands using agent-native presentation and invocation syntax; it does not own behavior or path semantics. |
 | Architecture Core / workspace runtime | Own deterministic initialization, bounded context, validation, feature workspace, and hardening behavior behind the extension commands. |
 
-The root platform and starter-workflow contracts own this cross-module meaning. This distribution
+The root platform and workflow-composition contracts own this cross-module meaning. This distribution
 contract specializes it for packaging, catalog resolution, and lifecycle behavior.
 
 ## Bundle Manifest Profile
@@ -54,8 +54,8 @@ The root `bundle.yml` must contain:
 schema_version: "1.0"
 
 bundle:
-  id: "concorde-starter"
-  name: "Concorde Starter"
+  id: "concorde-bundle"
+  name: "Concorde Bundle"
   version: "0.1.0"
   role: "developer"
   description: "Concorde installation and setup components"
@@ -137,7 +137,7 @@ source checkout.
 | Operation | Input | Required observable result |
 |---|---|---|
 | Validate | Bundle source directory or `bundle.yml` | Structural and component-reference findings; no project mutation. |
-| Build | Bundle source directory | Reproducible `concorde-starter-<version>.zip`. |
+| Build | Bundle source directory | Reproducible `concorde-bundle-<version>.zip`. |
 | Info | Catalog bundle ID | Full component plan, pins, priority, strategy, compatibility, integration inheritance, source, trust, and overlaps. |
 | Install | Bundle ID, directory, manifest, or artifact | Apply exactly the resolved plan and record only attributable components after full success. |
 | List/status | Initialized project | Bundle version and contributed component provenance; primitive registries expose component active/disabled state. |

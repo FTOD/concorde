@@ -54,7 +54,7 @@ class BundleLifecycleTests(unittest.TestCase):
         self.project_temporary.cleanup()
 
     def test_preview_install_repeat_and_provenance_match(self):
-        preview = self.project.json("bundle", "info", "concorde-starter", "--json")
+        preview = self.project.json("bundle", "info", "concorde-bundle", "--json")
         self.assertEqual(preview["version"], "0.1.0")
         self.assertIsNone(preview["integration"])
         self.assertEqual(
@@ -62,11 +62,11 @@ class BundleLifecycleTests(unittest.TestCase):
             [("extensions", "concorde", "0.1.0"), ("presets", "concorde-core", "0.1.0")],
         )
         source_hashes = self.project.source_hashes()
-        self.project.run("bundle", "install", "concorde-starter")
-        validated = self.project.run("bundle", "validate", "--offline", "--path", str(REPOSITORY_ROOT / "bundles/concorde-starter"))
+        self.project.run("bundle", "install", "concorde-bundle")
+        validated = self.project.run("bundle", "validate", "--offline", "--path", str(REPOSITORY_ROOT / "bundles/concorde-bundle"))
         self.assertIn("valid", validated.stdout.lower())
         for _ in range(3):
-            self.project.run("bundle", "install", "concorde-starter")
+            self.project.run("bundle", "install", "concorde-bundle")
         installed = self.project.json("bundle", "list", "--json")
         self.assertEqual(len(installed), 1)
         self.assertEqual(installed[0]["bundle_id"], preview["id"])
@@ -88,9 +88,9 @@ class BundleLifecycleTests(unittest.TestCase):
 
     def test_directory_manifest_and_artifact_install_forms_are_equivalent(self):
         forms = [
-            REPOSITORY_ROOT / "bundles/concorde-starter",
-            REPOSITORY_ROOT / "bundles/concorde-starter/bundle.yml",
-            self.dist / "concorde-starter-0.1.0.zip",
+            REPOSITORY_ROOT / "bundles/concorde-bundle",
+            REPOSITORY_ROOT / "bundles/concorde-bundle/bundle.yml",
+            self.dist / "concorde-bundle-0.1.0.zip",
         ]
         expected = None
         for form in forms:
@@ -100,7 +100,7 @@ class BundleLifecycleTests(unittest.TestCase):
             normalized = {(item["kind"], item["id"], item["version"]) for item in components}
             expected = expected or normalized
             self.assertEqual(normalized, expected)
-            self.project.run("bundle", "remove", "concorde-starter")
+            self.project.run("bundle", "remove", "concorde-bundle")
 
     def test_uninitialized_project_uses_isolated_user_catalogs(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -120,14 +120,14 @@ class BundleLifecycleTests(unittest.TestCase):
                 f"schema_version: '1.0'\ncatalogs:\n- id: concorde-dev\n  url: {self.server.base_url}/bundles.json\n  priority: 10\n  install_policy: install-allowed\n"
             )
             project = SpecifyProject(project_root, home=home)
-            project.run("bundle", "init", "concorde-starter", "--integration", "codex")
+            project.run("bundle", "init", "concorde-bundle", "--integration", "codex")
             installed = project.json("bundle", "list", "--json")
-            self.assertEqual(installed[0]["bundle_id"], "concorde-starter")
+            self.assertEqual(installed[0]["bundle_id"], "concorde-bundle")
             self.assertTrue((project_root / ".specify/extensions/concorde/extension.yml").is_file())
 
     def test_unsupported_platform_range_stops_before_installation(self):
         incompatible = self.root / "incompatible"
-        shutil.copytree(REPOSITORY_ROOT / "bundles/concorde-starter", incompatible)
+        shutil.copytree(REPOSITORY_ROOT / "bundles/concorde-bundle", incompatible)
         manifest = incompatible / "bundle.yml"
         manifest.write_text(manifest.read_text().replace(">=0.16.4,<0.16.5", ">=9.0.0,<10.0.0"))
         before = self.project.registry_snapshot()
@@ -137,13 +137,13 @@ class BundleLifecycleTests(unittest.TestCase):
         self.assertEqual(self.project.registry_snapshot(), before)
 
     def test_failed_update_retains_prior_record_and_sources(self):
-        self.project.run("bundle", "install", "concorde-starter")
+        self.project.run("bundle", "install", "concorde-bundle")
         source_hashes = self.project.source_hashes()
         _builder.build_release(self.dist, self.server.base_url, "0.1.1")
         extension = self.dist / "concorde-0.1.1.zip"
         extension.write_bytes(extension.read_bytes() + b"integrity failure")
         self.project.clear_catalog_caches()
-        result = self.project.run("bundle", "update", "concorde-starter", check=False)
+        result = self.project.run("bundle", "update", "concorde-bundle", check=False)
         self.assertNotEqual(result.returncode, 0)
         installed = self.project.json("bundle", "list", "--json")
         self.assertEqual(installed[0]["version"], "0.1.0")
@@ -151,19 +151,19 @@ class BundleLifecycleTests(unittest.TestCase):
         self.assertEqual(self.project.source_hashes(), source_hashes)
 
     def test_compatible_update_and_remove_preserve_sources(self):
-        self.project.run("bundle", "install", "concorde-starter")
+        self.project.run("bundle", "install", "concorde-bundle")
         source_hashes = self.project.source_hashes()
         unrelated_hashes = self.project.source_hashes((".agents/skills/user-owned",))
         _builder.build_release(self.dist, self.server.base_url, "0.1.1")
         self.project.clear_catalog_caches()
-        update_plan = self.project.json("bundle", "info", "concorde-starter", "--json")
+        update_plan = self.project.json("bundle", "info", "concorde-bundle", "--json")
         self.assertEqual(update_plan["version"], "0.1.1")
-        self.project.run("bundle", "update", "concorde-starter")
+        self.project.run("bundle", "update", "concorde-bundle")
         installed = self.project.json("bundle", "list", "--json")
         self.assertEqual(installed[0]["version"], "0.1.1")
         self.assertEqual(self.project.source_hashes(), source_hashes)
         self.assertEqual(self.project.source_hashes((".agents/skills/user-owned",)), unrelated_hashes)
-        self.project.run("bundle", "remove", "concorde-starter")
+        self.project.run("bundle", "remove", "concorde-bundle")
         self.assertEqual(self.project.json("bundle", "list", "--json"), [])
         self.assertEqual(self.project.source_hashes(), source_hashes)
         self.assertEqual(self.project.source_hashes((".agents/skills/user-owned",)), unrelated_hashes)
@@ -171,21 +171,21 @@ class BundleLifecycleTests(unittest.TestCase):
     def test_component_shared_with_another_bundle_is_not_removed(self):
         shared_bundle = REPOSITORY_ROOT / "tests/concorde/fixtures/releases/shared-component"
         self.project.run("bundle", "install", str(shared_bundle))
-        self.project.run("bundle", "install", "concorde-starter")
+        self.project.run("bundle", "install", "concorde-bundle")
         installed = self.project.json("bundle", "list", "--json")
-        self.assertEqual({item["bundle_id"] for item in installed}, {"concorde-shared-fixture", "concorde-starter"})
-        self.project.run("bundle", "remove", "concorde-starter")
+        self.assertEqual({item["bundle_id"] for item in installed}, {"concorde-shared-fixture", "concorde-bundle"})
+        self.project.run("bundle", "remove", "concorde-bundle")
         self.assertTrue((self.root / ".specify/presets/concorde-core/preset.yml").is_file())
         self.assertFalse((self.root / ".specify/extensions/concorde").exists())
         remaining = self.project.json("bundle", "list", "--json")
         self.assertEqual([item["bundle_id"] for item in remaining], ["concorde-shared-fixture"])
 
     def test_locally_modified_component_is_reported_without_touching_project_sources(self):
-        self.project.run("bundle", "install", "concorde-starter")
+        self.project.run("bundle", "install", "concorde-bundle")
         source_hashes = self.project.source_hashes()
         readme = self.root / ".specify/extensions/concorde/README.md"
         readme.write_text(readme.read_text() + "\nLocal maintainer note.\n")
-        result = self.project.run("bundle", "remove", "concorde-starter", check=False)
+        result = self.project.run("bundle", "remove", "concorde-bundle", check=False)
         self.assertEqual(self.project.source_hashes(), source_hashes)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertFalse(readme.exists())

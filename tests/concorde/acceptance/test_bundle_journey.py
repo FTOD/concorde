@@ -28,7 +28,7 @@ class StarterJourneyAcceptance(unittest.TestCase):
                 project = SpecifyProject(project_root)
                 project.initialize()
                 project.register_catalogs(server.base_url)
-                project.run("bundle", "install", "concorde-starter")
+                project.run("bundle", "install", "concorde-bundle")
                 launcher = project_root / ".specify/extensions/concorde/scripts/bash/concorde.sh"
 
                 def runtime(*arguments: str, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -69,7 +69,7 @@ class StarterJourneyAcceptance(unittest.TestCase):
                 project = SpecifyProject(project_root)
                 project.initialize()
                 project.register_catalogs(server.base_url)
-                project.run("bundle", "install", "concorde-starter")
+                project.run("bundle", "install", "concorde-bundle")
                 (project_root / ".concorde").mkdir()
                 (project_root / ".concorde/config.json").write_text('{"maintainer":"owned"}\n')
                 (project_root / "specs/example").mkdir(parents=True)
@@ -77,9 +77,9 @@ class StarterJourneyAcceptance(unittest.TestCase):
                 source_hashes = project.source_hashes()
                 _builder.build_release(dist, server.base_url, "0.1.1")
                 project.clear_catalog_caches()
-                project.run("bundle", "update", "concorde-starter")
+                project.run("bundle", "update", "concorde-bundle")
                 self.assertEqual(project.json("bundle", "list", "--json")[0]["version"], "0.1.1")
-                project.run("bundle", "remove", "concorde-starter")
+                project.run("bundle", "remove", "concorde-bundle")
                 self.assertEqual(project.source_hashes(), source_hashes)
 
 

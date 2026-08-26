@@ -4,7 +4,7 @@ kind: module
 parent: module.concorde
 children: []
 features:
-  - feature.integration.compose-starter-workflow
+  - feature.integration.compose-concorde-workflow
   - feature.integration.manage-feature-workspace
 contracts:
   provided:
@@ -32,7 +32,7 @@ validation semantics.
 
 ## Feature Set
 
-- `feature.integration.compose-starter-workflow` refines
+- `feature.integration.compose-concorde-workflow` refines
   `feature.concorde.install-with-spec-kit` and `feature.concorde.self-host-framework`; it owns preset
   composition and installed command registration for both released and development-local sources at
   this level.
@@ -60,10 +60,10 @@ Neither component replaces the core Spec Kit workflow. The bundle merely install
 See the installation feature's
 <a href="/architecture/concorde-spec-kit-component-model.html">component model</a> for the structural
 relationship and
-<a href="/architecture/concorde-starter-installation-flow.html">installation flow</a> for the
+<a href="/architecture/concorde-bundle-installation-flow.html">installation flow</a> for the
 release-to-use sequence. Their maintained sources are
 `specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` and
-`specs/concorde/features/003-install-concorde-speckit/diagrams/starter-installation-flow.json`.
+`specs/concorde/features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json`.
 
 ## Canonical Contract Definitions
 
@@ -139,4 +139,4 @@ context.
   artifact changes.
 - **Guarantees required**: deterministic results and explicit unknown evidence.
 - **Failure**: invalid sources fail without partial silent mutation.
-- **Evidence**: verified by structured-result, launcher, and installed starter-journey tests.
+- **Evidence**: verified by structured-result, launcher, and installed bundle-journey tests.

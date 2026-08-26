@@ -27,7 +27,7 @@ class CleanPhaseMatrixTests(unittest.TestCase):
                 project = SpecifyProject(root)
                 project.initialize()
                 project.register_catalogs(server.base_url)
-                project.run("bundle", "install", "concorde-starter")
+                project.run("bundle", "install", "concorde-bundle")
                 shutil.copytree(TWO_LEVEL_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
                 shutil.copytree(TWO_LEVEL_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
                 selected = "specs/example/features/001-checkout/subfeatures/001-authorize-payment"

@@ -93,7 +93,7 @@ Self-host status is current with source, installed bytes, registries, and declar
 
 - `concorde-0.1.0.zip`: `sha256:271e20191d090251c9272798cec404929acd167cf7f3d3d97940d7f3dea3b4da`
 - `concorde-core-0.1.0.zip`: `sha256:08df5ad9d49d2af557b786dc30504f9666d3b09d7cce23f077f1fbdda6ffe94d`
-- `concorde-starter-0.1.0.zip`: `sha256:0243b637123bfb8187dc17ea11ce373cfb6df23a6635a97783b3048099de69c7`
+- `concorde-bundle-0.1.0.zip`: `sha256:ae0079f5e78b89bbb30eaa46279f036553395f1be1c94f9af8de962ab0670608`
 
 ## Known Limitations
 

@@ -13,7 +13,7 @@ representation:
   version: "0.16.4"
   definition: specs/concorde/features/003-install-concorde-speckit/contracts/bundle-distribution.md
 features:
-  - feature.distribution.package-starter-bundle
+  - feature.distribution.package-concorde-bundle
 evidence_status: partial
 ---
 
@@ -21,7 +21,7 @@ evidence_status: partial
 
 ## Purpose
 
-Expose preview, installation, status, update, and removal of the Concorde starter bundle.
+Expose preview, installation, status, update, and removal of the Concorde bundle.
 
 ## Information
 

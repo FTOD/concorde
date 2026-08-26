@@ -1,4 +1,4 @@
-# Concorde Starter bundle
+# Concorde Bundle
 
 This integration-agnostic bundle pins `concorde-core@0.1.0` and `concorde@0.1.0` and inherits the
 project's active coding-agent integration. It declares no workflow or reusable step.
@@ -19,10 +19,10 @@ install-allowed sources. Release catalogs use HTTPS artifact URLs; the localhost
 created by `scripts/release/build-components.py --base-url http://127.0.0.1:8765` are acceptance-only.
 
 ```bash
-specify bundle validate --path bundles/concorde-starter
-specify bundle build --path bundles/concorde-starter --output dist
-specify bundle info concorde-starter --json
-specify bundle install concorde-starter
+specify bundle validate --path bundles/concorde-bundle
+specify bundle build --path bundles/concorde-bundle --output dist
+specify bundle info concorde-bundle --json
+specify bundle install concorde-bundle
 ```
 
 Disabling or reprioritizing a preset changes future template resolution but, in Spec Kit 0.16.4,

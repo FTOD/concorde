@@ -6,7 +6,7 @@
   "source_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
   "integration": "codex",
   "components": [
-    {"id": "concorde-starter", "kind": "bundle", "version": "0.1.0", "source": "bundles/concorde-starter/bundle.yml"},
+    {"id": "concorde-bundle", "kind": "bundle", "version": "0.1.0", "source": "bundles/concorde-bundle/bundle.yml"},
     {"id": "concorde", "kind": "extension", "version": "0.1.0", "source": "extensions/concorde", "priority": 10},
     {"id": "concorde-core", "kind": "preset", "version": "0.1.0", "source": "presets/concorde-core", "priority": 10}
   ],

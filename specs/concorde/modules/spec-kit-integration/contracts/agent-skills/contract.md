@@ -12,7 +12,7 @@ representation:
   version: "0.16.4"
   definition: specs/concorde/features/001-concorde-workflow/contracts/agent-commands.md
 features:
-  - feature.integration.compose-starter-workflow
+  - feature.integration.compose-concorde-workflow
   - feature.integration.manage-feature-workspace
 evidence_status: partial
 ---

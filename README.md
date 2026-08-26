@@ -17,21 +17,21 @@ The three Spec Kit package concepts have different jobs:
 
 | Concept | Concorde package | Role |
 |---|---|---|
-| Bundle | `concorde-starter` | An installation recipe that pins the tested preset and extension versions. |
+| Bundle | `concorde-bundle` | An installation recipe that pins the tested preset and extension versions. |
 | Preset | `concorde-core` | Three append template layers plus nine complete normal-command replacements for nested workspace routing. |
 | Extension | `concorde` | Seven Concorde-specific surfaces: six deterministic operations and one agent-followed, read-only question procedure. |
 
 Catalogs are trusted discovery metadata for these independently versioned packages; they are not a
 fourth installed runtime component. See the maintained
 [component model](specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json),
-[installation flow](specs/concorde/features/003-install-concorde-speckit/diagrams/starter-installation-flow.json),
+[installation flow](specs/concorde/features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json),
 and the full [Feature 003 setup specification](specs/concorde/features/003-install-concorde-speckit/spec.md).
 The project docsite build turns declared diagram sources into interactive standalone views.
 
 ## Project status
 
 The project docsite and architecture publication pipeline are implemented and tested. Feature 003
-owns the native starter bundle, preset command composition, seven-surface extension, release/catalog
+owns the native Concorde bundle, preset command composition, seven-surface extension, release/catalog
 tooling, and setup lifecycle. Feature 001 defines the Concorde architecture-aware development workflow;
 its initialization, nested feature placement/selection, bounded context, architecture readiness, and
 deterministic validation behavior are implemented. Timed human pilots and browser-based diagram
@@ -69,7 +69,7 @@ From a Concorde checkout:
 ```bash
 uv run python scripts/release/build-components.py --output dist \
   --base-url http://127.0.0.1:8765
-specify bundle build --path bundles/concorde-starter --output dist
+specify bundle build --path bundles/concorde-bundle --output dist
 uv run python scripts/release/verify-release.py --dist dist
 ```
 
@@ -108,9 +108,9 @@ specify preset catalog add http://127.0.0.1:8765/presets.json \
 specify bundle catalog add http://127.0.0.1:8765/bundles.json \
   --id concorde-dev --policy install-allowed
 specify bundle validate --offline \
-  --path "$concorde_checkout/bundles/concorde-starter"
-specify bundle info concorde-starter --json
-specify bundle install "$concorde_checkout/bundles/concorde-starter/bundle.yml"
+  --path "$concorde_checkout/bundles/concorde-bundle"
+specify bundle info concorde-bundle --json
+specify bundle install "$concorde_checkout/bundles/concorde-bundle/bundle.yml"
 ```
 
 The information command previews the exact preset, extension, versions, compatibility range, and

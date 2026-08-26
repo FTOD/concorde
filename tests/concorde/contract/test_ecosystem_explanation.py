@@ -75,7 +75,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         self.assertIn(("agentHost", "architectureCore", "invoke services"), edges)
 
     def test_workflow_view_has_install_time_and_two_use_time_paths(self):
-        source = FEATURE_ROOT / "diagrams" / "starter-installation-flow.json"
+        source = FEATURE_ROOT / "diagrams" / "bundle-installation-flow.json"
         diagram = json.loads(source.read_text(encoding="utf-8"))
         self.assertEqual(diagram["diagram_type"], "workflow")
         self.assertEqual(diagram["meta"]["quality_profile"], "showcase")
@@ -109,7 +109,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
 
         outputs = {
             "concorde-spec-kit-component-model.html": "How Concorde Commands Reach a Clean Project",
-            "concorde-starter-installation-flow.html": "Install, Materialize, and Prove Concorde",
+            "concorde-bundle-installation-flow.html": "Install, Materialize, and Prove Concorde",
         }
         for filename, title in outputs.items():
             artifact = REPOSITORY_ROOT / "generated/architecture" / filename

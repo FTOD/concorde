@@ -30,7 +30,7 @@ class InstalledSlashWorkflowTests(unittest.TestCase):
                 project = SpecifyProject(root, integration="gemini", skills=False)
                 project.initialize()
                 project.register_catalogs(server.base_url)
-                project.run("bundle", "install", "concorde-starter")
+                project.run("bundle", "install", "concorde-bundle")
                 shutil.copytree(TWO_LEVEL_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
                 shutil.copytree(TWO_LEVEL_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
                 (root / ".specify/feature.json").write_text(

@@ -15,7 +15,7 @@ examples:
   - specs/concorde/features/001-concorde-workflow/contracts/examples/context-response.json
   - specs/concorde/features/001-concorde-workflow/contracts/examples/validation-response.json
 features:
-  - feature.integration.compose-starter-workflow
+  - feature.integration.compose-concorde-workflow
   - feature.integration.manage-feature-workspace
 evidence_status: verified
 ---

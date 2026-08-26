@@ -98,17 +98,17 @@ types divide responsibility as follows:
 |---|---|
 | Spec Kit | Owns component resolution and provenance plus the normal feature-development lifecycle. |
 | Component catalogs | Advertise independently packaged bundle, preset, and extension archives with location, compatibility, digest, and trust metadata. |
-| `concorde-starter` bundle | Pins and groups the accepted Concorde components as one inspectable installation recipe. |
+| `concorde-bundle` bundle | Pins and groups the accepted Concorde components as one inspectable installation recipe. |
 | `concorde-core` preset | Composes architecture-aware templates and selected-workspace routing into nine existing Spec Kit lifecycle commands. |
 | `concorde` extension | Supplies seven Concorde-specific command surfaces: six portable runtime-backed operations plus the read-only, agent-followed `ask` procedure; it also ships the workspace adapter and deterministic Architecture Core runtime. |
 | Coding-agent integration | Materializes resolved normal-command overrides and Concorde-specific commands in its native skill or slash-command syntax. |
 | Concorde Architecture Core | Maintains bounded hierarchy, context, and validation under the shared `specs/` tree. |
 
 The detailed <a href="/architecture/concorde-spec-kit-component-model.html">component model</a> and
-<a href="/architecture/concorde-starter-installation-flow.html">installation flow</a> are
+<a href="/architecture/concorde-bundle-installation-flow.html">installation flow</a> are
 supplemental Feature 003 explanatory views. Their maintained sources are
 `features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` and
-`features/003-install-concorde-speckit/diagrams/starter-installation-flow.json`. `architecture.json` remains
+`features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json`. `architecture.json` remains
 the canonical one-level root module view. Feature 001 owns the core
 `features/001-concorde-workflow/diagrams/concorde-workflow-components.json` component-interaction model, and Feature
 002 owns `features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json`, and

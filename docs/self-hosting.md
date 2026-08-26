@@ -22,7 +22,7 @@ The source side consists of:
 
 - `presets/concorde-core/`, including normal-phase command replacements and template layers;
 - `extensions/concorde/`, including Concorde commands, launchers, and runtime;
-- `bundles/concorde-starter/bundle.yml`, which pins the tested composition.
+- `bundles/concorde-bundle/bundle.yml`, which pins the tested composition.
 
 Copies beneath `.specify/presets/`, `.specify/extensions/`, `.agents/skills/`, and the composed
 `.specify/templates/` files are active project materializations. They are replaceable evidence, not

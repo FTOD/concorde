@@ -1,4 +1,4 @@
-# Feature Design: Compose Starter Workflow
+# Feature Design: Compose Concorde Workflow
 
 **Design status**: Accepted implementation baseline.
 
@@ -25,4 +25,3 @@ Composition and clean-install tests provide cross-integration evidence.
 ## Known Limitations
 
 Supported behavior is bounded to the pinned Spec Kit host version.
-

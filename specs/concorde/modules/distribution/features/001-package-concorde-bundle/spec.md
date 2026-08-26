@@ -1,5 +1,5 @@
 ---
-id: feature.distribution.package-starter-bundle
+id: feature.distribution.package-concorde-bundle
 kind: feature
 module: module.concorde.distribution
 refines:
@@ -13,10 +13,10 @@ contracts:
   required:
     - contract.distribution.component-packages
 evidence_status: verified
-canonical_spec: specs/concorde/modules/distribution/features/001-package-starter-bundle/spec.md
+canonical_spec: specs/concorde/modules/distribution/features/001-package-concorde-bundle/spec.md
 ---
 
-# Package the Concorde Starter Bundle
+# Package the Concorde Bundle
 
 **Status**: Automated package lifecycle and clean installed-command parity implemented and verified
 
@@ -37,7 +37,7 @@ Spec Kit, accepting it, and receiving an installation result governed by
 ## Diagram Decision
 
 The parent feature's `diagrams/spec-kit-component-model.json` identifies Distribution's package role, while
-`diagrams/starter-installation-flow.json` shows preview, approval, install, update, and removal through Spec
+`diagrams/bundle-installation-flow.json` shows preview, approval, install, update, and removal through Spec
 Kit. Those text-backed views already isolate this child scenario and its bundle-lifecycle crossing, so
 a separate Distribution-owned diagram would duplicate them.
 

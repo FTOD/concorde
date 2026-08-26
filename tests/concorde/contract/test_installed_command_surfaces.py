@@ -45,7 +45,7 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
         project = SpecifyProject(root, integration=integration, skills=integration == "codex")
         project.initialize()
         project.register_catalogs(self.server.base_url)
-        project.run("bundle", "install", "concorde-starter")
+        project.run("bundle", "install", "concorde-bundle")
         shutil.copytree(CONTEXT_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
         shutil.copytree(CONTEXT_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
         (root / ".specify/feature.json").write_text(

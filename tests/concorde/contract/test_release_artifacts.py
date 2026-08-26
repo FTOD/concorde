@@ -24,7 +24,7 @@ class ReleaseArtifactTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
             builder.build_release(Path(first), "http://127.0.0.1:8765")
             builder.build_release(Path(second), "http://127.0.0.1:8765")
-            names = ["concorde-core-0.1.0.zip", "concorde-0.1.0.zip", "concorde-starter-0.1.0.zip"]
+            names = ["concorde-core-0.1.0.zip", "concorde-0.1.0.zip", "concorde-bundle-0.1.0.zip"]
             for name in names:
                 self.assertEqual((Path(first) / name).read_bytes(), (Path(second) / name).read_bytes())
             self.assertEqual((Path(first) / "presets.json").read_bytes(), (Path(second) / "presets.json").read_bytes())
@@ -75,7 +75,7 @@ class ReleaseArtifactTests(unittest.TestCase):
         sources = {
             "concorde-core-0.1.0.zip": ("concorde-core", REPOSITORY_ROOT / "presets/concorde-core"),
             "concorde-0.1.0.zip": ("concorde", REPOSITORY_ROOT / "extensions/concorde"),
-            "concorde-starter-0.1.0.zip": ("concorde-starter", REPOSITORY_ROOT / "bundles/concorde-starter"),
+            "concorde-bundle-0.1.0.zip": ("concorde-bundle", REPOSITORY_ROOT / "bundles/concorde-bundle"),
         }
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)

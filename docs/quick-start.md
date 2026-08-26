@@ -67,7 +67,7 @@ From the Concorde checkout, build and verify the independently versioned package
 uv sync
 uv run python scripts/release/build-components.py --output dist \
   --base-url http://127.0.0.1:8765
-specify bundle build --path bundles/concorde-starter --output dist
+specify bundle build --path bundles/concorde-bundle --output dist
 uv run python scripts/release/verify-release.py --dist dist
 ```
 
@@ -108,12 +108,12 @@ and review its expanded information:
 ```bash
 concorde_checkout=/absolute/path/to/concorde
 specify bundle validate --offline \
-  --path "$concorde_checkout/bundles/concorde-starter"
-specify bundle info concorde-starter --json
-specify bundle install "$concorde_checkout/bundles/concorde-starter/bundle.yml"
+  --path "$concorde_checkout/bundles/concorde-bundle"
+specify bundle info concorde-bundle --json
+specify bundle install "$concorde_checkout/bundles/concorde-bundle/bundle.yml"
 ```
 
-The `concorde-starter` bundle is an installation recipe. It pins exactly two independently versioned
+The `concorde-bundle` bundle is an installation recipe. It pins exactly two independently versioned
 components:
 
 | Installed component | Responsibility |

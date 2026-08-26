@@ -4,7 +4,7 @@
 
 ## Realization Overview
 
-Concorde is delivered through Spec Kit's native component lifecycle as three independently identifiable release units. The passive `concorde-starter@0.1.0` bundle pins the tested `concorde-core@0.1.0` preset and `concorde@0.1.0` extension; it contains no executable workflow or reusable steps. Spec Kit remains the host that resolves trust and compatibility, previews the expanded plan, installs the components, records provenance, and materializes commands through the target project's active coding-agent integration.
+Concorde is delivered through Spec Kit's native component lifecycle as three independently identifiable release units. The passive `concorde-bundle@0.1.0` bundle pins the tested `concorde-core@0.1.0` preset and `concorde@0.1.0` extension; it contains no executable workflow or reusable steps. Spec Kit remains the host that resolves trust and compatibility, previews the expanded plan, installs the components, records provenance, and materializes commands through the target project's active coding-agent integration.
 
 The preset changes the existing Spec Kit feature lifecycle. It contributes three append-composed guidance templates, one replacement template for permanent `design.md`, and complete replacement layers for the nine path-sensitive normal commands. The extension contributes six Concorde-specific commands together with platform launchers, the selected-workspace adapter, and the deterministic Concorde runtime. Catalogs advertise these packages and their integrity metadata but are not installed runtime components.
 
@@ -12,11 +12,11 @@ Release archives are built from explicit allowlists with stable member ordering,
 
 ## Module and Feature Collaboration
 
-This root feature is realized by existing module-level refinements rather than redefining their architecture. `feature.distribution.package-starter-bundle` supplies the reproducible archives, catalogs, exact component plan, provenance, and install/update/remove lifecycle governed by the Distribution module's bundle and component-package contracts. `feature.integration.compose-starter-workflow` supplies the preset and extension composition governed by the Spec Kit Integration module's workflow-composition, agent-skills, and Spec Kit platform contracts.
+This root feature is realized by existing module-level refinements rather than redefining their architecture. `feature.distribution.package-concorde-bundle` supplies the reproducible archives, catalogs, exact component plan, provenance, and install/update/remove lifecycle governed by the Distribution module's bundle and component-package contracts. `feature.integration.compose-concorde-workflow` supplies the preset and extension composition governed by the Spec Kit Integration module's workflow-composition, agent-skills, and Spec Kit platform contracts.
 
 Feature 001's `feature.integration.manage-feature-workspace` remains authoritative for nested feature selection, durable and temporal paths, command intent, result envelopes, and hardening semantics. Feature 003 packages that handoff and proves it from installed artifacts; it does not redefine the workflow. Architecture Core performs initialization, bounded context, and validation after an installed command invokes it. Feature 002 publishes the declared Feature 003 diagrams and prose without becoming behavioral authority.
 
-The stable package interaction is explained by `diagrams/spec-kit-component-model.json`, while `diagrams/starter-installation-flow.json` supplements it with release-to-use order. The canonical one-level project architecture remains `specs/concorde/architecture.json`, and module responsibilities and contracts remain in their respective module specifications.
+The stable package interaction is explained by `diagrams/spec-kit-component-model.json`, while `diagrams/bundle-installation-flow.json` supplements it with release-to-use order. The canonical one-level project architecture remains `specs/concorde/architecture.json`, and module responsibilities and contracts remain in their respective module specifications.
 
 ## Scenario Realization
 
@@ -41,7 +41,7 @@ Spec Kit owns lifecycle state. On Spec Kit 0.16.4, disabling or reprioritizing t
 ## Durable Implementation Decisions
 
 - Concorde uses one native Spec Kit bundle as an inspectable recipe; it has no separate installer, dedicated workflow component, or reusable steps.
-- Bundle, preset, and extension versions are independent and pinned exactly in the tested starter recipe. Initial compatibility is `>=0.16.4,<0.16.5`.
+- Bundle, preset, and extension versions are independent and pinned exactly in the tested bundle recipe. Initial compatibility is `>=0.16.4,<0.16.5`.
 - The preset contains three append template layers, one replacement `design-template`, and nine complete command replacements. Replacement is required because selected-workspace routing must precede every legacy path assumption.
 - The extension contains six Concorde commands, four platform/runtime entry scripts, and all declared runtime dependencies. Installed commands may not fall back to the Concorde source checkout.
 - Feature 001 owns command and workspace semantics. Feature 003 owns package composition, materialization, provenance, and lifecycle proof and binds installed surfaces to the packaged handoff digest.
@@ -53,7 +53,7 @@ Spec Kit owns lifecycle state. On Spec Kit 0.16.4, disabling or reprioritizing t
 
 ## Traceability and Evidence
 
-The durable behavioral authority is `spec.md` together with `contracts/bundle-distribution.md`, `contracts/installed-command-surfaces.md`, and `contracts/ecosystem-explanation.md`. Package identity and content are maintained in `bundles/concorde-starter/bundle.yml`, `presets/concorde-core/preset.yml`, and `extensions/concorde/extension.yml`; deterministic release and catalog generation are implemented by `scripts/release/build-components.py` and checked by `scripts/release/verify-release.py`.
+The durable behavioral authority is `spec.md` together with `contracts/bundle-distribution.md`, `contracts/installed-command-surfaces.md`, and `contracts/ecosystem-explanation.md`. Package identity and content are maintained in `bundles/concorde-bundle/bundle.yml`, `presets/concorde-core/preset.yml`, and `extensions/concorde/extension.yml`; deterministic release and catalog generation are implemented by `scripts/release/build-components.py` and checked by `scripts/release/verify-release.py`.
 
 Manifest and archive contracts verify the exact two-component recipe, four preset templates, nine normal replacements, six extension commands, archive allowlists, catalog capability counts, reproducibility, and handoff content. Clean-install contract, integration, and acceptance tests install built archives through served catalogs into isolated Codex-skills and Gemini-slash projects, inventory all fifteen materialized surfaces, execute the selected-workspace bootstrap, compare repeated phase receipts, and reject checkout fallback. Lifecycle tests cover supported source forms, preview/install parity, idempotency, compatible update, failed update, shared ownership, project-source preservation, Spec Kit's persistent registration semantics, and restoration of all nine lower command layers.
 

@@ -55,7 +55,7 @@
     {
       "id": "bundle",
       "type": "cloud",
-      "label": "concorde-starter",
+      "label": "concorde-bundle",
       "sublabel": "Bundle: versioned recipe",
       "pos": [485, 275],
       "size": [190, 76]

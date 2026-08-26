@@ -1,12 +1,12 @@
 {
   "bundles": {
-    "concorde-starter": {
+    "concorde-bundle": {
       "author": "Concorde maintainers",
-      "description": "Architecture-aware Spec Kit starter workflow",
-      "download_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/concorde-starter-0.1.0.zip",
-      "id": "concorde-starter",
+      "description": "Pinned Concorde preset and extension installation recipe for Spec Kit",
+      "download_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/concorde-bundle-0.1.0.zip",
+      "id": "concorde-bundle",
       "license": "MIT",
-      "name": "Concorde Starter",
+      "name": "Concorde Bundle",
       "provides": {
         "extensions": 1,
         "presets": 1,
@@ -18,7 +18,7 @@
         "speckit_version": ">=0.16.4,<0.16.5"
       },
       "role": "developer",
-      "sha256": "sha256:0243b637123bfb8187dc17ea11ce373cfb6df23a6635a97783b3048099de69c7",
+      "sha256": "sha256:ae0079f5e78b89bbb30eaa46279f036553395f1be1c94f9af8de962ab0670608",
       "tags": [
         "architecture",
         "context",

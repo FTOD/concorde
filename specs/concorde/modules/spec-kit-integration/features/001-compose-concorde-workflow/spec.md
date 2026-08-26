@@ -1,5 +1,5 @@
 ---
-id: feature.integration.compose-starter-workflow
+id: feature.integration.compose-concorde-workflow
 kind: feature
 module: module.concorde.spec-kit-integration
 refines:
@@ -15,7 +15,7 @@ contracts:
     - contract.integration.spec-kit-platform
     - contract.integration.architecture-services
 evidence_status: verified
-canonical_spec: specs/concorde/modules/spec-kit-integration/features/001-compose-starter-workflow/spec.md
+canonical_spec: specs/concorde/modules/spec-kit-integration/features/001-compose-concorde-workflow/spec.md
 ---
 
 # Compose Concorde into the Spec Kit Lifecycle
@@ -42,7 +42,7 @@ an exhaustive definition.
 
 The parent installation feature's `diagrams/spec-kit-component-model.json` separates preset guidance,
 extension commands, active-agent presentation, and Architecture Core, while
-`diagrams/starter-installation-flow.json` shows their setup order. Those diagrams and the Integration boundary
+`diagrams/bundle-installation-flow.json` shows their setup order. Those diagrams and the Integration boundary
 contracts fully cover this refinement; a separate child diagram would repeat the same flow.
 
 ## Requirements

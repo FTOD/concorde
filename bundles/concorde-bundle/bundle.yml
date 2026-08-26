@@ -1,11 +1,11 @@
 schema_version: "1.0"
 
 bundle:
-  id: "concorde-starter"
-  name: "Concorde Starter"
+  id: "concorde-bundle"
+  name: "Concorde Bundle"
   version: "0.1.0"
   role: "developer"
-  description: "Architecture-aware Spec Kit starter workflow"
+  description: "Pinned Concorde preset and extension installation recipe for Spec Kit"
   author: "Concorde maintainers"
   license: "MIT"
 

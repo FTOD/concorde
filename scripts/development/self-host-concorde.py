@@ -29,7 +29,7 @@ RECEIPT_PATH = ".specify/self-hosting.json"
 SUPPORTED_SPECKIT = "0.16.4"
 PRESET_ID = "concorde-core"
 EXTENSION_ID = "concorde"
-BUNDLE_ID = "concorde-starter"
+BUNDLE_ID = "concorde-bundle"
 PRIORITY = 10
 
 PRESET_COMMANDS = (
@@ -277,7 +277,7 @@ def component_model(root: Path) -> tuple[list[dict[str, object]], str, str]:
     manifests = {
         "preset": resolve_project_path(root, "presets/concorde-core/preset.yml"),
         "extension": resolve_project_path(root, "extensions/concorde/extension.yml"),
-        "bundle": resolve_project_path(root, "bundles/concorde-starter/bundle.yml"),
+        "bundle": resolve_project_path(root, "bundles/concorde-bundle/bundle.yml"),
     }
     expected = {
         "preset": (PRESET_ID, "preset"),
@@ -311,14 +311,14 @@ def component_model(root: Path) -> tuple[list[dict[str, object]], str, str]:
         raise SelfHostError(
             "CONCORDE-SELF-HOST-008",
             "source",
-            "bundles/concorde-starter/bundle.yml",
+            "bundles/concorde-bundle/bundle.yml",
             "Bundle composition does not pin the same local preset and extension versions.",
             "Align the bundle recipe with the maintained preset and extension manifests.",
         )
     groups = [
         ("preset", source_files(root, "presets/concorde-core")),
         ("extension", source_files(root, "extensions/concorde")),
-        ("bundle", source_files(root, "bundles/concorde-starter")),
+        ("bundle", source_files(root, "bundles/concorde-bundle")),
     ]
     return components, inventory_digest(root, groups), integration
 

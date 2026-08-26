@@ -1,4 +1,4 @@
 {
   "component": "preset:concorde-core",
-  "setup": "installed through concorde-shared-fixture before the starter and therefore retained for the other bundle"
+  "setup": "installed through concorde-shared-fixture before the Concorde bundle and therefore retained for the other bundle"
 }

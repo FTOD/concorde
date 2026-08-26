@@ -30,7 +30,7 @@ def verify_release(dist: Path) -> dict[str, str]:
     expected = {
         "extensions.json": ("extensions", "concorde", f"concorde-{VERSION}.zip"),
         "presets.json": ("presets", "concorde-core", f"concorde-core-{VERSION}.zip"),
-        "bundles.json": ("bundles", "concorde-starter", f"concorde-starter-{VERSION}.zip"),
+        "bundles.json": ("bundles", "concorde-bundle", f"concorde-bundle-{VERSION}.zip"),
     }
     verified: dict[str, str] = {}
     for catalog_name, (collection, identifier, archive_name) in expected.items():

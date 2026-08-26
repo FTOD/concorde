@@ -44,7 +44,7 @@ that a clean target actually receives from release archives.
 | Question | Maintained source | Published projection |
 |---|---|---|
 | What are the ecosystem components, and who owns what? | `diagrams/spec-kit-component-model.json` | `/architecture/concorde-spec-kit-component-model.html` |
-| What happens during release/install and along each use-time path? | `diagrams/starter-installation-flow.json` | `/architecture/concorde-starter-installation-flow.html` |
+| What happens during release/install and along each use-time path? | `diagrams/bundle-installation-flow.json` | `/architecture/concorde-bundle-installation-flow.html` |
 
 These are feature-owned Feature 003 explanations: the component model is the single `role: core`
 architecture view and the installation flow is `role: supplemental`. Both supplement rather than
@@ -60,7 +60,7 @@ profile 1, and must not redefine the root module's one-level participants or con
 - Deterministic diagram validation must cover composition, provenance, freshness, and configured
   light/dark theme behavior without errors or warnings.
 - The existing documentation site publishes the generated views; this feature adds no render or
-  publication command to the starter bundle.
+  publication command to the Concorde bundle.
 
 ## Failure Semantics
 

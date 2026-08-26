@@ -12,7 +12,7 @@ representation:
   version: "0.16.4"
   definition: https://github.com/github/spec-kit/tree/v0.16.4
 features:
-  - feature.integration.compose-starter-workflow
+  - feature.integration.compose-concorde-workflow
   - feature.integration.manage-feature-workspace
 evidence_status: partial
 ---
@@ -43,7 +43,7 @@ Unsupported versions and registration failures stop the affected operation witho
 
 ## Compatibility
 
-The supported platform is exactly Spec Kit 0.16.4 for the starter release.
+The supported platform is exactly Spec Kit 0.16.4 for the initial release.
 
 ## Evidence
 

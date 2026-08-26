@@ -12,7 +12,7 @@ representation:
   version: "0.16.4"
   definition: https://github.com/github/spec-kit/tree/v0.16.4
 features:
-  - feature.distribution.package-starter-bundle
+  - feature.distribution.package-concorde-bundle
 evidence_status: verified
 ---
 
