@@ -15,9 +15,11 @@ The supported setup boundary and current evidence status are authoritative in
 
 ## 1. Preview this project's read model
 
-You need Node.js 20 or newer. From the Concorde repository root, run these commands in a terminal:
+You need Node.js 20 or newer and Archify 2.14.0. Set `ARCHIFY_ROOT` to the Archify package directory,
+then run these commands from the Concorde repository root:
 
 ```bash
+export ARCHIFY_ROOT=/absolute/path/to/archify
 cd docsite
 npm ci
 npm run start
@@ -37,9 +39,10 @@ cd docsite
 npm run check
 ```
 
-The gate checks types, tests, source validity, routes, links, manifest completeness, and a production
-build. A failed candidate is not promoted over the previous successful output. Publication behavior
-is specified by [Feature 002](../specs/concorde/features/002-create-project-docsite/spec.md).
+The gate checks types, tests, source validity, deterministic Archify delivery, routes, links,
+manifest completeness, and a production build. It recreates ignored standalone diagrams from their
+maintained JSON; a failed candidate is not promoted over the previous successful output. Publication
+behavior is specified by [Feature 002](../specs/concorde/features/002-create-project-docsite/spec.md).
 
 ## 2. Build the current local release
 

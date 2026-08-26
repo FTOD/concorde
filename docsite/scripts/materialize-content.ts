@@ -2,14 +2,15 @@ import {copyFile, mkdir, rm} from 'node:fs/promises';
 import {dirname, relative, resolve} from 'node:path';
 
 import {buildRegistry} from '../plugins/concorde-content/registry';
+import type {ContentRegistry} from '../plugins/concorde-content/types';
 import {assertValidRegistry} from '../plugins/concorde-content/validation';
 
 const siteDir = resolve(__dirname, '..');
 const projectRoot = resolve(siteDir, '..');
 export const generatedContentRoot = resolve(siteDir, '.generated/content');
 
-export async function materializeContent(): Promise<void> {
-  const registry = assertValidRegistry(await buildRegistry(projectRoot));
+export async function materializeContent(providedRegistry?: ContentRegistry): Promise<void> {
+  const registry = providedRegistry ?? assertValidRegistry(await buildRegistry(projectRoot));
   await rm(generatedContentRoot, {recursive: true, force: true});
 
   for (const document of registry.documents) {

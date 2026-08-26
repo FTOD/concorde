@@ -56,9 +56,9 @@ compatibility, and evidence can evolve together without duplicating them in this
 - **Representation**: commonly adopted Archify architecture JSON schema and generated HTML contract.
 - **Guarantees required**: valid maintained JSON produces deterministic, self-contained diagram output.
 - **Failure**: renderer diagnostics are preserved and publication stops for the affected view.
-- **Evidence**: both maintained architecture views pass all 9 Archify showcase checks; deterministic
-  delivery and provenance evidence is recorded under `generated/architecture/` and
-  `specs/concorde/features/002-create-project-docsite/implementation/validation.md`.
+- **Evidence**: both maintained architecture views pass all 9 Archify showcase checks; disposable
+  deliveries are recreated under ignored `generated/architecture/`, while durable attempt evidence
+  is recorded in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`.
 
 ## Scenario Trace
 

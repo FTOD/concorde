@@ -7,6 +7,8 @@ build/
 tests/concorde/.tmp/
 .docusaurus/
 .generated/
+generated/
+.generated-diagrams-*/
 coverage/
 *.tsbuildinfo
 

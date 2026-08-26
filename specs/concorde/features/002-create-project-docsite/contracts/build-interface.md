@@ -25,18 +25,26 @@ standard error carries actionable diagnostics. All displayed repository paths ar
 | `npm ci` | `package.json`, `package-lock.json` | Exact locked dependencies installed | Non-zero; no source change |
 | `npm run inspect` | Canonical sources and site config | Sorted counts, mappings, exclusions, findings | Non-zero on any validation error |
 | `npm run validate` | Canonical sources, schemas, config | Zero validation errors | Non-zero with rule/source/remediation |
-| `npm run start` | Valid sources; optional Docusaurus host/port args | Local preview using production inclusion rules | Non-zero before serving invalid content |
+| `npm run render-diagrams` | Valid diagram declarations and compatible Archify package | Complete verified disposable diagram set | Non-zero; prior set preserved and no stale fallback |
+| `npm run start` | Valid sources, compatible Archify package; optional Docusaurus host/port args | Local preview using production inclusion and diagram-delivery rules | Non-zero before serving invalid content |
 | `npm test` | Unit, contract, and integration fixtures | All selected tests pass | Non-zero with failed assertion/fixture |
-| `npm run build` | Valid sources and locked dependencies | Verified site at `docsite/build/` and manifest | Non-zero; last successful build preserved |
+| `npm run build` | Valid sources, locked dependencies, and compatible Archify package | Fresh diagrams plus verified site at `docsite/build/` and manifest | Non-zero; last successful build preserved |
 | `npm run check` | All maintained inputs | Type, test, validation, and production-build gates pass | Non-zero at first failed gate |
 
 ## Guarantees
 
 - Preview and production build use the same source registry and route rules.
+- Preview and production build discover, validate, and deliver the complete declared Archify set
+  before registry validation or Docusaurus consumes generated HTML.
+- The build resolves the renderer only from the documented explicit package-root contract, verifies
+  Archify 2.14.0 compatibility, and never probes agent-specific home or skill directories.
+- A diagram-delivery failure preserves the prior complete delivery set, never falls back to stale
+  HTML for publication, and stops before the site candidate is rendered.
 - `build` is promoted only after validation, rendering, route verification, and manifest-schema checks.
 - Existing successful output remains available when candidate validation or rendering fails.
 - Repeating `build` with identical inputs yields an equivalent schema-valid manifest.
-- No command writes beneath root `docs/` or root `specs/`.
+- No command writes beneath root `docs/` or root `specs/`; diagram HTML is written only beneath the
+  ignored disposable `generated/` delivery root.
 - Commands do not require a hosted service, credentials, or LLM.
 
 ## Failure Semantics

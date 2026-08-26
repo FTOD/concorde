@@ -27,4 +27,14 @@ describe('atomic candidate promotion', () => {
     await expect(promoteCandidate(resolve(root, 'missing'), build, resolve(root, 'backup'))).rejects.toThrow();
     expect(await readFile(resolve(build, 'version'), 'utf8')).toBe('old');
   });
+
+  it('preserves output when the initial backup rename fails', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'concorde-backup-failure-')); roots.push(root);
+    const candidate = resolve(root, 'candidate'); const build = resolve(root, 'build');
+    await mkdir(candidate); await mkdir(build);
+    await writeFile(resolve(candidate, 'version'), 'new'); await writeFile(resolve(build, 'version'), 'old');
+    await expect(promoteCandidate(candidate, build, resolve(build, 'nested-backup'))).rejects.toThrow();
+    expect(await readFile(resolve(build, 'version'), 'utf8')).toBe('old');
+    expect(await readFile(resolve(candidate, 'version'), 'utf8')).toBe('new');
+  });
 });

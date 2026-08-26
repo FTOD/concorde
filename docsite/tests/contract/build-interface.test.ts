@@ -10,9 +10,12 @@ describe('build interface', () => {
   it('exposes every stable command', async () => {
     const packageJson = JSON.parse(await readFile(resolve(siteDir, 'package.json'), 'utf8'));
     expect(Object.keys(packageJson.scripts)).toEqual(expect.arrayContaining([
-      'inspect', 'validate', 'start', 'test', 'build', 'typecheck', 'check',
+      'inspect', 'validate', 'render-diagrams', 'start', 'test', 'build', 'typecheck', 'check',
     ]));
-    expect(packageJson.scripts.start).toContain('npm run validate');
+    expect(packageJson.scripts.start).toBe('tsx scripts/start.ts');
+    expect(packageJson.scripts['render-diagrams']).toBe('tsx scripts/render-diagrams.ts');
+    expect(await readFile(resolve(siteDir, 'scripts/start.ts'), 'utf8')).toContain('preparePublication(projectRoot)');
+    expect(await readFile(resolve(siteDir, 'scripts/build.ts'), 'utf8')).toContain('preparePublication(projectRoot)');
   });
 
   it('returns non-zero actionable diagnostics for invalid content', () => {

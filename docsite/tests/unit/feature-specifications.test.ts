@@ -35,4 +35,16 @@ describe('feature specifications', () => {
     const registry = await buildRegistry(resolve(__dirname, '../fixtures/invalid-projects/subfeature-registration'));
     expect(validateRegistry(registry).map((finding) => finding.ruleId)).toContain('feature.containment.registration');
   });
+
+  it('maps declared feature diagrams without requiring delivered HTML', async () => {
+    const registry = await buildRegistry(resolve(__dirname, '../../..'));
+    const features = registry.documents.filter((item): item is FeatureSpecification => item.collectionId === 'features');
+    const diagrams = features.flatMap((feature) => feature.diagrams);
+    expect(diagrams).toHaveLength(5);
+    expect(diagrams.find((diagram) => diagram.source.includes('project-docsite-publication-flow'))).toMatchObject({
+      kind: 'sequence',
+      role: 'supplemental',
+      route: '/architecture/project-docsite-publication-flow.html',
+    });
+  });
 });

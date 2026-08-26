@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {readFile} from 'node:fs/promises';
+import {readdir, readFile, rm} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 
@@ -9,6 +9,16 @@ import {beforeAll, describe, expect, it} from 'vitest';
 const siteDir = resolve(__dirname, '../..');
 const buildDir = resolve(siteDir, 'build');
 let firstManifest = '';
+let firstDiagramHashes: Record<string, string> = {};
+
+async function diagramHashes(): Promise<Record<string, string>> {
+  const directory = resolve(siteDir, '../generated/architecture');
+  const names = (await readdir(directory)).filter((name) => name.endsWith('.html')).sort();
+  return Object.fromEntries(await Promise.all(names.map(async (name) => [
+    name,
+    createHash('sha256').update(await readFile(resolve(directory, name))).digest('hex'),
+  ])));
+}
 
 function build() {
   const result = spawnSync(process.execPath, [resolve(siteDir, 'node_modules/tsx/dist/cli.mjs'), 'scripts/build.ts'], {
@@ -18,8 +28,10 @@ function build() {
 }
 
 beforeAll(async () => {
+  await rm(resolve(siteDir, '../generated'), {recursive: true, force: true});
   build();
   firstManifest = await readFile(resolve(buildDir, 'build-manifest.json'), 'utf8');
+  firstDiagramHashes = await diagramHashes();
 }, 120_000);
 
 describe('production build', () => {
@@ -42,6 +54,8 @@ describe('production build', () => {
       .toContain('Concorde Self-Hosting Components');
     expect(await readFile(resolve(buildDir, 'architecture/project-docsite-publication-flow.html'), 'utf8'))
       .toContain('Project Docsite — Publication Invocation');
+    expect(Object.keys(firstDiagramHashes)).toHaveLength(7);
+    expect((await readdir(resolve(siteDir, '../generated/architecture'))).every((name) => name.endsWith('.html'))).toBe(true);
     const concordeFeature = manifest.pages.find((page: {featureId?: string}) => page.featureId === 'feature.concorde.workflow');
     const docsiteFeature = manifest.pages.find((page: {featureId?: string}) => page.featureId === 'feature.concorde.publish-project-docsite');
     const selfHostingFeature = manifest.pages.find((page: {featureId?: string}) => page.featureId === 'feature.concorde.self-host-framework');
@@ -96,5 +110,6 @@ describe('production build', () => {
     build();
     const second = await readFile(resolve(buildDir, 'build-manifest.json'), 'utf8');
     expect(createHash('sha256').update(second).digest('hex')).toBe(beforeHash);
+    expect(await diagramHashes()).toEqual(firstDiagramHashes);
   }, 120_000);
 });

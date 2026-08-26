@@ -97,6 +97,42 @@ export interface FeatureDiagram {
   route: string;
 }
 
+export type DiagramKind = FeatureDiagram['kind'];
+
+export interface DiagramDeclaration {
+  ownerPath: string;
+  sourcePath: string;
+  absoluteSourcePath: string;
+  outputPath: string;
+  absoluteOutputPath: string;
+  outputFromGenerated: string;
+  kind: DiagramKind;
+  title: string;
+  role?: FeatureDiagram['role'];
+  scenarios?: string[];
+}
+
+export interface DiagramDeliveryReceipt {
+  sourcePath: string;
+  outputPath: string;
+  kind: DiagramKind;
+  sourceSha256: string;
+  sourceBytes: number;
+  artifactSha256: string;
+  artifactBytes: number;
+  checksPassed: 9;
+  checkCount: 9;
+  profile: 'showcase';
+  compositionStatus: 'pass';
+  errors: 0;
+  warnings: 0;
+}
+
+export interface DiagramDeliverySet {
+  generator: {name: 'archify'; version: '2.14.0'};
+  receipts: DiagramDeliveryReceipt[];
+}
+
 export type ArchitectureKind = 'contract' | 'feature' | 'module';
 
 export interface ArchitectureSource extends SourceDocument {

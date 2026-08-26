@@ -1,4 +1,4 @@
-# Content Sources Contract v3
+# Content Sources Contract v4
 
 **Contract ID**: `contract.documentation.project-content`
 
@@ -84,8 +84,9 @@ specification tree. Specifications and designs share the public Features navigat
 - `module`: required owning module ID for feature and contract sources.
 - `parent`: optional parent module ID for non-root module sources.
 - `view` or `architecture_view`: optional project-relative path to maintained Archify JSON.
-- A declared view must contain a valid `meta.output` beneath `generated/`, and the delivered HTML must
-  exist before publication. The page records the JSON source hash and embeds the HTML in a sandbox.
+- A declared view must contain a valid `meta.output` beneath `generated/`. Preview and production
+  publication discover the declaration and create its verified disposable HTML before the registry
+  admits the route. The page records the JSON source hash and embeds the HTML in a sandbox.
 
 ## Obligations
 
@@ -96,9 +97,11 @@ specification tree. Specifications and designs share the public Features navigat
 - Consumers MUST preserve authored prose, headings, code, tables, and supported links.
 - Consumers MUST expose content kind and project-relative provenance on every page; architecture pages
   additionally expose stable ID, kind, hierarchy metadata, and view provenance when applicable.
-- Consumers MUST discover feature diagrams from `spec.md`, verify their generated outputs, include
+- Consumers MUST discover feature diagrams from `spec.md`, deliver and verify their generated outputs before publication, include
   their source hashes and routes in the manifest, and embed every declared view on the canonical
   feature page with a standalone-view link.
+- Consumers MUST reject duplicate, escaping, mismatched, stale, failed, or incomplete diagram
+  deliveries and MUST NOT require committed HTML or machine-local visual-check evidence.
 - Providers MUST keep stable feature IDs unique and internal Markdown targets resolvable.
 - Providers MUST keep parent registration and child back-references bidirectionally consistent.
   Consumers publish ordered child summaries on the parent and parent/sibling links on the child,
@@ -118,12 +121,12 @@ candidate publication.
 
 ## Compatibility
 
-This remains contract version 3. The framework baseline adds required project-document instances for
-Concorde's self-hosting site without changing content kinds, source roots, eligibility globs, field
-representation, route bases, path semantics, or manifest schema. Adding optional metadata or more
-project documents is backward compatible. Changing source roots, eligibility globs, required
-fields, route bases, path semantics, or exclusion meaning requires a new contract version and a
-route/content migration decision.
+This is contract version 4. It preserves content kinds, source roots, eligibility globs, field
+representation, route bases, and manifest schema while moving diagram delivery from a manually
+prepared prerequisite into preview/production publication. Adding optional metadata or more project
+documents is backward compatible. Changing source roots, eligibility globs, required fields, route
+bases, path semantics, or exclusion meaning requires a new contract version and a route/content
+migration decision.
 
 ## Evidence
 

@@ -33,15 +33,19 @@ live in `specs/`.
 
 A preview and a production build use the same inclusion, routing, and validation rules:
 
-1. The source registry discovers eligible files and records deliberate exclusions.
-2. Declared Archify sources are validated and their fresh generated deliveries are resolved.
-3. Disposable Docusaurus content is materialized under `docsite/.generated/content/`.
-4. Docusaurus renders a candidate site.
-5. Candidate pages, routes, links, provenance, and the build manifest are validated.
-6. Only a successful candidate is promoted to `docsite/build/`.
+1. Maintained module and feature declarations identify the complete Archify source set.
+2. The build verifies Archify 2.14.0, validates every source, and atomically delivers a fresh,
+   complete ignored `generated/` set.
+3. The source registry discovers eligible files, routes, and deliberate exclusions against those
+   current deliveries.
+4. Disposable Docusaurus content is materialized under `docsite/.generated/content/`.
+5. Docusaurus renders a candidate site.
+6. Candidate pages, routes, links, provenance, and the build manifest are validated.
+7. Only a successful candidate is promoted to `docsite/build/`.
 
-Because the generated Architecture and Features pages are projections, never edit files under
-`docsite/.generated/` or `docsite/build/`. Correct the maintained source and rebuild.
+Because generated diagrams, Architecture/Features pages, and site output are projections, never edit
+files under `generated/`, `docsite/.generated/`, or `docsite/build/`. Correct the maintained source
+and rebuild.
 
 ## Author a documentation page
 
@@ -71,17 +75,20 @@ For feature diagrams:
 - provide an equivalent textual explanation; and
 - keep the generated delivery fresh and provenance-bearing.
 
-A missing, invalid, escaping, stale, or unpublishable declared diagram stops the build. Edit the JSON
-source, redeliver it, and rerun validation; never patch the HTML output.
+A missing, invalid, escaping, duplicate, stale, or unpublishable declared diagram stops the build.
+Edit the JSON source and rerun preview/build; delivery is now part of that operation, so never patch
+or commit the HTML output.
 
 ## Validate changes
 
 From `docsite/`:
 
 ```bash
+export ARCHIFY_ROOT=/absolute/path/to/archify
 npm ci
 npm run inspect
 npm run validate
+npm run render-diagrams
 npm run start
 npm run build
 npm run check
@@ -90,12 +97,18 @@ npm run check
 - `inspect` reports discovered and deliberately excluded sources.
 - `validate` checks identity, metadata, routes, links, diagram declarations, and source-to-page
   mappings without mutating maintained sources.
-- `start` validates before opening a local preview.
-- `build` renders and verifies a candidate before atomic promotion.
+- `render-diagrams` verifies the exact Archify 2.14.0 package and replaces the complete disposable
+  delivery set only after every declaration passes.
+- `start` delivers and validates before opening a local preview.
+- `build` delivers diagrams, renders the site, and verifies a candidate before atomic promotion.
 - `check` runs types, tests, validation, and the production build gate.
 
 Repeated builds over identical sources must produce the same page inventory, navigation
 relationships, and source-to-page mapping without an LLM call.
+
+Browser-based `visual-check` remains an explicit review step because it requires Chrome/Chromium and
+human inspection of its captures. Its HTML, JSON, image, and contact-sheet evidence is disposable and
+must not be committed.
 
 ## Diagnose a failure
 

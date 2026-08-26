@@ -4,9 +4,7 @@ import {resolve} from 'node:path';
 
 import Ajv2020 from 'ajv/dist/2020';
 
-import {buildRegistry} from '../plugins/concorde-content/registry';
-import {assertValidRegistry} from '../plugins/concorde-content/validation';
-import {materializeContent} from './materialize-content';
+import {preparePublication} from './prepare-publication';
 
 const siteDir = resolve(__dirname, '..');
 const projectRoot = resolve(siteDir, '..');
@@ -17,14 +15,20 @@ async function exists(path: string): Promise<boolean> {
 
 export async function promoteCandidate(candidate: string, destination: string, backup: string): Promise<void> {
   const hadDestination = await exists(destination);
+  let destinationMoved = false;
+  let candidateMoved = false;
   await rm(backup, {recursive: true, force: true});
   try {
-    if (hadDestination) await rename(destination, backup);
+    if (hadDestination) {
+      await rename(destination, backup);
+      destinationMoved = true;
+    }
     await rename(candidate, destination);
-    await rm(backup, {recursive: true, force: true});
+    candidateMoved = true;
+    if (destinationMoved) await rm(backup, {recursive: true, force: true});
   } catch (error) {
-    await rm(destination, {recursive: true, force: true});
-    if (hadDestination && await exists(backup)) await rename(backup, destination);
+    if (candidateMoved) await rm(destination, {recursive: true, force: true});
+    if (destinationMoved && await exists(backup)) await rename(backup, destination);
     throw error;
   }
 }
@@ -54,9 +58,8 @@ export async function buildSite(): Promise<void> {
   const destination = resolve(siteDir, 'build');
   const backup = resolve(siteDir, '.generated/previous-build');
   await rm(candidate, {recursive: true, force: true});
-  assertValidRegistry(await buildRegistry(projectRoot));
-  await materializeContent();
   try {
+    await preparePublication(projectRoot);
     await runDocusaurus(candidate);
     await validateGeneratedManifest(candidate);
     await promoteCandidate(candidate, destination, backup);

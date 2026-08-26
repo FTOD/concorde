@@ -40,7 +40,7 @@ evidence, and generated read models. They must not be treated as interchangeable
 ├── docs/                                 # explanatory project guides
 ├── <source directories>/                 # executable implementation
 ├── <test directories>/                   # executable evidence
-├── generated/                            # reproducible diagram deliveries
+├── generated/                            # ignored, reproducible diagram deliveries
 └── docsite/                              # publication code and disposable output
 ```
 
@@ -59,7 +59,7 @@ that model to the concrete code that realizes it.
 | Durable accepted realization | `design.md` | How the accepted implementation realizes one feature |
 | Temporary attempt | `implementation/**` | Proposed work, task/checklist state, research, and current evidence |
 | Executable reality | Source and tests | What code exists and what executable checks demonstrate |
-| Generated read model | `generated/`, `docsite/.generated/`, `docsite/build/` | A reproducible presentation of maintained sources |
+| Generated read model | `generated/`, `docsite/.generated/`, `docsite/build/` | An ignored, reproducible presentation of maintained sources |
 
 Location alone does not prove authority. In particular, a file under
 `specs/**/implementation/` remains temporary, and a generated page remains non-authoritative even if

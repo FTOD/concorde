@@ -102,7 +102,6 @@ async function parseFeatureDiagrams(
     if (!declaredOutput || declaredOutput !== outputPath) {
       throw new Error(`Feature diagram "${source}" output does not match its specification declaration.`);
     }
-    await readFile(outputPath, 'utf8');
     diagrams.push({
       source,
       sourceSha256: sha256(sourceText),
@@ -169,7 +168,6 @@ async function parseDocument(
           const outputPath = resolve(dirname(viewPath), viewDocument.meta.output);
           const generatedRelative = posixPath(relative(resolve(projectRoot, 'generated'), outputPath));
           if (generatedRelative !== '..' && !generatedRelative.startsWith('../')) {
-            await readFile(outputPath, 'utf8');
             architectureViewRoute = `/${generatedRelative}`;
           }
         }

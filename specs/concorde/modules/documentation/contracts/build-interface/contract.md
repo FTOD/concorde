@@ -26,21 +26,25 @@ evidence_status: verified
 
 ## Purpose
 
-Provide stable `inspect`, `validate`, `start`, `test`, `build`, `typecheck`, and `check` operations from
+Provide stable `inspect`, `validate`, `render-diagrams`, `start`, `test`, `build`, `typecheck`, and `check` operations from
 the private `docsite/` npm project. Complete inputs, outputs, command semantics, and exit behavior are
 defined in `specs/concorde/features/002-create-project-docsite/contracts/build-interface.md`.
 
 ## Information
 
-Inputs are repository sources and command arguments; outputs are diagnostics, preview responses,
-test results, and verified static-site artifacts communicated through stdout, stderr, and exit status.
+Inputs are repository sources, an explicit compatible Archify package root, and command arguments;
+outputs are diagnostics, normalized diagram receipts, preview responses, test results, and verified
+static-site artifacts communicated through stdout, stderr, and exit status.
 
 ## Obligations
 
 - Preview and production use one source registry and routing policy.
+- Preview and production validate and deliver one complete declared diagram set before registry or
+  Docusaurus consumption; no committed HTML prerequisite or stale fallback is allowed.
 - Success is reported only after validation and promised output complete.
 - Production candidates are promoted only after route and manifest verification.
-- Commands do not write beneath `docs/` or `specs/` and require no hosted service or LLM.
+- Commands do not write beneath `docs/` or `specs/`; diagram and site outputs stay beneath ignored
+  generated roots and require no hosted service or LLM.
 
 ## Failure Semantics
 

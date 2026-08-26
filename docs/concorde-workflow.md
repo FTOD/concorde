@@ -173,8 +173,9 @@ recoverable.
 
 The docsite publishes module and contract architecture, durable feature specifications and designs,
 and explanatory project guides. It excludes the active implementation attempt from the Features
-view. Publication is deterministic and read-only; generated pages and diagram deliveries never
-become a second source of project intent.
+view. Preview and production publication validate and deliver every declared Archify source before
+Docusaurus consumes it. Publication is deterministic and read-only; ignored generated pages and
+diagram deliveries never become a second source of project intent.
 
 The publication behavior is specified separately by
 [Feature 002](../specs/concorde/features/002-create-project-docsite/spec.md).

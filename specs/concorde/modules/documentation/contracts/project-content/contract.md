@@ -19,7 +19,7 @@ providers:
   - external.spec-kit
 features:
   - feature.documentation.publish-project-docsite
-version: 3
+version: 4
 evidence:
   tests:
     - docsite/tests/contract/content-sources.test.ts
@@ -53,7 +53,8 @@ links, stable feature and architecture identity, and declared Archify JSON view 
   normative architecture, feature, or command behavior links to its included canonical authority.
 - Feature IDs are unique; feature kind, module, title, and lifecycle status are present, and every
   permanent feature design is published with source provenance.
-- Architecture IDs and kinds are explicit; declared JSON views resolve to delivered Archify HTML.
+- Architecture IDs and kinds are explicit; declared JSON views are discovered without generated
+  prerequisites and resolve to build-delivered Archify HTML before publication.
 - Project-relative links resolve within or across the two accepted source roots and three published views.
 - Temporal plans, tasks, and supporting implementation files are observable exclusions, not
   permanent feature documentation.
@@ -66,10 +67,10 @@ route-colliding sources stop publication with rule, source, reason, and remediat
 
 ## Compatibility
 
-Version 3 includes permanent feature-design publication. The self-hosting guide baseline adds
-required document instances without changing the CommonMark/YAML representation, source roots,
-inclusion globs, content kinds, or path semantics. Further changes to those structural contract
-elements require a new major contract version.
+Version 4 includes permanent feature-design publication and build-owned delivery of declared
+diagrams. The self-hosting guide baseline adds required document instances without changing the
+CommonMark/YAML representation, source roots, inclusion globs, content kinds, or path semantics.
+Further changes to those structural contract elements require a new major contract version.
 
 ## Evidence
 

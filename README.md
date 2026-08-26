@@ -22,10 +22,11 @@ The three Spec Kit package concepts have different jobs:
 | Extension | `concorde` | Seven Concorde-specific surfaces: six deterministic operations and one agent-followed, read-only question procedure. |
 
 Catalogs are trusted discovery metadata for these independently versioned packages; they are not a
-fourth installed runtime component. See the interactive
-[component model](generated/architecture/concorde-spec-kit-component-model.html),
-[installation flow](generated/architecture/concorde-starter-installation-flow.html), and the full
-[Feature 003 setup specification](specs/concorde/features/003-install-concorde-speckit/spec.md).
+fourth installed runtime component. See the maintained
+[component model](specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json),
+[installation flow](specs/concorde/features/003-install-concorde-speckit/diagrams/starter-installation-flow.json),
+and the full [Feature 003 setup specification](specs/concorde/features/003-install-concorde-speckit/spec.md).
+The project docsite build turns declared diagram sources into interactive standalone views.
 
 ## Project status
 

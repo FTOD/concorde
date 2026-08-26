@@ -27,9 +27,9 @@ canonical_spec: specs/concorde/features/002-create-project-docsite/spec.md
 
 **Created**: 2026-08-19
 
-**Revised**: 2026-08-25
+**Revised**: 2026-08-26
 
-**Status**: Implemented; automated publication and deterministic diagram evidence verified
+**Status**: Implemented; build-owned Archify delivery and clean-checkout publication verified
 
 **Input**: User description: "Create an independent root `docsite/` containing Docusaurus
 configuration and formatting, keep actual Markdown documentation in a separate root `docs/`, and
@@ -37,6 +37,9 @@ present those documents, feature specifications under `specs/`, and Concorde arc
 and views as one project website. Maintain a useful custom documentation baseline—including a quick
 start, project description, conceptual model, project structure, workflow, and command guidance—so
 the generated site teaches the Concorde framework rather than presenting specifications alone."
+
+**Revision Input**: "Make Archify validation and HTML delivery part of building the Docusaurus site
+so a clean checkout does not depend on committed or manually pre-generated diagram output."
 
 ## Scenario and Component Diagram
 
@@ -151,9 +154,10 @@ treated as publishable.
 **Why this priority**: A repeatable build and explicit failure behavior make the website trustworthy
 and suitable for later continuous integration and publication work.
 
-**Independent Test**: Build the same unchanged content twice and compare the page inventory, then add
-a broken link and a duplicate page identity and confirm that each failure names the affected source
-and prevents the incomplete result from being reported as successful.
+**Independent Test**: Remove all disposable diagram deliveries, build the same unchanged content
+twice, and compare the diagram and page inventories; then add an invalid diagram, a broken link, and
+a duplicate page identity and confirm that each failure names the affected source and prevents the
+incomplete result from being reported as successful.
 
 **Acceptance Scenarios**:
 
@@ -170,6 +174,18 @@ and prevents the incomplete result from being reported as successful.
 5. **Given** the textual publication scenario and its feature-owned diagram, **When** a maintainer
    reviews the build path, **Then** they can identify which component validates sources, renders
    diagrams, materializes content, builds the site, validates the candidate, and promotes output.
+6. **Given** a clean checkout containing maintained diagram JSON but no delivered diagram HTML,
+   **When** preview or production publication starts, **Then** every declared diagram is validated and
+   delivered before the site consumes it, without a separate manual rendering step.
+7. **Given** a maintained diagram changes or a previous delivery is stale, **When** the next build
+   runs, **Then** the build replaces the disposable delivery from the current source and publishes
+   only the matching result.
+8. **Given** a diagram is invalid or its renderer fails, **When** the build runs, **Then** publication
+   stops with an actionable source-specific diagnostic and does not silently reuse an older delivery
+   or replace the last successful site.
+9. **Given** preview or production publication completes, **When** repository state is inspected,
+   **Then** generated diagram HTML and machine-local visual-check evidence remain disposable,
+   non-authoritative, and excluded from version control.
 
 ---
 
@@ -220,6 +236,10 @@ representative changes.
   silently omitted or presented as approved.
 - Site output or staging content from an earlier build is stale, incomplete, or accidentally placed
   beside canonical Markdown sources.
+- A clean checkout has no `generated/` directory, or a previous checkout has stale or extra diagram
+  deliveries that no maintained declaration owns.
+- The diagram renderer is missing, incompatible, exits unsuccessfully, emits malformed output, or
+  attempts to write outside the disposable delivery root.
 - Repository paths contain spaces or non-ASCII characters that are valid for maintained sources.
 - The Documentation collection technically publishes but contains only a landing page, forcing new
   readers to infer the framework from normative specifications.
@@ -327,6 +347,22 @@ representative changes.
 - **FR-040**: The Documentation landing page MUST provide a progressive reading path through the
   framework guides, and each guide that summarizes normative behavior MUST link readers to the
   relevant canonical architecture or feature sources for complete authority.
+- **FR-041**: Preview and production build entry points MUST discover every declared module and
+  feature-owned Archify JSON source and MUST validate and deliver its standalone HTML before content
+  registry validation or site rendering consumes that delivery.
+- **FR-042**: A clean checkout containing maintained sources and documented prerequisites MUST build
+  the complete site without committed diagram HTML, visual-check receipts, or a separate manual
+  Archify command.
+- **FR-043**: Diagram delivery MUST use a deterministic, compatibility-checked Archify renderer,
+  preserve the declared diagram kind and output mapping, and expose source-specific validation or
+  delivery diagnostics on failure.
+- **FR-044**: A failed or incomplete diagram delivery MUST stop preview or production publication,
+  MUST NOT fall back to stale HTML, and MUST NOT replace the last successful published site.
+- **FR-045**: Generated diagram HTML, visual-check receipts, captures, contact sheets, and site build
+  products MUST remain reproducible disposable outputs excluded from version control; maintained
+  Archify JSON and its textual counterpart remain the reviewable sources.
+- **FR-046**: Build manifests and any retained deterministic diagram receipts MUST use normalized
+  project-relative provenance and MUST NOT persist machine-specific absolute workspace paths.
 
 ### Key Entities
 
@@ -344,6 +380,8 @@ representative changes.
   Features hierarchy while preserving meaningful source organization.
 - **Build Manifest**: The deterministic inventory that maps every included maintained source to its
   content page and records exclusions, collisions, and validation outcomes.
+- **Diagram Delivery Set**: The complete, deterministic set of standalone HTML projections produced
+  from all currently declared Archify JSON sources for one preview or production build.
 - **Supplemental Feature Diagram**: A maintained, text-backed explanation of the publication
   invocation path whose generated HTML is a reproducible, non-authoritative projection.
 
@@ -374,6 +412,14 @@ representative changes.
 - **SC-013**: Every maintained framework guide that summarizes a normative workflow or boundary
   provides at least one working link to its canonical architecture or feature authority, with zero
   links to temporary implementation artifacts presented as permanent authority.
+- **SC-014**: From a clean checkout with zero delivered diagram files, one documented build command
+  validates and delivers 100% of declared diagrams and publishes every corresponding standalone and
+  embedded route without manual preparation.
+- **SC-015**: In tests covering missing tools, invalid sources, escaping outputs, renderer failures,
+  stale deliveries, and duplicate outputs, 100% of cases fail before publication with the responsible
+  maintained source identified and zero fallback to prior diagram bytes.
+- **SC-016**: After preview and production builds, version-control status reports zero tracked or
+  newly trackable diagram deliveries, visual-check evidence, or machine-specific absolute paths.
 
 ## Assumptions
 
@@ -391,6 +437,8 @@ representative changes.
 - Local preview and reproducible production build are in scope. Public hosting, deployment,
   authentication, analytics, comments, content editing, and versioned release archives are out of
   scope for this feature.
+- The Archify renderer is a documented build prerequisite supplied through a deterministic path or
+  package contract; the build verifies compatibility rather than assuming an agent-local executable.
 - The site may create disposable staging and build output beneath its own ignored workspace, provided
   those projections are reproducible and never become canonical content.
 - The existing root architecture view's `publish-architecture` scenario provides the current-level

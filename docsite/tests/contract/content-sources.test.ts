@@ -3,6 +3,7 @@ import {resolve} from 'node:path';
 import {formatFinding, sortFindings} from '../../plugins/concorde-content/validation';
 import {validateRegistry} from '../../plugins/concorde-content/validation';
 import {buildRegistry} from '../../plugins/concorde-content/registry';
+import {discoverDiagramDeclarations} from '../../plugins/concorde-content/diagrams';
 import type {ValidationFinding} from '../../plugins/concorde-content/types';
 
 describe('content source diagnostics', () => {
@@ -61,5 +62,12 @@ describe('content source diagnostics', () => {
   ])('rejects %s with stable rule %s', async (fixtureName, ruleId) => {
     const registry = await buildRegistry(resolve(__dirname, `../fixtures/invalid-projects/${fixtureName}`));
     expect(validateRegistry(registry).some((finding) => finding.ruleId === ruleId)).toBe(true);
+  });
+
+  it('discovers maintained diagram declarations without treating HTML as an input source', async () => {
+    const declarations = await discoverDiagramDeclarations(resolve(__dirname, '../../..'));
+    expect(declarations).toHaveLength(7);
+    expect(declarations.every((declaration) => declaration.ownerPath.startsWith('specs/'))).toBe(true);
+    expect(declarations.every((declaration) => declaration.outputPath.startsWith('generated/'))).toBe(true);
   });
 });

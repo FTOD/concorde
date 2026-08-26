@@ -1,0 +1,113 @@
+import {mkdir, mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {resolve} from 'node:path';
+
+import {afterEach, describe, expect, it} from 'vitest';
+
+import {discoverDiagramDeclarations} from '../../plugins/concorde-content/diagrams';
+import {atomicReplaceDirectory, resolveArchifyPackage} from '../../scripts/render-diagrams';
+
+const roots: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(roots.splice(0).map((root) => rm(root, {recursive: true, force: true})));
+});
+
+async function temporaryRoot(prefix: string): Promise<string> {
+  const root = await mkdtemp(resolve(tmpdir(), prefix));
+  roots.push(root);
+  return root;
+}
+
+async function writeModuleDiagram(
+  root: string,
+  moduleName: string,
+  output: string,
+  diagramType = 'architecture',
+): Promise<void> {
+  const directory = resolve(root, 'specs', moduleName);
+  await mkdir(directory, {recursive: true});
+  await writeFile(resolve(directory, 'module.md'), `---
+id: module.${moduleName}
+kind: module
+parent: null
+view: specs/${moduleName}/architecture.json
+children: []
+features: []
+contracts:
+  provided: []
+  required: []
+---
+# ${moduleName}
+`, 'utf8');
+  await writeFile(resolve(directory, 'architecture.json'), `${JSON.stringify({
+    schema_version: 1,
+    diagram_type: diagramType,
+    meta: {title: moduleName, output, quality_profile: 'showcase'},
+    components: [], boundaries: [], connections: [], cards: [],
+  }, null, 2)}\n`, 'utf8');
+}
+
+describe('diagram declaration discovery', () => {
+  it('discovers the seven real declarations in stable source order without generated HTML', async () => {
+    const projectRoot = resolve(__dirname, '../../..');
+    const declarations = await discoverDiagramDeclarations(projectRoot);
+    expect(declarations).toHaveLength(7);
+    expect(declarations.map((item) => item.sourcePath)).toEqual(
+      [...declarations.map((item) => item.sourcePath)].sort(),
+    );
+    expect(new Set(declarations.map((item) => item.outputPath)).size).toBe(7);
+    expect(declarations.every((item) => item.outputPath.startsWith('generated/architecture/'))).toBe(true);
+  });
+
+  it('rejects duplicate normalized outputs before delivery', async () => {
+    const root = await temporaryRoot('concorde-diagram-duplicate-');
+    await writeModuleDiagram(root, 'one', '../../generated/architecture/shared.html');
+    await writeModuleDiagram(root, 'two', '../../generated/architecture/shared.html');
+    await expect(discoverDiagramDeclarations(root)).rejects.toThrow(/duplicate output.*shared\.html/i);
+  });
+
+  it('rejects kind disagreement and escaping outputs with the maintained source', async () => {
+    const kindRoot = await temporaryRoot('concorde-diagram-kind-');
+    await writeModuleDiagram(kindRoot, 'kind', '../../generated/architecture/kind.html', 'sequence');
+    await expect(discoverDiagramDeclarations(kindRoot)).rejects.toThrow(/specs\/kind\/architecture\.json.*architecture/i);
+
+    const escapeRoot = await temporaryRoot('concorde-diagram-escape-');
+    await writeModuleDiagram(escapeRoot, 'escape', '../../../outside.html');
+    await expect(discoverDiagramDeclarations(escapeRoot)).rejects.toThrow(/specs\/escape\/architecture\.json.*generated/i);
+  });
+});
+
+describe('Archify package contract', () => {
+  it('requires an explicit package root', async () => {
+    await expect(resolveArchifyPackage(undefined)).rejects.toThrow(/ARCHIFY_ROOT/);
+  });
+
+  it('rejects an incompatible package before invoking its bin', async () => {
+    const root = await temporaryRoot('concorde-archify-package-');
+    await mkdir(resolve(root, 'bin'), {recursive: true});
+    await writeFile(resolve(root, 'bin/archify.mjs'), '', 'utf8');
+    await writeFile(resolve(root, 'package.json'), JSON.stringify({
+      name: 'archify', version: '2.13.0', bin: {archify: './bin/archify.mjs'},
+    }), 'utf8');
+    await expect(resolveArchifyPackage(root)).rejects.toThrow(/2\.14\.0/);
+  });
+});
+
+describe('atomic diagram-set promotion', () => {
+  it('replaces a complete set and removes stale files', async () => {
+    const root = await temporaryRoot('concorde-diagram-promote-');
+    const candidate = resolve(root, 'candidate');
+    const destination = resolve(root, 'generated');
+    const backup = resolve(root, 'backup');
+    await mkdir(resolve(candidate, 'architecture'), {recursive: true});
+    await mkdir(resolve(destination, 'architecture'), {recursive: true});
+    await writeFile(resolve(candidate, 'architecture/current.html'), 'current', 'utf8');
+    await writeFile(resolve(destination, 'architecture/stale.html'), 'stale', 'utf8');
+
+    await atomicReplaceDirectory(candidate, destination, backup);
+
+    expect(await readFile(resolve(destination, 'architecture/current.html'), 'utf8')).toBe('current');
+    await expect(readFile(resolve(destination, 'architecture/stale.html'), 'utf8')).rejects.toThrow();
+  });
+});

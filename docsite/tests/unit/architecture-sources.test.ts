@@ -33,7 +33,7 @@ describe('architecture source publication', () => {
     });
   });
 
-  it('rejects a declared view without a deliverable generated artifact', async () => {
+  it('publishes a logical view route without requiring pre-generated HTML', async () => {
     const projectRoot = await mkdtemp(resolve(tmpdir(), 'concorde-architecture-'));
     try {
       await mkdir(resolve(projectRoot, 'specs/example'), {recursive: true});
@@ -59,8 +59,14 @@ Exercise declared-view validation.
 
 No child modules.
 `, 'utf8');
-      const findings = validateRegistry(await buildRegistry(projectRoot));
-      expect(findings.map((finding) => finding.ruleId)).toContain('architecture.view.unpublishable');
+      await writeFile(resolve(projectRoot, 'specs/example/missing.json'), JSON.stringify({
+        diagram_type: 'architecture',
+        meta: {title: 'Example', output: '../../generated/architecture/example.html'},
+      }), 'utf8');
+      const registry = await buildRegistry(projectRoot);
+      expect(validateRegistry(registry)).toEqual([]);
+      const source = registry.documents.find((document) => document.collectionId === 'architecture') as ArchitectureSource;
+      expect(source.architectureViewRoute).toBe('/architecture/example.html');
     } finally {
       await rm(projectRoot, {recursive: true, force: true});
     }

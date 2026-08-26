@@ -1,6 +1,7 @@
 import {resolve} from 'node:path';
 
 import {buildRegistry} from '../plugins/concorde-content/registry';
+import {discoverDiagramDeclarations} from '../plugins/concorde-content/diagrams';
 import {formatFinding, validateRegistry} from '../plugins/concorde-content/validation';
 
 function projectRoot(): string {
@@ -9,7 +10,9 @@ function projectRoot(): string {
 }
 
 async function main() {
-  const registry = await buildRegistry(projectRoot());
+  const root = projectRoot();
+  await discoverDiagramDeclarations(root);
+  const registry = await buildRegistry(root);
   const findings = validateRegistry(registry);
   if (findings.length) {
     process.stderr.write(`${findings.map(formatFinding).join('\n')}\n`);
