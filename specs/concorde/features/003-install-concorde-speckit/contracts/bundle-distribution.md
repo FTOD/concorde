@@ -8,12 +8,12 @@
 
 **Authoritative implementation references**:
 
-- `spec-kit/src/specify_cli/bundler/models/manifest.py`
-- `spec-kit/src/specify_cli/bundler/services/resolver.py`
-- `spec-kit/src/specify_cli/bundler/services/installer.py`
-- `spec-kit/extensions/EXTENSION-DEVELOPMENT-GUIDE.md`
-- `spec-kit/presets/ARCHITECTURE.md`
-- `spec-kit/docs/community/bundles.md`
+- [bundle manifest model](https://github.com/github/spec-kit/blob/v0.16.4/src/specify_cli/bundler/models/manifest.py)
+- [bundle resolver](https://github.com/github/spec-kit/blob/v0.16.4/src/specify_cli/bundler/services/resolver.py)
+- [bundle installer](https://github.com/github/spec-kit/blob/v0.16.4/src/specify_cli/bundler/services/installer.py)
+- [extension development guide](https://github.com/github/spec-kit/blob/v0.16.4/extensions/EXTENSION-DEVELOPMENT-GUIDE.md)
+- [preset architecture](https://github.com/github/spec-kit/blob/v0.16.4/presets/ARCHITECTURE.md)
+- [bundle documentation](https://github.com/github/spec-kit/blob/v0.16.4/docs/community/bundles.md)
 
 ## Purpose
 

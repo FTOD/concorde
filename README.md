@@ -46,7 +46,7 @@ bundle used by other projects; see [Developing Concorde with Concorde](docs/self
 ### Prerequisites
 
 - [`uv`](https://docs.astral.sh/uv/) for the repository's Python 3.11 development environment
-- Spec Kit/Specify CLI 0.16.4 available as `specify`
+- Spec Kit/Specify CLI 0.16.4, installed into the development environment by `uv sync`
 - Codex for the initial skills-mode integration
 
 Check the required versions:
@@ -54,13 +54,18 @@ Check the required versions:
 ```bash
 uv --version
 uv sync
-uv run python --version
+source .venv/bin/activate
+python --version
 specify --version
 ```
 
-`uv sync` creates the repository-local `.venv/` from `pyproject.toml` and `uv.lock`. Concorde's
-installed bundle runtime remains Python 3.11 standard-library-only and does not require target
-projects to install `uv`.
+`uv sync` creates the repository-local `.venv/` from `pyproject.toml` and `uv.lock`, including the
+exact Spec Kit CLI version exercised by the acceptance suite. Activate that environment before using
+the bare `specify` commands below. Concorde's installed bundle runtime remains Python 3.11
+standard-library-only and does not require target projects to install `uv`.
+
+The upstream Spec Kit repository is not vendored or included as a submodule. Maintained contracts
+link to the supported `v0.16.4` documentation and source when implementation evidence is required.
 
 ### 1. Build the local release
 
@@ -209,7 +214,6 @@ production Docusaurus build. Start with the maintained [documentation overview](
 
 ## Project orientation
 
-- [Concorde prototype reference](concorde-prototype-reference.md)
 - [Project constitution](.specify/memory/constitution.md)
 - [Root architecture](specs/concorde/module.md)
 - [Concorde workflow specification](specs/concorde/features/001-concorde-workflow/spec.md)

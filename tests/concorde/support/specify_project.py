@@ -5,9 +5,38 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Iterable
+
+
+SUPPORTED_SPECIFY_VERSION = "0.16.4"
+_verified_specify: str | None = None
+
+
+def verified_specify() -> str:
+    global _verified_specify
+    executable = shutil.which("specify")
+    if executable is None:
+        raise AssertionError(
+            "Spec Kit CLI is required for Concorde acceptance tests; run `uv sync` and execute the suite through `uv run`."
+        )
+    if _verified_specify == executable:
+        return executable
+    result = subprocess.run(
+        [executable, "--version"],
+        text=True,
+        capture_output=True,
+    )
+    observed = (result.stdout or result.stderr).strip()
+    expected = f"specify {SUPPORTED_SPECIFY_VERSION}"
+    if result.returncode or observed != expected:
+        raise AssertionError(
+            f"Concorde acceptance tests require {expected}; observed {observed or 'an unreadable version response'}."
+        )
+    _verified_specify = executable
+    return executable
 
 
 class SpecifyProject:
@@ -25,7 +54,7 @@ class SpecifyProject:
         if self.home:
             environment["HOME"] = str(self.home)
         result = subprocess.run(
-            ["specify", *arguments],
+            [verified_specify(), *arguments],
             cwd=self.root,
             text=True,
             capture_output=True,

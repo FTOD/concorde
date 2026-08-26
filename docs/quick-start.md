@@ -50,7 +50,7 @@ This is a development installation path, not a public catalog shortcut. It curre
 
 - Python 3.11;
 - `uv`;
-- Specify CLI 0.16.4, available as `specify`; and
+- Specify CLI 0.16.4, installed into the development environment by `uv sync`; and
 - a supported coding-agent integration such as Codex skills mode.
 
 Check the tools in a terminal:
@@ -58,13 +58,14 @@ Check the tools in a terminal:
 ```bash
 python3 --version
 uv --version
+uv sync
+source .venv/bin/activate
 specify --version
 ```
 
 From the Concorde checkout, build and verify the independently versioned packages:
 
 ```bash
-uv sync
 uv run python scripts/release/build-components.py --output dist \
   --base-url http://127.0.0.1:8765
 specify bundle build --path bundles/concorde-bundle --output dist

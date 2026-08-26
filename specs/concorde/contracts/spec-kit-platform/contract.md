@@ -8,7 +8,7 @@ representation:
   kind: standard
   format: Spec Kit ecosystem contracts
   version: 0.16.4
-  definition: spec-kit/docs
+  definition: https://github.com/github/spec-kit/tree/v0.16.4/docs
 counterparties:
   - external.spec-kit
 provider: external.spec-kit
