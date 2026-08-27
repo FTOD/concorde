@@ -1,233 +1,226 @@
 <!--
 Sync Impact Report
-- Version change: 1.3.0 -> 1.4.0
+- Version change: 1.4.0 -> 2.0.0 (MAJOR: principle removed, principles restructured and redefined)
+- Structure change: Core Principles split into two parts:
+  - Part A "Workflow Principles" governs every project that adopts the Concorde workflow.
+  - Part B "Project Principles" governs the Concorde project that builds the workflow's tooling.
+- Removed principles:
+  - II. Spec Kit-Native and Composable (demoted to a Project Constraints bullet; integration
+    mechanism is a feature decision, not a constitutional principle)
+- Added principles:
+  - A.I Fast Human Comprehension at Every Level (new; states the human-spec interaction goal)
+  - A.II Complete Beneath the Surface (new; absorbs "One Authority per Fact")
+  - A.III Architecture-Driven, Not Only Feature-Driven (new; absorbs "Recursive, Bounded
+    Architecture" and "Explicit Ownership and Feature Alignment")
 - Modified principles:
-  - VI. One Authority per Fact, Traceable Everywhere (core and supplemental feature-diagram roles clarified)
-- Added guidance:
-  - A feature's optional core diagram is a single Archify architecture view of stable components and
-    interactions; sequence, workflow, data-flow, and lifecycle views are supplemental only.
-  - Feature-owned Archify diagrams declare `core` or `supplemental` role under each feature's
-    `diagrams/` directory for validation and automatic publication on the canonical feature page.
-- Modified sections:
-  - Architecture Documentation Standards
-  - Development Workflow and Quality Gates
-- Removed sections: None
-- Synchronized artifacts:
-  - Concorde preset templates and command addenda
-  - Resolved Spec Kit skills and base templates
-  - Root feature specifications and architecture source profile
-- Follow-up TODOs: Browser perceptual review for delivered diagrams remains pending where
-  Chrome/Chromium is unavailable.
+  - V. Contracts Govern Every Boundary -> A.IV Contracts Are Human-Readable Promises
+  - VII. Deterministic Validation and Reviewed Evidence -> A.V Deterministic Validation,
+    Human-Reviewed Evidence
+  - I. Concorde Is the Workflow Product and Its Proving Ground -> split into B.I Concorde Ships a
+    Usable Workflow and B.II Concorde Develops Itself with Concorde
+- Removed sections: Product and Ecosystem Requirements (replaced by shorter Project Constraints);
+  Architecture Documentation Standards (reduced to Workflow Standards)
+- Detail relocated out of the constitution (now framework documentation / feature specs):
+  feature-diagram `core`/`supplemental` role mechanics, `diagrams/` directory layout, contract
+  field inventory, Spec Kit version fixture policy, adapter ownership boundaries.
+- Feature placement redefined (A.III): a feature is specified at one level of the hierarchy but
+  MAY be realized by several modules; "exactly one providing module" and "nearest common parent
+  ownership" are dropped. One-level visibility becomes the default practice (SHOULD), and a
+  level MAY show a submodule's features when that makes the level clearer.
+- Follow-up TODOs:
+  - Reconcile preset/extension guidance that cites old principle numerals (I-VII) with the new
+    A.I-A.V / B.I-B.II identifiers.
+  - `speckit.concorde.feature.create` and `feature.select` assumed one providing module per feature
+    and were removed on 2026-08-27; features are now created through the normal specify phase at
+    their canonical path and selected through standard Spec Kit selection. The feature path layout
+    and Protocol v3 `providing_module` field still reflect the old assumption and remain to be
+    aligned with A.III.
 -->
 # Concorde Constitution
 
-## Core Principles
+Concorde exists because AI now writes most code. The programmer's problem has shifted from writing
+implementation to staying oriented: understanding what a project does, how it is structured, and
+what its parts promise each other, without reading every line of code. This constitution has two parts.
+Part A states the principles of the Concorde workflow, which every project adopting Concorde
+follows. Part B states the principles of the Concorde project itself, whose job is to make Part A
+practical through tooling. Part A is the purpose; Part B is the means.
 
-### I. Concorde Is the Workflow Product and Its Proving Ground
-Concorde's primary product MUST be a repeatable workflow that joins Spec Kit's feature-oriented
-development lifecycle to hierarchical architecture authoring, review, validation, and publication.
-Project success requires installable integration artifacts and an end-to-end usable workflow; a
-reference document, standalone diagram set, or bespoke demonstration alone is insufficient.
+## Part A: Workflow Principles
 
-Concorde MUST develop itself with the same architecture, feature, scenario, contract, traceability,
-and evidence rules it provides to users. When an unfinished Concorde capability cannot yet enforce a
-required rule, maintainers MUST apply the rule manually, record the tooling gap as planned work, and
-migrate the affected artifact once the capability exists. A milestone MUST NOT be declared complete
-while a bootstrap gap needed to demonstrate that milestone remains unresolved. Self-application is
-the acceptance test that the workflow is practical rather than merely aspirational.
+### A.I Fast Human Comprehension at Every Level
+The specification MUST be a hierarchy with a stopping point at every level. A reader MUST be able
+to stop at any module, understand what it does and how its visible parts interact, and go no
+deeper. Each level MUST be understandable in minutes, not hours: it MUST combine a diagram (structure
+and interaction), tables (inventories such as features, contracts, and submodules), and short prose
+(responsibility, rationale, representative scenario). Long narrative documents are prohibited at the
+level a human is expected to read; depth is reached by descending, not by scrolling.
 
-### II. Spec Kit-Native and Composable
-Concorde MUST integrate through Spec Kit's supported ecosystem mechanisms: presets for composing
-architecture-aware artifact structure and guidance, extensions for commands and lifecycle behavior,
-and a bundle that distributes the compatible pieces together. Concorde MUST extend the normal Spec
-Kit workflow rather than replace its feature specification, clarification, planning, task, and
-implementation responsibilities with a parallel system.
+Rationale: nobody reads long documents. The programmer who no longer writes the code still needs to
+own the project, and ownership requires a representation that can be absorbed fast at the altitude
+where the current question lives.
 
-Integrations MUST use public, versioned Spec Kit extension and preset contracts where available. A
-fork or incompatible orchestration layer is permitted only when a recorded prototype demonstrates
-that supported mechanisms cannot satisfy a named requirement, and the decision includes compatibility
-impact and a migration path back to the ecosystem. Concorde-specific behavior MUST remain composable
-with other presets and extensions and MUST fail with actionable diagnostics when compatibility cannot
-be maintained. This constraint makes Concorde adoptable within the Spec Kit ecosystem instead of
-becoming an isolated workflow.
+### A.II Complete Beneath the Surface
+Although a human rarely reads the whole specification, the whole specification MUST exist. Every fact
+needed to understand, extend, or verify the system MUST be recorded exactly once in a maintained,
+version-controlled, machine-readable source, and MUST be reachable from the hierarchy by stable ID.
+A human or agent starting at the root MUST be able to locate almost any necessary detail by
+descending; a detail that can only be found by reading code is an incomplete specification.
 
-### III. Recursive, Bounded Architecture
-The project MUST be modeled as a hierarchy rooted at the project module. Every module MUST have
-one clear responsibility, and every declared submodule MUST be architecturally meaningful. A module view
-MUST show the current module's features and boundary contracts, its immediate submodules and their
-boundary contracts, relevant external actors, and connections among those visible participants. It
-MUST NOT expose child features, grandchildren, or deeper implementation details. Selecting a child
-MUST repeat the same view with that child as the current module. This one-level visibility rule keeps
-architecture comprehensible at project scale and gives agents a bounded context for each task.
+Each kind of fact has one authority: prose intent in Markdown, structural and interaction models in
+architecture JSON, contract shapes in their normative schema or standard definition, actual behavior
+in code, and executable evidence in tests. Rendered diagrams, sites, indexes, and reports are
+generated projections and MUST NOT be edited as sources. When sources disagree, tooling MUST expose
+the disagreement rather than pick a winner; missing evidence MUST be reported as unknown.
 
-### IV. Explicit Ownership and Feature Alignment
-Every feature MUST have a stable ID, an observable outcome, and exactly one providing module at its
-current abstraction level. Behavior spanning multiple modules MUST be owned by their nearest common
-parent and refined by features in participating child modules. A lower-level feature MUST link to at
-least one feature owned by its parent module unless it is explicitly marked internal with a rationale.
-Refinement links MUST connect adjacent module levels, MUST be acyclic, and MAY express many-to-many
-realization. Every feature MUST include a representative scenario unless the feature records why an
-example would not improve understanding. This alignment makes placement and decomposition
-reviewable before implementation choices harden into structure.
+Rationale: fast comprehension at the top is only trustworthy if the detail underneath is complete
+and unambiguous. Completeness serves the agent, which reads everything; single authority serves both.
 
-### V. Contracts Govern Every Boundary
-Every module MUST explicitly declare its provided and required contracts, including an explicit empty
-set when none exist. Each contract MUST have a stable ID, owner, provided or required role, flow
-direction, counterparties or audience, obligations, failure semantics, compatibility expectations,
-and validation evidence. Every feature MUST identify at least one provided contract through which it
-is available and all required contracts on which it depends. Every scenario interaction that crosses
-a module boundary MUST reference its governing contract.
+### A.III Architecture-Driven, Not Only Feature-Driven
+Development MUST be driven by architecture as well as by features. A feature says what the project
+or a module can do; the architecture says how the project is composed to do it. The project MUST be
+modeled as a module hierarchy rooted at the project module. Every module MUST have one clear
+responsibility, an explicit boundary, and declared immediate submodules that are each
+architecturally meaningful. The purpose of every level is a good abstraction: the modules visible at
+that level, their responsibilities, and their interactions MUST be chosen so that the level can be
+understood on its own terms and reasoned about without the levels below.
 
-A contract MUST use either a commonly adopted format or a custom programmer-readable serialized
-format. A commonly adopted format MUST name its relevant version, link to its authoritative
-definition, and summarize the information exchanged. A custom format MUST include a normative schema
-or grammar, complete field semantics, compatibility rules, at least one representative example, and
-evidence that examples and implementations conform. Opaque or undocumented payloads are prohibited.
-Contract changes MUST be reviewed as potential feature and compatibility changes because boundary
-obligations, not internal details, are the promises on which other modules may rely.
+Features are realized through modules. Every feature MUST have a stable ID, an observable outcome,
+and exactly one place in the hierarchy where it is specified: the level at which every module it
+uses is visible. A feature MAY be realized by a single module or by combining several modules and
+lower-level features; it need not be owned by any one module. Where a feature is refined by features
+at the next level down, the refinement links MUST connect adjacent levels and MUST be acyclic.
 
-### VI. One Authority per Fact, Traceable Everywhere
-Concorde MUST maintain architectural and behavioral intent in version-controlled, machine-readable
-sources without duplicating canonical meaning. Module, feature, contract, scenario, constraint, and
-decision prose belongs in Markdown. Module-level architecture structure and its canonical ordered
-scenario interactions belong in the module's `architecture.json`. A feature MAY maintain additional
-Archify JSON views that explain representative workflows, sequences, data flows, lifecycles, or
-component involvement when a visual model improves understanding. These feature-owned views
-supplement the textual feature specification and bounded module view; they MUST NOT redefine
-behavior, ownership, or boundary obligations. Normative contract representations belong in their
-referenced standard definitions
-or checked-in custom schemas and examples. Code records the actual implementation, and tests record
-executable evidence. Archify HTML, Docusaurus pages, indexes, traceability reports, and validation
-reports MUST be reproducible generated outputs and MUST NOT be edited as sources.
+A level's view shows the current module, its features and boundary contracts, its immediate
+submodules with their features and boundary contracts, the relevant external actors, and the
+interactions among them. It SHOULD NOT descend further: grandchildren and implementation detail
+belong to the levels below, and selecting a submodule produces the same kind of view with that
+submodule as the current module. A level MAY show selected detail from below when that makes the
+level clearer, provided the detail remains authoritative at its own level. This bounded view is what
+makes A.I possible for humans and gives agents a bounded context for every task.
 
-Stable IDs MUST connect all maintained sources, generated projections, implementation locations, and
-test evidence. When artifacts disagree, tooling and documentation MUST expose the disagreement rather
-than silently selecting one artifact as universally correct. Unknown or missing implementation
-evidence MUST be reported as unknown. This separation preserves clear authority while allowing users
-and agents to trace intent through structure to evidence.
+Rationale: the central task of architecture is making a good abstraction at each level. A list of
+features does not tell a human how the system hangs together, and it does not tell an agent where
+new behavior belongs; structure and interaction must be first-class.
 
-### VII. Deterministic Validation and Reviewed Evidence
+### A.IV Contracts Are Human-Readable Promises
+Every module boundary MUST be governed by explicit contracts, and every module MUST declare its
+provided and required contracts (an explicit empty set is a valid declaration). A contract MUST be
+presentable to a human without reading the implementation: it MUST state who provides and who
+consumes it, the direction of flow, the data structure exchanged and what information that structure
+encodes, the obligations of each side, and what happens on failure. Every feature MUST name the
+provided contract(s) through which it is reachable and the required contracts on which it depends.
+Every scenario interaction that crosses a module boundary MUST reference its governing contract.
+
+A contract MUST use either a commonly adopted format (named, versioned, linked to its authoritative
+definition, with a summary of the information exchanged) or a custom format with a normative schema
+or grammar, field semantics, and at least one conforming example. Opaque or undocumented payloads are
+prohibited. Contract changes MUST be reviewed as potential feature and compatibility changes.
+
+Rationale: contracts are the promises other modules rely on. If a human cannot read what a boundary
+carries, the human cannot judge whether a change is safe, and the architecture view is decoration.
+
+### A.V Deterministic Validation, Human-Reviewed Evidence
 Validation, rendering, documentation builds, freshness checks, and cross-reference checks MUST be
 deterministic and MUST NOT require an LLM. Every architecture change proposed or authored by an AI
-MUST receive human review and pass applicable validation before it is accepted as project intent.
-Tests MUST verify changed behavior, contract conformance, hierarchy integrity, scenario boundaries,
-and generated-output freshness in proportion to the change. A successful architecture check MUST NOT
-be presented as proof that the implementation is correct; code and test evidence remain distinct.
-These gates make AI-assisted changes reviewable and reproducible without granting generated artifacts
-unearned authority.
+MUST receive human review and pass applicable validation before it becomes project intent. Tests MUST
+verify changed behavior, contract conformance, hierarchy integrity, and generated-output freshness in
+proportion to the change. A passing architecture check MUST NOT be presented as proof that the
+implementation is correct; structural validity and behavioral evidence remain distinct.
 
-## Product and Ecosystem Requirements
+Rationale: AI-assisted changes are only trustworthy when they are reproducibly checkable and a
+human has accepted them. Generated artifacts earn no authority by existing.
 
-- Concorde MUST ship as an installable Spec Kit bundle containing one or more Concorde presets and
-  extensions that provide the supported end-to-end workflow. Each distributable part
-  MUST declare its responsibility, version, dependencies, and compatibility expectations.
-- Presets MUST compose Concorde metadata and architecture-aware guidance into Spec Kit artifacts
-  through the normal template-resolution stack. They MUST NOT create a second canonical feature
-  specification solely for Concorde.
-- Extensions MUST provide the lifecycle operations that do not belong in static templates, including
-  architecture validation, bounded context retrieval, diagram rendering, documentation publication,
-  and workflow integration. Each operation MUST have deterministic inputs, outputs, and failure
-  behavior even when an agent assists with authoring.
-- Spec Kit MUST remain authoritative for feature specification, clarification, planning, task
-  generation, implementation, and convergence. Concorde MUST own module and feature hierarchy,
-  boundary contracts, one-level architecture views, structural traceability, and publication.
-- Archify MUST remain the rendering and validation boundary for maintained module and feature-owned
-  explanatory JSON, while
-  Docusaurus MUST remain a generated read model. Adapters MUST preserve those ownership boundaries and
-  MUST NOT duplicate their canonical inputs.
-- Every supported Spec Kit version MUST be stated explicitly and covered by an automated fixture that
-  installs the bundle and exercises the supported workflow. Unsupported or incompatible versions MUST
-  stop with an actionable diagnostic rather than produce partially composed artifacts.
-- Ecosystem decisions that constrain compatibility or composition MUST be documented as architectural
-  decisions and validated with a prototype before they become irreversible dependencies.
+## Part B: Project Principles
 
-## Architecture Documentation Standards
+### B.I Concorde Ships a Usable Workflow
+Concorde's product MUST be a repeatable, installable, end-to-end workflow that lets a project live by
+Part A: establishing the root, finding the owning level, creating and selecting features, retrieving
+bounded context, validating architecture, and publishing comprehensible views. A reference document,
+a diagram set, or a bespoke demonstration alone is insufficient. Every distributable part MUST declare
+its responsibility, version, dependencies, and compatibility expectations, and every operation MUST
+have deterministic inputs, outputs, and failure behavior even when an agent assists with authoring.
+
+### B.II Concorde Develops Itself with Concorde
+Concorde MUST develop itself under Part A using its own tooling. When an unfinished capability cannot
+yet enforce a required rule, maintainers MUST apply the rule manually, record the gap as planned
+work, and migrate the affected artifact once the capability exists. A milestone MUST NOT be declared
+complete while a bootstrap gap needed to demonstrate it remains unresolved. Self-application is the
+acceptance test that the workflow is practical rather than aspirational.
+
+## Project Constraints
+
+- Concorde currently integrates with Spec Kit as its host lifecycle: Spec Kit remains authoritative
+  for feature specification, clarification, planning, tasks, implementation, and convergence, while
+  Concorde owns module and feature hierarchy, boundary contracts, level views, traceability, and
+  publication. How that integration is mechanically achieved (presets, extensions, bundles, supported
+  versions) is a feature and architectural-decision concern, not a constitutional one, but any change
+  MUST preserve the ownership split above and MUST fail with actionable diagnostics rather than
+  produce partially composed artifacts.
+- Rendering and publication tools (currently Archify for diagrams and Docusaurus for the site) are
+  generated read models of maintained sources. Replacing a tool is permitted; making a generated
+  output a source is not.
+
+## Workflow Standards
 
 - Every module, feature, scenario, and contract MUST have a unique, stable ID, and all references
-  MUST resolve.
-- Concorde-managed architecture sources MUST mirror the declared architecture hierarchy directly or
-  through an explicit deterministic path mapping. They MUST NOT require a document for every class,
-  function, or call edge or duplicate a canonical Spec Kit feature specification.
-- Every non-leaf module MUST declare its immediate submodules and maintain one valid Archify JSON view
-  for that level. Module containment and feature-refinement graphs MUST be acyclic.
-- A scenario MUST use only the current module, its immediate submodules, and permitted external actors
-  as participants. Each documented scenario MUST resolve to its module-level architecture view unless
-  it is explicitly marked prose-only.
-- Feature specifications SHOULD use feature-owned Archify diagrams when component participation,
-  ordered invocation, boundary crossings, state changes, or data movement would be materially easier
-  to understand visually. A cross-component feature MUST provide one core component-interaction
-  diagram or record a concise rationale for why prose and the canonical module view are sufficient.
-  A feature MUST declare at most one `core` diagram, and that diagram MUST use the Archify
-  `architecture` type to show stable components, responsibilities, and interactions. Workflow,
-  sequence, data-flow, and lifecycle diagrams MUST be declared `supplemental`; they MAY explain
-  narrower dynamic scenario questions but MUST NOT serve as the feature's core diagram. Every feature
-  diagram MUST live under the feature's `diagrams/` directory, use a descriptive filename other than
-  `architecture.json`, identify the scenario or question it explains, name visible contract
-  crossings where applicable, and have a complete textual counterpart. The feature specification
-  MUST declare each diagram's `core` or `supplemental` role, and generated documentation MUST embed
-  every declared fresh view on the canonical feature page while retaining provenance and a
-  standalone-view link.
-- Custom contract examples MUST validate against their normative schema or grammar. Contract format,
-  schema, semantics, examples, affected feature references, and evidence MUST change together.
-- Markdown and Archify JSON MUST divide responsibility by meaning. The same intent MUST NOT require
-  canonical maintenance in more than one location.
-- Generated pages and diagrams MUST include source provenance and generator version, provide a textual
-  representation for accessibility and search, and be reproducible from maintained sources.
-- Architecture MUST document responsibilities, boundaries, contracts, and representative behavior;
-  it MUST NOT become a duplicate inventory of the implementation.
+  MUST resolve. Module containment and feature-refinement graphs MUST be acyclic.
+- Architecture sources MUST mirror the declared hierarchy directly or through an explicit
+  deterministic path mapping. They MUST NOT require a document per class, function, or call edge;
+  architecture documents responsibilities, boundaries, contracts, and representative behavior, not
+  a duplicate inventory of the implementation.
+- Every non-leaf module MUST maintain one valid level view. A scenario SHOULD use only the current
+  module, its immediate submodules, and permitted external actors as participants; deeper
+  participants MUST be justified by clarity at that level.
+- Every feature MUST include a representative scenario unless it records why an example would not
+  improve understanding. A feature MAY own additional explanatory diagrams; at most one is its core
+  component-interaction view, every diagram MUST have a complete textual counterpart, and no diagram
+  may redefine behavior, ownership, or boundary obligations stated in the specification.
+- Custom contract examples MUST validate against their schema. Contract format, semantics, examples,
+  affected feature references, and evidence MUST change together.
+- Generated pages and diagrams MUST carry source provenance and generator version, provide a
+  textual representation, and be reproducible from maintained sources.
 
 ## Development Workflow and Quality Gates
 
-Every material change to Concorde MUST proceed through the Spec Kit lifecycle augmented by the
-Concorde workflow available at that revision. The author MUST first identify the providing module and
-abstraction level. Unclear ownership or boundary effects MUST be resolved before the implementation
-plan is approved. The feature specification MUST then record parent refinement links, relevant
-scenarios, immediate participants, governing provided and required contracts, expected source and
-test evidence, and the result of evaluating whether feature-owned diagrams would improve
-comprehension. Affected module views, feature diagrams, and contract definitions MUST be updated
-before implementation is treated as architecture-complete.
+Every material change MUST proceed through the host lifecycle augmented by the Concorde workflow
+available at that revision. The author MUST first identify the level at which the feature is
+specified and the modules that realize it; unclear placement or boundary effects MUST be resolved
+before the implementation plan is approved. The feature specification MUST record parent refinement links, immediate participants,
+governing contracts, representative scenarios, and expected source and test evidence. Affected module
+views and contract definitions MUST be updated before implementation is treated as
+architecture-complete.
 
-During bootstrap, a missing command or validator does not waive its governing rule. The change MUST
-include the equivalent reviewable source artifact or manual validation record, plus a linked feature
-or task for automating the gap. Once the corresponding Concorde capability exists, subsequent changes
-MUST use it and the temporary manual path MUST be retired. Development evidence MUST therefore test
-both the product behavior and its use within Concorde's own repository.
+Planning and review MUST use only the bounded context required for the affected levels. Review MUST
+verify behavior, placement, abstraction level, dependency direction, boundary contracts, bounded
+visibility, traceability, implementation evidence, and stale generated artifacts. Any deliberate
+exception to a principle or standard MUST be documented with its scope, rationale, owner, expiry or
+reassessment condition, and migration path.
 
-Planning and review MUST use only the bounded context required for the affected module levels. Review
-MUST verify behavior, ownership, abstraction level, dependency direction, boundary contracts,
-contract-format compatibility, one-level visibility, traceability, implementation evidence, and stale
-generated artifacts. Any deliberate exception to a principle or standard MUST be documented in the
-change with its scope, rationale, owner, expiry or reassessment condition, and migration path.
-
-Before merge, all applicable deterministic validation, schema/example validation, contract tests,
-behavioral tests, reference checks, Archify validation, and documentation freshness checks MUST pass.
-Generated Archify HTML and the Docusaurus site MUST be rebuilt reproducibly in CI. A change is not
-complete while maintained sources, implementation, tests, and generated projections contain an
-unreported disagreement.
+Before merge, all applicable deterministic validation, contract and behavioral tests, reference
+checks, and documentation freshness checks MUST pass, and generated outputs MUST be rebuilt
+reproducibly in CI. A change is not complete while maintained sources, implementation, tests, and
+generated projections contain an unreported disagreement.
 
 ## Governance
 
-This constitution is the highest-authority governance document for Concorde development. Feature
+This constitution is the highest-authority governance document for Concorde. Feature
 specifications, plans, tasks, implementation choices, review conventions, and generated guidance MUST
-comply with it. When another project document conflicts with this constitution, this constitution
-prevails until an amendment resolves the conflict.
+comply with it; where another project document conflicts, this constitution prevails until amended.
 
-An amendment MUST be proposed as a reviewed change to this file. The proposal MUST describe the
-motivation, affected principles or sections, compatibility impact, required migration work, and the
-semantic version bump. Approval requires explicit maintainer acceptance and successful validation of
-the constitution. Amendments take effect when merged; affected templates and project artifacts MUST
-be reconciled in the same change or tracked by named follow-up work with an owner.
+An amendment MUST be proposed as a reviewed change to this file describing motivation, affected
+principles, compatibility impact, required migration work, and the semantic version bump. Approval
+requires explicit maintainer acceptance. Amendments take effect when merged; affected templates and
+artifacts MUST be reconciled in the same change or tracked by named follow-up work with an owner.
 
-Constitution versions follow semantic versioning. MAJOR increments remove or incompatibly redefine a
-principle or governance obligation. MINOR increments add a principle or materially expand mandatory
-guidance. PATCH increments clarify wording or make non-semantic corrections. The ratification date
-records the first adoption; the last-amended date changes whenever normative content changes.
+Versions follow semantic versioning: MAJOR removes or incompatibly redefines a principle or
+governance obligation, MINOR adds a principle or materially expands mandatory guidance, PATCH
+clarifies wording. The ratification date records first adoption; the last-amended date changes
+whenever normative content changes.
 
 Every feature and architecture review MUST include a constitution compliance check. Reviewers MUST
-reject unexplained violations, invisible boundary changes, duplicated canonical intent, or claims of
-implementation agreement without evidence. Exceptions are temporary governance records, not silent
-precedent, and MUST meet the documentation requirements in the workflow section. Maintainers MUST
-review the constitution at least once per major release and whenever recurring exceptions indicate
-that a rule no longer serves the project's goals.
+reject unexplained violations, invisible boundary changes, duplicated canonical intent, and claims
+of implementation agreement without evidence. Exceptions are temporary records, not precedent.
+Maintainers MUST review this constitution at least once per major release and whenever recurring
+exceptions indicate a rule no longer serves the project's goals.
 
-**Version**: 1.4.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-22
+**Version**: 2.0.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-27
