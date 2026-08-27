@@ -16,6 +16,15 @@
           "speckit.concorde.context",
           "speckit.concorde.validate",
           "speckit.concorde.ask"
+        ],
+        "claude": [
+          "speckit.concorde.init",
+          "speckit.concorde.feature-create",
+          "speckit.concorde.feature-select",
+          "speckit.concorde.feature-harden",
+          "speckit.concorde.context",
+          "speckit.concorde.validate",
+          "speckit.concorde.ask"
         ]
       },
       "registered_skills": [],

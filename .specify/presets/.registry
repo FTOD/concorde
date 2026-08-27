@@ -18,10 +18,32 @@
           "speckit.analyze",
           "speckit.converge",
           "speckit.taskstoissues"
+        ],
+        "claude": [
+          "speckit.specify",
+          "speckit.clarify",
+          "speckit.checklist",
+          "speckit.plan",
+          "speckit.tasks",
+          "speckit.implement",
+          "speckit.analyze",
+          "speckit.converge",
+          "speckit.taskstoissues"
         ]
       },
       "registered_skills": {
         "codex": [
+          "speckit-specify",
+          "speckit-clarify",
+          "speckit-checklist",
+          "speckit-plan",
+          "speckit-tasks",
+          "speckit-implement",
+          "speckit-analyze",
+          "speckit-converge",
+          "speckit-taskstoissues"
+        ],
+        "claude": [
           "speckit-specify",
           "speckit-clarify",
           "speckit-checklist",
