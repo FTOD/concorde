@@ -13,7 +13,7 @@ contracts:
   required:
     - contract.concorde.spec-kit-platform
 architecture_view: specs/concorde/architecture.json
-evidence_status: partial
+evidence_status: verified
 canonical_spec: specs/concorde/features/003-install-concorde-speckit/subfeatures/001-publish-release/spec.md
 ---
 
