@@ -18,6 +18,9 @@ jobs:
     steps:
       - name: Check out Concorde
         uses: actions/checkout@v6
+        with:
+          # Archify validates diagram evidence against pinned historical commits.
+          fetch-depth: 0
 
       - name: Check out Archify 2.14.0
         uses: actions/checkout@v6

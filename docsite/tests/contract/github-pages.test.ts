@@ -21,6 +21,7 @@ describe('Concorde repository GitHub Pages deployment', () => {
   it('builds with pinned Archify and deploys only the verified output', async () => {
     const workflow = await readFile(resolve(projectRoot, '.github/workflows/deploy-docsite.yml'), 'utf8');
     expect(workflow).toContain('branches: [main]');
+    expect(workflow).toMatch(/name: Check out Concorde[\s\S]*?fetch-depth: 0/);
     expect(workflow).toContain('repository: tt-a1i/archify');
     expect(workflow).toContain('ref: a3bf80c25a824f5d5c46dfdbfdb96cc52dd4742a');
     expect(workflow).toContain('ARCHIFY_ROOT: ${{ github.workspace }}/_archify/archify');
