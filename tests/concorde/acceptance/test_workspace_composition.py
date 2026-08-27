@@ -39,7 +39,7 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                 self.assertNotIn("Concorde selected-workspace routing", rendered)
                 self.assertTrue((root / ".specify/extensions/concorde/scripts/python/workspace.py").is_file())
                 surfaces = {registered_artifact(root, integration, command) for command in CONCORDE_COMMANDS}
-                self.assertEqual(len(surfaces), 7)
+                self.assertEqual(len(surfaces), 5)
                 self.assertTrue(all(path.is_file() for path in surfaces))
 
 

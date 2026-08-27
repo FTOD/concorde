@@ -100,7 +100,7 @@ and convergence. Concorde adds architectural controls around that lifecycle:
 
 - root architecture initialization;
 - bounded context retrieval;
-- placement and selection of nested feature workspaces;
+- resolution and validation of nested feature workspaces selected through standard Spec Kit;
 - phase routing between durable feature files and a temporary implementation attempt;
 - deterministic validation of identity, hierarchy, contracts, views, scenarios, references, and
   evidence status; and

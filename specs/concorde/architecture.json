@@ -261,7 +261,7 @@
     {
       "dot": "emerald",
       "title": "How Concorde is invoked",
-      "items": ["Spec Kit owns bundle operations and the normal feature phases", "The active integration presents nine composed lifecycle surfaces plus seven Concorde surfaces", "Six Concorde operations use the runtime; ask is cited and read-only", "Documentation build and browse operations invoke the publication feature"]
+      "items": ["Spec Kit owns bundle operations and the normal feature phases", "The active integration presents nine composed lifecycle surfaces plus five Concorde surfaces", "Four Concorde operations use the runtime; ask is cited and read-only", "Documentation build and browse operations invoke the publication feature"]
     },
     {
       "dot": "violet",

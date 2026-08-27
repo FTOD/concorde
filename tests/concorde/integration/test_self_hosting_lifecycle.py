@@ -31,7 +31,7 @@ class SelfHostingLifecycleTests(unittest.TestCase):
         adopted.write_text("stale hand-maintained copy\n")
         proposal = self.propose()
         self.assertEqual(len(proposal["components"]), 3)
-        self.assertEqual(len(proposal["changes"]), 25)
+        self.assertEqual(len(proposal["changes"]), 23)
         self.assertEqual(proposal["activation"], "reload_required")
         adopted_change = next(item for item in proposal["changes"] if item["path"] == ".agents/skills/speckit-concorde-ask")
         self.assertEqual(adopted_change["action"], "adopt")

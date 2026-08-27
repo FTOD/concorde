@@ -59,7 +59,7 @@ def envelope(
 
 
 def operation_envelope(value: OperationResult) -> dict[str, Any]:
-    if value.operation in {"feature.create", "feature.select", "feature.harden"}:
+    if value.operation == "feature.harden":
         return {
             "schema_version": 3,
             "operation": value.operation,

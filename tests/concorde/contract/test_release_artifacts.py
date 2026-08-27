@@ -126,7 +126,7 @@ class ReleaseArtifactTests(unittest.TestCase):
                 extension_manifest.count('- name: "speckit.concorde.'),
             )
             self.assertEqual(extension_catalog["extensions"]["concorde"]["provides"], {
-                "commands": 7,
+                "commands": 5,
                 "scripts": 4,
             })
 

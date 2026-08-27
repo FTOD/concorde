@@ -14,9 +14,9 @@ from concorde.validate import validate_project  # noqa: E402
 
 
 class ValidationIntegrationTests(unittest.TestCase):
-    def test_seven_surfaces_do_not_expand_runtime_dispatch_or_leave_current_inventory_stale(self):
+    def test_five_surfaces_do_not_expand_runtime_dispatch_or_leave_current_inventory_stale(self):
         manifest = (REPOSITORY_ROOT / "extensions/concorde/extension.yml").read_text(encoding="utf-8")
-        self.assertEqual(manifest.count('- name: "speckit.concorde.'), 7)
+        self.assertEqual(manifest.count('- name: "speckit.concorde.'), 5)
         self.assertEqual(manifest.count('runtime: "'), 4)
         cli = (REPOSITORY_ROOT / "extensions/concorde/runtime/concorde/cli.py").read_text(encoding="utf-8")
         self.assertNotIn('add_parser("ask")', cli)

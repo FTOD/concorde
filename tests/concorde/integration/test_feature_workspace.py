@@ -9,82 +9,78 @@ from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT, TWO_LEVE
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.feature_workspace import propose_feature, select_feature  # noqa: E402
+from concorde.feature_workspace import (  # noqa: E402
+    WorkspaceError,
+    persist_selection,
+    resolve_phase_paths,
+    resolve_selected_workspace,
+)
+
+DELIVER = "specs/example/features/001-deliver"
+CONFIRM = "specs/example/features/001-checkout/subfeatures/002-confirm-order"
 
 
 class FeatureWorkspaceIntegrationTests(unittest.TestCase):
-    def project_copy(self, temporary: str) -> Path:
+    def project_copy(self, temporary: str, fixture: Path = CONTEXT_PROJECT) -> Path:
         root = Path(temporary) / "project"
-        shutil.copytree(CONTEXT_PROJECT, root)
+        shutil.copytree(fixture, root)
         return root
 
-    def test_select_by_id_is_atomic_and_idempotent(self):
+    def test_persisting_the_standard_selection_is_atomic_and_idempotent(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary)
-            first = select_feature(root, "feature.example.deliver")
-            self.assertEqual(first.status, "selected")
-            self.assertEqual(first.result["workspace"]["implementation_state"], "absent")
-            self.assertTrue(first.result["workspace"]["diagrams_dir"].endswith("/diagrams"))
+            self.assertEqual(persist_selection(root, DELIVER), "selected")
             selected = root / ".specify/feature.json"
             first_bytes = selected.read_bytes()
-            second = select_feature(root, "feature.example.deliver")
-            self.assertEqual(second.status, "unchanged")
+            self.assertEqual(json.loads(first_bytes), {"feature_directory": DELIVER})
+            self.assertEqual(persist_selection(root, DELIVER), "unchanged")
             self.assertEqual(selected.read_bytes(), first_bytes)
-            self.assertEqual(json.loads(first_bytes)["feature_directory"], "specs/example/features/001-deliver")
+            paths = resolve_selected_workspace(root)
+            self.assertEqual(paths.feature_id, "feature.example.deliver")
+            self.assertEqual(paths.providing_module, "module.example")
+            self.assertEqual(paths.implementation_state, "absent")
+            self.assertTrue(paths.diagrams_dir.endswith("/diagrams"))
+            self.assertTrue(paths.plan.endswith("/implementation/plan.md"))
 
-    def test_select_requires_explicit_resume_for_nonempty_attempt(self):
+    def test_resolution_reports_an_active_attempt_without_gating(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary)
-            implementation = root / "specs/example/features/001-deliver/implementation"
+            implementation = root / DELIVER / "implementation"
             implementation.mkdir()
             (implementation / "plan.md").write_text("active", encoding="utf-8")
-            blocked = select_feature(root, "feature.example.deliver")
-            self.assertEqual(blocked.status, "conflict")
-            self.assertFalse((root / ".specify/feature.json").exists())
-            resumed = select_feature(root, "feature.example.deliver", resume=True)
-            self.assertEqual(resumed.status, "selected")
-            self.assertEqual(resumed.result["workspace"]["implementation_state"], "active")
+            persist_selection(root, DELIVER)
+            paths = resolve_selected_workspace(root)
+            self.assertEqual(paths.implementation_state, "active")
+            self.assertEqual(paths.implementation_dir, f"{DELIVER}/implementation")
 
     def test_invalid_selection_preserves_prior_state(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary)
-            select_feature(root, "feature.example.deliver")
+            persist_selection(root, DELIVER)
             state = root / ".specify/feature.json"
             before = state.read_bytes()
-            result = select_feature(root, "feature.missing")
-            self.assertEqual(result.status, "invalid")
+            with self.assertRaises(WorkspaceError):
+                persist_selection(root, "specs/example/features/009-missing")
+            with self.assertRaises(WorkspaceError):
+                resolve_selected_workspace(root, "../outside")
             self.assertEqual(state.read_bytes(), before)
+            self.assertEqual(resolve_selected_workspace(root).feature_directory, DELIVER)
 
-    def test_create_and_select_immediate_subfeature(self):
+    def test_selected_subfeature_exposes_parent_context_and_siblings_only(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary) / "project"
-            shutil.copytree(TWO_LEVEL_PROJECT, root)
-            proposal = propose_feature(
-                root,
-                None,
-                "feature.example.checkout.capture",
-                "capture-payment",
-                parent_feature="feature.example.checkout",
-            )
-            self.assertEqual(proposal.status, "proposal")
-            self.assertEqual(proposal.result["workspace"]["workspace_kind"], "subfeature")
-            self.assertTrue(proposal.result["workspace"]["feature_directory"].endswith("subfeatures/003-capture-payment"))
-            child = select_feature(root, "feature.example.checkout.confirm", resume=True)
-            self.assertEqual(child.status, "selected")
-            self.assertEqual(child.result["workspace"]["workspace_kind"], "subfeature")
-            self.assertEqual(child.result["workspace"]["parent_context"]["feature_id"], "feature.example.checkout")
-            self.assertEqual([item["feature_id"] for item in child.result["workspace"]["siblings"]], ["feature.example.checkout.authorize"])
+            root = self.project_copy(temporary, TWO_LEVEL_PROJECT)
+            persist_selection(root, CONFIRM)
+            child = resolve_selected_workspace(root)
+            self.assertEqual(child.workspace_kind, "subfeature")
+            self.assertEqual(child.feature_id, "feature.example.checkout.confirm")
+            self.assertEqual(child.parent_context["feature_id"], "feature.example.checkout")
+            self.assertEqual(child.parent_context["feature_directory"], "specs/example/features/001-checkout")
+            self.assertEqual([item["feature_id"] for item in child.siblings], ["feature.example.checkout.authorize"])
+            self.assertEqual(set(child.siblings[0]), {"feature_id", "title", "outcome", "evidence_status", "feature_directory"})
 
-    def test_subfeature_cannot_parent_a_third_level(self):
-        result = propose_feature(
-            TWO_LEVEL_PROJECT,
-            None,
-            "feature.example.checkout.authorize.retry",
-            "retry-authorization",
-            parent_feature="feature.example.checkout.authorize",
-        )
-        self.assertEqual(result.status, "invalid")
-        self.assertEqual(result.findings[0].rule_id, "CONCORDE-WORKSPACE-014")
+    def test_third_level_root_is_rejected(self):
+        with self.assertRaises(WorkspaceError):
+            resolve_phase_paths(TWO_LEVEL_PROJECT, f"{CONFIRM}/subfeatures/001-retry-confirmation")
 
 
 if __name__ == "__main__":

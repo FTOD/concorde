@@ -21,62 +21,97 @@ canonical_spec: specs/concorde/features/001-concorde-workflow/subfeatures/004-ma
 
 **Created**: 2026-08-26
 **Status**: Specified; existing realization has not been hardened into this sub-feature design
-**Input**: Propose, create, select, and resolve one canonical top-level feature or immediate sub-feature workspace.
+**Input**: Resolve, validate, and route the standard Spec Kit selection of one canonical top-level
+feature or immediate sub-feature workspace.
 
 ## Outcome
 
-A maintainer can place or select exactly one valid feature-shaped lifecycle root, and every later
-phase receives authoritative durable, temporal, ownership, parent, and sibling context for that root.
+Every normal Spec Kit phase receives authoritative durable, temporal, ownership, parent, and sibling
+context for exactly one valid feature-shaped lifecycle root, selected through the standard Spec Kit
+pointer rather than a Concorde command.
 
 ## Parent Context and Boundary
 
-The parent owns why features are selected in the overall workflow. This child owns
-`speckit.concorde.feature.create`, `speckit.concorde.feature.select`, and Feature Workspace Protocol
-routing. It does not own the behavior of the phases that consume those paths. The parent component
-diagram already covers command, adapter, control-state, and artifact interaction.
+The parent owns why features are selected in the overall workflow. This child owns Feature Workspace
+Protocol v3 resolution and routing of the standard Spec Kit selection, together with the
+deterministic placement rules a selected root must satisfy. Creating a root is the normal
+`speckit.specify` phase with `SPECIFY_FEATURE_DIRECTORY` set to the canonical path, and selecting a
+root is the standard `.specify/feature.json` `feature_directory` record; this child adds no creation
+or selection command and no second selection store. It does not own the behavior of the phases that
+consume the resolved paths. The parent component diagram already covers command, adapter,
+control-state, and artifact interaction.
 
 ## User Scenarios & Testing
 
-### User Story 1 - Create or select one lifecycle root (Priority: P1)
+### User Story 1 - Work inside one selected lifecycle root (Priority: P1)
 
-A maintainer reviews placement for a new feature or chooses an existing root, then continues normal
-Spec Kit work without relying on branch naming or a second registry.
+A maintainer creates a feature root through `speckit.specify` at its canonical path or points the
+standard Spec Kit selection at an existing root, then continues normal Spec Kit work without relying
+on branch naming, a Concorde selection command, or a second registry.
 
-**Independent Test**: Create and select top-level and immediate-child fixtures, then resolve every
-normal phase and inspect the returned Protocol v3 fields and paths.
+**Independent Test**: Select top-level and immediate-child fixtures through `.specify/feature.json`,
+then resolve every normal phase and inspect the returned Protocol v3 fields and paths.
 
 **Acceptance Scenarios**:
-1. **Given** one valid module or top-level parent, **When** creation is proposed, **Then** the exact
-   root, durable pair, registration, ownership, relationship context, and source digest are shown.
-2. **Given** the exact placement is approved, **When** creation completes, **Then** the root is
-   registered bidirectionally where required, validates, and becomes selectable.
-3. **Given** an existing root with a non-empty attempt, **When** selection omits explicit resume,
-   **Then** the previous selection is preserved and a conflict is reported.
+1. **Given** `SPECIFY_FEATURE_DIRECTORY` names a canonical unused root beneath a module's `features/`
+   or a top-level parent's `subfeatures/`, **When** `speckit.specify` runs, **Then** the root
+   contains `spec.md` and an adjacent `design.md` stating that no realization is hardened, and
+   `.specify/feature.json` records that root.
+2. **Given** a selected root whose spec front matter (`id`, `module`, and `parent_feature` for a
+   sub-feature) agrees with its module or parent registration, **When** any normal phase runs,
+   **Then** the adapter returns the selected kind, ID, module, durable/temporal paths,
+   `implementation_state`, and bounded relationship context for that root.
+3. **Given** a selected root with a non-empty `implementation/` attempt, **When** a phase resolves
+   the workspace, **Then** the attempt is reported through `implementation_state: active` and is
+   never replaced or removed silently.
+4. **Given** a selected root that is unregistered, misplaced, or missing its durable pair, **When**
+   a phase resolves the workspace or `speckit.concorde.validate` runs, **Then** actionable findings
+   are returned and no maintained source or selection state changes.
 
 ### Edge Cases
 
-- Both or neither placement modes are supplied; a child is used as a parent; depth exceeds two.
+- The selected root sits at a third containment level, names a child as its parent, or disagrees
+  with its parent's module.
 - IDs, paths, ownership, canonical metadata, or parent registration conflict.
 - A selected root is symlinked, stale, missing its durable pair, or has an unsafe path.
+- No feature is selected, or the selection points outside the configured specification package.
 
 ## Requirements
 
-- **FR-001**: Creation MUST accept exactly one reviewed placement mode: providing module or top-level parent.
-- **FR-002**: A sub-feature MUST inherit its parent's module and live directly beneath that parent's `subfeatures/` directory.
-- **FR-003**: Creation MUST present exact changes and remain read-only until explicit approval.
-- **FR-004**: Every created root MUST contain one canonical `spec.md` and adjacent durable `design.md` and be registered by its module or parent.
-- **FR-005**: Selection MUST resolve exactly one valid root by stable ID or canonical path and persist only that root.
-- **FR-006**: Protocol v3 MUST return selected kind, ID, module, durable/temporal paths, implementation state, nullable parent context, and bounded siblings.
-- **FR-007**: Every phase MUST remain confined to the selected root; parent and sibling attempts MUST never be implicit inputs.
-- **FR-008**: Invalid creation or selection MUST preserve prior maintained sources and selection state.
+- **FR-001**: The selection authority MUST be the standard Spec Kit `.specify/feature.json`
+  `feature_directory` record, written by `speckit.specify` or set through
+  `SPECIFY_FEATURE_DIRECTORY`; no Concorde creation or selection command and no second selection
+  store exists.
+- **FR-002**: A sub-feature MUST inherit its parent's module and live directly beneath that parent's
+  `subfeatures/` directory; a top-level feature MUST live directly beneath its module's `features/`
+  directory.
+- **FR-003**: A valid root MUST contain one canonical `spec.md` and adjacent durable `design.md` and
+  MUST be registered by its module or parent; for a new root the specify addendum seeds that pair.
+- **FR-004**: Resolution MUST accept exactly one valid root and MUST reject unsafe, symlinked,
+  unregistered, misplaced, or third-level paths without changing selection state.
+- **FR-005**: Protocol v3 MUST return selected kind, ID, module, durable/temporal paths,
+  implementation state, nullable parent context, and bounded siblings.
+- **FR-006**: Every phase MUST remain confined to the selected root; parent and sibling attempts
+  MUST never be implicit inputs.
+- **FR-007**: A non-empty `implementation/` attempt MUST be reported as `implementation_state:
+  active` and MUST never be replaced, archived as a second authority, or removed by resolution.
+- **FR-008**: Registration, canonical path, two-level containment, and identity rules MUST be
+  enforced deterministically by `speckit.concorde.validate`, and invalid roots MUST preserve prior
+  maintained sources and selection state.
 
 ## Success Criteria
 
-- **SC-001**: All creation fixtures propose the canonical root and correct registration without mutation.
+- **SC-001**: All canonical top-level and child fixtures resolve without mutation, and all
+  unregistered, misplaced, or unsafe fixtures produce actionable findings.
 - **SC-002**: All nine normal phases resolve correctly for top-level and child selections.
-- **SC-003**: All invalid depth, ownership, path, identity, registration, and resume cases preserve prior state.
-- **SC-004**: A child workspace result contains its parent and ordered siblings but no related attempt paths.
+- **SC-003**: All invalid depth, ownership, path, identity, and registration cases preserve prior
+  state.
+- **SC-004**: A child workspace result contains its parent and ordered siblings but no related
+  attempt paths.
 
 ## Assumptions
 
 - Exactly one standard `.specify/feature.json` pointer remains the selection authority.
+- The constitution (v2.0.0, principle A.III) no longer requires one providing module per feature, so
+  reviewed placement is expressed in spec front matter and feature lists and enforced by validation
+  rather than by a dedicated creation command.

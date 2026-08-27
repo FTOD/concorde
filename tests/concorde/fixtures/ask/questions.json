@@ -4,7 +4,7 @@
     {
       "id": "general-command-timing",
       "kind": "general",
-      "question": "When should I use concorde-context instead of feature-select?",
+      "question": "When should I use concorde-context instead of changing the selected feature?",
       "required_basis": ["framework-rule"],
       "requires_citations": true,
       "expected": "Distinguish read-only bounded context from changing active feature selection."

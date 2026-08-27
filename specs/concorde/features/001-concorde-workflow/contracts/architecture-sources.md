@@ -64,8 +64,9 @@ delivery evidence are invalid; compatibility copies and symlinks are prohibited.
 
 After every current task is complete, explicit maintainer approval may harden the accepted realization
 into `design.md` and remove the whole `implementation/` directory. A completed attempt remains
-temporal until this operation succeeds. An existing non-empty attempt requires an explicit resume
-decision and must never be replaced, archived as a second authority, or removed silently.
+temporal until this operation succeeds. An existing non-empty attempt is reported as
+`implementation_state: active` and must never be replaced, archived as a second authority, or removed
+silently.
 
 ## Phase Path Mapping
 

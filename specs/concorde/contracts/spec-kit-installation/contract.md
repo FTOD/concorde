@@ -57,8 +57,8 @@ copies remain replaceable materializations and cannot become release or source a
 - The preset MUST compose guidance and authoritative selected-workspace routing into the nine
   affected normal lifecycle commands without replacing phase semantics or creating a duplicate
   feature specification.
-- The extension's seven Concorde-specific surfaces MUST be discoverable through the target project's
-  active integration. Six use supporting adapters or runtime; the read-only `ask` procedure MUST
+- The extension's five Concorde-specific surfaces MUST be discoverable through the target project's
+  active integration. Four use supporting adapters or runtime; the read-only `ask` procedure MUST
   materialize without a launcher or runtime verb.
 - Clean-project verification MUST execute the winning installed command surfaces with the source
   checkout unavailable and prove the durable/temporal path matrix across skills and slash-command
@@ -93,6 +93,6 @@ installation, verification, update, and removal evidence before it is advertised
 
 Bundle lifecycle, catalog, source, manifest, archive, idempotency, update/removal, and basic command
 registration are verified under `tests/concorde/`. Evidence remains partial until clean release
-installation executes all nine normal and six runtime-backed Concorde winning surfaces and reviews
+installation executes all nine normal and four runtime-backed Concorde winning surfaces and reviews
 the installed `ask` procedure in both supported presentation styles, with checkout isolation and
 lower-layer restoration.

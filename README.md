@@ -8,7 +8,7 @@ Concorde is designed to be installed as a native Spec Kit bundle containing:
 
 - the `concorde-core` preset, which appends architecture guidance to templates and replaces nine
   normal command instructions with Concorde-aware workspace routing;
-- the `concorde` extension, which supplies seven Concorde surfaces—six runtime-backed operations plus
+- the `concorde` extension, which supplies five Concorde surfaces—four runtime-backed operations plus
   the read-only `ask` procedure—the workspace adapter, and runtime; and
 - no replacement workflow: Spec Kit continues to own specification, planning, tasks, and
   implementation.
@@ -19,7 +19,7 @@ The three Spec Kit package concepts have different jobs:
 |---|---|---|
 | Bundle | `concorde-bundle` | An installation recipe that pins the tested preset and extension versions. |
 | Preset | `concorde-core` | Three append template layers plus nine complete normal-command replacements for nested workspace routing. |
-| Extension | `concorde` | Seven Concorde-specific surfaces: six deterministic operations and one agent-followed, read-only question procedure. |
+| Extension | `concorde` | Five Concorde-specific surfaces: four deterministic operations and one agent-followed, read-only question procedure. |
 
 Catalogs are trusted discovery metadata for these independently versioned packages; they are not a
 fourth installed runtime component. See the maintained
@@ -31,9 +31,9 @@ The project docsite build turns declared diagram sources into interactive standa
 ## Project status
 
 The project docsite and architecture publication pipeline are implemented and tested. Feature 003
-owns the native Concorde bundle, preset command composition, seven-surface extension, release/catalog
+owns the native Concorde bundle, preset command composition, five-surface extension, release/catalog
 tooling, and setup lifecycle. Feature 001 defines the Concorde architecture-aware development workflow;
-its initialization, nested feature placement/selection, bounded context, architecture readiness, and
+its initialization, nested workspace resolution, bounded context, architecture readiness, and
 deterministic validation behavior are implemented. Timed human pilots and browser-based diagram
 review remain pending and are kept separate from automated evidence.
 
@@ -159,17 +159,17 @@ After installation, invoke these agent skills from the target project:
 
 ```text
 $speckit-concorde-init
-$speckit-concorde-feature-create --module-id module.<project-slug> --feature-id feature.<project-slug>.<name> --short-name <name>
-$speckit-concorde-feature-select feature.<project-slug>.<name>
 $speckit-concorde-feature-harden feature.<project-slug>.<name>
 $speckit-concorde-context module.<project-slug>
 $speckit-concorde-validate
-$speckit-concorde-ask When should I use context instead of feature-select?
+$speckit-concorde-ask When should I use context instead of changing the selected feature?
 ```
 
 - `init` proposes a root architecture package and writes it only after explicit approval.
-- `feature.create` proposes reviewed module ownership and one canonical nested feature root.
-- `feature.select` selects an existing nested feature for all normal Spec Kit phases.
+- Features are created with the normal `$speckit-specify` phase after exporting
+  `SPECIFY_FEATURE_DIRECTORY` at their canonical path—`<module directory>/features/NNN-<short-name>`,
+  or `<parent feature root>/subfeatures/NNN-<short-name>` for a sub-feature—and are selected
+  through the standard `.specify/feature.json`; Concorde adds no creation or selection command.
 - `feature.harden` proposes a permanent design from a task-complete implementation attempt and,
   only after explicit approval, promotes it and removes that temporal `implementation/` directory.
 - `context` returns one bounded architectural level without expanding child internals.

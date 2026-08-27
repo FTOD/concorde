@@ -72,7 +72,7 @@ to `feature.concorde.publish-project-docsite`.
 | 1 | `feature.concorde.workflow.initialize-architecture` | `speckit.concorde.init` |
 | 2 | `feature.concorde.workflow.retrieve-bounded-context` | `speckit.concorde.context` |
 | 3 | `feature.concorde.workflow.answer-workflow-questions` | `speckit.concorde.ask` |
-| 4 | `feature.concorde.workflow.manage-feature-workspaces` | `speckit.concorde.feature.create`, `speckit.concorde.feature.select`, and Feature Workspace Protocol routing |
+| 4 | `feature.concorde.workflow.manage-feature-workspaces` | Feature Workspace Protocol routing of the standard Spec Kit selection (no Concorde command) |
 | 5 | `feature.concorde.workflow.specify-behavior` | `speckit.specify`, `speckit.clarify`, `speckit.checklist` |
 | 6 | `feature.concorde.workflow.plan-delivery` | `speckit.plan`, `speckit.tasks`, `speckit.taskstoissues` |
 | 7 | `feature.concorde.workflow.execute-and-reconcile` | `speckit.implement`, `speckit.analyze`, `speckit.converge` |
@@ -108,7 +108,7 @@ feature refinement.
 | 1 | Establish or review the root module package and its boundary. | `speckit.concorde.init` |
 | 2 | Inspect exactly one module or feature relationship level and choose ownership. | `speckit.concorde.context` |
 | Any | Ask a source-grounded, read-only workflow question. | `speckit.concorde.ask` |
-| 3 | Propose and approve a canonical top-level feature or immediate sub-feature, or select an existing root. | `speckit.concorde.feature.create` / `speckit.concorde.feature.select` |
+| 3 | Create the feature root through `speckit.specify` at its canonical path, or select an existing root through the standard Spec Kit selection (`.specify/feature.json` / `SPECIFY_FEATURE_DIRECTORY`). | `speckit.specify` / Spec Kit selection |
 | 4 | Define behavior, resolve material uncertainty, and review requirements quality. | `speckit.specify` / `speckit.clarify` / `speckit.checklist` |
 | 5 | Plan one implementation attempt, order its work, and optionally project tasks into issues. | `speckit.plan` / `speckit.tasks` / `speckit.taskstoissues` |
 | 6 | Execute tasks, analyze artifact consistency, and append only genuine remaining work. | `speckit.implement` / `speckit.analyze` / `speckit.converge` |
@@ -168,8 +168,8 @@ sources are byte-identical afterward.
 
 **Acceptance Scenarios**:
 
-1. **Given** a creation or hardening proposal, **When** approval is withheld, **Then** no maintained
-   source or selection state changes.
+1. **Given** an initialization or hardening proposal, **When** approval is withheld, **Then** no
+   maintained source or selection state changes.
 2. **Given** missing or conflicting evidence, **When** validation or analysis runs, **Then** the result
    reports disagreement or uncertainty rather than rewriting intent.
 
@@ -189,8 +189,8 @@ durable root without root-level compatibility copies.
 ### Edge Cases
 
 - A command receives an unknown, ambiguous, unsafe, or stale module/feature target.
-- A proposed sub-feature uses a child as its parent or attempts a third containment level.
-- A phase finds an existing non-empty attempt without explicit resume authority.
+- A sub-feature specification names a child as its parent or attempts a third containment level.
+- A phase finds an existing non-empty attempt and must report it as active rather than replace it.
 - A contract, refinement, scenario, diagram, or parent registration is missing or contradictory.
 - The maintained source digest changes between proposal review and approved application.
 - Generated evidence disagrees with maintained intent or cannot be reproduced.
@@ -231,8 +231,9 @@ durable root without root-level compatibility copies.
 
 ### Scope
 
-**In scope**: root initialization; bounded context; workflow questions; feature creation and
-selection; selected-root routing for all nine normal Spec Kit phases; architecture validation;
+**In scope**: root initialization; bounded context; workflow questions; Feature Workspace Protocol
+resolution of the standard Spec Kit selection; selected-root routing for all nine normal Spec Kit
+phases; architecture validation;
 feature hardening; the shared authority and containment model connecting those operations.
 
 **Out of scope**: installation and bundle lifecycle; documentation-site publication mechanics;
@@ -256,7 +257,7 @@ lifecycle or registry.
 
 ### Measurable Outcomes
 
-- **SC-001**: All 16 installed command surfaces map to exactly one sub-feature and appear once in the
+- **SC-001**: All 14 installed command surfaces map to exactly one sub-feature and appear once in the
   aggregate workflow inventory.
 - **SC-002**: In all lifecycle routing tests, every phase reads or writes only the selected top-level
   feature or immediate sub-feature paths returned by the workspace result.

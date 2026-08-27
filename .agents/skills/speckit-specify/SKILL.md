@@ -102,9 +102,23 @@ Given that feature description, do this:
 
    Specs live under the default `specs/` directory unless the user explicitly provides `SPECIFY_FEATURE_DIRECTORY`.
 
+   **Concorde canonical placement**: in a Concorde project a new feature root MUST live inside the
+   architecture hierarchy, not in a flat `specs/NNN-name` directory. Before resolving the directory,
+   confirm with the user the level at which the feature is specified (use `speckit.concorde.context`
+   when unsure) and set `SPECIFY_FEATURE_DIRECTORY` to the canonical root:
+   - `<module directory>/features/NNN-<short-name>` for a top-level feature of that module, or
+   - `<parent feature root>/subfeatures/NNN-<short-name>` for one immediate sub-feature (a
+     sub-feature cannot have children).
+   Allocate `NNN` as the next zero-padded number among that directory's existing siblings. After
+   writing the specification, record the stable `id`, `module`, and (for a sub-feature)
+   `parent_feature` in the spec front matter, register the feature in the module's `features` list
+   or the parent's `subfeatures` list, and tell the user to run `speckit.concorde.validate`. Do not
+   silently invent ownership; if placement is unclear, stop and ask.
+
    **Resolution order for `SPECIFY_FEATURE_DIRECTORY`**:
    1. If the user explicitly provided `SPECIFY_FEATURE_DIRECTORY` (e.g., via environment variable, argument, or configuration), use it as-is
-   2. Otherwise, auto-generate it under `specs/`:
+   2. Otherwise, in a Concorde project, derive it from the confirmed canonical placement above
+   3. Otherwise, auto-generate it under `specs/`:
       - Check `.specify/init-options.json` for `feature_numbering` (preferred) or `branch_numbering` (deprecated, migration only — will be removed in a future release)
       - If `"timestamp"`: prefix is `YYYYMMDD-HHMMSS` (current timestamp)
       - If `"sequential"` or absent: prefix is `NNN` (next available 3-digit number after scanning existing directories in `specs/`)

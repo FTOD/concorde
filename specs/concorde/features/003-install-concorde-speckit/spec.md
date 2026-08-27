@@ -65,7 +65,7 @@ delivered as independently versioned ecosystem parts with different responsibili
 | **Catalog** | Advertises package identity, version, compatibility, download location, integrity, and trust metadata. | It is discovery metadata, not installed product behavior. |
 | **Bundle** | Provides an inspectable recipe that pins the compatible Concorde preset and extension versions. | It is not executable behavior, a template layer, or a replacement workflow. |
 | **Preset** | Composes Concorde guidance into normal templates and authoritative routing into the existing Spec Kit lifecycle commands. | It introduces no new runtime command namespace and creates no second canonical feature specification. It does not register commands by itself; Spec Kit materializes its resolved command layers. |
-| **Extension** | Provides seven Concorde-specific command definitions: six runtime-backed operations plus the agent-followed, read-only `ask` procedure, together with the selected-workspace adapter and deterministic runtime. | It does not own the normal Spec Kit phases or agent-specific presentation syntax, and `ask` is not a runtime operation. |
+| **Extension** | Provides five Concorde-specific command definitions: four runtime-backed operations plus the agent-followed, read-only `ask` procedure, together with the selected-workspace adapter and deterministic runtime. | It does not own the normal Spec Kit phases or agent-specific presentation syntax, and `ask` is not a runtime operation. |
 | **Coding-agent integration** | Materializes both resolved core-command overrides and Concorde-specific commands using the active agent's supported skill or slash-command form. | It adapts invocation syntax without changing command intent or path semantics. |
 | **Architecture Core** | Performs project-scoped initialization, bounded context retrieval, and validation after setup. | Its behavior belongs to the Concorde workflow, not to installation. |
 
@@ -193,15 +193,15 @@ commands execute the correct phase in the correct nested workspace.
 
 **Independent Test**: Build the release, install its bundle into a pristine supported project that
 cannot read the Concorde source checkout, and execute the normal lifecycle through one skills-based
-and one slash-command-based presentation. Verify every durable and temporal output path, all seven
-Concorde-specific surfaces (including six runtime-backed operations), and restoration after the
+and one slash-command-based presentation. Verify every durable and temporal output path, all five
+Concorde-specific surfaces (including four runtime-backed operations), and restoration after the
 preset is disabled or removed.
 
 **Acceptance Scenarios**:
 
 1. **Given** a pristine supported Spec Kit project, **When** the released bundle is installed,
    **Then** the active integration contains resolved Concorde-aware forms of all nine normal lifecycle
-   commands and all seven Concorde-specific surfaces declared by the installed manifests.
+   commands and all five Concorde-specific surfaces declared by the installed manifests.
 2. **Given** a selected nested feature, **When** `specify`, `clarify`, or `checklist` runs, **Then**
    the canonical `spec.md` and contracts remain at the feature root, every generated checklist is
    placed under `implementation/checklists/`, and no duplicate specification or root checklist is
@@ -299,8 +299,8 @@ project-owned sources.
 - **FR-007**: Each path-sensitive preset command MUST resolve the selected feature and the correct
   durable or temporal workspace before any inherited instruction or helper can read or write a
   legacy root-level artifact.
-- **FR-008**: The extension MUST register seven Concorde-specific surfaces through the target
-  project's active coding-agent integration: six operations with the portable selected-workspace or
+- **FR-008**: The extension MUST register five Concorde-specific surfaces through the target
+  project's active coding-agent integration: four operations with the portable selected-workspace or
   runtime support they require and one agent-followed, read-only `ask` procedure with no runtime verb.
 - **FR-009**: Setup MUST preserve Spec Kit's authority for its normal lifecycle and MUST NOT install a
   dedicated Concorde workflow component or reusable steps in the initial bundle.
@@ -324,7 +324,7 @@ project-owned sources.
 - **FR-018**: Setup verification MUST execute every normal command whose artifact path is changed by
   Concorde and MUST prove the durable-root/temporal-`implementation/` path matrix without root-level
   checklist, plan, task, or other temporal compatibility copies or symlinks.
-- **FR-019**: Setup verification MUST exercise all six installed runtime-backed Concorde command
+- **FR-019**: Setup verification MUST exercise all four installed runtime-backed Concorde command
   intents and inspect the installed `ask` procedure's grounding, citation, uncertainty, bounded
   context, checkout independence, and non-mutation rules through each supported presentation style
   without making installation responsible for their core workflow semantics.
@@ -424,7 +424,7 @@ project-owned sources.
 - **SC-003**: Three consecutive installations of the same release produce one unchanged installed
   component set and no modifications to project-authored sources.
 - **SC-004**: In 100% of supported coding-agent presentations, the nine affected normal commands and
-  seven Concorde-specific surfaces are materialized from the installed release; the six operations
+  five Concorde-specific surfaces are materialized from the installed release; the four operations
   expose equivalent runtime behavior and `ask` preserves equivalent read-only explanatory semantics.
 - **SC-005**: Every seeded unsupported-version, untrusted-source, missing-component, digest,
   collision, and partial-failure case stops without a false success record and provides actionable

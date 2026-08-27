@@ -36,7 +36,7 @@ pretending that an agent-authored answer is deterministic runtime output.
 ## Obligations
 
 Every integration preserves the canonical command contract, selected-workspace and phase-path
-semantics, and project-relative runtime paths for the six operational surfaces. The `ask` artifact
+semantics, and project-relative runtime paths for the four operational surfaces. The `ask` artifact
 instead reads installed guidance and the smallest relevant bounded project context, cites framework
 and project facts, distinguishes inference and uncertainty, asks one focused clarification when
 necessary, and performs no mutation or implicit lifecycle operation. Registration must materialize
@@ -53,6 +53,6 @@ Command registration follows Spec Kit 0.16.4 and is tested in skills and slash-c
 ## Evidence
 
 Initialization, context, and validation are verified in installed Codex skills mode and Gemini
-slash-command mode. Evidence remains partial until all seven Concorde-specific intents—including the
+slash-command mode. Evidence remains partial until all five Concorde-specific intents—including the
 read-only question intent—and all nine affected normal commands execute from release-installed
 artifacts in both presentation modes.

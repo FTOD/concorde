@@ -52,22 +52,39 @@ the entire hierarchy.
 
 ## 2. Create or select the feature workspace
 
-For a new feature, `speckit.concorde.feature.create` first proposes the providing module, canonical
-feature path, module registration, affected contracts/view, and source digest. After approval it
-uses the normal specification phase to establish root `spec.md` and a `design.md` that explicitly
-states no realization has yet been hardened.
+Concorde has no feature-creation command. For a new feature, set `SPECIFY_FEATURE_DIRECTORY` to the
+canonical feature root inside the hierarchy—`<module directory>/features/NNN-<short-name>`, for
+example `specs/example/modules/api/features/002-observe-health`—and run the normal
+`speckit.specify` phase. The Concorde specify addendum seeds root `spec.md` and a `design.md` that
+explicitly states no realization has yet been hardened, and persists the root to
+`.specify/feature.json`. Record the feature's identity and placement in the spec front matter (`id`
+and `module`), register it in the module's `features` list, and run `speckit.concorde.validate`,
+which deterministically checks registration, canonical path, two-level containment, and identity.
 
-For an existing feature, `speckit.concorde.feature.select` verifies its identity, providing module,
-durable files, path confinement, and attempt state before updating `.specify/feature.json`. If a
-non-empty implementation attempt already exists, resuming it must be explicit.
+For an existing feature, selection is plain Spec Kit selection: `.specify/feature.json`
+`feature_directory`, written by specify or set explicitly with
+`export SPECIFY_FEATURE_DIRECTORY=<feature root>`. Concorde adds no selection command and no second
+selection store. Before every normal phase the workspace adapter resolves and validates the selected
+root: safe path, canonical `spec.md`/`design.md` pair, workspace kind, parent context and sibling
+summaries for a sub-feature, durable and temporal paths, and `implementation_state`. A non-empty
+`implementation/` attempt appears as `implementation_state: active`; there is no separate resume
+step—decide whether to continue that attempt or harden or archive it.
 
 Selection is what routes later Spec Kit phases. Context retrieval is only a read operation.
 
 If the behavior is too broad for one clear specification, keep one aggregate parent and create one
-level of immediate sub-features beneath it. Use `feature.create --parent-feature <id>` for a reviewed
-child proposal. The child inherits the parent module and cannot have children. Select either level
-for normal phases; selecting a child keeps parent durable context read-only and never opens sibling
-bodies or attempts implicitly.
+level of immediate sub-features beneath it. Point `SPECIFY_FEATURE_DIRECTORY` at
+`<parent feature root>/subfeatures/NNN-<short-name>`, for example
+`specs/example/features/001-checkout/subfeatures/003-capture-payment`, run `speckit.specify`, add
+`parent_feature` to the child's front matter, and register it in the parent's `subfeatures` list.
+The child inherits the parent's placement and cannot have children. Select either level for normal
+phases; selecting a child keeps parent durable context read-only and never opens sibling bodies or
+attempts implicitly.
+
+Concorde's earlier dedicated creation and selection commands encoded the old rule of one providing
+module per feature. The constitution (v2.0.0, principle A.III) no longer requires it, and standard
+Spec Kit creation and selection plus deterministic validation are sufficient, so those commands were
+removed.
 
 ## 3. Specify observable behavior
 
@@ -93,7 +110,7 @@ current review cycle; accepted behavioral conclusions must be incorporated into 
 
 Before accepting a plan, review the structure that the agent will be allowed to realize:
 
-- Is the providing module and abstraction level correct?
+- Is the placement level correct and are the realizing modules right?
 - Does a parent feature need child-level refinements?
 - Which immediate submodules participate?
 - Does every boundary crossing name a provided or required contract?
@@ -182,7 +199,8 @@ The publication behavior is specified separately by
 
 ## Starting the next change
 
-A hardened feature has no active `implementation/` directory. Select it again, revise `spec.md` if
+A hardened feature has no active `implementation/` directory. Select it again by pointing
+`SPECIFY_FEATURE_DIRECTORY` (and therefore `.specify/feature.json`) at its root, revise `spec.md` if
 the required behavior changes, review any affected architecture, and start a fresh plan. The current
 `design.md` remains the accepted realization until another complete attempt is explicitly hardened.
 

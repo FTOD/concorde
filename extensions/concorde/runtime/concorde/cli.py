@@ -35,19 +35,6 @@ def create_parser() -> argparse.ArgumentParser:
 
     feature = subparsers.add_parser("feature")
     feature_commands = feature.add_subparsers(dest="feature_operation", required=True)
-    create = feature_commands.add_parser("create")
-    placement = create.add_mutually_exclusive_group(required=True)
-    placement.add_argument("--module-id")
-    placement.add_argument("--parent-feature")
-    create.add_argument("--feature-id", required=True)
-    create.add_argument("--short-name", required=True)
-    create.add_argument("--number")
-    create.add_argument("--participant-module", action="append", default=[])
-    create.add_argument("--format", choices=["json"], default="json")
-    select = feature_commands.add_parser("select")
-    select.add_argument("target")
-    select.add_argument("--resume", action="store_true")
-    select.add_argument("--format", choices=["json"], default="json")
     harden = feature_commands.add_parser("harden")
     harden.add_argument("target", nargs="?")
     harden_mode = harden.add_mutually_exclusive_group(required=True)
@@ -79,20 +66,7 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
         return bounded_context(root, arguments.target)
     if arguments.operation == "feature":
         from .feature_hardening import apply_hardening, propose_hardening
-        from .feature_workspace import propose_feature, select_feature
 
-        if arguments.feature_operation == "create":
-            return propose_feature(
-                root,
-                arguments.module_id,
-                arguments.feature_id,
-                arguments.short_name,
-                arguments.number,
-                tuple(arguments.participant_module),
-                arguments.parent_feature,
-            )
-        if arguments.feature_operation == "select":
-            return select_feature(root, arguments.target, arguments.resume)
         if arguments.apply:
             if not arguments.proposal:
                 return OperationResult(

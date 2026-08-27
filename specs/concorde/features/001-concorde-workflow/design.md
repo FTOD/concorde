@@ -16,14 +16,14 @@ The project keeps one standard selection pointer in `.specify/feature.json`. Fea
 
 ## Module and Feature Collaboration
 
-- `module.concorde.spec-kit-integration` provides `contract.integration.feature-workspace`, normal-command composition, installed agent surfaces, top-level/sub-feature placement and selection, Protocol v3 routing, and the read-only question procedure. Its lower-module feature `feature.integration.manage-feature-workspace` continues to refine the root workflow architecturally; that refinement is not feature containment.
+- `module.concorde.spec-kit-integration` provides `contract.integration.feature-workspace`, normal-command composition, installed agent surfaces, Protocol v3 resolution and routing of the standard Spec Kit feature selection, and the read-only question procedure. Its lower-module feature `feature.integration.manage-feature-workspace` continues to refine the root workflow architecturally; that refinement is not feature containment.
 - `module.concorde.architecture-core` owns source discovery, safe path classification, bounded context, readiness, and deterministic validation through `contract.core.architecture-services`. It validates module containment, feature refinement, and feature containment as separate acyclic graphs.
 - `module.concorde.documentation` consumes validated durable sources through the Documentation contracts. Build Manifest v4 records parent/child relationships, and the generated site renders ordered child summaries plus parent/sibling navigation without copying requirements or publishing attempts.
-- `module.concorde.distribution` packages the unchanged inventory of four preset templates, nine normal phase replacements, seven Concorde surfaces, and four portable scripts. It owns archive/catalog mechanics, while Feature 001 owns the workflow semantics they carry.
+- `module.concorde.distribution` packages the unchanged inventory of four preset templates, nine normal phase replacements, five Concorde surfaces, and four portable scripts. It owns archive/catalog mechanics, while Feature 001 owns the workflow semantics they carry.
 
 The `concorde-core` preset routes all nine path-sensitive Spec Kit phases through the installed workspace adapter before artifact access. Every phase writes only beneath the selected root. For a sub-feature, commands may read the Protocol v3 parent durable paths as aggregate context but never implicitly read or write parent/sibling attempts.
 
-The `concorde` extension retains seven command surfaces. Six—`init`, `feature-create`, `feature-select`, `context`, `validate`, and `feature-harden`—reach the standard-library Python runtime through project-relative launchers. `ask` remains agent-followed and read-only. Creation uses mutually exclusive module placement for a top-level feature or parent placement for an immediate sub-feature; selection and hardening accept either valid lifecycle level.
+The `concorde` extension retains five command surfaces. Four—`init`, `context`, `validate`, and `feature-harden`—reach the standard-library Python runtime through project-relative launchers. `ask` remains agent-followed and read-only. Feature creation and selection are standard Spec Kit behavior rather than Concorde commands; hardening accepts either valid lifecycle level.
 
 ## Scenario Realization
 
@@ -33,9 +33,9 @@ Initialization, context, and validation load `.concorde/config.json` and the rec
 
 ### Place, decompose, select, and specify work
 
-Top-level placement reviews the providing module and nearest-common-parent rule before proposing a numbered feature root and module registration. Sub-feature placement instead resolves one existing top-level parent, derives its providing module, allocates the next numbered directory beneath `subfeatures/`, and proposes parent registration plus the child durable pair. Child-as-parent input, mixed placement modes, participant-module overrides on children, invalid depth, duplicate identity, occupied/unsafe paths, and changed source state fail without mutation.
+A new top-level feature or immediate sub-feature is created by the normal Spec Kit specify phase with `SPECIFY_FEATURE_DIRECTORY` set to `<module directory>/features/NNN-<short-name>` or `<parent feature root>/subfeatures/NNN-<short-name>`; the preset's specify addendum seeds `spec.md` and the adjacent `design.md` (stating that no realization is hardened yet) and persists the root to `.specify/feature.json`. The author records `id`, `module`, and, for a child, `parent_feature` in the spec front matter and registers the root in the module's or parent's feature list. No Concorde creation command exists: child-as-parent registration, invalid depth, duplicate identity, module disagreement, and unsafe or non-canonical paths are rejected by deterministic validation and by workspace resolution rather than by a proposal step.
 
-Selection resolves a stable ID or canonical root, validates its exact path grammar and real spec/design pair, checks module registration for a top-level feature or bidirectional parent registration/module inheritance for a child, and persists only the canonical root. A non-empty attempt requires explicit resume. The workspace adapter returns Protocol v3 fields and routes durable phases to the selected root and implementation phases to that root's `implementation/`.
+Selection is the standard Spec Kit `.specify/feature.json` `feature_directory` record, written by specify or set through `SPECIFY_FEATURE_DIRECTORY`; Concorde adds no selection command and no second store. Before every normal phase the workspace adapter resolves that root, validates its exact path grammar and real spec/design pair, checks module registration for a top-level feature or bidirectional parent registration/module inheritance for a child, and reports a non-empty attempt as `implementation_state: active`. The workspace adapter returns Protocol v3 fields and routes durable phases to the selected root and implementation phases to that root's `implementation/`.
 
 ### Review, implement, validate, and publish
 
@@ -63,7 +63,7 @@ Apply re-resolves classification, parent relationships, task/checklist state, sy
 - Feature Workspace Protocol v3 is a closed schema containing selected kind/ID/module, nullable parent durable context, bounded sibling summaries, and selected-root paths.
 - Every lifecycle root independently owns its durable spec/design and at most one temporal attempt. Parent and sibling attempt paths are never implicit child inputs.
 - Semantic simplicity and non-duplication between parent and child prose remain human requirements-quality judgments; deterministic validation enforces reproducible structural facts only.
-- The normal command inventory remains nine Spec Kit phase surfaces plus seven Concorde surfaces; no `subfeature.create` namespace or second orchestrator is introduced.
+- The normal command inventory remains nine Spec Kit phase surfaces plus five Concorde surfaces; no `subfeature.create` namespace, Concorde creation/selection command, or second orchestrator is introduced.
 - The documentation contract uses Build Manifest v4 and page-level relationship navigation; generated pages link canonical sources instead of copying their normative text.
 - Hardening eligibility and authorization remain separate. Normal phases never update `design.md` or remove `implementation/`.
 - Installed preset/extension sources are primary; self-hosted `.specify/` and `.agents/skills/` materializations are verified mirrors. The custom replace-owned design template remains resolved from the preset under Spec Kit 0.16.4.
@@ -76,14 +76,14 @@ Behavior and acceptance criteria remain in `specs/concorde/features/001-concorde
 Runtime realization is centered in:
 
 - `extensions/concorde/runtime/concorde/repository.py` for canonical two-level discovery and path classification;
-- `feature_workspace.py` and `cli.py` for placement, selection, Protocol v3 relationship context, and phase paths;
+- `feature_workspace.py` and `cli.py` for Protocol v3 resolution of the standard selection, relationship context, and phase paths;
 - `context.py`, `readiness.py`, `validate.py`, and `validation/layout.py` for bounded projections and deterministic containment diagnostics;
 - `feature_hardening.py` for classified-root eligibility, atomic apply, and retained parent/sibling authorities; and
 - `diagnostics.py` plus `scripts/python/workspace.py` for versioned canonical envelopes.
 
 Publication realization is in `docsite/plugins/concorde-content/`, `FeatureRelations.tsx`, provenance/layout integration, and Build Manifest v4 contracts. Parent/child fixtures cover relationship ordering, navigation, invalid registration, and attempt exclusion.
 
-Executable evidence includes 134 passing Python unit, contract, integration, acceptance, clean-install, self-hosting, and release tests. Tests cover exact two-level discovery, third-level rejection, child creation/selection, all nine selected-child phase routes, bounded parent/sibling context, containment diagnostics, parent/sibling-preserving child hardening, Codex/slash installed parity, checkout independence, and deterministic release catalogs.
+Executable evidence includes 134 passing Python unit, contract, integration, acceptance, clean-install, self-hosting, and release tests. Tests cover exact two-level discovery, third-level rejection, child selection, all nine selected-child phase routes, bounded parent/sibling context, containment diagnostics, parent/sibling-preserving child hardening, Codex/slash installed parity, checkout independence, and deterministic release catalogs.
 
 The documentation gate passed TypeScript compilation, 18 Vitest files with 49 tests, validation of 66 pages with 21 temporal/noncanonical sources excluded and zero errors, and an optimized production build. Concorde validation completed with zero findings; its aggregate source digest remains execution evidence rather than self-referential maintained prose.
 

@@ -8,9 +8,9 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 class ManifestContractTests(unittest.TestCase):
-    def test_extension_declares_seven_commands_and_four_scripts(self):
+    def test_extension_declares_five_commands_and_four_scripts(self):
         manifest = (REPOSITORY_ROOT / "extensions/concorde/extension.yml").read_text(encoding="utf-8")
-        self.assertEqual(manifest.count('- name: "speckit.concorde.'), 7)
+        self.assertEqual(manifest.count('- name: "speckit.concorde.'), 5)
         self.assertEqual(manifest.count('runtime: "'), 4)
         self.assertIn('name: "speckit.concorde.ask"', manifest)
         self.assertIn('file: "commands/speckit.concorde.ask.md"', manifest)

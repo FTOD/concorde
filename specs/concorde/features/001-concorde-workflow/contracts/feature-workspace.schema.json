@@ -10,7 +10,7 @@
   "$defs": {
     "operation": {
       "type": "string",
-      "enum": ["feature.create", "feature.select", "feature.harden"]
+      "enum": ["feature.harden"]
     },
     "safePath": {
       "type": "string",
@@ -151,14 +151,7 @@
         "options": {
           "type": "object",
           "properties": {
-            "module_id": { "type": "string", "minLength": 1 },
-            "parent_feature": { "type": "string", "pattern": "^feature\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)+$" },
-            "feature_id": { "type": "string", "minLength": 1 },
-            "short_name": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
-            "number": { "type": "string", "pattern": "^[0-9]{3,}$" },
-            "approved": { "type": "boolean" },
             "proposal_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
-            "resume": { "type": "boolean" },
             "proposal": { "$ref": "#/$defs/safePath" },
             "apply": { "type": "boolean" }
           }
@@ -185,7 +178,7 @@
         "target": { "type": "string", "minLength": 1 },
         "status": {
           "type": "string",
-          "enum": ["proposal", "eligible", "selected", "hardened", "unchanged", "invalid", "conflict", "failed"]
+          "enum": ["eligible", "selected", "hardened", "unchanged", "invalid", "conflict", "failed"]
         },
         "workspace": {
           "oneOf": [
@@ -201,7 +194,7 @@
             "required": ["path", "action", "meaning"],
             "properties": {
               "path": { "$ref": "#/$defs/safePath" },
-              "action": { "type": "string", "enum": ["create", "update", "select", "delete"] },
+              "action": { "type": "string", "enum": ["create", "update", "delete"] },
               "meaning": { "type": "string", "minLength": 1 }
             }
           }

@@ -87,14 +87,17 @@ for you.
 
 ## Nested feature selection
 
-Normal Spec Kit originally assumes a relatively flat feature workspace. Concorde allows a selected
-feature to live under any providing module in the recursive hierarchy and to be either a top-level
-feature or one immediate sub-feature. The project-scoped
-`.specify/feature.json` stores that canonical feature root.
+Normal Spec Kit originally assumes a relatively flat feature workspace. Concorde allows the selected
+feature to live at any module level in the recursive hierarchy and to be either a top-level feature
+or one immediate sub-feature. Selection itself is standard Spec Kit: the project-scoped
+`.specify/feature.json` stores the canonical feature root, written by the specify phase or set
+explicitly through `SPECIFY_FEATURE_DIRECTORY`. Concorde adds no selection command and no second
+selection store.
 
-Protocol v3 classifies the selected root. For a sub-feature it also returns the parent durable
-spec/design as read-only context and concise sibling summaries; no parent/sibling attempt is an
-implicit input or output.
+Protocol v3 classifies the selected root before every normal phase: safe path, canonical
+`spec.md`/`design.md` pair, workspace kind, and `implementation_state`. For a sub-feature it also
+returns the parent durable spec/design as read-only context and concise sibling summaries; no
+parent/sibling attempt is an implicit input or output.
 
 The installed workspace adapter derives phase-specific paths from the selection:
 

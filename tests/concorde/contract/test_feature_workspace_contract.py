@@ -8,10 +8,10 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 class FeatureWorkspaceContractTests(unittest.TestCase):
     def test_examples_share_safe_complete_workspace_shape(self):
         examples = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples"
-        for name in ("feature-create-proposal.json", "subfeature-create-proposal.json", "feature-select-response.json"):
+        for name in ("feature-harden-eligible-response.json",):
             payload = json.loads((examples / name).read_text(encoding="utf-8"))
             self.assertEqual(payload["schema_version"], 3)
-            self.assertIn(payload["operation"], {"feature.create", "feature.select"})
+            self.assertEqual(payload["operation"], "feature.harden")
             self.assertEqual(
                 set(payload["workspace"]),
                 {
@@ -53,7 +53,7 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts"
         workspace = json.loads((contracts / "feature-workspace.schema.json").read_text())
         architecture = json.loads((contracts / "architecture-service.schema.json").read_text())
-        self.assertEqual(workspace["$defs"]["operation"]["enum"], ["feature.create", "feature.select", "feature.harden"])
+        self.assertEqual(workspace["$defs"]["operation"]["enum"], ["feature.harden"])
         self.assertEqual(workspace["$defs"]["request"]["properties"]["schema_version"]["const"], 3)
         self.assertEqual(workspace["$defs"]["response"]["properties"]["schema_version"]["const"], 3)
         response_properties = workspace["$defs"]["response"]["properties"]

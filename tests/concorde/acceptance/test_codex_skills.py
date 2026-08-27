@@ -7,7 +7,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 class CodexSkillsAcceptance(unittest.TestCase):
-    def test_seven_commands_register_in_codex_skills_mode_with_ask_parity(self):
+    def test_five_commands_register_in_codex_skills_mode_with_ask_parity(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             subprocess.run(
@@ -25,8 +25,6 @@ class CodexSkillsAcceptance(unittest.TestCase):
             names = {path.parent.name for path in (root / ".agents/skills").glob("speckit-concorde-*/SKILL.md")}
             self.assertEqual(names, {
                 "speckit-concorde-init",
-                "speckit-concorde-feature-create",
-                "speckit-concorde-feature-select",
                 "speckit-concorde-feature-harden",
                 "speckit-concorde-context",
                 "speckit-concorde-validate",

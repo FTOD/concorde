@@ -26,7 +26,7 @@ used by other Spec Kit ecosystem packages.
 |---|---|---:|---|
 | Bundle | `concorde-bundle` | `0.1.0` | One preset reference and one extension reference only. |
 | Preset | `concorde-core` | `0.1.0` | Four template contributions and authoritative layers for nine existing lifecycle commands. |
-| Extension | `concorde` | `0.1.0` | Seven Concorde-specific surfaces: six runtime-backed operations, one agent-followed `ask` procedure, selected-workspace adapter, and project-local runtime. |
+| Extension | `concorde` | `0.1.0` | Five Concorde-specific surfaces: four runtime-backed operations, one agent-followed `ask` procedure, selected-workspace adapter, and project-local runtime. |
 
 Every version above is independently authoritative in its own manifest and matching catalog entry.
 The bundle pins the exact preset and extension versions it has passed acceptance with.
@@ -39,7 +39,7 @@ The bundle pins the exact preset and extension versions it has passed acceptance
 | Catalog | Advertises identity, version, download location, compatibility, digest, and trust metadata; it does not contain behavior. |
 | Bundle | Pins the accepted preset and extension as a non-executable recipe; it does not embed or install them itself. |
 | Preset | Composes templates and overrides existing lifecycle command instructions. It introduces no new runtime command namespace and owns no runtime; Spec Kit registers the resolved command layer. |
-| Extension | Actively supplies seven Concorde-specific command intents: six invoke the selected-workspace adapter or deterministic runtime, while `ask` is agent-followed, source-grounded, and read-only. |
+| Extension | Actively supplies five Concorde-specific command intents: four invoke the selected-workspace adapter or deterministic runtime, while `ask` is agent-followed, source-grounded, and read-only. |
 | Active integration | Materializes both resolved normal-command overrides and Concorde-specific commands using agent-native presentation and invocation syntax; it does not own behavior or path semantics. |
 | Architecture Core / workspace runtime | Own deterministic initialization, bounded context, validation, feature workspace, and hardening behavior behind the extension commands. |
 
@@ -100,11 +100,12 @@ The released preset owns Concorde's modifications to these existing Spec Kit com
 | Durable feature intent plus temporal review state | `speckit.specify`, `speckit.clarify` | Resolve the selected nested feature before reading or writing root `spec.md` or contracts, and write generated requirements-quality state only under `implementation/checklists/`. |
 | Temporal implementation workspace | `speckit.checklist`, `speckit.plan`, `speckit.tasks`, `speckit.implement`, `speckit.analyze`, `speckit.converge`, `speckit.taskstoissues` | Resolve the selected feature's single active `implementation/` directory before writing checklists, plan, task, research, implementation-model, or delivery evidence. |
 
-The released extension owns these seven new command intents: `speckit.concorde.init`,
-`speckit.concorde.feature.create`, `speckit.concorde.feature.select`,
+The released extension owns these five new command intents: `speckit.concorde.init`,
 `speckit.concorde.feature.harden`, `speckit.concorde.context`, `speckit.concorde.validate`, and
-`speckit.concorde.ask`. The first six are runtime-backed; `ask` is an agent-followed read-only
-procedure with no launcher or runtime verb.
+`speckit.concorde.ask`. The first four are runtime-backed; `ask` is an agent-followed read-only
+procedure with no launcher or runtime verb. Feature creation and selection are standard Spec Kit
+behavior (`speckit.specify` with `SPECIFY_FEATURE_DIRECTORY`, and `.specify/feature.json`) that the
+extension's workspace adapter resolves; they are not extension intents.
 Platform-safe registered spellings may replace dots inside the final
 operation name, but the canonical intent and behavior remain unchanged.
 
@@ -141,7 +142,7 @@ source checkout.
 | Info | Catalog bundle ID | Full component plan, pins, priority, strategy, compatibility, integration inheritance, source, trust, and overlaps. |
 | Install | Bundle ID, directory, manifest, or artifact | Apply exactly the resolved plan and record only attributable components after full success. |
 | List/status | Initialized project | Bundle version and contributed component provenance; primitive registries expose component active/disabled state. |
-| Verify command surfaces | Installed bundle and active integration | Execute the nine composed normal commands and six runtime-backed Concorde intents, inspect and semantically review `ask`, and prove the durable/temporal path matrix and cross-integration equivalence. |
+| Verify command surfaces | Installed bundle and active integration | Execute the nine composed normal commands and four runtime-backed Concorde intents, inspect and semantically review `ask`, and prove the durable/temporal path matrix and cross-integration equivalence. |
 | Update | Installed bundle ID | Preview/resolve new plan, reapply owned components, preserve configuration and architecture sources. |
 | Remove | Installed bundle ID | Remove only solely owned components and the bundle record; retain shared components and project sources. |
 

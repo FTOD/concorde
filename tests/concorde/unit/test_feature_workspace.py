@@ -14,7 +14,6 @@ from concorde.feature_workspace import (  # noqa: E402
     WorkspaceError,
     phase_target,
     persist_selection,
-    propose_feature,
     resolve_phase_paths,
     resolve_planned_phase_paths,
     resolve_selected_workspace,
@@ -93,55 +92,6 @@ class FeatureWorkspaceTests(unittest.TestCase):
             self.assertEqual((project / ".specify/feature.json").read_bytes(), first)
             with self.assertRaises(WorkspaceError):
                 resolve_phase_paths(project, "../outside")
-
-    def test_proposal_allocates_deterministically_and_binds_source_digest(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            project = Path(temporary) / "project"
-            shutil.copytree(CONTEXT_PROJECT, project)
-            result = propose_feature(project, "module.example.api", "feature.example.api.observe", "observe-health")
-            self.assertEqual(result.status, "proposal")
-            self.assertEqual(result.result["workspace"]["feature_directory"], "specs/example/modules/api/features/002-observe-health")
-            self.assertRegex(result.result["source_digest"], r"^sha256:[0-9a-f]{64}$")
-            self.assertEqual(
-                set(result.result["workspace"]),
-                {
-                    "workspace_kind",
-                    "feature_id",
-                    "providing_module",
-                    "parent_context",
-                    "siblings",
-                    "feature_directory",
-                    "feature_spec",
-                    "feature_design",
-                    "contracts_dir",
-                    "checklists_dir",
-                    "diagrams_dir",
-                    "implementation_dir",
-                    "implementation_state",
-                    "plan",
-                    "research",
-                    "data_model",
-                    "quickstart",
-                    "tasks",
-                    "validation",
-                },
-            )
-            self.assertFalse((project / result.result["workspace"]["feature_directory"]).exists())
-
-    def test_proposal_rejects_duplicate_and_wrong_nearest_common_parent(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            project = Path(temporary) / "project"
-            shutil.copytree(CONTEXT_PROJECT, project)
-            duplicate = propose_feature(project, "module.example", "feature.example.deliver", "duplicate")
-            wrong_owner = propose_feature(
-                project,
-                "module.example.api",
-                "feature.example.api.cross-level",
-                "cross-level",
-                participant_modules=("module.example", "module.example.api"),
-            )
-            self.assertEqual(duplicate.status, "conflict")
-            self.assertEqual(wrong_owner.status, "invalid")
 
 
 if __name__ == "__main__":

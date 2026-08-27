@@ -39,7 +39,7 @@ class InstalledSlashWorkflowTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     len({registered_artifact(root, "gemini", command) for command in CONCORDE_COMMANDS}),
-                    7,
+                    5,
                 )
                 ask = registered_artifact(root, "gemini", "speckit.concorde.ask").read_text(encoding="utf-8")
                 for requirement in ("{{args}}", "citation", "uncertainty", "read-only"):

@@ -6,9 +6,9 @@ sidebar_position: 7
 # Commands and Installed Surfaces
 
 Concorde has two command families. Nine familiar Spec Kit phases continue to own feature delivery;
-seven Concorde-specific surfaces manage architecture, nested workspace selection, validation,
-hardening, and workflow questions. Six are deterministic runtime-backed operations. `ask` is a
-read-only procedure followed directly by the coding agent.
+five Concorde-specific surfaces manage architecture, selected-workspace validation, hardening, and
+workflow questions. Four are deterministic runtime-backed operations. `ask` is a read-only procedure
+followed directly by the coding agent.
 
 In an agent integration, names such as `$speckit-plan` or `$speckit-concorde-context` are **skills or
 slash commands invoked in the agent conversation**. They are not commands to paste into Bash. The
@@ -22,11 +22,11 @@ installed surfaces is defined by
 
 ## Concorde-specific operations
 
-Feature operations use Feature Workspace Protocol v3. `feature.create` accepts either module
-placement for a top-level feature or parent placement for one immediate sub-feature; the modes are
-mutually exclusive. `feature.select` and `feature.harden` accept either valid level while operating on
-exactly one lifecycle root. `context` reports containment summaries separately from cross-module
-refinement, and `validate` rejects a third feature level.
+Feature operations use Feature Workspace Protocol v3. Features are created and selected through the
+normal Spec Kit lifecycle (see [Creating and selecting a feature](#creating-and-selecting-a-feature)
+below); Concorde adds no creation or selection command. `feature.harden` accepts either valid level
+while operating on exactly one lifecycle root. `context` reports containment summaries separately
+from cross-module refinement, and `validate` rejects a third feature level.
 
 Agent integrations may render dots as hyphens. The examples below use Codex-style skill names.
 
@@ -43,7 +43,7 @@ design sources. Its Markdown answer cites project-relative paths and distinguish
 project observations, inference, and uncertainty. Ambiguous questions receive one focused
 clarification instead of guessed project facts.
 
-Unlike the six operations below, `ask` invokes no launcher or Python runtime. It never changes
+Unlike the four operations below, `ask` invokes no launcher or Python runtime. It never changes
 selection, files, generated output, or lifecycle state, and a recommended command remains advice
 until you invoke it separately.
 
@@ -77,30 +77,42 @@ The actual POSIX launcher used underneath the skill is:
 Running the launcher manually returns canonical JSON; the skill adds agent interpretation and
 presentation.
 
-### `$speckit-concorde-feature-create ...`
+### Creating and selecting a feature
 
-Use after bounded-context review has identified the providing module for new behavior. Supply the
-module ID, stable feature ID, and short directory name. Concorde proposes placement and affected
-architecture first; after approval it creates one nested feature root, establishes `spec.md` and
-`design.md`, registers the feature, and selects it.
+Concorde has no feature-creation command. Create a feature with the normal `$speckit-specify` phase
+after setting `SPECIFY_FEATURE_DIRECTORY` to the canonical feature root inside the Concorde
+hierarchy: `<module directory>/features/NNN-<short-name>` for a top-level feature, or
+`<parent feature root>/subfeatures/NNN-<short-name>` for one immediate sub-feature.
 
-```text
-$speckit-concorde-feature-create \
-  --module-id module.example.checkout \
-  --feature-id feature.example.checkout.refunds \
-  --short-name checkout-refunds
+```bash
+# a top-level feature of the api module
+export SPECIFY_FEATURE_DIRECTORY=specs/example/modules/api/features/002-observe-health
+
+# an immediate sub-feature of feature 001-checkout
+export SPECIFY_FEATURE_DIRECTORY=specs/example/features/001-checkout/subfeatures/003-capture-payment
 ```
 
-Do not use it when the feature already exists; select the existing feature instead.
+Then, in the agent conversation:
 
-### `$speckit-concorde-feature-select <feature-id-or-root>`
+```text
+$speckit-specify Describe the feature's required behavior and why it matters.
+```
 
-Use before running normal phases on an existing nested feature. Selection validates the workspace
-and atomically updates `.specify/feature.json`; subsequent Spec Kit commands derive all durable and
-temporary paths from that record.
+The Concorde specify addendum seeds `spec.md` and the adjacent `design.md`, which states that no
+realization has been hardened yet, and persists the root to `.specify/feature.json`. Record the
+feature's identity and placement in the spec front matter (`id`, `module`, and `parent_feature` for
+a sub-feature), register it in the module's `features` list (or the parent's `subfeatures` list),
+then run `$speckit-concorde-validate`. Validation deterministically checks registration, canonical
+path, two-level containment, and identity.
 
-If a non-empty implementation attempt already exists, explicitly choose to resume it. Selection does
-not create a second attempt or move artifacts to a flat feature directory.
+Selection is plain Spec Kit selection: `.specify/feature.json` `feature_directory`, written by
+specify or set explicitly with `export SPECIFY_FEATURE_DIRECTORY=<feature root>` (the standard Spec
+Kit scripts persist it). Concorde adds no selection command and no second selection store. Before
+every normal phase the Concorde workspace adapter resolves and validates the selected root: safe
+path, canonical `spec.md`/`design.md` pair, workspace kind, parent context and sibling summaries for
+a sub-feature, durable and temporal paths, and `implementation_state`. A non-empty
+`implementation/` attempt appears as `implementation_state: active`; there is no separate resume
+step—decide whether to continue that attempt or harden or archive it.
 
 ### `$speckit-concorde-validate [path-or-id]`
 
@@ -162,13 +174,14 @@ The installed workflow has four distinct layers:
    integration. It instructs the agent; it is not the Python implementation.
 3. **A workspace adapter or portable launcher** resolves phase paths or locates the installed
    extension runtime using project-relative paths.
-4. **The Concorde Python runtime** performs deterministic initialization, feature placement and
-   selection, bounded-context projection, validation, and hardening controls.
+4. **The Concorde Python runtime** performs deterministic initialization, selected-workspace
+   resolution, bounded-context projection, validation, and hardening controls.
 
 For a normal Spec Kit phase, the agent invokes the workspace adapter, obtains the selected durable
-and temporary paths, and continues the normal phase. For one of the six Concorde-specific operations,
-the agent invokes a portable launcher, which calls the Python runtime and returns canonical JSON. For
-`ask`, the agent follows the installed Markdown directly and returns cited prose without execution.
+and temporary paths, and continues the normal phase. For one of the four Concorde-specific
+operations, the agent invokes a portable launcher, which calls the Python runtime and returns
+canonical JSON. For `ask`, the agent follows the installed Markdown directly and returns cited prose
+without execution.
 
 Repository-local `.agents/` skills are useful while Concorde develops itself, but users receive the
 supported command surfaces from the installed preset and extension. Editing only a checkout-local
@@ -180,9 +193,9 @@ skill does not change the distributed framework.
 |---|---|
 | You are unsure how Concorde works, when to use a command, or where an artifact belongs | `concorde-ask` |
 | No root architecture exists | `concorde-init` |
-| You do not know which module owns the behavior | `concorde-context` and architecture review |
-| Ownership is known and the feature is new | `concorde-feature-create` |
-| The feature exists but normal phases target something else | `concorde-feature-select` |
+| You do not know where the behavior belongs in the hierarchy | `concorde-context` and architecture review |
+| Placement is known and the feature is new | `specify` with `SPECIFY_FEATURE_DIRECTORY` at the canonical feature root |
+| The feature exists but normal phases target something else | Set `SPECIFY_FEATURE_DIRECTORY` or edit `.specify/feature.json`, then rerun the phase |
 | Behavior is unclear | `specify` or `clarify` |
 | Behavior is clear but no delivery approach exists | `plan` |
 | The plan exists but is not executable | `tasks` |

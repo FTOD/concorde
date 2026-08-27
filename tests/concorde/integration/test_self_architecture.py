@@ -43,7 +43,7 @@ class SelfArchitectureTests(unittest.TestCase):
             for line in manifest.splitlines()
             if line.strip().startswith('- name: "speckit.concorde.')
         ]
-        self.assertEqual(len(command_names), 7)
+        self.assertEqual(len(command_names), 5)
         self.assertIn("speckit.concorde.ask", command_names)
 
         diagram = json.loads((

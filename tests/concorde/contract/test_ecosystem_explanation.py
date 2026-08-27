@@ -40,9 +40,9 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         for source in current_sources:
             text = source.read_text(encoding="utf-8").lower()
             with self.subTest(question_surface=source.relative_to(REPOSITORY_ROOT)):
-                self.assertIn("seven", text)
+                self.assertIn("five", text)
                 self.assertIn("ask", text)
-                self.assertIn("six", text)
+                self.assertIn("four", text)
                 self.assertIn("read-only", text)
 
     def test_component_view_separates_package_and_runtime_ownership(self):

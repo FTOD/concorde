@@ -23,7 +23,7 @@ class SlashCommandAcceptance(unittest.TestCase):
                 capture_output=True,
             )
             registered = list((root / ".gemini").rglob("*concorde*"))
-            self.assertEqual(len([path for path in registered if path.is_file()]), 7)
+            self.assertEqual(len([path for path in registered if path.is_file()]), 5)
             ask = next(path for path in registered if path.is_file() and "ask" in path.name)
             source = (REPOSITORY_ROOT / "extensions/concorde/commands/speckit.concorde.ask.md").read_text(encoding="utf-8")
             installed = ask.read_text(encoding="utf-8")

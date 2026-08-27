@@ -54,13 +54,13 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
         )
         return root
 
-    def test_release_materializes_nine_normal_and_seven_concorde_surfaces(self):
+    def test_release_materializes_nine_normal_and_five_concorde_surfaces(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.installed_project(temporary)
             normal = {registered_artifact(root, "codex", command) for command in NORMAL_PHASES}
             concorde = {registered_artifact(root, "codex", command) for command in CONCORDE_COMMANDS}
             self.assertEqual(len(normal), 9)
-            self.assertEqual(len(concorde), 7)
+            self.assertEqual(len(concorde), 5)
             self.assertTrue(all(path.is_file() for path in normal | concorde))
             ask = registered_artifact(root, "codex", "speckit.concorde.ask")
             content = ask.read_text(encoding="utf-8")

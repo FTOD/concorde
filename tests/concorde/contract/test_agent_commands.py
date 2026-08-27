@@ -10,12 +10,10 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, VALID_PROJECT
 
 
 class AgentCommandContractTests(unittest.TestCase):
-    def test_six_operations_have_launchers_and_ask_is_agent_only(self):
+    def test_four_operations_have_launchers_and_ask_is_agent_only(self):
         commands = REPOSITORY_ROOT / "extensions/concorde/commands"
         expected = {
             "speckit.concorde.init.md",
-            "speckit.concorde.feature.create.md",
-            "speckit.concorde.feature.select.md",
             "speckit.concorde.feature.harden.md",
             "speckit.concorde.context.md",
             "speckit.concorde.validate.md",
@@ -46,7 +44,7 @@ class AgentCommandContractTests(unittest.TestCase):
             self.assertNotIn(executable, ask_content)
         self.assertNotIn(str(REPOSITORY_ROOT), ask_content)
 
-    def test_distribution_handoff_names_nine_normal_and_seven_concorde_intents(self):
+    def test_distribution_handoff_names_nine_normal_and_five_concorde_intents(self):
         contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts"
         command_contract = (contracts / "agent-commands.md").read_text(encoding="utf-8")
         schema = json.loads((contracts / "feature-workspace.schema.json").read_text(encoding="utf-8"))
@@ -62,7 +60,7 @@ class AgentCommandContractTests(unittest.TestCase):
             "taskstoissues",
         ):
             self.assertIn(command, command_contract)
-        for command in ("init", "feature.create", "feature.select", "feature.harden", "context", "validate", "ask"):
+        for command in ("init", "feature.harden", "context", "validate", "ask"):
             self.assertIn(command, command_contract)
         self.assertEqual(schema["$defs"]["workspacePaths"]["required"], [
             "workspace_kind",

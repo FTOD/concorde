@@ -37,8 +37,8 @@ validation semantics.
   composition and installed command registration for both released and development-local sources at
   this level.
 - `feature.integration.manage-feature-workspace` refines `feature.concorde.workflow`; it owns
-  reviewed nested feature placement, active selection, and phase-specific durable/temporal path
-  routing.
+  validated nested feature placement, the standard Spec Kit selection, and phase-specific
+  durable/temporal path routing.
 
 ## Preset and Extension Model
 
@@ -50,10 +50,10 @@ The preset and extension are complementary but not interchangeable:
   inherited root-path assumption. Phase meanings remain unchanged: durable `spec.md` and contracts
   stay at the feature root, while requirements-quality checklists and all planning/delivery artifacts
   stay under `implementation/`.
-- `concorde` is an active capability package. At installation time, Spec Kit registers its seven
-  command definitions through the target project's active coding-agent integration. At use time, six
+- `concorde` is an active capability package. At installation time, Spec Kit registers its five
+  command definitions through the target project's active coding-agent integration. At use time, four
   operational surfaces invoke the same deterministic Architecture Core runtime regardless of their
-  displayed skill or slash-command syntax. The seventh, `ask`, is followed directly by the coding
+  displayed skill or slash-command syntax. The fifth, `ask`, is followed directly by the coding
   agent to produce a cited, bounded, read-only explanation; it has no runtime verb.
 
 Neither component replaces the core Spec Kit workflow. The bundle merely installs the tested pair.
@@ -92,32 +92,33 @@ context.
 - **Representation**: commonly adopted Spec Kit extension command Markdown, version `0.16.4`.
 - **Information**: user arguments, bounded project context, requested action, result, and diagnostics.
 - **Guarantees**: canonical commands `speckit.concorde.init`, `speckit.concorde.context`,
-  `speckit.concorde.validate`, `speckit.concorde.feature.create`, and
-  `speckit.concorde.feature.select`, plus `speckit.concorde.feature.harden` and the agent-only
+  `speckit.concorde.validate`, and `speckit.concorde.feature.harden`, plus the agent-only
   `speckit.concorde.ask`, register in the active integration without hard-coded invocation syntax.
   Framework rules, project observations, inference, and uncertainty remain visibly distinguished in
   question answers, which inspect only the smallest relevant installed and maintained sources.
 - **Failure**: unsupported integrations or missing dependencies produce an actionable diagnostic.
-- **Evidence**: all seven command artifacts register in Codex skills mode; the six runtime-backed
+- **Evidence**: all five command artifacts register in Codex skills mode; the four runtime-backed
   operations remain distinct from `ask`; initialization, context,
   and validation execute in Codex skills and Gemini slash-command modes. Evidence remains partial
-  until feature creation/selection, question-surface semantic review, and the complete normal-command
-  matrix execute from release archives in both modes; platform-compatible registered spellings use
-  `feature-create` and `feature-select`.
+  until feature hardening, question-surface semantic review, and the complete normal-command
+  matrix execute from release archives in both modes; the platform-compatible registered spelling
+  is `feature-harden`.
 
 ### `contract.integration.feature-workspace`
 
 - **Role / flow**: provided, bidirectional.
 - **Consumers**: maintainers and normal Spec Kit lifecycle commands.
-- **Representation**: custom Concorde Feature Workspace Protocol v2 plus Spec Kit's standard
+- **Representation**: custom Concorde Feature Workspace Protocol v3 plus Spec Kit's standard
   project-local `feature_directory` selection field.
-- **Information**: reviewed placement, exact durable/temporal paths, selection changes, conflicts,
-  findings, and inspected source digest.
-- **Guarantees**: one nested canonical specification, no root-level plan/task aliases, atomic
-  selection, and no silent replacement of an implementation attempt.
-- **Failure**: unsafe, stale, occupied, unknown, or ambiguous targets leave sources and selection
+- **Information**: the resolved standard Spec Kit selection, exact durable/temporal paths,
+  relationship context, implementation state, hardening changes, conflicts, findings, and inspected
+  source digest.
+- **Guarantees**: one nested canonical specification, no root-level plan/task aliases, read-only
+  resolution of the standard Spec Kit selection, and no silent replacement of an implementation
+  attempt.
+- **Failure**: unsafe, stale, unregistered, unknown, or ambiguous targets leave sources and selection
   unchanged and return actionable findings.
-- **Evidence**: proposal, safe selection, resume conflict, phase routing, clean installation, and
+- **Evidence**: safe resolution, active-attempt reporting, phase routing, clean installation, and
   no-root-alias behavior are covered by contract, unit, integration, and acceptance tests.
 
 ### `contract.integration.spec-kit-platform`

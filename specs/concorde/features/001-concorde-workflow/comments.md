@@ -50,6 +50,15 @@ This is more than a spelling error: there are two plausible intended contracts.
 The second option gives stronger failure semantics; the first matches the current implementation and
 is smaller. The choice should be specified before code or contract changes are made.
 
+**Resolution note (2026-08-27)**: Resolved as moot. `speckit.concorde.feature.create` and
+`speckit.concorde.feature.select` were removed together with the `propose_feature`/`select_feature`
+runtime functions and Protocol v3's `feature.create`/`feature.select` operations. Creation is now the
+standard `speckit.specify` phase with `SPECIFY_FEATURE_DIRECTORY` at the canonical root, selection is
+the standard `.specify/feature.json` pointer, and `speckit.concorde.validate` enforces registration,
+canonical path, two-level containment, and identity rules deterministically. Neither option above is
+pursued; the constitution (v2.0.0, principle A.III) no longer requires one providing module per
+feature, which the removed commands assumed.
+
 ### C-002 — Accepted parent design and evidence have not yet migrated to child ownership
 
 **Severity**: High
@@ -113,6 +122,12 @@ proposals, one parent source digest, and an all-or-nothing registration manifest
 same two-level rules and normal child lifecycle rather than introduce another feature kind or nesting
 level. This is an ergonomics improvement, not required for the current hierarchy.
 
+**Resolution note (2026-08-27)**: Moot. The feature-create workflow was removed. Decomposition now
+proceeds by running `speckit.specify` once per child with `SPECIFY_FEATURE_DIRECTORY` at its canonical
+`subfeatures/` root and registering each child in the parent's feature list, with
+`speckit.concorde.validate` checking the whole hierarchy; any future batch proposal would build on the
+standard specify phase rather than on a Concorde creation command.
+
 ## Implementation Alignment by Sub-feature
 
 | Sub-feature | Existing primary evidence | Review result |
@@ -120,7 +135,7 @@ level. This is an ergonomics improvement, not required for the current hierarchy
 | Initialize Architecture | `initialize.py`, CLI init dispatch, initialization tests | Behavior aligns with proposal/apply, idempotence, and conflict safety. |
 | Retrieve Bounded Context | `context.py`, repository model, bounded-context tests | Behavior aligns with one-level module and feature relationship projections. |
 | Answer Workflow Questions | installed `ask` command/skill definitions and parity tests | Instruction surface aligns; evidence remains agent-behavior evidence rather than deterministic runtime proof. |
-| Manage Feature Workspaces | `feature_workspace.py`, `workspace.py`, selection and containment tests | Routing and two-level selection align; creation apply semantics have finding C-001. |
+| Manage Feature Workspaces | `feature_workspace.py`, `workspace.py`, selection and containment tests | Routing and two-level resolution of the standard Spec Kit selection align; finding C-001 became moot when `feature.create`/`feature.select` were removed (2026-08-27). |
 | Specify Behavior | `specify`, `clarify`, and `checklist` command replacements plus routing tests | Selected-root and durable/temporal authority align. |
 | Plan Delivery | `plan`, `tasks`, and `taskstoissues` replacements plus routing tests | Selected attempt and root confinement align. External issue publication still depends on separate authorization. |
 | Execute and Reconcile | `implement`, `analyze`, and `converge` replacements plus routing tests | Phase boundaries align; analysis correctly requires a real active plan/task attempt. |

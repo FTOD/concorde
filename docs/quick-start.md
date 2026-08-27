@@ -149,7 +149,7 @@ components:
 | Installed component | Responsibility |
 |---|---|
 | `concorde-core` preset | Adds architecture-aware templates and complete selected-workspace routing for nine normal Spec Kit phases |
-| `concorde` extension | Adds seven Concorde-specific surfaces: six runtime-backed operations, one read-only agent question procedure, portable adapters and launchers, and the deterministic Python runtime |
+| `concorde` extension | Adds five Concorde-specific surfaces: four runtime-backed operations, one read-only agent question procedure, portable adapters and launchers, and the deterministic Python runtime |
 
 Spec Kit resolves and installs those components and asks the active coding-agent integration to
 materialize skills or slash commands. The bundle itself does not execute the workflow.
@@ -178,32 +178,38 @@ $speckit-concorde-context module.<project>
 Review the initialization proposal before allowing it to write maintained sources. Context retrieval
 is read-only and loads one bounded architecture level for the current agent interaction.
 
-After deciding which module provides the behavior, create and select the nested feature:
+After deciding where the feature belongs in the hierarchy, create it with the normal specify phase.
+Concorde has no feature-creation command: export the canonical feature root in the terminal before
+invoking the skill, so the Concorde specify addendum seeds `spec.md` and `design.md` there and
+records the root in `.specify/feature.json`:
 
-```text
-$speckit-concorde-feature-create \
-  --module-id module.<project> \
-  --feature-id feature.<project>.<name> \
-  --short-name <name>
-
-$speckit-concorde-feature-select feature.<project>.<name>
+```bash
+export SPECIFY_FEATURE_DIRECTORY=specs/<project>/features/001-<name>
 ```
-
-Then use the normal Spec Kit lifecycle, now routed through the selected feature workspace:
-
-When that feature needs a simpler correlated decomposition, create an immediate child rather than a
-new unrelated top-level feature:
-
-```text
-speckit.concorde.feature.create --parent-feature feature.example.outcome \
-  --feature-id feature.example.outcome.focused-part --short-name focused-part
-```
-
-Review the exact proposal before apply. Only one child level is valid; the parent keeps aggregate
-facts and each child keeps its focused outcome.
 
 ```text
 $speckit-specify Describe the feature's required behavior and why it matters.
+```
+
+Add the feature's `id` and `module` to the spec front matter, register it in the module's
+`features` list, and run `$speckit-concorde-validate` to confirm registration, canonical path, and
+identity. To work on an existing feature later, set `SPECIFY_FEATURE_DIRECTORY` to its root (or edit
+`.specify/feature.json`); standard Spec Kit selection is all Concorde uses.
+
+When that feature needs a simpler correlated decomposition, create an immediate child rather than a
+new unrelated top-level feature by pointing the same variable one level down:
+
+```bash
+export SPECIFY_FEATURE_DIRECTORY=specs/<project>/features/001-<name>/subfeatures/001-<focused-part>
+```
+
+Run `$speckit-specify` again, add `parent_feature` to the child's front matter, and register it in
+the parent's `subfeatures` list. Only one child level is valid; the parent keeps aggregate facts and
+each child keeps its focused outcome.
+
+Then continue with the normal Spec Kit lifecycle, now routed through the selected feature workspace:
+
+```text
 $speckit-clarify
 $speckit-checklist
 $speckit-plan

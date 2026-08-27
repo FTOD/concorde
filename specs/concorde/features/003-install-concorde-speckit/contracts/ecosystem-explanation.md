@@ -17,7 +17,7 @@ including install-time composition and the two distinct use-time paths.
 | Catalog | Carries discovery and trust metadata for independently packaged bundle, preset, and extension archives. |
 | Bundle | Is a passive, non-executable recipe pinning exactly one preset and one extension. |
 | Preset | Composes architecture guidance into templates and authoritative selected-workspace routing into nine existing lifecycle commands. It introduces no new runtime command namespace. |
-| Extension | Actively contributes seven Concorde-specific surfaces: six runtime-backed intents, one agent-followed read-only question procedure, a selected-workspace adapter, and the deterministic runtime used only by the operations. |
+| Extension | Actively contributes five Concorde-specific surfaces: four runtime-backed intents, one agent-followed read-only question procedure, a selected-workspace adapter, and the deterministic runtime used only by the operations. |
 | Active coding-agent integration | Materializes resolved core-command overrides and Concorde-specific commands in agent-native syntax without owning their behavior. |
 | Architecture Core | Implements deterministic initialization, bounded-context projection, and validation. |
 

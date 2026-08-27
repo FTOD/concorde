@@ -18,7 +18,7 @@ from tests.concorde.support.specify_project import SpecifyProject
 
 
 class InstalledCodexWorkflowTests(unittest.TestCase):
-    def test_seven_surfaces_preserve_six_runtime_operations_and_hardening(self):
+    def test_five_surfaces_preserve_four_runtime_operations_and_hardening(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
             dist = base / "dist"
@@ -38,9 +38,9 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     len({registered_artifact(root, "codex", command) for command in CONCORDE_COMMANDS}),
-                    7,
+                    5,
                 )
-                self.assertEqual(len(CONCORDE_RUNTIME_COMMANDS), 6)
+                self.assertEqual(len(CONCORDE_RUNTIME_COMMANDS), 4)
                 workspace_adapter = root / ".specify/extensions/concorde/scripts/python/workspace.py"
                 checklist_paths = subprocess.run(
                     [sys.executable, str(workspace_adapter), "--project-root", str(root), "--phase", "checklist"],
@@ -60,8 +60,6 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 operations = (
                     (["validate"], {"success"}),
                     (["context", "module.example"], {"success"}),
-                    (["feature", "create", "--parent-feature", "feature.example.checkout", "--feature-id", "feature.example.checkout.capture", "--short-name", "capture"], {"proposal"}),
-                    (["feature", "select", "feature.example.checkout.authorize", "--resume"], {"selected", "unchanged"}),
                 )
                 for arguments, statuses in operations:
                     result = subprocess.run(

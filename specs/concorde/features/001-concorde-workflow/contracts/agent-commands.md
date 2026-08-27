@@ -6,24 +6,31 @@
 
 ## Shared Rules
 
-- Canonical names are `speckit.concorde.init`, `speckit.concorde.feature.create`,
-  `speckit.concorde.feature.select`, `speckit.concorde.feature.harden`,
+- Canonical names are `speckit.concorde.init`, `speckit.concorde.feature.harden`,
   `speckit.concorde.context`, `speckit.concorde.validate`, and `speckit.concorde.ask`.
 - Agent-specific invocation punctuation is presentation only. Codex skills and slash-command outputs
   must preserve the intent, arguments, runtime operation, result schema, and failure behavior below.
 - The command body locates the installed extension runtime relative to the project and invokes it
   using the project's selected script flavor. It does not embed an absolute installation path.
-- Architecture operation JSON conforms to `architecture-service.schema.json`; feature placement and
-  selection JSON conforms to `feature-workspace.schema.json`. Agent prose may summarize either
-  normative result but must not hide findings or claim stronger evidence.
+- Architecture operation JSON conforms to `architecture-service.schema.json`; selected-workspace
+  resolution and hardening JSON conforms to `feature-workspace.schema.json`. Agent prose may
+  summarize either normative result but must not hide findings or claim stronger evidence.
 - Context, validation, and hardening eligibility/proposal checks are read-only. Initialization and
   hardening apply write only after an explicit accepted proposal is supplied to apply mode.
 - The question command is agent-answered and read-only. It does not claim deterministic runtime
   execution and does not invoke another lifecycle operation merely because that operation would help
   answer the question.
-- Feature or sub-feature creation changes durable intent only after explicit placement approval.
-  Feature selection may write only the standard project-local Spec Kit selection record after
-  validating the target. Containment never implies cross-module refinement.
+- Feature creation and selection are standard Spec Kit behavior, not Concorde commands. A new
+  top-level feature or immediate sub-feature is created through `speckit.specify` with
+  `SPECIFY_FEATURE_DIRECTORY` set to its canonical root (`<module>/features/NNN-<short-name>` or
+  `<parent root>/subfeatures/NNN-<short-name>`); an existing root is selected through the standard
+  `.specify/feature.json` `feature_directory` record. Concorde adds no selection command and no
+  second selection store. Before every normal phase the extension's workspace adapter resolves and
+  validates the selected root (safe path, canonical `spec.md`/`design.md` pair, workspace kind,
+  parent context and sibling summaries for a sub-feature, durable/temporal paths, and
+  `implementation_state`), and `speckit.concorde.validate` enforces registration, canonical path,
+  two-level containment, and identity rules deterministically. Containment never implies
+  cross-module refinement.
 
 ## `speckit.concorde.init`
 
@@ -64,76 +71,6 @@ Propose, review, and initialize a minimal root Concorde specification hierarchy.
 Unsafe paths, malformed proposals, duplicate IDs, changed target state, existing conflicting content,
 or incomplete promotion return `conflict`, `invalid`, or `failed` with findings. Existing maintained
 content is never silently overwritten.
-
-## `speckit.concorde.feature.create`
-
-### Intent
-
-Review architectural placement, create one top-level feature or immediate sub-feature root through
-the normal Spec Kit specify phase, register it with its module or parent respectively, and select it
-for subsequent phases.
-
-### Inputs
-
-| Argument | Required | Meaning |
-|---|---:|---|
-| `--module-id <id>` | top-level only | Providing module chosen after bounded-context review. Mutually exclusive with `--parent-feature`. |
-| `--parent-feature <id>` | sub-feature only | Existing top-level parent feature. It supplies the providing module and canonical parent root. |
-| `--feature-id <id>` | yes | Proposed stable feature identity. |
-| `--short-name <name>` | yes | Safe 2–4 word directory suffix. |
-| `--number <NNN>` | no | Explicit feature number; otherwise allocate deterministically inside the module. |
-| `--approve` | apply only | Confirms acceptance of the exact placement proposal and source digest. |
-
-### Behavior
-
-1. Resolve either the providing module for a top-level feature or one valid top-level parent feature
-   for an immediate sub-feature; reject missing/both placement modes and child-as-parent input.
-2. Propose the canonical root/spec/design paths, module or parent registration, affected
-   contracts/view, selected level, and any conflict without writing maintained intent. A child root
-   is allocated directly under `<parent>/subfeatures/` and inherits the parent module.
-3. After explicit approval, invoke the normal Spec Kit specify phase with the exact
-   `SPECIFY_FEATURE_DIRECTORY`; Spec Kit authors the one root `spec.md` and seeds the adjacent
-   `design.md` with an explicit no-hardened-realization state.
-4. Apply the approved module/parent registration, validate both durable paths and bidirectional child
-   metadata, and persist the created lifecycle root as the active selection atomically.
-5. Return Concorde Feature Workspace Protocol v3 paths, relationship context, and findings.
-
-### Failures
-
-Unknown ownership/parent, child-as-parent or third-level placement, module disagreement, unsafe or
-occupied paths, duplicate IDs, changed source digest, a failed specify phase, or invalid post-apply
-architecture returns `invalid`, `conflict`, or `failed`. The command does not silently choose a
-different module/parent or leave a partial selection.
-
-## `speckit.concorde.feature.select`
-
-### Intent
-
-Select one existing top-level feature or immediate sub-feature root as the active workspace for
-normal Spec Kit phases.
-
-### Inputs
-
-| Argument | Required | Meaning |
-|---|---:|---|
-| `<feature-id-or-root>` | yes | Stable feature/sub-feature ID or project-relative lifecycle-root path. |
-| `--resume` | conditional | Explicitly resume an existing active implementation attempt. |
-
-### Behavior
-
-1. Resolve exactly one feature-shaped source and verify its allowed level, canonical root `spec.md`,
-   durable root `design.md`, providing module, module/parent registration, path confinement, and
-   implementation-attempt state.
-2. Derive the selected root's durable and temporal paths. For a sub-feature, also derive nullable
-   read-only parent ID/root/spec/design and ordered concise sibling summaries without bodies or
-   attempt paths.
-3. Atomically persist only the selected lifecycle root in `.specify/feature.json`.
-4. Return `selected` or `unchanged` with the complete Protocol v3 path/relationship set.
-
-### Failures
-
-Unknown, ambiguous, unsafe, stale, or conflicting workspaces and non-explicit attempt resumption leave
-the prior selection unchanged and return actionable findings.
 
 ## `speckit.concorde.feature.harden`
 
@@ -311,10 +248,10 @@ Repeated runs over unchanged bytes and arguments produce byte-equivalent JSON an
 
 - Codex skills mode contains one `SKILL.md` per canonical command under the active project-local
   skills root.
-- One slash-command integration contains the seven corresponding registered command artifacts.
-- Each supported presentation exercises top-level and sub-feature placement, selection, phase
-  routing, hardening eligibility/apply, context, validation, and read-only workflow questions against
-  the same fixture. Runtime-backed operations return equivalent normative JSON, parent context stays
+- One slash-command integration contains the five corresponding registered command artifacts.
+- Each supported presentation exercises top-level and sub-feature selection through the standard
+  Spec Kit pointer, phase routing, hardening eligibility/apply, context, validation, and read-only
+  workflow questions against the same fixture. Runtime-backed operations return equivalent normative JSON, parent context stays
   read-only and bounded, and the question surface preserves equivalent grounding, citation,
   uncertainty, bounded-context, and non-mutation behavior.
 - Removal deletes only extension-owned registered artifacts; locally modified or unrelated agent
@@ -329,7 +266,7 @@ handoff consists of:
 |---|---|
 | Workspace protocol | `feature-workspace.schema.json`, Protocol/schema version 3, all examples, and their combined source digest |
 | Normal phase obligations | `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues` write only the selected feature/sub-feature root; a selected sub-feature additionally reads its parent durable spec/design as aggregate context and never reads/writes parent/sibling attempts implicitly |
-| Concorde command intents | The seven canonical IDs and behavior sections in this contract; six are runtime-backed and `ask` is agent-followed/read-only |
+| Concorde command intents | The five canonical IDs and behavior sections in this contract; four are runtime-backed and `ask` is agent-followed/read-only |
 | Installed support | Extension-relative workspace adapter, launchers, schemas, runtime sources, preset templates, and complete phase commands needed by those intents |
 | Acceptance binding | Spec Kit host version, package versions/digests, handoff digest, actual registered winner, selected paths, outputs, and checkout-access result |
 
