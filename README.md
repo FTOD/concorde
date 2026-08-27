@@ -149,9 +149,9 @@ specify preset list
 find .agents/skills -maxdepth 2 -name SKILL.md -print | sort
 ```
 
-For the published-release installation and release acceptance, follow the
-[framework quick start](docs/quick-start.md) and the
-[release publication validation guide](specs/concorde/features/003-install-concorde-speckit/subfeatures/001-publish-release/implementation/quickstart.md).
+For the published-release installation, follow the [framework quick start](docs/quick-start.md);
+release production and its acceptance evidence are described in [Releasing Concorde](docs/releasing.md)
+and the [publish-release sub-feature](specs/concorde/features/003-install-concorde-speckit/subfeatures/001-publish-release/spec.md).
 
 ### 5. Use the Concorde commands
 
