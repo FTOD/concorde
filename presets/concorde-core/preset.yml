@@ -6,7 +6,7 @@ preset:
   version: "0.1.0"
   description: "Architecture templates and authoritative two-level feature-workspace routing for Spec Kit"
   author: "Concorde maintainers"
-  repository: "https://github.com/concorde-workflow/concorde"
+  repository: "https://github.com/FTOD/concorde"
   license: "MIT"
 
 requires:

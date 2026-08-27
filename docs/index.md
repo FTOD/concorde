@@ -48,6 +48,7 @@ If you are already working in a Concorde project:
    understand what actually executes it.
 5. If you are contributing to Concorde itself, read
    [Developing Concorde with Concorde](self-hosting.md) before changing framework sources.
+6. If you are cutting a release, follow [Releasing Concorde](releasing.md).
 
 If you are modifying the publication system, read [Contributing to the docsite](contributing/docsite.md).
 

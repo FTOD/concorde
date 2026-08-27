@@ -5,10 +5,10 @@ sidebar_position: 2
 
 # Quick Start
 
-This guide has three parts: preview Concorde's generated read model, install the current local
-release into a disposable Spec Kit project, and start a first architecture-aware feature. The
-installation path is intentionally isolated so it exercises the bundle, preset, extension, and
-agent integration that a user project receives.
+This guide has four parts: preview Concorde's generated read model, install the published release
+into a Spec Kit project, optionally build and install the current local sources instead, and start a
+first architecture-aware feature. The installation paths are intentionally isolated so they exercise
+the bundle, preset, extension, and agent integration that a user project receives.
 
 The supported setup boundary and current evidence status are authoritative in
 [Feature 003](../specs/concorde/features/003-install-concorde-speckit/spec.md).
@@ -44,9 +44,38 @@ manifest completeness, and a production build. It recreates ignored standalone d
 maintained JSON; a failed candidate is not promoted over the previous successful output. Publication
 behavior is specified by [Feature 002](../specs/concorde/features/002-create-project-docsite/spec.md).
 
-## 2. Build the current local release
+## 2. Install the published release
 
-This is a development installation path, not a public catalog shortcut. It currently requires:
+This is the normal path for a project that wants Concorde. It needs only the pinned Spec Kit CLI —
+no Concorde checkout, no build, and no local server. Install the CLI once (`uv tool install
+specify-cli==0.16.4`, or run it ad hoc with `uvx --from specify-cli==0.16.4 specify …`), then, in
+your project directory:
+
+```bash
+specify init --here --integration claude
+base=https://github.com/FTOD/concorde/releases/download/v0.1.0
+specify extension catalog add "$base/extensions.json" --name concorde --install-allowed
+specify preset catalog add "$base/presets.json" --name concorde --install-allowed
+specify bundle catalog add "$base/bundles.json" --id concorde
+specify bundle info concorde-bundle --json
+specify bundle install concorde-bundle
+```
+
+Use the integration your coding agent needs (`claude`, `codex --integration-options="--skills"`,
+`gemini`, …). `bundle info` shows the exact preset and extension versions before `bundle install`
+adds them. To find the current version without hard-coding it, read the pointer:
+
+```bash
+curl -fsSL https://github.com/FTOD/concorde/releases/latest/download/release.json
+```
+
+It names the newest published version and the three catalog URLs to register. Every published
+version stays available at its own `releases/download/v<version>/` location; see
+[Releasing Concorde](releasing.md) for how releases are produced. Continue with part 4.
+
+## 3. Build the current local release (development path)
+
+Use this path to try unreleased sources or to reproduce the acceptance suite. It requires:
 
 - Python 3.11;
 - `uv`;
@@ -81,7 +110,7 @@ Start a local catalog server in a second terminal:
 uv run python tests/concorde/support/catalog_server.py --dist dist --port 8765
 ```
 
-## 3. Install into a disposable project
+### Install the local build into a disposable project
 
 Create the target outside the Concorde checkout so local self-hosting files are less likely to hide a
 packaging problem:

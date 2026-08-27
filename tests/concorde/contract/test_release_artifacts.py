@@ -9,13 +9,21 @@ from pathlib import Path
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-def load_builder():
-    path = REPOSITORY_ROOT / "scripts/release/build-components.py"
-    spec = importlib.util.spec_from_file_location("concorde_release_builder", path)
+def _load_script(name: str, module_name: str):
+    path = REPOSITORY_ROOT / "scripts/release" / name
+    spec = importlib.util.spec_from_file_location(module_name, path)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader
     spec.loader.exec_module(module)
     return module
+
+
+def load_builder():
+    return _load_script("build-components.py", "concorde_release_builder")
+
+
+def load_verifier():
+    return _load_script("verify-release.py", "concorde_release_verifier")
 
 
 class ReleaseArtifactTests(unittest.TestCase):
@@ -29,22 +37,74 @@ class ReleaseArtifactTests(unittest.TestCase):
                 self.assertEqual((Path(first) / name).read_bytes(), (Path(second) / name).read_bytes())
             self.assertEqual((Path(first) / "presets.json").read_bytes(), (Path(second) / "presets.json").read_bytes())
 
-    def test_default_catalog_urls_are_https(self):
+    def test_default_catalog_urls_are_the_published_release_location(self):
         builder = load_builder()
+        version = builder.read_release_version()
+        base_url = builder.default_base_url(version)
+        self.assertEqual(base_url, f"https://github.com/FTOD/concorde/releases/download/v{version}")
         with tempfile.TemporaryDirectory() as temporary:
-            builder.build_release(Path(temporary), builder.DEFAULT_BASE_URL)
-            for name in ("extensions.json", "presets.json", "bundles.json"):
-                self.assertNotIn('"http://', (Path(temporary) / name).read_text())
-                self.assertEqual(
-                    json.loads((Path(temporary) / name).read_text()),
-                    json.loads((REPOSITORY_ROOT / "catalogs" / name).read_text()),
-                )
+            builder.build_release(Path(temporary))
+            for name, (collection, identifier) in {
+                "extensions.json": ("extensions", "concorde"),
+                "presets.json": ("presets", "concorde-core"),
+                "bundles.json": ("bundles", "concorde-bundle"),
+            }.items():
+                text = (Path(temporary) / name).read_text(encoding="utf-8")
+                self.assertNotIn('"http://', text)
+                catalog = json.loads(text)
+                entry = catalog[collection][identifier]
+                self.assertEqual(catalog["catalog_url"], f"{base_url}/{name}")
+                self.assertTrue(entry["download_url"].startswith(f"{base_url}/"))
+                self.assertEqual(entry["repository"], builder.REPOSITORY)
+                self.assertEqual(entry["version"], version)
+
+    def test_manifests_share_one_release_version_and_repository(self):
+        builder = load_builder()
+        identity = builder.read_release_identity()
+        self.assertEqual(identity.repository, "https://github.com/FTOD/concorde")
+        for relative in (builder.BUNDLE_MANIFEST, builder.PRESET_MANIFEST, builder.EXTENSION_MANIFEST):
+            self.assertIn(f'"{identity.version}"', (REPOSITORY_ROOT / relative).read_text(encoding="utf-8"))
+
+        def patched_root(relative: str, old: str, new: str) -> Path:
+            root = Path(tempfile.mkdtemp())
+            for manifest in (builder.BUNDLE_MANIFEST, builder.PRESET_MANIFEST, builder.EXTENSION_MANIFEST):
+                target = root / manifest
+                target.parent.mkdir(parents=True, exist_ok=True)
+                content = (REPOSITORY_ROOT / manifest).read_text(encoding="utf-8")
+                if manifest == relative:
+                    self.assertIn(old, content)
+                    content = content.replace(old, new, 1)
+                target.write_text(content, encoding="utf-8")
+            return root
+
+        with self.assertRaisesRegex(builder.ReleaseIdentityError, "version disagreement.*preset.version declares 9.9.9"):
+            builder.read_release_identity(patched_root(builder.PRESET_MANIFEST, f'version: "{identity.version}"', 'version: "9.9.9"'))
+        with self.assertRaisesRegex(builder.ReleaseIdentityError, "repository disagreement"):
+            builder.read_release_identity(
+                patched_root(builder.EXTENSION_MANIFEST, builder.REPOSITORY, "https://github.com/someone-else/concorde")
+            )
+
+    def test_verifier_rejects_wrong_version_or_base_url(self):
+        builder = load_builder()
+        verifier = load_verifier()
+        version = builder.read_release_version()
+        base_url = builder.default_base_url(version)
+        with tempfile.TemporaryDirectory() as temporary:
+            builder.build_release(Path(temporary))
+            verified = verifier.verify_release(Path(temporary), expect_version=version, expect_base_url=base_url)
+            self.assertEqual(set(verified), {
+                f"concorde-core-{version}.zip", f"concorde-{version}.zip", f"concorde-bundle-{version}.zip",
+            })
+            with self.assertRaisesRegex(ValueError, "expected release version 9.9.9"):
+                verifier.verify_release(Path(temporary), expect_version="9.9.9")
+            with self.assertRaisesRegex(ValueError, "download_url .* is not https://example.invalid/releases/"):
+                verifier.verify_release(Path(temporary), expect_base_url="https://example.invalid/releases")
 
     def test_catalog_capability_counts_match_component_manifests(self):
         builder = load_builder()
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
-            builder.build_release(output, builder.DEFAULT_BASE_URL)
+            builder.build_release(output)
             preset_catalog = json.loads((output / "presets.json").read_text(encoding="utf-8"))
             extension_catalog = json.loads((output / "extensions.json").read_text(encoding="utf-8"))
             preset_manifest = (REPOSITORY_ROOT / "presets/concorde-core/preset.yml").read_text(

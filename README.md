@@ -67,6 +67,27 @@ standard-library-only and does not require target projects to install `uv`.
 The upstream Spec Kit repository is not vendored or included as a submodule. Maintained contracts
 link to the supported `v0.16.4` documentation and source when implementation evidence is required.
 
+### Install the published release
+
+Projects that only want to use Concorde do not need this checkout. With the pinned Spec Kit CLI
+installed (`uv tool install specify-cli==0.16.4`), register the published catalogs and install the
+bundle from inside your project:
+
+```bash
+specify init --here --integration claude
+base=https://github.com/FTOD/concorde/releases/download/v0.1.0
+specify extension catalog add "$base/extensions.json" --name concorde --install-allowed
+specify preset catalog add "$base/presets.json" --name concorde --install-allowed
+specify bundle catalog add "$base/bundles.json" --id concorde
+specify bundle install concorde-bundle
+```
+
+The current version and its catalog URLs are published at
+`https://github.com/FTOD/concorde/releases/latest/download/release.json`. See the
+[framework quick start](docs/quick-start.md) for the full walkthrough and
+[Releasing Concorde](docs/releasing.md) for how releases are produced. The steps below build and
+install the current local sources instead.
+
 ### 1. Build the local release
 
 From a Concorde checkout:
@@ -128,8 +149,9 @@ specify preset list
 find .agents/skills -maxdepth 2 -name SKILL.md -print | sort
 ```
 
-For catalog-based installation and release acceptance, follow the complete
-[Feature 003 setup quick start](specs/concorde/features/003-install-concorde-speckit/implementation/quickstart.md).
+For the published-release installation and release acceptance, follow the
+[framework quick start](docs/quick-start.md) and the
+[release publication validation guide](specs/concorde/features/003-install-concorde-speckit/subfeatures/001-publish-release/implementation/quickstart.md).
 
 ### 5. Use the Concorde commands
 
@@ -223,4 +245,5 @@ production Docusaurus build. Start with the maintained [documentation overview](
 - [Concorde workflow specification](specs/concorde/features/001-concorde-workflow/spec.md)
 - [Project docsite specification](specs/concorde/features/002-create-project-docsite/spec.md)
 - [Spec Kit installation specification](specs/concorde/features/003-install-concorde-speckit/spec.md)
+- [Releasing Concorde](docs/releasing.md)
 - [Development self-hosting specification](specs/concorde/features/004-self-host-concorde/spec.md)

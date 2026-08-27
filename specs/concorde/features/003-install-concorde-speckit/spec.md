@@ -3,6 +3,9 @@ id: feature.concorde.install-with-spec-kit
 kind: feature
 module: module.concorde
 refines: []
+subfeatures:
+  - feature.concorde.install-with-spec-kit.publish-release
+  - feature.concorde.install-with-spec-kit.one-command-install
 scenarios:
   - inspect-install-and-verify-concorde
   - manage-concorde-installation
@@ -38,13 +41,18 @@ canonical_spec: specs/concorde/features/003-install-concorde-speckit/spec.md
 
 **Revised**: 2026-08-27
 
-**Status**: Implemented; automated distribution, clean-project acceptance, and deterministic diagram
-evidence verified
+**Status**: Native Spec Kit installation implemented and verified; decomposed into two immediate
+sub-features (published release, one-command installation) whose evidence is pending
 
 **Input**: User description: "Install and set up Concorde through Spec Kit, and ensure the released
 bundle correctly overrides the normal commands and skills so a user's clean project receives the
 same Concorde workflow rather than only this repository's local modifications, including temporal
 `implementation/checklists/` placement with no feature-root compatibility directory."
+
+**Revision input**: User description: "Simplify Concorde installation for feature 003: publish a
+real GitHub release with catalogs and archives, and provide a single-command installer script that
+sequences the native Spec Kit lifecycle (init, catalog registration, bundle install) idempotently,
+with a development mode for local checkouts. Create sub-features under feature 003 as appropriate."
 
 ## How Concorde Is Delivered through Spec Kit
 
@@ -97,6 +105,24 @@ These diagrams explain this feature and do not replace the canonical one-level r
 `specs/concorde/architecture.json`.
 Their concise node context is the Archify 2.16 presentation of the same package roles and lifecycle;
 the textual requirements and contracts retain the complete semantics.
+
+## Decomposition
+
+The native step-by-step path above is complete and verified, but it currently asks every consumer to
+be a release builder: no release has been published, so the documented install requires the Concorde
+checkout, a local build, a local catalog server, three catalog registrations, and a bundle install.
+Two immediate sub-features remove that burden without changing what is installed or who owns it:
+
+| Order | Sub-feature | Owned outcome |
+|---:|---|---|
+| 1 | `feature.concorde.install-with-spec-kit.publish-release` | A marked version is built, verified, and published to a stable public location that Spec Kit catalogs can read, with a current-release pointer. |
+| 2 | `feature.concorde.install-with-spec-kit.one-command-install` | One command sequences project initialization, catalog registration, and bundle installation idempotently against a published release or a local checkout. |
+
+The parent keeps the package model, Spec Kit's lifecycle authority, the inspect-before-install rule,
+the clean-project verification matrix, and update/removal behavior. The children inherit
+`module.concorde`, cannot own children, and reference these aggregate facts rather than restating
+them. The one-command installer is an optional accelerator over public Spec Kit operations, so FR-001
+still holds: the native path stays sufficient, and no installer may bypass the bundle recipe.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -335,6 +361,14 @@ project-owned sources.
 - **FR-031**: Installed `specify`, `clarify`, and `checklist` surfaces MUST route every generated
   requirements-quality artifact to the selected feature's `implementation/checklists/` directory;
   they MUST NOT create or preserve a feature-root `checklists/` compatibility location.
+- **FR-032**: Each released version MUST be published to a stable public location whose catalogs are
+  registrable from a clean project without the Concorde checkout or a local server; the published
+  locations MUST equal the locations the catalogs advertise. Detail belongs to
+  `feature.concorde.install-with-spec-kit.publish-release`.
+- **FR-033**: Any convenience installation surface MUST sequence only public Spec Kit operations,
+  MUST install through the bundle recipe, and MUST converge on the same installed component set,
+  registry state, and materialized commands as the native path. Detail belongs to
+  `feature.concorde.install-with-spec-kit.one-command-install`.
 
 ### Scope
 
@@ -353,8 +387,10 @@ project-owned sources.
 - Defining the module/feature hierarchy, feature authoring lifecycle, architecture review gates,
   contract rules, or bounded implementation workflow; those belong to Feature 001.
 - Publishing the project documentation site; that belongs to Feature 002.
-- A second installer, a replacement Spec Kit lifecycle, a dedicated workflow component, or reusable
-  workflow steps.
+- A replacement Spec Kit lifecycle, a dedicated workflow component, or reusable workflow steps. A
+  convenience installer that only sequences public Spec Kit operations is permitted and owned by the
+  `one-command-install` sub-feature; an installer that copies component files or bypasses the bundle
+  lifecycle remains excluded.
 - Treating generated catalogs or release archives as maintained project intent.
 
 ### Key Entities
@@ -407,6 +443,11 @@ project-owned sources.
 - **SC-011**: Disable and reprioritize preserve all nine already materialized winners, while update
   and removal materialize the expected accepted or next surviving layer for all nine commands, with
   zero stale Concorde instructions.
+- **SC-012**: A first-time maintainer on a machine without the Concorde checkout installs the
+  current published release into a project with one command in under 5 minutes.
+- **SC-013**: The one-command path and the native path produce identical installed component sets,
+  registry state, and materialized commands in 100% of acceptance runs for the same release and
+  integration.
 
 ## Assumptions
 
@@ -422,7 +463,8 @@ project-owned sources.
   component; additional component types require a separate scope decision.
 - Local development may serve built catalogs and archives over localhost to exercise the same
   resolution path as publication, but the release builder only writes the supplied location into
-  metadata.
+  metadata. Once a release is published, the published location is the default consumer source and
+  the localhost path remains the development and acceptance path.
 - Existing bundle lifecycle evidence may be reused, but self-hosting skills, string-presence checks,
   and manually routed test fixtures do not satisfy the installed-command acceptance criteria.
 
@@ -433,3 +475,5 @@ project-owned sources.
 - A supported coding-agent integration capable of presenting installed extension commands.
 - The Concorde distribution and Spec Kit Integration modules and their boundary contracts.
 - Feature 001 for the Concorde workflow used after setup.
+- The `publish-release` sub-feature for a publicly reachable release, and the `one-command-install`
+  sub-feature for the accelerated path over it; the native path does not depend on either.
