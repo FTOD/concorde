@@ -116,7 +116,7 @@
       "col": 2,
       "type": "frontend",
       "label": "Inspect Bundle",
-      "sublabel": "expanded component plan"
+      "sublabel": "component plan"
     },
     {
       "id": "installBundle",
@@ -124,7 +124,7 @@
       "col": 3,
       "type": "backend",
       "label": "Install",
-      "sublabel": "resolve and apply pins"
+      "sublabel": "apply pins"
     },
     {
       "id": "componentsActive",

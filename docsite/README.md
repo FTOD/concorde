@@ -19,12 +19,13 @@ all provenance, validation, and edits continue to reference the canonical files 
 
 - Node.js 20 or newer
 - npm with lockfile support
-- Archify 2.14.0, with `ARCHIFY_ROOT` set to its package directory
+- the officially installed Archify 2.16 project-local skill at `../.agents/skills/archify`
 
 Install dependencies with `npm ci`. Generated directories (`node_modules/`, `.docusaurus/`,
 `.generated/`, `../generated/`, `coverage/`, and `build/`) are ignored and disposable. The configured
-Archify root must contain `package.json` and `bin/archify.mjs`; builds verify its exact identity and
-run its doctor check instead of probing agent-specific installation directories.
+The project-local Archify skill must contain `package.json` and `bin/archify.mjs`; builds verify its
+exact identity and `skills-lock.json` snapshot, then run its doctor check instead of probing
+environment variables, global tools, or agent-home installation directories.
 
 ## Commands
 
@@ -55,6 +56,6 @@ The complete authoring and troubleshooting workflow is in
 ## Concorde repository deployment
 
 This package does not define deployment behavior for projects that adopt Concorde. For this
-repository only, `.github/workflows/deploy-docsite.yml` checks out the pinned public Archify 2.14.0
-release, runs the verified build on every push to `main`, and deploys `build/` to
+repository only, `.github/workflows/deploy-docsite.yml` consumes the checked-in project-local Archify
+skill, runs the verified build on every push to `main`, and deploys `build/` to
 `https://ftod.github.io/concorde/` with GitHub Pages. The workflow can also be run manually.

@@ -79,18 +79,31 @@ describe('diagram declaration discovery', () => {
 });
 
 describe('Archify package contract', () => {
-  it('requires an explicit package root', async () => {
-    await expect(resolveArchifyPackage(undefined)).rejects.toThrow(/ARCHIFY_ROOT/);
+  it('requires the project-local installed skill', async () => {
+    const root = await temporaryRoot('concorde-archify-missing-');
+    await expect(resolveArchifyPackage(root)).rejects.toThrow(/\.agents\/skills\/archify/);
   });
 
   it('rejects an incompatible package before invoking its bin', async () => {
     const root = await temporaryRoot('concorde-archify-package-');
-    await mkdir(resolve(root, 'bin'), {recursive: true});
-    await writeFile(resolve(root, 'bin/archify.mjs'), '', 'utf8');
-    await writeFile(resolve(root, 'package.json'), JSON.stringify({
+    const archify = resolve(root, '.agents/skills/archify');
+    await mkdir(resolve(archify, 'bin'), {recursive: true});
+    await writeFile(resolve(archify, 'bin/archify.mjs'), '', 'utf8');
+    await writeFile(resolve(archify, 'package.json'), JSON.stringify({
       name: 'archify', version: '2.13.0', bin: {archify: './bin/archify.mjs'},
     }), 'utf8');
-    await expect(resolveArchifyPackage(root)).rejects.toThrow(/2\.14\.0/);
+    await expect(resolveArchifyPackage(root)).rejects.toThrow(/2\.16\.0-dev\.0/);
+  });
+
+  it('rejects project-local Archify without the supported installer lock', async () => {
+    const root = await temporaryRoot('concorde-archify-unlocked-');
+    const archify = resolve(root, '.agents/skills/archify');
+    await mkdir(resolve(archify, 'bin'), {recursive: true});
+    await writeFile(resolve(archify, 'bin/archify.mjs'), '', 'utf8');
+    await writeFile(resolve(archify, 'package.json'), JSON.stringify({
+      name: 'archify', version: '2.16.0-dev.0', bin: {archify: './bin/archify.mjs'},
+    }), 'utf8');
+    await expect(resolveArchifyPackage(root)).rejects.toThrow(/skills-lock\.json/);
   });
 });
 

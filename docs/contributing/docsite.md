@@ -34,7 +34,7 @@ live in `specs/`.
 A preview and a production build use the same inclusion, routing, and validation rules:
 
 1. Maintained module and feature declarations identify the complete Archify source set.
-2. The build verifies Archify 2.14.0, validates every source, and atomically delivers a fresh,
+2. The build verifies the installed project-local Archify 2.16 skill, validates every source, and atomically delivers a fresh,
    complete ignored `generated/` set.
 3. The source registry discovers eligible files, routes, and deliberate exclusions against those
    current deliveries.
@@ -84,7 +84,6 @@ or commit the HTML output.
 From `docsite/`:
 
 ```bash
-export ARCHIFY_ROOT=/absolute/path/to/archify
 npm ci
 npm run inspect
 npm run validate
@@ -97,7 +96,7 @@ npm run check
 - `inspect` reports discovered and deliberately excluded sources.
 - `validate` checks identity, metadata, routes, links, diagram declarations, and source-to-page
   mappings without mutating maintained sources.
-- `render-diagrams` verifies the exact Archify 2.14.0 package and replaces the complete disposable
+- `render-diagrams` verifies the installed `.agents/skills/archify` package and replaces the complete disposable
   delivery set only after every declaration passes.
 - `start` delivers and validates before opening a local preview.
 - `build` delivers diagrams, renders the site, and verifies a candidate before atomic promotion.

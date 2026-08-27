@@ -36,7 +36,7 @@ canonical_spec: specs/concorde/features/003-install-concorde-speckit/spec.md
 
 **Created**: 2026-08-22
 
-**Revised**: 2026-08-26
+**Revised**: 2026-08-27
 
 **Status**: Implemented; automated distribution, clean-project acceptance, and deterministic diagram
 evidence verified
@@ -95,6 +95,8 @@ invocation order would be harder to understand from prose alone.
 
 These diagrams explain this feature and do not replace the canonical one-level root module view in
 `specs/concorde/architecture.json`.
+Their concise node context is the Archify 2.16 presentation of the same package roles and lifecycle;
+the textual requirements and contracts retain the complete semantics.
 
 ## User Scenarios & Testing *(mandatory)*
 

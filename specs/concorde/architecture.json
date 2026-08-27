@@ -5,7 +5,7 @@
     "title": "Concorde — Root Features and Invocation",
     "output": "../../generated/architecture/concorde-root.html",
     "quality_profile": "showcase",
-    "viewBox": [1460, 760],
+    "viewBox": [1390, 760],
     "views": [
       {
         "id": "scenario-concorde-establish-and-place-feature",

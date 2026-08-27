@@ -9,7 +9,7 @@
       "url": "https://github.com/FTOD/concorde.git",
       "revision": "65e2c59bfa74b3173a7fd6af284bfdfacbee0dea"
     },
-    "viewBox": [1960, 1120],
+    "viewBox": [1395, 1000],
     "views": [
       {
         "id": "installed-surfaces",
@@ -26,7 +26,7 @@
       {
         "id": "concorde-operations",
         "label": "Concorde operations",
-        "focus": ["agent", "concordeCommands", "launchers", "runtime", "controlState", "architectureSources", "featureSpec", "featureDesign"],
+        "focus": ["agent", "concordeCommands", "runtime", "controlState", "architectureSources", "featureSpec", "featureDesign"],
         "note": "Six operations reach the runtime; the implemented ask surface reads maintained guidance without mutation."
       },
       {
@@ -38,7 +38,7 @@
       {
         "id": "harden-milestone",
         "label": "Harden a milestone",
-        "focus": ["maintainer", "agent", "concordeCommands", "launchers", "runtime", "featureSpec", "featureDesign", "implementation"],
+        "focus": ["maintainer", "agent", "concordeCommands", "runtime", "featureSpec", "featureDesign", "implementation"],
         "note": "Only a completed attempt can be reviewed, merged into design.md, and removed with explicit approval."
       }
     ]
@@ -48,16 +48,16 @@
       "id": "maintainer",
       "type": "external",
       "label": "Maintainer",
-      "sublabel": "intent, invocation, approval",
-      "pos": [30, 475],
+      "sublabel": "intent + approval",
+      "pos": [20, 450],
       "size": [150, 76]
     },
     {
       "id": "agent",
       "type": "frontend",
       "label": "Coding Agent Integration",
-      "sublabel": "command UI + read-only Q&A",
-      "pos": [245, 475],
+      "sublabel": "command UI + Q&A",
+      "pos": [200, 450],
       "size": [190, 76],
       "sources": [
         {"path": "tests/concorde/support/installed_command_surface.py", "label": "materialized surfaces"}
@@ -69,7 +69,7 @@
       "label": "9 Spec Kit Phase Surfaces",
       "sublabel": "specify → taskstoissues",
       "tag": "preset · replace",
-      "pos": [525, 245],
+      "pos": [440, 180],
       "size": [210, 86],
       "sources": [
         {"path": "presets/concorde-core/preset.yml", "label": "command inventory"},
@@ -80,9 +80,9 @@
       "id": "concordeCommands",
       "type": "backend",
       "label": "7 Concorde Surfaces",
-      "sublabel": "6 operations + read-only ask",
+      "sublabel": "6 operations + ask",
       "tag": "extension command intent",
-      "pos": [525, 705],
+      "pos": [440, 700],
       "size": [210, 86],
       "sources": [
         {"path": "extensions/concorde/extension.yml", "label": "command inventory"},
@@ -94,7 +94,7 @@
       "type": "security",
       "label": "Selected-Workspace Adapter",
       "sublabel": "workspace.py --phase",
-      "pos": [825, 245],
+      "pos": [700, 180],
       "size": [200, 86],
       "sources": [
         {"path": "extensions/concorde/scripts/python/workspace.py", "label": "portable adapter"},
@@ -102,25 +102,12 @@
       ]
     },
     {
-      "id": "launchers",
-      "type": "cloud",
-      "label": "Portable Launchers",
-      "sublabel": "Bash, PowerShell, Python",
-      "pos": [825, 705],
-      "size": [200, 86],
-      "sources": [
-        {"path": "extensions/concorde/scripts/bash/concorde.sh", "label": "POSIX launcher"},
-        {"path": "extensions/concorde/scripts/powershell/concorde.ps1", "label": "PowerShell launcher"},
-        {"path": "extensions/concorde/scripts/python/concorde.py", "label": "Python entry point"}
-      ]
-    },
-    {
       "id": "controlState",
       "type": "database",
       "label": "Project Control State",
-      "sublabel": ".concorde/config + .specify/feature",
-      "pos": [1110, 245],
-      "size": [210, 86],
+      "sublabel": "config + feature selection",
+      "pos": [940, 180],
+      "size": [190, 86],
       "sources": [
         {"path": ".concorde/config.json", "label": "architecture root"}
       ]
@@ -128,23 +115,23 @@
     {
       "id": "runtime",
       "type": "security",
-      "label": "Concorde Python Runtime",
-      "sublabel": "workspace, context, validation, hardening",
-      "pos": [1110, 705],
+      "label": "Launchers + Python Runtime",
+      "sublabel": "portable operations",
+      "pos": [700, 700],
       "size": [210, 86],
       "sources": [
-        {"path": "extensions/concorde/runtime/concorde/cli.py", "label": "operation dispatch"},
-        {"path": "extensions/concorde/runtime/concorde/context.py", "label": "bounded context"},
-        {"path": "extensions/concorde/runtime/concorde/validate.py", "label": "validation"}
+        {"path": "extensions/concorde/scripts/bash/concorde.sh", "label": "POSIX launcher"},
+        {"path": "extensions/concorde/scripts/python/concorde.py", "label": "Python entry point"},
+        {"path": "extensions/concorde/runtime/concorde/cli.py", "label": "operation dispatch"}
       ]
     },
     {
       "id": "architectureSources",
       "type": "database",
       "label": "Architecture Sources",
-      "sublabel": "module, contracts, one-level view",
-      "pos": [1400, 755],
-      "size": [210, 86],
+      "sublabel": "modules + contracts + views",
+      "pos": [1170, 820],
+      "size": [190, 86],
       "sources": [
         {"path": "specs/concorde/module.md", "label": "module responsibility"},
         {"path": "specs/concorde/architecture.json", "label": "one-level structure"},
@@ -155,25 +142,25 @@
       "id": "featureSpec",
       "type": "database",
       "label": "Selected Lifecycle Intent",
-      "sublabel": "feature/sub-feature · parent read-only",
-      "pos": [1400, 165],
-      "size": [210, 86]
+      "sublabel": "feature or sub-feature",
+      "pos": [1170, 180],
+      "size": [190, 86]
     },
     {
       "id": "featureDesign",
       "type": "database",
       "label": "Durable Feature Design",
-      "sublabel": "design.md · accepted realization",
-      "pos": [1400, 385],
-      "size": [210, 86]
+      "sublabel": "accepted design.md",
+      "pos": [1170, 680],
+      "size": [190, 86]
     },
     {
       "id": "implementation",
       "type": "cloud",
       "label": "Implementation Attempt",
-      "sublabel": "implementation/ · checklists, plan, tasks, evidence",
-      "pos": [1400, 605],
-      "size": [210, 86],
+      "sublabel": "temporal delivery work",
+      "pos": [1170, 430],
+      "size": [190, 86],
       "sources": [
         {"path": "tests/concorde/integration/test_implementation_workspace.py", "label": "workspace evidence"}
       ]
@@ -183,7 +170,7 @@
     {
       "kind": "region",
       "label": "Installed Concorde tooling",
-      "wraps": ["phaseCommands", "concordeCommands", "workspaceAdapter", "launchers", "runtime"]
+      "wraps": ["phaseCommands", "concordeCommands", "workspaceAdapter", "runtime"]
     },
     {
       "kind": "region",
@@ -192,21 +179,19 @@
     }
   ],
   "connections": [
-    {"id": "direct-agent", "from": "maintainer", "to": "agent", "label": "invoke + review", "labelAt": [213, 565], "variant": "emphasis"},
+    {"id": "direct-agent", "from": "maintainer", "to": "agent", "label": "invoke + review", "labelAt": [185, 540], "variant": "emphasis"},
     {"id": "run-phase", "from": "agent", "to": "phaseCommands", "label": "skill / slash command"},
     {"id": "run-concorde", "from": "agent", "to": "concordeCommands", "label": "skill / slash command"},
-    {"id": "resolve-phase", "from": "phaseCommands", "to": "workspaceAdapter", "label": "resolve before phase", "labelAt": [780, 345], "variant": "security"},
-    {"id": "read-selection", "from": "workspaceAdapter", "to": "controlState", "label": "selection + phase root", "labelAt": [1068, 345]},
-    {"id": "invoke-launcher", "from": "concordeCommands", "to": "launchers", "label": "6 runtime-backed operations", "labelAt": [780, 805]},
-    {"id": "load-runtime", "from": "launchers", "to": "runtime", "label": "load relative runtime", "labelAt": [1068, 805], "variant": "security"},
-    {"id": "runtime-state", "from": "runtime", "to": "controlState", "label": "read / update state", "labelAt": [1190, 485]},
-    {"id": "route-durable", "from": "controlState", "to": "featureSpec", "label": "selected feature/sub-feature root", "labelAt": [1360, 145]},
-    {"id": "govern-architecture", "from": "runtime", "to": "architectureSources", "label": "init / context / validate", "labelAt": [1360, 855], "variant": "security"},
-    {"id": "answer-question", "from": "concordeCommands", "to": "architectureSources", "label": "ask: cited read-only guidance", "fromSide": "bottom", "toSide": "bottom", "via": [[630, 930], [1505, 930]], "labelAt": [1000, 930], "variant": "dashed"},
-    {"id": "manage-feature", "from": "runtime", "to": "featureSpec", "label": "create / select / contain / context", "via": [[1370, 748], [1370, 208]], "labelAt": [1360, 555]},
-    {"id": "guide-attempt", "from": "featureSpec", "to": "implementation", "label": "selected spec + parent durable baseline", "fromSide": "right", "toSide": "right", "via": [[1760, 208], [1760, 648]], "labelAt": [1840, 520], "variant": "emphasis"},
-    {"id": "harden-design", "from": "implementation", "to": "featureDesign", "label": "approved design + cleanup", "labelAt": [1625, 550], "variant": "security"},
-    {"id": "apply-harden", "from": "runtime", "to": "implementation", "label": "verify tasks + stage removal", "labelAt": [1455, 740], "variant": "security"}
+    {"id": "resolve-phase", "from": "phaseCommands", "to": "workspaceAdapter", "label": "resolve before phase", "labelAt": [675, 280], "variant": "security"},
+    {"id": "read-selection", "from": "workspaceAdapter", "to": "controlState", "label": "selection + phase root", "labelAt": [820, 280]},
+    {"id": "invoke-runtime", "from": "concordeCommands", "to": "runtime", "label": "portable launcher · 6 operations", "labelAt": [790, 800], "variant": "security"},
+    {"id": "runtime-state", "from": "runtime", "to": "controlState", "label": "read / update state"},
+    {"id": "route-durable", "from": "controlState", "to": "featureSpec", "label": "selected lifecycle root", "labelAt": [1165, 280]},
+    {"id": "govern-architecture", "from": "runtime", "to": "architectureSources", "label": "init / context / validate", "variant": "security"},
+    {"id": "answer-question", "from": "concordeCommands", "to": "architectureSources", "label": "ask: cited read-only guidance", "labelAt": [675, 810], "variant": "dashed"},
+    {"id": "guide-attempt", "from": "featureSpec", "to": "implementation", "label": "selected intent + parent context", "labelAt": [1275, 340], "variant": "emphasis"},
+    {"id": "harden-design", "from": "implementation", "to": "featureDesign", "label": "approved design + cleanup", "labelAt": [1275, 590], "variant": "security"},
+    {"id": "apply-harden", "from": "runtime", "to": "implementation", "label": "verify tasks + stage removal", "labelAt": [1060, 600], "variant": "security"}
   ],
   "cards": [
     {

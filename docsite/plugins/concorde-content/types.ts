@@ -129,7 +129,7 @@ export interface DiagramDeliveryReceipt {
 }
 
 export interface DiagramDeliverySet {
-  generator: {name: 'archify'; version: '2.14.0'};
+  generator: {name: 'archify'; version: '2.16.0-dev.0'};
   receipts: DiagramDeliveryReceipt[];
 }
 

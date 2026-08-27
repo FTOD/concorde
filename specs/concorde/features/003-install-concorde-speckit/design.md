@@ -57,7 +57,7 @@ The durable behavioral authority is `spec.md` together with `contracts/bundle-di
 
 Manifest and archive contracts verify the exact two-component recipe, four preset templates, nine normal replacements, six extension commands, archive allowlists, catalog capability counts, reproducibility, and handoff content. Clean-install contract, integration, and acceptance tests install built archives through served catalogs into isolated Codex-skills and Gemini-slash projects, inventory all fifteen materialized surfaces, execute the selected-workspace bootstrap, compare repeated phase receipts, and reject checkout fallback. Lifecycle tests cover supported source forms, preview/install parity, idempotency, compatible update, failed update, shared ownership, project-source preservation, Spec Kit's persistent registration semantics, and restoration of all nine lower command layers.
 
-The two maintained Archify sources and their generated projections provide deterministic component and workflow evidence, while the documentation publication tests verify declaration-driven embedding. Generated catalogs, archives, diagrams, and receipts remain evidence and projections rather than maintained behavioral authority.
+The two maintained Archify sources pass all nine Archify 2.16 showcase checks with zero errors or warnings and their generated projections provide deterministic component and workflow evidence, while the documentation publication tests verify declaration-driven embedding. Generated catalogs, archives, diagrams, and receipts remain evidence and projections rather than maintained behavioral authority.
 
 ## Known Limitations
 

@@ -22,33 +22,20 @@ jobs:
           # Archify validates diagram evidence against pinned historical commits.
           fetch-depth: 0
 
-      - name: Check out Archify 2.14.0
-        uses: actions/checkout@v6
-        with:
-          repository: tt-a1i/archify
-          ref: a3bf80c25a824f5d5c46dfdbfdb96cc52dd4742a
-          path: _archify
-
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: |
-            docsite/package-lock.json
-            _archify/archify/package-lock.json
+          cache-dependency-path: docsite/package-lock.json
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
       - name: Install dependencies
-        run: |
-          npm ci --prefix docsite
-          npm ci --prefix _archify/archify
+        run: npm ci --prefix docsite
 
       - name: Build verified docsite
-        env:
-          ARCHIFY_ROOT: ${{ github.workspace }}/_archify/archify
         run: npm --prefix docsite run build
 
       - name: Upload GitHub Pages artifact

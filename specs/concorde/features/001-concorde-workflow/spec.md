@@ -38,7 +38,7 @@ canonical_spec: specs/concorde/features/001-concorde-workflow/spec.md
 
 **Created**: 2026-08-19
 
-**Revised**: 2026-08-26
+**Revised**: 2026-08-27
 
 **Status**: Decomposed into first-class workflow-step sub-features; automated implementation evidence
 exists, while human comprehension and browser review remain pending
@@ -134,6 +134,10 @@ The maintained parent diagram at
 shared invocation layers and artifact authorities used across all nine children. The child specs use
 that parent view plus the bounded module view; they do not duplicate it unless a future child-specific
 scenario introduces a materially different component question.
+
+For readable Archify 2.16 desktop presentation, the view groups the portable launchers and Python
+runtime into one execution-boundary component while preserving their distinct responsibilities in
+the feature text and source evidence.
 
 ## User Scenarios & Testing
 

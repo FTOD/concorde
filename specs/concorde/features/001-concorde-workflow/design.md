@@ -67,7 +67,7 @@ Apply re-resolves classification, parent relationships, task/checklist state, sy
 - The documentation contract uses Build Manifest v4 and page-level relationship navigation; generated pages link canonical sources instead of copying their normative text.
 - Hardening eligibility and authorization remain separate. Normal phases never update `design.md` or remove `implementation/`.
 - Installed preset/extension sources are primary; self-hosted `.specify/` and `.agents/skills/` materializations are verified mirrors. The custom replace-owned design template remains resolved from the preset under Spec Kit 0.16.4.
-- The single Feature 001 core diagram remains an Archify `architecture` view. Generated HTML, catalogs, receipts, and manifests are reproducible evidence/read models, not maintained intent.
+- The single Feature 001 core diagram remains an Archify `architecture` view. Its Archify 2.16 migration groups project-relative launchers with the Python runtime as one readable execution boundary without merging their implementation responsibilities. Generated HTML, catalogs, receipts, and manifests are reproducible evidence/read models, not maintained intent.
 
 ## Traceability and Evidence
 
@@ -85,9 +85,9 @@ Publication realization is in `docsite/plugins/concorde-content/`, `FeatureRelat
 
 Executable evidence includes 134 passing Python unit, contract, integration, acceptance, clean-install, self-hosting, and release tests. Tests cover exact two-level discovery, third-level rejection, child creation/selection, all nine selected-child phase routes, bounded parent/sibling context, containment diagnostics, parent/sibling-preserving child hardening, Codex/slash installed parity, checkout independence, and deterministic release catalogs.
 
-The documentation gate passed TypeScript compilation, 15 Vitest files with 34 tests, validation of 48 pages with 17 temporal/noncanonical sources excluded and zero errors, and an optimized production build. Concorde validation completed with zero findings and final source digest `sha256:620c4ca573264ae4d90834818572f042ab765bdc042f8c9a0d0c12736737a85c`.
+The documentation gate passed TypeScript compilation, 18 Vitest files with 49 tests, validation of 66 pages with 21 temporal/noncanonical sources excluded and zero errors, and an optimized production build. Concorde validation completed with zero findings; its aggregate source digest remains execution evidence rather than self-referential maintained prose.
 
-The Feature 001 core diagram passed all nine Archify showcase checks with zero composition errors or warnings. Its maintained specification digest is `11475249b8288d96bfbbfd0abc30c0aafbdf3e680ad5eb0ae16c8d0a1acae545`; the delivered HTML digest is `2bb5ea7c620dd69e36e2d4eb670afd23040666ac45b44ffe3033dc37dad4e49c`.
+The Feature 001 core diagram passed all nine Archify 2.16 showcase checks with zero composition errors or warnings. Its maintained specification digest is `1cf5638e85132f5fb4c8d3c00cca61f0689b515c0ef797b52958384ff16bb12d`; the delivered HTML digest is `84c83070935d3e5074c32c13c8c67fb18d17e51f972d062a5cd7ea29b8befeb3`.
 
 Self-host status is current with source, installed bytes, registries, and declared surfaces matching. Verified release archives are:
 

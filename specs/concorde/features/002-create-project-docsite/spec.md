@@ -27,7 +27,7 @@ canonical_spec: specs/concorde/features/002-create-project-docsite/spec.md
 
 **Created**: 2026-08-19
 
-**Revised**: 2026-08-26
+**Revised**: 2026-08-27
 
 **Status**: Implemented; build-owned Archify delivery and clean-checkout publication verified
 
@@ -39,7 +39,9 @@ start, project description, conceptual model, project structure, workflow, and c
 the generated site teaches the Concorde framework rather than presenting specifications alone."
 
 **Revision Input**: "Make Archify validation and HTML delivery part of building the Docusaurus site
-so a clean checkout does not depend on committed or manually pre-generated diagram output."
+so a clean checkout does not depend on committed or manually pre-generated diagram output. Install
+Archify through its official project-local skill mechanism so preview, build, and deployment require
+no machine-specific renderer environment variable."
 
 ## Scenario and Component Diagram
 
@@ -354,8 +356,9 @@ representative changes.
   the complete site without committed diagram HTML, visual-check receipts, or a separate manual
   Archify command.
 - **FR-043**: Diagram delivery MUST use a deterministic, compatibility-checked Archify renderer,
-  preserve the declared diagram kind and output mapping, and expose source-specific validation or
-  delivery diagnostics on failure.
+  resolved from the officially installed project-local `.agents/skills/archify` package, preserve the
+  declared diagram kind and output mapping, and expose source-specific validation or delivery
+  diagnostics on failure.
 - **FR-044**: A failed or incomplete diagram delivery MUST stop preview or production publication,
   MUST NOT fall back to stale HTML, and MUST NOT replace the last successful published site.
 - **FR-045**: Generated diagram HTML, visual-check receipts, captures, contact sheets, and site build
@@ -363,6 +366,9 @@ representative changes.
   Archify JSON and its textual counterpart remain the reviewable sources.
 - **FR-046**: Build manifests and any retained deterministic diagram receipts MUST use normalized
   project-relative provenance and MUST NOT persist machine-specific absolute workspace paths.
+- **FR-047**: Local preview, production build, tests, and repository deployment MUST consume the same
+  version-controlled project-local Archify skill without requiring a machine-specific renderer
+  environment variable, global CLI, additional renderer checkout, or agent-home installation.
 
 ### Key Entities
 
@@ -437,8 +443,9 @@ representative changes.
 - Local preview and reproducible production build are in scope. Public hosting, deployment,
   authentication, analytics, comments, content editing, and versioned release archives are out of
   scope for this feature.
-- The Archify renderer is a documented build prerequisite supplied through a deterministic path or
-  package contract; the build verifies compatibility rather than assuming an agent-local executable.
+- The Archify renderer is installed through the official project-local skills mechanism and retained
+  at `.agents/skills/archify`; the build verifies that package rather than assuming an agent-home or
+  global executable.
 - The site may create disposable staging and build output beneath its own ignored workspace, provided
   those projections are reproducible and never become canonical content.
 - The existing root architecture view's `publish-architecture` scenario provides the current-level

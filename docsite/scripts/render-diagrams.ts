@@ -8,14 +8,17 @@ import type {DiagramDeclaration, DiagramDeliveryReceipt, DiagramDeliverySet} fro
 
 const expectedArchify = {
   name: 'archify',
-  version: '2.14.0',
+  version: '2.16.0-dev.0',
   bin: './bin/archify.mjs',
+  source: 'tt-a1i/archify',
+  skillPath: 'archify/SKILL.md',
+  computedHash: '4317bc82ecb43a3a5279fed696a2f4afd25c189d4412e83d4558ed0f281f7d1e',
 } as const;
 
 interface ArchifyPackage {
   root: string;
   bin: string;
-  version: '2.14.0';
+  version: '2.16.0-dev.0';
 }
 
 interface CommandResult {
@@ -54,27 +57,37 @@ function isWithin(root: string, candidate: string): boolean {
   return fromRoot === '' || (fromRoot !== '..' && !fromRoot.startsWith(`..${sep}`));
 }
 
-export async function resolveArchifyPackage(configuredRoot: string | undefined): Promise<ArchifyPackage> {
-  if (!configuredRoot?.trim()) {
-    throw new Error('ARCHIFY_ROOT is required and must point to the Archify 2.14.0 package directory.');
-  }
-  const root = await realpath(resolve(configuredRoot));
+export async function resolveArchifyPackage(projectRoot: string): Promise<ArchifyPackage> {
+  const configuredRoot = resolve(projectRoot, '.agents/skills/archify');
+  const root = await realpath(configuredRoot);
   const packagePath = resolve(root, 'package.json');
+  const lockPath = resolve(projectRoot, 'skills-lock.json');
   let document: {name?: unknown; version?: unknown; bin?: {archify?: unknown}};
   try {
     document = JSON.parse(await readFile(packagePath, 'utf8')) as typeof document;
   } catch (error) {
-    throw new Error(`ARCHIFY_ROOT package.json is unreadable: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Project-local Archify package.json is unreadable: ${error instanceof Error ? error.message : String(error)}`);
   }
   if (document.name !== expectedArchify.name || document.version !== expectedArchify.version ||
       document.bin?.archify !== expectedArchify.bin) {
     throw new Error(
-      `ARCHIFY_ROOT must provide archify ${expectedArchify.version} with bin.archify ${expectedArchify.bin}.`,
+      `Project-local .agents/skills/archify must provide archify ${expectedArchify.version} with bin.archify ${expectedArchify.bin}.`,
     );
+  }
+  let lock: {version?: unknown; skills?: {archify?: {source?: unknown; skillPath?: unknown; computedHash?: unknown}}};
+  try {
+    lock = JSON.parse(await readFile(lockPath, 'utf8')) as typeof lock;
+  } catch (error) {
+    throw new Error(`Project-local skills-lock.json is unreadable: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  const locked = lock.skills?.archify;
+  if (lock.version !== 1 || locked?.source !== expectedArchify.source ||
+      locked.skillPath !== expectedArchify.skillPath || locked.computedHash !== expectedArchify.computedHash) {
+    throw new Error('skills-lock.json must pin the supported project-local tt-a1i/archify skill snapshot.');
   }
   const bin = await realpath(resolve(root, expectedArchify.bin));
   if (!isWithin(root, bin) || !(await stat(bin)).isFile()) {
-    throw new Error('ARCHIFY_ROOT bin.archify must resolve to a regular file inside the package root.');
+    throw new Error('Project-local Archify bin.archify must resolve to a regular file inside the package root.');
   }
   return {root, bin, version: expectedArchify.version};
 }
@@ -170,11 +183,11 @@ export async function atomicReplaceDirectory(candidate: string, destination: str
 
 export async function renderDeclaredDiagrams(
   projectRoot: string,
-  options: {archifyRoot?: string; runner?: CommandRunner} = {},
+  options: {runner?: CommandRunner} = {},
 ): Promise<DiagramDeliverySet> {
   const root = resolve(projectRoot);
   const runner = options.runner ?? defaultRunner;
-  const archify = await resolveArchifyPackage(options.archifyRoot ?? process.env.ARCHIFY_ROOT);
+  const archify = await resolveArchifyPackage(root);
   runChecked(runner, archify.bin, ['doctor'], 'Archify doctor');
   const declarations = await discoverDiagramDeclarations(root);
   const generatedRoot = resolve(root, 'generated');

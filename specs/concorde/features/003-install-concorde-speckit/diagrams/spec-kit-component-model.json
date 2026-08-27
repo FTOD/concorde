@@ -5,7 +5,7 @@
     "title": "How Concorde Commands Reach a Clean Project",
     "output": "../../../../../generated/architecture/concorde-spec-kit-component-model.html",
     "quality_profile": "showcase",
-    "viewBox": [1460, 720],
+    "viewBox": [1395, 720],
     "views": [
       {
         "id": "bundle-composition",
@@ -48,7 +48,7 @@
       "id": "specKit",
       "type": "external",
       "label": "Spec Kit",
-      "sublabel": "Resolves and installs components",
+      "sublabel": "Installs components",
       "pos": [240, 273],
       "size": [175, 76]
     },
@@ -64,7 +64,7 @@
       "id": "selfHosting",
       "type": "external",
       "label": "Checkout-local Files",
-      "sublabel": ".agents/ + .specify/ · not shipped",
+      "sublabel": ".agents/ + .specify/ · local",
       "pos": [485, 500],
       "size": [190, 76]
     },
@@ -96,7 +96,7 @@
       "id": "architectureCore",
       "type": "backend",
       "label": "Concorde Runtime",
-      "sublabel": "Workspace, harden, context, validate",
+      "sublabel": "context + validation",
       "pos": [1010, 275],
       "size": [190, 76]
     },
@@ -112,7 +112,7 @@
       "id": "specTree",
       "type": "database",
       "label": "specs/ Hierarchy",
-      "sublabel": "spec · design · attempt",
+      "sublabel": "spec + design",
       "pos": [1240, 275],
       "size": [120, 76]
     }

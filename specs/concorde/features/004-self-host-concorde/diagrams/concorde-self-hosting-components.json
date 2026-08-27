@@ -5,7 +5,7 @@
     "title": "Concorde Self-Hosting Components",
     "quality_profile": "showcase",
     "output": "../../../../../generated/architecture/concorde-self-hosting-components.html",
-    "viewBox": [1900, 850],
+    "viewBox": [1395, 850],
     "repository": {
       "url": "https://github.com/FTOD/concorde",
       "revision": "7bce921138d3eac46627110aab7bb1f9a4879ab0"
@@ -36,40 +36,40 @@
       "id": "maintainer",
       "type": "external",
       "label": "Maintainer",
-      "sublabel": "Approves self-installation",
-      "pos": [40, 330],
+      "sublabel": "Approves installation",
+      "pos": [20, 330],
       "size": [180, 76]
     },
     {
       "id": "frameworkSources",
       "type": "cloud",
       "label": "Framework Sources",
-      "sublabel": "Preset · extension · bundle",
+      "sublabel": "Preset + extension + bundle",
       "tag": "Authoritative development inputs",
       "sources": [
         {"path": "presets/concorde-core/preset.yml", "label": "preset manifest"},
         {"path": "extensions/concorde/extension.yml", "label": "extension manifest"},
         {"path": "scripts/release/build-components.py", "label": "bundle packaging"}
       ],
-      "pos": [350, 60],
+      "pos": [280, 60],
       "size": [220, 92]
     },
     {
       "id": "selfHostFeature",
       "type": "backend",
       "label": "Self-Host Concorde",
-      "sublabel": "Install · refresh · verify",
+      "sublabel": "Install + refresh + verify",
       "tag": "feature.concorde.self-host-framework",
-      "pos": [350, 320],
+      "pos": [280, 320],
       "size": [230, 96]
     },
     {
       "id": "specKitLifecycle",
       "type": "external",
       "label": "Spec Kit Lifecycle",
-      "sublabel": "Resolve · preview · materialize",
+      "sublabel": "Resolve + preview + apply",
       "tag": "contract.concorde.spec-kit-platform",
-      "pos": [750, 320],
+      "pos": [600, 320],
       "size": [220, 92]
     },
     {
@@ -82,38 +82,38 @@
         {"path": ".specify/init-options.json", "label": "project integration state"},
         {"path": ".agents/skills/speckit-concorde-ask/SKILL.md", "label": "materialized skill example"}
       ],
-      "pos": [1150, 320],
-      "size": [230, 96]
+      "pos": [920, 320],
+      "size": [210, 96]
     },
     {
       "id": "codingAgent",
       "type": "external",
       "label": "Coding Agent",
-      "sublabel": "Loads active Concorde surfaces",
-      "pos": [1550, 326],
-      "size": [220, 84]
+      "sublabel": "Loads Concorde surfaces",
+      "pos": [1160, 326],
+      "size": [190, 84]
     },
     {
       "id": "projectSources",
       "type": "frontend",
       "label": "Concorde Project Sources",
-      "sublabel": "Specs · code · tests · docs",
+      "sublabel": "Specs + code + tests + docs",
       "tag": "Preserved project authority",
       "sources": [
         {"path": "specs/concorde/module.md", "label": "root specification"},
         {"path": "tests/concorde/integration/test_self_architecture.py", "label": "executable evidence"}
       ],
-      "pos": [1550, 570],
-      "size": [230, 84]
+      "pos": [1160, 570],
+      "size": [190, 84]
     },
     {
       "id": "driftGate",
       "type": "security",
       "label": "Self-Hosting Drift Gate",
-      "sublabel": "Source ↔ active installation",
+      "sublabel": "Source ↔ installation",
       "tag": "No false freshness claim",
-      "pos": [1155, 60],
-      "size": [220, 84]
+      "pos": [920, 60],
+      "size": [210, 84]
     }
   ],
   "boundaries": [
@@ -131,7 +131,7 @@
       "to": "selfHostFeature",
       "label": "install / refresh / verify",
       "variant": "emphasis",
-      "labelDy": -42
+      "labelAt": [240, 430]
     },
     {
       "id": "sourcesProvideLocalComponents",
@@ -139,26 +139,30 @@
       "to": "selfHostFeature",
       "label": "authoritative local components",
       "fromSide": "bottom",
-      "toSide": "top"
+      "toSide": "top",
+      "labelAt": [390, 230]
     },
     {
       "id": "selfHostUsesSpecKit",
       "from": "selfHostFeature",
       "to": "specKitLifecycle",
-      "label": "approved component plan"
+      "label": "approved component plan",
+      "labelAt": [555, 430]
     },
     {
       "id": "specKitMaterializes",
       "from": "specKitLifecycle",
       "to": "activeInstallation",
       "label": "materialize winning layers",
-      "variant": "emphasis"
+      "variant": "emphasis",
+      "labelAt": [870, 430]
     },
     {
       "id": "activeGuidesAgent",
       "from": "activeInstallation",
       "to": "codingAgent",
-      "label": "skills and commands"
+      "label": "skills and commands",
+      "labelAt": [1145, 430]
     },
     {
       "id": "agentDevelopsProject",
@@ -166,13 +170,15 @@
       "to": "projectSources",
       "label": "develop through Concorde",
       "fromSide": "bottom",
-      "toSide": "top"
+      "toSide": "top",
+      "labelAt": [1255, 500]
     },
     {
       "id": "sourceExpectation",
       "from": "frameworkSources",
       "to": "driftGate",
-      "label": "expected source state"
+      "label": "expected source state",
+      "labelAt": [700, 170]
     },
     {
       "id": "activeObservation",
@@ -181,7 +187,8 @@
       "label": "observed installed state",
       "variant": "security",
       "fromSide": "top",
-      "toSide": "bottom"
+      "toSide": "bottom",
+      "labelAt": [1025, 230]
     }
   ],
   "cards": [

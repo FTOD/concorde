@@ -15,11 +15,11 @@ The supported setup boundary and current evidence status are authoritative in
 
 ## 1. Preview this project's read model
 
-You need Node.js 20 or newer and Archify 2.14.0. Set `ARCHIFY_ROOT` to the Archify package directory,
-then run these commands from the Concorde repository root:
+You need Node.js 20 or newer. Concorde tracks its officially installed Archify 2.16 project-local
+skill under `.agents/skills/archify`, so no separate renderer installation or environment variable is
+required. Run these commands from the Concorde repository root:
 
 ```bash
-export ARCHIFY_ROOT=/absolute/path/to/archify
 cd docsite
 npm ci
 npm run start

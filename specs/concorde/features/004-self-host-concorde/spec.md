@@ -29,6 +29,8 @@ canonical_spec: specs/concorde/features/004-self-host-concorde/spec.md
 
 **Created**: 2026-08-25
 
+**Revised**: 2026-08-27
+
 **Status**: Draft
 
 **Input**: User description: "Install the Concorde framework into the Concorde project itself so
@@ -67,6 +69,9 @@ must not claim that the current session is already using them.
   freshness outcomes are fully described by the scenarios below; a workflow or lifecycle view may
   be added later if state or recovery behavior becomes difficult to understand from the text.
 - **Generated view**: `generated/architecture/concorde-self-hosting-components.html`.
+
+The compact Archify 2.16 layout preserves those eight component roles and crossings while keeping
+all node context readable at the required desktop viewport.
 
 The diagram supplements this specification. It does not replace the root one-level architecture in
 `specs/concorde/architecture.json` or redefine the owning modules and their contracts.

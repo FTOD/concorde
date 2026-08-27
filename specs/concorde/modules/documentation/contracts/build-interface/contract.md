@@ -32,9 +32,9 @@ defined in `specs/concorde/features/002-create-project-docsite/contracts/build-i
 
 ## Information
 
-Inputs are repository sources, an explicit compatible Archify package root, and command arguments;
-outputs are diagnostics, normalized diagram receipts, preview responses, test results, and verified
-static-site artifacts communicated through stdout, stderr, and exit status.
+Inputs are repository sources—including the installed `.agents/skills/archify` package—and command
+arguments; outputs are diagnostics, normalized diagram receipts, preview responses, test results,
+and verified static-site artifacts communicated through stdout, stderr, and exit status.
 
 ## Obligations
 

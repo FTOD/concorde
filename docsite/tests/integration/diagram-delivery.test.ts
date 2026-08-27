@@ -14,7 +14,7 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, {recursive: true, force: true})));
 });
 
-async function fixtureRoot(): Promise<{project: string; archify: string}> {
+async function fixtureRoot(): Promise<string> {
   const project = await mkdtemp(resolve(tmpdir(), 'concorde-delivery-set-'));
   roots.push(project);
   for (const name of ['one', 'two']) {
@@ -43,13 +43,20 @@ contracts:
   await mkdir(resolve(project, 'generated/architecture'), {recursive: true});
   await writeFile(resolve(project, 'generated/architecture/previous.html'), 'previous', 'utf8');
 
-  const archify = resolve(project, 'fake-archify');
+  const archify = resolve(project, '.agents/skills/archify');
   await mkdir(resolve(archify, 'bin'), {recursive: true});
   await writeFile(resolve(archify, 'bin/archify.mjs'), '// fake', 'utf8');
   await writeFile(resolve(archify, 'package.json'), JSON.stringify({
-    name: 'archify', version: '2.14.0', bin: {archify: './bin/archify.mjs'},
+    name: 'archify', version: '2.16.0-dev.0', bin: {archify: './bin/archify.mjs'},
   }), 'utf8');
-  return {project, archify};
+  await writeFile(resolve(project, 'skills-lock.json'), JSON.stringify({
+    version: 1,
+    skills: {archify: {
+      source: 'tt-a1i/archify', skillPath: 'archify/SKILL.md',
+      computedHash: '4317bc82ecb43a3a5279fed696a2f4afd25c189d4412e83d4558ed0f281f7d1e',
+    }},
+  }), 'utf8');
+  return project;
 }
 
 function runner(failOnTwo: boolean) {
@@ -73,7 +80,7 @@ function runner(failOnTwo: boolean) {
     }
     const outputPath = args[3];
     const source = readFileSync(sourcePath);
-    const artifact = Buffer.from(`<html><meta name="generator" content="archify 2.14.0">${sourcePath}</html>`);
+    const artifact = Buffer.from(`<html><meta name="generator" content="archify 2.16.0-dev.0">${sourcePath}</html>`);
     mkdirSync(dirname(outputPath), {recursive: true});
     writeFileSync(outputPath, artifact);
     return {
@@ -98,23 +105,23 @@ function runner(failOnTwo: boolean) {
 
 describe('complete diagram delivery set', () => {
   it('preserves the previous set when a later delivery fails', async () => {
-    const {project, archify} = await fixtureRoot();
-    await expect(renderDeclaredDiagrams(project, {archifyRoot: archify, runner: runner(true)}))
+    const project = await fixtureRoot();
+    await expect(renderDeclaredDiagrams(project, {runner: runner(true)}))
       .rejects.toThrow(/seeded second delivery failure/);
     expect(await readFile(resolve(project, 'generated/architecture/previous.html'), 'utf8')).toBe('previous');
     await expect(readFile(resolve(project, 'generated/architecture/one.html'), 'utf8')).rejects.toThrow();
   });
 
   it('promotes all current outputs together and removes stale orphans', async () => {
-    const {project, archify} = await fixtureRoot();
+    const project = await fixtureRoot();
     const sourceBefore = await Promise.all(['one', 'two'].map((name) =>
       readFile(resolve(project, `specs/${name}/architecture.json`), 'utf8')));
-    const result = await renderDeclaredDiagrams(project, {archifyRoot: archify, runner: runner(false)});
+    const result = await renderDeclaredDiagrams(project, {runner: runner(false)});
     expect(result.receipts.map((receipt) => receipt.sourcePath)).toEqual([
       'specs/one/architecture.json', 'specs/two/architecture.json',
     ]);
-    expect(await readFile(resolve(project, 'generated/architecture/one.html'), 'utf8')).toContain('archify 2.14.0');
-    expect(await readFile(resolve(project, 'generated/architecture/two.html'), 'utf8')).toContain('archify 2.14.0');
+    expect(await readFile(resolve(project, 'generated/architecture/one.html'), 'utf8')).toContain('archify 2.16.0-dev.0');
+    expect(await readFile(resolve(project, 'generated/architecture/two.html'), 'utf8')).toContain('archify 2.16.0-dev.0');
     await expect(readFile(resolve(project, 'generated/architecture/previous.html'), 'utf8')).rejects.toThrow();
     expect(await Promise.all(['one', 'two'].map((name) =>
       readFile(resolve(project, `specs/${name}/architecture.json`), 'utf8')))).toEqual(sourceBefore);
