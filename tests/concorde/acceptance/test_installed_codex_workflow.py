@@ -49,9 +49,22 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     capture_output=True,
                     check=True,
                 )
-                workspace_payload = json.loads(checklist_paths.stdout)["workspace"]
+                checklist_payload = json.loads(checklist_paths.stdout)
+                self.assertEqual(checklist_payload["schema_version"], 4)
+                workspace_payload = checklist_payload["workspace"]
                 self.assertEqual(workspace_payload["workspace_kind"], "subfeature")
                 self.assertEqual(workspace_payload["parent_context"]["feature_id"], "feature.example.checkout")
+                self.assertEqual(
+                    workspace_payload["parent_context"]["feature_implementation"],
+                    "specs/example/features/001-checkout/implementation.md",
+                )
+                self.assertEqual(
+                    workspace_payload["feature_implementation"],
+                    "specs/example/features/001-checkout/subfeatures/001-authorize-payment/implementation.md",
+                )
+                self.assertEqual(workspace_payload["module_summary"], "specs/example/module.md")
+                self.assertEqual(workspace_payload["module_design"], "specs/example/design.md")
+                self.assertNotIn("feature_design", workspace_payload)
                 self.assertEqual(
                     workspace_payload["checklists_dir"],
                     workspace_payload["implementation_dir"] + "/checklists",
@@ -91,6 +104,70 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     harden_payload["checklist_summary"],
                     {"files": 0, "complete": 0, "incomplete": 0, "malformed": 0},
                 )
+                self.assertEqual(harden_payload["schema_version"], 4)
+                self.assertEqual(harden_payload["workspace"]["module_design"], "specs/example/design.md")
+                self.assertIn("specs/example/design.md", harden_payload["artifacts"])
+                # Proposal v2 with a module-reference amendment: review boundary holds until explicit apply.
+                before = {
+                    path.relative_to(root): path.read_bytes()
+                    for path in (root / "specs").rglob("*")
+                    if path.is_file()
+                }
+                candidate = (
+                    "# Feature Implementation: Authorize Payment\n\n**Realization status**: Hardened in the installed fixture.\n\n"
+                    "## Realization Overview\n\nInstalled.\n\n## Module and Feature Collaboration\n\nInstalled.\n\n"
+                    "## Scenario Realization\n\nInstalled.\n\n## Durable Implementation Decisions\n\nInstalled.\n\n"
+                    "## Traceability and Evidence\n\nInstalled.\n\n## Known Limitations\n\nNone.\n"
+                )
+                amendment = "# Design Reference: Example Commerce\n\n## Decision Log\n\n- Hardened authorize-payment in the installed fixture.\n"
+                proposal_path = root / harden_payload["proposal_path"]
+                proposal_path.write_text(
+                    json.dumps(
+                        {
+                            "proposal_version": 2,
+                            "operation": "feature.harden",
+                            "target": harden_payload["target"],
+                            "source_digest": harden_payload["source_digest"],
+                            "implementation": {"path": harden_payload["workspace"]["feature_implementation"], "content": candidate},
+                            "module_design": {"path": harden_payload["workspace"]["module_design"], "content": amendment},
+                            "remove": [harden_payload["workspace"]["implementation_dir"]],
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                reviewed = subprocess.run(
+                    [sys.executable, str(launcher), "--project-root", str(root), "feature", "harden", "--propose"],
+                    cwd=root,
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(reviewed.returncode, 0, reviewed.stdout + reviewed.stderr)
+                after_review = {
+                    path.relative_to(root): path.read_bytes()
+                    for path in (root / "specs").rglob("*")
+                    if path.is_file() and path.name != "harden-proposal.json"
+                }
+                self.assertEqual({k: v for k, v in before.items() if k.name != "harden-proposal.json"}, after_review)
+                applied = subprocess.run(
+                    [
+                        sys.executable, str(launcher), "--project-root", str(root),
+                        "feature", "harden", "--apply", "--proposal", harden_payload["proposal_path"],
+                    ],
+                    cwd=root,
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(applied.returncode, 0, applied.stdout + applied.stderr)
+                applied_payload = json.loads(applied.stdout)
+                self.assertEqual(applied_payload["status"], "hardened")
+                self.assertRegex(applied_payload["module_design_digest_after"], r"^sha256:[0-9a-f]{64}$")
+                self.assertEqual((root / "specs/example/design.md").read_text(encoding="utf-8"), amendment)
+                self.assertEqual(
+                    (root / "specs/example/features/001-checkout/subfeatures/001-authorize-payment/implementation.md").read_text(encoding="utf-8"),
+                    candidate,
+                )
+                self.assertFalse(implementation.exists())
                 adapter = workspace_adapter
                 adapter.unlink()
                 missing = subprocess.run(

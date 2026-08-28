@@ -3,7 +3,7 @@ schema_version: "1.0"
 bundle:
   id: "concorde-shared-fixture"
   name: "Concorde Shared Component Fixture"
-  version: "0.1.0"
+  version: "0.2.0"
   role: "developer"
   description: "Acceptance-only bundle sharing the Concorde Core preset"
   author: "Concorde maintainers"
@@ -18,7 +18,7 @@ provides:
   extensions: []
   presets:
     - id: "concorde-core"
-      version: "0.1.0"
+      version: "0.2.0"
       priority: 10
       strategy: "append"
   steps: []

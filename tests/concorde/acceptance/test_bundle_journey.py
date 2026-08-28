@@ -75,10 +75,10 @@ class StarterJourneyAcceptance(unittest.TestCase):
                 (project_root / "specs/example").mkdir(parents=True)
                 (project_root / "specs/example/intent.md").write_text("# Intent\n")
                 source_hashes = project.source_hashes()
-                _builder.build_release(dist, server.base_url, "0.1.1")
+                _builder.build_release(dist, server.base_url, "0.2.1")
                 project.clear_catalog_caches()
                 project.run("bundle", "update", "concorde-bundle")
-                self.assertEqual(project.json("bundle", "list", "--json")[0]["version"], "0.1.1")
+                self.assertEqual(project.json("bundle", "list", "--json")[0]["version"], "0.2.1")
                 project.run("bundle", "remove", "concorde-bundle")
                 self.assertEqual(project.source_hashes(), source_hashes)
 

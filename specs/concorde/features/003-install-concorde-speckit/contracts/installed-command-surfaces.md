@@ -45,7 +45,9 @@ or artifact access that could choose a legacy root-level plan or task path.
 `append`, `prepend`, and `wrap` are non-conforming for these nine command entries while the lower
 command can independently resolve legacy paths. The three spec/plan/tasks template contributions
 remain `append` layers because they add guidance and do not perform phase routing. The Concorde-only
-`design-template` is a fourth, `replace` contribution because Spec Kit core does not define that artifact.
+`implementation-template` (the placeholder `implementation.md` seeded at a new feature root; preset
+0.2.0 renamed it from `design-template`) is a fourth, `replace` contribution because Spec Kit core
+does not define that artifact.
 
 Preset script replacement and installer mutation of managed `.specify/scripts/` are outside the
 supported contract. If public command replacement cannot satisfy the bootstrap ordering, the release
@@ -91,13 +93,13 @@ unregistered package member is not an installed command surface.
 
 | Command | Required selected paths | Prohibited result |
 |---|---|---|
-| Specify / clarify | Feature-root `spec.md` and `contracts/`; generated review state at `implementation/checklists/requirements.md` | A second spec/contract or a root `checklists/` directory |
+| Specify / clarify | Feature-root `spec.md`, a seeded placeholder `implementation.md`, and `contracts/`; generated review state at `implementation/checklists/requirements.md` | A second spec/contract, a feature-root `design.md`, or a root `checklists/` directory |
 | Checklist | Durable feature context plus `implementation/checklists/*.md` output and available attempt context | A root checklist, implementation behavior test, or second active attempt |
-| Plan | `implementation/plan.md`, `research.md`, `data-model.md`, `quickstart.md` | Root `plan.md` or root design copies |
+| Plan | `implementation/plan.md`, `research.md`, `data-model.md`, `quickstart.md` (reading root `spec.md`/`implementation.md` and the module summary as baseline) | Root `plan.md`, root temporal copies, or any write to `implementation.md` or a module `design.md` |
 | Tasks | `implementation/tasks.md` | Root `tasks.md` |
 | Implement / analyze / converge / taskstoissues | Feature-root durable intent plus the same active `implementation/` attempt | Root temporal copies, symlinks, or a second active attempt |
 | Init / context / validate | Feature 001 contract paths and result envelopes | Checkout-relative runtime or agent-specific semantic drift |
-| Feature harden | Root `design.md`, completed `implementation/tasks.md`, resolved `implementation/checklists/*.md`, returned `proposal_path`, `task_summary`, and `checklist_summary`, digest-bound proposal, exact `implementation/` removal | Agent-derived proposal path, direct design mutation, unchecked tasks, unresolved checklist items, implicit approval, stale apply, or broader deletion |
+| Feature harden | Root `implementation.md`, the providing module's `module.md`/`design.md`, completed `implementation/tasks.md`, resolved `implementation/checklists/*.md`, returned `proposal_path`, `task_summary`, and `checklist_summary`, digest-bound proposal v2 (candidate `implementation.md`, optional module `design.md` amendment), exact `implementation/` removal | Agent-derived proposal path, direct realization or reference mutation, an amendment targeting `module.md`, another level's `design.md`, or a feature-root `design.md`, unchecked tasks, unresolved checklist items, implicit approval, stale apply, or broader deletion |
 | Ask | Installed extension/preset guidance plus the smallest relevant bounded maintained project sources | Launcher/runtime invocation, checkout dependency, uncited facts, unrelated deeper context, mutation, or implicit lifecycle work |
 
 ## Acceptance Evidence

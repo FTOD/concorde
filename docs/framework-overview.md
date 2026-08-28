@@ -10,12 +10,13 @@ how it should be structured, while coding agents may produce most of the impleme
 model, reviewing every generated line is neither a scalable architecture practice nor a reliable way
 to recover intent.
 
-Concorde therefore makes four things explicit and reviewable:
+Concorde therefore makes five things explicit and reviewable:
 
 1. the behavior a feature must provide;
 2. the module and abstraction level that own it;
-3. the contracts and immediate components involved in realizing it; and
-4. the design that was actually accepted after implementation.
+3. the contracts and immediate components involved in realizing it;
+4. the implementation detail and rationale each level accumulates, kept beneath a short summary; and
+5. the realization that was actually accepted after implementation.
 
 The normative definition is [Feature 001](../specs/concorde/features/001-concorde-workflow/spec.md).
 
@@ -44,7 +45,7 @@ pretending they are the same authority.
 ## The model: modules provide features
 
 Features have one optional decomposition level. A large correlated feature may own immediate
-sub-features with focused specs/designs, but those children remain subordinate to the parent,
+sub-features with focused specifications and accepted realizations, but those children remain subordinate to the parent,
 inherit its module, and cannot contain more children. This is not module-level feature refinement:
 containment simplifies behavioral documentation inside one feature, while `refines` explains
 realization across adjacent architecture levels.
@@ -69,8 +70,9 @@ Large systems require abstraction. At one Concorde architecture level, a maintai
 - the current module's responsibility, features, and provided/required I/O contracts;
 - its immediate submodules and concise summaries of their I/O;
 - permitted external actors or systems;
-- the organization of those visible participants; and
-- contract-governed interactions for current-level scenarios.
+- the organization of those visible participants;
+- contract-governed interactions for current-level scenarios; and
+- navigation references to the level's summary, design reference, and view, never their bodies.
 
 Child feature bodies, grandchildren, classes, and deeper implementation details remain hidden. When
 the maintainer deliberately zooms into a child, that child becomes the current module and the same
@@ -80,18 +82,20 @@ This is the purpose of bounded context in Concorde: not to summarize the whole r
 return the smallest architectural slice needed for the current ownership, planning, or implementation
 decision.
 
-## Four durable questions, four authorities
+## Five durable questions, five authorities
 
 | Question | Authority |
 |---|---|
 | What must the feature do, and why? | Feature `spec.md` |
-| Which module owns it, what are its boundaries, and how are immediate children organized? | `module.md`, module contracts, and `architecture.json` |
-| How does the accepted implementation realize this feature across those boundaries? | Feature `design.md` |
+| Which module owns it, what are its boundaries, and how are immediate children organized? | `module.md` (the module summary), module contracts, and `architecture.json` |
+| Why is the level built this way, how is it implemented, and what was tried and rejected? | Module `design.md` (the design reference), consulted deliberately and never read implicitly |
+| How does the accepted implementation realize this feature across those boundaries? | Feature `implementation.md` |
 | What exists and has been demonstrated? | Code, tests, and explicit evidence references |
 
 The current plan, task list, checklist state, research, and validation notes are useful during a
 delivery attempt, but they are not permanent intent. Concorde keeps them in `implementation/` and
-requires an explicit hardening decision before accepted realization knowledge enters `design.md`.
+requires an explicit hardening decision before accepted realization knowledge enters
+`implementation.md` or attempt-derived rationale enters the module's `design.md`.
 
 ## What Concorde adds to Spec Kit
 
@@ -104,7 +108,8 @@ and convergence. Concorde adds architectural controls around that lifecycle:
 - phase routing between durable feature files and a temporary implementation attempt;
 - deterministic validation of identity, hierarchy, contracts, views, scenarios, references, and
   evidence status; and
-- approval-gated hardening of a completed attempt into durable design.
+- approval-gated hardening of a completed attempt into the durable accepted realization,
+  optionally amending the module design reference.
 
 Installation is also Spec Kit-native. A bundle pins a preset and extension; the active coding-agent
 integration presents their command definitions as skills or slash commands. The detailed boundary is

@@ -7,6 +7,18 @@ import {buildRegistry} from '../../plugins/concorde-content/registry';
 
 const fixture = resolve(__dirname, '../fixtures/valid-project');
 
+describe('module summary view links', () => {
+  it('resolves a summary link to its declared level view, spelled root-relative or summary-relative', async () => {
+    const registry = await buildRegistry(resolve(__dirname, '../../..'));
+    const root = registry.documents.find((item) => item.sourcePath === 'specs/concorde/module.md')!;
+    expect(resolveContentLink('specs/concorde/architecture.json', root, registry).reference.targetRoute)
+      .toBe('/architecture/concorde-root.html');
+    expect(resolveContentLink('architecture.json', root, registry).reference.targetRoute)
+      .toBe('/architecture/concorde-root.html');
+    expect(resolveContentLink('missing-view.json', root, registry).reference.kind).toBe('asset');
+  });
+});
+
 describe('repository-relative links', () => {
   it('maps same-collection and cross-collection Markdown while preserving fragments', async () => {
     const registry = await buildRegistry(fixture);

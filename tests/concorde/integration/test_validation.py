@@ -51,8 +51,26 @@ class ValidationIntegrationTests(unittest.TestCase):
     def test_bounded_target_and_unknown_evidence_are_supported(self):
         result = validate_project(VALID_PROJECT, "module.example.api")
         self.assertEqual(result.status, "success")
+        self.assertEqual([item for item in result.findings if item.rule_id.startswith("CONCORDE-SUMMARY-")], [])
         self.assertGreater(len(result.artifacts), 0)
         self.assertFalse(any(item.severity == "error" for item in result.findings))
+
+    def test_legacy_tree_yields_findings_only_and_stays_byte_identical(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "project"
+            shutil.copytree(VALID_PROJECT, root)
+            feature = root / "specs/example/features/001-deliver"
+            (feature / "implementation.md").rename(feature / "design.md")
+            (root / "specs/example/modules/api/design.md").unlink()
+            before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}
+            result = validate_project(root)
+            rules = {item.rule_id for item in result.findings}
+            self.assertEqual(result.status, "invalid")
+            self.assertIn("CONCORDE-LAYOUT-007", rules)
+            self.assertIn("CONCORDE-MODULE-002", rules)
+            self.assertEqual({path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}, before)
+            for item in result.findings:
+                self.assertTrue(item.remediation)
 
     def test_layout_evidence_and_freshness_defects_are_distinct(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -75,6 +93,7 @@ class ValidationIntegrationTests(unittest.TestCase):
             result = validate_project(root)
             rules = {item.rule_id for item in result.findings}
             self.assertIn("CONCORDE-LAYOUT-001", rules)
+            self.assertNotIn("CONCORDE-LAYOUT-005", rules)
             self.assertIn("CONCORDE-EVIDENCE-002", rules)
             self.assertIn("CONCORDE-FRESHNESS-001", rules)
             self.assertEqual(next(item for item in result.findings if item.rule_id == "CONCORDE-EVIDENCE-002").severity, "error")

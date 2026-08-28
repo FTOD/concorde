@@ -1,32 +1,30 @@
-import type {ArchitectureSource, BuildManifest, ContentPage, ContentRegistry, FeatureDesign, FeatureSpecification, SourceDocument} from './types';
+import type {
+  ArchitectureSource, BuildManifest, ContentPage, ContentRegistry, FeatureImplementation, FeatureSpecification, ModuleDesign,
+  SourceDocument,
+} from './types';
 
 const isFeature = (document: SourceDocument): document is FeatureSpecification => document.collectionId === 'features';
-const isFeatureDesign = (document: SourceDocument): document is FeatureDesign => document.collectionId === 'feature-designs';
-const isArchitecture = (document: SourceDocument): document is ArchitectureSource => document.collectionId === 'architecture';
+const isFeatureImplementation = (document: SourceDocument): document is FeatureImplementation =>
+  document.collectionId === 'feature-implementations';
+const isArchitecture = (document: SourceDocument): document is ArchitectureSource => document.contentKind === 'architecture-source';
+const isModuleDesign = (document: SourceDocument): document is ModuleDesign => document.contentKind === 'module-design';
 
 function navigationFor(document: SourceDocument) {
-  return {
-    section: document.collectionId === 'docs'
-      ? 'Documentation' as const
-      : document.collectionId === 'features' || document.collectionId === 'feature-designs'
-        ? 'Features' as const
-        : 'Architecture' as const,
-    label: document.sidebarLabel || document.title,
-    ...((isFeature(document) || isFeatureDesign(document)) && document.parentFeatureRoute
-      ? {parentRoute: document.parentFeatureRoute}
-      : {}),
-  };
+  const section = document.collectionId === 'docs'
+    ? 'Documentation' as const
+    : document.collectionId === 'architecture'
+      ? 'Architecture' as const
+      : 'Features' as const;
+  // Sub-feature pages nest beneath their parent feature; a module design reference nests beside its module page.
+  const parentRoute = isFeature(document) || isFeatureImplementation(document)
+    ? document.parentFeatureRoute
+    : isModuleDesign(document) ? document.moduleRoute : undefined;
+  return {section, label: document.sidebarLabel || document.title, ...(parentRoute ? {parentRoute} : {})};
 }
 
 export function pageFromDocument(document: SourceDocument): ContentPage {
   return {
-    kind: document.collectionId === 'docs'
-      ? 'project-document'
-      : document.collectionId === 'features'
-        ? 'feature-specification'
-        : document.collectionId === 'feature-designs'
-          ? 'feature-design'
-        : 'architecture-source',
+    kind: document.contentKind,
     sourcePath: document.sourcePath,
     sourceSha256: document.sourceSha256,
     route: document.route,
@@ -44,13 +42,17 @@ export function pageFromDocument(document: SourceDocument): ContentPage {
       parentFeatureRoute: document.parentFeatureRoute,
       subfeatures: document.subfeatures,
       siblings: document.siblings,
+      implementationRoute: document.implementationRoute,
     } : {}),
-    ...(isFeatureDesign(document) ? {
+    ...(isFeatureImplementation(document) ? {
+      featureId: document.featureId,
+      moduleId: document.moduleId,
       featureLevel: document.featureLevel,
       parentFeatureId: document.parentFeatureId,
       parentFeatureRoute: document.parentFeatureRoute,
       subfeatures: document.subfeatures,
       siblings: document.siblings,
+      specificationRoute: document.specificationRoute,
     } : {}),
     ...(isArchitecture(document) ? {
       architectureId: document.architectureId,
@@ -60,6 +62,11 @@ export function pageFromDocument(document: SourceDocument): ContentPage {
       architectureViewSource: document.architectureViewSource,
       architectureViewSha256: document.architectureViewSha256,
       architectureViewRoute: document.architectureViewRoute,
+      designReferenceRoute: document.designReferenceRoute,
+    } : {}),
+    ...(isModuleDesign(document) ? {
+      moduleId: document.moduleId,
+      moduleRoute: document.moduleRoute,
     } : {}),
   };
 }
@@ -67,7 +74,7 @@ export function pageFromDocument(document: SourceDocument): ContentPage {
 export function createManifest(registry: ContentRegistry, routeInventory?: string[]): BuildManifest {
   const pages = registry.documents.map(pageFromDocument).sort((a, b) => a.sourcePath.localeCompare(b.sourcePath));
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     generator: {name: 'concorde-docsite', version: '0.2.0', docusaurusVersion: '3.10.2'},
     collections: registry.collections.map(({id, sourceBase, routeBase, include}) => ({id, sourceBase, routeBase, include})),
     pages,

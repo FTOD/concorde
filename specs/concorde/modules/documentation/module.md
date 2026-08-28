@@ -28,47 +28,61 @@ Documentation owns generated navigation, pages, provenance, textual summaries, a
 It does not own maintained architecture intent, validation semantics, Archify rendering, or user-authored
 sources.
 
-## Feature Set
+## Structure
 
-| Feature ID | Outcome | Parent refinement | Structural definition |
+The maintained level view is
+[architecture.json](specs/concorde/modules/documentation/architecture.json), delivered as
+`generated/architecture/documentation.html`. It shows Documentation (the validated read model) inside
+its module boundary, its external providers Project Docs (`docs/**/*.md`), Project Specifications
+(`specs/**`), and Archify (validated HTML views), and the Maintainer who builds and browses. The
+Feature 002 supplemental
+<a href="/architecture/project-docsite-publication-flow.html">publication flow</a> (maintained source
+`specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json`)
+explains the build sequence without redefining this structure.
+
+## Features
+
+| Feature ID | Outcome | Refines | Specification |
 |---|---|---|---|
-| `feature.documentation.publish-project-docsite` | Architecture sources, project docs, feature specs, and accepted feature designs become one generated read model. | `feature.concorde.publish-project-docsite` | `features/001-publish-project-docsite/spec.md` |
+| `feature.documentation.publish-project-docsite` | Architecture sources, project docs, feature specifications, and accepted realizations from the unified `specs/` hierarchy and `docs/` become one searchable, traceable, read-only website, with each declared delivered Archify view embedded beside its textual source. | `feature.concorde.publish-project-docsite` | [spec.md](features/001-publish-project-docsite/spec.md) |
 
-## Boundary Contracts
+## Contracts
 
-The feature's canonical contract definitions are split under `contracts/` so representations,
-compatibility, and evidence can evolve together without duplicating them in this module summary.
+| Contract ID | Role | Flow | Counterparty | Definition |
+|---|---|---|---|---|
+| `contract.documentation.architecture-site` | provided | output | Maintainer browser | [contract.md](contracts/architecture-site/contract.md) |
+| `contract.documentation.build-interface` | provided | bidirectional | Maintainer and CI | [contract.md](contracts/build-interface/contract.md) |
+| `contract.documentation.build-manifest` | provided | output | Maintainer and freshness checks | [contract.md](contracts/build-manifest/contract.md) |
+| `contract.documentation.project-content` | required | input | Maintainers and Spec Kit | [contract.md](contracts/project-content/contract.md) |
+| `contract.documentation.archify-renderer` | required | bidirectional | Archify | [contract.md](contracts/archify-renderer/contract.md) |
 
-| Contract ID | Role / flow | Counterparty | Canonical definition |
-|---|---|---|---|
-| `contract.documentation.architecture-site` | provided / output | Maintainer browser | `contracts/architecture-site/contract.md` |
-| `contract.documentation.build-interface` | provided / bidirectional | Maintainer and CI | `contracts/build-interface/contract.md` |
-| `contract.documentation.build-manifest` | provided / output | Maintainer and freshness checks | `contracts/build-manifest/contract.md` |
-| `contract.documentation.project-content` | required / input | Maintainers and Spec Kit | `contracts/project-content/contract.md` |
-| `contract.documentation.archify-renderer` | required / bidirectional | Archify | `contracts/archify-renderer/contract.md` |
+## Submodules
 
-## Bounded Contract Summary
+None.
 
-### `contract.documentation.archify-renderer`
-
-- **Role / flow**: required, bidirectional.
-- **Provider**: external Archify.
-- **Representation**: commonly adopted Archify architecture JSON schema and generated HTML contract.
-- **Guarantees required**: valid maintained JSON produces deterministic, self-contained diagram output.
-- **Failure**: renderer diagnostics are preserved and publication stops for the affected view.
-- **Evidence**: both maintained architecture views pass all 9 Archify showcase checks; disposable
-  deliveries are recreated under ignored `generated/architecture/`, while durable attempt evidence
-  is recorded in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`.
-
-## Scenario Trace
+## Representative Scenario
 
 `publish-project-docsite` is maintained in `architecture.json` and uses only this module, its declared
-external providers/consumer, and the governing boundary contracts.
+external providers and consumer, and the governing boundary contracts. A maintainer invokes the
+documented build interface across `contract.documentation.build-interface`. Documentation consumes
+project Markdown from `docs/` and architecture, contract, and canonical feature sources from `specs/`
+through `contract.documentation.project-content`, hands each declared `architecture.json` to Archify
+through `contract.documentation.archify-renderer` and receives rendered views, then validates
+identities, links, and routes. It emits the deterministic `contract.documentation.build-manifest` and
+provides the finished HTML site through `contract.documentation.architecture-site`; when any step
+fails, the last successful site is preserved.
+
+## Design Rationale
+
+Documentation is a projection, never an authority: `docs/` owns project documentation, `specs/` owns
+architecture and feature intent, and generated pages link canonical sources instead of copying them.
+Publication is gated so the site can never silently disagree with validated sources: every declared
+view must be deliverable, links map strictly, provenance and the manifest are deterministic, and
+promotion is atomic. Realization detail and recorded decisions are in the
+[design reference](design.md).
 
 ## Evidence Status
 
-The publication feature is implemented. Its locked dependency installation, validation interface,
-two-root/three-view source discovery, strict link mapping, permanent feature spec/design projection, sandboxed
-Archify embedding, local search, accessible presentation, schema-valid manifest, atomic promotion,
-repeatability, and source immutability all
-have executable evidence in `docsite/tests/` and `specs/concorde/features/002-create-project-docsite/implementation/validation.md`.
+The publication feature is implemented with executable evidence in `docsite/tests/` and
+`specs/concorde/features/002-create-project-docsite/implementation.md`; details are in the
+[design reference](design.md#evidence-status).

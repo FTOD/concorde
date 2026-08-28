@@ -43,24 +43,28 @@ manifest, and sandboxed delivered Archify views where architecture sources decla
   overview, specification model, project structure, Concorde workflow, and command reference; those
   guides retain working links to their canonical Architecture or Features authorities.
 - Architecture pages expose stable ID, kind, hierarchy metadata, source provenance, and declared
-  sandboxed Archify views; feature specification pages expose ID, module, and status, while feature
-  design pages expose durable source provenance.
+  sandboxed Archify views; module design reference pages expose their owning module and source
+  provenance; feature specification pages expose ID, module, and status, while feature
+  implementation pages expose durable source provenance.
 - Cross-collection links and local discovery span all three route spaces.
 - Failed publication never replaces the last successfully promoted site.
 
 ## Failure Semantics
 
 Source, link, route, rendering, search, manifest, or promotion failure makes the candidate
-unpublishable. This version adds permanent feature designs within `/features`; its three route bases
-and manifest schema version remain stable within contract version 3.
+unpublishable. This version publishes accepted feature implementations within `/features` and module
+design references within `/architecture`; its three route bases remain stable within contract
+version 3, and the manifest schema version is owned by `contract.documentation.build-manifest`
+(schema version 5).
 
 ## Compatibility
 
-The Architecture, Documentation, and Features route bases and build-manifest schema version remain
-stable within contract version 3. Adding the named self-hosting pages within `/docs` is compatible;
-removing a route space or provenance field is breaking.
+The Architecture, Documentation, and Features route bases remain stable within contract version 3;
+the build-manifest schema version follows its own contract. Adding the named self-hosting pages
+within `/docs` or new page kinds within an existing route space is compatible; removing a route
+space or provenance field is breaking.
 
 ## Evidence
 
 Production-build, accessibility, route-inventory, and repeatability tests are maintained under
-`docsite/tests/`; their requirement mapping is recorded in `specs/concorde/features/002-create-project-docsite/implementation/validation.md`.
+`docsite/tests/`; their requirement mapping is recorded in `specs/concorde/features/002-create-project-docsite/implementation.md`.

@@ -51,8 +51,8 @@ class SelfArchitectureTests(unittest.TestCase):
             / "specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json"
         ).read_text(encoding="utf-8"))
         command_component = next(item for item in diagram["components"] if item["id"] == "concordeCommands")
-        self.assertIn("7 Concorde Surfaces", command_component["label"])
-        self.assertIn("6 operations", command_component["sublabel"])
+        self.assertIn("5 Concorde Surfaces", command_component["label"])
+        self.assertIn("4 operations", command_component["sublabel"])
 
         cli_source = (REPOSITORY_ROOT / "extensions/concorde/runtime/concorde/cli.py").read_text(encoding="utf-8")
         self.assertNotIn('add_parser("ask")', cli_source)

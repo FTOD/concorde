@@ -16,11 +16,13 @@ available, and freshness checks. Do not treat generated HTML or screenshots as m
 
 Write the task list to `implementation/tasks.md` inside the selected feature workspace. Treat it as
 work for the active delivery attempt, not as durable feature intent, and do not create a root-level
-copy or symlink. Generate tasks against both `spec.md` and the accepted `design.md` baseline, but do
-not generate a task that edits `design.md` or removes `implementation/`; after every task is complete,
+copy or symlink. Generate tasks against both `spec.md` and the accepted `implementation.md` baseline
+(a placeholder means no accepted baseline), but do
+not generate a task that edits `implementation.md`, any module `module.md` or `design.md`, or removes
+`implementation/`; after every task is complete,
 the user may invoke the separate Concorde hardening command.
 
 For a selected sub-feature, every task path must remain beneath that child root except explicit
-read-only references to the parent durable specification/design. Do not generate tasks that mutate or
+read-only references to the parent durable specification/implementation. Do not generate tasks that mutate or
 harden a parent/sibling root, read a parent/sibling attempt implicitly, or create another
 `subfeatures/` directory beneath the child.

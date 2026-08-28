@@ -16,7 +16,7 @@ including install-time composition and the two distinct use-time paths.
 | Spec Kit | Owns resolution, template composition, installation, registries, provenance, update/removal, and active-integration selection. |
 | Catalog | Carries discovery and trust metadata for independently packaged bundle, preset, and extension archives. |
 | Bundle | Is a passive, non-executable recipe pinning exactly one preset and one extension. |
-| Preset | Composes architecture guidance into templates and authoritative selected-workspace routing into nine existing lifecycle commands. It introduces no new runtime command namespace. |
+| Preset | Composes architecture guidance into templates (including the Concorde-only `implementation-template` for the feature-root `implementation.md`) and authoritative selected-workspace routing into nine existing lifecycle commands. It introduces no new runtime command namespace. |
 | Extension | Actively contributes five Concorde-specific surfaces: four runtime-backed intents, one agent-followed read-only question procedure, a selected-workspace adapter, and the deterministic runtime used only by the operations. |
 | Active coding-agent integration | Materializes resolved core-command overrides and Concorde-specific commands in agent-native syntax without owning their behavior. |
 | Architecture Core | Implements deterministic initialization, bounded-context projection, and validation. |
@@ -49,12 +49,13 @@ that a clean target actually receives from release archives.
 These are feature-owned Feature 003 explanations: the component model is the single `role: core`
 architecture view and the installation flow is `role: supplemental`. Both supplement rather than
 replace module-owned `architecture.json` views, do not participate in Architecture Core source
-profile 1, and must not redefine the root module's one-level participants or contracts.
+Profile 2, and must not redefine the root module's one-level participants or contracts.
 
 ## Accessibility and Evidence
 
-- `spec.md`, `design.md`, and the relevant module/contract prose must contain a complete
-  explanation that can be understood without opening either diagram.
+- `spec.md`, `implementation.md`, and the relevant module summary, module design reference, and
+  contract prose must contain a complete explanation that can be understood without opening either
+  diagram.
 - Both source JSON files must pass all Archify showcase checks and produce fresh, provenance-bearing
   generated HTML.
 - Deterministic diagram validation must cover composition, provenance, freshness, and configured

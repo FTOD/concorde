@@ -19,7 +19,7 @@ providers:
   - external.spec-kit
 features:
   - feature.documentation.publish-project-docsite
-version: 4
+version: 5
 evidence:
   tests:
     - docsite/tests/contract/content-sources.test.ts
@@ -30,10 +30,12 @@ evidence_status: verified
 
 ## Purpose
 
-Provide UTF-8 architecture sources and canonical feature specifications and designs from the unified `specs/`
-hierarchy, plus project documentation from `docs/**/*.md`, without relocating or modifying any
-authority. Architecture publication selects `**/module.md` and `**/contracts/**/contract.md`; feature
-publication selects `**/spec.md` and `**/design.md`. Markdown follows
+Provide UTF-8 architecture sources and canonical feature specifications and accepted implementations
+from the unified `specs/` hierarchy, plus project documentation from `docs/**/*.md`, without
+relocating or modifying any authority. Architecture publication selects `**/module.md`,
+`**/contracts/**/contract.md`, and every module-level `design.md` beside a `module.md` (the module
+design reference); feature publication selects `**/spec.md` and `**/implementation.md`. A feature
+root never contains `design.md`. Markdown follows
 [CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/); optional front matter follows
 [YAML 1.2.2](https://yaml.org/spec/1.2.2/). Complete field, inclusion, link, failure, and compatibility
 semantics are defined once in `specs/concorde/features/002-create-project-docsite/contracts/content-sources.md`.
@@ -52,7 +54,7 @@ links, stable feature and architecture identity, and declared Archify JSON view 
 - The Documentation landing page links to all six learning guides, and every guide that summarizes
   normative architecture, feature, or command behavior links to its included canonical authority.
 - Feature IDs are unique; feature kind, module, title, and lifecycle status are present, and every
-  permanent feature design is published with source provenance.
+  accepted feature implementation and module design reference is published with source provenance.
 - Architecture IDs and kinds are explicit; declared JSON views are discovered without generated
   prerequisites and resolve to build-delivered Archify HTML before publication.
 - Project-relative links resolve within or across the two accepted source roots and three published views.
@@ -67,10 +69,13 @@ route-colliding sources stop publication with rule, source, reason, and remediat
 
 ## Compatibility
 
-Version 4 includes permanent feature-design publication and build-owned delivery of declared
-diagrams. The self-hosting guide baseline adds required document instances without changing the
-CommonMark/YAML representation, source roots, inclusion globs, content kinds, or path semantics.
-Further changes to those structural contract elements require a new major contract version.
+Version 5 replaces the feature-level `**/design.md` input with `**/implementation.md` (accepted
+realization) and admits module-level `design.md` beside a `module.md` as an architecture input; source
+roots, route bases, and path semantics are unchanged. Version 4 introduced permanent feature-design
+publication and build-owned delivery of declared diagrams. The self-hosting guide baseline adds
+required document instances without changing the CommonMark/YAML representation, source roots,
+inclusion globs, content kinds, or path semantics. Further changes to those structural contract
+elements require a new major contract version.
 
 ## Evidence
 

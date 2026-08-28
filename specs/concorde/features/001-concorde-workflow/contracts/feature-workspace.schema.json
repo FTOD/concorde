@@ -1,61 +1,142 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.invalid/contracts/feature-workspace-v3.schema.json",
-  "title": "Concorde Feature Workspace Protocol v3",
+  "$id": "https://concorde.invalid/contracts/feature-workspace-v4.schema.json",
+  "title": "Concorde Feature Workspace Protocol v4",
   "oneOf": [
-    { "$ref": "#/$defs/request" },
-    { "$ref": "#/$defs/response" },
-    { "$ref": "#/$defs/hardeningProposal" }
+    {
+      "$ref": "#/$defs/request"
+    },
+    {
+      "$ref": "#/$defs/response"
+    },
+    {
+      "$ref": "#/$defs/hardeningProposal"
+    }
   ],
   "$defs": {
     "operation": {
       "type": "string",
-      "enum": ["feature.harden"]
+      "enum": [
+        "feature.harden"
+      ]
     },
     "safePath": {
       "type": "string",
       "minLength": 1,
       "not": {
         "anyOf": [
-          { "pattern": "^(?:/|[A-Za-z]:[\\\\/])" },
-          { "pattern": "(?:^|/)\\.\\.(?:/|$)" },
-          { "pattern": "\\\\" }
+          {
+            "pattern": "^(?:/|[A-Za-z]:[\\\\/])"
+          },
+          {
+            "pattern": "(?:^|/)\\.\\.(?:/|$)"
+          },
+          {
+            "pattern": "\\\\"
+          }
         ]
       }
     },
     "finding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["rule_id", "severity", "source", "message", "remediation"],
+      "required": [
+        "rule_id",
+        "severity",
+        "source",
+        "message",
+        "remediation"
+      ],
       "properties": {
-        "rule_id": { "type": "string", "pattern": "^CONCORDE-[A-Z]+-[0-9]{3}$" },
-        "severity": { "type": "string", "enum": ["error", "warning", "info"] },
-        "source": { "$ref": "#/$defs/safePath" },
-        "message": { "type": "string", "minLength": 1 },
-        "remediation": { "type": "string", "minLength": 1 }
+        "rule_id": {
+          "type": "string",
+          "pattern": "^CONCORDE-[A-Z]+-[0-9]{3}$"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "info"
+          ]
+        },
+        "source": {
+          "$ref": "#/$defs/safePath"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "remediation": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "featureSummary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["feature_id", "title", "outcome", "evidence_status", "feature_directory"],
+      "required": [
+        "feature_id",
+        "title",
+        "outcome",
+        "evidence_status",
+        "feature_directory",
+        "implementation"
+      ],
       "properties": {
-        "feature_id": { "type": "string", "pattern": "^feature\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)+$" },
-        "title": { "type": "string", "minLength": 1 },
-        "outcome": { "type": "string", "minLength": 1 },
-        "evidence_status": { "type": "string", "enum": ["unknown", "partial", "verified", "disagrees"] },
-        "feature_directory": { "$ref": "#/$defs/safePath" }
+        "feature_id": {
+          "type": "string",
+          "pattern": "^feature\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_status": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "partial",
+            "verified",
+            "disagrees"
+          ]
+        },
+        "feature_directory": {
+          "$ref": "#/$defs/safePath"
+        },
+        "implementation": {
+          "$ref": "#/$defs/safePath"
+        }
       }
     },
     "parentContext": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["feature_id", "feature_directory", "feature_spec", "feature_design"],
+      "required": [
+        "feature_id",
+        "feature_directory",
+        "feature_spec",
+        "feature_implementation"
+      ],
       "properties": {
-        "feature_id": { "type": "string", "pattern": "^feature\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)+$" },
-        "feature_directory": { "$ref": "#/$defs/safePath" },
-        "feature_spec": { "$ref": "#/$defs/safePath" },
-        "feature_design": { "$ref": "#/$defs/safePath" }
+        "feature_id": {
+          "type": "string",
+          "pattern": "^feature\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)+$"
+        },
+        "feature_directory": {
+          "$ref": "#/$defs/safePath"
+        },
+        "feature_spec": {
+          "$ref": "#/$defs/safePath"
+        },
+        "feature_implementation": {
+          "$ref": "#/$defs/safePath"
+        }
       }
     },
     "workspacePaths": {
@@ -69,7 +150,9 @@
         "siblings",
         "feature_directory",
         "feature_spec",
-        "feature_design",
+        "feature_implementation",
+        "module_summary",
+        "module_design",
         "contracts_dir",
         "checklists_dir",
         "diagrams_dir",
@@ -83,77 +166,186 @@
         "validation"
       ],
       "properties": {
-        "workspace_kind": { "type": "string", "enum": ["feature", "subfeature"] },
-        "feature_id": { "type": ["string", "null"], "pattern": "^feature\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)+$" },
-        "providing_module": { "type": ["string", "null"] },
+        "workspace_kind": {
+          "type": "string",
+          "enum": [
+            "feature",
+            "subfeature"
+          ]
+        },
+        "feature_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^feature\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)+$"
+        },
+        "providing_module": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "parent_context": {
           "oneOf": [
-            { "$ref": "#/$defs/parentContext" },
-            { "type": "null" }
+            {
+              "$ref": "#/$defs/parentContext"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "siblings": {
           "type": "array",
-          "items": { "$ref": "#/$defs/featureSummary" },
+          "items": {
+            "$ref": "#/$defs/featureSummary"
+          },
           "uniqueItems": true
         },
-        "feature_directory": { "$ref": "#/$defs/safePath" },
-        "feature_spec": { "$ref": "#/$defs/safePath" },
-        "feature_design": { "$ref": "#/$defs/safePath" },
-        "contracts_dir": { "$ref": "#/$defs/safePath" },
+        "feature_directory": {
+          "$ref": "#/$defs/safePath"
+        },
+        "feature_spec": {
+          "$ref": "#/$defs/safePath"
+        },
+        "feature_implementation": {
+          "$ref": "#/$defs/safePath",
+          "description": "Accepted realization of the selected root; a placeholder until the first approved hardening."
+        },
+        "module_summary": {
+          "$ref": "#/$defs/safePath",
+          "description": "module.md of the level at which the feature is specified (navigation reference)."
+        },
+        "module_design": {
+          "$ref": "#/$defs/safePath",
+          "description": "design.md of that level; the only module reference a hardening proposal may amend."
+        },
+        "contracts_dir": {
+          "$ref": "#/$defs/safePath"
+        },
         "checklists_dir": {
           "$ref": "#/$defs/safePath",
           "description": "Temporal requirements-quality review directory below the selected feature's implementation workspace."
         },
-        "diagrams_dir": { "$ref": "#/$defs/safePath" },
-        "implementation_dir": { "$ref": "#/$defs/safePath" },
+        "diagrams_dir": {
+          "$ref": "#/$defs/safePath"
+        },
+        "implementation_dir": {
+          "$ref": "#/$defs/safePath"
+        },
         "implementation_state": {
           "type": "string",
-          "enum": ["absent", "active", "ready_to_harden"]
+          "enum": [
+            "absent",
+            "active",
+            "ready_to_harden"
+          ]
         },
-        "plan": { "$ref": "#/$defs/safePath" },
-        "research": { "$ref": "#/$defs/safePath" },
-        "data_model": { "$ref": "#/$defs/safePath" },
-        "quickstart": { "$ref": "#/$defs/safePath" },
-        "tasks": { "$ref": "#/$defs/safePath" },
-        "validation": { "$ref": "#/$defs/safePath" }
+        "plan": {
+          "$ref": "#/$defs/safePath"
+        },
+        "research": {
+          "$ref": "#/$defs/safePath"
+        },
+        "data_model": {
+          "$ref": "#/$defs/safePath"
+        },
+        "quickstart": {
+          "$ref": "#/$defs/safePath"
+        },
+        "tasks": {
+          "$ref": "#/$defs/safePath"
+        },
+        "validation": {
+          "$ref": "#/$defs/safePath"
+        }
       }
     },
     "taskSummary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["complete", "incomplete", "malformed"],
+      "required": [
+        "complete",
+        "incomplete",
+        "malformed"
+      ],
       "properties": {
-        "complete": { "type": "integer", "minimum": 0 },
-        "incomplete": { "type": "integer", "minimum": 0 },
-        "malformed": { "type": "integer", "minimum": 0 }
+        "complete": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "incomplete": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "malformed": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "checklistSummary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["files", "complete", "incomplete", "malformed"],
+      "required": [
+        "files",
+        "complete",
+        "incomplete",
+        "malformed"
+      ],
       "properties": {
-        "files": { "type": "integer", "minimum": 0 },
-        "complete": { "type": "integer", "minimum": 0 },
-        "incomplete": { "type": "integer", "minimum": 0 },
-        "malformed": { "type": "integer", "minimum": 0 }
+        "files": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "complete": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "incomplete": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "malformed": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "request": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "operation", "target", "options"],
+      "required": [
+        "schema_version",
+        "operation",
+        "target",
+        "options"
+      ],
       "properties": {
-        "schema_version": { "const": 3 },
-        "operation": { "$ref": "#/$defs/operation" },
-        "target": { "type": "string", "minLength": 1 },
+        "schema_version": {
+          "const": 4
+        },
+        "operation": {
+          "$ref": "#/$defs/operation"
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
         "options": {
           "type": "object",
           "properties": {
-            "proposal_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
-            "proposal": { "$ref": "#/$defs/safePath" },
-            "apply": { "type": "boolean" }
+            "proposal_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "proposal": {
+              "$ref": "#/$defs/safePath"
+            },
+            "apply": {
+              "type": "boolean"
+            }
           }
         }
       }
@@ -173,17 +365,36 @@
         "source_digest"
       ],
       "properties": {
-        "schema_version": { "const": 3 },
-        "operation": { "$ref": "#/$defs/operation" },
-        "target": { "type": "string", "minLength": 1 },
+        "schema_version": {
+          "const": 4
+        },
+        "operation": {
+          "$ref": "#/$defs/operation"
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
         "status": {
           "type": "string",
-          "enum": ["eligible", "selected", "hardened", "unchanged", "invalid", "conflict", "failed"]
+          "enum": [
+            "eligible",
+            "selected",
+            "hardened",
+            "unchanged",
+            "invalid",
+            "conflict",
+            "failed"
+          ]
         },
         "workspace": {
           "oneOf": [
-            { "$ref": "#/$defs/workspacePaths" },
-            { "type": "null" }
+            {
+              "$ref": "#/$defs/workspacePaths"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "changes": {
@@ -191,34 +402,96 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["path", "action", "meaning"],
+            "required": [
+              "path",
+              "action",
+              "meaning"
+            ],
             "properties": {
-              "path": { "$ref": "#/$defs/safePath" },
-              "action": { "type": "string", "enum": ["create", "update", "delete"] },
-              "meaning": { "type": "string", "minLength": 1 }
+              "path": {
+                "$ref": "#/$defs/safePath"
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "create",
+                  "update",
+                  "delete"
+                ]
+              },
+              "meaning": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         },
         "artifacts": {
           "type": "array",
-          "items": { "$ref": "#/$defs/safePath" },
+          "items": {
+            "$ref": "#/$defs/safePath"
+          },
           "uniqueItems": true
         },
-        "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
-        "source_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
-        "proposal_path": { "$ref": "#/$defs/safePath" },
-        "task_summary": { "$ref": "#/$defs/taskSummary" },
-        "checklist_summary": { "$ref": "#/$defs/checklistSummary" },
-        "design_digest_before": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
-        "design_digest_after": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "source_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "proposal_path": {
+          "$ref": "#/$defs/safePath"
+        },
+        "task_summary": {
+          "$ref": "#/$defs/taskSummary"
+        },
+        "checklist_summary": {
+          "$ref": "#/$defs/checklistSummary"
+        },
+        "implementation_digest_before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "implementation_digest_after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "module_design_digest_before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "module_design_digest_after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
         "removed_artifacts": {
           "type": "array",
-          "items": { "$ref": "#/$defs/safePath" },
+          "items": {
+            "$ref": "#/$defs/safePath"
+          },
           "uniqueItems": true
         },
         "retained_artifacts": {
           "type": "array",
-          "items": { "$ref": "#/$defs/safePath" },
+          "items": {
+            "$ref": "#/$defs/safePath"
+          },
           "uniqueItems": true
         }
       }
@@ -231,26 +504,65 @@
         "operation",
         "target",
         "source_digest",
-        "design",
+        "implementation",
         "remove"
       ],
       "properties": {
-        "proposal_version": { "const": 1 },
-        "operation": { "const": "feature.harden" },
-        "target": { "type": "string", "minLength": 1 },
-        "source_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
-        "design": {
+        "proposal_version": {
+          "const": 2
+        },
+        "operation": {
+          "const": "feature.harden"
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "implementation": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["path", "content"],
+          "required": [
+            "path",
+            "content"
+          ],
           "properties": {
-            "path": { "$ref": "#/$defs/safePath" },
-            "content": { "type": "string", "minLength": 1 }
-          }
+            "path": {
+              "$ref": "#/$defs/safePath"
+            },
+            "content": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "description": "Full content of the selected root's accepted realization; path must equal workspace.feature_implementation."
+        },
+        "module_design": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "content"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/safePath"
+            },
+            "content": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "description": "Optional full replacement content of the providing module's design.md; path must equal workspace.module_design."
         },
         "remove": {
           "type": "array",
-          "items": { "$ref": "#/$defs/safePath" },
+          "items": {
+            "$ref": "#/$defs/safePath"
+          },
           "minItems": 1,
           "maxItems": 1,
           "uniqueItems": true

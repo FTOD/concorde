@@ -24,12 +24,15 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase plan` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v3 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
-`workspace.parent_context`, and bounded `workspace.siblings`. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
-sibling specification/design body or any parent/sibling `implementation/` artifact implicitly, and
+Require Protocol v4 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+`workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
+`workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
+only where a phase names it as bounded context, and open the module `design.md` only for a specific
+recorded detail and cite it. When `workspace_kind` is `subfeature`,
+read the parent `feature_spec` and `feature_implementation` only as aggregate durable context. Never load a
+sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
@@ -78,11 +81,16 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Outline
 
-1. **Setup**: Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase plan` from repo root and parse JSON for FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, IMPLEMENTATION_DIR, SPECS_DIR, BRANCH. `FEATURE_SPEC`, `FEATURE_DESIGN`, and feature contracts are durable sources at the feature root; `IMPL_PLAN` and the other plan-phase artifacts belong to the temporal `IMPLEMENTATION_DIR`. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. **Setup**: Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase plan` from repo root and parse JSON for FEATURE_SPEC, FEATURE_IMPLEMENTATION, IMPL_PLAN, IMPLEMENTATION_DIR, SPECS_DIR, BRANCH. `FEATURE_SPEC`, `FEATURE_IMPLEMENTATION` (the returned `workspace.feature_implementation`), and feature contracts are durable sources at the feature root; `IMPL_PLAN` and the other plan-phase artifacts belong to the temporal `IMPLEMENTATION_DIR`. After a hardening, planning creates a fresh `implementation/` beneath the same root and never a root-level copy. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
-2. **Load context**: Read FEATURE_SPEC, FEATURE_DESIGN, and `.specify/memory/constitution.md`. Treat
-   FEATURE_DESIGN as the accepted realization baseline and plan the current attempt as an explicit
-   delta from it; do not update the durable design during planning. Load IMPL_PLAN template (already
+2. **Load context**: Read FEATURE_SPEC, FEATURE_IMPLEMENTATION, and `.specify/memory/constitution.md`. Treat
+   FEATURE_IMPLEMENTATION as the accepted realization baseline and plan the current attempt as an explicit
+   delta from it; do not update the accepted realization during planning. When it still holds the
+   placeholder ("No implementation realization has been hardened yet."), there is NO baseline: the
+   plan's realization-delta section states "no accepted baseline" rather than inventing one. Read the
+   level's `module.md` (`workspace.module_summary`) as bounded architecture context. Consult the
+   module `design.md` (`workspace.module_design`) only for a specific recorded detail and cite it.
+   Load IMPL_PLAN template (already
    copied). Also read every feature-owned Archify JSON source referenced by the specification; keep it
    distinct from the providing module's canonical `architecture.json`.
 
@@ -100,8 +108,9 @@ For `checklist`, resolve `checklist-template` separately through the same public
      its textual counterpart, generated delivery, showcase validation, truthful visual-review
      evidence, and freshness check.
    - Re-evaluate Constitution Check post-design
-   - Identify which accepted design sections remain unchanged and which implementation decisions the
-     current attempt proposes to replace or extend, so a later hardening can compact the result.
+   - Identify which accepted `implementation.md` sections remain unchanged and which implementation decisions the
+     current attempt proposes to replace or extend (or state "no accepted baseline" when the
+     placeholder is present), so a later hardening can compact the result.
 
 ## Mandatory Post-Execution Hooks
 
@@ -200,7 +209,7 @@ Command ends after Phase 1 design. Report branch, IMPL_PLAN path, and generated 
 ## Done When
 
 - [ ] Plan workflow executed and design artifacts generated
-- [ ] Durable `design.md` was used as the accepted baseline and remained byte-for-byte unchanged
+- [ ] Durable `implementation.md` was used as the accepted baseline (or recorded as no accepted baseline) and remained byte-for-byte unchanged; no module `module.md` or `design.md` was edited
 - [ ] Required feature diagrams or explicit sufficiency rationales are covered by the plan; diagram
       sources remain under `diagrams/` and their automatic feature-page publication is verified
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above

@@ -25,57 +25,49 @@ Distribution owns bundle composition, version pins, release metadata, lifecycle 
 component provenance. It does not own preset content, agent command behavior, architecture semantics,
 or user-authored architecture sources.
 
-## Feature Set
+## Structure
 
-- `feature.distribution.package-concorde-bundle` refines
-  `feature.concorde.install-with-spec-kit` and `feature.concorde.self-host-framework`; it owns the
-  versioned recipe used to compare the self-hosted local composition with the released product, while
-  the root self-hosting feature owns checkout mutation and freshness.
-
-## Bundle and Catalog Model
-
-A bundle is a versioned recipe, not a runtime. `concorde-bundle` names and pins the independently
-versioned `concorde-core` preset and `concorde` extension that have been tested together. Bundle
-inspection expands that recipe before installation; installation delegates each component to Spec
-Kit's preset or extension machinery and records ownership for safe update and removal.
-
-Catalogs are trusted indexes used to discover those three release units. Each catalog entry carries
-identity, version, compatibility, download location, and integrity metadata. The URL embedded while
-building a release describes where the completed catalog and archives will be served; the builder
-does not need to contact that URL. Local directory, manifest, and archive bundle inputs bypass bundle
-discovery, but referenced components still must resolve from permitted component catalogs or safe
-installed state.
-
-See the installation feature's
+This leaf module has no submodules, so no separate level view is maintained; its structure is the
+`concorde-bundle` recipe, the two lifecycle contracts inventoried below, and the release archives and
+catalogs it produces. See the installation feature's
 <a href="/architecture/concorde-spec-kit-component-model.html">component model</a> and
 <a href="/architecture/concorde-bundle-installation-flow.html">installation flow</a>. Their
-maintained sources are `specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` and
+maintained sources are
+`specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` and
 `specs/concorde/features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json`.
 
-## Canonical Contract Definitions
+## Features
 
-The maintained definitions are `contracts/bundle-lifecycle/contract.md` and
-`contracts/component-packages/contract.md`; the summaries below provide bounded context.
+| Feature ID | Outcome | Refines | Specification |
+|---|---|---|---|
+| `feature.distribution.package-concorde-bundle` | A maintainer can inspect, install, update, and remove one native Spec Kit bundle whose resolved plan contains exactly the compatible Concorde preset and command extension, while project-owned sources and shared components remain safe; the same versioned recipe constrains development self-hosting without becoming a self-hosting runtime. | `feature.concorde.install-with-spec-kit`, `feature.concorde.self-host-framework` (the root self-hosting feature owns checkout mutation and freshness) | [spec.md](features/001-package-concorde-bundle/spec.md) |
 
-### `contract.distribution.bundle-lifecycle`
+## Contracts
 
-- **Role / flow**: provided, bidirectional.
-- **Counterparty**: Spec Kit and the maintainer.
-- **Representation**: commonly adopted Spec Kit bundle format, version `0.16.4`.
-- **Information**: exact component plan, versions, trust source, lifecycle result, and diagnostics.
-- **Guarantees**: preview and install resolve the same component set; repeated installation is
-  idempotent; update is explicit; removal affects only owned components.
-- **Failure**: unresolved or incompatible components stop installation and are named in diagnostics.
-- **Evidence**: package preview/install/update/failure/removal acceptance is verified; evidence remains
-  partial until clean targets execute every installed winning command surface and preset
-  recomposition restores the correct lower layer.
+| Contract ID | Role | Flow | Counterparty | Definition |
+|---|---|---|---|---|
+| `contract.distribution.bundle-lifecycle` | provided | bidirectional | Spec Kit and the maintainer | [contract.md](contracts/bundle-lifecycle/contract.md) |
+| `contract.distribution.component-packages` | required | input | `module.concorde.spec-kit-integration` | [contract.md](contracts/component-packages/contract.md) |
 
-### `contract.distribution.component-packages`
+## Submodules
 
-- **Role / flow**: required, input.
-- **Provider**: `module.concorde.spec-kit-integration`.
-- **Representation**: commonly adopted Spec Kit preset and extension manifests, version `0.16.4`.
-- **Information**: component identity, version, compatibility, provided artifacts, and dependencies.
-- **Guarantees**: each component is independently valid and its declared files resolve.
-- **Failure**: invalid components cannot be included in a releaseable bundle.
-- **Evidence**: verified by component source installation, archive, catalog, and digest tests.
+None.
+
+## Representative Scenario
+
+`scenario.distribution.install-bundle` shows a maintainer asking Spec Kit to preview `concorde-bundle`.
+Distribution expands the versioned recipe into its exact component plan, the pinned `concorde-core`
+preset and `concorde` extension resolved from permitted component catalogs and supplied by Spec Kit
+Integration across `contract.distribution.component-packages`, and reports versions, trust source,
+and diagnostics across `contract.distribution.bundle-lifecycle`. After the maintainer accepts,
+installation delegates each component to Spec Kit's preset or extension machinery and records
+ownership so later update and removal touch only owned components. Unresolved or incompatible
+components stop the installation and are named in the diagnostics.
+
+## Design Rationale
+
+A bundle is a versioned recipe, not a runtime: pinning independently versioned components that were
+tested together gives one inspectable installation unit while Spec Kit keeps ownership of resolution,
+provenance, and materialization. Catalogs are trusted indexes rather than installed components, so
+trust and integrity metadata travel with the archives and local inputs still resolve through them.
+The bundle and catalog model and the contract narratives are in the [design reference](design.md).

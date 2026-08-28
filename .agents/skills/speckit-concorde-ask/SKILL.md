@@ -30,9 +30,12 @@ Read the smallest relevant set in this order:
 2. Installed preset sources under `.specify/presets/concorde-core/`, especially `preset.yml`,
    `README.md`, command definitions, and templates governing the named lifecycle stage.
 3. For project-specific questions only, the project constitution and the smallest bounded set of
-   maintained `specs/` sources needed to answer: the current module's `module.md`, one-level
-   `architecture.json`, relevant contracts, and the named feature's durable `spec.md` and `design.md`.
-   For a sub-feature question, include its parent durable spec/design as aggregate context and only
+   maintained `specs/` sources needed to answer, starting from summaries: the current module's
+   `module.md`, one-level `architecture.json`, relevant contracts, and the named feature's durable
+   `spec.md`. Open a module `design.md` or a feature `implementation.md` only when the question asks
+   for implementation detail, rationale, or accepted realization, and cite each opened file.
+   For a sub-feature question, include its parent durable `spec.md` (and its `implementation.md`
+   under the same rule) as aggregate context and only
    concise sibling summaries; do not read sibling bodies or parent/sibling attempts merely because
    they exist. Distinguish two-level feature containment from adjacent-module `refines` links.
 4. Use `.concorde/config.json` and `.specify/feature.json` only to locate configured or selected
@@ -55,6 +58,11 @@ Return standard Markdown containing:
   inference**, and **Uncertainty** wherever those categories affect confidence; and
 - a `Sources` section with project-relative citation paths for every installed-guidance or maintained
   project fact used.
+
+Name the kind of source behind every project fact: module summary (`module.md`), module design
+reference (`design.md`), required behavior (`spec.md`), accepted realization (`implementation.md`),
+temporal attempt (`implementation/`), or generated evidence. Keep feature containment distinct from
+adjacent-module refinement.
 
 When installed guidance, maintained project sources, or versions conflict, cite each relevant source,
 describe the disagreement, and do not silently normalize it. Do not present model memory as Concorde

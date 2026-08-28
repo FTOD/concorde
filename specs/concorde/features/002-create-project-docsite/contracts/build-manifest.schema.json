@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.dev/contracts/documentation/build-manifest-v4.schema.json",
-  "title": "Concorde Documentation Build Manifest v4",
+  "$id": "https://concorde.dev/contracts/documentation/build-manifest-v5.schema.json",
+  "title": "Concorde Documentation Build Manifest v5",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,7 +15,7 @@
   ],
   "properties": {
     "schemaVersion": {
-      "const": 4
+      "const": 5
     },
     "generator": {
       "type": "object",
@@ -37,7 +37,7 @@
         "additionalProperties": false,
         "required": ["id", "sourceBase", "routeBase", "include"],
         "properties": {
-          "id": { "enum": ["architecture", "docs", "features", "feature-designs"] },
+          "id": { "enum": ["architecture", "docs", "features", "feature-implementations"] },
           "sourceBase": { "enum": ["docs", "specs"] },
           "routeBase": { "enum": ["/architecture", "/docs", "/features"] },
           "include": {
@@ -101,6 +101,10 @@
       "type": "string",
       "pattern": "^/[^?#]*$"
     },
+    "linkTarget": {
+      "type": "string",
+      "pattern": "^/[^?#]*(#[^?#]*)?$"
+    },
     "sha256": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
@@ -111,7 +115,7 @@
       "required": ["targetSourcePath", "targetRoute"],
       "properties": {
         "targetSourcePath": { "$ref": "#/$defs/sourcePath" },
-        "targetRoute": { "$ref": "#/$defs/route" }
+        "targetRoute": { "$ref": "#/$defs/linkTarget" }
       }
     },
     "navigation": {
@@ -176,7 +180,7 @@
         "links"
       ],
       "properties": {
-        "kind": { "enum": ["architecture-source", "project-document", "feature-specification", "feature-design"] },
+        "kind": { "enum": ["architecture-source", "module-design", "project-document", "feature-specification", "feature-implementation"] },
         "sourcePath": { "$ref": "#/$defs/sourcePath" },
         "sourceSha256": { "$ref": "#/$defs/sha256" },
         "route": { "$ref": "#/$defs/route" },
@@ -205,12 +209,16 @@
           "minContains": 0,
           "maxContains": 1
         },
+        "implementationRoute": { "$ref": "#/$defs/route" },
+        "specificationRoute": { "$ref": "#/$defs/route" },
         "architectureId": { "type": "string", "minLength": 1 },
         "architectureKind": { "enum": ["module", "feature", "contract"] },
         "parentId": { "type": "string", "minLength": 1 },
         "architectureViewSource": { "$ref": "#/$defs/sourcePath" },
         "architectureViewSha256": { "$ref": "#/$defs/sha256" },
-        "architectureViewRoute": { "$ref": "#/$defs/route" }
+        "architectureViewRoute": { "$ref": "#/$defs/route" },
+        "designReferenceRoute": { "$ref": "#/$defs/route" },
+        "moduleRoute": { "$ref": "#/$defs/route" }
       },
       "allOf": [
         {
@@ -219,7 +227,16 @@
             "required": ["kind"]
           },
           "then": {
-            "required": ["featureId", "moduleId", "status", "diagrams", "featureLevel", "subfeatures", "siblings"]
+            "required": ["featureId", "moduleId", "status", "diagrams", "featureLevel", "subfeatures", "siblings", "implementationRoute"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "feature-implementation" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "required": ["featureId", "moduleId", "featureLevel", "subfeatures", "siblings", "specificationRoute"]
           }
         },
         {
@@ -238,6 +255,24 @@
           },
           "then": {
             "required": ["architectureId", "architectureKind"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "architecture-source" }, "architectureKind": { "const": "module" } },
+            "required": ["kind", "architectureKind"]
+          },
+          "then": {
+            "required": ["designReferenceRoute"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "module-design" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "required": ["moduleId", "moduleRoute"]
           }
         }
       ]

@@ -20,6 +20,8 @@ async function main() {
       architecture: registry.documents.filter((document) => document.collectionId === 'architecture').length,
       docs: registry.documents.filter((document) => document.collectionId === 'docs').length,
       features: registry.documents.filter((document) => document.collectionId === 'features').length,
+      implementations: registry.documents.filter((document) => document.collectionId === 'feature-implementations').length,
+      moduleDesigns: registry.documents.filter((document) => document.contentKind === 'module-design').length,
       excluded: registry.excludedSources.length,
       findings: findings.length,
     },

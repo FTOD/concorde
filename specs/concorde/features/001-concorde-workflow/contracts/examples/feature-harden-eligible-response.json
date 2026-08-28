@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "operation": "feature.harden",
   "target": "feature.example.api.health-check",
   "status": "eligible",
@@ -11,7 +11,9 @@
     "siblings": [],
     "feature_directory": "specs/example/modules/api/features/002-add-health-check",
     "feature_spec": "specs/example/modules/api/features/002-add-health-check/spec.md",
-    "feature_design": "specs/example/modules/api/features/002-add-health-check/design.md",
+    "feature_implementation": "specs/example/modules/api/features/002-add-health-check/implementation.md",
+    "module_summary": "specs/example/modules/api/module.md",
+    "module_design": "specs/example/modules/api/design.md",
     "contracts_dir": "specs/example/modules/api/features/002-add-health-check/contracts",
     "checklists_dir": "specs/example/modules/api/features/002-add-health-check/implementation/checklists",
     "diagrams_dir": "specs/example/modules/api/features/002-add-health-check/diagrams",
@@ -26,18 +28,19 @@
   },
   "changes": [
     {
-      "path": "specs/example/modules/api/features/002-add-health-check/design.md",
+      "path": "specs/example/modules/api/features/002-add-health-check/implementation.md",
       "action": "update",
-      "meaning": "Replace the durable design with the reviewed accepted realization."
+      "meaning": "Replace the accepted realization with the reviewed candidate."
     },
     {
       "path": "specs/example/modules/api/features/002-add-health-check/implementation",
       "action": "delete",
-      "meaning": "Remove the complete temporal implementation attempt after design promotion."
+      "meaning": "Remove the complete temporal implementation attempt after the realization is promoted."
     }
   ],
   "artifacts": [
-    "specs/example/modules/api/features/002-add-health-check/design.md",
+    "specs/example/modules/api/design.md",
+    "specs/example/modules/api/features/002-add-health-check/implementation.md",
     "specs/example/modules/api/features/002-add-health-check/implementation/tasks.md",
     "specs/example/modules/api/features/002-add-health-check/spec.md"
   ],

@@ -21,12 +21,15 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase analyze` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v3 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
-`workspace.parent_context`, and bounded `workspace.siblings`. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
-sibling specification/design body or any parent/sibling `implementation/` artifact implicitly, and
+Require Protocol v4 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+`workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
+`workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
+only where a phase names it as bounded context, and open the module `design.md` only for a specific
+recorded detail and cite it. When `workspace_kind` is `subfeature`,
+read the parent `feature_spec` and `feature_implementation` only as aggregate durable context. Never load a
+sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
@@ -74,7 +77,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Goal
 
-Identify inconsistencies, duplications, ambiguities, and underspecified items across durable `spec.md`, durable accepted `design.md`, and the active `implementation/plan.md` and `implementation/tasks.md` before implementation. This command MUST run only after `$speckit-tasks` has successfully produced a complete task list.
+Identify inconsistencies, duplications, ambiguities, and underspecified items across durable `spec.md`, durable accepted `implementation.md`, and the active `implementation/plan.md` and `implementation/tasks.md` before implementation. This command MUST run only after `$speckit-tasks` has successfully produced a complete task list.
 
 ## Operating Constraints
 
@@ -86,10 +89,10 @@ Identify inconsistencies, duplications, ambiguities, and underspecified items ac
 
 ### 1. Initialize Analysis Context
 
-Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase analyze` once from repo root and parse JSON for FEATURE_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
+Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase analyze` once from repo root and parse JSON for FEATURE_DIR, FEATURE_SPEC, FEATURE_IMPLEMENTATION, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
 
 - SPEC = FEATURE_SPEC
-- DESIGN = FEATURE_DESIGN
+- IMPLEMENTATION = FEATURE_IMPLEMENTATION
 - PLAN = IMPL_PLAN
 - TASKS = TASKS
 
@@ -109,9 +112,9 @@ Load only the minimal necessary context from each artifact:
 - Edge Cases (if present)
 - Feature-diagram roles, maintained JSON paths, textual counterparts, and sufficiency rationales
 
-**From design.md:**
+**From implementation.md:**
 
-- Accepted realization baseline, durable decisions, scenario realization, traceability, and known limitations
+- Accepted realization baseline, durable decisions, scenario realization, traceability, and known limitations (the placeholder means no accepted baseline)
 
 **From plan.md:**
 
@@ -283,6 +286,7 @@ After reporting, check if `.specify/extensions.yml` exists in the project root.
 ### Analysis Guidelines
 
 - **NEVER modify files** (this is read-only analysis)
+- **NEVER propose editing `implementation.md` or any module `module.md`/`design.md`**; when analysis surfaces rationale, alternatives, or implementation detail worth keeping, recommend recording it inside the attempt (`implementation/research.md` or `implementation/validation.md`) so hardening can carry it forward
 - **NEVER hallucinate missing sections** (if absent, report them accurately)
 - **Prioritize constitution violations** (these are always CRITICAL)
 - **Use examples over exhaustive rules** (cite specific instances, not generic patterns)

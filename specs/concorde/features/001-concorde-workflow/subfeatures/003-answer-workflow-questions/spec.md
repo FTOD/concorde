@@ -20,58 +20,80 @@ canonical_spec: specs/concorde/features/001-concorde-workflow/subfeatures/003-an
 # Feature Specification: Answer Workflow Questions
 
 **Created**: 2026-08-26
-**Status**: Specified; existing realization has not been hardened into this sub-feature design
-**Input**: Answer grounded Concorde questions through `speckit.concorde.ask` without becoming a new authority.
+**Revised**: 2026-08-27
+**Status**: Specified and revised for the parent's document model; existing realization has not been
+hardened into this sub-feature's `implementation.md`
+**Input**: Answer grounded Concorde questions through `speckit.concorde.ask` from installed guidance
+and module summaries first, opening references only on demand, without becoming a new authority.
 
 ## Outcome
 
 A maintainer receives a concise, source-grounded answer about Concorde concepts, commands, artifact
-placement, or current-project application without any workspace mutation.
+placement, or current-project application without any workspace mutation and without the answer
+silently reading more of the project than the question needs.
 
 ## Parent Context and Boundary
 
-The parent defines the workflow being explained. This child owns question interpretation, minimal
-source selection, attribution, uncertainty, and read-only behavior. It does not execute a runtime
-operation merely because one might help. The parent diagram already distinguishes the agent-only
-question path from runtime operations, so no child diagram is needed.
+The parent defines the workflow being explained and which document holds which kind of fact. This
+child owns question interpretation, minimal source selection, attribution, uncertainty, and
+read-only behavior. It does not execute a runtime operation merely because one might help. The
+parent diagram already distinguishes the agent-only question path from runtime operations, so no
+child diagram is needed.
 
 ## User Scenarios & Testing
 
 ### User Story 1 - Ask a grounded question (Priority: P1)
 
-A maintainer asks what a concept means, when to use a command, where an artifact belongs, or how the
-workflow applies to a selected project context.
+A maintainer asks what a concept means, when to use a command, where an artifact belongs, how the
+workflow applies to a selected project context, or why a level is built the way it is.
 
-**Independent Test**: Ask representative conceptual, procedural, project-specific, ambiguous, and
-unsupported questions and verify source use, attribution, uncertainty, and zero mutations.
+**Independent Test**: Ask representative conceptual, procedural, project-specific, rationale-seeking,
+ambiguous, and unsupported questions and verify source use, attribution, uncertainty, reference
+opening, and zero mutations.
 
 **Acceptance Scenarios**:
 1. **Given** an answer supported by installed guidance, **When** the question is asked, **Then** the
    answer identifies its authoritative basis and separates fact from inference.
 2. **Given** project context is necessary, **When** the question concerns a child feature, **Then**
-   only the child, parent durable pair, and concise sibling summaries are considered.
-3. **Given** ambiguity or conflicting evidence, **When** no safe answer exists, **Then** the response
+   only the child's durable pair, the parent's durable pair, the level's `module.md`, and concise
+   sibling summaries are considered.
+3. **Given** a question about why or how a level is built, **When** its `module.md` does not answer
+   it, **Then** the answer opens that level's `design.md`, cites it, and says that it did.
+4. **Given** ambiguity or conflicting evidence, **When** no safe answer exists, **Then** the response
    states uncertainty or asks one focused clarification.
 
 ### Edge Cases
 
 - Installed guidance is missing, stale, or conflicts with maintained project sources.
 - The question implicitly requests a mutation or unrelated implementation detail.
+- The answer lives only in a design reference or accepted realization that the question did not
+  explicitly ask to open.
 
 ## Requirements
 
 - **FR-001**: Answers MUST use installed Concorde guidance as the primary workflow authority.
-- **FR-002**: Project-specific answers MUST use only the smallest relevant maintained context.
+- **FR-002**: Project-specific answers MUST use only the smallest relevant maintained context,
+  starting from module summaries and feature specifications.
 - **FR-003**: Answers MUST identify their source basis and label inference, uncertainty, or conflict.
-- **FR-004**: The question surface MUST distinguish containment, refinement, durable intent, attempts, and generated evidence.
-- **FR-005**: The question surface MUST NOT invoke another operation or mutate any source or control state.
-- **FR-006**: Unsupported or materially ambiguous questions MUST receive an honest limitation or focused clarification.
+- **FR-004**: The question surface MUST distinguish summary, design reference, required behavior,
+  accepted realization, temporal attempt, generated evidence, containment, and refinement.
+- **FR-005**: The question surface MUST NOT invoke another operation or mutate any source or control
+  state.
+- **FR-006**: Unsupported or materially ambiguous questions MUST receive an honest limitation or
+  focused clarification.
+- **FR-007**: The question surface MUST NOT open a module `design.md` or a feature `implementation.md`
+  unless the question asks for implementation detail, rationale, or accepted realization, and MUST
+  cite each one it opens.
 
 ## Success Criteria
 
 - **SC-001**: Every acceptance answer identifies all authoritative source categories it relies on.
-- **SC-002**: Every question test leaves maintained, temporal, generated, and selection bytes unchanged.
-- **SC-003**: At least 90% of pilot maintainers can answer the original workflow question correctly after using the surface.
+- **SC-002**: Every question test leaves maintained, temporal, generated, and selection bytes
+  unchanged.
+- **SC-003**: At least 90% of pilot maintainers can answer the original workflow question correctly
+  after using the surface.
+- **SC-004**: In all fixture questions answerable from summaries, zero references or accepted
+  realizations are opened; in all fixtures that require one, it is opened and cited.
 
 ## Assumptions
 

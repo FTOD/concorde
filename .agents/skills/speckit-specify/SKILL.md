@@ -22,12 +22,15 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase specify` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v3 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
-`workspace.parent_context`, and bounded `workspace.siblings`. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
-sibling specification/design body or any parent/sibling `implementation/` artifact implicitly, and
+Require Protocol v4 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+`workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
+`workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
+only where a phase names it as bounded context, and open the module `design.md` only for a specific
+recorded detail and cite it. When `workspace_kind` is `subfeature`,
+read the parent `feature_spec` and `feature_implementation` only as aggregate durable context. Never load a
+sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 Bind `CHECKLISTS_DIR` to the returned `workspace.checklists_dir`; never derive it from `FEATURE_DIR`.
 
@@ -131,10 +134,11 @@ Given that feature description, do this:
    - Resolve the active `spec-template` through the Spec Kit preset/template resolution stack (equivalent to `specify preset resolve spec-template`)
    - Copy the resolved `spec-template` file to `SPECIFY_FEATURE_DIRECTORY/spec.md` as the starting point
    - Set `SPEC_FILE` to `SPECIFY_FEATURE_DIRECTORY/spec.md`
-   - Resolve `design-template` through the same public preset/template stack
-   - If `SPECIFY_FEATURE_DIRECTORY/design.md` does not exist, copy the resolved `design-template` to
-     that path and set `DESIGN_FILE` accordingly. If it already exists, preserve it byte-for-byte;
-     specification revision never updates accepted implementation design.
+   - Resolve `implementation-template` through the same public preset/template stack
+   - If `SPECIFY_FEATURE_DIRECTORY/implementation.md` does not exist, copy the resolved
+     `implementation-template` to that path and set `IMPLEMENTATION_FILE` accordingly. If it already
+     exists, preserve it byte-for-byte; specification revision never updates the accepted realization.
+     Never create a feature-root `design.md`; that name is reserved for module design references.
    - Persist the resolved path to `.specify/feature.json`:
      ```json
      {
@@ -150,8 +154,9 @@ Given that feature description, do this:
    - The spec directory and file are always created by this command, never by the hook
 
 4. Load the resolved active `spec-template` file to understand required sections. Treat the adjacent
-   `design.md` as read-only accepted realization context when it is relevant; do not move design or
-   implementation details into `spec.md` and do not update `design.md` from this command.
+   `implementation.md` as read-only accepted realization context when it is relevant (its placeholder
+   means no realization has been hardened yet); do not move design or
+   implementation details into `spec.md` and do not update `implementation.md` from this command.
 
 5. **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints.
 
@@ -327,7 +332,7 @@ Check if `.specify/extensions.yml` exists in the project root.
 Report completion to the user with:
 - `SPECIFY_FEATURE_DIRECTORY` — the feature directory path
 - `SPEC_FILE` — the spec file path
-- `DESIGN_FILE` — the durable design path and whether it was created or preserved
+- `IMPLEMENTATION_FILE` — the durable implementation path and whether it was created or preserved
 - Checklist results summary
 - Readiness for the next phase (`$speckit-clarify` or `$speckit-plan`)
 
@@ -397,6 +402,6 @@ Success criteria must be:
 ## Done When
 
 - [ ] Specification written to `SPEC_FILE` and validated against quality checklist
-- [ ] Durable `DESIGN_FILE` exists and any pre-existing design was preserved byte-for-byte
+- [ ] Durable `IMPLEMENTATION_FILE` exists, any pre-existing realization was preserved byte-for-byte, and no feature-root `design.md` was created
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with feature directory, spec file path, and checklist results

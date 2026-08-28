@@ -10,8 +10,9 @@
 
 ## Purpose
 
-Provide one browsable, searchable, read-only projection of canonical architecture sources, project
-documentation, and permanent feature specifications and accepted designs.
+Provide one browsable, searchable, read-only projection of canonical architecture sources (including
+module design references), project documentation, and permanent feature specifications and accepted
+implementations.
 
 ## Representation
 
@@ -23,9 +24,9 @@ JavaScript, assets, a local search index, and `build-manifest.json`.
 | Route | Meaning |
 |---|---|
 | `/` | Project landing page with Architecture, Documentation, and Features entry points and source counts |
-| `/architecture/**` | Architecture module and contract Markdown plus declared embedded views |
+| `/architecture/**` | Architecture module, module design reference, and contract Markdown plus declared embedded views |
 | `/docs/**` | Project documents sourced from `docs/**/*.md` |
-| `/features/**` | Permanent feature specifications from `specs/**/spec.md` and accepted designs from `specs/**/design.md`; specification pages include their declared feature diagrams |
+| `/features/**` | Permanent feature specifications from `specs/**/spec.md` and accepted implementations from `specs/**/implementation.md`; specification pages include their declared feature diagrams |
 | `/build-manifest.json` | Machine-readable successful-build inventory |
 
 For the Concorde self-hosting site, the Documentation route space includes this maintained baseline:
@@ -35,7 +36,7 @@ For the Concorde self-hosting site, the Documentation route space includes this 
 | `/docs/` | Documentation overview and progressive reading path |
 | `/docs/quick-start` | Project-site preview, local framework installation, and first feature |
 | `/docs/framework-overview` | Concorde purpose, influences, hierarchy, and adjacent-tool boundaries |
-| `/docs/specification-model` | Durable architecture/specification/design and temporal implementation model |
+| `/docs/specification-model` | Durable architecture, module design reference, specification, and accepted implementation versus the temporal implementation attempt |
 | `/docs/project-structure` | Workspace authority and correct edit locations |
 | `/docs/concorde-workflow` | End-to-end architecture-aware development lifecycle |
 | `/docs/commands` | Normal Spec Kit phases, Concorde operations, and installed command layers |
@@ -44,7 +45,8 @@ For the Concorde self-hosting site, the Documentation route space includes this 
 Every source-derived page displays its content kind and project-relative source path. Architecture
 pages also display stable entity identity, hierarchy metadata, and declared-view provenance; feature
 specification pages display stable feature ID, owning module, recorded lifecycle status, and every
-declared fresh feature diagram, while feature-design pages identify their durable source provenance.
+declared fresh feature diagram, while feature implementation pages and module design reference pages
+identify their durable source provenance and owning feature or module.
 Draft status is visible and does not imply approval or implementation agreement.
 
 ## Guarantees
@@ -71,8 +73,9 @@ build interface and the prior successful output remains untouched.
 
 ## Compatibility
 
-The three top-level route spaces and manifest schema version remain stable within published-site
-contract version 3. The named self-hosting Documentation baseline adds compatible pages within the
+The three top-level route spaces remain stable within published-site contract version 3; the
+manifest schema version is owned by the build-manifest contract (schema version 5). The named
+self-hosting Documentation baseline adds compatible pages within the
 existing `/docs` route space and does not change the representation or manifest schema. Source
 renames may change their derived routes unless a later redirect feature is specified. Adding new
 content pages is compatible; changing a route base or removing provenance is breaking.

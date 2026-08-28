@@ -22,3 +22,13 @@ Validate feature containment independently from adjacent-module refinement: cano
 paths, unique IDs, bidirectional parent registration, module inheritance, child absence from the
 module top-level registry, no cycles, no third level, safe selection, and isolated durable/temporal
 roots must all produce actionable containment or layout findings.
+
+Present the document-model rules by their stable IDs. Module summary shape
+(`CONCORDE-SUMMARY-001` through `CONCORDE-SUMMARY-004`): `module.md` has the required sections
+`Responsibility`, `Boundary`, `Structure`, `Features`, `Contracts`, `Submodules`,
+`Representative Scenario`, and `Design Rationale`; `Structure` links the level view or records a leaf
+rationale; each inventory section holds a Markdown table or `None.`; and the summary links its
+adjacent `design.md`. The reading budget is `CONCORDE-SUMMARY-005`, a WARNING that never changes the
+status. A missing, empty, or symlinked module `design.md` is `CONCORDE-MODULE-002`. Feature-root
+pairing: a missing `implementation.md` is `CONCORDE-LAYOUT-005`, a legacy feature-root `design.md` is
+`CONCORDE-LAYOUT-007`, and both names present is `CONCORDE-LAYOUT-008`.

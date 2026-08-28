@@ -3,7 +3,7 @@ schema_version: "1.0"
 bundle:
   id: "concorde-bundle"
   name: "Concorde Bundle"
-  version: "0.1.0"
+  version: "0.2.0"
   role: "developer"
   description: "Pinned Concorde preset and extension installation recipe for Spec Kit"
   author: "Concorde maintainers"
@@ -17,10 +17,10 @@ requires:
 provides:
   extensions:
     - id: "concorde"
-      version: "0.1.0"
+      version: "0.2.0"
   presets:
     - id: "concorde-core"
-      version: "0.1.0"
+      version: "0.2.0"
       priority: 10
       strategy: "append"
   steps: []

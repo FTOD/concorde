@@ -1,5 +1,10 @@
-export type CollectionId = 'architecture' | 'docs' | 'features' | 'feature-designs';
-export type ContentKind = 'architecture-source' | 'project-document' | 'feature-specification' | 'feature-design';
+export type CollectionId = 'architecture' | 'docs' | 'features' | 'feature-implementations';
+export type ContentKind =
+  | 'architecture-source'
+  | 'module-design'
+  | 'project-document'
+  | 'feature-specification'
+  | 'feature-implementation';
 export type SourceState = 'discovered' | 'parsed' | 'validated' | 'mapped' | 'rendered' | 'invalid';
 
 export interface SourceCollection {
@@ -33,6 +38,7 @@ export interface LinkReference {
 
 export interface SourceDocument {
   collectionId: CollectionId;
+  contentKind: ContentKind;
   sourcePath: string;
   realPath: string;
   title: string;
@@ -49,10 +55,13 @@ export interface SourceDocument {
 
 export interface ProjectDocument extends SourceDocument {
   collectionId: 'docs';
+  contentKind: 'project-document';
 }
 
-export interface FeatureDesign extends SourceDocument {
-  collectionId: 'feature-designs';
+/** A feature root's accepted realization (`implementation.md`), paired with its sibling `spec.md`. */
+export interface FeatureImplementation extends SourceDocument {
+  collectionId: 'feature-implementations';
+  contentKind: 'feature-implementation';
   featureId?: string;
   moduleId?: string;
   featureLevel?: 'feature' | 'subfeature';
@@ -60,10 +69,13 @@ export interface FeatureDesign extends SourceDocument {
   parentFeatureRoute?: string;
   subfeatures?: FeatureRelation[];
   siblings?: FeatureRelation[];
+  /** Companion link: the route of the paired feature specification page. */
+  specificationRoute?: string;
 }
 
 export interface FeatureSpecification extends SourceDocument {
   collectionId: 'features';
+  contentKind: 'feature-specification';
   featureId: string;
   kind: 'feature';
   moduleId: string;
@@ -77,6 +89,8 @@ export interface FeatureSpecification extends SourceDocument {
   subfeatureIds: string[];
   subfeatures: FeatureRelation[];
   siblings: FeatureRelation[];
+  /** Companion link: the route of the paired accepted realization page. */
+  implementationRoute?: string;
 }
 
 export interface FeatureRelation {
@@ -137,6 +151,7 @@ export type ArchitectureKind = 'contract' | 'feature' | 'module';
 
 export interface ArchitectureSource extends SourceDocument {
   collectionId: 'architecture';
+  contentKind: 'architecture-source';
   architectureId: string;
   architectureKind: ArchitectureKind;
   moduleId?: string;
@@ -144,6 +159,19 @@ export interface ArchitectureSource extends SourceDocument {
   architectureViewSource?: string;
   architectureViewSha256?: string;
   architectureViewRoute?: string;
+  /** Companion link on module summaries: the route of the sibling `design.md` reference page. */
+  designReferenceRoute?: string;
+}
+
+/** A module design reference (`design.md` beside `module.md`), published as its own Architecture page. */
+export interface ModuleDesign extends SourceDocument {
+  collectionId: 'architecture';
+  contentKind: 'module-design';
+  /** Project-relative path of the sibling `module.md` this reference belongs to. */
+  moduleSourcePath: string;
+  moduleId?: string;
+  /** Companion link: the route of the module summary page. */
+  moduleRoute?: string;
 }
 
 export interface NavigationEntry {
@@ -169,12 +197,16 @@ export interface ContentPage {
   subfeatures?: FeatureRelation[];
   siblings?: FeatureRelation[];
   diagrams?: FeatureDiagram[];
+  implementationRoute?: string;
+  specificationRoute?: string;
   architectureId?: string;
   architectureKind?: ArchitectureKind;
   parentId?: string;
   architectureViewSource?: string;
   architectureViewSha256?: string;
   architectureViewRoute?: string;
+  designReferenceRoute?: string;
+  moduleRoute?: string;
 }
 
 export interface ExcludedSource {
@@ -192,7 +224,7 @@ export interface ValidationFinding {
 }
 
 export interface BuildManifest {
-  schemaVersion: 4;
+  schemaVersion: 5;
   generator: {
     name: 'concorde-docsite';
     version: string;

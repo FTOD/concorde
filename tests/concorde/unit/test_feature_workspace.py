@@ -27,7 +27,9 @@ class FeatureWorkspaceTests(unittest.TestCase):
             root = create_feature_root(project)
             paths = resolve_phase_paths(project, root.relative_to(project).as_posix())
             self.assertEqual(paths.feature_spec, "specs/example/features/001-deliver/spec.md")
-            self.assertEqual(paths.feature_design, "specs/example/features/001-deliver/design.md")
+            self.assertEqual(paths.feature_implementation, "specs/example/features/001-deliver/implementation.md")
+            self.assertEqual(paths.module_summary, "specs/example/module.md")
+            self.assertEqual(paths.module_design, "specs/example/design.md")
             self.assertEqual(paths.contracts_dir, "specs/example/features/001-deliver/contracts")
             self.assertEqual(paths.checklists_dir, "specs/example/features/001-deliver/implementation/checklists")
             self.assertEqual(paths.diagrams_dir, "specs/example/features/001-deliver/diagrams")
@@ -65,21 +67,41 @@ class FeatureWorkspaceTests(unittest.TestCase):
             planned = "specs/example/modules/api/features/002-observe-health"
             paths = resolve_planned_phase_paths(project, planned)
             self.assertEqual(paths.feature_spec, f"{planned}/spec.md")
-            self.assertEqual(paths.feature_design, f"{planned}/design.md")
+            self.assertEqual(paths.feature_implementation, f"{planned}/implementation.md")
+            self.assertEqual(paths.module_summary, "specs/example/modules/api/module.md")
+            self.assertEqual(paths.module_design, "specs/example/modules/api/design.md")
             self.assertEqual(paths.checklists_dir, f"{planned}/implementation/checklists")
             self.assertEqual(paths.implementation_state, "absent")
             self.assertFalse((project / planned).exists())
             with self.assertRaises(WorkspaceError):
                 resolve_planned_phase_paths(project, "outside/002-observe-health")
 
-            legacy = project / "specs/example/features/001-deliver/design.md"
-            legacy.unlink()
+            realization = project / "specs/example/features/001-deliver/implementation.md"
+            realization.unlink()
             repair_paths = resolve_selected_workspace(
                 project,
                 "specs/example/features/001-deliver",
                 allow_missing_spec=True,
             )
-            self.assertEqual(repair_paths.feature_design, "specs/example/features/001-deliver/design.md")
+            self.assertEqual(repair_paths.feature_implementation, "specs/example/features/001-deliver/implementation.md")
+
+    def test_legacy_and_ambiguous_realization_names_are_rejected_without_mutation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary)
+            root = create_feature_root(project)
+            relative = root.relative_to(project).as_posix()
+            (root / "implementation.md").rename(root / "design.md")
+            before = tree_hashes(project)
+            with self.assertRaisesRegex(WorkspaceError, "legacy accepted-realization name design.md"):
+                resolve_phase_paths(project, relative)
+            (root / "implementation.md").write_text("# Feature Implementation: Fixture\n", encoding="utf-8")
+            with self.assertRaisesRegex(WorkspaceError, "both design.md and implementation.md"):
+                resolve_phase_paths(project, relative)
+            (root / "design.md").unlink()
+            self.assertEqual(resolve_phase_paths(project, relative).feature_implementation, f"{relative}/implementation.md")
+            before.pop("specs/example/features/001-deliver/design.md")
+            self.assertEqual({k: v for k, v in tree_hashes(project).items() if k != "specs/example/features/001-deliver/implementation.md"},
+                             {k: v for k, v in before.items() if k != "specs/example/features/001-deliver/implementation.md"})
 
     def test_atomic_persistence_is_idempotent_and_rejects_unsafe_roots(self):
         with tempfile.TemporaryDirectory() as temporary:

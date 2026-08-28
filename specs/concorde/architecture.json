@@ -35,7 +35,7 @@
         "id": "publish-architecture",
         "label": "Build and browse the project site",
         "focus": ["maintainer", "publishFeature", "documentation", "architectureCore", "specKit"],
-        "note": "Documentation projects validated architecture plus permanent feature specifications and designs into one site."
+        "note": "Documentation projects validated architecture, feature specifications, and accepted realizations into one site."
       }
     ]
   },

@@ -6,8 +6,10 @@ export default function ContentProvenance({page}: {page: ContentPage}) {
       <span className="provenance__kind">
         {page.kind === 'feature-specification'
           ? page.featureLevel === 'subfeature' ? 'Sub-feature specification' : 'Feature specification'
-          : page.kind === 'feature-design'
-            ? page.featureLevel === 'subfeature' ? 'Sub-feature design' : 'Feature design'
+          : page.kind === 'feature-implementation'
+            ? page.featureLevel === 'subfeature' ? 'Sub-feature implementation' : 'Feature implementation'
+          : page.kind === 'module-design'
+            ? 'Module design reference'
           : page.kind === 'architecture-source'
             ? `Architecture ${page.architectureKind ?? 'source'}`
             : 'Project documentation'}

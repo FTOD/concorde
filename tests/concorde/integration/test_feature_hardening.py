@@ -14,7 +14,9 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 from concorde.feature_hardening import apply_hardening, propose_hardening  # noqa: E402
 
 
-CANDIDATE = """# Feature Design: Delivered Feature
+CANDIDATE = """# Feature Implementation: Delivered Feature
+
+**Realization status**: Hardened fixture milestone.
 
 ## Realization Overview
 
@@ -41,6 +43,25 @@ Contract and integration tests demonstrate the accepted behavior.
 No additional delivery variants are hardened in this fixture.
 """
 
+AMENDMENT = """# Design Reference: Example
+
+## Implementation Notes
+
+Delivery resolves the workspace once and caches nothing across phases.
+
+## Design Rationale
+
+A single deterministic resolution keeps every phase's path authority identical.
+
+## Alternatives Considered
+
+Per-phase re-resolution was rejected because it could observe a changed selection mid-lifecycle.
+
+## Decision Log
+
+- Hardened feature.example.deliver with the cached-resolution decision.
+"""
+
 
 class FeatureHardeningIntegrationTests(unittest.TestCase):
     def project_copy(self, temporary: str, complete: bool = True) -> Path:
@@ -65,25 +86,25 @@ class FeatureHardeningIntegrationTests(unittest.TestCase):
         path.write_text(content, encoding="utf-8")
         return path
 
-    def write_proposal(self, root: Path, eligibility) -> Path:
+    def write_proposal(self, root: Path, eligibility, module_design: str | None = None, module_design_path: str | None = None) -> Path:
         path = root / eligibility.result["proposal_path"]
-        path.write_text(
-            json.dumps(
-                {
-                    "proposal_version": 1,
-                    "operation": "feature.harden",
-                    "target": eligibility.target,
-                    "source_digest": eligibility.result["source_digest"],
-                    "design": {
-                        "path": eligibility.result["workspace"]["feature_design"],
-                        "content": CANDIDATE,
-                    },
-                    "remove": [eligibility.result["workspace"]["implementation_dir"]],
-                }
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        proposal = {
+            "proposal_version": 2,
+            "operation": "feature.harden",
+            "target": eligibility.target,
+            "source_digest": eligibility.result["source_digest"],
+            "implementation": {
+                "path": eligibility.result["workspace"]["feature_implementation"],
+                "content": CANDIDATE,
+            },
+            "remove": [eligibility.result["workspace"]["implementation_dir"]],
+        }
+        if module_design is not None:
+            proposal["module_design"] = {
+                "path": module_design_path or eligibility.result["workspace"]["module_design"],
+                "content": module_design,
+            }
+        path.write_text(json.dumps(proposal) + "\n", encoding="utf-8")
         return path
 
     def test_incomplete_tasks_block_without_mutation(self):
@@ -181,20 +202,85 @@ class FeatureHardeningIntegrationTests(unittest.TestCase):
             self.assertEqual(result.status, "invalid")
             self.assertTrue(any("symlink" in item.message for item in result.findings))
 
-    def test_approved_proposal_updates_design_and_removes_attempt(self):
+    def test_approved_proposal_updates_realization_and_removes_attempt(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary)
             eligibility = propose_hardening(root)
             self.assertEqual(eligibility.status, "eligible")
             self.assertEqual(eligibility.result["task_summary"]["complete"], 1)
+            self.assertEqual(eligibility.result["workspace"]["module_design"], "specs/example/design.md")
+            self.assertIn("specs/example/design.md", eligibility.artifacts)
+            module_design_before = (root / "specs/example/design.md").read_bytes()
             proposal = self.write_proposal(root, eligibility)
             result = apply_hardening(root, proposal.relative_to(root).as_posix())
             feature = root / "specs/example/features/001-deliver"
             self.assertEqual(result.status, "hardened")
-            self.assertEqual((feature / "design.md").read_text(encoding="utf-8"), CANDIDATE)
+            self.assertEqual((feature / "implementation.md").read_text(encoding="utf-8"), CANDIDATE)
+            self.assertFalse((feature / "design.md").exists())
             self.assertFalse((feature / "implementation").exists())
             self.assertTrue(result.result["removed_artifacts"])
-            self.assertRegex(result.result["design_digest_after"], r"^sha256:[0-9a-f]{64}$")
+            self.assertRegex(result.result["implementation_digest_after"], r"^sha256:[0-9a-f]{64}$")
+            self.assertIsNone(result.result["module_design_digest_after"])
+            self.assertEqual((root / "specs/example/design.md").read_bytes(), module_design_before)
+            self.assertIn("specs/example/design.md", result.result["retained_artifacts"])
+            self.assertIn("specs/example/module.md", result.result["retained_artifacts"])
+
+    def test_approved_proposal_amends_module_design_reference_atomically(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_copy(temporary)
+            module_summary_before = (root / "specs/example/module.md").read_bytes()
+            eligibility = propose_hardening(root)
+            proposal = self.write_proposal(root, eligibility, module_design=AMENDMENT)
+            result = apply_hardening(root, proposal.relative_to(root).as_posix())
+            self.assertEqual(result.status, "hardened", result.findings)
+            self.assertEqual((root / "specs/example/design.md").read_text(encoding="utf-8"), AMENDMENT)
+            self.assertEqual((root / "specs/example/module.md").read_bytes(), module_summary_before)
+            self.assertRegex(result.result["module_design_digest_before"], r"^sha256:[0-9a-f]{64}$")
+            self.assertRegex(result.result["module_design_digest_after"], r"^sha256:[0-9a-f]{64}$")
+            self.assertEqual([change["path"] for change in result.result["changes"]], [
+                "specs/example/features/001-deliver/implementation.md",
+                "specs/example/design.md",
+                "specs/example/features/001-deliver/implementation",
+            ])
+            self.assertNotIn("specs/example/design.md", result.result["retained_artifacts"])
+
+    def test_eligible_proposal_mode_with_module_reference_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_copy(temporary)
+            before = tree_hashes(root)
+            result = propose_hardening(root)
+            self.assertEqual(result.status, "eligible")
+            self.assertEqual(result.result["workspace"]["module_design"], "specs/example/design.md")
+            self.assertEqual(result.result["workspace"]["module_summary"], "specs/example/module.md")
+            self.assertEqual([change["action"] for change in result.result["changes"]], ["update", "delete"])
+            self.assertEqual(tree_hashes(root), before)
+
+    def test_changed_module_design_after_proposal_is_a_conflict(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_copy(temporary)
+            eligibility = propose_hardening(root)
+            proposal = self.write_proposal(root, eligibility, module_design=AMENDMENT)
+            (root / "specs/example/design.md").write_text("# Design Reference: Example\n\n## Decision Log\n\n- edited after review\n", encoding="utf-8")
+            before = tree_hashes(root)
+            result = apply_hardening(root, proposal.relative_to(root).as_posix())
+            self.assertEqual(result.status, "conflict")
+            self.assertEqual(tree_hashes(root), before)
+
+    def test_amendment_may_not_target_module_summary_or_feature_root_design(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_copy(temporary)
+            eligibility = propose_hardening(root)
+            for bad_path, fragment in (
+                ("specs/example/module.md", "module summary"),
+                ("specs/example/features/001-deliver/design.md", "reserved for module level"),
+                ("specs/example/modules/api/design.md", "providing module"),
+            ):
+                proposal = self.write_proposal(root, eligibility, module_design=AMENDMENT, module_design_path=bad_path)
+                before = tree_hashes(root)
+                result = apply_hardening(root, proposal.relative_to(root).as_posix())
+                self.assertEqual(result.status, "invalid", bad_path)
+                self.assertTrue(any(fragment in item.message for item in result.findings), (bad_path, result.findings))
+                self.assertEqual(tree_hashes(root), before)
 
     def test_changed_attempt_rejects_stale_proposal(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -222,25 +308,27 @@ class FeatureHardeningIntegrationTests(unittest.TestCase):
             self.assertTrue(any(item.rule_id == "CONCORDE-HARDEN-009" for item in result.findings))
             self.assertEqual(tree_hashes(root), before)
 
-    def test_commit_failure_restores_prior_design_and_attempt(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = self.project_copy(temporary)
-            eligibility = propose_hardening(root)
-            proposal = self.write_proposal(root, eligibility)
-            feature = root / "specs/example/features/001-deliver"
-            old_design = (feature / "design.md").read_bytes()
-            original_replace = Path.replace
+    def test_commit_failure_restores_prior_realization_reference_and_attempt(self):
+        for failing_stage in (".implementation.md.concorde-stage", ".design.md.concorde-stage"):
+            with tempfile.TemporaryDirectory() as temporary:
+                root = self.project_copy(temporary)
+                eligibility = propose_hardening(root)
+                proposal = self.write_proposal(root, eligibility, module_design=AMENDMENT)
+                feature = root / "specs/example/features/001-deliver"
+                before = tree_hashes(root)
+                original_replace = Path.replace
 
-            def fail_staged_design(path: Path, target: Path):
-                if path.name == ".design.md.concorde-stage":
-                    raise OSError("injected promotion failure")
-                return original_replace(path, target)
+                def fail_staged(path: Path, target: Path, _name=failing_stage):
+                    if path.name == _name:
+                        raise OSError("injected promotion failure")
+                    return original_replace(path, target)
 
-            with patch.object(Path, "replace", new=fail_staged_design):
-                result = apply_hardening(root, proposal.relative_to(root).as_posix())
-            self.assertEqual(result.status, "failed")
-            self.assertEqual((feature / "design.md").read_bytes(), old_design)
-            self.assertTrue((feature / "implementation/tasks.md").is_file())
+                with patch.object(Path, "replace", new=fail_staged):
+                    result = apply_hardening(root, proposal.relative_to(root).as_posix())
+                self.assertEqual(result.status, "failed", failing_stage)
+                self.assertTrue((feature / "implementation/tasks.md").is_file())
+                self.assertEqual(tree_hashes(root), before, failing_stage)
+                self.assertFalse(list(root.rglob(".*.concorde-stage")) + list(root.rglob(".*.concorde-backup")))
 
     def test_subfeature_hardening_preserves_parent_and_sibling(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -251,7 +339,8 @@ class FeatureHardeningIntegrationTests(unittest.TestCase):
             write_selection(root, child.relative_to(root).as_posix())
             parent = root / "specs/example/features/001-checkout"
             sibling = parent / "subfeatures/002-confirm-order"
-            parent_bytes = {(parent / name).relative_to(root): (parent / name).read_bytes() for name in ("spec.md", "design.md")}
+            parent_bytes = {(parent / name).relative_to(root): (parent / name).read_bytes() for name in ("spec.md", "implementation.md")}
+            module_bytes = {name: (root / "specs/example" / name).read_bytes() for name in ("module.md", "design.md")}
             sibling_before = tree_hashes(sibling)
             eligibility = propose_hardening(root)
             self.assertEqual(eligibility.status, "eligible")
@@ -260,8 +349,11 @@ class FeatureHardeningIntegrationTests(unittest.TestCase):
             self.assertEqual(result.status, "hardened")
             self.assertFalse((child / "implementation").exists())
             self.assertEqual(sibling_before, tree_hashes(sibling))
-            self.assertEqual(parent_bytes, {(parent / name).relative_to(root): (parent / name).read_bytes() for name in ("spec.md", "design.md")})
+            self.assertEqual(parent_bytes, {(parent / name).relative_to(root): (parent / name).read_bytes() for name in ("spec.md", "implementation.md")})
+            self.assertEqual(module_bytes, {name: (root / "specs/example" / name).read_bytes() for name in ("module.md", "design.md")})
             self.assertIn("specs/example/features/001-checkout/spec.md", result.result["retained_artifacts"])
+            self.assertIn("specs/example/features/001-checkout/implementation.md", result.result["retained_artifacts"])
+            self.assertIn("specs/example/module.md", result.result["retained_artifacts"])
 
 
 if __name__ == "__main__":

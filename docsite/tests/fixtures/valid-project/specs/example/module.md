@@ -18,3 +18,33 @@ Provide a leaf architecture source for content-registry tests.
 ## Boundary
 
 The fixture owns no child modules or boundary contracts.
+
+## Structure
+
+The fixture is a leaf module without a declared level view; its structure is the two feature
+directories published beside it.
+
+## Features
+
+| Feature ID | Outcome | Specification |
+|---|---|---|
+| `feature.fixture.alpha` | Alpha coordinates two focused outcomes. | `001-alpha/spec.md` |
+| `feature.fixture.beta` | Beta links to the documentation home. | `nested/002-beta/spec.md` |
+
+## Contracts
+
+None.
+
+## Submodules
+
+None.
+
+## Representative Scenario
+
+A reader opens the fixture module page, follows a feature to its specification, and returns to the
+module summary through the companion link.
+
+## Design Rationale
+
+Fixture modules stay minimal so tests exercise Concorde behavior, not domain detail; implementation
+notes live in the [design reference](design.md).

@@ -25,7 +25,7 @@ def create_feature_root(
     config.parent.mkdir(parents=True, exist_ok=True)
     if not config.exists():
         config.write_text(
-            json.dumps({"profile_version": 1, "specification_root": "specs/example", "root_module_id": "module.example"}) + "\n",
+            json.dumps({"profile_version": 2, "specification_root": "specs/example", "root_module_id": "module.example"}) + "\n",
             encoding="utf-8",
         )
     specification_root = project_root / "specs" / "example"
@@ -96,18 +96,24 @@ Observable delivery behavior. Scenarios below are representative examples.
 """,
             encoding="utf-8",
         )
-    design_path = root / "design.md"
-    if not design_path.exists():
-        design_path.write_text(
-            "# Feature Design: Fixture\n\n**Design status**: Accepted fixture baseline.\n",
+    implementation_path = root / "implementation.md"
+    if not implementation_path.exists():
+        implementation_path.write_text(
+            "# Feature Implementation: Fixture\n\n**Realization status**: Accepted fixture baseline.\n",
             encoding="utf-8",
         )
+    module_design = specification_root / "design.md"
+    if not module_design.exists():
+        module_design.write_text(MODULE_DESIGN_REFERENCE.format(name="Example"), encoding="utf-8")
     feature_ids = []
     for candidate in sorted((specification_root / "features").glob("*/spec.md")):
         match = re.search(r"^id:\s*(\S+)", candidate.read_text(encoding="utf-8"), re.MULTILINE)
         if match:
             feature_ids.append(match.group(1))
     feature_lines = "\n".join(f"  - {identifier}" for identifier in feature_ids)
+    feature_rows = "\n".join(
+        f"| `{identifier}` | Fixture outcome. | `features/{identifier.rsplit('.', 1)[-1]}` |" for identifier in feature_ids
+    )
     (specification_root / "module.md").write_text(
         f"""---
 id: module.example
@@ -123,11 +129,76 @@ contracts:
   required: []
 ---
 # Example
+
 ## Responsibility
+
 Provide fixtures.
+
 ## Boundary
+
 Fixture boundary.
+
+## Structure
+
+The level view is [architecture.json](architecture.json).
+
+## Features
+
+| Feature ID | Outcome | Specification |
+|---|---|---|
+{feature_rows}
+
+## Contracts
+
+| Contract ID | Role | Flow | Counterparty |
+|---|---|---|---|
+| `contract.example.workflow` | provided | bidirectional | external.user |
+
+## Submodules
+
+None.
+
+## Representative Scenario
+
+A user delivers the fixture workflow through the workflow contract.
+
+## Design Rationale
+
+Fixtures stay minimal; see the [design reference](design.md).
 """,
+        encoding="utf-8",
+    )
+    return root
+
+
+MODULE_DESIGN_REFERENCE = """# Design Reference: {name}
+
+## Implementation Notes
+
+No implementation detail or design rationale has been recorded for this module yet.
+
+## Design Rationale
+
+Not recorded yet.
+
+## Alternatives Considered
+
+Not recorded yet.
+
+## Decision Log
+
+- (empty)
+"""
+
+
+def write_hardened_root(project_root: Path, relative: str, feature_id: str, module_id: str = "module.example") -> Path:
+    """Create a feature root whose implementation.md is already hardened and that has no attempt."""
+    root = create_feature_root(project_root, relative, feature_id, module_id)
+    (root / "implementation.md").write_text(
+        "# Feature Implementation: Fixture\n\n**Realization status**: Hardened fixture milestone.\n\n"
+        "## Realization Overview\n\nHardened.\n\n## Module and Feature Collaboration\n\nHardened.\n\n"
+        "## Scenario Realization\n\nHardened.\n\n## Durable Implementation Decisions\n\nHardened.\n\n"
+        "## Traceability and Evidence\n\nHardened.\n\n## Known Limitations\n\nNone recorded.\n",
         encoding="utf-8",
     )
     return root

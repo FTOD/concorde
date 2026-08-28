@@ -27,9 +27,10 @@ export default function concordeContentPlugin(
         pages: content.documents.map(pageFromDocument),
         counts: {
           architecture: content.documents.filter((document) => document.collectionId === 'architecture').length,
+          moduleDesigns: content.documents.filter((document) => document.contentKind === 'module-design').length,
           docs: content.documents.filter((document) => document.collectionId === 'docs').length,
           features: content.documents.filter((document) => document.collectionId === 'features').length,
-          designs: content.documents.filter((document) => document.collectionId === 'feature-designs').length,
+          implementations: content.documents.filter((document) => document.collectionId === 'feature-implementations').length,
         },
       });
     },

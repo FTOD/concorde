@@ -53,7 +53,7 @@ describe('maintained Concorde framework guides', () => {
       if (!guide) throw new Error(`Expected ${sourcePath} in the build manifest.`);
       expect(guide.links.some((link) =>
         link.targetSourcePath.startsWith('specs/') &&
-        (link.targetSourcePath.endsWith('/spec.md') || link.targetSourcePath.endsWith('/module.md')),
+        /\/(spec|module|implementation|design)\.md$/.test(link.targetSourcePath),
       )).toBe(true);
     }
   });
@@ -73,6 +73,6 @@ describe('maintained Concorde framework guides', () => {
     expect(text).toContain('read-only');
     expect(text).toContain('no launcher or python runtime');
     expect(text).toContain('six');
-    expect(text).toContain('seven');
+    expect(text).toContain('five');
   });
 });

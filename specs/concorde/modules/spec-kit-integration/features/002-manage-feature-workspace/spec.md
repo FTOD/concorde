@@ -48,18 +48,18 @@ boundary.
 ## Requirements
 
 - Creation is the standard `speckit.specify` phase with `SPECIFY_FEATURE_DIRECTORY` set to the
-  canonical root; the preset's specify addendum seeds `spec.md` and the adjacent `design.md` and
+  canonical root; the preset's specify addendum seeds `spec.md` and the adjacent `implementation.md` and
   persists the root to `.specify/feature.json`. It must not silently choose or change architectural
   ownership: the author records ownership in the spec front matter and feature lists, and
   `speckit.concorde.validate` enforces it deterministically.
 - Selection must use Spec Kit's supported project-scoped feature pointer rather than a Concorde copy
   or a Concorde selection command.
 - The selected-workspace adapter resolves and validates the selected root before every normal phase:
-  safe path, canonical `spec.md`/`design.md` pair, workspace kind, parent context and sibling
+  safe path, canonical `spec.md`/`implementation.md` pair, workspace kind, parent context and sibling
   summaries for a sub-feature, durable/temporal paths, and `implementation_state`.
 - Specify and contracts resolve from the feature root; every generated checklist resolves from
   `implementation/checklists/` while reading the durable specification as context.
-- Permanent accepted realization resolves from root `design.md` and is never changed by normal phases.
+- Permanent accepted realization resolves from root `implementation.md` and is never changed by normal phases.
 - Plan, tasks, implement, analyze, and converge resolve from `implementation/`.
 - An existing non-empty delivery attempt is reported through `implementation_state: active` and is
   never replaced or removed silently.

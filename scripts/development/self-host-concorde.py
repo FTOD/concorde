@@ -203,6 +203,9 @@ def component_content_digest(preset_root: Path, extension_root: Path) -> str | N
                 return None
             if not path.is_file() or "__pycache__" in path.parts or path.suffix in {".pyc", ".pyo"}:
                 continue
+            if ".specify-dev" in path.parts:
+                # Spec Kit's dev-install cache (per-integration rendered commands) is host metadata, not component content.
+                continue
             digest.update(label.encode() + b"\0")
             digest.update(path.relative_to(directory).as_posix().encode() + b"\0")
             digest.update(path.read_bytes())

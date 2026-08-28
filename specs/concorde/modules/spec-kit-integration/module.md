@@ -30,114 +30,63 @@ instructions, hook declarations, and translation between Spec Kit lifecycle cont
 Core services. It does not own Spec Kit core phases, agent-specific runtimes, or architecture
 validation semantics.
 
-## Feature Set
+## Structure
 
-- `feature.integration.compose-concorde-workflow` refines
-  `feature.concorde.install-with-spec-kit` and `feature.concorde.self-host-framework`; it owns preset
-  composition and installed command registration for both released and development-local sources at
-  this level.
-- `feature.integration.manage-feature-workspace` refines `feature.concorde.workflow`; it owns
-  validated nested feature placement, the standard Spec Kit selection, and phase-specific
-  durable/temporal path routing.
-
-## Preset and Extension Model
-
-The preset and extension are complementary but not interchangeable:
-
-- `concorde-core` is a composition layer without its own runtime. Its template layers add Concorde
-  prompts and gates to Spec Kit's existing spec, plan, and task templates. Its command layers override
-  the nine affected normal lifecycle surfaces so selected-workspace routing occurs before any
-  inherited root-path assumption. Phase meanings remain unchanged: durable `spec.md` and contracts
-  stay at the feature root, while requirements-quality checklists and all planning/delivery artifacts
-  stay under `implementation/`.
-- `concorde` is an active capability package. At installation time, Spec Kit registers its five
-  command definitions through the target project's active coding-agent integration. At use time, four
-  operational surfaces invoke the same deterministic Architecture Core runtime regardless of their
-  displayed skill or slash-command syntax. The fifth, `ask`, is followed directly by the coding
-  agent to produce a cited, bounded, read-only explanation; it has no runtime verb.
-
-Neither component replaces the core Spec Kit workflow. The bundle merely installs the tested pair.
-See the installation feature's
+This leaf module has no submodules, so no separate level view is maintained; its structure is the
+`concorde-core` preset (a composition layer over Spec Kit's existing commands), the `concorde`
+extension (five command surfaces, launchers, and the selected-workspace adapter), and the five
+boundary contracts inventoried below. See the installation feature's
 <a href="/architecture/concorde-spec-kit-component-model.html">component model</a> for the structural
 relationship and
 <a href="/architecture/concorde-bundle-installation-flow.html">installation flow</a> for the
-release-to-use sequence. Their maintained sources are
+release-to-use sequence; their maintained sources are
 `specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` and
-`specs/concorde/features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json`.
+`specs/concorde/features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json`. The
+Feature 001 core view
+<a href="/architecture/concorde-workflow-components.html">workflow components</a> (maintained source
+`specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json`) shows the
+installed surfaces, adapter, and control state at use time.
 
-## Canonical Contract Definitions
+## Features
 
-Maintained definitions live under `contracts/*/contract.md`; the summaries below provide bounded
-context.
+| Feature ID | Outcome | Refines | Specification |
+|---|---|---|---|
+| `feature.integration.compose-concorde-workflow` | A supported Spec Kit project receives composed Concorde guidance and authoritative selected-workspace routing in its normal feature lifecycle, plus portable installed commands for deterministic architecture services; in Concorde's own checkout the same public preset and extension development lifecycle materializes current local sources. | `feature.concorde.install-with-spec-kit`, `feature.concorde.self-host-framework` | [spec.md](features/001-compose-concorde-workflow/spec.md) |
+| `feature.integration.manage-feature-workspace` | A maintainer can review a feature's placement, create its one nested canonical workspace through the standard Spec Kit specify phase or select an existing one through the standard Spec Kit pointer, run every normal phase with durable intent at the feature root and temporal delivery artifacts under `implementation/`, then explicitly harden a completed attempt. | `feature.concorde.workflow` | [spec.md](features/002-manage-feature-workspace/spec.md) |
 
-### `contract.integration.workflow-composition`
+## Contracts
 
-- **Role / flow**: provided, output.
-- **Consumers**: Spec Kit feature lifecycle commands.
-- **Representation**: commonly adopted Spec Kit preset manifest and template composition, version
-  `0.16.4`.
-- **Information**: architecture ownership, contract, scenario, traceability, and quality-gate guidance.
-- **Guarantees**: composition preserves core lifecycle responsibilities, materializes the winning
-  command layer in the active integration, creates no duplicate canonical feature specification, and
-  creates no root-level compatibility copy of plan or tasks.
-- **Failure**: unresolved templates or incompatible composition stop the affected workflow phase.
-- **Evidence**: template composition is verified. Installed durable/temporal routing remains partial
-  until every affected winning command surface executes in clean Codex skills and Gemini slash-command
-  projects through public preset composition with the source checkout unavailable.
+| Contract ID | Role | Flow | Counterparty | Definition |
+|---|---|---|---|---|
+| `contract.integration.workflow-composition` | provided | output | Spec Kit feature lifecycle commands | [contract.md](contracts/workflow-composition/contract.md) |
+| `contract.integration.agent-skills` | provided | bidirectional | Supported coding-agent integrations | [contract.md](contracts/agent-skills/contract.md) |
+| `contract.integration.feature-workspace` | provided | bidirectional | Maintainers and normal Spec Kit lifecycle commands | [contract.md](contracts/feature-workspace/contract.md) |
+| `contract.integration.spec-kit-platform` | required | bidirectional | External Spec Kit `0.16.4` | [contract.md](contracts/spec-kit-platform/contract.md) |
+| `contract.integration.architecture-services` | required | bidirectional | `module.concorde.architecture-core` | [contract.md](contracts/architecture-services/contract.md) |
 
-### `contract.integration.agent-skills`
+## Submodules
 
-- **Role / flow**: provided, bidirectional.
-- **Consumers**: supported coding-agent integrations.
-- **Representation**: commonly adopted Spec Kit extension command Markdown, version `0.16.4`.
-- **Information**: user arguments, bounded project context, requested action, result, and diagnostics.
-- **Guarantees**: canonical commands `speckit.concorde.init`, `speckit.concorde.context`,
-  `speckit.concorde.validate`, and `speckit.concorde.feature.harden`, plus the agent-only
-  `speckit.concorde.ask`, register in the active integration without hard-coded invocation syntax.
-  Framework rules, project observations, inference, and uncertainty remain visibly distinguished in
-  question answers, which inspect only the smallest relevant installed and maintained sources.
-- **Failure**: unsupported integrations or missing dependencies produce an actionable diagnostic.
-- **Evidence**: all five command artifacts register in Codex skills mode; the four runtime-backed
-  operations remain distinct from `ask`; initialization, context,
-  and validation execute in Codex skills and Gemini slash-command modes. Evidence remains partial
-  until feature hardening, question-surface semantic review, and the complete normal-command
-  matrix execute from release archives in both modes; the platform-compatible registered spelling
-  is `feature-harden`.
+None.
 
-### `contract.integration.feature-workspace`
+## Representative Scenario
 
-- **Role / flow**: provided, bidirectional.
-- **Consumers**: maintainers and normal Spec Kit lifecycle commands.
-- **Representation**: custom Concorde Feature Workspace Protocol v3 plus Spec Kit's standard
-  project-local `feature_directory` selection field.
-- **Information**: the resolved standard Spec Kit selection, exact durable/temporal paths,
-  relationship context, implementation state, hardening changes, conflicts, findings, and inspected
-  source digest.
-- **Guarantees**: one nested canonical specification, no root-level plan/task aliases, read-only
-  resolution of the standard Spec Kit selection, and no silent replacement of an implementation
-  attempt.
-- **Failure**: unsafe, stale, unregistered, unknown, or ambiguous targets leave sources and selection
-  unchanged and return actionable findings.
-- **Evidence**: safe resolution, active-attempt reporting, phase routing, clean installation, and
-  no-root-alias behavior are covered by contract, unit, integration, and acceptance tests.
+`scenario.integration.place-and-select-feature` shows a maintainer recording a reviewed placement by
+running Spec Kit's normal specify phase with the nested workspace directory, which writes the standard
+`.specify/feature.json` selection; no Concorde creation or selection command exists. Before every later
+normal phase, the preset's command override calls the selected-workspace adapter, which resolves that
+selection read-only across `contract.integration.feature-workspace`: it validates the path grammar
+and durable pair, checks module or parent registration, reports an active attempt, and returns the
+exact durable and temporal paths for the phase. When the phase needs architecture context or
+validation, the module invokes Architecture Core across `contract.integration.architecture-services`
+and relays deterministic results without mutating sources. Unsafe, stale, unregistered, unknown, or
+ambiguous targets leave sources and selection unchanged and return actionable findings.
 
-### `contract.integration.spec-kit-platform`
+## Design Rationale
 
-- **Role / flow**: required, bidirectional.
-- **Provider**: external Spec Kit `0.16.4`.
-- **Representation**: commonly adopted extension, preset, command-registration, and hook contracts.
-- **Guarantees required**: runtime template resolution and install-time command registration behave as
-  documented by Spec Kit.
-- **Failure**: incompatibility stops installation or the affected phase without silent fallback.
-- **Evidence**: verified against Spec Kit 0.16.4 by the native lifecycle suite.
-
-### `contract.integration.architecture-services`
-
-- **Role / flow**: required, bidirectional.
-- **Provider**: `module.concorde.architecture-core`.
-- **Representation**: custom Concorde Architecture Service Protocol v1 defined by Architecture Core.
-- **Information**: target path or stable ID, operation, bounded context, validation findings, and
-  artifact changes.
-- **Guarantees required**: deterministic results and explicit unknown evidence.
-- **Failure**: invalid sources fail without partial silent mutation.
-- **Evidence**: verified by structured-result, launcher, and installed bundle-journey tests.
+The preset and the extension are complementary, not interchangeable: the preset composes guidance and
+selected-workspace routing into Spec Kit's existing nine commands so routing happens before any
+inherited root-path assumption, while the extension adds five Concorde surfaces (four runtime-backed
+operations and the read-only, agent-followed `ask`) that register through the active coding-agent
+integration without hard-coded invocation syntax. Neither component replaces the core Spec Kit
+workflow, and every architecture semantic is delegated to Architecture Core. The preset and extension
+model and the contract narratives are in the [design reference](design.md).

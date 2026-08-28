@@ -27,19 +27,19 @@
         "id": "concorde-operations",
         "label": "Concorde operations",
         "focus": ["agent", "concordeCommands", "runtime", "controlState", "architectureSources", "featureSpec", "featureDesign"],
-        "note": "Six operations reach the runtime; the implemented ask surface reads maintained guidance without mutation."
+        "note": "Four operations reach the runtime; the ask surface reads maintained guidance without mutation."
       },
       {
         "id": "workspace-map",
         "label": "Project workspace",
         "focus": ["controlState", "architectureSources", "featureSpec", "featureDesign", "implementation"],
-        "note": "Separate control, architecture, selected intent, read-only parent context, accepted design, and root-local temporal work."
+        "note": "Separate control, architecture, selected intent, read-only parent context, accepted realization, and root-local temporal work."
       },
       {
         "id": "harden-milestone",
         "label": "Harden a milestone",
         "focus": ["maintainer", "agent", "concordeCommands", "runtime", "featureSpec", "featureDesign", "implementation"],
-        "note": "Only a completed attempt can be reviewed, merged into design.md, and removed with explicit approval."
+        "note": "A completed attempt is reviewed, compacted into implementation.md with any reviewed design.md amendment, and removed only on approval."
       }
     ]
   },
@@ -79,8 +79,8 @@
     {
       "id": "concordeCommands",
       "type": "backend",
-      "label": "7 Concorde Surfaces",
-      "sublabel": "6 operations + ask",
+      "label": "5 Concorde Surfaces",
+      "sublabel": "4 operations + ask",
       "tag": "extension command intent",
       "pos": [440, 700],
       "size": [210, 86],
@@ -129,7 +129,7 @@
       "id": "architectureSources",
       "type": "database",
       "label": "Architecture Sources",
-      "sublabel": "modules + contracts + views",
+      "sublabel": "summary · reference · contracts",
       "pos": [1170, 820],
       "size": [190, 86],
       "sources": [
@@ -149,8 +149,8 @@
     {
       "id": "featureDesign",
       "type": "database",
-      "label": "Durable Feature Design",
-      "sublabel": "accepted design.md",
+      "label": "Accepted Realization",
+      "sublabel": "implementation.md",
       "pos": [1170, 680],
       "size": [190, 86]
     },
@@ -184,13 +184,13 @@
     {"id": "run-concorde", "from": "agent", "to": "concordeCommands", "label": "skill / slash command"},
     {"id": "resolve-phase", "from": "phaseCommands", "to": "workspaceAdapter", "label": "resolve before phase", "labelAt": [675, 280], "variant": "security"},
     {"id": "read-selection", "from": "workspaceAdapter", "to": "controlState", "label": "selection + phase root", "labelAt": [820, 280]},
-    {"id": "invoke-runtime", "from": "concordeCommands", "to": "runtime", "label": "portable launcher · 6 operations", "labelAt": [790, 800], "variant": "security"},
+    {"id": "invoke-runtime", "from": "concordeCommands", "to": "runtime", "label": "portable launcher · 4 operations", "labelAt": [790, 800], "variant": "security"},
     {"id": "runtime-state", "from": "runtime", "to": "controlState", "label": "read / update state"},
     {"id": "route-durable", "from": "controlState", "to": "featureSpec", "label": "selected lifecycle root", "labelAt": [1165, 280]},
     {"id": "govern-architecture", "from": "runtime", "to": "architectureSources", "label": "init / context / validate", "variant": "security"},
     {"id": "answer-question", "from": "concordeCommands", "to": "architectureSources", "label": "ask: cited read-only guidance", "labelAt": [675, 810], "variant": "dashed"},
     {"id": "guide-attempt", "from": "featureSpec", "to": "implementation", "label": "selected intent + parent context", "labelAt": [1275, 340], "variant": "emphasis"},
-    {"id": "harden-design", "from": "implementation", "to": "featureDesign", "label": "approved design + cleanup", "labelAt": [1275, 590], "variant": "security"},
+    {"id": "harden-design", "from": "implementation", "to": "featureDesign", "label": "approved realization + cleanup", "labelAt": [1275, 590], "variant": "security"},
     {"id": "apply-harden", "from": "runtime", "to": "implementation", "label": "verify tasks + stage removal", "labelAt": [1060, 600], "variant": "security"}
   ],
   "cards": [
@@ -209,7 +209,7 @@
       "items": [
         "The coding agent follows the installed command instructions",
         "Normal phases call workspace.py before Spec Kit work",
-        "Six Concorde operations call portable launchers and Python runtime",
+        "Four Concorde operations call portable launchers and Python runtime",
         "The ask surface answers from cited sources without changing the workspace"
       ]
     },
@@ -217,9 +217,9 @@
       "dot": "emerald",
       "title": "Workspace Authority",
       "items": [
-        "module.md, architecture.json, contracts: architecture",
+        "module.md summary + design.md reference: level architecture",
         "parent spec owns aggregate facts; child spec owns focused behavior",
-        "design.md and implementation/ remain isolated to one selected root"
+        "implementation.md and implementation/ remain isolated to one selected root"
       ]
     }
   ]

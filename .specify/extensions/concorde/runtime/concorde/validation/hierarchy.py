@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from ..model import Finding, SourceDocument
@@ -25,6 +26,18 @@ def validate_hierarchy(package: Any) -> list[Finding]:
                         f"Add a non-empty ## {heading} section defining this module boundary.",
                     )
                 )
+        reference = package.project_root / Path(module.path).parent / "design.md"
+        if reference.is_symlink() or not reference.is_file() or not reference.read_text(encoding="utf-8", errors="replace").strip():
+            findings.append(
+                Finding(
+                    "CONCORDE-MODULE-002",
+                    "error",
+                    (Path(module.path).parent / "design.md").as_posix(),
+                    "The module has no real, non-empty design.md design reference beside module.md.",
+                    "Create design.md at the module root; it may state that no implementation detail or design rationale has been recorded yet.",
+                    subject_id=module.identifier,
+                )
+            )
         children = set(module.metadata.get("children", []))
         view_path = module.metadata.get("view")
         view = package.views.get(view_path) if isinstance(view_path, str) else None

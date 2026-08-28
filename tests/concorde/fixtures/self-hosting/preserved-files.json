@@ -9,5 +9,6 @@
   "specs/example/implementation/tasks.md": "- [ ] temporal\n",
   "specs/example/spec.md": "# Durable specification\n",
   "src/user.py": "VALUE = 1\n",
-  "tests/user.txt": "test evidence\n"
+  "tests/user.txt": "test evidence\n",
+  "specs/example/implementation.md": "# Accepted realization\n"
 }

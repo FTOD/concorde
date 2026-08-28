@@ -18,7 +18,7 @@ class ManifestContractTests(unittest.TestCase):
     def test_bundle_is_native_and_exactly_two_components(self):
         manifest = (REPOSITORY_ROOT / "bundles/concorde-bundle/bundle.yml").read_text()
         self.assertIn('id: "concorde-bundle"', manifest)
-        self.assertIn('version: "0.1.0"', manifest)
+        self.assertIn('version: "0.2.0"', manifest)
         self.assertEqual(len(re.findall(r'^    - id:', manifest, re.MULTILINE)), 2)
         self.assertRegex(manifest, r"steps: \[\]")
         self.assertRegex(manifest, r"workflows: \[\]")
@@ -51,16 +51,25 @@ class ManifestContractTests(unittest.TestCase):
             self.assertTrue((root / ".specify/extensions/concorde/extension.yml").is_file())
             self.assertTrue((root / ".specify/presets/concorde-core/preset.yml").is_file())
 
-    def test_preset_has_three_append_templates_one_design_template_and_nine_replace_commands(self):
+    def test_preset_has_three_append_templates_one_implementation_template_and_nine_replace_commands(self):
         manifest = (REPOSITORY_ROOT / "presets/concorde-core/preset.yml").read_text(encoding="utf-8")
         self.assertEqual(manifest.count('type: "template"'), 4)
         self.assertEqual(manifest.count('type: "command"'), 9)
         self.assertEqual(manifest.count('strategy: "append"'), 3)
         self.assertEqual(manifest.count('strategy: "replace"'), 10)
-        self.assertEqual(
-            (REPOSITORY_ROOT / ".specify/templates/design-template.md").read_bytes(),
-            (REPOSITORY_ROOT / "presets/concorde-core/templates/design-template.md").read_bytes(),
-        )
+        self.assertIn('name: "implementation-template"', manifest)
+        self.assertNotIn("design-template", manifest)
+        resolved = subprocess.run(
+            ["specify", "preset", "resolve", "implementation-template"],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.replace("\n", "")
+        self.assertIn("presets/concorde-core/templates/implementation-template.md", resolved)
+        self.assertTrue((REPOSITORY_ROOT / ".specify/presets/concorde-core/templates/implementation-template.md").is_file())
+        self.assertFalse((REPOSITORY_ROOT / ".specify/templates/design-template.md").exists())
+        self.assertFalse((REPOSITORY_ROOT / ".specify/presets/concorde-core/templates/design-template.md").exists())
         for command in (
             "specify",
             "clarify",
@@ -82,7 +91,8 @@ class ManifestContractTests(unittest.TestCase):
         checklist = (REPOSITORY_ROOT / ".specify/templates/checklist-template.md").read_text(encoding="utf-8")
         self.assertIn("implementation/checklists/", preset_plan)
         self.assertNotIn("`contracts/`, and `checklists/`", preset_plan)
-        self.assertIn("├── design.md", local_plan)
+        self.assertIn("├── implementation.md", local_plan)
+        self.assertNotIn("├── design.md", local_plan)
         self.assertIn("    ├── checklists/", local_plan)
         self.assertNotIn("\n├── checklists/", local_plan)
         self.assertIn("implementation/checklists/requirements.md", checklist)

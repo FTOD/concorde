@@ -14,9 +14,11 @@ export async function materializeContent(providedRegistry?: ContentRegistry): Pr
   await rm(generatedContentRoot, {recursive: true, force: true});
 
   for (const document of registry.documents) {
-    if (!['architecture', 'features', 'feature-designs'].includes(document.collectionId)) continue;
+    if (!['architecture', 'features', 'feature-implementations'].includes(document.collectionId)) continue;
     const relativeSpecPath = relative(resolve(projectRoot, 'specs'), resolve(projectRoot, document.sourcePath));
-    const collectionDirectory = document.collectionId === 'feature-designs' ? 'features' : document.collectionId;
+    // Accepted realizations are staged beside their spec.md under the Features root; module design
+    // references belong to the architecture collection and land beside their module.md.
+    const collectionDirectory = document.collectionId === 'feature-implementations' ? 'features' : document.collectionId;
     const destination = resolve(generatedContentRoot, collectionDirectory, relativeSpecPath);
     await mkdir(dirname(destination), {recursive: true});
     await copyFile(resolve(projectRoot, document.sourcePath), destination);

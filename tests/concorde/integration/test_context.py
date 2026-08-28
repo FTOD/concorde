@@ -20,6 +20,12 @@ class ContextTests(unittest.TestCase):
         module_context = by_module.result["context"]
         feature_context = by_feature.result["context"]
         self.assertEqual(module_context["current_module"], feature_context["current_module"])
+        self.assertEqual(module_context["current_module"]["summary"], "specs/example/module.md")
+        self.assertEqual(module_context["current_module"]["design_reference"], "specs/example/design.md")
+        self.assertEqual(module_context["current_module"]["view"], "specs/example/architecture.json")
+        self.assertIn("specs/example/design.md", by_module.artifacts)
+        self.assertNotIn("No implementation detail", repr(module_context))
+        self.assertNotIn("Realization status", repr(feature_context))
         self.assertEqual([child["id"] for child in module_context["children"]], ["module.example.api"])
         self.assertNotIn("module.example.api.store", repr(module_context["children"]))
         self.assertIn("module.example.api", module_context["deeper_references"])
@@ -46,6 +52,18 @@ class ContextTests(unittest.TestCase):
             self.assertEqual(result.status, "invalid")
             self.assertEqual(before, after)
 
+    def test_context_on_legacy_tree_reports_without_mutation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "project"
+            shutil.copytree(CONTEXT_PROJECT, root)
+            feature = root / "specs/example/features/001-deliver"
+            (feature / "implementation.md").rename(feature / "design.md")
+            before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}
+            result = bounded_context(root, "feature.example.deliver")
+            self.assertEqual(result.status, "success")
+            self.assertIsNone(result.result["context"]["feature_workspace"])
+            self.assertEqual({path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}, before)
+
     def test_active_feature_context_contains_exact_workspace_and_evidence(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
@@ -62,6 +80,11 @@ class ContextTests(unittest.TestCase):
             context = bounded_context(root, "feature.example.deliver").result["context"]
             workspace = context["feature_workspace"]
             self.assertEqual(workspace["feature_spec"], "specs/example/features/001-deliver/spec.md")
+            self.assertEqual(workspace["feature_implementation"], "specs/example/features/001-deliver/implementation.md")
+            self.assertEqual(workspace["module_summary"], "specs/example/module.md")
+            self.assertEqual(workspace["module_design"], "specs/example/design.md")
+            self.assertIn("specs/example/features/001-deliver/implementation.md", workspace["durable_artifacts"])
+            self.assertNotIn("Realization status", repr(context))
             self.assertEqual(workspace["implementation_artifacts"], [
                 "specs/example/features/001-deliver/implementation/plan.md",
                 "specs/example/features/001-deliver/implementation/tasks.md",
@@ -86,8 +109,15 @@ class ContextTests(unittest.TestCase):
             ["feature.example.checkout.authorize", "feature.example.checkout.confirm"],
         )
         self.assertNotIn("implementation/plan.md", repr(parent["subfeatures"]))
+        self.assertEqual(
+            parent["subfeatures"][0]["implementation"],
+            "specs/example/features/001-checkout/subfeatures/001-authorize-payment/implementation.md",
+        )
+        self.assertNotIn("Realization status", repr(parent["subfeatures"]))
         child = bounded_context(TWO_LEVEL_PROJECT, "feature.example.checkout.authorize").result["context"]
         self.assertEqual(child["parent_feature"]["feature_id"], "feature.example.checkout")
+        self.assertEqual(child["parent_feature"]["implementation"], "specs/example/features/001-checkout/implementation.md")
+        self.assertEqual(child["feature_workspace"]["parent_context"]["feature_implementation"], "specs/example/features/001-checkout/implementation.md")
         self.assertEqual([item["feature_id"] for item in child["siblings"]], ["feature.example.checkout.confirm"])
         self.assertNotIn("Confirmation preserves", repr(child["siblings"]))
 

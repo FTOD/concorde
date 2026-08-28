@@ -30,7 +30,10 @@ export function resolveContentLink(
   if (rawTarget.startsWith('#')) return {reference: {rawTarget, kind: 'anchor', fragment: rawTarget.slice(1)}};
   if (externalPattern.test(rawTarget)) return {reference: {rawTarget, kind: 'external'}};
   const {path, suffix, fragment} = splitTarget(rawTarget);
-  if (!/\.md$/i.test(path)) return {reference: {rawTarget, kind: 'asset', fragment}};
+  if (!/\.md$/i.test(path)) {
+    const viewReference = resolveArchitectureViewLink(rawTarget, path, suffix, fragment, source, registry);
+    return viewReference ?? {reference: {rawTarget, kind: 'asset', fragment}};
+  }
 
   const sourceRelativeTarget = path.startsWith('/')
     ? posix.normalize(path.slice(1))
@@ -62,10 +65,37 @@ export function resolveContentLink(
         ? `Markdown link "${rawTarget}" targets an excluded Spec Kit artifact.`
         : `Markdown link "${rawTarget}" does not resolve to included content.`,
       remediation: excluded
-        ? 'Link to the canonical feature spec.md or treat the target as a repository asset.'
+        ? 'Link to a published canonical source (spec.md, implementation.md, module.md, its design.md, or contract.md) or treat the target as a repository asset.'
         : 'Correct the relative path or add the referenced Markdown source.',
     },
   };
+}
+
+/**
+ * A module summary links its declared level view (`architecture.json`) from `## Structure`, spelled
+ * either relative to the summary or relative to the repository root. Both resolve to the delivered
+ * view route the module page already embeds, so the published summary never carries a dead link.
+ */
+function resolveArchitectureViewLink(
+  rawTarget: string,
+  path: string,
+  suffix: string,
+  fragment: string | undefined,
+  source: SourceDocument,
+  registry: ContentRegistry,
+): {reference: LinkReference} | undefined {
+  if (!/\.json$/i.test(path)) return undefined;
+  const candidates = new Set<string>([
+    posix.normalize(path.startsWith('/') ? path.slice(1) : path),
+    posix.normalize(posix.join(posix.dirname(source.sourcePath), path)),
+  ]);
+  for (const document of registry.documents) {
+    const viewSource = (document as {architectureViewSource?: string}).architectureViewSource;
+    const viewRoute = (document as {architectureViewRoute?: string}).architectureViewRoute;
+    if (!viewSource || !viewRoute || !candidates.has(viewSource)) continue;
+    return {reference: {rawTarget, kind: 'included-source', targetSourcePath: viewSource, targetRoute: `${viewRoute}${suffix}`, fragment}};
+  }
+  return undefined;
 }
 
 export function populateLinks(registry: ContentRegistry): ContentRegistry {
@@ -116,7 +146,11 @@ export function remarkConcordeLinks(options: {
     if (!source) return;
     visit(tree as Parameters<typeof visit>[0], 'link', (node: MarkdownLinkNode) => {
       const {reference} = resolveContentLink(node.url, source, registry);
-      if (reference.kind === 'included-source' && reference.targetRoute) node.url = reference.targetRoute;
+      if (reference.kind === 'included-source' && reference.targetRoute) {
+        // Delivered views are static files under generated/; `pathname://` keeps them out of the router
+        // (and its route-only broken-link check) exactly like the raw anchors module pages already use.
+        node.url = /\.html(?:[?#]|$)/.test(reference.targetRoute) ? `pathname://${reference.targetRoute}` : reference.targetRoute;
+      }
     });
   };
 }

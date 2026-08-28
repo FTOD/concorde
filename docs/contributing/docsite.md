@@ -17,11 +17,13 @@ The complete publication behavior is specified by
 | Published collection | Maintained inputs | Public route family |
 |---|---|---|
 | Documentation | Every regular `docs/**/*.md` file | `/docs` |
-| Architecture | Every `specs/**/module.md` and `specs/**/contracts/**/contract.md` | `/architecture` |
+| Architecture | Every `specs/**/module.md` (module summary, with its level view embedded), its adjacent `design.md` (module design reference, published as a separately linked page), and `specs/**/contracts/**/contract.md` | `/architecture` |
 | Feature specifications | Every canonical `specs/**/spec.md` | `/features` |
-| Feature designs | Every durable `specs/**/design.md` paired with a feature specification | `/features` |
+| Feature implementations | Every durable `specs/**/implementation.md` paired with a feature specification | `/features` |
 
-Symbolic links are not followed. Plans, tasks, requirements checklists, research, technical models,
+`design.md` is a module document only: the feature collection never matches it, and a `design.md`
+beside a feature `spec.md` is a validation error rather than a publishable page. Symbolic links are
+not followed. Plans, tasks, requirements checklists, research, technical models,
 quick-start evidence, and other files below `implementation/` are intentionally excluded from the
 Features collection. Their presence under `specs/` does not make them permanent project intent.
 
@@ -40,7 +42,8 @@ A preview and a production build use the same inclusion, routing, and validation
    current deliveries.
 4. Disposable Docusaurus content is materialized under `docsite/.generated/content/`.
 5. Docusaurus renders a candidate site.
-6. Candidate pages, routes, links, provenance, and the build manifest are validated.
+6. Candidate pages, routes, links, provenance, and the build manifest (Build Manifest v5) are
+   validated.
 7. Only a successful candidate is promoted to `docsite/build/`.
 
 Because generated diagrams, Architecture/Features pages, and site output are projections, never edit
@@ -54,9 +57,10 @@ required. Every page needs either a YAML `title` or a level-one heading. Optiona
 `sidebar_position`, `sidebar_label`, and `slug` fields control presentation.
 
 Use source-relative Markdown links. Links may cross collections—for example, from a guide to the
-[root architecture](../../specs/concorde/module.md)—and fragments are preserved when the registry
-maps source paths to published routes. A link to a deliberately excluded implementation artifact is
-an error because the generated site could not honor it.
+[root architecture](../../specs/concorde/module.md), or from a module summary to its adjacent
+`design.md`—and fragments are preserved when the registry maps source paths to published routes.
+A link to a deliberately excluded implementation artifact is an error because the generated site
+could not honor it.
 
 When a guide summarizes normative behavior, link to the relevant module or feature authority and do
 not present the summary as stronger or more current than that source.

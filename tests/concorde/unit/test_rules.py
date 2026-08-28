@@ -21,6 +21,28 @@ class ValidationRuleTests(unittest.TestCase):
     def test_valid_fixture_has_no_errors(self):
         result = validate_project(VALID_PROJECT)
         self.assertEqual(result.status, "success", result.findings)
+        self.assertFalse([item for item in result.findings if item.rule_id.startswith(("CONCORDE-SUMMARY-", "CONCORDE-MODULE-", "CONCORDE-LAYOUT-"))])
+
+    def test_feature_root_document_pairing_and_legacy_names(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_copy(temporary)
+            feature = root / "specs/example/features/001-deliver"
+            (feature / "implementation.md").rename(feature / "design.md")
+            legacy = validate_project(root)
+            self.assertIn("CONCORDE-LAYOUT-007", {item.rule_id for item in legacy.findings})
+            self.assertNotIn("CONCORDE-LAYOUT-005", {item.rule_id for item in legacy.findings})
+            finding = next(item for item in legacy.findings if item.rule_id == "CONCORDE-LAYOUT-007")
+            self.assertEqual(finding.source, "specs/example/features/001-deliver/design.md")
+            self.assertIn("implementation.md", finding.remediation)
+            (feature / "implementation.md").write_text("# Feature Implementation: Deliver\n", encoding="utf-8")
+            both = {item.rule_id for item in validate_project(root).findings}
+            self.assertIn("CONCORDE-LAYOUT-008", both)
+            self.assertNotIn("CONCORDE-LAYOUT-007", both)
+            (feature / "design.md").unlink()
+            (feature / "implementation.md").unlink()
+            missing = {item.rule_id for item in validate_project(root).findings}
+            self.assertIn("CONCORDE-LAYOUT-005", missing)
+            self.assertNotIn("CONCORDE-LAYOUT-007", missing)
 
     def test_broken_reference_has_stable_actionable_finding(self):
         with tempfile.TemporaryDirectory() as temporary:

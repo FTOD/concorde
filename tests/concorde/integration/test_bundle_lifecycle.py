@@ -55,11 +55,11 @@ class BundleLifecycleTests(unittest.TestCase):
 
     def test_preview_install_repeat_and_provenance_match(self):
         preview = self.project.json("bundle", "info", "concorde-bundle", "--json")
-        self.assertEqual(preview["version"], "0.1.0")
+        self.assertEqual(preview["version"], "0.2.0")
         self.assertIsNone(preview["integration"])
         self.assertEqual(
             [(item["kind"], item["id"], item["version"]) for item in preview["components"]],
-            [("extensions", "concorde", "0.1.0"), ("presets", "concorde-core", "0.1.0")],
+            [("extensions", "concorde", "0.2.0"), ("presets", "concorde-core", "0.2.0")],
         )
         source_hashes = self.project.source_hashes()
         self.project.run("bundle", "install", "concorde-bundle")
@@ -90,7 +90,7 @@ class BundleLifecycleTests(unittest.TestCase):
         forms = [
             REPOSITORY_ROOT / "bundles/concorde-bundle",
             REPOSITORY_ROOT / "bundles/concorde-bundle/bundle.yml",
-            self.dist / "concorde-bundle-0.1.0.zip",
+            self.dist / "concorde-bundle-0.2.0.zip",
         ]
         expected = None
         for form in forms:
@@ -139,28 +139,28 @@ class BundleLifecycleTests(unittest.TestCase):
     def test_failed_update_retains_prior_record_and_sources(self):
         self.project.run("bundle", "install", "concorde-bundle")
         source_hashes = self.project.source_hashes()
-        _builder.build_release(self.dist, self.server.base_url, "0.1.1")
-        extension = self.dist / "concorde-0.1.1.zip"
+        _builder.build_release(self.dist, self.server.base_url, "0.2.1")
+        extension = self.dist / "concorde-0.2.1.zip"
         extension.write_bytes(extension.read_bytes() + b"integrity failure")
         self.project.clear_catalog_caches()
         result = self.project.run("bundle", "update", "concorde-bundle", check=False)
         self.assertNotEqual(result.returncode, 0)
         installed = self.project.json("bundle", "list", "--json")
-        self.assertEqual(installed[0]["version"], "0.1.0")
-        self.assertNotIn("0.1.1", json.dumps(installed))
+        self.assertEqual(installed[0]["version"], "0.2.0")
+        self.assertNotIn("0.2.1", json.dumps(installed))
         self.assertEqual(self.project.source_hashes(), source_hashes)
 
     def test_compatible_update_and_remove_preserve_sources(self):
         self.project.run("bundle", "install", "concorde-bundle")
         source_hashes = self.project.source_hashes()
         unrelated_hashes = self.project.source_hashes((".agents/skills/user-owned",))
-        _builder.build_release(self.dist, self.server.base_url, "0.1.1")
+        _builder.build_release(self.dist, self.server.base_url, "0.2.1")
         self.project.clear_catalog_caches()
         update_plan = self.project.json("bundle", "info", "concorde-bundle", "--json")
-        self.assertEqual(update_plan["version"], "0.1.1")
+        self.assertEqual(update_plan["version"], "0.2.1")
         self.project.run("bundle", "update", "concorde-bundle")
         installed = self.project.json("bundle", "list", "--json")
-        self.assertEqual(installed[0]["version"], "0.1.1")
+        self.assertEqual(installed[0]["version"], "0.2.1")
         self.assertEqual(self.project.source_hashes(), source_hashes)
         self.assertEqual(self.project.source_hashes((".agents/skills/user-owned",)), unrelated_hashes)
         self.project.run("bundle", "remove", "concorde-bundle")

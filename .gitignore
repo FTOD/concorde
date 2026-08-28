@@ -34,3 +34,5 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+*.pyc
+.specify/extensions/*/.specify-dev/

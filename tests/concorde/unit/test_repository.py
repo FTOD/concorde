@@ -63,14 +63,27 @@ class RepositoryTests(unittest.TestCase):
                 ProjectRepository(root).resolve("link/file.md")
 
     def test_rejects_unsupported_profile_version(self):
+        for version in (99, 1):
+            with tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                (root / ".concorde").mkdir()
+                (root / ".concorde/config.json").write_text(
+                    '{"profile_version":%d,"specification_root":"specs/example","root_module_id":"module.example"}' % version
+                )
+                with self.assertRaisesRegex(RepositoryError, "expected profile_version 2"):
+                    ProjectRepository(root).load_config()
+
+    def test_discovers_module_design_reference_and_feature_implementation_as_durable_auxiliary(self):
+        package = ProjectRepository(VALID_PROJECT).load()
+        self.assertIn("specs/example/design.md", package.auxiliary)
+        self.assertIn("specs/example/modules/api/design.md", package.auxiliary)
+        self.assertIn("specs/example/features/001-deliver/implementation.md", package.auxiliary)
+        self.assertNotIn("specs/example/features/001-deliver/design.md", package.auxiliary)
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            (root / ".concorde").mkdir()
-            (root / ".concorde/config.json").write_text(
-                '{"profile_version":99,"specification_root":"specs/example","root_module_id":"module.example"}'
-            )
-            with self.assertRaisesRegex(RepositoryError, "unsupported"):
-                ProjectRepository(root).load_config()
+            root = Path(temporary) / "project"
+            shutil.copytree(VALID_PROJECT, root)
+            (root / "specs/example/design.md").write_text("# Design Reference: Example\n\n## Decision Log\n\n- changed\n", encoding="utf-8")
+            self.assertNotEqual(ProjectRepository(root).load().source_digest, package.source_digest)
 
     def test_rejects_declared_feature_diagram_outside_diagrams_directory(self):
         with tempfile.TemporaryDirectory() as temporary:

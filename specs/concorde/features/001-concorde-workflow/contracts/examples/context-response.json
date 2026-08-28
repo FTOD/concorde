@@ -5,6 +5,7 @@
   "status": "success",
   "artifacts": [
     "specs/example/architecture.json",
+    "specs/example/design.md",
     "specs/example/module.md",
     "specs/example/modules/api/module.md"
   ],
@@ -14,21 +15,30 @@
       "requested_id": "module.example",
       "current_module": {
         "id": "module.example",
-        "features": ["feature.example.deliver-workflow"],
+        "summary": "specs/example/module.md",
+        "design_reference": "specs/example/design.md",
+        "view": "specs/example/architecture.json",
+        "features": [
+          "feature.example.deliver-workflow"
+        ],
         "contracts": {
           "provided": [
             {
               "id": "contract.example.workflow",
               "role": "provided",
               "flow": "bidirectional",
-              "counterparties": ["external.maintainer"]
+              "counterparties": [
+                "external.maintainer"
+              ]
             }
           ],
           "required": []
         },
         "organization": {
           "parent": null,
-          "children": ["module.example.api"]
+          "children": [
+            "module.example.api"
+          ]
         },
         "responsibility": "Deliver the example workflow.",
         "boundary": "Own orchestration, not API internals."
@@ -42,7 +52,9 @@
                 "id": "contract.api.commands",
                 "role": "provided",
                 "flow": "input",
-                "counterparties": ["module.example"]
+                "counterparties": [
+                  "module.example"
+                ]
               }
             ],
             "required": []
@@ -53,11 +65,16 @@
           }
         }
       ],
-      "externals": ["external.maintainer"],
+      "externals": [
+        "external.maintainer"
+      ],
       "scenarios": [
         {
           "id": "scenario.example.deliver-workflow",
-          "participants": ["external.maintainer", "module.example.api"],
+          "participants": [
+            "external.maintainer",
+            "module.example.api"
+          ],
           "interactions": [
             {
               "id": "deliver",
@@ -78,7 +95,9 @@
       "subfeatures": [],
       "parent_feature": null,
       "siblings": [],
-      "deeper_references": ["module.example.api"],
+      "deeper_references": [
+        "module.example.api"
+      ],
       "architecture_readiness": null,
       "feature_workspace": null,
       "feature_diagrams": [],

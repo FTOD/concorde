@@ -11,7 +11,7 @@
         "id": "publish-project-docsite",
         "label": "Publish project docsite",
         "focus": ["projectDocs", "projectSpecs", "archify", "documentation", "maintainer"],
-        "note": "The specs tree supplies architecture and permanent feature specs/designs; project Markdown completes three read-only views."
+        "note": "The specs tree supplies architecture, feature specs, and accepted realizations; project Markdown completes three read-only views."
       }
     ]
   },

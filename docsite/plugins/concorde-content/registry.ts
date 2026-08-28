@@ -6,20 +6,28 @@ import fg from 'fast-glob';
 import matter from 'gray-matter';
 
 import type {
-  ArchitectureKind, ArchitectureSource, ContentRegistry, ExcludedSource, FeatureDesign, FeatureDiagram, FeatureSpecification, ProjectDocument, SourceCollection,
-  SourceDocument, ValidationFinding,
+  ArchitectureKind, ArchitectureSource, ContentRegistry, ExcludedSource, FeatureDiagram, FeatureImplementation, FeatureSpecification,
+  ModuleDesign, ProjectDocument, SourceCollection, SourceDocument, ValidationFinding,
 } from './types';
 import {populateLinks} from './links';
 
 export const collections: SourceCollection[] = [
   {
+    // `**/design.md` is admitted only beside a `module.md` (a module design reference, kind `module-design`);
+    // buildRegistry reports any other design.md instead of publishing it.
     id: 'architecture', sourceBase: 'specs', routeBase: '/architecture',
-    include: ['**/module.md', '**/contracts/**/contract.md'], contentKind: 'architecture-source',
+    include: ['**/module.md', '**/design.md', '**/contracts/**/contract.md'], contentKind: 'architecture-source',
   },
   {id: 'docs', sourceBase: 'docs', routeBase: '/docs', include: ['**/*.md'], contentKind: 'project-document'},
   {id: 'features', sourceBase: 'specs', routeBase: '/features', include: ['**/spec.md'], contentKind: 'feature-specification'},
-  {id: 'feature-designs', sourceBase: 'specs', routeBase: '/features', include: ['**/design.md'], contentKind: 'feature-design'},
+  {
+    id: 'feature-implementations', sourceBase: 'specs', routeBase: '/features',
+    include: ['**/implementation.md'], contentKind: 'feature-implementation',
+  },
 ];
+
+/** Temporal implementation attempts (`<feature root>/implementation/**`) are never publishable sources. */
+const temporalWorkspaceIgnore = ['**/implementation/**'];
 
 const posixPath = (value: string) => value.split('\\').join('/');
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -132,6 +140,7 @@ async function parseDocument(
   const route = routeFor(collection, posixPath(relativePath), parsed.data.slug, parsed.data.id);
   const base = {
     collectionId: collection.id,
+    contentKind: collection.contentKind,
     sourcePath,
     realPath: resolvedPath,
     title,
@@ -146,8 +155,17 @@ async function parseDocument(
     slug: typeof parsed.data.slug === 'string' ? parsed.data.slug : undefined,
   };
   if (collection.id === 'docs') return base as ProjectDocument;
-  if (collection.id === 'feature-designs') return base as FeatureDesign;
+  if (collection.id === 'feature-implementations') return base as FeatureImplementation;
   if (collection.id === 'architecture') {
+    if (posix.basename(relativePath) === 'design.md') {
+      return {
+        ...base,
+        collectionId: 'architecture',
+        contentKind: 'module-design',
+        route: routeFor(collection, posixPath(relativePath), parsed.data.slug),
+        moduleSourcePath: posix.join(posix.dirname(sourcePath), 'module.md'),
+      } as ModuleDesign;
+    }
     const architectureKind = parsed.data.kind as ArchitectureKind;
     const view = typeof parsed.data.view === 'string'
       ? parsed.data.view.trim()
@@ -265,17 +283,55 @@ function resolveFeatureRelations(documents: SourceDocument[], findings: Validati
       child.siblings = parent.subfeatures.filter((item) => item.featureId !== child.featureId);
     }
   }
-  for (const design of documents.filter((document): document is FeatureDesign => document.collectionId === 'feature-designs')) {
-    const specification = byDirectory.get(posix.dirname(design.sourcePath));
+  for (const implementation of documents.filter(
+    (document): document is FeatureImplementation => document.collectionId === 'feature-implementations',
+  )) {
+    const specification = byDirectory.get(posix.dirname(implementation.sourcePath));
     if (!specification) continue;
-    design.featureId = specification.featureId;
-    design.moduleId = specification.moduleId;
-    design.featureLevel = specification.featureLevel;
-    design.parentFeatureId = specification.parentFeatureId;
-    design.parentFeatureRoute = specification.parentFeatureRoute;
-    design.subfeatures = specification.subfeatures;
-    design.siblings = specification.siblings;
+    implementation.featureId = specification.featureId;
+    implementation.moduleId = specification.moduleId;
+    implementation.featureLevel = specification.featureLevel;
+    implementation.parentFeatureId = specification.parentFeatureId;
+    implementation.parentFeatureRoute = specification.parentFeatureRoute;
+    implementation.subfeatures = specification.subfeatures;
+    implementation.siblings = specification.siblings;
+    implementation.specificationRoute = specification.route;
+    specification.implementationRoute = implementation.route;
   }
+}
+
+function resolveModuleRelations(documents: SourceDocument[]): void {
+  const modules = new Map(documents
+    .filter((document): document is ArchitectureSource =>
+      document.contentKind === 'architecture-source' && (document as ArchitectureSource).architectureKind === 'module')
+    .map((module) => [module.sourcePath, module]));
+  for (const design of documents.filter((document): document is ModuleDesign => document.contentKind === 'module-design')) {
+    const module = modules.get(design.moduleSourcePath);
+    if (!module) continue;
+    design.moduleId = module.architectureId;
+    design.moduleRoute = module.route;
+    module.designReferenceRoute = design.route;
+  }
+}
+
+function unpairedDesignFinding(relativePath: string, specsMarkdown: Set<string>): ValidationFinding | undefined {
+  const directory = posix.dirname(relativePath);
+  const sibling = (name: string) => (directory === '.' ? name : posix.join(directory, name));
+  if (specsMarkdown.has(sibling('module.md'))) return undefined;
+  const sourcePath = posix.join('specs', relativePath);
+  const directoryPath = posix.join('specs', directory);
+  if (specsMarkdown.has(sibling('spec.md'))) {
+    return {
+      ruleId: 'feature.design.legacy', severity: 'error', sourcePath,
+      message: `Legacy feature design "${sourcePath}" sits beside spec.md; a feature root's accepted realization is published from implementation.md.`,
+      remediation: `Rename ${directoryPath}/design.md to ${directoryPath}/implementation.md (merging into an existing implementation.md first) so it is published as the feature's implementation page.`,
+    };
+  }
+  return {
+    ruleId: 'module.design.unpaired', severity: 'error', sourcePath,
+    message: 'design.md has no sibling module.md, so it cannot be published as a module design reference.',
+    remediation: `Add ${directoryPath}/module.md (the module summary this reference describes) or move design.md out of specs/.`,
+  };
 }
 
 export async function buildRegistry(projectRoot: string): Promise<ContentRegistry> {
@@ -283,13 +339,24 @@ export async function buildRegistry(projectRoot: string): Promise<ContentRegistr
   const documents: SourceDocument[] = [];
   const excludedSources: ExcludedSource[] = [];
   const findings: ValidationFinding[] = [];
+  const specsMarkdown = new Set((await fg(['**/*.md'], {
+    cwd: resolve(root, 'specs'), onlyFiles: true, unique: true, followSymbolicLinks: false,
+  })).map(posixPath));
 
   for (const collection of collections) {
     const basePath = resolve(root, collection.sourceBase);
     const paths = await fg(collection.include, {
       cwd: basePath, onlyFiles: true, unique: true, followSymbolicLinks: false,
+      ignore: collection.sourceBase === 'specs' ? temporalWorkspaceIgnore : [],
     });
     for (const path of paths.sort()) {
+      if (collection.id === 'architecture' && posix.basename(posixPath(path)) === 'design.md') {
+        const finding = unpairedDesignFinding(posixPath(path), specsMarkdown);
+        if (finding) {
+          findings.push(finding);
+          continue;
+        }
+      }
       try {
         documents.push(await parseDocument(root, collection, path));
       } catch (error) {
@@ -304,11 +371,8 @@ export async function buildRegistry(projectRoot: string): Promise<ContentRegistr
   }
 
   const includedSources = new Set(documents.map((document) => document.sourcePath));
-  const excluded = await fg(['**/*.md'], {
-    cwd: resolve(root, 'specs'), onlyFiles: true, unique: true, followSymbolicLinks: false,
-  });
-  for (const path of excluded.sort()) {
-    const sourcePath = posix.join('specs', posixPath(path));
+  for (const path of [...specsMarkdown].sort()) {
+    const sourcePath = posix.join('specs', path);
     if (!includedSources.has(sourcePath)) {
       excludedSources.push({sourcePath, reason: 'not-canonical-feature-artifact'});
     }
@@ -316,6 +380,7 @@ export async function buildRegistry(projectRoot: string): Promise<ContentRegistr
 
   documents.sort((left, right) => left.sourcePath.localeCompare(right.sourcePath));
   resolveFeatureRelations(documents, findings);
+  resolveModuleRelations(documents);
   return populateLinks({projectRoot: root, collections, documents, excludedSources, findings});
 }
 

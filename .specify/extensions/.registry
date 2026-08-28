@@ -2,19 +2,12 @@
   "schema_version": "1.0",
   "extensions": {
     "concorde": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "source": "local",
-      "manifest_hash": "sha256:2120e8b559c27fae258cf062f6d954ab4b95d64db54554e269c1a27446b26458",
+      "manifest_hash": "sha256:50fc345a97851becf293ad651a222e3f5149f9ed1df1f6e10af59d5a2c8c07b2",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
-        "codex": [
-          "speckit.concorde.init",
-          "speckit.concorde.feature-harden",
-          "speckit.concorde.context",
-          "speckit.concorde.validate",
-          "speckit.concorde.ask"
-        ],
         "claude": [
           "speckit.concorde.init",
           "speckit.concorde.feature-harden",
@@ -24,7 +17,7 @@
         ]
       },
       "registered_skills": [],
-      "installed_at": "2026-08-27T10:22:01.361942+00:00"
+      "installed_at": "2026-08-27T12:57:38.324082+00:00"
     }
   }
 }

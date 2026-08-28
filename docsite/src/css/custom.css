@@ -23,6 +23,11 @@
 .provenance {display: flex; flex-wrap: wrap; gap: .55rem 1rem; align-items: center; padding: .75rem 1rem; border: 1px solid var(--concorde-border); border-radius: .65rem; background: var(--concorde-surface); font-size: .8rem;}
 .provenance__kind {font-weight: 700;}
 .provenance__status {border-radius: 99px; padding: .15rem .55rem; background: var(--ifm-color-primary); color: white;}
+.companionLinksShell {max-width: var(--ifm-container-width); margin: 1.5rem auto 0; padding: 0 var(--ifm-spacing-horizontal);}
+.companionLinks {display: flex; flex-wrap: wrap; gap: .35rem 1rem; align-items: baseline; padding: .75rem 1rem; border: 1px solid var(--concorde-border); border-radius: .65rem; background: var(--concorde-surface); font-size: .9rem;}
+.companionLinks__eyebrow {color: var(--ifm-color-primary); font-size: .75rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;}
+.companionLinks__link {font-weight: 700;}
+.companionLinks__description {color: var(--ifm-color-emphasis-700);}
 .featureRelationsShell {max-width: var(--ifm-container-width); margin: 1.5rem auto 0; padding: 0 var(--ifm-spacing-horizontal);}
 .featureRelations {padding: 1rem; border: 1px solid var(--concorde-border); border-radius: .65rem; background: var(--concorde-surface);}
 .featureRelations ol {margin-bottom: 0;}
@@ -52,6 +57,7 @@ a:focus-visible, button:focus-visible {outline: 3px solid var(--ifm-color-primar
   .homeMain {padding-top: 3rem;}
   .projectSummary__grid {grid-template-columns: 1fr;}
   .provenance {align-items: flex-start; flex-direction: column;}
+  .companionLinks {align-items: flex-start; flex-direction: column;}
   .architectureView__heading {align-items: flex-start; flex-direction: column;}
   .architectureView__frame {min-height: 30rem;}
   .featureDiagram__heading {align-items: flex-start; flex-direction: column;}

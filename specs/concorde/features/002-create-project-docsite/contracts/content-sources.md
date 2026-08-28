@@ -1,4 +1,4 @@
-# Content Sources Contract v4
+# Content Sources Contract v5
 
 **Contract ID**: `contract.documentation.project-content`
 
@@ -10,8 +10,9 @@
 
 ## Purpose
 
-Provide canonical architecture sources, project documentation, feature specifications, and feature designs to the
-generated site without copying or modifying their maintained sources.
+Provide canonical architecture sources (including module design references), project documentation,
+feature specifications, and accepted feature implementations to the generated site without copying
+or modifying their maintained sources.
 
 ## Representation
 
@@ -25,13 +26,16 @@ generated site without copying or modifying their maintained sources.
 | Collection | Source root | Eligible inputs | Public route base |
 |---|---|---|---|
 | Architecture | `specs/` | Every regular file matching `**/module.md` or `**/contracts/**/contract.md` | `/architecture` |
+| Architecture (module design references) | `specs/` | Every regular file named `design.md` whose directory also contains a `module.md`; published in the Architecture collection as kind `module-design` | `/architecture` |
 | Project documentation | `docs/` | Every regular file matching `**/*.md` | `/docs` |
 | Feature specifications | `specs/` | Every regular file matching `**/spec.md` | `/features` |
-| Feature designs | `specs/` | Every regular file matching `**/design.md` | `/features` |
+| Feature implementations | `specs/` | Every regular file matching `**/implementation.md` | `/features` |
 
 Symbolic links are not followed. Normalized source paths must remain beneath their declared root.
-Architecture, Feature Specifications, and Feature Designs are disjoint projections of the same
-specification tree. Specifications and designs share the public Features navigation family.
+Architecture (including module design references), Feature Specifications, and Feature
+Implementations are disjoint projections of the same specification tree: a `design.md` is admitted
+only beside a `module.md` and is never a feature input, and `implementation.md` is never an
+architecture input. Specifications and implementations share the public Features navigation family.
 
 ## Field Semantics
 
@@ -66,21 +70,33 @@ specification tree. Specifications and designs share the public Features navigat
   scenarios or question, and generated output. A feature may declare at most one core diagram, and
   its kind must be `architecture`; dynamic kinds are supplemental. The JSON `diagram_type` and
   `meta.output` must agree with the declaration.
-- Parent directory: the feature or immediate sub-feature directory; its `spec.md` and `design.md` are
-  permanent site content. No third feature level is publishable.
+- Parent directory: the feature or immediate sub-feature directory; its `spec.md` and
+  `implementation.md` are permanent site content. No third feature level is publishable.
 
-### Feature Designs
+### Feature Implementations
 
-- first level-one heading: required feature-design title.
-- Parent directory: the feature directory containing the paired `spec.md`.
-- Content: the accepted durable realization of the feature; temporal files beneath
-  `implementation/` remain excluded.
+- first level-one heading: required feature-implementation title.
+- Parent directory: the feature directory containing the paired `spec.md`; the page is published as
+  kind `feature-implementation` and linked with that specification.
+- Content: the accepted durable realization of the feature (a not-yet-hardened placeholder is still
+  published with its provenance); temporal files beneath `implementation/` remain excluded.
+
+### Module Design References
+
+- first level-one heading: required title.
+- Parent directory: the module directory containing the paired `module.md`; a `design.md` anywhere
+  else (including a feature root) is not eligible and is reported as an error by the architecture
+  validator, not published.
+- Content: the module's implementation detail and design rationale. The file has no front matter and
+  no independent ID; the page is published in the Architecture collection as kind `module-design`
+  with the owning module's ID and provenance and is linked from the module page.
 
 ### Architecture Sources
 
 - `id`: required globally unique stable architecture entity ID.
 - `kind`: required and equal to `module` or `contract`; feature `spec.md` is classified only as a
-  Feature Specification.
+  Feature Specification, and a module design reference derives kind `module-design` from its
+  adjacency to `module.md`.
 - `module`: required owning module ID for feature and contract sources.
 - `parent`: optional parent module ID for non-root module sources.
 - `view` or `architecture_view`: optional project-relative path to maintained Archify JSON.
@@ -121,9 +137,11 @@ candidate publication.
 
 ## Compatibility
 
-This is contract version 4. It preserves content kinds, source roots, eligibility globs, field
-representation, route bases, and manifest schema while moving diagram delivery from a manually
-prepared prerequisite into preview/production publication. Adding optional metadata or more project
+This is contract version 5. It replaces the feature-level `**/design.md` eligibility glob with
+`**/implementation.md` (kind `feature-implementation`) and adds module-level `design.md` beside a
+`module.md` as an Architecture input (kind `module-design`), matching Build Manifest schema version 5;
+source roots, route bases, and path semantics are unchanged. Version 4 moved diagram delivery from a
+manually prepared prerequisite into preview/production publication. Adding optional metadata or more project
 documents is backward compatible. Changing source roots, eligibility globs, required fields, route
 bases, path semantics, or exclusion meaning requires a new contract version and a route/content
 migration decision.

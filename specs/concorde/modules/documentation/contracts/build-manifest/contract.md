@@ -8,7 +8,7 @@ representation:
   kind: custom
   format: JSON
   serialization: JSON
-  version: 3
+  version: 5
   definition: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json
   schema: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json
   example: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.example.json
@@ -18,7 +18,7 @@ consumers:
   - external.project-maintainer
 features:
   - feature.documentation.publish-project-docsite
-version: 3
+version: 5
 evidence:
   tests:
     - docsite/tests/contract/build-manifest.test.ts
@@ -43,10 +43,11 @@ records additionally carry stable entity and declared-view metadata.
 ## Obligations
 
 - All arrays are stably sorted and all paths are project-relative.
-- Feature specification pages carry stable ID, module, and status; feature-design pages carry durable
-  design provenance; architecture pages carry stable ID, kind,
-  hierarchy metadata, view source hash, and delivered-view route when applicable.
-- A successful manifest contains no timestamp and validates against schema version 3.
+- Feature specification pages carry stable ID, module, and status; feature-implementation pages
+  carry durable realization provenance; module-design pages carry the owning module's provenance;
+  architecture pages carry stable ID, kind, hierarchy metadata, view source hash, and delivered-view
+  route when applicable.
+- A successful manifest contains no timestamp and validates against schema version 5.
 - Only actual rendered routes enter the verified route inventory.
 
 ## Failure Semantics
@@ -56,8 +57,10 @@ missing fields, unsorted projections, and unverified routes fail publication.
 
 ## Compatibility
 
-Incompatible field-meaning changes require a new schema version. Version 3 adds the Feature Designs
-source collection and `feature-design` page kind; readers reject unsupported schema versions.
+Incompatible field-meaning changes require a new schema version. Version 5 renames the
+`feature-designs` collection to `feature-implementations` (page kind `feature-implementation`) and
+adds `module-design` pages to the `architecture` collection; version 3 added the feature-designs
+collection and `feature-design` page kind. Readers reject unsupported schema versions.
 
 ## Evidence
 

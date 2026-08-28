@@ -224,7 +224,7 @@ get_feature_paths() {
     local implementation_dir="$feature_dir/implementation"
     printf 'IMPLEMENTATION_DIR=%q\n' "$implementation_dir"
     printf 'FEATURE_SPEC=%q\n' "$feature_dir/spec.md"
-    printf 'FEATURE_DESIGN=%q\n' "$feature_dir/design.md"
+    printf 'FEATURE_IMPLEMENTATION=%q\n' "$feature_dir/implementation.md"
     printf 'IMPL_PLAN=%q\n' "$implementation_dir/plan.md"
     printf 'TASKS=%q\n' "$implementation_dir/tasks.md"
     printf 'RESEARCH=%q\n' "$implementation_dir/research.md"

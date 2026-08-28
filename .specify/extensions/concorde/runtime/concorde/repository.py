@@ -91,8 +91,8 @@ class ProjectRepository:
             value = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as error:
             raise RepositoryError(f"cannot read .concorde/config.json: {error}") from error
-        if value.get("profile_version") != 1:
-            raise RepositoryError("unsupported Concorde source profile; expected profile_version 1")
+        if value.get("profile_version") != 2:
+            raise RepositoryError("unsupported Concorde source profile; expected profile_version 2")
         specification_root = value.get("specification_root")
         if not specification_root and value.get("architecture_root"):
             specification_root = value["architecture_root"]
@@ -219,12 +219,18 @@ class ProjectRepository:
             by_id[source.identifier].append(source)
         artifacts = [source.path for source in sources] + list(views) + list(diagrams)
         auxiliary: dict[str, str] = {}
+        for module in (source for source in sources if source.kind == "module"):
+            reference = self.resolve(str(PurePosixPath(module.path).parent / "design.md"))
+            if reference.is_file() and not reference.is_symlink():
+                relative = reference.relative_to(self.project_root).as_posix()
+                auxiliary[relative] = reference.read_text(encoding="utf-8")
+                artifacts.append(relative)
         for feature in (source for source in sources if source.kind == "feature"):
             feature_root = PurePosixPath(feature.path).parent
-            design = self.resolve(str(feature_root / "design.md"))
-            if design.is_file() and not design.is_symlink():
-                relative = design.relative_to(self.project_root).as_posix()
-                auxiliary[relative] = design.read_text(encoding="utf-8")
+            realization = self.resolve(str(feature_root / "implementation.md"))
+            if realization.is_file() and not realization.is_symlink():
+                relative = realization.relative_to(self.project_root).as_posix()
+                auxiliary[relative] = realization.read_text(encoding="utf-8")
                 artifacts.append(relative)
             implementation = self.resolve(str(feature_root / "implementation"))
             if not implementation.is_dir() or implementation.is_symlink():

@@ -59,9 +59,24 @@ describe('content source diagnostics', () => {
     ['broken-link', 'link.target.missing'],
     ['route-collision', 'content.route.duplicate'],
     ['duplicate-id', 'feature.id.duplicate'],
+    ['missing-implementation', 'feature.implementation.required'],
+    ['legacy-feature-design', 'feature.design.legacy'],
+    ['missing-module-design', 'module.design.required'],
+    ['unpaired-design', 'module.design.unpaired'],
   ])('rejects %s with stable rule %s', async (fixtureName, ruleId) => {
     const registry = await buildRegistry(resolve(__dirname, `../fixtures/invalid-projects/${fixtureName}`));
     expect(validateRegistry(registry).some((finding) => finding.ruleId === ruleId)).toBe(true);
+  });
+
+  it('never publishes a design.md that is not a module design reference', async () => {
+    const legacy = await buildRegistry(resolve(__dirname, '../fixtures/invalid-projects/legacy-feature-design'));
+    expect(legacy.documents.some((document) => document.sourcePath.endsWith('/design.md'))).toBe(false);
+    expect(legacy.excludedSources).toContainEqual({
+      sourcePath: 'specs/001-legacy/design.md', reason: 'not-canonical-feature-artifact',
+    });
+    const finding = validateRegistry(legacy).find((candidate) => candidate.ruleId === 'feature.design.legacy');
+    expect(finding?.sourcePath).toBe('specs/001-legacy/design.md');
+    expect(finding?.remediation).toContain('Rename specs/001-legacy/design.md to specs/001-legacy/implementation.md');
   });
 
   it('discovers maintained diagram declarations without treating HTML as an input source', async () => {

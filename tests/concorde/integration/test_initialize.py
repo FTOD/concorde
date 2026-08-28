@@ -12,6 +12,7 @@ from tests.concorde.support.paths import RUNTIME_ROOT
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.initialize import apply_proposal, propose_initialization  # noqa: E402
+from concorde.validate import validate_project  # noqa: E402
 
 
 class InitializationTests(unittest.TestCase):
@@ -32,8 +33,11 @@ class InitializationTests(unittest.TestCase):
             self.assertEqual({item["path"] for item in proposal["files"]}, {
                 ".concorde/config.json",
                 f"specs/{proposal['project_root_id'].split('.', 1)[1]}/module.md",
+                f"specs/{proposal['project_root_id'].split('.', 1)[1]}/design.md",
                 f"specs/{proposal['project_root_id'].split('.', 1)[1]}/architecture.json",
             })
+            config = next(item for item in proposal["files"] if item["path"] == ".concorde/config.json")
+            self.assertIn('"profile_version": 2', config["content"])
             for item in proposal["files"]:
                 self.assertEqual(item["sha256"], "sha256:" + hashlib.sha256(item["content"].encode()).hexdigest())
             self.assertEqual(list(root.rglob("*")), before)
@@ -46,6 +50,10 @@ class InitializationTests(unittest.TestCase):
             proposal_path.write_text(json.dumps(proposed.result["proposal"]))
             applied = apply_proposal(root, "accepted.json")
             self.assertEqual(applied.status, "success")
+            self.assertTrue((root / "specs/sample/design.md").is_file())
+            validated = validate_project(root)
+            self.assertEqual([item.rule_id for item in validated.findings if item.rule_id.startswith(("CONCORDE-SUMMARY-", "CONCORDE-MODULE-"))], [])
+            self.assertEqual(validated.status, "success", validated.findings)
             unchanged = apply_proposal(root, "accepted.json")
             self.assertEqual(unchanged.status, "unchanged")
             (root / "specs/sample/module.md").write_text("user change")
@@ -63,6 +71,8 @@ class InitializationTests(unittest.TestCase):
             result = apply_proposal(root, "accepted.json")
             self.assertEqual(result.status, "conflict")
             self.assertFalse((root / ".concorde/config.json").exists())
+            self.assertFalse((root / "specs/sample/design.md").exists())
+            self.assertEqual({item.source for item in result.findings}, {"specs/sample/module.md"})
 
     def test_staged_promotion_failure_rolls_back_and_unsafe_proposal_path_is_invalid(self):
         with tempfile.TemporaryDirectory() as temporary:

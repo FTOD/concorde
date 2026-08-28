@@ -4,8 +4,12 @@ This private package builds the read-only Concorde project website. Canonical co
 this package:
 
 - `../docs/**/*.md` owns project documentation.
-- `../specs/**/spec.md` owns feature specifications at any module level.
-- `../specs/**/module.md` and `../specs/**/contracts/**/contract.md` own architecture intent.
+- `../specs/**/spec.md` owns feature specifications at any module level, and the sibling
+  `implementation.md` owns each feature's accepted realization; the two are published as companion
+  pages under Features. Temporal `implementation/` workspaces are never published.
+- `../specs/**/module.md` (module summary), its sibling `design.md` (module design reference, published
+  as a separately linked Architecture page), and `../specs/**/contracts/**/contract.md` own
+  architecture intent. A `design.md` without a sibling `module.md` is a validation error.
 - `../specs/**/architecture.json` owns structural views; the build creates their ignored,
   disposable standalone Archify projections beneath `../generated/architecture/`.
 - `../specs/**/features/*/diagrams/*.json` owns feature scenario explanations declared by `spec.md`;

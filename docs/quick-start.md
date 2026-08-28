@@ -27,10 +27,11 @@ npm run start
 
 Open the local address printed by Docusaurus. The site has three views over maintained sources:
 
-- **Architecture** publishes module and boundary-contract sources plus declared Archify views.
+- **Architecture** publishes each module summary with its embedded level view, its linked `design.md`
+  design reference, boundary contracts, and declared Archify views.
 - **Documentation** publishes the explanatory guides under `docs/`.
-- **Features** publishes each durable feature `spec.md` and `design.md` while excluding its temporary
-  `implementation/` workspace.
+- **Features** publishes each durable feature `spec.md` paired with its `implementation.md` while
+  excluding its temporary `implementation/` workspace.
 
 Before submitting a publication change, run the complete gate:
 
@@ -175,13 +176,15 @@ $speckit-concorde-init
 $speckit-concorde-context module.<project>
 ```
 
-Review the initialization proposal before allowing it to write maintained sources. Context retrieval
-is read-only and loads one bounded architecture level for the current agent interaction.
+Review the initialization proposal (`.concorde/config.json`, a `module.md` summary, a seeded
+`design.md` design reference, and `architecture.json`) before allowing it to write maintained
+sources. Context retrieval is read-only and loads one bounded architecture level for the current
+agent interaction.
 
 After deciding where the feature belongs in the hierarchy, create it with the normal specify phase.
 Concorde has no feature-creation command: export the canonical feature root in the terminal before
-invoking the skill, so the Concorde specify addendum seeds `spec.md` and `design.md` there and
-records the root in `.specify/feature.json`:
+invoking the skill, so the Concorde specify addendum seeds `spec.md` and a placeholder
+`implementation.md` there and records the root in `.specify/feature.json`:
 
 ```bash
 export SPECIFY_FEATURE_DIRECTORY=specs/<project>/features/001-<name>
@@ -220,8 +223,9 @@ $speckit-converge
 $speckit-concorde-validate
 ```
 
-Specification and accepted design stay at the feature root. Checklists, plans, tasks, research, and
-delivery evidence stay under the single active `implementation/` attempt.
+The specification (`spec.md`) and accepted realization (`implementation.md`) stay at the feature
+root. Checklists, plans, tasks, research, and delivery evidence stay under the single active
+`implementation/` attempt.
 
 ## 5. Finish the milestone deliberately
 
@@ -232,9 +236,11 @@ accept the implementation, ask the agent to harden the feature:
 $speckit-concorde-feature-harden feature.<project>.<name>
 ```
 
-The first result is a proposal, not a mutation. Review the full candidate `design.md`, the exact
-`implementation/` removal target, and the source digest. Only explicit approval applies that
-unchanged proposal. On success, the durable design remains and the temporary attempt is removed.
+The first result is a proposal, not a mutation. Review the full candidate `implementation.md`, any
+proposed amendment to the providing module's `design.md`, the exact `implementation/` removal
+target, and the source digest. Only explicit approval applies that unchanged proposal. On success,
+the durable realization (and the amended design reference, when proposed) remains and the temporary
+attempt is removed.
 
 Continue with the [Concorde workflow](concorde-workflow.md) for the review gates and
 [Commands and installed surfaces](commands.md) for command-by-command behavior.

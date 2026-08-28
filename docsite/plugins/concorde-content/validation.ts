@@ -1,9 +1,15 @@
 import {relative, resolve, sep} from 'node:path';
 
-import type {ArchitectureSource, ContentRegistry, FeatureSpecification, SourceDocument, ValidationFinding} from './types';
+import type {
+  ArchitectureSource, ContentRegistry, FeatureImplementation, FeatureSpecification, ModuleDesign, SourceDocument, ValidationFinding,
+} from './types';
 
 const isFeature = (document: SourceDocument): document is FeatureSpecification => document.collectionId === 'features';
-const isArchitecture = (document: SourceDocument): document is ArchitectureSource => document.collectionId === 'architecture';
+const isFeatureImplementation = (document: SourceDocument): document is FeatureImplementation =>
+  document.collectionId === 'feature-implementations';
+const isArchitecture = (document: SourceDocument): document is ArchitectureSource => document.contentKind === 'architecture-source';
+const isModuleDesign = (document: SourceDocument): document is ModuleDesign => document.contentKind === 'module-design';
+const temporalWorkspacePattern = /(^|\/)implementation\//;
 
 export function sortFindings(findings: ValidationFinding[]): ValidationFinding[] {
   return [...findings].sort((left, right) =>
@@ -69,6 +75,13 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
         remediation: 'Add front matter title or a level-one Markdown heading.',
       });
     }
+    if (temporalWorkspacePattern.test(document.sourcePath)) {
+      findings.push({
+        ruleId: 'content.path.temporal', severity: 'error', sourcePath: document.sourcePath,
+        message: 'Temporal implementation workspace content is never published.',
+        remediation: 'Keep publishable sources outside implementation/ directories; the accepted realization lives in implementation.md beside spec.md.',
+      });
+    }
     if (isFeature(document)) {
       if (!document.featureId) findings.push({
         ruleId: 'feature.id.required', severity: 'error', sourcePath: document.sourcePath,
@@ -95,9 +108,28 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
         message: 'Sub-feature pages require one parent and a non-empty Outcome section.',
         remediation: 'Declare parent_feature and add one concise ## Outcome section.',
       });
+      if (!document.implementationRoute) findings.push({
+        ruleId: 'feature.implementation.required', severity: 'error', sourcePath: document.sourcePath,
+        message: 'Feature specification has no companion implementation.md accepted realization.',
+        remediation: 'Add implementation.md beside spec.md (a placeholder realization is acceptable) so the specification and its accepted realization are published together.',
+      });
       for (const diagram of document.diagrams) {
         featureDiagramRoutes.set(diagram.route, [...(featureDiagramRoutes.get(diagram.route) ?? []), document]);
       }
+    }
+    if (isFeatureImplementation(document) && !document.specificationRoute) {
+      findings.push({
+        ruleId: 'feature.implementation.unpaired', severity: 'error', sourcePath: document.sourcePath,
+        message: 'implementation.md has no sibling spec.md, so it cannot be published as a feature implementation.',
+        remediation: 'Place implementation.md beside the feature or sub-feature spec.md it realizes, or remove it.',
+      });
+    }
+    if (isModuleDesign(document) && !document.moduleRoute) {
+      findings.push({
+        ruleId: 'module.design.unpaired', severity: 'error', sourcePath: document.sourcePath,
+        message: 'design.md is not paired with a publishable module summary in the same directory.',
+        remediation: 'Ensure the sibling module.md declares kind: module and a stable id.',
+      });
     }
     if (isArchitecture(document)) {
       if (!document.architectureId) findings.push({
@@ -120,6 +152,11 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
         message: `Declared architecture view "${document.architectureViewSource}" cannot be mapped to a generated site artifact.`,
         remediation: 'Correct the view path, ensure its JSON is valid, set meta.output beneath generated/, and deliver the HTML artifact.',
       });
+      if (document.architectureKind === 'module' && !document.designReferenceRoute) findings.push({
+        ruleId: 'module.design.required', severity: 'error', sourcePath: document.sourcePath,
+        message: 'Module summary has no companion design.md design reference.',
+        remediation: 'Create design.md beside module.md with a level-one heading and at least one level-two section (seed text is acceptable), and link it from the summary.',
+      });
     }
   }
   for (const [route, owners] of featureDiagramRoutes) {
@@ -138,7 +175,7 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
     'Feature ID',
   ));
   findings.push(...duplicateFindings(
-    registry.documents.filter((document) => document.collectionId === 'architecture'),
+    registry.documents.filter(isArchitecture),
     (document) => isArchitecture(document) ? document.architectureId : undefined,
     'architecture.id.duplicate',
     'Architecture ID',

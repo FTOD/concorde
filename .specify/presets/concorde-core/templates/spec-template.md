@@ -4,9 +4,10 @@
 Record this feature in its single canonical `spec.md` inside the providing module's
 `features/<number-name>/` workspace.
 
-Keep one adjacent durable `design.md`. Specification work may read it to avoid confusing accepted
+Keep one adjacent durable `implementation.md`. Specification work may read it to avoid confusing accepted
 realization with required behavior, but must never update it. New features start with the resolved
-design template's explicit “no hardened realization” state.
+implementation template's explicit placeholder: no implementation realization has been hardened yet.
+Never create a feature-root `design.md`; that name is reserved for module design references.
 
 - **Stable feature ID**: `feature.<namespace>.<outcome>`
 - **Providing module**: exactly one current-level module

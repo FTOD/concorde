@@ -9,7 +9,7 @@ sidebar_position: 1
 Concorde is a Spec Kit-native workflow for directing software development when coding agents write
 much of the code. It shifts the maintainer's attention from individual code details to the things
 that must remain intentional: required behavior, module ownership, boundary contracts, component
-collaboration, accepted design, and evidence.
+collaboration, accepted realization, and evidence.
 
 The central idea is simple: feature specifications are not enough to control the structure of a
 large AI-developed system. Concorde combines spec-driven development with Architecture as Code, then
@@ -22,8 +22,8 @@ different questions:
 
 | Area | Use it to answer | Maintained authority |
 |---|---|---|
-| **Architecture** | Which module owns this behavior? What can cross its boundary? Which immediate components collaborate? | `module.md`, module contracts, and declared Archify sources under `specs/` |
-| **Features** | What must a feature do, why does it matter, and how does the accepted implementation realize it? | The feature's durable `spec.md` and `design.md` under `specs/` |
+| **Architecture** | Which module owns this behavior? What can cross its boundary? Which immediate components collaborate? Why is it built this way? | `module.md` summaries, their adjacent `design.md` design references, module contracts, and declared Archify sources under `specs/` |
+| **Features** | What must a feature do, why does it matter, and how does the accepted implementation realize it? | The feature's durable `spec.md` and `implementation.md` under `specs/` |
 | **Documentation** | How do I understand, install, use, and contribute to Concorde? | Explanatory Markdown under `docs/` |
 
 The website does not become a new source of truth. Every generated page identifies the maintained
@@ -32,7 +32,8 @@ file from which it was built. If a page is wrong, edit that source and rebuild t
 ## Choose a path
 
 If you are evaluating Concorde, start with [What Concorde controls](framework-overview.md). It
-explains why behavioral specifications, architecture, and accepted design are separate authorities.
+explains why behavioral specifications, architecture, and accepted realization are separate
+authorities.
 
 If you want to try it, use the [Quick start](quick-start.md). It separates terminal commands from
 agent-invoked skills and takes you from installation to a first selected feature.
@@ -57,7 +58,8 @@ If you are modifying the publication system, read [Contributing to the docsite](
 These guides explain the framework; they do not replace its specifications. Complete requirements,
 edge cases, status, and acceptance criteria live in:
 
-- the [root Concorde architecture](../specs/concorde/module.md);
+- the [root Concorde architecture](../specs/concorde/module.md) summary and its adjacent `design.md`
+  reference;
 - [Feature 001: the Concorde workflow](../specs/concorde/features/001-concorde-workflow/spec.md);
 - [Feature 002: project docsite publication](../specs/concorde/features/002-create-project-docsite/spec.md); and
 - [Feature 003: installation through Spec Kit](../specs/concorde/features/003-install-concorde-speckit/spec.md); and

@@ -56,9 +56,9 @@ describe('production build', () => {
       .toContain('Project Docsite — Publication Invocation');
     expect(Object.keys(firstDiagramHashes)).toHaveLength(7);
     expect((await readdir(resolve(siteDir, '../generated/architecture'))).every((name) => name.endsWith('.html'))).toBe(true);
-    const concordeFeature = manifest.pages.find((page: {featureId?: string}) => page.featureId === 'feature.concorde.workflow');
-    const docsiteFeature = manifest.pages.find((page: {featureId?: string}) => page.featureId === 'feature.concorde.publish-project-docsite');
-    const selfHostingFeature = manifest.pages.find((page: {featureId?: string}) => page.featureId === 'feature.concorde.self-host-framework');
+    const concordeFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-specification' && page.featureId === 'feature.concorde.workflow');
+    const docsiteFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-specification' && page.featureId === 'feature.concorde.publish-project-docsite');
+    const selfHostingFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-specification' && page.featureId === 'feature.concorde.self-host-framework');
     if (!concordeFeature || !docsiteFeature || !selfHostingFeature) throw new Error('Expected Features 001, 002, and 004 in the build manifest.');
     expect(concordeFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
       source: 'specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json',

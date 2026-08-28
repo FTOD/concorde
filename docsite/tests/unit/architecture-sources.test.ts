@@ -13,7 +13,7 @@ describe('architecture source publication', () => {
     const projectRoot = resolve(__dirname, '../../..');
     const registry = await buildRegistry(projectRoot);
     const sources = registry.documents.filter(
-      (document): document is ArchitectureSource => document.collectionId === 'architecture',
+      (document): document is ArchitectureSource => document.contentKind === 'architecture-source',
     );
     expect(validateRegistry(registry)).toEqual([]);
     expect(sources).toHaveLength(21);
@@ -59,14 +59,16 @@ Exercise declared-view validation.
 
 No child modules.
 `, 'utf8');
+      await writeFile(resolve(projectRoot, 'specs/example/design.md'), '# Design Reference: Example\n\n## Implementation Notes\n\nSeed.\n', 'utf8');
       await writeFile(resolve(projectRoot, 'specs/example/missing.json'), JSON.stringify({
         diagram_type: 'architecture',
         meta: {title: 'Example', output: '../../generated/architecture/example.html'},
       }), 'utf8');
       const registry = await buildRegistry(projectRoot);
       expect(validateRegistry(registry)).toEqual([]);
-      const source = registry.documents.find((document) => document.collectionId === 'architecture') as ArchitectureSource;
+      const source = registry.documents.find((document) => document.contentKind === 'architecture-source') as ArchitectureSource;
       expect(source.architectureViewRoute).toBe('/architecture/example.html');
+      expect(source.designReferenceRoute).toBe('/architecture/example/design');
     } finally {
       await rm(projectRoot, {recursive: true, force: true});
     }

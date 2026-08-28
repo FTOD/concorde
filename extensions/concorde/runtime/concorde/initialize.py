@@ -39,7 +39,7 @@ def _create_proposal(project_root: Path, module_id: str | None, name: str | None
     module_slug = identifier.split(".", 1)[1].replace(".", "-")
     specification_root = f"specs/{module_slug}"
     config = json.dumps(
-        {"profile_version": 1, "root_module_id": identifier, "specification_root": specification_root},
+        {"profile_version": 2, "root_module_id": identifier, "specification_root": specification_root},
         indent=2,
         sort_keys=True,
     )
@@ -64,6 +64,51 @@ Provide the observable responsibility of {project_name}.
 ## Boundary
 
 Own the project-level outcome while excluding responsibilities delegated to future submodules.
+
+## Structure
+
+The level view is [architecture.json](architecture.json); it shows the root boundary and the
+maintainer. Add immediate submodules to the view before listing them below.
+
+## Features
+
+None.
+
+## Contracts
+
+None.
+
+## Submodules
+
+None.
+
+## Representative Scenario
+
+`scenario.{module_slug}.root-overview`: a maintainer reviews the root boundary before any
+submodule or feature is added.
+
+## Design Rationale
+
+The root starts as one module so ownership is explicit before decomposition; implementation notes
+and decisions are kept in the [design reference](design.md).
+"""
+    design = f"""# Design Reference: {project_name}
+
+## Implementation Notes
+
+No implementation detail has been recorded for this module yet.
+
+## Design Rationale
+
+No design rationale has been recorded for this module yet.
+
+## Alternatives Considered
+
+None recorded yet.
+
+## Decision Log
+
+- Initialized the root module package.
 """
     architecture = json.dumps(
         {
@@ -91,6 +136,7 @@ Own the project-level outcome while excluding responsibilities delegated to futu
     files = (
         _proposal_file(".concorde/config.json", config),
         _proposal_file(f"{specification_root}/architecture.json", architecture),
+        _proposal_file(f"{specification_root}/design.md", design),
         _proposal_file(f"{specification_root}/module.md", module),
     )
     conflicts = tuple(
@@ -144,8 +190,13 @@ def _load_accepted(root: Path, proposal_path: str) -> InitializationProposal:
         raise ValueError("proposal contains no files")
     required = {".concorde/config.json"}
     paths = {item.path for item in files}
-    if not required.issubset(paths) or not any(path.endswith("/module.md") for path in paths) or not any(path.endswith("/architecture.json") for path in paths):
-        raise ValueError("proposal must contain configuration, root module, and architecture view")
+    if (
+        not required.issubset(paths)
+        or not any(path.endswith("/module.md") for path in paths)
+        or not any(path.endswith("/design.md") for path in paths)
+        or not any(path.endswith("/architecture.json") for path in paths)
+    ):
+        raise ValueError("proposal must contain configuration, root module summary, module design reference, and architecture view")
     return InitializationProposal(
         proposal_version=1,
         project_root_id=value["project_root_id"],

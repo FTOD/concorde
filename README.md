@@ -99,7 +99,7 @@ specify bundle build --path bundles/concorde-bundle --output dist
 uv run python scripts/release/verify-release.py --dist dist
 ```
 
-The release contains exactly `concorde-core@0.1.0` and `concorde@0.1.0`. It does not install a custom
+The release contains exactly `concorde-core@0.2.0` and `concorde@0.2.0`. It does not install a custom
 workflow or reusable Spec Kit steps. `--base-url` is written into the generated catalog metadata; the
 builder does not contact it. The value must match the address that serves `dist/` in the next step.
 
@@ -165,16 +165,21 @@ $speckit-concorde-validate
 $speckit-concorde-ask When should I use context instead of changing the selected feature?
 ```
 
-- `init` proposes a root architecture package and writes it only after explicit approval.
+- `init` proposes a root architecture package—`.concorde/config.json`, a `module.md` summary, a
+  seeded `design.md` design reference, and `architecture.json`—and writes it only after explicit
+  approval.
 - Features are created with the normal `$speckit-specify` phase after exporting
   `SPECIFY_FEATURE_DIRECTORY` at their canonical path—`<module directory>/features/NNN-<short-name>`,
   or `<parent feature root>/subfeatures/NNN-<short-name>` for a sub-feature—and are selected
   through the standard `.specify/feature.json`; Concorde adds no creation or selection command.
-- `feature.harden` proposes a permanent design from a task-complete implementation attempt and,
-  only after explicit approval, promotes it and removes that temporal `implementation/` directory.
-- `context` returns one bounded architectural level without expanding child internals.
-- `validate` deterministically checks identities, hierarchy, references, contracts, views, and
-  evidence status.
+- `feature.harden` proposes the durable `implementation.md`—and, when the attempt produced detail
+  or rationale worth keeping, an amendment to the providing module's `design.md`—from a
+  task-complete implementation attempt and, only after explicit approval, applies both atomically
+  and removes that temporal `implementation/` directory.
+- `context` returns one bounded architectural level without expanding child internals, design
+  references, or accepted realizations.
+- `validate` deterministically checks identities, hierarchy, references, contracts, views, evidence
+  status, module summary shape and reading budget, and feature-root document pairing.
 - `ask` answers questions about Concorde concepts, command timing, artifact authority, or this
   project's use of the workflow from cited installed guidance and bounded maintained sources. It is
   agent-followed and read-only: it has no Python runtime verb and does not execute recommended work.
@@ -197,9 +202,9 @@ two canonical source roots, presented through three reader-facing navigation fam
 
 | Source | Published content |
 |---|---|
-| `specs/**/module.md`, `specs/**/contracts/**/contract.md` | Architecture modules, boundary contracts, and declared Archify views |
+| `specs/**/module.md`, `specs/**/design.md`, `specs/**/contracts/**/contract.md` | Architecture module summaries, module design references, boundary contracts, and declared Archify views |
 | `docs/**/*.md` | Project documentation |
-| `specs/**/spec.md`, `specs/**/design.md` | Permanent feature specifications and accepted designs |
+| `specs/**/spec.md`, `specs/**/implementation.md` | Permanent feature specifications and accepted realizations |
 
 Generated pages never become maintained source documents.
 
@@ -241,7 +246,7 @@ production Docusaurus build. Start with the maintained [documentation overview](
 ## Project orientation
 
 - [Project constitution](.specify/memory/constitution.md)
-- [Root architecture](specs/concorde/module.md)
+- [Root architecture](specs/concorde/module.md) (module summary; its design reference is the adjacent `design.md`)
 - [Concorde workflow specification](specs/concorde/features/001-concorde-workflow/spec.md)
 - [Project docsite specification](specs/concorde/features/002-create-project-docsite/spec.md)
 - [Spec Kit installation specification](specs/concorde/features/003-install-concorde-speckit/spec.md)

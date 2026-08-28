@@ -6,7 +6,7 @@ import json
 import os
 import re
 from dataclasses import asdict, dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .model import SourceDocument
@@ -31,7 +31,9 @@ class WorkspacePaths:
     siblings: tuple[dict[str, str], ...]
     feature_directory: str
     feature_spec: str
-    feature_design: str
+    feature_implementation: str
+    module_summary: str
+    module_design: str
     contracts_dir: str
     checklists_dir: str
     diagrams_dir: str
@@ -97,7 +99,26 @@ def _summary(feature: SourceDocument) -> dict[str, str]:
         "outcome": _heading_value(feature.body, "Outcome") or _title(feature.body, feature.identifier),
         "evidence_status": str(feature.metadata.get("evidence_status", "unknown")),
         "feature_directory": Path(feature.path).parent.as_posix(),
+        "implementation": f"{Path(feature.path).parent.as_posix()}/implementation.md",
     }
+
+
+def _module_directory(relative: str, workspace_kind: str) -> str:
+    """Return the directory of the module at which a canonical feature root is specified."""
+    path = PurePosixPath(relative)
+    depth = 1 if workspace_kind == "feature" else 3
+    return path.parents[depth].as_posix()
+
+
+def _module_paths(package: Any, module_id: Any, fallback_directory: str) -> tuple[str, str]:
+    """Return the providing module's summary and design-reference paths."""
+    directory = fallback_directory
+    if isinstance(module_id, str) and module_id:
+        matches = package.by_id.get(module_id, ())
+        if len(matches) != 1 or matches[0].kind != "module":
+            raise WorkspaceError(f"providing module '{module_id}' does not resolve exactly once")
+        directory = Path(matches[0].path).parent.as_posix()
+    return f"{directory}/module.md", f"{directory}/design.md"
 
 
 def _workspace_relationships(package: Any, feature: SourceDocument) -> tuple[str, dict[str, str] | None, tuple[dict[str, str], ...]]:
@@ -123,7 +144,7 @@ def _workspace_relationships(package: Any, feature: SourceDocument) -> tuple[str
         "feature_id": parent.identifier,
         "feature_directory": parent_root,
         "feature_spec": parent.path,
-        "feature_design": f"{parent_root}/design.md",
+        "feature_implementation": f"{parent_root}/implementation.md",
     }
     siblings: list[dict[str, str]] = []
     for child_id in children:
@@ -148,11 +169,20 @@ def resolve_phase_paths(project_root: str | Path, feature_directory: str) -> Wor
     if root.is_symlink():
         raise WorkspaceError("feature root may not be a symlink")
     spec = root / "spec.md"
-    design = root / "design.md"
+    realization = root / "implementation.md"
+    legacy = root / "design.md"
     if not root.is_dir() or not spec.is_file() or spec.is_symlink():
         raise WorkspaceError(f"selected feature root has no canonical spec.md: {relative}")
-    if not design.is_file() or design.is_symlink():
-        raise WorkspaceError(f"selected feature root has no canonical design.md: {relative}")
+    if legacy.exists() and realization.exists():
+        raise WorkspaceError(
+            f"selected feature root holds both design.md and implementation.md; remove the legacy design.md after merging it into implementation.md: {relative}"
+        )
+    if legacy.exists():
+        raise WorkspaceError(
+            f"selected feature root uses the legacy accepted-realization name design.md; rename it to implementation.md: {relative}"
+        )
+    if not realization.is_file() or realization.is_symlink():
+        raise WorkspaceError(f"selected feature root has no canonical implementation.md: {relative}")
     feature = next(
         (item for item in package.documents("feature") if Path(item.path).parent.as_posix() == relative),
         None,
@@ -163,6 +193,9 @@ def resolve_phase_paths(project_root: str | Path, feature_directory: str) -> Wor
     if workspace_kind != classified_kind:
         raise WorkspaceError("feature containment metadata does not match its canonical path")
     implementation = f"{relative}/implementation"
+    module_summary, module_design = _module_paths(
+        package, feature.metadata.get("module"), _module_directory(relative, workspace_kind)
+    )
     return WorkspacePaths(
         workspace_kind=workspace_kind,
         feature_id=feature.identifier,
@@ -171,7 +204,9 @@ def resolve_phase_paths(project_root: str | Path, feature_directory: str) -> Wor
         siblings=siblings,
         feature_directory=relative,
         feature_spec=f"{relative}/spec.md",
-        feature_design=f"{relative}/design.md",
+        feature_implementation=f"{relative}/implementation.md",
+        module_summary=module_summary,
+        module_design=module_design,
         contracts_dir=f"{relative}/contracts",
         checklists_dir=f"{implementation}/checklists",
         diagrams_dir=f"{relative}/diagrams",
@@ -218,7 +253,7 @@ def resolve_planned_phase_paths(project_root: str | Path, feature_directory: str
             "feature_id": parent.identifier,
             "feature_directory": parent_root,
             "feature_spec": parent.path,
-            "feature_design": f"{parent_root}/design.md",
+            "feature_implementation": f"{parent_root}/implementation.md",
         }
         children = parent.metadata.get("subfeatures", [])
         if isinstance(children, list):
@@ -303,6 +338,7 @@ def _planned_paths(
     siblings: tuple[dict[str, str], ...] = (),
 ) -> WorkspacePaths:
     implementation = f"{relative}/implementation"
+    module_directory = _module_directory(relative, workspace_kind)
     return WorkspacePaths(
         workspace_kind=workspace_kind,
         feature_id=feature_id,
@@ -311,7 +347,9 @@ def _planned_paths(
         siblings=siblings,
         feature_directory=relative,
         feature_spec=f"{relative}/spec.md",
-        feature_design=f"{relative}/design.md",
+        feature_implementation=f"{relative}/implementation.md",
+        module_summary=f"{module_directory}/module.md",
+        module_design=f"{module_directory}/design.md",
         contracts_dir=f"{relative}/contracts",
         checklists_dir=f"{implementation}/checklists",
         diagrams_dir=f"{relative}/diagrams",

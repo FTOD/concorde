@@ -11,7 +11,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
     def test_textual_explanations_name_every_ecosystem_role(self):
         sources = [
             FEATURE_ROOT / "spec.md",
-            FEATURE_ROOT / "design.md",
+            FEATURE_ROOT / "implementation.md",
             FEATURE_ROOT / "contracts/ecosystem-explanation.md",
             REPOSITORY_ROOT / "specs/concorde/module.md",
             REPOSITORY_ROOT / "specs/concorde/contracts/spec-kit-installation/contract.md",
@@ -36,7 +36,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         self.assertIn("it does not register commands", specification)
         self.assertIn("spec kit is the host platform", specification)
 
-        current_sources = [source for source in sources if source.name != "design.md"]
+        current_sources = [source for source in sources if source.name != "implementation.md"]
         for source in current_sources:
             text = source.read_text(encoding="utf-8").lower()
             with self.subTest(question_surface=source.relative_to(REPOSITORY_ROOT)):

@@ -24,62 +24,51 @@ Architecture Core owns source semantics, stable identity, relationship resolutio
 visibility, and validation findings. It does not own agent invocation syntax, distribution, Archify
 rendering, Docusaurus publication, or implementation correctness.
 
-## Feature Set
+## Structure
 
-- `feature.architecture-core.manage-bounded-sources` refines
-  `feature.concorde.workflow` and owns initialization, bounded feature/module context, and
-  deterministic validation.
+This leaf module has no submodules, so no separate level view is maintained; its structure is the one
+feature and the one provided contract inventoried below, realized by the standard-library Python
+runtime under `extensions/concorde/runtime/concorde/`. The Feature 001 core view
+<a href="/architecture/concorde-workflow-components.html">workflow components</a> (maintained source
+`specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json`) shows how
+the installed command surfaces reach this runtime and which architecture sources it reads.
 
-## Canonical Contract Definition
+## Features
 
-The maintained definition is `contracts/architecture-services/contract.md`; the summary below
-provides bounded context.
+| Feature ID | Outcome | Refines | Specification |
+|---|---|---|---|
+| `feature.architecture-core.manage-bounded-sources` | A maintainer or coding agent can safely propose a root specification hierarchy, retrieve exactly one architectural level for feature placement or implementation, and deterministically validate maintained module, feature, contract, scenario, evidence, and view relationships. | `feature.concorde.workflow` | [spec.md](features/001-manage-bounded-sources/spec.md) |
 
-### `contract.core.architecture-services`
+## Contracts
 
-- **Role / flow**: provided, bidirectional.
-- **Consumers**: Spec Kit Integration and Documentation.
-- **Representation**: custom Concorde Architecture Service Protocol v1.
-- **Message meaning**: request one deterministic operation over one project architecture package and
-  return either a complete result or explicit findings.
+| Contract ID | Role | Flow | Counterparty | Definition |
+|---|---|---|---|---|
+| `contract.core.architecture-services` | provided | bidirectional | Spec Kit Integration and Documentation | [contract.md](contracts/architecture-services/contract.md) |
 
-The normative JSON Schema is
-`specs/concorde/features/001-concorde-workflow/contracts/architecture-service.schema.json`.
-The outline below is explanatory and does not replace it.
+The required set is an explicit empty set for the current slice; filesystem access is an
+implementation detail constrained to the project root.
 
-#### Field semantics
+## Submodules
 
-| Field | Type | Required | Meaning |
-|---|---|---:|---|
-| `schema_version` | integer | yes | Contract version; exactly `1`. |
-| `operation` | string | yes | One of `init`, `context`, or `validate`. |
-| `target` | string | yes | Project-relative path or stable module/feature ID. |
-| `options` | object | request | Operation-specific documented options; empty is valid. |
-| `status` | string | response | Completed outcome: success, proposal, unchanged, invalid source, conflict, or execution failure. |
-| `artifacts` | list | response | Project-relative sources read, created, or returned. |
-| `findings` | list | response | Deterministic diagnostics with rule, location, and remediation. |
-| `result` | object | response | Operation-specific proposal, context, or validation result. |
+None.
 
-#### Representative serialized example
+## Representative Scenario
 
-```json
-{
-  "schema_version": 1,
-  "operation": "context",
-  "target": "module.concorde",
-  "status": "success",
-  "artifacts": ["specs/concorde/architecture.json", "specs/concorde/module.md"],
-  "findings": [],
-  "result": {"context": {"requested_id": "module.concorde"}}
-}
-```
+`scenario.architecture-core.manage-bounded-sources` shows an installed Concorde command, materialized
+by Spec Kit Integration, sending one Concorde Architecture Service Protocol v1 request across
+`contract.core.architecture-services` that names one operation and one target path or stable ID.
+Initialization returns a proposal that is applied only after explicit approval; context returns
+exactly the requested level (the module, its immediate submodules, current-level features and
+contracts, scenarios, and stable deeper references) and nothing deeper; validation reads every source
+and returns deterministic findings without writing. Each response is either a complete result or
+explicit findings, never a partial silent mutation. Documentation later consumes the validated sources
+through its own contracts.
 
-The complete representative context and validation values linked by the child contract contain every
-required nested field; this shortened value illustrates only the common envelope.
+## Design Rationale
 
-- **Compatibility**: v1 consumers ignore unknown optional fields; removing or changing a required
-  field requires a new major protocol version.
-- **Validation evidence**: verified by schema/example contract tests, deterministic operation tests,
-  and zero-finding self-application to Concorde's maintained hierarchy.
-- **Required contracts**: explicit empty set for the current slice; filesystem access is treated as an
-  implementation detail constrained to the project root.
+Architecture Core is the single place where source semantics, stable identity, and relationship
+resolution are decided, so it stays independent of agent command syntax and publication tooling and
+exposes one deterministic service protocol. Determinism (byte-equivalent repeated runs and explicit
+findings instead of guesses) is what lets validation act as a review gate and lets the other modules
+trust bounded context. Protocol details and recorded decisions are in the
+[design reference](design.md).
