@@ -66,9 +66,9 @@ meaningful responsibility and boundary.
 Use before deciding feature ownership, reviewing a boundary, or giving an agent architectural
 context for implementation. A module target returns that module and its immediate level, with
 `summary`, `design_reference`, and `view` paths as navigation references; it never expands the body
-of a module or feature `design.md`. A feature target resolves through its providing module and
-additionally returns feature workspace paths (`tldr.md`, `spec.md`, `design.md`, and the attempt),
-declared diagrams, relevant contract content, evidence, and architecture readiness.
+of a module or feature `design.md`. A feature target resolves through the module at which it is
+specified and additionally returns feature workspace paths (`tldr.md`, `spec.md`, `design.md`, and
+the attempt), declared diagrams, relevant contract content, evidence, and architecture readiness.
 
 The runtime output is automatically available to the agent that invoked the skill. The operation is
 read-only and does not select the feature. Conversation context may retain the result temporarily,
@@ -119,7 +119,8 @@ Kit scripts persist it). Concorde adds no selection command and no second select
 every normal phase the Concorde workspace adapter resolves and validates the selected root: safe
 path, canonical `tldr.md`/`spec.md`/`design.md` trio with no legacy `implementation.md`, workspace
 kind, parent context and sibling summaries for a sub-feature, durable and temporal paths, the
-providing module's `module.md` and `design.md` as navigation references, and `implementation_state`. A non-empty
+`module.md` and `design.md` of the module at which the feature is specified (`providing_module`) as
+navigation references, and `implementation_state`. A non-empty
 `implementation/` attempt appears as `implementation_state: active`; there is no separate resume
 step—decide whether to continue that attempt or harden or archive it.
 
@@ -152,13 +153,13 @@ satisfied, evidence has been reviewed, and the maintainer accepts the result as 
 
 The skill first asks the runtime for eligibility, then the agent drafts the candidate feature
 `design.md` and, when the attempt produced implementation detail or rationale worth keeping, a full
-replacement `design.md` for the providing module. The runtime returns the digest-bound proposal
-location and exact cleanup target; the digest covers the current module `design.md`. Nothing is
-changed until the maintainer explicitly approves those exact bytes and paths. Successful apply
-writes the feature `design.md`, amends the module `design.md` when proposed, and removes the
-complete `implementation/` directory as one atomic operation, reporting digests for both documents;
-stale or unsafe proposals change nothing, and `tldr.md`, `spec.md`, and `module.md` are never
-edited.
+replacement `design.md` for the module at which the feature is specified. The runtime returns the
+digest-bound proposal location and exact cleanup target; the digest covers the current module
+`design.md`. Nothing is changed until the maintainer explicitly approves those exact bytes and
+paths. Successful apply writes the feature `design.md`, amends the module `design.md` when proposed,
+and removes the complete `implementation/` directory as one atomic operation, reporting digests for
+both documents; stale or unsafe proposals change nothing, and `tldr.md`, `spec.md`, and `module.md`
+are never edited.
 
 ## Normal Spec Kit phases under Concorde
 

@@ -1,8 +1,9 @@
 # Concorde
 
 Concorde extends [Spec Kit](https://github.com/github/spec-kit) with a hierarchical architecture
-workflow for AI-developed software. It keeps feature specifications aligned with module ownership,
-boundary contracts, bounded architecture views, and implementation evidence.
+workflow for AI-developed software. It keeps feature specifications aligned with the module hierarchy
+that realizes them, boundary contracts, bounded architecture views, and accepted implementation
+evidence, so that a maintainer can understand any level of the project in minutes.
 
 Concorde is designed to be installed as a native Spec Kit bundle containing:
 
@@ -31,12 +32,20 @@ The project docsite build turns declared diagram sources into interactive standa
 
 ## Project status
 
-The project docsite and architecture publication pipeline are implemented and tested. Feature 003
-owns the native Concorde bundle, preset command composition, five-surface extension, release/catalog
-tooling, and setup lifecycle. Feature 001 defines the Concorde architecture-aware development workflow;
-its initialization, nested workspace resolution, bounded context, architecture readiness, and
-deterministic validation behavior are implemented. Timed human pilots and browser-based diagram
-review remain pending and are kept separate from automated evidence.
+Feature 001 defines the Concorde architecture-aware development workflow. Its root initialization,
+Feature Workspace Protocol v5 resolution of the standard Spec Kit selection, bounded context,
+deterministic validation, approval-gated feature hardening, and the read-only `ask` procedure are
+implemented and covered by the automated suites, and this repository itself lives under the
+three-tier feature document model (`tldr.md`, `spec.md`, `design.md`) and the module summary/design
+reference pair that the feature specifies. Feature 002's docsite publication pipeline, Feature 003's
+native bundle, preset composition, five-surface extension, and release tooling, and Feature 004's
+review-first self-hosting are implemented and tested. Timed human comprehension pilots and
+browser-based diagram review remain pending and are kept separate from automated evidence.
+
+The newest published release is `v0.1.0`, which predates the module design reference, the feature
+TL;DR, and the removal of the `feature.create`/`feature.select` commands. This README and the guides
+under `docs/` describe the `0.3.0` sources in this checkout; until `0.3.0` is published, the local
+build path below is the way to use them.
 
 Concorde can also install the current checkout's framework sources into this repository for
 development self-application. That review-first path is deliberately separate from the release
@@ -48,7 +57,8 @@ bundle used by other projects; see [Developing Concorde with Concorde](docs/self
 
 - [`uv`](https://docs.astral.sh/uv/) for the repository's Python 3.11 development environment
 - Spec Kit/Specify CLI 0.16.4, installed into the development environment by `uv sync`
-- Codex for the initial skills-mode integration
+- a supported coding-agent integration; Codex skills mode is the one exercised by the acceptance
+  suite and by development self-hosting
 
 Check the required versions:
 
@@ -84,7 +94,8 @@ specify bundle install concorde-bundle
 ```
 
 The current version and its catalog URLs are published at
-`https://github.com/FTOD/concorde/releases/latest/download/release.json`. See the
+`https://github.com/FTOD/concorde/releases/latest/download/release.json`; note the version caveat
+under [Project status](#project-status). See the
 [framework quick start](docs/quick-start.md) for the full walkthrough and
 [Releasing Concorde](docs/releasing.md) for how releases are produced. The steps below build and
 install the current local sources instead.
@@ -176,9 +187,9 @@ $speckit-concorde-ask When should I use context instead of changing the selected
   Every feature root owns `tldr.md` (read first), `spec.md` (the authority), and `design.md` (the
   design reference, written by hardening).
 - `feature.harden` proposes the feature `design.md`—and, when the attempt produced detail or
-  rationale worth keeping, an amendment to the providing module's `design.md`—from a task-complete
-  implementation attempt and, only after explicit approval, applies both atomically and removes
-  that temporal `implementation/` directory.
+  rationale worth keeping, an amendment to the `design.md` of the module at which the feature is
+  specified—from a task-complete implementation attempt and, only after explicit approval, applies
+  both atomically and removes that temporal `implementation/` directory.
 - `context` returns one bounded architectural level without expanding child internals or the body
   of any module or feature `design.md`.
 - `validate` deterministically checks identities, hierarchy, references, contracts, views, evidence

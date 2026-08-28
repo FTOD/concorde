@@ -60,7 +60,7 @@ feature `design.md` can point from that model to the concrete code that realizes
 |---|---|---|
 | Workflow control | `.concorde/config.json`, `.specify/feature.json` | Where sources and the active feature are located—not project behavior |
 | Installed tooling | `.specify/extensions/concorde/`, agent skill or slash-command directories | How the installed workflow is invoked—not project intent |
-| Maintained architecture | `module.md` (module summary), module contracts, `architecture.json` | Responsibility, ownership, I/O boundaries, and current-level organization |
+| Maintained architecture | `module.md` (module summary), module contracts, `architecture.json` | Responsibility, boundaries, the features specified at the level, and current-level organization |
 | Module design reference | `design.md` beside each `module.md` | Implementation detail, rationale, alternatives, and decisions for one level; it explains module architecture and never redefines it |
 | Feature orientation | `tldr.md` beside each `spec.md` | A self-contained quick understanding of one feature; it summarizes `spec.md` and never defines beyond it |
 | Durable feature intent | `spec.md`, feature contracts, declared diagrams | Required behavior, normative feature representations, and representative explanations |
@@ -78,7 +78,7 @@ it is committed under a project-specific policy.
 | You want to change… | Edit or invoke… |
 |---|---|
 | Required behavior, scope, failure handling, or success criteria | The owning feature's `spec.md` through specification review, with its `tldr.md` updated wherever it summarized the change |
-| Which module owns behavior | The relevant module package and feature placement, with architecture review |
+| The level at which a feature is specified, or the modules that realize it | The feature's placement (its `module` and canonical root) and the affected module packages, with architecture review |
 | A module boundary or immediate-child organization | `module.md`, affected contracts, and `architecture.json` together |
 | Why a level is built the way it is, or implementation detail beneath its summary | The module's `design.md`, edited directly or amended by an approved hardening proposal; keep `module.md` a summary |
 | Information crossing a boundary | The owning contract and any normative schema/example |
@@ -105,12 +105,12 @@ selection store.
 
 Feature Workspace Protocol v5 classifies the selected root before every normal phase: safe path,
 canonical `tldr.md`/`spec.md`/`design.md` trio with no legacy `implementation.md`, workspace kind,
-`implementation_state`, and the providing module's `module.md` and `design.md` as navigation
-references. The result names the trio as `feature_tldr`, `feature_spec`, and `feature_design` and
-the module pair as `module_summary` and `module_design`; the bash helpers export the trio as
-`FEATURE_TLDR`, `FEATURE_SPEC`, and `FEATURE_DESIGN`. For a sub-feature it also returns the parent's
-durable trio as read-only context and concise sibling summaries; no parent/sibling attempt is an
-implicit input or output.
+`implementation_state`, and the `module.md` and `design.md` of the module at which the feature is
+specified (the result's `providing_module`) as navigation references. The result names the trio as
+`feature_tldr`, `feature_spec`, and `feature_design` and the module pair as `module_summary` and
+`module_design`; the bash helpers export the trio as `FEATURE_TLDR`, `FEATURE_SPEC`, and
+`FEATURE_DESIGN`. For a sub-feature it also returns the parent's durable trio as read-only context
+and concise sibling summaries; no parent/sibling attempt is an implicit input or output.
 
 The installed workspace adapter derives phase-specific paths from the selection:
 

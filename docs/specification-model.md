@@ -91,26 +91,35 @@ This rule is what makes the hierarchy useful. A root-level reviewer can reason a
 parts; a maintainer can then zoom into one child and see its next level without loading the entire
 system at once.
 
-## Features belong to a providing module
+## Features are specified at one level
 
-Every feature has one stable identity and one providing module at its current abstraction level. Its
-workspace sits under that module's `features/` directory.
+Every feature has one stable identity and exactly one place in the hierarchy where it is specified:
+the level at which every module it uses is visible. Its workspace sits under that module's
+`features/` directory, and the specification records that module as the feature's `module`. A
+feature may be realized by that module alone or by several of its visible modules and lower-level
+features working together; it need not be owned by any single module.
 
-If behavior uses multiple immediate child modules, it normally belongs to their nearest common
-parent. The parent-level feature describes the observable outcome and current-level collaboration.
-Features owned by the children may refine it, but refinement links move only between adjacent levels
-and must remain acyclic.
+If behavior needs several immediate child modules, it is therefore specified at their common parent
+level. The parent-level feature describes the observable outcome and the current-level
+collaboration. Features specified at the children may refine it, but refinement links move only
+between adjacent levels and must remain acyclic.
 
 This means the feature hierarchy and module hierarchy reinforce one another:
 
 ```text
-parent module feature
+parent-level feature
 ├── refined by child-module feature A
 └── refined by child-module feature B
 ```
 
 The parent feature does not need the children's implementation details. It needs their visible
 contracts and enough scenario information to explain their collaboration.
+
+The `module` front-matter field and the workspace protocol's `providing_module` name come from the
+earlier rule of one providing module per feature. The constitution (principle A.III) no longer
+requires that rule; validation still checks that every feature names exactly one specifying module
+and sits under its canonical root, and aligning the layout and field names with A.III is tracked
+follow-up work in Feature 001.
 
 ## A feature has three durable documents
 
@@ -241,7 +250,8 @@ copy of `plan.md`, `tasks.md`, or `checklists/` beside `tldr.md`, `spec.md`, and
 Once every recognizable task and every existing checklist item is complete, the maintainer may ask
 Concorde to harden the attempt. The coding agent synthesizes a candidate feature `design.md` and,
 when the attempt produced implementation detail or rationale worth keeping, a full replacement of
-the providing module's `design.md` that adds that material under the reference's stable headings.
+the `design.md` of the module at which the feature is specified, adding that material under the
+reference's stable headings.
 The runtime binds both candidates and the exact `implementation/` removal target to the current
 source digest, which covers the module `design.md` and the TL;DR as well.
 

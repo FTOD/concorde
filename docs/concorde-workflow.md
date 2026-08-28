@@ -38,15 +38,17 @@ The proposal is reviewable and no maintained architecture is written until it is
 approved. Re-running the accepted initialization is idempotent; conflicting existing content is not
 silently overwritten.
 
-## 1. Find the owning level
+## 1. Find the level at which to specify it
 
-Request context for the root module. Ask whether the new behavior is provided by that module or by
-one visible child:
+Request context for the root module. A feature is specified at the level at which every module it
+uses is visible, so ask whether the new behavior is realized by that module or by its visible
+children:
 
-- If one child owns the whole behavior, zoom into that child and repeat the question.
-- If multiple immediate children collaborate, place the feature on their nearest common parent.
+- If one child realizes the whole behavior on its own, zoom into that child and repeat the question.
+- If several immediate children collaborate, specify the feature at this level; those children are
+  its realizing modules, and their own features may refine it.
 - If no existing module has a coherent responsibility for it, review the architecture instead of
-  letting the agent invent ownership while planning code.
+  letting the agent invent placement while planning code.
 
 `speckit.concorde.context` returns exactly one bounded level. It gives the agent the current module,
 its features and I/O, immediate children and their I/O, externals, current-level scenarios,

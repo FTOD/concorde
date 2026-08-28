@@ -4,20 +4,22 @@ This preset keeps the normal Spec Kit specification, planning, and task workflow
 Concorde's hierarchical architecture controls. It does not create another feature document.
 
 At priority 10, its three spec/plan/tasks template contributions use `append`, while its Concorde-only
-implementation template uses `replace`. Its nine normal lifecycle command contributions use
-`replace`: each complete command preserves the corresponding Spec Kit 0.16.4 phase while resolving
-Concorde's selected feature and durable/temporal paths before any path-sensitive work. The installed
-extension supplies that workspace adapter and seven Concorde-specific surfaces: six runtime-backed
-operations, including task-complete feature hardening, plus the agent-only, read-only `ask` procedure.
+`tldr-template` and `design-template` feature documents use `replace`. Its nine normal lifecycle
+command contributions use `replace`: each complete command preserves the corresponding Spec Kit
+0.16.4 phase while resolving Concorde's selected feature and durable/temporal paths before any
+path-sensitive work. The installed extension supplies that workspace adapter and five
+Concorde-specific surfaces: four runtime-backed operations, including task-complete feature
+hardening, plus the agent-only, read-only `ask` procedure.
 
-A feature keeps the canonical module-owned trio `tldr.md`, `spec.md`, and `design.md` at
+A feature keeps the canonical durable trio `tldr.md`, `spec.md`, and `design.md` at
 `features/<number-name>/`; it may own one level of immediate sub-features at
 `subfeatures/<number-name>/`, each with the same focused durable trio and no children. The TL;DR is
 the self-contained page read first (purpose, functionality, structure, logic; under 15 minutes),
 the specification defines behavior, the feature `design.md` records the accepted realization (a
-placeholder until the first hardening), and scenarios remain representative examples. The providing
-module's `module.md` is the summary read first; its `design.md` is a design reference opened only for
-a specific recorded detail and cited. A feature-root `implementation.md` is a legacy artifact. The preset encourages
+placeholder until the first hardening), and scenarios remain representative examples. The
+`module.md` of the module at which the feature is specified is the summary read first; its
+`design.md` is a design reference opened only for a specific recorded detail and cited. A
+feature-root `implementation.md` is a legacy artifact. The preset encourages
 descriptively named, text-backed feature-owned Archify diagrams when component interaction,
 invocation, boundary crossings, state, or data flow benefit from visual explanation. A
 cross-component feature requires one `role: core` Archify architecture view or a concise rationale

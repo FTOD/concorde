@@ -5,7 +5,8 @@ The extension registers five integration-neutral command surfaces:
 - `speckit.concorde.init` proposes a root specification hierarchy and writes only after explicit
   acceptance of an exact proposal.
 - `speckit.concorde.feature.harden` verifies task completion, presents a digest-bound proposal for
-  the durable feature `design.md` (optionally amending the providing module's `design.md`), and only
+  the durable feature `design.md` (optionally amending the `design.md` of the module at which the
+  feature is specified), and only
   after explicit approval promotes it atomically and removes the temporal attempt.
 - `speckit.concorde.context` returns one bounded architectural level.
 - `speckit.concorde.validate` deterministically validates the configured hierarchy.
@@ -19,14 +20,15 @@ hierarchy when `SPECIFY_FEATURE_DIRECTORY` names `<module directory>/features/NN
 `.specify/feature.json`, which is the only selection record. `speckit.concorde.validate` enforces
 registration, canonical paths, and two-level containment afterwards.
 
-The extension also provides the Protocol v5 selected-workspace adapter used by the preset's nine normal command
-replacements. It resolves and validates the selected root before every phase-sensitive step and
-reports its kind, durable and temporal paths, parent context, sibling summaries, the providing
-module's `module.md` and `design.md` as navigation references, and
-`implementation_state`. The four operational surfaces invoke the installed, standard-library Python
-runtime through project-relative paths. `ask` is agent-followed Markdown and deliberately invokes no
-launcher or runtime verb. Target projects need Python 3.11 or newer for operational surfaces; they do
-not need `uv` or third-party Python packages.
+The extension also provides the Protocol v5 selected-workspace adapter used by the preset's nine
+normal command replacements. It resolves and validates the selected root before every
+phase-sensitive step and reports its kind, durable and temporal paths, parent context, sibling
+summaries, the `module.md` and `design.md` of the module at which the feature is specified
+(`providing_module`) as navigation references, and `implementation_state`. The four operational
+surfaces invoke the installed, standard-library Python runtime through project-relative paths.
+`ask` is agent-followed Markdown and deliberately invokes no launcher or runtime verb. Target
+projects need Python 3.11 or newer for operational surfaces; they do not need `uv` or third-party
+Python packages.
 
 A selected sub-feature uses its own durable/temporal paths and receives its parent's durable
 `tldr.md`/`spec.md`/`design.md` only as read-only aggregate context plus concise sibling summaries. Feature

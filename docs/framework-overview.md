@@ -13,12 +13,17 @@ to recover intent.
 Concorde therefore makes five things explicit and reviewable:
 
 1. the behavior a feature must provide;
-2. the module and abstraction level that own it;
+2. the level of the hierarchy at which it is specified and the modules that realize it;
 3. the contracts and immediate components involved in realizing it;
 4. the implementation detail and rationale each level accumulates, kept beneath a short summary; and
 5. the realization that was actually accepted after implementation.
 
-The normative definition is [Feature 001](../specs/concorde/features/001-concorde-workflow/spec.md).
+The principles behind this are the five workflow principles of the project constitution
+(`.specify/memory/constitution.md`, version 2.0.0): fast human comprehension at every level,
+completeness beneath the surface, architecture-driven rather than only feature-driven development,
+contracts as human-readable promises, and deterministic validation with human-reviewed evidence. The
+normative definition of the workflow is
+[Feature 001](../specs/concorde/features/001-concorde-workflow/spec.md).
 
 The installed `speckit.concorde.ask` surface makes that framework discoverable from inside the agent
 conversation. It answers from version-aligned extension/preset guidance, module summaries, and
@@ -43,33 +48,42 @@ module boundaries. An architecture model can be internally valid while saying no
 the implementation provides the required behavior. Concorde keeps the two connected without
 pretending they are the same authority.
 
-## The model: modules provide features
+## The model: a module hierarchy realizes the features
 
-Features have one optional decomposition level. A large correlated feature may own immediate
-sub-features, each with its own TL;DR, specification, and design reference, but those children
-remain subordinate to the parent, inherit its module, and cannot contain more children. This is not module-level feature refinement:
-containment simplifies behavioral documentation inside one feature, while `refines` explains
-realization across adjacent architecture levels.
+A **module** is an architecturally meaningful unit with one responsibility, an explicit boundary,
+and declared provided and required contracts. The project is a module hierarchy rooted at the project
+module, and every level of it is a deliberate abstraction: the modules visible at that level, their
+responsibilities, and their interactions are chosen so the level can be understood on its own terms,
+without the levels below.
 
-A **module** is an architecturally meaningful unit with one responsibility and explicit provided and
-required contracts. It normally groups correlated features so they can share internal realization
-without exposing that realization across the boundary.
-
-A **feature** is observable behavior provided by exactly one module at its current abstraction
-level. Its text is the definition. User and system scenarios are representative examples that make
+A **feature** is an observable outcome with a stable ID. It is *specified* at exactly one level of
+the hierarchy—the level at which every module it uses is visible—and *realized* by one module or by
+several modules and lower-level features working together; it need not be owned by any single
+module. Its text is the definition. User and system scenarios are representative examples that make
 the behavior and component collaboration concrete; they are not an exhaustive substitute for the
 requirements.
 
-A feature that spans multiple immediate children belongs to their nearest common parent. Child-level
-features may then refine that parent feature. This produces a feature hierarchy aligned with the
-module hierarchy rather than one flat backlog detached from architecture.
+In the maintained sources the specifying level is recorded as the feature's `module` (the module
+whose `features/` directory holds the feature root), and the workspace protocol still calls that
+module the `providing_module`. Both names date from the earlier one-module-per-feature rule; the
+constitution (principle A.III) no longer requires it, and aligning the path layout and field names
+is tracked as follow-up work in Feature 001. Where features at the next level down refine a
+feature, the `refines` links connect adjacent levels only and remain acyclic, so the feature
+hierarchy stays aligned with the module hierarchy rather than becoming one flat backlog detached
+from architecture.
+
+Features also have one optional containment level. A large correlated feature may own immediate
+sub-features, each with its own TL;DR, specification, and design reference, but those children
+remain subordinate to the parent, inherit its level, and cannot contain more children. This is not
+cross-level refinement: containment simplifies behavioral documentation inside one feature, while
+`refines` explains realization across adjacent architecture levels.
 
 ## One level at a time
 
 Large systems require abstraction. At one Concorde architecture level, a maintainer sees:
 
-- the current module's responsibility, features, and provided/required I/O contracts;
-- its immediate submodules and concise summaries of their I/O;
+- the current module's responsibility, features, and provided/required boundary contracts;
+- its immediate submodules, each with its features and boundary contracts;
 - permitted external actors or systems;
 - the organization of those visible participants;
 - contract-governed interactions for current-level scenarios; and
@@ -78,7 +92,8 @@ Large systems require abstraction. At one Concorde architecture level, a maintai
 
 Child feature bodies, grandchildren, classes, and deeper implementation details remain hidden. When
 the maintainer deliberately zooms into a child, that child becomes the current module and the same
-visibility rule repeats.
+visibility rule repeats. A level may show selected detail from below when that makes the level
+clearer, provided the detail stays authoritative at its own level; it should not do so by default.
 
 This is the purpose of bounded context in Concorde: not to summarize the whole repository, but to
 return the smallest architectural slice needed for the current ownership, planning, or implementation
@@ -89,7 +104,7 @@ decision.
 | Question | Authority |
 |---|---|
 | What must the feature do, and why? | Feature `spec.md` |
-| Which module owns it, what are its boundaries, and how are immediate children organized? | `module.md` (the module summary), module contracts, and `architecture.json` |
+| At which level is it specified, which modules realize it, what are their boundaries, and how are immediate children organized? | `module.md` (the module summary), module contracts, and `architecture.json` |
 | Why is the level built this way, how is it implemented, and what was tried and rejected? | Module `design.md` (the design reference), consulted deliberately and never read implicitly |
 | How does the accepted implementation realize this feature across those boundaries? | Feature `design.md` (the feature design reference), needed only when writing the code or fixing a bug |
 | What exists and has been demonstrated? | Code, tests, and explicit evidence references |
@@ -110,7 +125,7 @@ Spec Kit continues to own specification, clarification, planning, tasks, impleme
 and convergence. Concorde adds architectural controls around that lifecycle:
 
 - root architecture initialization;
-- bounded context retrieval;
+- bounded context retrieval and read-only, source-grounded workflow questions;
 - resolution and validation of nested feature workspaces selected through standard Spec Kit;
 - phase routing between durable feature files and a temporary implementation attempt;
 - deterministic validation of identity, hierarchy, contracts, views, scenarios, references, and

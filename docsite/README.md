@@ -34,8 +34,8 @@ validation, and edits continue to reference the canonical files under `../specs/
 - the officially installed Archify 2.16 project-local skill at `../.agents/skills/archify`
 
 Install dependencies with `npm ci`. Generated directories (`node_modules/`, `.docusaurus/`,
-`.generated/`, `../generated/`, `coverage/`, and `build/`) are ignored and disposable. The configured
-The project-local Archify skill must contain `package.json` and `bin/archify.mjs`; builds verify its
+`.generated/`, `../generated/`, `coverage/`, and `build/`) are ignored and disposable. The
+project-local Archify skill must contain `package.json` and `bin/archify.mjs`; builds verify its
 exact identity and `skills-lock.json` snapshot, then run its doctor check instead of probing
 environment variables, global tools, or agent-home installation directories.
 
