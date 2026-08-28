@@ -23,7 +23,7 @@ different questions:
 | Area | Use it to answer | Maintained authority |
 |---|---|---|
 | **Architecture** | Which module owns this behavior? What can cross its boundary? Which immediate components collaborate? Why is it built this way? | `module.md` summaries, their adjacent `design.md` design references, module contracts, and declared Archify sources under `specs/` |
-| **Features** | What must a feature do, why does it matter, and how does the accepted implementation realize it? | The feature's durable `spec.md` and `implementation.md` under `specs/` |
+| **Features** | What is this feature, exactly what must it do, and how does the accepted implementation realize it? | The feature's durable `tldr.md` (the page it opens on), `spec.md`, and `design.md` under `specs/` |
 | **Documentation** | How do I understand, install, use, and contribute to Concorde? | Explanatory Markdown under `docs/` |
 
 The website does not become a new source of truth. Every generated page identifies the maintained
@@ -60,7 +60,8 @@ edge cases, status, and acceptance criteria live in:
 
 - the [root Concorde architecture](../specs/concorde/module.md) summary and its adjacent `design.md`
   reference;
-- [Feature 001: the Concorde workflow](../specs/concorde/features/001-concorde-workflow/spec.md);
+- [Feature 001: the Concorde workflow](../specs/concorde/features/001-concorde-workflow/spec.md),
+  whose [TL;DR](../specs/concorde/features/001-concorde-workflow/tldr.md) is the fastest orientation;
 - [Feature 002: project docsite publication](../specs/concorde/features/002-create-project-docsite/spec.md); and
 - [Feature 003: installation through Spec Kit](../specs/concorde/features/003-install-concorde-speckit/spec.md); and
 - [Feature 004: development self-hosting](../specs/concorde/features/004-self-host-concorde/spec.md).

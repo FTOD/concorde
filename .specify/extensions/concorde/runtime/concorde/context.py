@@ -94,7 +94,7 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
                         siblings.append(_summary(child_matches[0]))
                 context["siblings"] = siblings
                 artifacts.add(parent.path)
-                parent_realization = f"{Path(parent.path).parent.as_posix()}/implementation.md"
+                parent_realization = f"{Path(parent.path).parent.as_posix()}/design.md"
                 if (package.project_root / parent_realization).is_file():
                     artifacts.add(parent_realization)
         else:
@@ -112,7 +112,7 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
             implementation_artifacts = sorted(
                 path for path in package.auxiliary if path.startswith(workspace_paths.implementation_dir + "/")
             )
-            durable_artifacts = [target.path, workspace_paths.feature_implementation]
+            durable_artifacts = [target.path, workspace_paths.feature_tldr, workspace_paths.feature_design]
             diagram_projections = []
             for declaration in target.metadata.get("diagrams", []):
                 if not isinstance(declaration, dict):

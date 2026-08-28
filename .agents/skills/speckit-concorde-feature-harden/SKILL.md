@@ -15,19 +15,20 @@ $ARGUMENTS
 
 ## Purpose
 
-Compact the selected feature or immediate sub-feature's completed implementation attempt into its permanent `implementation.md`, then
-remove the temporal `implementation/` directory. The first accepted milestone writes
-`implementation.md` in full; each later milestone completes it. When the attempt produced
+Compact the selected feature or immediate sub-feature's completed implementation attempt into its
+permanent feature design reference `design.md`, then remove the temporal `implementation/`
+directory. The first accepted milestone writes `design.md` in full; each later milestone completes
+it. When the attempt produced
 implementation detail or rationale worth keeping, the same reviewed proposal may amend the providing
 module's `design.md`. This is an explicit milestone operation. Checked
 tasks and every existing item under `implementation/checklists/` establish eligibility; they do not
 grant approval.
 
-Protocol v4 classifies the selected lifecycle root. For a sub-feature, parent durable paths and
+Protocol v5 classifies the selected lifecycle root. For a sub-feature, parent durable paths and
 sibling summaries are read-only retained authorities. Apply may update only the selected child's
-`implementation.md`, optionally the providing module's `design.md`, and remove only that child's
-complete `implementation/`; parent, siblings, their attempts, and every `module.md` remain
-byte-identical.
+feature `design.md`, optionally the providing module's `design.md`, and remove only that child's
+complete `implementation/`; the child's `tldr.md` and `spec.md`, parent, siblings, their attempts,
+and every `module.md` remain byte-identical.
 
 ## Workflow
 
@@ -38,13 +39,14 @@ byte-identical.
 2. Read the returned `proposal_path`, `task_summary`, and `checklist_summary` directly. Stop on any
    status other than `eligible` and present every finding. Never repair, check off, delete, or
    reinterpret tasks or `implementation/checklists/*.md` merely to make the feature eligible. An
-   eligible result also exposes `workspace.feature_implementation`, `workspace.module_summary`,
-   `workspace.module_design`, and a `source_digest` that covers the current module `design.md`; never
-   derive or guess those paths.
-3. Read only the returned feature root, its `spec.md` and current `implementation.md`, the providing
-   module's `module.md` and current `design.md`, relevant maintained
+   eligible result also exposes `workspace.feature_tldr`, `workspace.feature_design`,
+   `workspace.module_summary`, `workspace.module_design`, and a `source_digest` that covers the
+   current `tldr.md`, feature `design.md`, and module `design.md`; never derive or guess those paths.
+3. Read only the returned feature root, its `tldr.md`, `spec.md`, and current `design.md`, the
+   providing module's `module.md` and current `design.md`, relevant maintained
    architecture/contracts, every artifact under its `implementation/` directory, and the code/tests
-   cited by those sources. Draft a complete current `implementation.md` with these exact sections:
+   cited by those sources. Draft a complete current feature `design.md` with these exact sections
+   first (further implementation-detail headings may follow them):
    `Realization Overview`, `Module and Feature Collaboration`, `Scenario Realization`,
    `Durable Implementation Decisions`, `Traceability and Evidence`, and `Known Limitations`.
 4. Keep the realization feature-oriented: explain how related modules/features and their contracts realize
@@ -60,43 +62,46 @@ byte-identical.
    contracts. Skip the amendment when nothing module-level was learned.
 6. Write the candidate to the exact project-contained `proposal_path` returned by the runtime. The JSON
    must conform to the installed Feature Workspace Protocol and contain:
-   - `proposal_version: 2` and `operation: "feature.harden"`;
+   - `proposal_version: 3` and `operation: "feature.harden"`;
    - the resolved stable feature ID as `target`;
    - the exact returned `source_digest`;
-   - `implementation.path` equal to the returned `workspace.feature_implementation` and
-     `implementation.content` equal to the complete candidate Markdown;
+   - `design.path` equal to the returned `workspace.feature_design` and `design.content` equal to
+     the complete candidate Markdown;
    - optionally `module_design.path` equal to the returned `workspace.module_design` and
      `module_design.content` equal to the complete replacement Markdown; and
    - `remove` containing exactly the returned `workspace.implementation_dir`.
-7. BEFORE asking for approval, present the entire candidate `implementation.md`, the `design.md`
-   amendment shown as a DIFF against the current reference (or state that none is proposed), the
-   exact cleanup manifest (the removal target), and the retained `spec.md`, `module.md`,
-   architecture, code, and test authorities. Ask for explicit approval of this exact proposal.
+7. BEFORE asking for approval, present the entire candidate feature `design.md`, the module
+   `design.md` amendment shown as a DIFF against the current reference (or state that none is
+   proposed), the exact cleanup manifest (the removal target), and the retained `tldr.md`, `spec.md`,
+   `module.md`, parent and sibling trios, architecture, code, and test authorities. Ask for explicit approval of this exact proposal.
    Silence is not approval; neither are prior milestone acceptance, passing validation, or checked
    tasks and checklists.
 8. Only after the maintainer's explicit yes, invoke the same installed launcher with
    `feature harden --apply --proposal <returned-project-relative-proposal-path>`. Never invoke
    `--apply` without that yes. Present the complete
    normative result, including stale-digest conflicts, warnings, removed artifacts, and the
-   implementation and module-design digests.
+   feature-design and module-design digests.
 
 ## Safety Invariants
 
-- Do not edit `implementation.md` or any module `design.md` directly; only the approved runtime
-  apply promotes the candidate and its amendment atomically.
+- Do not edit the feature `design.md` or any module `design.md` directly; only the approved runtime
+  apply promotes the candidate and its amendment atomically. Never propose a change to `tldr.md` or
+  `spec.md`; requirements change through specification review.
 - Do not remove individual implementation files, keep a second archived attempt below the selected
   root, or target a parent, sibling, child, or any path outside the selected lifecycle root.
-- Do not modify `spec.md`, `module.md`, module architecture, code, tests, or generated projections
-  during hardening. Never create or amend a feature-root `design.md`.
+- Do not modify `tldr.md`, `spec.md`, `module.md`, module architecture, code, tests, or generated
+  projections during hardening. Never create a feature-root `implementation.md`.
 - On any conflict or failure, stop and preserve the proposal for review. Never retry apply against a
   changed digest without regenerating and re-presenting the proposal.
-- Apply rejects, and you must never propose, an amendment targeting `module.md`, another level's
-  `design.md`, or a feature-root `design.md`. It also rejects a proposal whose digest is stale
-  because the module `design.md` changed after proposal mode.
+- Apply rejects, and you must never propose, a `design` target other than the selected root's
+  `design.md` (never `tldr.md`, `spec.md`, `module.md`, or a legacy `implementation.md`) or a
+  `module_design` amendment targeting `module.md`, another level's `design.md`, or a path inside the
+  feature root. It also rejects a proposal whose digest is stale because `tldr.md`, the feature
+  `design.md`, or the module `design.md` changed after proposal mode.
 
 ## Completion Report
 
-Report the feature ID, durable implementation path, prior and resulting implementation digests, prior
-and resulting module design digests (null when not amended), removed implementation artifact
-count, retained authorities, findings, and whether the feature now has no active implementation
-workspace.
+Report the feature ID, the feature design reference path, prior and resulting feature design
+digests, prior and resulting module design digests (null when not amended), removed implementation
+artifact count, retained authorities (including the untouched `tldr.md` and `spec.md`), findings, and
+whether the feature now has no active implementation workspace.

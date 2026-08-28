@@ -63,7 +63,7 @@ and project documentation; verify three distinct views, canonical provenance, an
 **ID**: `publish-project-docsite`
 
 A maintainer invokes the documented build interface. Documentation consumes module and contract
-specifications, project Markdown, and canonical feature `spec.md`/`implementation.md` pairs through
+specifications, project Markdown, and canonical feature `tldr.md`/`spec.md`/`design.md` trios through
 `contract.documentation.project-content`,
 associates declared Archify JSON with delivered HTML, validates and renders the read model, emits
 `contract.documentation.build-manifest`, and provides
@@ -85,7 +85,7 @@ second child sequence would duplicate those two complementary views.
 - **FR-DOC-001**: The module MUST classify `specs/**/module.md` and
   `specs/**/contracts/**/contract.md` as the
   Architecture view without moving their authority or treating a renderer projection as maintained content.
-- **FR-DOC-002**: The module MUST classify `specs/**/spec.md` and `specs/**/implementation.md` as the Features
+- **FR-DOC-002**: The module MUST classify `specs/**/tldr.md`, `specs/**/spec.md`, and the feature-root `specs/**/design.md` beside a `spec.md` as the Features
   view and exclude temporal implementation artifacts from that view.
 - **FR-DOC-003**: Both views MUST preserve the same module/feature hierarchy expressed by their source paths and IDs.
 - **FR-DOC-004**: The module MUST expose project documentation from `docs/` as a third view while maintaining only
@@ -104,4 +104,4 @@ second child sequence would duplicate those two complementary views.
 
 - Source discovery, validation, route, provenance, search, and manifest tests under `docsite/tests/`.
 - Reproducible production output from `docsite/`.
-- Requirement-to-evidence mapping in `specs/concorde/features/002-create-project-docsite/implementation.md`.
+- Requirement-to-evidence mapping in `specs/concorde/features/002-create-project-docsite/design.md`.

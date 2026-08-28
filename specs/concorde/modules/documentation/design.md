@@ -40,7 +40,7 @@ succeeds.
 - **Failure**: renderer diagnostics are preserved and publication stops for the affected view.
 - **Evidence**: both maintained architecture views pass all 9 Archify showcase checks; disposable
   deliveries are recreated under ignored `generated/architecture/`, while durable attempt evidence is
-  recorded in `specs/concorde/features/002-create-project-docsite/implementation.md`.
+  recorded in `specs/concorde/features/002-create-project-docsite/design.md`.
 
 The other four contracts are summarized in `module.md` and defined in full under `contracts/`.
 
@@ -51,7 +51,7 @@ two-root/three-view source discovery, strict link mapping, permanent feature spe
 realization projection, sandboxed Archify embedding, local search, accessible presentation,
 schema-valid manifest, atomic promotion, repeatability, and source immutability all have executable
 evidence in `docsite/tests/` and
-`specs/concorde/features/002-create-project-docsite/implementation.md`. Browser containment
+`specs/concorde/features/002-create-project-docsite/design.md`. Browser containment
 and light/dark perceptual review of the current root and Documentation artifacts remain pending
 because Chrome/Chromium is unavailable in the validation environment; structural checks are not
 treated as perceptual evidence.
@@ -84,7 +84,7 @@ treated as perceptual evidence.
   implementation.md (feature.concorde.workflow); this module's `module.md` was rewritten to the
   summary shape and its renderer narrative and evidence status moved here. The same attempt proposes,
   pending hardening: the feature-realization collection becomes `feature-implementations`
-  (`**/implementation.md`, paired with `spec.md` by directory), module `design.md` joins the
+  (the feature-root `design.md` beside a `spec.md`, paired by directory, with `tldr.md` as the landing page), module `design.md` joins the
   Architecture collection as kind `module-design` linked from the module page, and Build Manifest
   moves from v4 to v5.
 - 2026-08-27 — Switched diagram delivery to the project-local Archify 2.16 skill.

@@ -10,9 +10,11 @@ feature requests. Behavioral specifications, module architecture, boundary contr
 feature realization, and explanatory diagrams share one recursive hierarchy because they constrain
 the same system from different viewpoints.
 
-Every level of that hierarchy separates a **summary that is read** from a **reference that is
-consulted**. The summary is the primary interface for humans and coding agents; the reference keeps
-the specification complete beneath that surface without making anyone read it first.
+Every level of that hierarchy separates what is **read** from what is **consulted**. What is read—a
+module summary or a feature TL;DR—is the primary interface for humans and coding agents and must be
+absorbable in minutes; what is consulted—a design reference—keeps the specification complete
+beneath that surface without making anyone read it first. The name `design.md` means the consulted
+design reference at every level.
 
 The complete source profile is governed by
 [Feature 001](../specs/concorde/features/001-concorde-workflow/spec.md). This guide explains
@@ -25,7 +27,7 @@ Each module package repeats the same shape:
 ```text
 <module>/
 ├── module.md          summary: read first and, usually, only
-├── design.md          design reference: consulted for one specific question
+├── design.md          module design reference: consulted for one specific question
 ├── architecture.json  level view: the required structure diagram (non-leaf)
 ├── diagrams/          optional supplemental module-owned Archify views
 ├── contracts/
@@ -110,10 +112,12 @@ parent module feature
 The parent feature does not need the children's implementation details. It needs their visible
 contracts and enough scenario information to explain their collaboration.
 
-## A feature has two durable documents
+## A feature has three durable documents
 
-Every feature root—a top-level feature or one immediate sub-feature—owns `spec.md` and
-`implementation.md`, plus at most one temporal `implementation/` attempt.
+Every feature root—a top-level feature or one immediate sub-feature—owns `tldr.md`, `spec.md`, and
+`design.md`, plus at most one temporal `implementation/` attempt. The reading path is
+**orientation → authority → reference**: `tldr.md` answers "what is this", `spec.md` answers
+"exactly what must hold", and `design.md` answers "how is it built".
 
 ### Optional one-level sub-features
 
@@ -126,15 +130,16 @@ sub-feature. This containment is separate from `refines`, which relates features
 module levels.
 
 Any parent or child can be the one selected lifecycle root. A selected child uses its own durable
-and temporal paths; its parent `spec.md`/`implementation.md` pair is read-only aggregate context and
-siblings are concise navigation summaries only.
+and temporal paths; its parent's `tldr.md`/`spec.md`/`design.md` trio is read-only aggregate
+context and siblings are concise navigation summaries only.
 
 ```text
 <feature>/
-├── spec.md            required behavior
-├── implementation.md  accepted realization
-├── contracts/
+├── tldr.md            read first: what the feature is, in under 15 minutes
+├── spec.md            the complete behavioral authority
+├── design.md          feature design reference: accepted realization and full implementation detail
 ├── diagrams/
+├── contracts/
 ├── subfeatures/       top-level feature only; one level, same shape
 └── implementation/    at most one temporal attempt
     ├── checklists/
@@ -149,18 +154,49 @@ siblings are concise navigation summaries only.
 The files at the feature root and those below `implementation/` have deliberately different
 lifetimes.
 
+### `tldr.md`: the feature TL;DR
+
+`tldr.md` is the first—and for most questions the only—feature document a programmer or agent
+opens. From it alone, without opening anything else, a reader gets a quick understanding of the
+feature's purpose, functionality, basic structure, and logic. It has no front matter and no stable
+ID. Its body has exactly five H2 sections, in this order:
+
+| Section | Content |
+|---|---|
+| `Purpose` | The outcome and for whom |
+| `Functionality` | What the feature does and does not do: its operations, surfaces, parts, and boundaries |
+| `Structure` | The participating parts and how they collaborate, linking the feature's declared core diagram (or the parent's core view, the level view, or an inline fenced `text` sketch) |
+| `Logic` | How it works—the main flows in order—and the rules an implementer must not break, each rule citing the `FR-NNN` requirement in `spec.md` it summarizes |
+| `Read Next` | Links to `spec.md`, `design.md`, the contracts, the module summary, and any sub-features or parent |
+
+Its links redirect; they are never required to understand it. The TL;DR summarizes `spec.md` and
+never defines beyond it: it may not state a requirement, scope boundary, or success criterion that
+`spec.md` does not state, and where the two disagree `spec.md` prevails and analysis reports the
+disagreement. It has a reading budget of about 3,000 body words, or fifteen minutes; validation
+reports an overrun as a warning (`CONCORDE-TLDR-004`) and checks the section shape
+(`CONCORDE-TLDR-001`), the structure link or sketch (`CONCORDE-TLDR-002`), and that every
+requirement ID cited in `Logic` exists in `spec.md` (`CONCORDE-TLDR-003`). Whether it is a faithful
+summary remains a review responsibility.
+
+`speckit.specify` authors it together with `spec.md`, `speckit.clarify` keeps it current, and no
+other workflow step writes it. It is authored, not generated, because a faithful summary requires
+editorial judgment.
+
 ### `spec.md`: required behavior
 
-`spec.md` answers what the feature must make observable and why it matters. It includes actors,
-requirements, constraints, failures, success criteria, and representative scenarios without
-prescribing source layout or implementation mechanics.
+`spec.md` answers exactly what the feature must make observable and why it matters. It includes
+actors, requirements, constraints, failures, success criteria, and representative scenarios without
+prescribing source layout or implementation mechanics. It is complete and self-contained: readable
+without the TL;DR, more detailed than it, and free of realization detail; it may link `tldr.md` and
+`design.md` for redirection. It has no deterministic reading budget.
 
 The prose is the definition. A scenario is an example used to make the behavior testable and show
 which visible components participate; it cannot silently narrow or expand the textual requirements.
 
-### `implementation.md`: accepted realization
+### `design.md`: the feature design reference
 
-`implementation.md` answers how the currently accepted implementation realizes that feature. It
+`design.md` answers how the currently accepted implementation realizes the feature, with the full
+implementation detail a coder needs. It is needed only when writing the code or fixing a bug. It
 should explain:
 
 - collaborating modules and lower-level features;
@@ -170,61 +206,66 @@ should explain:
 - useful code and evidence references; and
 - limitations or compatibility constraints that remain true after the delivery attempt ends.
 
-It is not a second `architecture.json`. Module responsibilities, boundaries, and organization remain
-owned by module architecture; `implementation.md` references those authorities while explaining
-their use for this particular feature. Its required sections are `Realization Overview`, `Module and
-Feature Collaboration`, `Scenario Realization`, `Durable Implementation Decisions`, `Traceability
-and Evidence`, and `Known Limitations`.
+It is not a second `architecture.json` and not a second `spec.md`. Module responsibilities,
+boundaries, and organization remain owned by module architecture and required behavior by `spec.md`;
+`design.md` references those authorities while explaining their use for this particular feature. Its
+six fixed sections are `Realization Overview`, `Module and Feature Collaboration`, `Scenario
+Realization`, `Durable Implementation Decisions`, `Traceability and Evidence`, and `Known
+Limitations`, followed by any further headings the implementation detail needs.
 
-The file exists from the moment the feature does. `speckit.specify` seeds a placeholder whose only
-content is the statement that no implementation realization has been hardened yet; the first
-approved hardening writes it in full, and each later hardening completes it. No other workflow step
-writes its substantive content. Planning treats the placeholder as the absence of a baseline and
-must not invent an accepted realization merely because work is proposed.
+The file exists from the moment the feature does. `speckit.specify` seeds a placeholder from the
+`design-template` whose only content is the statement that no implementation realization has been
+hardened yet; the first approved hardening writes it in full, and each later hardening completes it.
+No other workflow step writes its substantive content. Planning treats the placeholder as the
+absence of a baseline and must not invent an accepted realization merely because work is proposed.
 
-The name `design.md` is reserved for the module level and `implementation.md` for feature roots.
-Validation rejects a feature root without `implementation.md` (`CONCORDE-LAYOUT-005`), a legacy
-`design.md` at a feature root (`CONCORDE-LAYOUT-007`; rename it), and a root holding both names
-(`CONCORDE-LAYOUT-008`). No compatibility alias or symlink may stand in for either name.
+`design.md` means the design reference at every level, so a reader who has learned the module
+convention needs no second name. Until this model, the feature-root file was called
+`implementation.md`; that name is now legacy. Validation rejects a feature root without `design.md`
+(`CONCORDE-LAYOUT-005`) or without `tldr.md` (`CONCORDE-LAYOUT-009`), a legacy `implementation.md`
+at a feature root (`CONCORDE-LAYOUT-007`; rename it to `design.md`), and a root holding both names
+(`CONCORDE-LAYOUT-008`). No compatibility alias or symlink may stand in for any of the three names.
 
 ### `implementation/`: one temporary attempt
 
 `implementation/` contains the current delivery proposal and its review state: checklists, research,
 plan, tasks, technical models, acceptance guidance, and evidence. It represents at most one active
-attempt, and hardening compacts it into `implementation.md`.
+attempt, and hardening compacts it into `design.md`.
 
 These files may contain alternatives, sequencing decisions, incomplete work, and transient notes.
 Their presence beneath `specs/` does not make them durable intent. There must be no compatibility
-copy of `plan.md`, `tasks.md`, or `checklists/` beside `spec.md` and `implementation.md`.
+copy of `plan.md`, `tasks.md`, or `checklists/` beside `tldr.md`, `spec.md`, and `design.md`.
 
 ## Hardening changes the lifetime, not the behavior
 
 Once every recognizable task and every existing checklist item is complete, the maintainer may ask
-Concorde to harden the attempt. The coding agent synthesizes a candidate `implementation.md` and,
+Concorde to harden the attempt. The coding agent synthesizes a candidate feature `design.md` and,
 when the attempt produced implementation detail or rationale worth keeping, a full replacement of
 the providing module's `design.md` that adds that material under the reference's stable headings.
 The runtime binds both candidates and the exact `implementation/` removal target to the current
-source digest, which covers the module `design.md` as well.
+source digest, which covers the module `design.md` and the TL;DR as well.
 
-Nothing changes until the maintainer explicitly approves that exact proposal. On success,
-`implementation.md` is updated, `design.md` is amended when the proposal included it, and the whole
-`implementation/` directory is removed as one atomic, failure-safe operation. `spec.md`, every
-`module.md`, contracts, views, code, and tests are not changed by hardening. Hardening is the only
-workflow step that carries attempt-derived rationale into a module design reference.
+Nothing changes until the maintainer explicitly approves that exact proposal. On success, the
+feature `design.md` is updated, the module `design.md` is amended when the proposal included it, and
+the whole `implementation/` directory is removed as one atomic, failure-safe operation. `tldr.md`,
+`spec.md`, every `module.md`, contracts, views, code, and tests are not changed by hardening.
+Hardening is the only workflow step that carries attempt-derived rationale into a module design
+reference.
 
-A later change begins a fresh attempt. Planning reads both durable documents—`spec.md` as required
-behavior and `implementation.md` as the accepted realization baseline—with the level's `module.md`
-as bounded context.
+A later change begins a fresh attempt. Planning reads two durable documents—`spec.md` as required
+behavior and the feature `design.md` as the accepted realization baseline—with the level's
+`module.md` as bounded context; the TL;DR is orientation only, never a planning input.
 
 ## Where a fact lives
 
 | A reader wants to know… | Reads |
 |---|---|
 | what a level does, how its parts hang together, and where to go next | `module.md` |
-| why the level is designed this way, how it is implemented, what was tried and rejected | `design.md` |
+| why the level is designed this way, how it is implemented, what was tried and rejected | the module `design.md` |
 | what a boundary promises and what crosses it | the contract document |
-| what a feature must make observable | `spec.md` |
-| how the accepted implementation realizes that feature | `implementation.md` |
+| what a feature does, how it is basically structured, and how it works | `tldr.md` |
+| exactly what a feature must make observable, and how that is accepted and measured | `spec.md` |
+| how the accepted implementation realizes that feature, in full detail | the feature `design.md` |
 | what is being attempted right now | `implementation/` |
 | what the code actually does and whether it is proven | code and tests |
 

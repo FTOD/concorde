@@ -53,7 +53,7 @@ describe('maintained Concorde framework guides', () => {
       if (!guide) throw new Error(`Expected ${sourcePath} in the build manifest.`);
       expect(guide.links.some((link) =>
         link.targetSourcePath.startsWith('specs/') &&
-        /\/(spec|module|implementation|design)\.md$/.test(link.targetSourcePath),
+        /\/(tldr|spec|design|module|contract)\.md$/.test(link.targetSourcePath),
       )).toBe(true);
     }
   });

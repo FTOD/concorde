@@ -26,7 +26,7 @@ JavaScript, assets, a local search index, and `build-manifest.json`.
 | `/` | Project landing page with Architecture, Documentation, and Features entry points and source counts |
 | `/architecture/**` | Architecture module, module design reference, and contract Markdown plus declared embedded views |
 | `/docs/**` | Project documents sourced from `docs/**/*.md` |
-| `/features/**` | Permanent feature specifications from `specs/**/spec.md` and accepted implementations from `specs/**/implementation.md`; specification pages include their declared feature diagrams |
+| `/features/**` | Permanent feature pages: the TL;DR from `specs/**/tldr.md` at the feature route (with the declared feature diagrams embedded), the specification from `specs/**/spec.md` at `…/spec`, and the feature design reference from `specs/**/design.md` beside a `spec.md` at `…/design` |
 | `/build-manifest.json` | Machine-readable successful-build inventory |
 
 For the Concorde self-hosting site, the Documentation route space includes this maintained baseline:

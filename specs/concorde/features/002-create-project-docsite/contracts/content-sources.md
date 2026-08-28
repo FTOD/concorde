@@ -28,14 +28,17 @@ or modifying their maintained sources.
 | Architecture | `specs/` | Every regular file matching `**/module.md` or `**/contracts/**/contract.md` | `/architecture` |
 | Architecture (module design references) | `specs/` | Every regular file named `design.md` whose directory also contains a `module.md`; published in the Architecture collection as kind `module-design` | `/architecture` |
 | Project documentation | `docs/` | Every regular file matching `**/*.md` | `/docs` |
+| Feature TL;DRs | `specs/` | Every regular file matching `**/tldr.md` beside a `spec.md`; the feature's landing page | `/features` |
 | Feature specifications | `specs/` | Every regular file matching `**/spec.md` | `/features` |
-| Feature implementations | `specs/` | Every regular file matching `**/implementation.md` | `/features` |
+| Feature design references | `specs/` | Every regular file named `design.md` whose directory also contains a `spec.md` | `/features` |
 
 Symbolic links are not followed. Normalized source paths must remain beneath their declared root.
-Architecture (including module design references), Feature Specifications, and Feature
-Implementations are disjoint projections of the same specification tree: a `design.md` is admitted
-only beside a `module.md` and is never a feature input, and `implementation.md` is never an
-architecture input. Specifications and implementations share the public Features navigation family.
+Architecture (including module design references), Feature TL;DRs, Feature Specifications, and
+Feature Design References are disjoint projections of the same specification tree: a `design.md` is
+classified by its sibling — beside a `module.md` it is a module design reference (Architecture),
+beside a `spec.md` it is a feature design reference (Features), and beside neither it is an error —
+while a legacy `implementation.md` beside a `spec.md` and a `spec.md` without a sibling `tldr.md` are
+errors. TL;DRs, specifications, and design references share the public Features navigation family.
 
 ## Field Semantics
 
@@ -70,8 +73,8 @@ architecture input. Specifications and implementations share the public Features
   scenarios or question, and generated output. A feature may declare at most one core diagram, and
   its kind must be `architecture`; dynamic kinds are supplemental. The JSON `diagram_type` and
   `meta.output` must agree with the declaration.
-- Parent directory: the feature or immediate sub-feature directory; its `spec.md` and
-  `implementation.md` are permanent site content. No third feature level is publishable.
+- Parent directory: the feature or immediate sub-feature directory; its `tldr.md`, `spec.md`, and
+  `design.md` are permanent site content. No third feature level is publishable.
 
 ### Feature Implementations
 
@@ -137,10 +140,14 @@ candidate publication.
 
 ## Compatibility
 
-This is contract version 5. It replaces the feature-level `**/design.md` eligibility glob with
-`**/implementation.md` (kind `feature-implementation`) and adds module-level `design.md` beside a
-`module.md` as an Architecture input (kind `module-design`), matching Build Manifest schema version 5;
-source roots, route bases, and path semantics are unchanged. Version 4 moved diagram delivery from a
+This is contract version 6. It adds the Feature TL;DR input (`**/tldr.md`, kind `feature-tldr`, the
+feature's landing route), classifies a feature-root `design.md` beside a `spec.md` as the feature
+design reference (kind `feature-design`, replacing the version-5 `**/implementation.md` input and
+kind `feature-implementation`), moves the specification page to the `/spec` route suffix, and
+matches Build Manifest schema version 6; source roots, route bases, and path semantics are otherwise
+unchanged. Version 5 replaced the feature-level `**/design.md` eligibility glob with
+`**/implementation.md` and added module-level `design.md` beside a `module.md` as an Architecture
+input (kind `module-design`). Version 4 moved diagram delivery from a
 manually prepared prerequisite into preview/production publication. Adding optional metadata or more project
 documents is backward compatible. Changing source roots, eligibility globs, required fields, route
 bases, path semantics, or exclusion meaning requires a new contract version and a route/content

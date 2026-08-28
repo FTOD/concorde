@@ -16,9 +16,9 @@ available, and freshness checks. Do not treat generated HTML or screenshots as m
 
 Write the task list to `implementation/tasks.md` inside the selected feature workspace. Treat it as
 work for the active delivery attempt, not as durable feature intent, and do not create a root-level
-copy or symlink. Generate tasks against both `spec.md` and the accepted `implementation.md` baseline
+copy or symlink. Generate tasks against both `spec.md` and the accepted feature `design.md` baseline
 (a placeholder means no accepted baseline), but do
-not generate a task that edits `implementation.md`, any module `module.md` or `design.md`, or removes
+not generate a task that edits `tldr.md`, `spec.md`, the feature `design.md`, any module `module.md` or `design.md`, or removes
 `implementation/`; after every task is complete,
 the user may invoke the separate Concorde hardening command.
 

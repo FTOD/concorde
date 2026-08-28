@@ -49,7 +49,8 @@
 ```text
 specs/[###-feature]/
 ├── spec.md              # Durable feature intent ($speckit-specify output)
-├── implementation.md    # Accepted realization (placeholder until hardening writes it)
+├── tldr.md              # Feature TL;DR: self-contained quick understanding ($speckit-specify output)
+├── design.md            # Feature design reference (placeholder until hardening writes it)
 ├── diagrams/            # Optional maintained feature-owned Archify explanations
 │   └── <scenario>.json
 ├── contracts/           # Durable external interface specifications

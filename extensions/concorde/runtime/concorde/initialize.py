@@ -39,7 +39,7 @@ def _create_proposal(project_root: Path, module_id: str | None, name: str | None
     module_slug = identifier.split(".", 1)[1].replace(".", "-")
     specification_root = f"specs/{module_slug}"
     config = json.dumps(
-        {"profile_version": 2, "root_module_id": identifier, "specification_root": specification_root},
+        {"profile_version": 3, "root_module_id": identifier, "specification_root": specification_root},
         indent=2,
         sort_keys=True,
     )

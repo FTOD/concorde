@@ -30,8 +30,9 @@ class WorkspacePaths:
     parent_context: dict[str, str] | None
     siblings: tuple[dict[str, str], ...]
     feature_directory: str
+    feature_tldr: str
     feature_spec: str
-    feature_implementation: str
+    feature_design: str
     module_summary: str
     module_design: str
     contracts_dir: str
@@ -99,7 +100,8 @@ def _summary(feature: SourceDocument) -> dict[str, str]:
         "outcome": _heading_value(feature.body, "Outcome") or _title(feature.body, feature.identifier),
         "evidence_status": str(feature.metadata.get("evidence_status", "unknown")),
         "feature_directory": Path(feature.path).parent.as_posix(),
-        "implementation": f"{Path(feature.path).parent.as_posix()}/implementation.md",
+        "tldr": f"{Path(feature.path).parent.as_posix()}/tldr.md",
+        "design": f"{Path(feature.path).parent.as_posix()}/design.md",
     }
 
 
@@ -143,8 +145,9 @@ def _workspace_relationships(package: Any, feature: SourceDocument) -> tuple[str
     parent_context = {
         "feature_id": parent.identifier,
         "feature_directory": parent_root,
+        "feature_tldr": f"{parent_root}/tldr.md",
         "feature_spec": parent.path,
-        "feature_implementation": f"{parent_root}/implementation.md",
+        "feature_design": f"{parent_root}/design.md",
     }
     siblings: list[dict[str, str]] = []
     for child_id in children:
@@ -169,20 +172,23 @@ def resolve_phase_paths(project_root: str | Path, feature_directory: str) -> Wor
     if root.is_symlink():
         raise WorkspaceError("feature root may not be a symlink")
     spec = root / "spec.md"
-    realization = root / "implementation.md"
-    legacy = root / "design.md"
+    tldr = root / "tldr.md"
+    design = root / "design.md"
+    legacy = root / "implementation.md"
     if not root.is_dir() or not spec.is_file() or spec.is_symlink():
         raise WorkspaceError(f"selected feature root has no canonical spec.md: {relative}")
-    if legacy.exists() and realization.exists():
+    if legacy.exists() and design.exists():
         raise WorkspaceError(
-            f"selected feature root holds both design.md and implementation.md; remove the legacy design.md after merging it into implementation.md: {relative}"
+            f"selected feature root holds both implementation.md and design.md; merge the legacy implementation.md into design.md and remove it: {relative}"
         )
     if legacy.exists():
         raise WorkspaceError(
-            f"selected feature root uses the legacy accepted-realization name design.md; rename it to implementation.md: {relative}"
+            f"selected feature root uses the legacy accepted-realization name implementation.md; rename it to design.md: {relative}"
         )
-    if not realization.is_file() or realization.is_symlink():
-        raise WorkspaceError(f"selected feature root has no canonical implementation.md: {relative}")
+    if not design.is_file() or design.is_symlink():
+        raise WorkspaceError(f"selected feature root has no canonical design.md: {relative}")
+    if not tldr.is_file() or tldr.is_symlink():
+        raise WorkspaceError(f"selected feature root has no tldr.md; author the feature TL;DR: {relative}")
     feature = next(
         (item for item in package.documents("feature") if Path(item.path).parent.as_posix() == relative),
         None,
@@ -203,8 +209,9 @@ def resolve_phase_paths(project_root: str | Path, feature_directory: str) -> Wor
         parent_context=parent_context,
         siblings=siblings,
         feature_directory=relative,
+        feature_tldr=f"{relative}/tldr.md",
         feature_spec=f"{relative}/spec.md",
-        feature_implementation=f"{relative}/implementation.md",
+        feature_design=f"{relative}/design.md",
         module_summary=module_summary,
         module_design=module_design,
         contracts_dir=f"{relative}/contracts",
@@ -252,8 +259,9 @@ def resolve_planned_phase_paths(project_root: str | Path, feature_directory: str
         parent_context = {
             "feature_id": parent.identifier,
             "feature_directory": parent_root,
+            "feature_tldr": f"{parent_root}/tldr.md",
             "feature_spec": parent.path,
-            "feature_implementation": f"{parent_root}/implementation.md",
+            "feature_design": f"{parent_root}/design.md",
         }
         children = parent.metadata.get("subfeatures", [])
         if isinstance(children, list):
@@ -346,8 +354,9 @@ def _planned_paths(
         parent_context=parent_context,
         siblings=siblings,
         feature_directory=relative,
+        feature_tldr=f"{relative}/tldr.md",
         feature_spec=f"{relative}/spec.md",
-        feature_implementation=f"{relative}/implementation.md",
+        feature_design=f"{relative}/design.md",
         module_summary=f"{module_directory}/module.md",
         module_design=f"{module_directory}/design.md",
         contracts_dir=f"{relative}/contracts",

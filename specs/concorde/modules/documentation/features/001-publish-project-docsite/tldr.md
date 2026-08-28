@@ -1,0 +1,98 @@
+# TL;DR: Publish the Project Docsite
+
+`feature.documentation.publish-project-docsite` · specified at `module.concorde.documentation` ·
+refines `feature.concorde.publish-project-docsite` · about three minutes. This page is enough to
+understand what the Documentation module builds and what must hold; the links at the end only
+redirect you when you want more.
+
+## Purpose
+
+The Documentation module projects architecture, permanent feature specifications and designs from
+the unified `specs/` hierarchy, and project Markdown from `docs/` into one searchable, traceable,
+read-only website, embedding each declared delivered Archify view beside its textual source. The
+root feature owns the project-wide outcome; this feature owns the module's narrower behavior,
+contracts, scenario, and evidence, for the maintainer who builds and browses the site without ever
+treating a generated page as authority.
+
+## Functionality
+
+| View | Sources | Boundary |
+|---|---|---|
+| Architecture | `specs/**/module.md` and `specs/**/contracts/**/contract.md` | Authority stays with the sources; a renderer projection is never maintained content. |
+| Features | `specs/**/spec.md` and each feature's permanent design reference | Temporal implementation artifacts are excluded. |
+| Documentation | `docs/**/*.md` | A third view over the same two canonical roots. |
+
+Both hierarchical views preserve the module and feature hierarchy that their source paths and IDs
+express. A build is deterministic: unchanged inputs give an identical manifest and identical
+source-to-route mappings, and every eligible source appears exactly once in the manifest. Any
+renderer-specific staging is disposable, ignored, regenerated from the canonical registry, and
+invisible in published provenance.
+
+**Not part of this feature**: maintained architecture intent, validation semantics, Archify
+rendering itself, user-authored sources, and any mutation of `specs/` or `docs/`.
+
+## Structure
+
+The maintained level view is <a href="/architecture/documentation.html">Documentation</a>
+(maintained source `specs/concorde/modules/documentation/architecture.json`): the validated read
+model inside its module boundary, its providers Project Docs, Project Specifications, and Archify,
+and the maintainer who builds and browses. The parent's supplemental
+<a href="/architecture/project-docsite-publication-flow.html">publication flow</a> explains the
+build sequence.
+
+```text
+maintainer ──build-interface──▶ Documentation
+   docs/** · specs/** ──project-content──▶ │ registry: classify · route · validate
+   Archify ◀──archify-renderer──▶          │ deliver declared views
+                                           ├──build-manifest──▶ maintainer / freshness checks
+                                           └──architecture-site──▶ maintainer browser
+```
+
+Five contracts bound the module: it provides `contract.documentation.architecture-site`,
+`contract.documentation.build-interface`, and `contract.documentation.build-manifest`, and requires
+`contract.documentation.project-content` and `contract.documentation.archify-renderer`. When any step
+fails, the last successful site is preserved.
+
+## Logic
+
+**One build**
+
+1. The maintainer invokes the documented build interface.
+2. Documentation consumes module and contract specifications, project Markdown, and canonical
+   feature specification and design pairs through the project-content contract.
+3. Each declared Archify JSON view is handed to the renderer and its delivered HTML associated with
+   the source.
+4. The read model is validated (identities, links, routes) and rendered; the deterministic build
+   manifest is emitted.
+5. The finished site is provided to the browser; a failure at any step keeps the previous site.
+
+**Rules the implementation must keep**
+
+- `module.md` and `contract.md` sources form the Architecture view without moving their authority
+  or treating a renderer projection as maintained content (FR-DOC-001).
+- Feature specifications and permanent designs form the Features view, and temporal implementation
+  artifacts are excluded from it (FR-DOC-002).
+- Both views preserve the module and feature hierarchy expressed by source paths and IDs
+  (FR-DOC-003).
+- `docs/` is a third view while only two canonical source roots exist: `specs/` and `docs/`
+  (FR-DOC-004).
+- Renderer-specific staging is disposable, ignored, regenerated from the canonical registry, and
+  invisible in published provenance (FR-DOC-005).
+
+## Read Next
+
+- **Exact outcome, scenario, requirements, and success criteria** — [spec.md](spec.md): FR-DOC-001
+  to FR-DOC-005 and SC-DOC-001 to SC-DOC-003.
+- **How the accepted implementation realizes this feature** — [design.md](design.md).
+- **The contracts** — [architecture-site](../../contracts/architecture-site/contract.md),
+  [build-interface](../../contracts/build-interface/contract.md),
+  [build-manifest](../../contracts/build-manifest/contract.md),
+  [project-content](../../contracts/project-content/contract.md), and
+  [archify-renderer](../../contracts/archify-renderer/contract.md).
+- **The level this feature belongs to** — [module.md](../../module.md) (the Documentation summary)
+  and its [design reference](../../design.md); the root summary is
+  [module.md](../../../../module.md).
+- **The parent feature** — [Create Unified Project Docsite](../../../../features/002-create-project-docsite/tldr.md)
+  and its [spec.md](../../../../features/002-create-project-docsite/spec.md), which carries the
+  project-wide requirements and evidence.
+- **Contributor guide** — [docs/contributing/docsite.md](../../../../../../docs/contributing/docsite.md).

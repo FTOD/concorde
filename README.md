@@ -6,8 +6,9 @@ boundary contracts, bounded architecture views, and implementation evidence.
 
 Concorde is designed to be installed as a native Spec Kit bundle containing:
 
-- the `concorde-core` preset, which appends architecture guidance to templates and replaces nine
-  normal command instructions with Concorde-aware workspace routing;
+- the `concorde-core` preset, which appends architecture guidance to Spec Kit's templates, supplies
+  the feature TL;DR and design-reference templates, and replaces nine normal command instructions
+  with Concorde-aware workspace routing;
 - the `concorde` extension, which supplies five Concorde surfaces—four runtime-backed operations plus
   the read-only `ask` procedure—the workspace adapter, and runtime; and
 - no replacement workflow: Spec Kit continues to own specification, planning, tasks, and
@@ -18,7 +19,7 @@ The three Spec Kit package concepts have different jobs:
 | Concept | Concorde package | Role |
 |---|---|---|
 | Bundle | `concorde-bundle` | An installation recipe that pins the tested preset and extension versions. |
-| Preset | `concorde-core` | Three append template layers plus nine complete normal-command replacements for nested workspace routing. |
+| Preset | `concorde-core` | Five templates (three append layers plus the `tldr-template` and `design-template` feature documents) and nine complete normal-command replacements for nested workspace routing. |
 | Extension | `concorde` | Five Concorde-specific surfaces: four deterministic operations and one agent-followed, read-only question procedure. |
 
 Catalogs are trusted discovery metadata for these independently versioned packages; they are not a
@@ -99,7 +100,7 @@ specify bundle build --path bundles/concorde-bundle --output dist
 uv run python scripts/release/verify-release.py --dist dist
 ```
 
-The release contains exactly `concorde-core@0.2.0` and `concorde@0.2.0`. It does not install a custom
+The release contains exactly `concorde-core@0.3.0` and `concorde@0.3.0`. It does not install a custom
 workflow or reusable Spec Kit steps. `--base-url` is written into the generated catalog metadata; the
 builder does not contact it. The value must match the address that serves `dist/` in the next step.
 
@@ -172,14 +173,17 @@ $speckit-concorde-ask When should I use context instead of changing the selected
   `SPECIFY_FEATURE_DIRECTORY` at their canonical path—`<module directory>/features/NNN-<short-name>`,
   or `<parent feature root>/subfeatures/NNN-<short-name>` for a sub-feature—and are selected
   through the standard `.specify/feature.json`; Concorde adds no creation or selection command.
-- `feature.harden` proposes the durable `implementation.md`—and, when the attempt produced detail
-  or rationale worth keeping, an amendment to the providing module's `design.md`—from a
-  task-complete implementation attempt and, only after explicit approval, applies both atomically
-  and removes that temporal `implementation/` directory.
-- `context` returns one bounded architectural level without expanding child internals, design
-  references, or accepted realizations.
+  Every feature root owns `tldr.md` (read first), `spec.md` (the authority), and `design.md` (the
+  design reference, written by hardening).
+- `feature.harden` proposes the feature `design.md`—and, when the attempt produced detail or
+  rationale worth keeping, an amendment to the providing module's `design.md`—from a task-complete
+  implementation attempt and, only after explicit approval, applies both atomically and removes
+  that temporal `implementation/` directory.
+- `context` returns one bounded architectural level without expanding child internals or the body
+  of any module or feature `design.md`.
 - `validate` deterministically checks identities, hierarchy, references, contracts, views, evidence
-  status, module summary shape and reading budget, and feature-root document pairing.
+  status, module summary and feature TL;DR shape and reading budgets, and the feature-root document
+  trio.
 - `ask` answers questions about Concorde concepts, command timing, artifact authority, or this
   project's use of the workflow from cited installed guidance and bounded maintained sources. It is
   agent-followed and read-only: it has no Python runtime verb and does not execute recommended work.
@@ -202,9 +206,9 @@ two canonical source roots, presented through three reader-facing navigation fam
 
 | Source | Published content |
 |---|---|
-| `specs/**/module.md`, `specs/**/design.md`, `specs/**/contracts/**/contract.md` | Architecture module summaries, module design references, boundary contracts, and declared Archify views |
+| `specs/**/module.md`, its adjacent `design.md`, `specs/**/contracts/**/contract.md` | Architecture module summaries, module design references, boundary contracts, and declared Archify views |
 | `docs/**/*.md` | Project documentation |
-| `specs/**/spec.md`, `specs/**/implementation.md` | Permanent feature specifications and accepted realizations |
+| `specs/**/tldr.md`, `specs/**/spec.md`, and the `design.md` beside each `spec.md` | Feature TL;DRs (the page each feature opens on), specifications, and design references |
 
 Generated pages never become maintained source documents.
 
@@ -247,7 +251,7 @@ production Docusaurus build. Start with the maintained [documentation overview](
 
 - [Project constitution](.specify/memory/constitution.md)
 - [Root architecture](specs/concorde/module.md) (module summary; its design reference is the adjacent `design.md`)
-- [Concorde workflow specification](specs/concorde/features/001-concorde-workflow/spec.md)
+- [Concorde workflow TL;DR](specs/concorde/features/001-concorde-workflow/tldr.md) and [specification](specs/concorde/features/001-concorde-workflow/spec.md)
 - [Project docsite specification](specs/concorde/features/002-create-project-docsite/spec.md)
 - [Spec Kit installation specification](specs/concorde/features/003-install-concorde-speckit/spec.md)
 - [Releasing Concorde](docs/releasing.md)

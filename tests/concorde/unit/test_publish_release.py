@@ -125,8 +125,8 @@ class PublishReleaseTests(unittest.TestCase):
         self.assertEqual(host.calls, [])
 
     def test_prerelease_version_marks_release_and_pointer(self):
-        self.assertTrue(publisher.is_prerelease("0.2.0-rc.1"))
-        self.assertFalse(publisher.is_prerelease("0.2.0"))
+        self.assertTrue(publisher.is_prerelease("0.3.0-rc.1"))
+        self.assertFalse(publisher.is_prerelease("0.3.0"))
         original = publisher.is_prerelease
         publisher.is_prerelease = lambda version: True
         try:

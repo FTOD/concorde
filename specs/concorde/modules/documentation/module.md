@@ -84,5 +84,5 @@ promotion is atomic. Realization detail and recorded decisions are in the
 ## Evidence Status
 
 The publication feature is implemented with executable evidence in `docsite/tests/` and
-`specs/concorde/features/002-create-project-docsite/implementation.md`; details are in the
+`specs/concorde/features/002-create-project-docsite/design.md`; details are in the
 [design reference](design.md#evidence-status).

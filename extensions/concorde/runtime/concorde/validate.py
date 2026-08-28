@@ -1,4 +1,4 @@
-"""Deterministic structural validation for Concorde Source Profile 2."""
+"""Deterministic structural validation for Concorde Source Profile 3."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from .validation.layout import validate_layout
 from .validation.evidence import validate_evidence
 from .validation.freshness import validate_freshness
 from .validation.summary import validate_summaries
+from .validation.tldr import validate_tldrs
 
 
 EVIDENCE_STATES = {"unknown", "partial", "verified", "disagrees", "implemented"}
@@ -24,6 +25,7 @@ REQUIRED_CONTRACT_SECTIONS = ("Purpose", "Information", "Obligations", "Failure 
 FOCUSED_VALIDATORS = (
     validate_hierarchy,
     validate_summaries,
+    validate_tldrs,
     validate_layout,
     validate_contracts,
     validate_scenarios,

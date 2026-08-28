@@ -16,12 +16,37 @@ describe('feature specifications', () => {
       ['feature.fixture.alpha.finish', 'module.fixture', 'Planned', 'specs/001-alpha/subfeatures/002-finish'],
       ['feature.fixture.beta', 'module.fixture', 'Approved', 'specs/nested/002-beta'],
     ]);
+    expect(features.map((item) => item.route)).toEqual([
+      '/features/001-alpha/spec',
+      '/features/001-alpha/subfeatures/001-prepare/spec',
+      '/features/001-alpha/subfeatures/002-finish/spec',
+      '/features/nested/002-beta/spec',
+    ]);
     const parent = features[0];
+    expect(parent.landingRoute).toBe('/features/001-alpha/feature.fixture.alpha');
+    expect(parent.tldrRoute).toBe(parent.landingRoute);
+    expect(parent.designRoute).toBe('/features/001-alpha/design');
     expect(parent.subfeatures.map((item) => item.featureId)).toEqual([
       'feature.fixture.alpha.prepare', 'feature.fixture.alpha.finish',
     ]);
-    expect(features[1].parentFeatureRoute).toBe(parent.route);
+    expect(features[1].parentFeatureRoute).toBe(parent.landingRoute);
     expect(features[1].siblings.map((item) => item.featureId)).toEqual(['feature.fixture.alpha.finish']);
+  });
+
+  it('points parent, sub-feature, and sibling navigation at TL;DR landing routes', async () => {
+    const registry = await buildRegistry(resolve(__dirname, '../fixtures/valid-project'));
+    const features = registry.documents.filter((item): item is FeatureSpecification => item.collectionId === 'features');
+    expect(features[0].subfeatures.map((item) => item.route)).toEqual([
+      '/features/001-alpha/subfeatures/001-prepare/feature.fixture.alpha.prepare',
+      '/features/001-alpha/subfeatures/002-finish/feature.fixture.alpha.finish',
+    ]);
+    expect(features[1].siblings.map((item) => item.route)).toEqual([
+      '/features/001-alpha/subfeatures/002-finish/feature.fixture.alpha.finish',
+    ]);
+    expect(features[0].subfeatures.map((item) => [item.title, item.outcome, item.status])).toEqual([
+      ['Prepare Alpha', 'Alpha inputs are prepared.', 'Ready'],
+      ['Finish Alpha', 'Alpha produces its final result.', 'Planned'],
+    ]);
   });
 
   it('rejects duplicate feature IDs deterministically', async () => {

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.dev/contracts/documentation/build-manifest-v5.schema.json",
-  "title": "Concorde Documentation Build Manifest v5",
+  "$id": "https://concorde.dev/contracts/documentation/build-manifest-v6.schema.json",
+  "title": "Concorde Documentation Build Manifest v6",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,7 +15,7 @@
   ],
   "properties": {
     "schemaVersion": {
-      "const": 5
+      "const": 6
     },
     "generator": {
       "type": "object",
@@ -29,15 +29,15 @@
     },
     "collections": {
       "type": "array",
-      "minItems": 4,
-      "maxItems": 4,
+      "minItems": 5,
+      "maxItems": 5,
       "uniqueItems": true,
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["id", "sourceBase", "routeBase", "include"],
         "properties": {
-          "id": { "enum": ["architecture", "docs", "features", "feature-implementations"] },
+          "id": { "enum": ["architecture", "docs", "feature-tldrs", "features", "feature-designs"] },
           "sourceBase": { "enum": ["docs", "specs"] },
           "routeBase": { "enum": ["/architecture", "/docs", "/features"] },
           "include": {
@@ -180,7 +180,7 @@
         "links"
       ],
       "properties": {
-        "kind": { "enum": ["architecture-source", "module-design", "project-document", "feature-specification", "feature-implementation"] },
+        "kind": { "enum": ["architecture-source", "module-design", "project-document", "feature-tldr", "feature-specification", "feature-design"] },
         "sourcePath": { "$ref": "#/$defs/sourcePath" },
         "sourceSha256": { "$ref": "#/$defs/sha256" },
         "route": { "$ref": "#/$defs/route" },
@@ -209,8 +209,9 @@
           "minContains": 0,
           "maxContains": 1
         },
-        "implementationRoute": { "$ref": "#/$defs/route" },
+        "tldrRoute": { "$ref": "#/$defs/route" },
         "specificationRoute": { "$ref": "#/$defs/route" },
+        "designRoute": { "$ref": "#/$defs/route" },
         "architectureId": { "type": "string", "minLength": 1 },
         "architectureKind": { "enum": ["module", "feature", "contract"] },
         "parentId": { "type": "string", "minLength": 1 },
@@ -223,20 +224,29 @@
       "allOf": [
         {
           "if": {
-            "properties": { "kind": { "const": "feature-specification" } },
+            "properties": { "kind": { "const": "feature-tldr" } },
             "required": ["kind"]
           },
           "then": {
-            "required": ["featureId", "moduleId", "status", "diagrams", "featureLevel", "subfeatures", "siblings", "implementationRoute"]
+            "required": ["featureId", "moduleId", "status", "diagrams", "featureLevel", "subfeatures", "siblings", "specificationRoute", "designRoute"]
           }
         },
         {
           "if": {
-            "properties": { "kind": { "const": "feature-implementation" } },
+            "properties": { "kind": { "const": "feature-specification" } },
             "required": ["kind"]
           },
           "then": {
-            "required": ["featureId", "moduleId", "featureLevel", "subfeatures", "siblings", "specificationRoute"]
+            "required": ["featureId", "moduleId", "status", "diagrams", "featureLevel", "subfeatures", "siblings", "tldrRoute", "designRoute"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "feature-design" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "required": ["featureId", "moduleId", "featureLevel", "subfeatures", "siblings", "tldrRoute", "specificationRoute"]
           }
         },
         {

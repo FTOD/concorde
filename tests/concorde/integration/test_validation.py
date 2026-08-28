@@ -60,13 +60,15 @@ class ValidationIntegrationTests(unittest.TestCase):
             root = Path(temporary) / "project"
             shutil.copytree(VALID_PROJECT, root)
             feature = root / "specs/example/features/001-deliver"
-            (feature / "implementation.md").rename(feature / "design.md")
+            (feature / "design.md").rename(feature / "implementation.md")
             (root / "specs/example/modules/api/design.md").unlink()
+            (root / "specs/example/modules/api/features/001-invoke/tldr.md").unlink()
             before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}
             result = validate_project(root)
             rules = {item.rule_id for item in result.findings}
             self.assertEqual(result.status, "invalid")
             self.assertIn("CONCORDE-LAYOUT-007", rules)
+            self.assertIn("CONCORDE-LAYOUT-009", rules)
             self.assertIn("CONCORDE-MODULE-002", rules)
             self.assertEqual({path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}, before)
             for item in result.findings:

@@ -14,7 +14,7 @@
   using the project's selected script flavor. It does not embed an absolute installation path.
 - Architecture operation JSON conforms to `architecture-service.schema.json` (Protocol v1);
   selected-workspace resolution and hardening JSON conforms to `feature-workspace.schema.json`
-  (Feature Workspace Protocol v4, hardening proposal v2). Agent prose may
+  (Feature Workspace Protocol v5, hardening proposal v3). Agent prose may
   summarize either normative result but must not hide findings or claim stronger evidence.
 - Context, validation, and hardening eligibility/proposal checks are read-only. Initialization and
   hardening apply write only after an explicit accepted proposal is supplied to apply mode.
@@ -27,14 +27,15 @@
   `<parent root>/subfeatures/NNN-<short-name>`); an existing root is selected through the standard
   `.specify/feature.json` `feature_directory` record. Concorde adds no selection command and no
   second selection store. Before every normal phase the extension's workspace adapter resolves and
-  validates the selected root (safe path, canonical `spec.md`/`implementation.md` pair with no
-  legacy `design.md`, workspace kind, parent context and sibling summaries for a sub-feature,
+  validates the selected root (safe path, canonical `tldr.md`/`spec.md`/`design.md` trio with no
+  legacy `implementation.md`, workspace kind, parent context and sibling summaries for a sub-feature,
   durable/temporal paths, the providing module's `module.md` and `design.md` as navigation
   references, and `implementation_state`), and `speckit.concorde.validate` enforces registration,
   canonical path, two-level containment, identity, document pairing, and legacy-name rules
   deterministically. Containment never implies cross-module refinement.
-- Module summaries (`module.md`) are the first project source any command reads; a module
-  `design.md` or a feature `implementation.md` is opened only deliberately and is cited when used.
+- Module summaries (`module.md`) and feature TL;DRs (`tldr.md`) are the first project sources any
+  command reads; a feature `spec.md` is opened when a requirement's exact wording is needed, and a
+  module or feature `design.md` only deliberately — each is cited when used.
 
 ## `speckit.concorde.init`
 
@@ -57,7 +58,7 @@ Propose, review, and initialize a minimal root Concorde specification hierarchy.
 1. With no `--apply`, inspect existing project metadata and emit an `init` response with status
    `proposal` or `unchanged`. Include responsibility, boundary, explicit provided/required contract
    sets, immediate child summaries, every proposed path (configuration, `module.md` summary in the
-   Profile 2 shape linking its view and reference, seeded `design.md` reference, and
+   Profile 3 shape linking its view and reference, seeded `design.md` reference, and
    `architecture.json`), and conflicts. A target holding a summary without a reference, or the
    reverse, is a conflict, not a partial success.
 2. The agent presents that proposal for maintainer review and does not translate silence into
@@ -68,7 +69,7 @@ Propose, review, and initialize a minimal root Concorde specification hierarchy.
 
 ### Success artifacts
 
-- `.concorde/config.json` (`profile_version: 2`)
+- `.concorde/config.json` (`profile_version: 3`)
 - `specs/<root-slug>/module.md`
 - `specs/<root-slug>/design.md`
 - `specs/<root-slug>/architecture.json`
@@ -85,8 +86,8 @@ content is never silently overwritten.
 ### Intent
 
 Review and compact one completed implementation attempt into the selected feature/sub-feature's
-durable `implementation.md` (written in full on the first milestone, completed on later ones),
-optionally amend the providing module's `design.md` with the implementation detail and rationale
+durable `design.md` — the feature design reference (written in full on the first milestone,
+completed on later ones) — optionally amend the providing module's `design.md` with the implementation detail and rationale
 developed during the attempt, and remove the temporal `implementation/` directory — all as one
 atomic operation, only after explicit approval.
 
@@ -96,7 +97,7 @@ atomic operation, only after explicit approval.
 |---|---:|---|
 | `[feature-id-or-root]` | no | Stable feature ID or canonical feature root; defaults to the selected feature. |
 | `--propose` | eligibility | Return task/checklist completion status, current paths, digest, and required proposal shape without mutation. |
-| `--proposal <path>` | apply only | Project-relative reviewed hardening proposal (proposal v2) containing the candidate `implementation.md`, the optional module `design.md` amendment, and the exact cleanup manifest. |
+| `--proposal <path>` | apply only | Project-relative reviewed hardening proposal (proposal v3) containing the candidate feature `design.md`, the optional module `design.md` amendment, and the exact cleanup manifest. |
 | `--apply` | no | Apply the unchanged reviewed proposal; absent means eligibility/proposal-only. |
 
 ### Agent and runtime responsibilities
@@ -107,48 +108,52 @@ atomic operation, only after explicit approval.
    exists, a task is unchecked or malformed, or an existing checklist item is unresolved or
    malformed. A missing optional checklist directory represents zero checklist items; symlinked
    checklist paths are unsafe and invalid.
-2. An eligible schema-v4 result directly returns `proposal_path`, `task_summary`, and
-   `checklist_summary` alongside `workspace` (including `feature_implementation`, `module_summary`,
-   and `module_design`) and a `source_digest` that covers the current module `design.md`; the agent
-   never derives or guesses the proposal or amendment locations.
-3. When eligible, the coding agent reads `spec.md`, current `implementation.md`, the module summary
-   and current `design.md`, the complete attempt, relevant architecture/contracts, code, and tests.
-   It drafts a concise current `implementation.md` covering module and feature collaboration, flows,
-   scenario realization, durable decisions, evidence references, and limitations, and — when the
+2. An eligible schema-v5 result directly returns `proposal_path`, `task_summary`, and
+   `checklist_summary` alongside `workspace` (including `feature_tldr`, `feature_design`,
+   `module_summary`, and `module_design`) and a `source_digest` that covers the current `tldr.md`,
+   feature `design.md`, and module `design.md`; the agent never derives or guesses the proposal or
+   amendment locations.
+3. When eligible, the coding agent reads `tldr.md`, `spec.md`, the current feature `design.md`, the
+   module summary and current module `design.md`, the complete attempt, relevant
+   architecture/contracts, code, and tests. It drafts a current feature `design.md` covering module
+   and feature collaboration, flows, scenario realization, durable decisions, evidence references,
+   limitations, and the implementation detail a coder needs, and — when the
    attempt produced implementation detail or rationale worth keeping — a full replacement
    `design.md` for the providing module that adds that material under the reference's stable
    headings without restating summary-owned facts. It does not copy the transient task log or
    redefine module architecture.
 4. The agent writes a project-contained proposal at the returned `proposal_path` that names the
-   exact `implementation.md` path and full candidate content, the optional `design.md` path and
-   full replacement content, the exact `implementation/` removal target, the target feature, and the
-   runtime-provided source digest. It presents the candidate realization, the reference amendment,
-   and the cleanup manifest to the maintainer.
+   exact feature `design.md` path and full candidate content, the optional module `design.md` path
+   and full replacement content, the exact `implementation/` removal target, the target feature, and
+   the runtime-provided source digest. It presents the candidate realization, the reference
+   amendment, and the cleanup manifest to the maintainer. It never proposes a change to `tldr.md`
+   or `spec.md`.
 5. Silence, checked tasks and checklists, passing validation, or prior acceptance do not authorize apply. Only after
    explicit approval does the agent invoke `--apply --proposal <path>`.
 6. Apply re-resolves every path, level, parent relationship, task, checklist, symlink, target, and
-   digest; accepts only `implementation.path == workspace.feature_implementation`,
+   digest; accepts only `design.path == workspace.feature_design`,
    `module_design.path == workspace.module_design` (when present), and `remove ==
    [workspace.implementation_dir]`; stages every file update and the recoverable directory move;
-   and commits all outcomes or restores every prior state. Parent, sibling, and child roots and
-   every `module.md` remain byte-identical.
+   and commits all outcomes or restores every prior state. Parent, sibling, and child roots, the
+   selected `tldr.md` and `spec.md`, and every `module.md` remain byte-identical.
 
 ### Success artifacts
 
-- `<feature-root>/implementation.md` containing the reviewed accepted realization
+- `<feature-root>/design.md` containing the reviewed accepted realization
 - when proposed, `<module>/design.md` equal to the reviewed amendment
 - no `<feature-root>/implementation/` directory
-- canonical result listing prior/resulting implementation digests, prior/resulting module design
-  digests (null when not amended), removed artifacts, and retained authorities
+- canonical result listing prior/resulting feature design digests (`design_digest_before/after`),
+  prior/resulting module design digests (null when not amended), removed artifacts, and retained
+  authorities
 
 ### Failures
 
 Missing or incomplete tasks, unresolved or malformed checklist items, an empty/placeholder
-candidate realization, a stale digest (including a changed module `design.md`), an amendment
-targeting `module.md`, another level's `design.md`, or a feature-root `design.md`, unsafe or
-partial cleanup targets, symlinked paths, changed sources, or an interrupted apply returns
-`invalid`, `conflict`, or `failed`. The prior `implementation.md`, the prior module `design.md`,
-and the complete implementation attempt remain recoverable.
+candidate realization, a stale digest (including a changed `tldr.md` or module `design.md`), a
+proposal targeting `tldr.md`, `spec.md`, `module.md`, another level's `design.md`, or a legacy
+`implementation.md`, unsafe or partial cleanup targets, symlinked paths, changed sources, or an
+interrupted apply returns `invalid`, `conflict`, or `failed`. The prior feature `design.md`, the
+prior module `design.md`, and the complete implementation attempt remain recoverable.
 
 ## `speckit.concorde.context`
 
@@ -181,14 +186,14 @@ The `result.context` object contains:
 - stable references for deliberate navigation to deeper modules or features.
 
 For a requested parent feature it additionally contains authored-order summaries of immediate
-sub-features: ID, title, `## Outcome`, evidence status, canonical navigation root, and
-`implementation.md` path. For a requested
+sub-features: ID, title, `## Outcome`, evidence status, canonical navigation root, and `tldr.md`
+and `design.md` paths. For a requested
 sub-feature it contains the parent summary and concise sibling summaries. These containment records
 never include another root's specification/design body or any parent/sibling attempt path.
 
 It must not contain lower-module feature bodies, sub-feature bodies outside the requested root,
-grandchildren, third feature levels, the body of any module `design.md` or feature
-`implementation.md`, or deeper implementation details.
+grandchildren, third feature levels, the body of any `tldr.md`, `spec.md`, or `design.md`
+(module or feature), or deeper implementation details.
 
 ### Failures
 
@@ -222,9 +227,9 @@ The agent-facing answer contains:
   stage, or intended meaning cannot be safely inferred.
 
 The command reads installed Concorde guidance and only the project sources needed for the question,
-starting from module summaries and feature specifications; it opens a module `design.md` or a feature
-`implementation.md` only when the question asks for implementation detail, rationale, or accepted
-realization, and cites each one it opens. It does not write files, change active feature selection, regenerate outputs, invoke an implementation
+starting from module summaries and feature TL;DRs; it opens a feature `spec.md` only when a
+requirement's exact wording is needed, and a module or feature `design.md` only when the question
+asks for implementation detail, rationale, or accepted realization, and cites each one it opens. It does not write files, change active feature selection, regenerate outputs, invoke an implementation
 phase, or present model memory as a framework authority.
 
 ### Failures
@@ -266,9 +271,12 @@ Validation checks, in stable order:
 10. module summary shape — required sections, a structure link to the declared view or a recorded
     leaf rationale, inventory tables, and a reachable design reference — plus the reading budget as
     a warning-severity finding that never changes the status;
-11. presence of a real, non-empty module `design.md` beside every `module.md`; and
-12. feature-root document pairing: a real `implementation.md`, no legacy `design.md`, and never
-    both names.
+11. presence of a real, non-empty module `design.md` beside every `module.md`;
+12. the feature-root durable trio: real `tldr.md`, `spec.md`, and `design.md`, no legacy
+    `implementation.md`, and never both names; and
+13. feature TL;DR shape — exactly the five sections in order, a structure link or inline sketch,
+    and `Logic` rules that cite requirement IDs defined in the adjacent `spec.md` — plus the TL;DR
+    reading budget as a warning-severity finding that never changes the status.
 
 ### Exit behavior
 
@@ -301,8 +309,8 @@ handoff consists of:
 
 | Item | Required identity |
 |---|---|
-| Workspace protocol | `feature-workspace.schema.json`, Protocol/schema version 4 (hardening proposal v2), all examples, and their combined source digest |
-| Normal phase obligations | `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues` write only the selected feature/sub-feature root; `specify` seeds a placeholder `implementation.md`; no normal phase writes `implementation.md` or any module `design.md`; a selected sub-feature additionally reads its parent durable spec/implementation as aggregate context and never reads/writes parent/sibling attempts implicitly |
+| Workspace protocol | `feature-workspace.schema.json`, Protocol/schema version 5 (hardening proposal v3), all examples, and their combined source digest |
+| Normal phase obligations | `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues` write only the selected feature/sub-feature root; `specify` authors `tldr.md` and `spec.md` and seeds a placeholder `design.md`; only `specify` and `clarify` write `tldr.md` or `spec.md`, and no normal phase writes a feature or module `design.md`; a selected sub-feature additionally reads its parent durable trio as aggregate context and never reads/writes parent/sibling attempts implicitly |
 | Concorde command intents | The five canonical IDs and behavior sections in this contract; four are runtime-backed and `ask` is agent-followed/read-only |
 | Installed support | Extension-relative workspace adapter, launchers, schemas, runtime sources, preset templates, and complete phase commands needed by those intents |
 | Acceptance binding | Spec Kit host version, package versions/digests, handoff digest, actual registered winner, selected paths, outputs, and checkout-access result |

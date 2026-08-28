@@ -29,15 +29,19 @@ evidence, and generated read models. They must not be treated as interchangeable
 │   │   ├── schema.*
 │   │   └── example.*
 │   ├── features/<number>-<feature>/
-│   │   ├── spec.md
-│   │   ├── implementation.md
-│   │   ├── contracts/
+│   │   ├── tldr.md                       # feature TL;DR: read first
+│   │   ├── spec.md                       # feature specification: the authority
+│   │   ├── design.md                     # feature design reference
 │   │   ├── diagrams/
+│   │   ├── contracts/
 │   │   ├── subfeatures/<number>-<sub-feature>/ # optional; one level only
+│   │   │   ├── tldr.md
 │   │   │   ├── spec.md
-│   │   │   ├── implementation.md
+│   │   │   ├── design.md
+│   │   │   ├── diagrams/
+│   │   │   ├── contracts/
 │   │   │   └── implementation/
-│   │   └── implementation/
+│   │   └── implementation/               # at most one temporal attempt
 │   └── modules/<child-module>/           # repeats the module package
 ├── docs/                                 # explanatory project guides
 ├── <source directories>/                 # executable implementation
@@ -47,8 +51,8 @@ evidence, and generated read models. They must not be treated as interchangeable
 ```
 
 Architecturally meaningful modules do not have to map one-to-one to source directories. The
-`specs/` hierarchy expresses ownership and abstraction; the accepted feature realization in
-`implementation.md` can point from that model to the concrete code that realizes it.
+`specs/` hierarchy expresses ownership and abstraction; the accepted feature realization in the
+feature `design.md` can point from that model to the concrete code that realizes it.
 
 ## Authority classes
 
@@ -58,8 +62,9 @@ Architecturally meaningful modules do not have to map one-to-one to source direc
 | Installed tooling | `.specify/extensions/concorde/`, agent skill or slash-command directories | How the installed workflow is invoked—not project intent |
 | Maintained architecture | `module.md` (module summary), module contracts, `architecture.json` | Responsibility, ownership, I/O boundaries, and current-level organization |
 | Module design reference | `design.md` beside each `module.md` | Implementation detail, rationale, alternatives, and decisions for one level; it explains module architecture and never redefines it |
+| Feature orientation | `tldr.md` beside each `spec.md` | A self-contained quick understanding of one feature; it summarizes `spec.md` and never defines beyond it |
 | Durable feature intent | `spec.md`, feature contracts, declared diagrams | Required behavior, normative feature representations, and representative explanations |
-| Durable accepted realization | `implementation.md` | How the accepted implementation realizes one feature |
+| Feature design reference | `design.md` beside each `spec.md` | How the accepted implementation realizes one feature, in full implementation detail |
 | Temporary attempt | `implementation/**` | Proposed work, task/checklist state, research, and current evidence |
 | Executable reality | Source and tests | What code exists and what executable checks demonstrate |
 | Generated read model | `generated/`, `docsite/.generated/`, `docsite/build/` | An ignored, reproducible presentation of maintained sources |
@@ -72,12 +77,12 @@ it is committed under a project-specific policy.
 
 | You want to change… | Edit or invoke… |
 |---|---|
-| Required behavior, scope, failure handling, or success criteria | The owning feature's `spec.md` through specification review |
+| Required behavior, scope, failure handling, or success criteria | The owning feature's `spec.md` through specification review, with its `tldr.md` updated wherever it summarized the change |
 | Which module owns behavior | The relevant module package and feature placement, with architecture review |
 | A module boundary or immediate-child organization | `module.md`, affected contracts, and `architecture.json` together |
 | Why a level is built the way it is, or implementation detail beneath its summary | The module's `design.md`, edited directly or amended by an approved hardening proposal; keep `module.md` a summary |
 | Information crossing a boundary | The owning contract and any normative schema/example |
-| How an accepted implementation realizes a feature | Complete the attempt and use approved feature hardening to write `implementation.md`; do not directly promote a plan |
+| How an accepted implementation realizes a feature | Complete the attempt and use approved feature hardening to write the feature `design.md`; do not directly promote a plan |
 | The current implementation approach or work order | Files under the selected feature's `implementation/` directory |
 | Runtime behavior or executable proof | Source code and tests, reconciled against the durable sources |
 | Adoption or contributor explanation | Markdown under `docs/` |
@@ -85,9 +90,9 @@ it is committed under a project-specific policy.
 | Site rendering or validation behavior | Code under `docsite/`—not copied canonical content |
 
 When two artifacts disagree, resolve the disagreement in the artifact that owns the fact. For
-example, do not edit a module's `design.md` or a feature's `implementation.md` to redefine a module
-boundary, and do not weaken `spec.md` merely to match incomplete code. Concorde validation reports
-disagreement but does not choose a new authority for you.
+example, do not edit a module or feature `design.md` to redefine a module boundary, do not let
+`tldr.md` state what `spec.md` does not, and do not weaken `spec.md` merely to match incomplete
+code. Concorde validation reports disagreement but does not choose a new authority for you.
 
 ## Nested feature selection
 
@@ -98,22 +103,24 @@ or one immediate sub-feature. Selection itself is standard Spec Kit: the project
 explicitly through `SPECIFY_FEATURE_DIRECTORY`. Concorde adds no selection command and no second
 selection store.
 
-Feature Workspace Protocol v4 classifies the selected root before every normal phase: safe path,
-canonical `spec.md`/`implementation.md` pair with no legacy `design.md`, workspace kind,
+Feature Workspace Protocol v5 classifies the selected root before every normal phase: safe path,
+canonical `tldr.md`/`spec.md`/`design.md` trio with no legacy `implementation.md`, workspace kind,
 `implementation_state`, and the providing module's `module.md` and `design.md` as navigation
-references. For a sub-feature it also returns the parent durable spec/implementation pair as
-read-only context and concise sibling summaries; no parent/sibling attempt is an implicit input or
-output.
+references. The result names the trio as `feature_tldr`, `feature_spec`, and `feature_design` and
+the module pair as `module_summary` and `module_design`; the bash helpers export the trio as
+`FEATURE_TLDR`, `FEATURE_SPEC`, and `FEATURE_DESIGN`. For a sub-feature it also returns the parent's
+durable trio as read-only context and concise sibling summaries; no parent/sibling attempt is an
+implicit input or output.
 
 The installed workspace adapter derives phase-specific paths from the selection:
 
 | Phase class | Durable inputs and outputs | Temporary inputs and outputs |
 |---|---|---|
-| Specify and clarify | Root `spec.md` (a new root also receives a placeholder `implementation.md`), existing `implementation.md` as read-only accepted context, feature contracts | Generated review state under `implementation/checklists/` |
-| Checklist | Durable feature context | `implementation/checklists/*.md` |
-| Plan | Root `spec.md` and `implementation.md`, the module `module.md` as bounded context; the module `design.md` only deliberately, with citation | Plan, research, model, and quick start under `implementation/` |
-| Tasks, implementation, analysis, convergence, issue conversion | Durable feature context | The same active `implementation/` attempt |
-| Hardening | Root `spec.md` and current `implementation.md`, the module `module.md` and `design.md`, plus the complete attempt | Approved update to `implementation.md` and optional amendment of the module `design.md`, applied atomically; exact removal of `implementation/` |
+| Specify and clarify | Root `tldr.md` and `spec.md` (a new root also receives a placeholder `design.md`), the existing feature `design.md` as read-only accepted context, feature contracts | Generated review state under `implementation/checklists/` |
+| Checklist | Durable feature context, the TL;DR included | `implementation/checklists/*.md` |
+| Plan | Root `spec.md` and the feature `design.md`, the module `module.md` as bounded context; the TL;DR for orientation only; the module `design.md` only deliberately, with citation | Plan, research, model, and quick start under `implementation/` |
+| Tasks, implementation, analysis, convergence, issue conversion | Durable feature context; analysis also reads `tldr.md` to report disagreement with `spec.md` | The same active `implementation/` attempt |
+| Hardening | Root `tldr.md`, `spec.md`, and current `design.md`, the module `module.md` and `design.md`, plus the complete attempt | Approved update to the feature `design.md` and optional amendment of the module `design.md`, applied atomically; exact removal of `implementation/` |
 
 Selecting a feature changes routing state; requesting bounded context does not. The distinction is
 explained in [Commands and installed surfaces](commands.md).
@@ -123,9 +130,9 @@ explained in [Commands and installed surfaces](commands.md).
 The documentation site reads architecture and feature sources from `specs/` and project guides from
 `docs/`. It stages disposable projections beneath `docsite/`, validates a candidate build, and only
 then promotes successful output. Each module page embeds its level view and links its `design.md`
-as a separate design-reference page; each feature page pairs `spec.md` with `implementation.md`.
-Plans, tasks, checklists, and other attempt artifacts are excluded from the public Features
-collection.
+as a separate design-reference page; each feature opens on its TL;DR page (`/features/<root>`) with
+the specification (`…/spec`) and the design reference (`…/design`) as companion pages. Plans,
+tasks, checklists, and other attempt artifacts are excluded from the public Features collection.
 
 See the [root architecture](../specs/concorde/module.md) for Concorde's own module hierarchy and
 [Feature 002](../specs/concorde/features/002-create-project-docsite/spec.md) for the complete

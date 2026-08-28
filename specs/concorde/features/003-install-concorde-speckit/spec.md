@@ -29,20 +29,25 @@ diagrams:
       - inspect-install-and-verify-concorde
       - manage-concorde-installation
     output: generated/architecture/concorde-bundle-installation-flow.html
-evidence_status: verified
+evidence_status: partial
 canonical_spec: specs/concorde/features/003-install-concorde-speckit/spec.md
 ---
 
 # Feature Specification: Install and Set Up Concorde with Spec Kit
 
+**Read first**: [tldr.md](tldr.md) — the self-contained TL;DR of this feature. **Accepted
+realization**: [design.md](design.md) — consulted when writing the code or fixing a bug.
+
 **Feature Branch**: Not created; no `before_specify` branch hook is configured
 
 **Created**: 2026-08-22
 
-**Revised**: 2026-08-27
+**Revised**: 2026-08-28
 
 **Status**: Native Spec Kit installation implemented and verified; decomposed into two immediate
-sub-features (published release, one-command installation) whose evidence is pending
+sub-features (published release, one-command installation) whose evidence is pending; reconciled on
+2026-08-28 with Feature 001's three-tier feature document model (`tldr.md`, `spec.md`, `design.md`),
+whose TL;DR template and verification changes are not yet realized
 
 **Input**: User description: "Install and set up Concorde through Spec Kit, and ensure the released
 bundle correctly overrides the normal commands and skills so a user's clean project receives the
@@ -78,12 +83,13 @@ catalog/archive location into metadata; it does not contact that URL during the 
 The normal Spec Kit command names remain the user-facing lifecycle. Concorde's preset must provide
 the complete routing layer for `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`,
 `analyze`, `converge`, and `taskstoissues`. Once installed, each resolved command must select the
-nested feature workspace before any phase-specific file is read or written. Durable intent and
-accepted design stay at the feature root, while requirements-quality checklists, planning, and
-delivery artifacts stay under `implementation/`. The preset also supplies the permanent `implementation.md`
-template. The extension
-supplies `speckit.concorde.feature.harden`, which proposes and, only after explicit approval,
-atomically promotes a completed attempt into that design and removes `implementation/`.
+nested feature workspace before any phase-specific file is read or written. Durable intent
+(`tldr.md` and `spec.md`) and the accepted design reference (`design.md`) stay at the feature root,
+while requirements-quality checklists, planning, and delivery artifacts stay under
+`implementation/`. The preset also supplies the feature TL;DR template and the permanent `design.md`
+template. The extension supplies `speckit.concorde.feature.harden`, which proposes and, only after
+explicit approval, atomically promotes a completed attempt into that design reference and removes
+`implementation/`.
 Repository-local `.agents/` skills and `.specify/` scripts are self-hosting evidence only: a released
 Concorde installation must work when those checkout files are unavailable.
 
@@ -210,8 +216,8 @@ preset is disabled or removed.
    or `taskstoissues` runs, **Then** it uses that feature's single active `implementation/` workspace
    and creates no root-level compatibility copy of temporal artifacts.
 4. **Given** a newly created feature, **When** its installed workspace is inspected, **Then** it has
-   permanent root `spec.md` and `implementation.md` artifacts plus, while specification review or delivery is
-   active, one temporal `implementation/` directory containing its checklists and other attempt
+   permanent root `tldr.md`, `spec.md`, and `design.md` artifacts plus, while specification review or
+   delivery is active, one temporal `implementation/` directory containing its checklists and other attempt
    artifacts.
 5. **Given** a path-sensitive normal command, **When** its installed presentation is executed,
    **Then** nested-workspace resolution occurs before any lower command layer or helper can select a
@@ -220,7 +226,7 @@ preset is disabled or removed.
    and Concorde commands run, **Then** they produce equivalent selected-workspace, phase-path, result,
    and failure behavior.
 7. **Given** a completed implementation attempt, **When** the installed hardening command is proposed
-   and explicitly approved, **Then** the reviewed design replaces root `implementation.md` and the exact
+   and explicitly approved, **Then** the reviewed design replaces root `design.md` and the exact
    `implementation/` directory, including its resolved checklists, is removed; incomplete tasks,
    unresolved checklist items, or stale proposals make no change.
 8. **Given** the Concorde source checkout is unavailable, **When** clean-project verification runs,
@@ -291,8 +297,8 @@ project-owned sources.
   priority, trust sources, integration inheritance, and intended changes.
 - **FR-004**: The installed component set and versions MUST match the plan accepted by the maintainer.
 - **FR-005**: The preset MUST compose Concorde architecture guidance into normal feature, plan, and
-  task templates, supply the permanent feature `implementation.md` template, and avoid creating a second
-  canonical feature specification.
+  task templates, supply the feature TL;DR template and the permanent feature `design.md`
+  template, and avoid creating a second canonical feature specification.
 - **FR-006**: The preset MUST provide Concorde-aware command layers for `specify`, `clarify`,
   `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues`; these are
   overrides of existing lifecycle command surfaces, not new Concorde runtime command IDs.
@@ -355,8 +361,8 @@ project-owned sources.
 - **FR-029**: A command-registration check that only finds expected text MUST NOT be accepted as setup
   evidence; verification MUST execute the installed winning command surfaces and compare their
   observable workspace results with the accepted distribution contract.
-- **FR-030**: Clean-project verification MUST prove that feature creation provides root `implementation.md`
-  and that installed hardening refuses incomplete or stale attempts and applies only an explicitly
+- **FR-030**: Clean-project verification MUST prove that feature creation provides root `tldr.md`,
+  `spec.md`, and `design.md` and that installed hardening refuses incomplete or stale attempts and applies only an explicitly
   approved, digest-bound proposal to the selected feature.
 - **FR-031**: Installed `specify`, `clarify`, and `checklist` surfaces MUST route every generated
   requirements-quality artifact to the selected feature's `implementation/checklists/` directory;

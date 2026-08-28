@@ -33,13 +33,13 @@
         "id": "workspace-map",
         "label": "Project workspace",
         "focus": ["controlState", "architectureSources", "featureSpec", "featureDesign", "implementation"],
-        "note": "Separate control, architecture, selected intent, read-only parent context, accepted realization, and root-local temporal work."
+        "note": "Separate control, architecture, selected intent, read-only parent context, feature design reference, and root-local temporal work."
       },
       {
         "id": "harden-milestone",
         "label": "Harden a milestone",
         "focus": ["maintainer", "agent", "concordeCommands", "runtime", "featureSpec", "featureDesign", "implementation"],
-        "note": "A completed attempt is reviewed, compacted into implementation.md with any reviewed design.md amendment, and removed only on approval."
+        "note": "A reviewed complete attempt is compacted into the feature design.md, with any module-reference amendment, and removed only on approval."
       }
     ]
   },
@@ -142,15 +142,15 @@
       "id": "featureSpec",
       "type": "database",
       "label": "Selected Lifecycle Intent",
-      "sublabel": "feature or sub-feature",
+      "sublabel": "tldr.md + spec.md",
       "pos": [1170, 180],
       "size": [190, 86]
     },
     {
       "id": "featureDesign",
       "type": "database",
-      "label": "Accepted Realization",
-      "sublabel": "implementation.md",
+      "label": "Feature Design Reference",
+      "sublabel": "design.md",
       "pos": [1170, 680],
       "size": [190, 86]
     },
@@ -219,7 +219,7 @@
       "items": [
         "module.md summary + design.md reference: level architecture",
         "parent spec owns aggregate facts; child spec owns focused behavior",
-        "implementation.md and implementation/ remain isolated to one selected root"
+        "design.md and implementation/ remain isolated to one selected root"
       ]
     }
   ]

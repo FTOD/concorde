@@ -2,9 +2,9 @@
   "schema_version": "1.0",
   "extensions": {
     "concorde": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "source": "local",
-      "manifest_hash": "sha256:50fc345a97851becf293ad651a222e3f5149f9ed1df1f6e10af59d5a2c8c07b2",
+      "manifest_hash": "sha256:8be53217c2093077fff9e51cae65606505d2a610dc1a23181506201ab6884e00",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
@@ -17,7 +17,7 @@
         ]
       },
       "registered_skills": [],
-      "installed_at": "2026-08-27T12:57:38.324082+00:00"
+      "installed_at": "2026-08-28T10:14:59.172307+00:00"
     }
   }
 }

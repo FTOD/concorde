@@ -69,7 +69,7 @@ Maintained definitions live under `contracts/*/contract.md`.
 
 - **Role / flow**: provided, bidirectional.
 - **Consumers**: maintainers and normal Spec Kit lifecycle commands.
-- **Representation**: custom Concorde Feature Workspace Protocol v4 plus Spec Kit's standard
+- **Representation**: custom Concorde Feature Workspace Protocol v5 plus Spec Kit's standard
   project-local `feature_directory` selection field.
 - **Information**: the resolved standard Spec Kit selection, exact durable/temporal paths,
   relationship context, implementation state, hardening changes, conflicts, findings, and inspected

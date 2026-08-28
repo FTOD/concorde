@@ -4,10 +4,12 @@
 Record this feature in its single canonical `spec.md` inside the providing module's
 `features/<number-name>/` workspace.
 
-Keep one adjacent durable `implementation.md`. Specification work may read it to avoid confusing accepted
+Keep the adjacent durable `tldr.md` (the self-contained TL;DR this phase authors together with the
+specification: Purpose, Functionality, Structure, Logic, Read Next; under 15 minutes) and `design.md`
+(the feature design reference). Specification work may read `design.md` to avoid confusing accepted
 realization with required behavior, but must never update it. New features start with the resolved
-implementation template's explicit placeholder: no implementation realization has been hardened yet.
-Never create a feature-root `design.md`; that name is reserved for module design references.
+design template's explicit placeholder: no implementation realization has been hardened yet. Never
+create a feature-root `implementation.md`; that is the legacy name of the design reference.
 
 - **Stable feature ID**: `feature.<namespace>.<outcome>`
 - **Providing module**: exactly one current-level module

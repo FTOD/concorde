@@ -20,11 +20,12 @@ canonical_spec: specs/concorde/features/001-concorde-workflow/subfeatures/008-va
 # Feature Specification: Validate Architecture
 
 **Created**: 2026-08-26
-**Revised**: 2026-08-27
-**Status**: Specified and revised for the parent's document model; existing realization has not been
-hardened into this sub-feature's `implementation.md`
+**Revised**: 2026-08-28
+**Status**: Specified and revised for the parent's three-tier feature document model; existing
+realization has not been hardened into this sub-feature's `design.md`
 **Input**: Deterministically validate Concorde maintained sources through `speckit.concorde.validate`,
-including the summary shape, reading budget, reference presence, and feature-root pairing rules.
+including the module summary and feature TL;DR shape and reading-budget rules, reference presence,
+the durable trio, and legacy names.
 
 ## Outcome
 
@@ -34,10 +35,10 @@ compliance, and known evidence agreement without validation rewriting the source
 ## Parent Context and Boundary
 
 The parent owns which invariants connect the workflow and defines the document model and reading
-budget. This child owns deterministic discovery, rule evaluation, target scoping, findings, status,
-and evidence classification. It does not judge whether prose is elegant or whether an application
-behaves correctly. The parent diagram and bounded architecture view are sufficient; no child diagram
-is needed.
+budgets. This child owns deterministic discovery, rule evaluation, target scoping, findings, status,
+and evidence classification. It does not judge whether prose is elegant, whether a TL;DR is a
+faithful summary, or whether an application behaves correctly. The parent diagram and bounded
+architecture view are sufficient; no child diagram is needed.
 
 ## User Scenarios & Testing
 
@@ -55,9 +56,11 @@ scenario, refinement, containment, layout, diagram, selection, evidence, and doc
 2. **Given** seeded structural faults, **When** validation runs, **Then** every applicable fault is
    reported without hiding later findings.
 3. **Given** a module summary over the reading budget or missing its structure diagram or an
-   inventory table, a module without `design.md` or with one unreachable from its summary, or a
-   feature root with a legacy `design.md`, **When** validation runs, **Then** each is reported with a
-   stable rule ID and a concrete remediation.
+   inventory table, a module without `design.md` or with one unreachable from its summary, a feature
+   root without `tldr.md` or with a TL;DR that is over budget, missing a section, missing its
+   structure link, or citing no requirement in its `Logic` rules, or a feature root with a legacy
+   `implementation.md`, **When** validation runs, **Then** each is reported with a stable rule ID and
+   a concrete remediation.
 4. **Given** missing or conflicting implementation evidence, **When** validation assesses freshness,
    **Then** it reports unknown or disagreement rather than agreement.
 
@@ -66,7 +69,9 @@ scenario, refinement, containment, layout, diagram, selection, evidence, and doc
 - Malformed metadata prevents normal source indexing.
 - A path looks feature-like but is at an illegal depth or crosses a symlink.
 - A leaf module omits a structure diagram without recording a rationale.
-- A feature root holds both `design.md` and `implementation.md`, or neither.
+- A feature root holds both `implementation.md` and `design.md`, only the legacy file, or no
+  `tldr.md`.
+- A TL;DR `Logic` rule cites a requirement ID that does not exist in the adjacent `spec.md`.
 - A scoped target is unknown or ambiguous.
 
 ## Requirements
@@ -76,8 +81,9 @@ scenario, refinement, containment, layout, diagram, selection, evidence, and doc
   remediation.
 - **FR-003**: Validation MUST cover identities, paths, module hierarchy, contracts, scenarios, views,
   refinements, feature containment, diagrams, selection safety, evidence references, module summary
-  shape and reading budget, module design-reference presence and reachability, feature-root document
-  pairing, and legacy document names.
+  shape and reading budget, module design-reference presence and reachability, feature TL;DR
+  presence, shape, structure link, requirement citations, and reading budget, the feature-root
+  durable trio, and legacy document names.
 - **FR-004**: Containment and refinement MUST be validated as distinct acyclic relationships.
 - **FR-005**: Illegal third-level, alternate-depth, dangling, duplicate, cyclic, symlinked, or
   mismatched feature roots MUST be actionable findings.
@@ -88,11 +94,17 @@ scenario, refinement, containment, layout, diagram, selection, evidence, and doc
   sections, a structure diagram or recorded leaf rationale, and feature, contract, and submodule
   inventory tables) and for the reading budget, and MUST check every module for a `design.md`
   reachable from its summary.
-- **FR-009**: Validation MUST report a `design.md` at a feature root as a legacy artifact with a
-  rename remediation, a root holding both `design.md` and `implementation.md` as ambiguous, and a
-  root without `implementation.md` as missing its accepted realization.
-- **FR-010**: Reading-budget findings MUST use the deterministic proxy the parent records and MUST
-  NOT judge prose quality.
+- **FR-009**: Validation MUST check every feature root for a `tldr.md` with exactly the parent's
+  five sections in order, a structure section that links a maintained diagram or contains a text
+  sketch, a `Logic` section whose rules name requirement IDs present in the adjacent `spec.md`, and
+  the TL;DR reading budget.
+- **FR-010**: Validation MUST report an `implementation.md` at a feature root as a legacy artifact
+  with a rename-to-`design.md` remediation, a root holding both `implementation.md` and `design.md`
+  as ambiguous, a root without `design.md` as missing its accepted realization, and a root without
+  `tldr.md` as missing its TL;DR.
+- **FR-011**: Reading-budget findings for summaries and TL;DRs MUST use the deterministic proxies
+  the parent records, MUST be warnings that leave the status unchanged, and MUST NOT judge prose
+  quality or summary faithfulness.
 
 ## Success Criteria
 
@@ -100,12 +112,14 @@ scenario, refinement, containment, layout, diagram, selection, evidence, and doc
 - **SC-002**: Every seeded structural rule violation is detected with its expected stable rule ID.
 - **SC-003**: Validation produces zero source changes in every success and failure fixture.
 - **SC-004**: All valid two-level feature fixtures pass containment validation with zero findings.
-- **SC-005**: Every seeded document-model violation (over-budget summary, missing diagram or table,
-  missing or unreachable reference, legacy or duplicated feature-root name) is detected with its
+- **SC-005**: Every seeded document-model violation (over-budget summary or TL;DR, missing diagram,
+  table, section, structure link, or requirement citation, missing or unreachable module reference,
+  missing TL;DR or feature reference, legacy or duplicated feature-root name) is detected with its
   expected rule ID, and every compliant fixture passes with zero document-model findings.
 
 ## Assumptions
 
-- Semantic simplicity and non-duplication of prose remain requirements-review judgments.
-- The reading-budget proxy is the one recorded in the parent's assumptions; changing it is a parent
-  specification change, not a validation change.
+- Semantic simplicity, non-duplication of prose, and TL;DR faithfulness remain requirements-review
+  judgments.
+- The reading-budget proxies are the ones recorded in the parent's assumptions; changing them is a
+  parent specification change, not a validation change.

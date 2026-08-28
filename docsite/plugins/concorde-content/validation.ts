@@ -1,12 +1,12 @@
 import {relative, resolve, sep} from 'node:path';
 
 import type {
-  ArchitectureSource, ContentRegistry, FeatureImplementation, FeatureSpecification, ModuleDesign, SourceDocument, ValidationFinding,
+  ArchitectureSource, ContentRegistry, FeatureDesign, FeatureSpecification, FeatureTldr, ModuleDesign, SourceDocument, ValidationFinding,
 } from './types';
 
 const isFeature = (document: SourceDocument): document is FeatureSpecification => document.collectionId === 'features';
-const isFeatureImplementation = (document: SourceDocument): document is FeatureImplementation =>
-  document.collectionId === 'feature-implementations';
+const isFeatureTldr = (document: SourceDocument): document is FeatureTldr => document.collectionId === 'feature-tldrs';
+const isFeatureDesign = (document: SourceDocument): document is FeatureDesign => document.collectionId === 'feature-designs';
 const isArchitecture = (document: SourceDocument): document is ArchitectureSource => document.contentKind === 'architecture-source';
 const isModuleDesign = (document: SourceDocument): document is ModuleDesign => document.contentKind === 'module-design';
 const temporalWorkspacePattern = /(^|\/)implementation\//;
@@ -79,7 +79,7 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
       findings.push({
         ruleId: 'content.path.temporal', severity: 'error', sourcePath: document.sourcePath,
         message: 'Temporal implementation workspace content is never published.',
-        remediation: 'Keep publishable sources outside implementation/ directories; the accepted realization lives in implementation.md beside spec.md.',
+        remediation: 'Keep publishable sources outside implementation/ directories; the accepted design reference lives in design.md beside spec.md.',
       });
     }
     if (isFeature(document)) {
@@ -108,20 +108,32 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
         message: 'Sub-feature pages require one parent and a non-empty Outcome section.',
         remediation: 'Declare parent_feature and add one concise ## Outcome section.',
       });
-      if (!document.implementationRoute) findings.push({
-        ruleId: 'feature.implementation.required', severity: 'error', sourcePath: document.sourcePath,
-        message: 'Feature specification has no companion implementation.md accepted realization.',
-        remediation: 'Add implementation.md beside spec.md (a placeholder realization is acceptable) so the specification and its accepted realization are published together.',
+      if (!document.tldrRoute) findings.push({
+        ruleId: 'feature.tldr.missing', severity: 'error', sourcePath: document.sourcePath,
+        message: 'Feature specification has no sibling tldr.md landing page.',
+        remediation: 'Add tldr.md beside spec.md (no front matter; H1 "TL;DR: <title>"; sections Purpose, Functionality, Structure, Logic, and Read Next) so the feature opens on its TL;DR.',
+      });
+      if (!document.designRoute) findings.push({
+        ruleId: 'feature.design.required', severity: 'error', sourcePath: document.sourcePath,
+        message: 'Feature specification has no companion design.md design reference.',
+        remediation: 'Add design.md beside spec.md (a placeholder design reference is acceptable) so the specification and its accepted design are published together.',
       });
       for (const diagram of document.diagrams) {
         featureDiagramRoutes.set(diagram.route, [...(featureDiagramRoutes.get(diagram.route) ?? []), document]);
       }
     }
-    if (isFeatureImplementation(document) && !document.specificationRoute) {
+    if (isFeatureTldr(document) && !document.specificationRoute) {
       findings.push({
-        ruleId: 'feature.implementation.unpaired', severity: 'error', sourcePath: document.sourcePath,
-        message: 'implementation.md has no sibling spec.md, so it cannot be published as a feature implementation.',
-        remediation: 'Place implementation.md beside the feature or sub-feature spec.md it realizes, or remove it.',
+        ruleId: 'tldr.unpaired', severity: 'error', sourcePath: document.sourcePath,
+        message: 'tldr.md has no publishable sibling spec.md, so it cannot be published as a feature landing page.',
+        remediation: 'Place tldr.md beside the feature or sub-feature spec.md it summarizes, or remove it.',
+      });
+    }
+    if (isFeatureDesign(document) && !document.specificationRoute) {
+      findings.push({
+        ruleId: 'feature.design.unpaired', severity: 'error', sourcePath: document.sourcePath,
+        message: 'design.md has no publishable sibling spec.md, so it cannot be published as a feature design reference.',
+        remediation: 'Ensure the sibling spec.md is a readable canonical feature specification, or remove design.md.',
       });
     }
     if (isModuleDesign(document) && !document.moduleRoute) {

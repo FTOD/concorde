@@ -25,14 +25,37 @@ describe('repository-relative links', () => {
     const home = registry.documents.find((item) => item.sourcePath === 'docs/index.md')!;
     expect(resolveContentLink('guide/intro.md', home, registry).reference.targetRoute).toBe('/docs/guide/intro');
     expect(resolveContentLink('../specs/001-alpha/spec.md#requirements', home, registry).reference.targetRoute)
-      .toBe('/features/001-alpha/feature.fixture.alpha#requirements');
+      .toBe('/features/001-alpha/spec#requirements');
+    expect(resolveContentLink('../specs/001-alpha/tldr.md', home, registry).reference.targetRoute)
+      .toBe('/features/001-alpha/feature.fixture.alpha');
+  });
+
+  it('resolves the three feature pages to each other as included sources', async () => {
+    const registry = await buildRegistry(fixture);
+    const byPath = (sourcePath: string) => registry.documents.find((item) => item.sourcePath === sourcePath)!;
+    const tldr = byPath('specs/001-alpha/subfeatures/001-prepare/tldr.md');
+    const specification = byPath('specs/001-alpha/subfeatures/001-prepare/spec.md');
+    const design = byPath('specs/001-alpha/subfeatures/001-prepare/design.md');
+    expect(resolveContentLink('spec.md', tldr, registry).reference)
+      .toMatchObject({kind: 'included-source', targetRoute: '/features/001-alpha/subfeatures/001-prepare/spec'});
+    expect(resolveContentLink('design.md', tldr, registry).reference)
+      .toMatchObject({kind: 'included-source', targetRoute: '/features/001-alpha/subfeatures/001-prepare/design'});
+    expect(resolveContentLink('tldr.md', specification, registry).reference)
+      .toMatchObject({kind: 'included-source', targetRoute: '/features/001-alpha/subfeatures/001-prepare/feature.fixture.alpha.prepare'});
+    expect(resolveContentLink('tldr.md', design, registry).reference)
+      .toMatchObject({kind: 'included-source', targetRoute: '/features/001-alpha/subfeatures/001-prepare/feature.fixture.alpha.prepare'});
+    expect(resolveContentLink('../../tldr.md', tldr, registry).reference)
+      .toMatchObject({kind: 'included-source', targetRoute: '/features/001-alpha/feature.fixture.alpha'});
+    expect(resolveContentLink('../002-finish/tldr.md', tldr, registry).finding).toBeUndefined();
   });
 
   it('reports missing, excluded, and escaping targets with distinct rules', async () => {
     const registry = await buildRegistry(fixture);
     const home = registry.documents.find((item) => item.sourcePath === 'docs/index.md')!;
     expect(resolveContentLink('missing.md', home, registry).finding?.ruleId).toBe('link.target.missing');
-    expect(resolveContentLink('../specs/001-alpha/plan.md', home, registry).finding?.ruleId).toBe('link.target.excluded');
+    const excluded = resolveContentLink('../specs/001-alpha/plan.md', home, registry).finding;
+    expect(excluded?.ruleId).toBe('link.target.excluded');
+    expect(excluded?.remediation).toContain('tldr.md, spec.md, design.md, module.md, or contract.md');
     expect(resolveContentLink('../../outside.md', home, registry).finding?.ruleId).toBe('link.target.outside-root');
   });
 });

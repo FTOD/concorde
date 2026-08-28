@@ -20,11 +20,11 @@ canonical_spec: specs/concorde/features/001-concorde-workflow/subfeatures/006-pl
 # Feature Specification: Plan Delivery
 
 **Created**: 2026-08-26
-**Revised**: 2026-08-27
-**Status**: Specified and revised for the parent's document model; existing realization has not been
-hardened into this sub-feature's `implementation.md`
+**Revised**: 2026-08-28
+**Status**: Specified and revised for the parent's three-tier feature document model; existing
+realization has not been hardened into this sub-feature's `design.md`
 **Input**: Route `speckit.plan`, `speckit.tasks`, and `speckit.taskstoissues` through one temporal
-attempt, planning from `spec.md`, the accepted `implementation.md`, and the level's `module.md`.
+attempt, planning from `spec.md`, the accepted feature `design.md`, and the level's `module.md`.
 
 ## Outcome
 
@@ -50,11 +50,10 @@ dependency order, and reference citations.
 
 **Acceptance Scenarios**:
 1. **Given** a selected root, **When** planning starts, **Then** it reads that root's `spec.md` and
-   `implementation.md`, uses the level's `module.md` and bounded view as architecture context, and
-   writes only beneath its `implementation/` directory.
-2. **Given** a root whose `implementation.md` holds only the not-yet-hardened state, **When**
-   planning starts, **Then** it treats the feature as having no accepted baseline rather than
-   inventing one.
+   `design.md`, uses the TL;DR only to orient, uses the level's `module.md` and bounded view as
+   architecture context, and writes only beneath its `implementation/` directory.
+2. **Given** a root whose `design.md` holds only the not-yet-hardened state, **When** planning
+   starts, **Then** it treats the feature as having no accepted baseline rather than inventing one.
 3. **Given** the plan needs a constraint or rationale recorded only in the level's `design.md`,
    **When** the planner consults it, **Then** the plan cites that reference and does not copy it into
    any durable document.
@@ -67,6 +66,7 @@ dependency order, and reference citations.
 
 - The accepted realization is unhardened, stale, or conflicts with the current specification.
 - A constraint the plan depends on exists only in a module design reference.
+- A planner treats the TL;DR as if it were the specification.
 - Tasks omit architecture or validation work required by the selected change.
 - Issue publication lacks external authorization or a configured target.
 
@@ -74,9 +74,9 @@ dependency order, and reference citations.
 
 - **FR-001**: Planning MUST resolve the selected root and create or continue only its temporal
   attempt.
-- **FR-002**: Planning MUST treat selected `spec.md` as required behavior and selected
-  `implementation.md` as the accepted realization baseline, treating the not-yet-hardened
-  placeholder as the absence of a baseline.
+- **FR-002**: Planning MUST treat selected `spec.md` as required behavior and the selected feature
+  `design.md` as the accepted realization baseline, treating the not-yet-hardened placeholder as
+  the absence of a baseline; the TL;DR MAY orient the planner but MUST NOT substitute for `spec.md`.
 - **FR-003**: Child planning MAY read parent durable aggregate context but MUST NOT read sibling or
   parent attempts implicitly.
 - **FR-004**: Tasks MUST be dependency ordered, independently actionable, and traceable to
@@ -85,8 +85,8 @@ dependency order, and reference citations.
   MUST appear explicitly in the plan and tasks.
 - **FR-006**: Issue conversion MUST preserve task identity, order, dependencies, and scope and MUST
   require separate authority for external writes.
-- **FR-007**: These phases MUST NOT update `implementation.md`, any module `module.md` or
-  `design.md`, or create root-level compatibility copies.
+- **FR-007**: These phases MUST NOT update `tldr.md`, `spec.md`, the feature `design.md`, any module
+  `module.md` or `design.md`, or create root-level compatibility copies.
 - **FR-008**: Planning MUST use the level's `module.md` as bounded architecture context and MAY
   consult that level's `design.md` only for a specific recorded detail, citing it in the plan.
 
@@ -96,8 +96,8 @@ dependency order, and reference citations.
   directory.
 - **SC-002**: Every buildable requirement in acceptance fixtures maps to at least one task.
 - **SC-003**: Every converted issue set preserves all task dependencies and ordering constraints.
-- **SC-004**: Parent, sibling, `implementation.md`, module summary, and module reference bytes
-  remain unchanged throughout planning.
+- **SC-004**: Parent, sibling, `tldr.md`, `spec.md`, feature `design.md`, module summary, and module
+  reference bytes remain unchanged throughout planning.
 - **SC-005**: Every fixture plan that used a design reference cites it; no fixture plan reproduces
   reference content into a durable document.
 

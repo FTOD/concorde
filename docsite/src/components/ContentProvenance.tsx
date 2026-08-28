@@ -1,19 +1,21 @@
 import type {ContentPage} from '../../plugins/concorde-content/types';
 
+function kindLabel(page: ContentPage): string {
+  const level = page.featureLevel === 'subfeature' ? 'Sub-feature' : 'Feature';
+  switch (page.kind) {
+    case 'feature-tldr': return `${level} TL;DR`;
+    case 'feature-specification': return `${level} specification`;
+    case 'feature-design': return `${level} design reference`;
+    case 'module-design': return 'Module design reference';
+    case 'architecture-source': return `Architecture ${page.architectureKind ?? 'source'}`;
+    default: return 'Project documentation';
+  }
+}
+
 export default function ContentProvenance({page}: {page: ContentPage}) {
   return (
     <aside className="provenance" aria-label="Content provenance">
-      <span className="provenance__kind">
-        {page.kind === 'feature-specification'
-          ? page.featureLevel === 'subfeature' ? 'Sub-feature specification' : 'Feature specification'
-          : page.kind === 'feature-implementation'
-            ? page.featureLevel === 'subfeature' ? 'Sub-feature implementation' : 'Feature implementation'
-          : page.kind === 'module-design'
-            ? 'Module design reference'
-          : page.kind === 'architecture-source'
-            ? `Architecture ${page.architectureKind ?? 'source'}`
-            : 'Project documentation'}
-      </span>
+      <span className="provenance__kind">{kindLabel(page)}</span>
       {page.featureId && <code>{page.featureId}</code>}
       {page.architectureId && <code>{page.architectureId}</code>}
       {page.moduleId && <span>Owner: <code>{page.moduleId}</code></span>}

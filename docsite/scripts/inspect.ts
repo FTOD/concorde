@@ -19,8 +19,9 @@ async function main() {
     counts: {
       architecture: registry.documents.filter((document) => document.collectionId === 'architecture').length,
       docs: registry.documents.filter((document) => document.collectionId === 'docs').length,
-      features: registry.documents.filter((document) => document.collectionId === 'features').length,
-      implementations: registry.documents.filter((document) => document.collectionId === 'feature-implementations').length,
+      tldrs: registry.documents.filter((document) => document.collectionId === 'feature-tldrs').length,
+      specifications: registry.documents.filter((document) => document.collectionId === 'features').length,
+      designs: registry.documents.filter((document) => document.collectionId === 'feature-designs').length,
       moduleDesigns: registry.documents.filter((document) => document.contentKind === 'module-design').length,
       excluded: registry.excludedSources.length,
       findings: findings.length,

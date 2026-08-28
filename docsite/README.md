@@ -4,20 +4,28 @@ This private package builds the read-only Concorde project website. Canonical co
 this package:
 
 - `../docs/**/*.md` owns project documentation.
-- `../specs/**/spec.md` owns feature specifications at any module level, and the sibling
-  `implementation.md` owns each feature's accepted realization; the two are published as companion
-  pages under Features. Temporal `implementation/` workspaces are never published.
+- `../specs/**/spec.md` owns feature specifications at any module level. Its sibling `tldr.md` is the
+  feature's landing page (published at `/features/<root>`, the route the specification used to own)
+  and its sibling `design.md` owns the accepted design reference; the three are published together
+  under Features (`<root>`, `<root>/spec`, `<root>/design`) with companion links
+  (TL;DR · Specification · Design reference) and TL;DR-routed parent, sub-feature, and sibling
+  navigation. A `spec.md` without `tldr.md` or `design.md`, and a legacy `implementation.md` beside
+  `spec.md`, are validation errors. Temporal `implementation/` workspaces are never published.
 - `../specs/**/module.md` (module summary), its sibling `design.md` (module design reference, published
   as a separately linked Architecture page), and `../specs/**/contracts/**/contract.md` own
-  architecture intent. A `design.md` without a sibling `module.md` is a validation error.
+  architecture intent. A `design.md` is classified by its sibling: beside `module.md` it is a module
+  design reference, beside `spec.md` a feature design reference; beside neither it is a validation
+  error.
 - `../specs/**/architecture.json` owns structural views; the build creates their ignored,
   disposable standalone Archify projections beneath `../generated/architecture/`.
 - `../specs/**/features/*/diagrams/*.json` owns feature scenario explanations declared by `spec.md`;
-  each fresh generated view is embedded automatically on its canonical feature page.
+  each fresh generated view is embedded automatically on the feature's TL;DR landing page.
 
 Before preview or build, the package classifies the unified `specs/` tree and writes disposable
-Architecture and Features inputs beneath `.generated/content/`. These are renderer projections only;
-all provenance, validation, and edits continue to reference the canonical files under `../specs/`.
+Architecture and Features inputs beneath `.generated/content/`. Feature pages are staged with the
+route the registry assigned them (front matter `slug`, `sidebar_label`, and `sidebar_position`) so
+the TL;DR renders at `/features/<root>`. These are renderer projections only; all provenance,
+validation, and edits continue to reference the canonical files under `../specs/`.
 
 ## Prerequisites
 

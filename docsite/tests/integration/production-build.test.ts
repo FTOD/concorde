@@ -37,6 +37,7 @@ beforeAll(async () => {
 describe('production build', () => {
   it('publishes landing, three-part navigation, provenance, diagrams, local search, and all manifest routes', async () => {
     const manifest = JSON.parse(firstManifest);
+    expect(manifest.schemaVersion).toBe(6);
     const schema = JSON.parse(await readFile(resolve(siteDir, '../specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json'), 'utf8'));
     expect(new Ajv2020().compile(schema)(manifest)).toBe(true);
     expect(await readFile(resolve(buildDir, 'index.html'), 'utf8')).toContain('One project, two source roots, three views');
@@ -56,10 +57,10 @@ describe('production build', () => {
       .toContain('Project Docsite — Publication Invocation');
     expect(Object.keys(firstDiagramHashes)).toHaveLength(7);
     expect((await readdir(resolve(siteDir, '../generated/architecture'))).every((name) => name.endsWith('.html'))).toBe(true);
-    const concordeFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-specification' && page.featureId === 'feature.concorde.workflow');
-    const docsiteFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-specification' && page.featureId === 'feature.concorde.publish-project-docsite');
-    const selfHostingFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-specification' && page.featureId === 'feature.concorde.self-host-framework');
-    if (!concordeFeature || !docsiteFeature || !selfHostingFeature) throw new Error('Expected Features 001, 002, and 004 in the build manifest.');
+    const concordeFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-tldr' && page.featureId === 'feature.concorde.workflow');
+    const docsiteFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-tldr' && page.featureId === 'feature.concorde.publish-project-docsite');
+    const selfHostingFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-tldr' && page.featureId === 'feature.concorde.self-host-framework');
+    if (!concordeFeature || !docsiteFeature || !selfHostingFeature) throw new Error('Expected the TL;DR landing pages of Features 001, 002, and 004 in the build manifest.');
     expect(concordeFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
       source: 'specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json',
       role: 'core',
@@ -88,6 +89,15 @@ describe('production build', () => {
     expect(selfHostingFeatureHtml).toContain('Feature diagrams');
     expect(selfHostingFeatureHtml).toContain('Concorde Self-Hosting Components');
     expect(selfHostingFeatureHtml).toContain('/architecture/concorde-self-hosting-components.html');
+    // The landing page links its specification and design reference; each of those links back to the TL;DR.
+    for (const landing of [concordeFeature, docsiteFeature, selfHostingFeature]) {
+      const html = await readFile(resolve(buildDir, `${landing.route.slice(1)}.html`), 'utf8');
+      expect(html).toContain(`${landing.specificationRoute}"`);
+      expect(html).toContain(`${landing.designRoute}"`);
+      for (const companionRoute of [landing.specificationRoute, landing.designRoute]) {
+        expect(await readFile(resolve(buildDir, `${companionRoute.slice(1)}.html`), 'utf8')).toContain(`${landing.route}"`);
+      }
+    }
     const rootModule = await readFile(resolve(buildDir, 'architecture/concorde/module.concorde.html'), 'utf8');
     expect(rootModule).toContain('Interactive architecture view for Concorde');
     expect(rootModule).toContain('/architecture/concorde-root.html');

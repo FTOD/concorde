@@ -21,9 +21,10 @@ describe('build manifest contract', () => {
     const validate = new Ajv2020({allErrors: true}).compile(schema);
 
     expect(validate(example), JSON.stringify(validate.errors, null, 2)).toBe(true);
+    expect(example.schemaVersion).toBe(6);
   });
 
-  it('projects a fixture manifest that satisfies the v5 schema', async () => {
+  it('projects a fixture manifest that satisfies the v6 schema', async () => {
     const schema = JSON.parse(await readFile(resolve(
       process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json',
     ), 'utf8'));
@@ -31,9 +32,11 @@ describe('build manifest contract', () => {
     const manifest = JSON.parse(JSON.stringify(createManifest(await buildRegistry(resolve(__dirname, '../fixtures/valid-project')))));
     expect(validate(manifest), JSON.stringify(validate.errors, null, 2)).toBe(true);
     expect(manifest.pages.map((page: {kind: string}) => page.kind).sort()).toEqual([
-      'architecture-source', 'feature-implementation', 'feature-implementation', 'feature-implementation',
-      'feature-implementation', 'feature-specification', 'feature-specification', 'feature-specification',
-      'feature-specification', 'module-design', 'project-document', 'project-document',
+      'architecture-source',
+      'feature-design', 'feature-design', 'feature-design', 'feature-design',
+      'feature-specification', 'feature-specification', 'feature-specification', 'feature-specification',
+      'feature-tldr', 'feature-tldr', 'feature-tldr', 'feature-tldr',
+      'module-design', 'project-document', 'project-document',
     ]);
   });
 
@@ -41,9 +44,13 @@ describe('build manifest contract', () => {
     const root = resolve(__dirname, '../fixtures/valid-project');
     const first = createManifest(await buildRegistry(root));
     const second = createManifest(await buildRegistry(root));
-    expect(first.schemaVersion).toBe(5);
+    expect(first.schemaVersion).toBe(6);
+    expect(first.generator).toEqual({name: 'concorde-docsite', version: '0.3.0', docusaurusVersion: '3.10.2'});
     expect(first.collections.map((collection) => collection.id)).toEqual([
-      'architecture', 'docs', 'features', 'feature-implementations',
+      'architecture', 'docs', 'feature-tldrs', 'features', 'feature-designs',
+    ]);
+    expect(first.collections.map((collection) => collection.include)).toEqual([
+      ['**/module.md', '**/design.md', '**/contracts/**/contract.md'], ['**/*.md'], ['**/tldr.md'], ['**/spec.md'], ['**/design.md'],
     ]);
     expect(second).toEqual(first);
     expect(first.pages.map((page) => page.sourcePath)).toEqual([...first.pages.map((page) => page.sourcePath)].sort());

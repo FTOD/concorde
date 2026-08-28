@@ -21,14 +21,14 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase tasks` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v4 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+Require Protocol v5 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
 recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_implementation` only as aggregate durable context. Never load a
+read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
 sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 
@@ -77,10 +77,10 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Outline
 
-1. **Setup**: Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase tasks` from repo root and parse FEATURE_DIR, IMPLEMENTATION_DIR, FEATURE_SPEC, FEATURE_IMPLEMENTATION, IMPL_PLAN, TASKS, TASKS_TEMPLATE_CONTENT, TASKS_TEMPLATE, and AVAILABLE_DOCS. Path fields must be absolute when provided. `AVAILABLE_DOCS` contains feature-root-relative paths such as `implementation.md`, `implementation/research.md`, and `contracts/`. After a hardening, the task list lives in the fresh `implementation/` beneath the same root, never in a root-level copy. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. **Setup**: Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase tasks` from repo root and parse FEATURE_DIR, IMPLEMENTATION_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, TASKS_TEMPLATE_CONTENT, TASKS_TEMPLATE, and AVAILABLE_DOCS. Path fields must be absolute when provided. `AVAILABLE_DOCS` contains feature-root-relative paths such as `implementation.md`, `implementation/research.md`, and `contracts/`. After a hardening, the task list lives in the fresh `implementation/` beneath the same root, never in a root-level copy. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
 2. **Load design documents** using the returned paths:
-   - **Required**: IMPL_PLAN (proposed tech stack, libraries, structure), FEATURE_SPEC (user stories with priorities), FEATURE_IMPLEMENTATION (accepted realization baseline; the placeholder means no accepted baseline)
+   - **Required**: IMPL_PLAN (proposed tech stack, libraries, structure), FEATURE_SPEC (user stories with priorities), FEATURE_DESIGN (accepted realization baseline; the placeholder means no accepted baseline)
    - **Optional**: `IMPLEMENTATION_DIR/data-model.md` (entities), `FEATURE_DIR/contracts/` (durable interface contracts), `IMPLEMENTATION_DIR/research.md` (decisions), `IMPLEMENTATION_DIR/quickstart.md` (test scenarios)
    - **IF REFERENCED**: Load feature-owned Archify JSON beside `FEATURE_SPEC` as durable explanatory
      sources; do not confuse them with module-level `architecture.json` or generated HTML.
@@ -90,7 +90,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
 3. **Execute task generation workflow**:
    - Load plan.md and extract tech stack, libraries, project structure
    - Load spec.md and extract user stories with their priorities (P1, P2, P3, etc.)
-   - Load implementation.md and distinguish retained accepted realization from changes proposed by plan.md; when it is the placeholder, treat every planned decision as new work against no accepted baseline
+   - Load the feature design.md and distinguish retained accepted realization from changes proposed by plan.md; when it is the placeholder, treat every planned decision as new work against no accepted baseline
    - Read the level's `module.md` as bounded architecture context; consult a module `design.md` only for a specific recorded detail and cite it
    - If data-model.md exists: Extract entities and map to user stories
    - If contracts/ exists: Map interface contracts to user stories
@@ -244,7 +244,7 @@ Every task MUST strictly follow this format:
 ## Done When
 
 - [ ] tasks.md generated with all phases, task IDs, and file paths
-- [ ] Tasks implement the planned delta from durable `implementation.md` and do not edit that file, any module `module.md`, or any module `design.md` directly
+- [ ] Tasks implement the planned delta from the durable feature `design.md` and do not edit that file, `tldr.md`, `spec.md`, any module `module.md`, or any module `design.md` directly
 - [ ] Every required feature diagram has complete source, validation, delivery, and freshness tasks
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with task count, story breakdown, and MVP scope

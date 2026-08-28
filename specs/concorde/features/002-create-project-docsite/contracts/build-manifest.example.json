@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "generator": {
     "name": "concorde-docsite",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "docusaurusVersion": "3.10.2"
   },
   "collections": [
@@ -19,16 +19,22 @@
       "include": ["**/*.md"]
     },
     {
+      "id": "feature-tldrs",
+      "sourceBase": "specs",
+      "routeBase": "/features",
+      "include": ["**/tldr.md"]
+    },
+    {
       "id": "features",
       "sourceBase": "specs",
       "routeBase": "/features",
       "include": ["**/spec.md"]
     },
     {
-      "id": "feature-implementations",
+      "id": "feature-designs",
       "sourceBase": "specs",
       "routeBase": "/features",
-      "include": ["**/implementation.md"]
+      "include": ["**/design.md"]
     }
   ],
   "pages": [
@@ -44,7 +50,7 @@
       },
       "links": [
         {
-          "targetSourcePath": "specs/concorde/features/002-create-project-docsite/spec.md",
+          "targetSourcePath": "specs/concorde/features/002-create-project-docsite/tldr.md",
           "targetRoute": "/features/concorde/features/002-create-project-docsite/feature.concorde.publish-project-docsite"
         }
       ]
@@ -65,40 +71,46 @@
       "moduleRoute": "/architecture/concorde/module.concorde"
     },
     {
-      "kind": "feature-implementation",
-      "sourcePath": "specs/concorde/features/002-create-project-docsite/implementation.md",
+      "kind": "feature-design",
+      "sourcePath": "specs/concorde/features/002-create-project-docsite/design.md",
       "sourceSha256": "4444444444444444444444444444444444444444444444444444444444444444",
-      "route": "/features/concorde/features/002-create-project-docsite/implementation",
-      "title": "Feature Implementation: Create Unified Project Docsite",
+      "route": "/features/concorde/features/002-create-project-docsite/design",
+      "title": "Feature Design Reference: Create Unified Project Docsite",
       "navigation": {
         "section": "Features",
-        "label": "Feature Implementation: Create Unified Project Docsite"
+        "label": "Design reference"
       },
-      "links": [],
+      "links": [
+        {
+          "targetSourcePath": "specs/concorde/features/002-create-project-docsite/spec.md",
+          "targetRoute": "/features/concorde/features/002-create-project-docsite/spec"
+        }
+      ],
       "featureId": "feature.concorde.publish-project-docsite",
       "moduleId": "module.concorde",
       "featureLevel": "feature",
       "subfeatures": [],
       "siblings": [],
-      "specificationRoute": "/features/concorde/features/002-create-project-docsite/feature.concorde.publish-project-docsite"
+      "tldrRoute": "/features/concorde/features/002-create-project-docsite/feature.concorde.publish-project-docsite",
+      "specificationRoute": "/features/concorde/features/002-create-project-docsite/spec"
     },
     {
       "kind": "feature-specification",
       "sourcePath": "specs/concorde/features/002-create-project-docsite/spec.md",
       "sourceSha256": "1111111111111111111111111111111111111111111111111111111111111111",
-      "route": "/features/concorde/features/002-create-project-docsite/feature.concorde.publish-project-docsite",
+      "route": "/features/concorde/features/002-create-project-docsite/spec",
       "title": "Create Unified Project Docsite",
       "navigation": {
         "section": "Features",
-        "label": "Create Unified Project Docsite"
+        "label": "Specification"
       },
       "links": [],
       "featureId": "feature.concorde.publish-project-docsite",
       "moduleId": "module.concorde",
-      "status": "Implemented",
       "featureLevel": "feature",
       "subfeatures": [],
       "siblings": [],
+      "status": "Implemented",
       "diagrams": [
         {
           "source": "specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json",
@@ -110,7 +122,48 @@
           "route": "/architecture/project-docsite-publication-flow.html"
         }
       ],
-      "implementationRoute": "/features/concorde/features/002-create-project-docsite/implementation"
+      "tldrRoute": "/features/concorde/features/002-create-project-docsite/feature.concorde.publish-project-docsite",
+      "designRoute": "/features/concorde/features/002-create-project-docsite/design"
+    },
+    {
+      "kind": "feature-tldr",
+      "sourcePath": "specs/concorde/features/002-create-project-docsite/tldr.md",
+      "sourceSha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "route": "/features/concorde/features/002-create-project-docsite/feature.concorde.publish-project-docsite",
+      "title": "Create Unified Project Docsite",
+      "navigation": {
+        "section": "Features",
+        "label": "Create Unified Project Docsite"
+      },
+      "links": [
+        {
+          "targetSourcePath": "specs/concorde/features/002-create-project-docsite/design.md",
+          "targetRoute": "/features/concorde/features/002-create-project-docsite/design"
+        },
+        {
+          "targetSourcePath": "specs/concorde/features/002-create-project-docsite/spec.md",
+          "targetRoute": "/features/concorde/features/002-create-project-docsite/spec"
+        }
+      ],
+      "featureId": "feature.concorde.publish-project-docsite",
+      "moduleId": "module.concorde",
+      "featureLevel": "feature",
+      "subfeatures": [],
+      "siblings": [],
+      "status": "Implemented",
+      "diagrams": [
+        {
+          "source": "specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json",
+          "sourceSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "role": "supplemental",
+          "kind": "sequence",
+          "scenarios": ["publish-architecture"],
+          "title": "Project Docsite — Publication Invocation",
+          "route": "/architecture/project-docsite-publication-flow.html"
+        }
+      ],
+      "specificationRoute": "/features/concorde/features/002-create-project-docsite/spec",
+      "designRoute": "/features/concorde/features/002-create-project-docsite/design"
     },
     {
       "kind": "architecture-source",
@@ -149,8 +202,9 @@
     "/architecture/concorde/module.concorde",
     "/architecture/project-docsite-publication-flow.html",
     "/docs/",
+    "/features/concorde/features/002-create-project-docsite/design",
     "/features/concorde/features/002-create-project-docsite/feature.concorde.publish-project-docsite",
-    "/features/concorde/features/002-create-project-docsite/implementation"
+    "/features/concorde/features/002-create-project-docsite/spec"
   ],
   "validation": {
     "status": "passed",

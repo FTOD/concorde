@@ -13,8 +13,8 @@ Present the returned current module, its current-level features and I/O, all imm
 their concise I/O, externals, scenarios, adjacent refinements, feature-containment summaries, and
 deeper navigation references. The module context result also returns the module's `summary`
 (`module.md` path), `design_reference` (`design.md` path), and `view` path as navigation references,
-and each feature summary names its `implementation.md` path the same way. Present them as paths to
-open deliberately; never expand the body of a module `design.md` or a feature `implementation.md`.
+and each feature summary names its `tldr.md` and `design.md` paths the same way. Present them as
+paths to open deliberately; never expand the body of a `tldr.md`, `spec.md`, or `design.md`.
 A parent feature lists immediate sub-feature summaries in authored
 order; a sub-feature lists its parent and concise siblings. Never expand another feature body,
 parent/sibling attempt, third feature level, lower-module feature body, or grandchild module. This

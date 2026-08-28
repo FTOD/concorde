@@ -67,4 +67,4 @@ space or provenance field is breaking.
 ## Evidence
 
 Production-build, accessibility, route-inventory, and repeatability tests are maintained under
-`docsite/tests/`; their requirement mapping is recorded in `specs/concorde/features/002-create-project-docsite/implementation.md`.
+`docsite/tests/`; their requirement mapping is recorded in `specs/concorde/features/002-create-project-docsite/design.md`.

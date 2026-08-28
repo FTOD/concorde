@@ -1,10 +1,11 @@
-export type CollectionId = 'architecture' | 'docs' | 'features' | 'feature-implementations';
+export type CollectionId = 'architecture' | 'docs' | 'feature-tldrs' | 'features' | 'feature-designs';
 export type ContentKind =
   | 'architecture-source'
   | 'module-design'
   | 'project-document'
+  | 'feature-tldr'
   | 'feature-specification'
-  | 'feature-implementation';
+  | 'feature-design';
 export type SourceState = 'discovered' | 'parsed' | 'validated' | 'mapped' | 'rendered' | 'invalid';
 
 export interface SourceCollection {
@@ -58,17 +59,39 @@ export interface ProjectDocument extends SourceDocument {
   contentKind: 'project-document';
 }
 
-/** A feature root's accepted realization (`implementation.md`), paired with its sibling `spec.md`. */
-export interface FeatureImplementation extends SourceDocument {
-  collectionId: 'feature-implementations';
-  contentKind: 'feature-implementation';
+export type FeatureLevel = 'feature' | 'subfeature';
+
+/** Identity and navigation shared by a feature root's three pages, taken from the sibling `spec.md` front matter. */
+export interface FeaturePageContext {
   featureId?: string;
   moduleId?: string;
-  featureLevel?: 'feature' | 'subfeature';
+  featureLevel?: FeatureLevel;
   parentFeatureId?: string;
+  /** The parent feature's TL;DR landing route. */
   parentFeatureRoute?: string;
   subfeatures?: FeatureRelation[];
   siblings?: FeatureRelation[];
+}
+
+/** A feature root's landing page (`tldr.md`), published at `/features/<root>` and paired with its sibling `spec.md`. */
+export interface FeatureTldr extends SourceDocument, FeaturePageContext {
+  collectionId: 'feature-tldrs';
+  contentKind: 'feature-tldr';
+  status?: string;
+  /** The diagrams declared by the paired specification, embedded on this landing page. */
+  diagrams?: FeatureDiagram[];
+  /** Companion link: the route of the paired feature specification page. */
+  specificationRoute?: string;
+  /** Companion link: the route of the paired feature design reference page. */
+  designRoute?: string;
+}
+
+/** A feature root's accepted design reference (`design.md` beside `spec.md`), paired with its sibling `spec.md`. */
+export interface FeatureDesign extends SourceDocument, FeaturePageContext {
+  collectionId: 'feature-designs';
+  contentKind: 'feature-design';
+  /** Companion link: the route of the paired TL;DR landing page. */
+  tldrRoute?: string;
   /** Companion link: the route of the paired feature specification page. */
   specificationRoute?: string;
 }
@@ -81,16 +104,20 @@ export interface FeatureSpecification extends SourceDocument {
   moduleId: string;
   status: string;
   featureDirectory: string;
+  /** The feature's landing route (`/features/<root>`), owned by the sibling `tldr.md`; parent, child, and sibling navigation targets it. */
+  landingRoute: string;
   diagrams: FeatureDiagram[];
-  featureLevel: 'feature' | 'subfeature';
+  featureLevel: FeatureLevel;
   parentFeatureId?: string;
   parentFeatureRoute?: string;
   outcome: string;
   subfeatureIds: string[];
   subfeatures: FeatureRelation[];
   siblings: FeatureRelation[];
-  /** Companion link: the route of the paired accepted realization page. */
-  implementationRoute?: string;
+  /** Companion link: the route of the paired TL;DR landing page. */
+  tldrRoute?: string;
+  /** Companion link: the route of the paired feature design reference page. */
+  designRoute?: string;
 }
 
 export interface FeatureRelation {
@@ -98,6 +125,7 @@ export interface FeatureRelation {
   title: string;
   outcome: string;
   status: string;
+  /** The related feature's TL;DR landing route. */
   route: string;
 }
 
@@ -191,14 +219,15 @@ export interface ContentPage {
   featureId?: string;
   moduleId?: string;
   status?: string;
-  featureLevel?: 'feature' | 'subfeature';
+  featureLevel?: FeatureLevel;
   parentFeatureId?: string;
   parentFeatureRoute?: string;
   subfeatures?: FeatureRelation[];
   siblings?: FeatureRelation[];
   diagrams?: FeatureDiagram[];
-  implementationRoute?: string;
+  tldrRoute?: string;
   specificationRoute?: string;
+  designRoute?: string;
   architectureId?: string;
   architectureKind?: ArchitectureKind;
   parentId?: string;
@@ -224,7 +253,7 @@ export interface ValidationFinding {
 }
 
 export interface BuildManifest {
-  schemaVersion: 5;
+  schemaVersion: 6;
   generator: {
     name: 'concorde-docsite';
     version: string;

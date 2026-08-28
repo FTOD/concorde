@@ -18,14 +18,18 @@ The complete publication behavior is specified by
 |---|---|---|
 | Documentation | Every regular `docs/**/*.md` file | `/docs` |
 | Architecture | Every `specs/**/module.md` (module summary, with its level view embedded), its adjacent `design.md` (module design reference, published as a separately linked page), and `specs/**/contracts/**/contract.md` | `/architecture` |
-| Feature specifications | Every canonical `specs/**/spec.md` | `/features` |
-| Feature implementations | Every durable `specs/**/implementation.md` paired with a feature specification | `/features` |
+| Feature TL;DRs | Every `specs/**/tldr.md` beside a canonical `spec.md`; the page each feature opens on | `/features/<root>` |
+| Feature specifications | Every canonical `specs/**/spec.md` | `/features/<root>/spec` |
+| Feature design references | Every `specs/**/design.md` beside a feature `spec.md` | `/features/<root>/design` |
 
-`design.md` is a module document only: the feature collection never matches it, and a `design.md`
-beside a feature `spec.md` is a validation error rather than a publishable page. Symbolic links are
-not followed. Plans, tasks, requirements checklists, research, technical models,
-quick-start evidence, and other files below `implementation/` are intentionally excluded from the
-Features collection. Their presence under `specs/` does not make them permanent project intent.
+The build manifest names these collections `docs`, `architecture`, `feature-tldrs`, `features`, and
+`feature-designs`. A `design.md` is classified by its neighbour: beside `module.md` it is the module
+design reference, beside `spec.md` the feature design reference, and beside neither it is an error.
+A legacy `implementation.md` beside a feature `spec.md` and a `spec.md` without a sibling `tldr.md`
+are validation errors rather than publishable pages. Symbolic links are not followed. Plans, tasks,
+requirements checklists, research, technical models, quick-start evidence, and other files below
+`implementation/` are intentionally excluded from the Features collection. Their presence under
+`specs/` does not make them permanent project intent.
 
 Do not copy canonical content into `docsite/`. Docusaurus configuration, components, formatting, and
 build logic live there; project explanations live in `docs/`; architecture and feature authorities
@@ -42,7 +46,7 @@ A preview and a production build use the same inclusion, routing, and validation
    current deliveries.
 4. Disposable Docusaurus content is materialized under `docsite/.generated/content/`.
 5. Docusaurus renders a candidate site.
-6. Candidate pages, routes, links, provenance, and the build manifest (Build Manifest v5) are
+6. Candidate pages, routes, links, provenance, and the build manifest (Build Manifest v6) are
    validated.
 7. Only a successful candidate is promoted to `docsite/build/`.
 
@@ -69,7 +73,8 @@ not present the summary as stronger or more current than that source.
 
 Architecture and feature Markdown may declare maintained Archify JSON. A declaration identifies the
 source, role, kind, explained scenarios, and generated output. The generated page embeds the delivered
-HTML in a sandbox and provides source provenance plus a standalone-view link.
+HTML in a sandbox and provides source provenance plus a standalone-view link; for a feature, that
+page is its TL;DR.
 
 For feature diagrams:
 

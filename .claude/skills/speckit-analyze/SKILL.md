@@ -24,14 +24,14 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase analyze` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v4 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+Require Protocol v5 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
 recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_implementation` only as aggregate durable context. Never load a
+read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
 sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 
@@ -93,10 +93,10 @@ Identify inconsistencies, duplications, ambiguities, and underspecified items ac
 
 ### 1. Initialize Analysis Context
 
-Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase analyze` once from repo root and parse JSON for FEATURE_DIR, FEATURE_SPEC, FEATURE_IMPLEMENTATION, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
+Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase analyze` once from repo root and parse JSON for FEATURE_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
 
 - SPEC = FEATURE_SPEC
-- IMPLEMENTATION = FEATURE_IMPLEMENTATION
+- IMPLEMENTATION = FEATURE_DESIGN
 - PLAN = IMPL_PLAN
 - TASKS = TASKS
 
@@ -116,7 +116,11 @@ Load only the minimal necessary context from each artifact:
 - Edge Cases (if present)
 - Feature-diagram roles, maintained JSON paths, textual counterparts, and sufficiency rationales
 
-**From implementation.md:**
+**From tldr.md:**
+
+- Every statement of purpose, functionality, structure, and logic, and every `FR-NNN` it cites (the TL;DR summarizes spec.md and must not exceed it)
+
+**From design.md (feature design reference):**
 
 - Accepted realization baseline, durable decisions, scenario realization, traceability, and known limitations (the placeholder means no accepted baseline)
 
@@ -193,6 +197,15 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
   treated as maintained authority
 - More than one `role: core` diagram, a core diagram whose kind is not `architecture`, or a
   sequence/workflow/data-flow/lifecycle view presented as the feature's core component model
+
+#### E. TL;DR Disagreement
+
+- A `tldr.md` statement that `spec.md` does not support, or that contradicts a requirement, scope
+  boundary, or success criterion: report it naming the disagreeing statement and the prevailing
+  `FR-NNN`/section (spec.md wins; the TL;DR is fixed through `$speckit-specify` or
+  `$speckit-clarify`, never by this command)
+- A `Logic` rule citing an `FR-NNN` that `spec.md` does not define, or a missing/extra/misordered
+  TL;DR section
 
 ### 5. Severity Assignment
 

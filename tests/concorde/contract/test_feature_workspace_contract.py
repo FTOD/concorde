@@ -10,7 +10,7 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         examples = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples"
         for name in ("feature-harden-eligible-response.json",):
             payload = json.loads((examples / name).read_text(encoding="utf-8"))
-            self.assertEqual(payload["schema_version"], 4)
+            self.assertEqual(payload["schema_version"], 5)
             self.assertEqual(payload["operation"], "feature.harden")
             self.assertEqual(
                 set(payload["workspace"]),
@@ -21,8 +21,9 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
                     "parent_context",
                     "siblings",
                     "feature_directory",
+                    "feature_tldr",
                     "feature_spec",
-                    "feature_implementation",
+                    "feature_design",
                     "module_summary",
                     "module_design",
                     "contracts_dir",
@@ -56,9 +57,9 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         workspace = json.loads((contracts / "feature-workspace.schema.json").read_text())
         architecture = json.loads((contracts / "architecture-service.schema.json").read_text())
         self.assertEqual(workspace["$defs"]["operation"]["enum"], ["feature.harden"])
-        self.assertEqual(workspace["$defs"]["request"]["properties"]["schema_version"]["const"], 4)
-        self.assertEqual(workspace["$defs"]["response"]["properties"]["schema_version"]["const"], 4)
-        self.assertIn("implementation_digest_before", response_properties := workspace["$defs"]["response"]["properties"])
+        self.assertEqual(workspace["$defs"]["request"]["properties"]["schema_version"]["const"], 5)
+        self.assertEqual(workspace["$defs"]["response"]["properties"]["schema_version"]["const"], 5)
+        self.assertIn("design_digest_before", response_properties := workspace["$defs"]["response"]["properties"])
         self.assertIn("module_design_digest_after", response_properties)
         response_properties = workspace["$defs"]["response"]["properties"]
         self.assertIn("proposal_path", response_properties)
@@ -69,11 +70,11 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
     def test_hardening_proposal_binds_one_realization_optional_reference_and_one_removal_target(self):
         path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples/feature-harden-proposal.json"
         proposal = json.loads(path.read_text(encoding="utf-8"))
-        self.assertEqual(proposal["proposal_version"], 2)
+        self.assertEqual(proposal["proposal_version"], 3)
         self.assertEqual(proposal["operation"], "feature.harden")
-        realization = Path(proposal["implementation"]["path"])
+        realization = Path(proposal["design"]["path"])
         removal = Path(proposal["remove"][0])
-        self.assertEqual(realization.name, "implementation.md")
+        self.assertEqual(realization.name, "design.md")
         self.assertEqual(removal.name, "implementation")
         self.assertEqual(realization.parent, removal.parent)
         self.assertEqual(len(proposal["remove"]), 1)
@@ -82,8 +83,9 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         self.assertNotEqual(reference.parent, realization.parent)
         schema = json.loads((path.parents[1] / "feature-workspace.schema.json").read_text(encoding="utf-8"))
         hardening = schema["$defs"]["hardeningProposal"]
-        self.assertEqual(hardening["properties"]["proposal_version"]["const"], 2)
-        self.assertIn("implementation", hardening["required"])
+        self.assertEqual(hardening["properties"]["proposal_version"]["const"], 3)
+        self.assertIn("design", hardening["required"])
+        self.assertNotIn("implementation", hardening["properties"])
         self.assertNotIn("module_design", hardening["required"])
 
     def test_hardening_eligibility_example_exposes_review_metadata(self):

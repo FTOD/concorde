@@ -29,8 +29,10 @@ export default function concordeContentPlugin(
           architecture: content.documents.filter((document) => document.collectionId === 'architecture').length,
           moduleDesigns: content.documents.filter((document) => document.contentKind === 'module-design').length,
           docs: content.documents.filter((document) => document.collectionId === 'docs').length,
-          features: content.documents.filter((document) => document.collectionId === 'features').length,
-          implementations: content.documents.filter((document) => document.collectionId === 'feature-implementations').length,
+          // Each feature opens on its TL;DR landing page; the specification and design reference sit beneath it.
+          features: content.documents.filter((document) => document.collectionId === 'feature-tldrs').length,
+          specifications: content.documents.filter((document) => document.collectionId === 'features').length,
+          designs: content.documents.filter((document) => document.collectionId === 'feature-designs').length,
         },
       });
     },

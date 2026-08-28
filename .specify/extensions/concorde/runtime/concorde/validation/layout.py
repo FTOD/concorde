@@ -28,15 +28,18 @@ def validate_layout(package: Any) -> list[Finding]:
             findings.append(Finding("CONCORDE-LAYOUT-006", "error", feature.path, "Sub-feature canonical path has no parent_feature.", "Declare the immediate parent feature ID.", subject_id=feature.identifier))
         if feature.metadata.get("canonical_spec") != feature.path:
             findings.append(Finding("CONCORDE-LAYOUT-002", "error", feature.path, "canonical_spec does not equal this feature's own spec.md path.", "Set canonical_spec to the one durable feature specification.", subject_id=feature.identifier))
-        realization = root / "implementation.md"
-        legacy = root / "design.md"
+        design = root / "design.md"
+        tldr = root / "tldr.md"
+        legacy = root / "implementation.md"
         relative_root = Path(feature.path).parent.as_posix()
-        if legacy.exists() and realization.exists():
-            findings.append(Finding("CONCORDE-LAYOUT-008", "error", f"{relative_root}/design.md", "The feature root holds both design.md and implementation.md; the accepted realization is ambiguous.", "Merge any remaining content into implementation.md and remove the legacy design.md.", subject_id=feature.identifier))
+        if legacy.exists() and design.exists():
+            findings.append(Finding("CONCORDE-LAYOUT-008", "error", f"{relative_root}/implementation.md", "The feature root holds both implementation.md and design.md; the accepted realization is ambiguous.", "Merge any remaining content into design.md and remove the legacy implementation.md.", subject_id=feature.identifier))
         elif legacy.exists():
-            findings.append(Finding("CONCORDE-LAYOUT-007", "error", f"{relative_root}/design.md", "The feature root uses the legacy accepted-realization name design.md.", "Rename design.md to implementation.md; design.md is reserved for module design references.", subject_id=feature.identifier))
-        elif not realization.is_file() or realization.is_symlink():
-            findings.append(Finding("CONCORDE-LAYOUT-005", "error", f"{relative_root}/implementation.md", "The feature has no real durable implementation.md.", "Create implementation.md at the feature root; before the first hardening, state that no realization has been hardened.", subject_id=feature.identifier))
+            findings.append(Finding("CONCORDE-LAYOUT-007", "error", f"{relative_root}/implementation.md", "The feature root uses the legacy accepted-realization name implementation.md.", "Rename implementation.md to design.md; design.md is the design reference at every level.", subject_id=feature.identifier))
+        elif not design.is_file() or design.is_symlink():
+            findings.append(Finding("CONCORDE-LAYOUT-005", "error", f"{relative_root}/design.md", "The feature has no real durable design.md.", "Create design.md at the feature root from the design-template; before the first hardening, state that no realization has been hardened.", subject_id=feature.identifier))
+        if not tldr.is_file() or tldr.is_symlink():
+            findings.append(Finding("CONCORDE-LAYOUT-009", "error", f"{relative_root}/tldr.md", "The feature has no real tldr.md.", "Author the feature TL;DR from the tldr-template with the sections Purpose, Functionality, Structure, Logic, and Read Next.", subject_id=feature.identifier))
         for name in FORBIDDEN_ROOT_FILES:
             path = root / name
             if path.exists():
@@ -52,10 +55,10 @@ def validate_layout(package: Any) -> list[Finding]:
             selected = safe_relative_path(value["feature_directory"])
             resolved = ProjectRepository(package.project_root).resolve(selected)
             classify_feature_root(selected, package.specification_root)
-            if not (resolved / "spec.md").is_file() or not (resolved / "implementation.md").is_file():
-                raise RepositoryError("selected root has no canonical spec.md and implementation.md pair")
-            if (resolved / "design.md").exists():
-                raise RepositoryError("selected root still holds a legacy design.md; rename it to implementation.md")
+            if (resolved / "implementation.md").exists():
+                raise RepositoryError("selected root still holds a legacy implementation.md; rename it to design.md")
+            if not all((resolved / name).is_file() for name in ("tldr.md", "spec.md", "design.md")):
+                raise RepositoryError("selected root has no canonical tldr.md, spec.md, and design.md trio")
             if not any(Path(feature.path).parent.as_posix() == selected for feature in package.documents("feature")):
                 raise RepositoryError("selected root is not one discovered canonical lifecycle root")
         except (OSError, json.JSONDecodeError, KeyError, TypeError, RepositoryError) as error:

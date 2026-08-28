@@ -26,8 +26,8 @@ evidence_status: partial
 
 Resolve the standard Spec Kit selection to exactly one nested canonical feature root before every
 normal Spec Kit phase, return that root's validated durable/temporal paths and bounded relationship
-context, and explicitly harden a completed attempt into the durable accepted realization
-(`implementation.md`), optionally amending the providing module's `design.md`, without creating
+context, and explicitly harden a completed attempt into the durable feature design reference
+(`design.md`, the accepted realization), optionally amending the providing module's `design.md`, without creating
 duplicate lifecycle artifacts.
 
 ## Information
@@ -61,9 +61,10 @@ command. Complete field types and allowed values are defined by the linked schem
 - Hardening proves every canonical task is complete and every recognizable existing checklist item
   is satisfied, binds the reviewed realization, the optional module design-reference amendment, and
   the exact removal set to a source digest, returns the exact proposal path and task/checklist
-  summaries, requires explicit approval, atomically replaces root `implementation.md` and (when
+  summaries, requires explicit approval, atomically replaces the root's feature `design.md` and (when
   proposed) the providing module's `design.md`, and removes only the selected feature's complete
-  `implementation/` directory; `module.md` and every other root remain byte-identical.
+  `implementation/` directory; `tldr.md`, `spec.md`, `module.md`, and every other root remain
+  byte-identical.
 
 ## Failure Semantics
 
@@ -76,7 +77,12 @@ sources, the active attempt, and the standard Spec Kit selection unchanged.
 
 ## Compatibility
 
-Protocol v4 sets `schema_version` 4, renames `feature_design` to `feature_implementation` and the
+Protocol v5 sets `schema_version` 5, adds `feature_tldr` (the selected root's TL;DR) to the workspace
+paths, parent context, and feature summaries (`tldr`), renames `feature_implementation` back to
+`feature_design` and `implementation_digest_*` to `design_digest_*` because the feature-root
+accepted realization is again named `design.md` (the design reference at every level), and raises
+the hardening proposal to v3 (`design`, optional `module_design`, `remove`); the legacy feature-root
+name `implementation.md` is rejected and no alias is kept. Protocol v4 set `schema_version` 4, renames `feature_design` to `feature_implementation` and the
 `design_digest_*` result fields to `implementation_digest_*`, adds `module_summary` and
 `module_design` workspace paths with nullable `module_design_digest_*`, and raises the hardening
 proposal to v2 (`implementation`, optional `module_design`, `remove`); no alias for the old names is

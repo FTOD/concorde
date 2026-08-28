@@ -22,14 +22,14 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase clarify` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v4 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+Require Protocol v5 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
 recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_implementation` only as aggregate durable context. Never load a
+read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
 sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 Bind `CHECKLISTS_DIR` to the returned `workspace.checklists_dir`; never derive it from `FEATURE_DIR`.
@@ -204,6 +204,10 @@ Execution steps:
     - If no valid questions exist at start, immediately report no critical ambiguities.
 
 6. Integration after EACH accepted answer (incremental update approach):
+    - After integrating each answer into the specification, re-read `TLDR_FILE` (`workspace.feature_tldr`)
+      and update every sentence that summarized the changed behavior, keeping its five-section shape,
+      its `FR-NNN` citations, and its reading budget; the write set of this command is `tldr.md` and
+      `spec.md` only, never `design.md`.
     - Maintain in-memory representation of the spec (loaded once at start) plus the raw file contents.
     - For the first integrated answer in this session:
        - Ensure a `## Clarifications` section exists (create it just after the highest-level contextual/overview section per the spec template if missing).

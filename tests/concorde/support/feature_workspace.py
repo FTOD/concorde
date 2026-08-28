@@ -25,7 +25,7 @@ def create_feature_root(
     config.parent.mkdir(parents=True, exist_ok=True)
     if not config.exists():
         config.write_text(
-            json.dumps({"profile_version": 2, "specification_root": "specs/example", "root_module_id": "module.example"}) + "\n",
+            json.dumps({"profile_version": 3, "specification_root": "specs/example", "root_module_id": "module.example"}) + "\n",
             encoding="utf-8",
         )
     specification_root = project_root / "specs" / "example"
@@ -93,15 +93,24 @@ canonical_spec: {relative}/spec.md
 # Deliver
 
 Observable delivery behavior. Scenarios below are representative examples.
+
+## Outcome
+
+The fixture delivers its observable outcome.
+
+## Requirements
+
+- **FR-001**: Delivery is observable through the workflow contract.
+- **FR-002**: Delivery never mutates maintained sources.
 """,
             encoding="utf-8",
         )
-    implementation_path = root / "implementation.md"
-    if not implementation_path.exists():
-        implementation_path.write_text(
-            "# Feature Implementation: Fixture\n\n**Realization status**: Accepted fixture baseline.\n",
-            encoding="utf-8",
-        )
+    design_path = root / "design.md"
+    if not design_path.exists():
+        design_path.write_text(FEATURE_DESIGN_PLACEHOLDER, encoding="utf-8")
+    tldr_path = root / "tldr.md"
+    if not tldr_path.exists():
+        tldr_path.write_text(FEATURE_TLDR_FIXTURE, encoding="utf-8")
     module_design = specification_root / "design.md"
     if not module_design.exists():
         module_design.write_text(MODULE_DESIGN_REFERENCE.format(name="Example"), encoding="utf-8")
@@ -171,6 +180,71 @@ Fixtures stay minimal; see the [design reference](design.md).
     return root
 
 
+FEATURE_DESIGN_PLACEHOLDER = """# Feature Design Reference: Fixture
+
+**Realization status**: No implementation realization has been hardened yet.
+
+## Realization Overview
+
+No implementation realization has been hardened yet.
+
+## Module and Feature Collaboration
+
+No implementation realization has been hardened yet.
+
+## Scenario Realization
+
+No implementation realization has been hardened yet.
+
+## Durable Implementation Decisions
+
+No implementation realization has been hardened yet.
+
+## Traceability and Evidence
+
+No implementation realization has been hardened yet.
+
+## Known Limitations
+
+No implementation realization has been hardened yet.
+"""
+
+
+FEATURE_TLDR_FIXTURE = """# TL;DR: Deliver
+
+`feature.example.deliver` · specified at `module.example` · one minute.
+
+## Purpose
+
+Deliver the fixture outcome for the example maintainer.
+
+## Functionality
+
+The feature delivers one observable outcome through the workflow contract and does nothing else.
+
+## Structure
+
+The level view is [architecture.json](../../architecture.json).
+
+```text
+maintainer ──▶ example module ──▶ workflow contract
+```
+
+## Logic
+
+1. The maintainer invokes the workflow.
+2. The module delivers the outcome.
+
+**Rules the implementation must keep**
+
+- Delivery is observable and never mutates maintained sources (FR-001, FR-002).
+
+## Read Next
+
+- [spec.md](spec.md), [design.md](design.md), and the module summary [module.md](../../module.md).
+"""
+
+
 MODULE_DESIGN_REFERENCE = """# Design Reference: {name}
 
 ## Implementation Notes
@@ -192,10 +266,10 @@ Not recorded yet.
 
 
 def write_hardened_root(project_root: Path, relative: str, feature_id: str, module_id: str = "module.example") -> Path:
-    """Create a feature root whose implementation.md is already hardened and that has no attempt."""
+    """Create a feature root whose design.md is already hardened and that has no attempt."""
     root = create_feature_root(project_root, relative, feature_id, module_id)
-    (root / "implementation.md").write_text(
-        "# Feature Implementation: Fixture\n\n**Realization status**: Hardened fixture milestone.\n\n"
+    (root / "design.md").write_text(
+        "# Feature Design Reference: Fixture\n\n**Realization status**: Hardened fixture milestone.\n\n"
         "## Realization Overview\n\nHardened.\n\n## Module and Feature Collaboration\n\nHardened.\n\n"
         "## Scenario Realization\n\nHardened.\n\n## Durable Implementation Decisions\n\nHardened.\n\n"
         "## Traceability and Evidence\n\nHardened.\n\n## Known Limitations\n\nNone recorded.\n",

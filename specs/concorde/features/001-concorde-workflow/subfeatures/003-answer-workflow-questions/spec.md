@@ -20,11 +20,12 @@ canonical_spec: specs/concorde/features/001-concorde-workflow/subfeatures/003-an
 # Feature Specification: Answer Workflow Questions
 
 **Created**: 2026-08-26
-**Revised**: 2026-08-27
-**Status**: Specified and revised for the parent's document model; existing realization has not been
-hardened into this sub-feature's `implementation.md`
-**Input**: Answer grounded Concorde questions through `speckit.concorde.ask` from installed guidance
-and module summaries first, opening references only on demand, without becoming a new authority.
+**Revised**: 2026-08-28
+**Status**: Specified and revised for the parent's three-tier feature document model; existing
+realization has not been hardened into this sub-feature's `design.md`
+**Input**: Answer grounded Concorde questions through `speckit.concorde.ask` from installed guidance,
+module summaries, and feature TL;DRs first, opening specifications and design references only on
+demand, without becoming a new authority.
 
 ## Outcome
 
@@ -45,45 +46,52 @@ child diagram is needed.
 ### User Story 1 - Ask a grounded question (Priority: P1)
 
 A maintainer asks what a concept means, when to use a command, where an artifact belongs, how the
-workflow applies to a selected project context, or why a level is built the way it is.
+workflow applies to a selected project context, what a feature does, or why a level is built the way
+it is.
 
-**Independent Test**: Ask representative conceptual, procedural, project-specific, rationale-seeking,
-ambiguous, and unsupported questions and verify source use, attribution, uncertainty, reference
-opening, and zero mutations.
+**Independent Test**: Ask representative conceptual, procedural, project-specific, feature-level,
+rationale-seeking, ambiguous, and unsupported questions and verify source use, attribution,
+uncertainty, reference opening, and zero mutations.
 
 **Acceptance Scenarios**:
 1. **Given** an answer supported by installed guidance, **When** the question is asked, **Then** the
    answer identifies its authoritative basis and separates fact from inference.
 2. **Given** project context is necessary, **When** the question concerns a child feature, **Then**
-   only the child's durable pair, the parent's durable pair, the level's `module.md`, and concise
-   sibling summaries are considered.
+   only the child's TL;DR, the parent's TL;DR, the level's `module.md`, and concise sibling summary
+   fields are considered, and the child's `spec.md` is opened only when a requirement's exact
+   wording is needed.
 3. **Given** a question about why or how a level is built, **When** its `module.md` does not answer
    it, **Then** the answer opens that level's `design.md`, cites it, and says that it did.
-4. **Given** ambiguity or conflicting evidence, **When** no safe answer exists, **Then** the response
+4. **Given** a question about how a feature is realized, **When** its `tldr.md` does not answer it,
+   **Then** the answer opens that feature's `design.md`, cites it, and says that it did.
+5. **Given** ambiguity or conflicting evidence, **When** no safe answer exists, **Then** the response
    states uncertainty or asks one focused clarification.
 
 ### Edge Cases
 
 - Installed guidance is missing, stale, or conflicts with maintained project sources.
 - The question implicitly requests a mutation or unrelated implementation detail.
-- The answer lives only in a design reference or accepted realization that the question did not
-  explicitly ask to open.
+- The answer lives only in a specification's exact wording, a design reference, or an accepted
+  realization that the question did not explicitly ask to open.
+- A feature's TL;DR and specification disagree on the point asked about.
 
 ## Requirements
 
 - **FR-001**: Answers MUST use installed Concorde guidance as the primary workflow authority.
 - **FR-002**: Project-specific answers MUST use only the smallest relevant maintained context,
-  starting from module summaries and feature specifications.
-- **FR-003**: Answers MUST identify their source basis and label inference, uncertainty, or conflict.
-- **FR-004**: The question surface MUST distinguish summary, design reference, required behavior,
-  accepted realization, temporal attempt, generated evidence, containment, and refinement.
+  starting from module summaries and feature TL;DRs.
+- **FR-003**: Answers MUST identify their source basis and label inference, uncertainty, or conflict,
+  including a TL;DR that disagrees with its specification.
+- **FR-004**: The question surface MUST distinguish module summary, feature TL;DR, required behavior
+  (`spec.md`), module and feature design references, temporal attempt, generated evidence,
+  containment, and refinement.
 - **FR-005**: The question surface MUST NOT invoke another operation or mutate any source or control
   state.
 - **FR-006**: Unsupported or materially ambiguous questions MUST receive an honest limitation or
   focused clarification.
-- **FR-007**: The question surface MUST NOT open a module `design.md` or a feature `implementation.md`
-  unless the question asks for implementation detail, rationale, or accepted realization, and MUST
-  cite each one it opens.
+- **FR-007**: The question surface MUST NOT open a feature `spec.md` unless a requirement's exact
+  wording is needed, MUST NOT open a module or feature `design.md` unless the question asks for
+  implementation detail, rationale, or accepted realization, and MUST cite each document it opens.
 
 ## Success Criteria
 
@@ -92,8 +100,9 @@ opening, and zero mutations.
   unchanged.
 - **SC-003**: At least 90% of pilot maintainers can answer the original workflow question correctly
   after using the surface.
-- **SC-004**: In all fixture questions answerable from summaries, zero references or accepted
-  realizations are opened; in all fixtures that require one, it is opened and cited.
+- **SC-004**: In all fixture questions answerable from module summaries and feature TL;DRs, zero
+  specifications, references, or accepted realizations are opened; in all fixtures that require one,
+  it is opened and cited.
 
 ## Assumptions
 

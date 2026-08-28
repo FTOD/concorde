@@ -65,7 +65,7 @@ export function resolveContentLink(
         ? `Markdown link "${rawTarget}" targets an excluded Spec Kit artifact.`
         : `Markdown link "${rawTarget}" does not resolve to included content.`,
       remediation: excluded
-        ? 'Link to a published canonical source (spec.md, implementation.md, module.md, its design.md, or contract.md) or treat the target as a repository asset.'
+        ? 'Link to a published canonical source (tldr.md, spec.md, design.md, module.md, or contract.md) or treat the target as a repository asset.'
         : 'Correct the relative path or add the referenced Markdown source.',
     },
   };

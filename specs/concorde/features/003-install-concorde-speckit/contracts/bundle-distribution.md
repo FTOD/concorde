@@ -88,11 +88,12 @@ integration.
 The bundle-level preset `strategy: append` describes how the preset participates in the target's
 preset stack. It does not force every entry inside that preset to use append composition. The
 `concorde-core` manifest keeps its three inherited template entries as `append`, adds the
-Concorde-only `implementation-template` (the placeholder `implementation.md` that `speckit.specify`
-seeds at a new feature root) as `replace`, and declares each of the nine path-sensitive command
-entries as `replace`, as required below. The preset and extension that carry
-`implementation-template`, Feature Workspace Protocol v4, and Architecture Source Profile 2 are
-their 0.2.0 releases, which the bundle pins; `design-template` existed only in preset 0.1.0.
+Concorde-only `tldr-template` (the feature TL;DR that `speckit.specify` authors at a new feature
+root) and `design-template` (the placeholder feature `design.md`) as `replace`, and declares each of
+the nine path-sensitive command entries as `replace`, as required below. The preset and extension
+that carry the five templates, Feature Workspace Protocol v5, and Architecture Source Profile 3 are
+their 0.3.0 releases, which the bundle pins; preset 0.2.0 carried an `implementation-template`
+instead, and preset 0.1.0 a `design-template` without a TL;DR.
 
 ## Installed Command Surface Profile
 

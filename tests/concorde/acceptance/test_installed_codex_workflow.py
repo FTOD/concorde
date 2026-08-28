@@ -50,21 +50,29 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     check=True,
                 )
                 checklist_payload = json.loads(checklist_paths.stdout)
-                self.assertEqual(checklist_payload["schema_version"], 4)
+                self.assertEqual(checklist_payload["schema_version"], 5)
                 workspace_payload = checklist_payload["workspace"]
                 self.assertEqual(workspace_payload["workspace_kind"], "subfeature")
                 self.assertEqual(workspace_payload["parent_context"]["feature_id"], "feature.example.checkout")
                 self.assertEqual(
-                    workspace_payload["parent_context"]["feature_implementation"],
-                    "specs/example/features/001-checkout/implementation.md",
+                    workspace_payload["parent_context"]["feature_design"],
+                    "specs/example/features/001-checkout/design.md",
                 )
                 self.assertEqual(
-                    workspace_payload["feature_implementation"],
-                    "specs/example/features/001-checkout/subfeatures/001-authorize-payment/implementation.md",
+                    workspace_payload["parent_context"]["feature_tldr"],
+                    "specs/example/features/001-checkout/tldr.md",
+                )
+                self.assertEqual(
+                    workspace_payload["feature_design"],
+                    "specs/example/features/001-checkout/subfeatures/001-authorize-payment/design.md",
+                )
+                self.assertEqual(
+                    workspace_payload["feature_tldr"],
+                    "specs/example/features/001-checkout/subfeatures/001-authorize-payment/tldr.md",
                 )
                 self.assertEqual(workspace_payload["module_summary"], "specs/example/module.md")
                 self.assertEqual(workspace_payload["module_design"], "specs/example/design.md")
-                self.assertNotIn("feature_design", workspace_payload)
+                self.assertNotIn("feature_implementation", workspace_payload)
                 self.assertEqual(
                     workspace_payload["checklists_dir"],
                     workspace_payload["implementation_dir"] + "/checklists",
@@ -104,17 +112,17 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     harden_payload["checklist_summary"],
                     {"files": 0, "complete": 0, "incomplete": 0, "malformed": 0},
                 )
-                self.assertEqual(harden_payload["schema_version"], 4)
+                self.assertEqual(harden_payload["schema_version"], 5)
                 self.assertEqual(harden_payload["workspace"]["module_design"], "specs/example/design.md")
                 self.assertIn("specs/example/design.md", harden_payload["artifacts"])
-                # Proposal v2 with a module-reference amendment: review boundary holds until explicit apply.
+                # Proposal v3 with a module-reference amendment: review boundary holds until explicit apply.
                 before = {
                     path.relative_to(root): path.read_bytes()
                     for path in (root / "specs").rglob("*")
                     if path.is_file()
                 }
                 candidate = (
-                    "# Feature Implementation: Authorize Payment\n\n**Realization status**: Hardened in the installed fixture.\n\n"
+                    "# Feature Design Reference: Authorize Payment\n\n**Realization status**: Hardened in the installed fixture.\n\n"
                     "## Realization Overview\n\nInstalled.\n\n## Module and Feature Collaboration\n\nInstalled.\n\n"
                     "## Scenario Realization\n\nInstalled.\n\n## Durable Implementation Decisions\n\nInstalled.\n\n"
                     "## Traceability and Evidence\n\nInstalled.\n\n## Known Limitations\n\nNone.\n"
@@ -124,11 +132,11 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 proposal_path.write_text(
                     json.dumps(
                         {
-                            "proposal_version": 2,
+                            "proposal_version": 3,
                             "operation": "feature.harden",
                             "target": harden_payload["target"],
                             "source_digest": harden_payload["source_digest"],
-                            "implementation": {"path": harden_payload["workspace"]["feature_implementation"], "content": candidate},
+                            "design": {"path": harden_payload["workspace"]["feature_design"], "content": candidate},
                             "module_design": {"path": harden_payload["workspace"]["module_design"], "content": amendment},
                             "remove": [harden_payload["workspace"]["implementation_dir"]],
                         }
@@ -164,7 +172,7 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 self.assertRegex(applied_payload["module_design_digest_after"], r"^sha256:[0-9a-f]{64}$")
                 self.assertEqual((root / "specs/example/design.md").read_text(encoding="utf-8"), amendment)
                 self.assertEqual(
-                    (root / "specs/example/features/001-checkout/subfeatures/001-authorize-payment/implementation.md").read_text(encoding="utf-8"),
+                    (root / "specs/example/features/001-checkout/subfeatures/001-authorize-payment/design.md").read_text(encoding="utf-8"),
                     candidate,
                 )
                 self.assertFalse(implementation.exists())

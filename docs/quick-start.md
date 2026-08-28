@@ -30,8 +30,8 @@ Open the local address printed by Docusaurus. The site has three views over main
 - **Architecture** publishes each module summary with its embedded level view, its linked `design.md`
   design reference, boundary contracts, and declared Archify views.
 - **Documentation** publishes the explanatory guides under `docs/`.
-- **Features** publishes each durable feature `spec.md` paired with its `implementation.md` while
-  excluding its temporary `implementation/` workspace.
+- **Features** opens each feature on its `tldr.md`, with the `spec.md` and the feature `design.md`
+  as companion pages, while excluding its temporary `implementation/` workspace.
 
 Before submitting a publication change, run the complete gate:
 
@@ -149,7 +149,7 @@ components:
 
 | Installed component | Responsibility |
 |---|---|
-| `concorde-core` preset | Adds architecture-aware templates and complete selected-workspace routing for nine normal Spec Kit phases |
+| `concorde-core` preset | Adds five architecture-aware templates (including the feature TL;DR and design-reference templates) and complete selected-workspace routing for nine normal Spec Kit phases |
 | `concorde` extension | Adds five Concorde-specific surfaces: four runtime-backed operations, one read-only agent question procedure, portable adapters and launchers, and the deterministic Python runtime |
 
 Spec Kit resolves and installs those components and asks the active coding-agent integration to
@@ -183,8 +183,8 @@ agent interaction.
 
 After deciding where the feature belongs in the hierarchy, create it with the normal specify phase.
 Concorde has no feature-creation command: export the canonical feature root in the terminal before
-invoking the skill, so the Concorde specify addendum seeds `spec.md` and a placeholder
-`implementation.md` there and records the root in `.specify/feature.json`:
+invoking the skill, so the Concorde specify addendum authors `tldr.md` and `spec.md` and seeds a
+placeholder `design.md` there and records the root in `.specify/feature.json`:
 
 ```bash
 export SPECIFY_FEATURE_DIRECTORY=specs/<project>/features/001-<name>
@@ -223,9 +223,9 @@ $speckit-converge
 $speckit-concorde-validate
 ```
 
-The specification (`spec.md`) and accepted realization (`implementation.md`) stay at the feature
-root. Checklists, plans, tasks, research, and delivery evidence stay under the single active
-`implementation/` attempt.
+The TL;DR (`tldr.md`), the specification (`spec.md`), and the design reference (`design.md`) stay at
+the feature root; read them in that order. Checklists, plans, tasks, research, and delivery evidence
+stay under the single active `implementation/` attempt.
 
 ## 5. Finish the milestone deliberately
 
@@ -236,7 +236,7 @@ accept the implementation, ask the agent to harden the feature:
 $speckit-concorde-feature-harden feature.<project>.<name>
 ```
 
-The first result is a proposal, not a mutation. Review the full candidate `implementation.md`, any
+The first result is a proposal, not a mutation. Review the full candidate feature `design.md`, any
 proposed amendment to the providing module's `design.md`, the exact `implementation/` removal
 target, and the source digest. Only explicit approval applies that unchanged proposal. On success,
 the durable realization (and the amended design reference, when proposed) remains and the temporary

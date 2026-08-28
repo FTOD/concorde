@@ -91,8 +91,8 @@ class ProjectRepository:
             value = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as error:
             raise RepositoryError(f"cannot read .concorde/config.json: {error}") from error
-        if value.get("profile_version") != 2:
-            raise RepositoryError("unsupported Concorde source profile; expected profile_version 2")
+        if value.get("profile_version") != 3:
+            raise RepositoryError("unsupported Concorde source profile; expected profile_version 3")
         specification_root = value.get("specification_root")
         if not specification_root and value.get("architecture_root"):
             specification_root = value["architecture_root"]
@@ -227,11 +227,12 @@ class ProjectRepository:
                 artifacts.append(relative)
         for feature in (source for source in sources if source.kind == "feature"):
             feature_root = PurePosixPath(feature.path).parent
-            realization = self.resolve(str(feature_root / "implementation.md"))
-            if realization.is_file() and not realization.is_symlink():
-                relative = realization.relative_to(self.project_root).as_posix()
-                auxiliary[relative] = realization.read_text(encoding="utf-8")
-                artifacts.append(relative)
+            for durable_name in ("tldr.md", "design.md"):
+                durable = self.resolve(str(feature_root / durable_name))
+                if durable.is_file() and not durable.is_symlink():
+                    relative = durable.relative_to(self.project_root).as_posix()
+                    auxiliary[relative] = durable.read_text(encoding="utf-8")
+                    artifacts.append(relative)
             implementation = self.resolve(str(feature_root / "implementation"))
             if not implementation.is_dir() or implementation.is_symlink():
                 continue

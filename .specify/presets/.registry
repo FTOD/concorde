@@ -2,9 +2,9 @@
   "schema_version": "1.0",
   "presets": {
     "concorde-core": {
-      "version": "0.2.0",
+      "version": "0.3.0",
       "source": "local",
-      "manifest_hash": "sha256:de5517facf3aece6127dfa91618bf7d5ee7a661502f366d1e3c8d7333d739a5e",
+      "manifest_hash": "sha256:ad39ffa434ac6089477f7e6e079631bda6848d990f96d380dd5ebd853e5d9a7d",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
@@ -33,7 +33,7 @@
           "speckit-taskstoissues"
         ]
       },
-      "installed_at": "2026-08-27T12:57:37.923394+00:00"
+      "installed_at": "2026-08-28T10:14:58.713145+00:00"
     }
   }
 }

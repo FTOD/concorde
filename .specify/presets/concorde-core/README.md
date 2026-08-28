@@ -10,12 +10,14 @@ Concorde's selected feature and durable/temporal paths before any path-sensitive
 extension supplies that workspace adapter and seven Concorde-specific surfaces: six runtime-backed
 operations, including task-complete feature hardening, plus the agent-only, read-only `ask` procedure.
 
-A feature keeps canonical module-owned `spec.md` and `implementation.md` at `features/<number-name>/`; it may
-own one level of immediate sub-features at `subfeatures/<number-name>/`, each with a focused durable
-pair and no children. The specification defines behavior, `implementation.md` records the accepted realization (a placeholder until the first hardening), and scenarios remain
-representative examples. The providing module's `module.md` is the summary read first; its `design.md`
-is a design reference opened only for a specific recorded detail and cited. A feature-root `design.md`
-is a legacy artifact. The preset encourages
+A feature keeps the canonical module-owned trio `tldr.md`, `spec.md`, and `design.md` at
+`features/<number-name>/`; it may own one level of immediate sub-features at
+`subfeatures/<number-name>/`, each with the same focused durable trio and no children. The TL;DR is
+the self-contained page read first (purpose, functionality, structure, logic; under 15 minutes),
+the specification defines behavior, the feature `design.md` records the accepted realization (a
+placeholder until the first hardening), and scenarios remain representative examples. The providing
+module's `module.md` is the summary read first; its `design.md` is a design reference opened only for
+a specific recorded detail and cited. A feature-root `implementation.md` is a legacy artifact. The preset encourages
 descriptively named, text-backed feature-owned Archify diagrams when component interaction,
 invocation, boundary crossings, state, or data flow benefit from visual explanation. A
 cross-component feature requires one `role: core` Archify architecture view or a concise rationale
@@ -25,5 +27,5 @@ directory, is declared by `spec.md`, and is embedded
 automatically by the project docsite; generated HTML never becomes specification authority.
 
 Parent specifications own aggregate outcomes and shared constraints; sub-feature specifications own
-focused behavior and inherit the parent module. Protocol v4 routes normal phases to exactly one
+focused behavior and inherit the parent module. Protocol v5 routes normal phases to exactly one
 selected root and exposes parent durable context read-only without sibling bodies or attempts.

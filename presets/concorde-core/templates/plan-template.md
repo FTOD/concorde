@@ -17,25 +17,25 @@ references, automatic feature-page embedding, deterministic validation/delivery,
 freshness. Feature diagrams remain explanatory and must not overload the module's canonical
 `architecture.json` or become behavioral authority.
 
-Authority remains split by artifact meaning: `spec.md` owns feature behavior; `implementation.md` records the
-accepted feature realization; module `module.md` (summary) and `design.md` (design reference) plus
+Authority remains split by artifact meaning: `tldr.md` orients (a self-contained summary that never
+defines); `spec.md` owns feature behavior; the feature `design.md` records the accepted realization; module `module.md` (summary) and `design.md` (design reference) plus
 contract Markdown own architecture prose; Archify JSON owns
 view structure; code owns implementation; and tests own executable evidence.
 
-Read the root `implementation.md` as the accepted baseline and identify the proposed realization delta;
+Read the root `design.md` as the accepted baseline and identify the proposed realization delta;
 when it still holds the placeholder, record "no accepted baseline" rather than inventing one. Read the
 providing module's `module.md` as bounded context and open its `design.md` only for a specific
 recorded detail, citing it. Never
-update `implementation.md` or a module `design.md` during planning or implementation; only the explicit Concorde hardening command may
-promote a task-complete, user-approved milestone. Keep durable feature sources (`spec.md`,
-`implementation.md`, `contracts/`, and feature-owned `diagrams/`) at the feature root. Keep every
+update `tldr.md`, `spec.md`, the feature `design.md`, or a module `design.md` during planning or implementation; only the explicit Concorde hardening command may
+promote a task-complete, user-approved milestone. Keep durable feature sources (`tldr.md`, `spec.md`,
+`design.md`, `contracts/`, and feature-owned `diagrams/`) at the feature root. Keep every
 requirements-quality checklist under `implementation/checklists/`. Write this plan and its research,
 data model, runnable validation guide, and delivery evidence under the feature's `implementation/`
 directory. That directory represents one temporal delivery attempt and must not be mirrored by
 compatibility copies beside `spec.md`.
 
-When the selected root is an immediate sub-feature, also read the Protocol v4 parent `spec.md` and
-`implementation.md` only as aggregate context. Plan and write exclusively beneath the selected child root.
+When the selected root is an immediate sub-feature, also read the Protocol v5 parent `tldr.md`,
+`spec.md`, and `design.md` only as aggregate context. Plan and write exclusively beneath the selected child root.
 Sibling summaries are navigation context; sibling bodies and all parent/sibling attempts are out of
 scope unless the maintainer explicitly selects them in a separate lifecycle operation. Reject any
 plan that creates a third feature level or duplicates a parent-owned invariant as child authority.

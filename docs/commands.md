@@ -22,8 +22,8 @@ installed surfaces is defined by
 
 ## Concorde-specific operations
 
-Feature operations use Feature Workspace Protocol v4 (hardening proposal v2) over Architecture
-Source Profile 2. Features are created and selected through the
+Feature operations use Feature Workspace Protocol v5 (hardening proposal v3) over Architecture
+Source Profile 3. Features are created and selected through the
 normal Spec Kit lifecycle (see [Creating and selecting a feature](#creating-and-selecting-a-feature)
 below); Concorde adds no creation or selection command. `feature.harden` accepts either valid level
 while operating on exactly one lifecycle root. `context` reports containment summaries separately
@@ -39,12 +39,12 @@ applies to a named module or feature in the current project.
 
 The agent reads the smallest relevant installed sources under `.specify/extensions/concorde/` and
 `.specify/presets/concorde-core/`. For project-specific questions it additionally reads only the
-needed constitution, module summaries (`module.md` first), one-level architecture, contract, and
-feature specification sources; it opens a module `design.md` or a feature `implementation.md` only
-when the question asks for implementation detail, rationale, or accepted realization, and cites
-each file it opens. Its Markdown answer cites project-relative paths and distinguishes framework
-rules, project observations, inference, and uncertainty. Ambiguous questions receive one focused
-clarification instead of guessed project facts.
+needed constitution, module summaries (`module.md`) and feature TL;DRs (`tldr.md`) first, then
+one-level architecture and contract sources; it opens a `spec.md` only for a requirement's exact
+wording and a module or feature `design.md` only when the question asks for implementation detail,
+rationale, or accepted realization, and cites each file it opens. Its Markdown answer cites
+project-relative paths and distinguishes framework rules, project observations, inference, and
+uncertainty. Ambiguous questions receive one focused clarification instead of guessed project facts.
 
 Unlike the four operations below, `ask` invokes no launcher or Python runtime. It never changes
 selection, files, generated output, or lifecycle state, and a recommended command remains advice
@@ -53,7 +53,7 @@ until you invoke it separately.
 ### `$speckit-concorde-init`
 
 Use once when a Spec Kit project has no Concorde root architecture. It proposes four files:
-`.concorde/config.json` (Architecture Source Profile 2), a `module.md` summary in the required
+`.concorde/config.json` (Architecture Source Profile 3), a `module.md` summary in the required
 shape, a seeded `design.md` design reference, and the `architecture.json` one-level view, plus any
 accepted initial contracts. Review the proposal before approval; it does not silently overwrite
 existing maintained content.
@@ -66,8 +66,8 @@ meaningful responsibility and boundary.
 Use before deciding feature ownership, reviewing a boundary, or giving an agent architectural
 context for implementation. A module target returns that module and its immediate level, with
 `summary`, `design_reference`, and `view` paths as navigation references; it never expands the body
-of a module `design.md` or a feature `implementation.md`. A feature target resolves through its
-providing module and additionally returns feature workspace paths (including `implementation.md`),
+of a module or feature `design.md`. A feature target resolves through its providing module and
+additionally returns feature workspace paths (`tldr.md`, `spec.md`, `design.md`, and the attempt),
 declared diagrams, relevant contract content, evidence, and architecture readiness.
 
 The runtime output is automatically available to the agent that invoked the skill. The operation is
@@ -105,8 +105,9 @@ Then, in the agent conversation:
 $speckit-specify Describe the feature's required behavior and why it matters.
 ```
 
-The Concorde specify addendum seeds `spec.md` and the adjacent placeholder `implementation.md`, which
-states that no realization has been hardened yet, and persists the root to `.specify/feature.json`. Record the
+The Concorde specify addendum authors `tldr.md` and `spec.md` and seeds the adjacent placeholder
+`design.md`, which states that no realization has been hardened yet, and persists the root to
+`.specify/feature.json`. Record the
 feature's identity and placement in the spec front matter (`id`, `module`, and `parent_feature` for
 a sub-feature), register it in the module's `features` list (or the parent's `subfeatures` list),
 then run `$speckit-concorde-validate`. Validation deterministically checks registration, canonical
@@ -116,9 +117,9 @@ Selection is plain Spec Kit selection: `.specify/feature.json` `feature_director
 specify or set explicitly with `export SPECIFY_FEATURE_DIRECTORY=<feature root>` (the standard Spec
 Kit scripts persist it). Concorde adds no selection command and no second selection store. Before
 every normal phase the Concorde workspace adapter resolves and validates the selected root: safe
-path, canonical `spec.md`/`implementation.md` pair with no legacy `design.md`, workspace kind,
-parent context and sibling summaries for a sub-feature, durable and temporal paths, the providing
-module's `module.md` and `design.md` as navigation references, and `implementation_state`. A non-empty
+path, canonical `tldr.md`/`spec.md`/`design.md` trio with no legacy `implementation.md`, workspace
+kind, parent context and sibling summaries for a sub-feature, durable and temporal paths, the
+providing module's `module.md` and `design.md` as navigation references, and `implementation_state`. A non-empty
 `implementation/` attempt appears as `implementation_state: active`; there is no separate resume
 step—decide whether to continue that attempt or harden or archive it.
 
@@ -135,40 +136,48 @@ valid sources as proof of implementation agreement.
 Beyond identity, hierarchy, contract, scenario, view, and evidence rules, it checks the module
 summary shape (required sections, a structure link to the level view or a leaf rationale, inventory
 tables, a reachable design reference), the reading budget (`CONCORDE-SUMMARY-005`, a warning that
-never changes the status), the presence of a real `design.md` beside every `module.md`
-(`CONCORDE-MODULE-002`), and feature-root document pairing: a missing `implementation.md`
-(`CONCORDE-LAYOUT-005`), a legacy feature-root `design.md` (`CONCORDE-LAYOUT-007`), or both names
-present (`CONCORDE-LAYOUT-008`).
+never changes the status), and the presence of a real `design.md` beside every `module.md`
+(`CONCORDE-MODULE-002`). At each feature root it checks the TL;DR shape—exactly the five sections
+in order (`CONCORDE-TLDR-001`), a structure link or inline sketch (`CONCORDE-TLDR-002`), and
+`Logic` rules citing requirement IDs that exist in `spec.md` (`CONCORDE-TLDR-003`)—its reading
+budget (`CONCORDE-TLDR-004`, a warning), and the durable trio: a missing `design.md`
+(`CONCORDE-LAYOUT-005`), a legacy feature-root `implementation.md` (`CONCORDE-LAYOUT-007`; rename it
+to `design.md`), both names present (`CONCORDE-LAYOUT-008`), or a missing `tldr.md`
+(`CONCORDE-LAYOUT-009`).
 
 ### `$speckit-concorde-feature-harden [feature-id-or-root]`
 
 Use only when the selected implementation attempt is task-complete, all existing checklist items are
 satisfied, evidence has been reviewed, and the maintainer accepts the result as a milestone.
 
-The skill first asks the runtime for eligibility, then the agent drafts the candidate durable
-`implementation.md` and, when the attempt produced implementation detail or rationale worth keeping,
-a full replacement `design.md` for the providing module. The runtime returns the digest-bound
-proposal location and exact cleanup target; the digest covers the current module `design.md`.
-Nothing is changed until the maintainer explicitly approves those exact bytes and paths. Successful
-apply writes `implementation.md`, amends `design.md` when proposed, and removes the complete
-`implementation/` directory as one atomic operation, reporting digests for both documents; stale or
-unsafe proposals change nothing, and `module.md` is never edited.
+The skill first asks the runtime for eligibility, then the agent drafts the candidate feature
+`design.md` and, when the attempt produced implementation detail or rationale worth keeping, a full
+replacement `design.md` for the providing module. The runtime returns the digest-bound proposal
+location and exact cleanup target; the digest covers the current module `design.md`. Nothing is
+changed until the maintainer explicitly approves those exact bytes and paths. Successful apply
+writes the feature `design.md`, amends the module `design.md` when proposed, and removes the
+complete `implementation/` directory as one atomic operation, reporting digests for both documents;
+stale or unsafe proposals change nothing, and `tldr.md`, `spec.md`, and `module.md` are never
+edited.
 
 ## Normal Spec Kit phases under Concorde
 
 The `concorde-core` preset replaces the agent instructions for these phases so selected-workspace
 resolution happens before any phase can choose a legacy flat path. It does not create a second
-planning or implementation engine.
+planning or implementation engine. It also carries five templates: `spec-template`, `plan-template`,
+and `tasks-template` append Concorde guidance to Spec Kit's own templates, while `tldr-template` and
+`design-template` are whole feature documents that `specify` resolves with
+`specify preset resolve <name>`; they have no composed mirror under `.specify/templates/`.
 
 | Skill | Run it when | Concorde path behavior |
 |---|---|---|
-| `$speckit-specify` | Creating or revising required behavior and representative scenarios | Updates root `spec.md`; seeds a placeholder `implementation.md` for a new root and preserves an existing one byte-for-byte; review state goes under `implementation/checklists/` |
-| `$speckit-clarify` | Important behavioral ambiguity remains before planning | Updates durable specification answers; keeps checklist state temporary |
-| `$speckit-checklist` | You need a requirements-quality review focused on a domain such as contracts, security, or UX | Reads durable context and writes only `implementation/checklists/*.md` |
-| `$speckit-plan` | Behavior and architectural boundaries are ready for one implementation proposal | Reads root `spec.md` and `implementation.md` with the module `module.md` as bounded context (module `design.md` only deliberately); writes plan artifacts under `implementation/` |
+| `$speckit-specify` | Creating or revising required behavior and representative scenarios | Authors root `tldr.md` and `spec.md` together; seeds a placeholder `design.md` for a new root and preserves an existing one byte-for-byte; review state goes under `implementation/checklists/` |
+| `$speckit-clarify` | Important behavioral ambiguity remains before planning | Encodes answers into `spec.md` and updates the TL;DR wherever it summarized the changed behavior; keeps checklist state temporary |
+| `$speckit-checklist` | You need a requirements-quality review focused on a domain such as contracts, security, or UX | Reads durable context, the TL;DR included, and writes only `implementation/checklists/*.md` |
+| `$speckit-plan` | Behavior and architectural boundaries are ready for one implementation proposal | Reads root `spec.md` and the feature `design.md` with the module `module.md` as bounded context (the TL;DR orients only; module `design.md` only deliberately); writes plan artifacts under `implementation/` |
 | `$speckit-tasks` | The plan is ready to become dependency-ordered executable work | Writes `implementation/tasks.md` |
-| `$speckit-analyze` | Tasks exist and you want a read-only consistency check before coding | Compares durable spec/implementation with the active plan/tasks; does not edit them |
-| `$speckit-implement` | The reviewed plan and tasks are ready to execute | Works from the selected durable sources and active attempt |
+| `$speckit-analyze` | Tasks exist and you want a read-only consistency check before coding | Compares the durable trio with the active plan/tasks, reporting any TL;DR statement that `spec.md` does not make; does not edit them |
+| `$speckit-implement` | The reviewed plan and tasks are ready to execute | Works from the selected durable sources, with the feature `design.md` as the accepted baseline, and the active attempt |
 | `$speckit-converge` | Code exists and you need to discover what remains unbuilt | Assesses code against intent and appends missing work to the same tasks file |
 | `$speckit-taskstoissues` | The active work should be executed as external issues | Converts the selected attempt's tasks without changing their authority |
 

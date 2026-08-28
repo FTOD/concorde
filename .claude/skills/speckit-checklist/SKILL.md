@@ -54,17 +54,20 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase checklist` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v4 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+Require Protocol v5 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
 recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_implementation` only as aggregate durable context. Never load a
+read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
 sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 Bind `CHECKLISTS_DIR` to the returned `workspace.checklists_dir`; never derive it from `FEATURE_DIR`.
+The selected root's TL;DR (`workspace.feature_tldr`) is in scope for requirements-quality review: a
+checklist may check its five-section shape, its reading budget, that every `Logic` rule cites `FR-NNN`
+IDs defined in `spec.md`, and that it states nothing `spec.md` does not.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
 step says to run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase checklist`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`

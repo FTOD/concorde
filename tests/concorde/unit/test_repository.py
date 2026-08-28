@@ -63,22 +63,23 @@ class RepositoryTests(unittest.TestCase):
                 ProjectRepository(root).resolve("link/file.md")
 
     def test_rejects_unsupported_profile_version(self):
-        for version in (99, 1):
+        for version in (99, 1, 2):
             with tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 (root / ".concorde").mkdir()
                 (root / ".concorde/config.json").write_text(
                     '{"profile_version":%d,"specification_root":"specs/example","root_module_id":"module.example"}' % version
                 )
-                with self.assertRaisesRegex(RepositoryError, "expected profile_version 2"):
+                with self.assertRaisesRegex(RepositoryError, "expected profile_version 3"):
                     ProjectRepository(root).load_config()
 
-    def test_discovers_module_design_reference_and_feature_implementation_as_durable_auxiliary(self):
+    def test_discovers_module_and_feature_design_references_and_tldrs_as_durable_auxiliary(self):
         package = ProjectRepository(VALID_PROJECT).load()
         self.assertIn("specs/example/design.md", package.auxiliary)
         self.assertIn("specs/example/modules/api/design.md", package.auxiliary)
-        self.assertIn("specs/example/features/001-deliver/implementation.md", package.auxiliary)
-        self.assertNotIn("specs/example/features/001-deliver/design.md", package.auxiliary)
+        self.assertIn("specs/example/features/001-deliver/design.md", package.auxiliary)
+        self.assertIn("specs/example/features/001-deliver/tldr.md", package.auxiliary)
+        self.assertNotIn("specs/example/features/001-deliver/implementation.md", package.auxiliary)
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(VALID_PROJECT, root)

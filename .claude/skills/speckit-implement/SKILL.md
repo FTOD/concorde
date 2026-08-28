@@ -24,14 +24,14 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase implement` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
 `workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v4 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+Require Protocol v5 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
 recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_implementation` only as aggregate durable context. Never load a
+read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
 sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 Bind `CHECKLISTS_DIR` to the returned `workspace.checklists_dir`; never derive it from `FEATURE_DIR`.
@@ -82,7 +82,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Outline
 
-1. Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase implement` from repo root and parse FEATURE_DIR, IMPLEMENTATION_DIR, FEATURE_SPEC, FEATURE_IMPLEMENTATION, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase implement` from repo root and parse FEATURE_DIR, IMPLEMENTATION_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
 2. **Check checklists status** (if `CHECKLISTS_DIR/` exists):
    - Treat checklist markers as a read-only gate: scan checkbox state, report status, and ask before proceeding when needed; do NOT modify checklist files or markers
@@ -119,13 +119,13 @@ For `checklist`, resolve `checklist-template` separately through the same public
      - Automatically proceed to step 3
 
 3. Load and analyze the implementation context:
-   - **REQUIRED**: Read FEATURE_SPEC for behavioral authority and FEATURE_IMPLEMENTATION for the accepted
+   - **REQUIRED**: Read FEATURE_SPEC for behavioral authority and FEATURE_DESIGN for the accepted
      realization baseline (the placeholder means no accepted baseline). Implement the plan's delta
-     without editing `implementation.md` or any module `module.md`/`design.md`; promotion belongs
+     without editing `tldr.md`, `spec.md`, the feature `design.md`, or any module `module.md`/`design.md`; promotion belongs
      only to the explicit Concorde feature-hardening command after all tasks are complete. Record
      rationale, alternatives, and implementation detail discovered during execution inside the
      attempt (`IMPLEMENTATION_DIR/research.md` or `IMPLEMENTATION_DIR/validation.md`) so hardening
-     can carry them into `implementation.md` and the module `design.md`.
+     can carry them into the feature `design.md` and the module `design.md`.
    - **REQUIRED**: Read TASKS (`IMPLEMENTATION_DIR/tasks.md`) for the complete task list and execution plan
    - **REQUIRED**: Read IMPL_PLAN (`IMPLEMENTATION_DIR/plan.md`) for tech stack, architecture, and file structure
    - **IF EXISTS**: Read `IMPLEMENTATION_DIR/data-model.md` for entities and relationships

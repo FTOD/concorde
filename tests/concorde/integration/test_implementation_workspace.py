@@ -40,6 +40,37 @@ class ImplementationWorkspaceIntegration(unittest.TestCase):
         self.assertFalse((feature_root / "plan.md").exists())
         self.assertFalse((feature_root / "tasks.md").exists())
         self.assertFalse((feature_root / "checklists").exists())
+        self.assertEqual(paths["FEATURE_DESIGN"], str(feature_root / "design.md"))
+        self.assertNotIn("FEATURE_IMPLEMENTATION", paths)
+
+    def test_resume_after_hardening_starts_a_fresh_attempt_from_the_trio(self):
+        import sys
+        import tempfile
+        from pathlib import Path
+
+        from tests.concorde.support.feature_workspace import write_hardened_root, write_selection
+        from tests.concorde.support.paths import RUNTIME_ROOT
+
+        sys.path.insert(0, str(RUNTIME_ROOT))
+        from concorde.feature_workspace import resolve_phase_paths  # noqa: E402
+        from concorde.validation.layout import FORBIDDEN_ROOT_FILES  # noqa: E402
+
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary)
+            root = write_hardened_root(project, "specs/example/features/001-deliver", "feature.example.deliver")
+            write_selection(project, "specs/example/features/001-deliver")
+            hardened = resolve_phase_paths(project, "specs/example/features/001-deliver")
+            self.assertEqual(hardened.implementation_state, "absent")
+            self.assertEqual(hardened.feature_tldr, "specs/example/features/001-deliver/tldr.md")
+            self.assertEqual(hardened.feature_design, "specs/example/features/001-deliver/design.md")
+            self.assertIn("Hardened fixture milestone", (root / "design.md").read_text(encoding="utf-8"))
+            (root / "implementation").mkdir()
+            (root / "implementation/plan.md").write_text("# Plan\n", encoding="utf-8")
+            resumed = resolve_phase_paths(project, "specs/example/features/001-deliver")
+            self.assertEqual(resumed.implementation_state, "active")
+            self.assertEqual(resumed.plan, "specs/example/features/001-deliver/implementation/plan.md")
+            self.assertEqual((resumed.feature_tldr, resumed.feature_spec, resumed.feature_design), (hardened.feature_tldr, hardened.feature_spec, hardened.feature_design))
+            self.assertFalse(any((root / name).exists() for name in FORBIDDEN_ROOT_FILES))
 
 
 if __name__ == "__main__":

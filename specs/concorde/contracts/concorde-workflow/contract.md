@@ -36,7 +36,7 @@ normal Spec Kit lifecycle remains authoritative for behavioral delivery.
 The deterministic Architecture Core boundary uses Concorde Architecture Service Protocol v1. Its
 normative schema is linked in the front matter, and representative context and validation values are
 maintained with Feature 001. Feature placement and selection use the separately owned
-`contract.integration.feature-workspace` and its Concorde Feature Workspace Protocol v4; normal
+`contract.integration.feature-workspace` and its Concorde Feature Workspace Protocol v5; normal
 behavioral phases retain Spec Kit's standard contracts. Together these boundaries pass:
 
 - the requested operation and stable module, feature, or project-relative target;
@@ -54,7 +54,7 @@ presentation never changes either contract.
 
 - Initialization MUST separate a reviewable proposal from explicit accepted application.
 - Feature work MUST resolve one nested canonical Spec Kit workspace under its providing module.
-- That workspace MUST keep the durable pair (`spec.md` and `implementation.md`) and `contracts/` at
+- That workspace MUST keep the durable trio (`tldr.md`, `spec.md`, and `design.md`) and `contracts/` at
   its feature root and one active delivery attempt (`checklists/`, `plan.md`, `tasks.md`, research,
   data model, validation/run guides, and implementation evidence) under `implementation/`.
 - A completed implementation MAY be frozen, archived, or removed after acceptance without changing

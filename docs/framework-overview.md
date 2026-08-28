@@ -21,9 +21,10 @@ Concorde therefore makes five things explicit and reviewable:
 The normative definition is [Feature 001](../specs/concorde/features/001-concorde-workflow/spec.md).
 
 The installed `speckit.concorde.ask` surface makes that framework discoverable from inside the agent
-conversation. It answers from version-aligned extension/preset guidance and relevant maintained
-project sources, labels its basis and uncertainty, and is strictly read-only. It complements rather
-than replaces deterministic `context`/`validate` operations or normal Spec Kit delivery phases.
+conversation. It answers from version-aligned extension/preset guidance, module summaries, and
+feature TL;DRs first, opens deeper sources only deliberately and with citation, labels its basis and
+uncertainty, and is strictly read-only. It complements rather than replaces deterministic
+`context`/`validate` operations or normal Spec Kit delivery phases.
 
 ## Two ideas combined
 
@@ -45,8 +46,8 @@ pretending they are the same authority.
 ## The model: modules provide features
 
 Features have one optional decomposition level. A large correlated feature may own immediate
-sub-features with focused specifications and accepted realizations, but those children remain subordinate to the parent,
-inherit its module, and cannot contain more children. This is not module-level feature refinement:
+sub-features, each with its own TL;DR, specification, and design reference, but those children
+remain subordinate to the parent, inherit its module, and cannot contain more children. This is not module-level feature refinement:
 containment simplifies behavioral documentation inside one feature, while `refines` explains
 realization across adjacent architecture levels.
 
@@ -72,7 +73,8 @@ Large systems require abstraction. At one Concorde architecture level, a maintai
 - permitted external actors or systems;
 - the organization of those visible participants;
 - contract-governed interactions for current-level scenarios; and
-- navigation references to the level's summary, design reference, and view, never their bodies.
+- navigation references to the level's summary, design reference, and view, and to each feature's
+  TL;DR, never their bodies.
 
 Child feature bodies, grandchildren, classes, and deeper implementation details remain hidden. When
 the maintainer deliberately zooms into a child, that child becomes the current module and the same
@@ -89,13 +91,18 @@ decision.
 | What must the feature do, and why? | Feature `spec.md` |
 | Which module owns it, what are its boundaries, and how are immediate children organized? | `module.md` (the module summary), module contracts, and `architecture.json` |
 | Why is the level built this way, how is it implemented, and what was tried and rejected? | Module `design.md` (the design reference), consulted deliberately and never read implicitly |
-| How does the accepted implementation realize this feature across those boundaries? | Feature `implementation.md` |
+| How does the accepted implementation realize this feature across those boundaries? | Feature `design.md` (the feature design reference), needed only when writing the code or fixing a bug |
 | What exists and has been demonstrated? | Code, tests, and explicit evidence references |
+
+A feature's `tldr.md` is not a sixth authority but the read-first orientation over the feature: a
+self-contained quick understanding of its purpose, functionality, structure, and logic that
+summarizes `spec.md` and never defines beyond it. Read it first; open `spec.md` for a requirement's
+exact wording and `design.md` only to write the code.
 
 The current plan, task list, checklist state, research, and validation notes are useful during a
 delivery attempt, but they are not permanent intent. Concorde keeps them in `implementation/` and
-requires an explicit hardening decision before accepted realization knowledge enters
-`implementation.md` or attempt-derived rationale enters the module's `design.md`.
+requires an explicit hardening decision before accepted realization knowledge enters the feature
+`design.md` or attempt-derived rationale enters the module's `design.md`.
 
 ## What Concorde adds to Spec Kit
 
