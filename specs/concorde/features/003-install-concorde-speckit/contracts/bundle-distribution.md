@@ -41,7 +41,7 @@ The bundle pins the exact preset and extension versions it has passed acceptance
 | Preset | Composes templates and overrides existing lifecycle command instructions. It introduces no new runtime command namespace and owns no runtime; Spec Kit registers the resolved command layer. |
 | Extension | Actively supplies five Concorde-specific command intents: four invoke the selected-workspace adapter or deterministic runtime, while `ask` is agent-followed, source-grounded, and read-only. |
 | Active integration | Materializes both resolved normal-command overrides and Concorde-specific commands using agent-native presentation and invocation syntax; it does not own behavior or path semantics. |
-| Architecture Core / workspace runtime | Own deterministic initialization, bounded context, validation, feature workspace, and hardening behavior behind the extension commands. |
+| Architecture Core / workspace runtime | Own deterministic initialization, bounded context, validation, feature workspace, and acceptance behavior behind the extension commands. |
 
 The root platform and workflow-composition contracts own this cross-module meaning. This distribution
 contract specializes it for packaging, catalog resolution, and lifecycle behavior.
@@ -91,8 +91,8 @@ preset stack. It does not force every entry inside that preset to use append com
 Concorde-only `abstract-template` (the feature abstract that `speckit.specify` authors at a new feature
 root) and `implementation-template` (the placeholder feature `design.md`) as `replace`, and declares each of
 the nine path-sensitive command entries as `replace`, as required below. The preset and extension
-that carry the six templates, Feature Workspace Protocol v6, and Architecture Source Profile 4 are
-their 0.3.0 releases, which the bundle pins; preset 0.2.0 carried an `implementation-template`
+that carry the six templates, Feature Workspace Protocol v7, and Architecture Source Profile 4 are
+their 0.4.0 releases, which the bundle pins; preset 0.2.0 carried an `implementation-template`
 instead, and preset 0.1.0 a `implementation-template` without a abstract.
 
 ## Installed Command Surface Profile
@@ -105,7 +105,7 @@ The released preset owns Concorde's modifications to these existing Spec Kit com
 | Temporal implementation workspace | `speckit.checklist`, `speckit.plan`, `speckit.tasks`, `speckit.implement`, `speckit.analyze`, `speckit.converge`, `speckit.taskstoissues` | Resolve the selected feature's single active `attempt/` directory before writing checklists, plan, task, research, implementation-model, or delivery evidence. |
 
 The released extension owns these five new command intents: `speckit.concorde.init`,
-`speckit.concorde.feature.harden`, `speckit.concorde.context`, `speckit.concorde.validate`, and
+`speckit.concorde.feature.accept`, `speckit.concorde.context`, `speckit.concorde.validate`, and
 `speckit.concorde.ask`. The first four are runtime-backed; `ask` is an agent-followed read-only
 procedure with no launcher or runtime verb. Feature creation and selection are standard Spec Kit
 behavior (`speckit.specify` with `SPECIFY_FEATURE_DIRECTORY`, and `.specify/feature.json`) that the

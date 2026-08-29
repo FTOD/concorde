@@ -16,7 +16,7 @@ the level views under `architecture/diagrams/`, and the contract documents under
   implement, analyze, converge) carry a byte-identical Reflection Recording block.
 - `extensions/concorde/` holds the active capability package: five command definitions
   (`speckit.concorde.init`, `speckit.concorde.context`, `speckit.concorde.validate`,
-  `speckit.concorde.feature.harden`, and the agent-only `speckit.concorde.ask`), the portable
+  `speckit.concorde.feature.accept`, and the agent-only `speckit.concorde.ask`), the portable
   launchers `extensions/concorde/scripts/bash/concorde.sh`,
   `extensions/concorde/scripts/powershell/concorde.ps1`, and
   `extensions/concorde/scripts/python/concorde.py`, the selected-workspace adapter
@@ -42,7 +42,7 @@ the level views under `architecture/diagrams/`, and the contract documents under
   records the Architecture Source Profile in force (Profile 4).
 - `specs/concorde/reflections.md` is the project's one reflection log (Feature 005): a maintained
   source beside this level's summary, appended to by every phase after specification, read by
-  validation, context, the workspace adapter, and hardening, never removed, and not published.
+  validation, context, the workspace adapter, and acceptance, never removed, and not published.
 
 ### Launcher and runtime model
 
@@ -57,9 +57,9 @@ and safe path classification, `feature_workspace.py` and `cli.py` own workspace 
 paths, `initialize.py`, `context.py`, `readiness.py`, and `validate.py` own the deterministic
 operations, `validation/` holds the rule families (hierarchy, layout, summary, abstract, reflections,
 contracts, scenarios, evidence, freshness), `reflections.py` is the single parser of the project
-reflection log shared by validation, context, the adapter, and hardening, and
-`feature_hardening.py` owns approval-gated, atomic hardening, including the reflection citation gate
-(`CONCORDE-HARDEN-011/012`).
+reflection log shared by validation, context, the adapter, and acceptance, and
+`feature_acceptance.py` owns approval-gated, atomic acceptance, including the reflection citation gate
+(`CONCORDE-ACCEPT-011/012`).
 
 ### Spec Kit ecosystem placement
 
@@ -121,8 +121,8 @@ The log's grammar is normative in
 `specs/concorde/features/005-record-workflow-reflections/contracts/reflection-log.md`. Its runtime
 realization is documented in that feature's `design.md`; at this level the durable facts are:
 the log joins `package.auxiliary` and every source digest, so any operation that reviewed it
-conflicts when it changes; `reflections` and `reflections_open` are additive Protocol v6 fields
-and `reflection_summary` an additive `feature.harden` response field, all optional in the schemas
+conflicts when it changes; `reflections` and `reflections_open` are additive Protocol v7 fields
+and `reflection_summary` an additive `feature.accept` response field, all optional in the schemas
 and always emitted; `analyze` holds the workflow's one explicit exception to its read-only rule
 (appending to the log); and the docsite excludes the log as a non-canonical artifact, so abstracts and
 summaries name it as a code span.
@@ -152,19 +152,19 @@ summaries name it as a code span.
   feature selection, public preset command composition, bounded active-feature context with
   navigation references, architecture readiness, contract example conformance, evidence
   disagreement, freshness normalization, deterministic validation including the summary, abstract,
-  implementation, and feature-root trio rules, and atomic hardening (proposal v4) with an optional
+  implementation, and feature-root trio rules, and atomic acceptance (proposal v5) with an optional
   module-reference amendment: 231 Python tests and 68 docsite tests pass, `speckit.concorde.validate`
   on this repository returns `success` with zero findings, the production build publishes Manifest
   v8 with abstract, feature-design, feature-implementation, and module-design pages (module pages
   carrying every diagram of their level), and all eight
   declared views deliver with 9/9 showcase checks (2026-08-29). Its human placement, mental-model,
   and final review evidence remains pending.
-- Self-host status is `current` under the codex integration records (receipt 2026-08-28, sources
-  0.3.0); under the checkout's active `claude` integration the codex-only tooling reports `unknown`.
+- Self-host status must be refreshed for the 0.4.0 source set under the supported Codex integration;
+  under the checkout's active `claude` integration the codex-only tooling reports `unknown`.
 - All five module summaries are within the reading budget (392–1,273 body words) and all twenty
   feature abstracts are within theirs (at most 1,358 body words).
 - Feature 005 (project reflection log) is implemented and verified: 231 Python tests pass
-  including the parser, rule, context, workspace, contract, hardening-gate, and composition cases;
+  including the parser, rule, context, workspace, contract, acceptance-gate, and composition cases;
   `speckit.concorde.validate` on this repository returns `success` with the log present; the root
   view shows five root features and passes 9/9 showcase checks; the docsite validates 99 pages
   with 0 errors (2026-08-28). Its manual phase-run acceptance and the browser review of its core
@@ -198,7 +198,7 @@ instead of tooling picking a winner. Five fixed sections, a structure link or sk
 citations in `Logic` make the shape deterministic to check while faithfulness stays a review
 judgment; the 3,000-word budget is a warning, like the summary's, because length is a review
 responsibility rather than a validity condition. Only the specify and clarify phases write it, so a
-hardening cannot silently drift the page a reader trusts first.
+acceptance cannot silently drift the page a reader trusts first.
 
 ### Why Spec Kit is the host
 
@@ -209,7 +209,7 @@ extension through the active coding-agent integration reuses that lifecycle, kee
 and selection as standard Spec Kit behavior, and lets a maintainer install, verify, update, and
 remove Concorde with the tools they already use.
 
-### Why deterministic validation and approval-gated hardening
+### Why deterministic validation and approval-gated acceptance
 
 Maintained sources are the only authorities, so their integrity has to be checkable without
 judgment: validation is read-only, reports every independently detectable finding in deterministic
@@ -219,10 +219,10 @@ which keeps an implementation attempt from silently rewriting accepted realizati
 rationale. Generated views, sites, catalogs, receipts, and manifests are reproducible evidence, not
 intent.
 
-### Why hardening may amend the module reference
+### Why acceptance may amend the module reference
 
 Ideas, alternatives, and implementation detail are produced while an attempt is in progress, but
-the attempt's files are removed when it is hardened. Letting the same reviewed, digest-bound
+the attempt's files are removed when it is accepted. Letting the same reviewed, digest-bound
 proposal carry that material into the providing module's `design.md` keeps it durable without
 opening a second write path: nothing else in the workflow writes a module reference, the proposal
 replaces the whole file so review sees exactly what will exist, the source digest covers the current
@@ -236,7 +236,7 @@ another feature's realization, a module boundary, a contract, an installed instr
 so a per-feature or per-attempt record scatters the same problem across roots and deletes it with
 the attempt (reflection R-004). One maintained file at the specification root, with every entry
 naming the feature that was being worked on and the source it concerns, is visible from the level
-where everything it can concern is visible, survives every attempt, and lets hardening prove that a
+where everything it can concern is visible, survives every attempt, and lets acceptance prove that a
 design reference is honest about open problems by citing their identifiers instead of moving
 entries around. Recording rides on the existing phases and no new command, because a surface that
 must be invoked separately would not be used at the moment the problem is met.
@@ -309,7 +309,7 @@ without expanding the canonical structure.
   rejected because the feature page must open on what is read first.
 - Checking that every `Logic` bullet cites a requirement was rejected in favour of a section-level
   citation check; the flow list in `Logic` is not a rule list.
-- Diff or patch semantics for hardening proposals were rejected in favour of full-content
+- Diff or patch semantics for acceptance proposals were rejected in favour of full-content
   replacement so apply stays byte-exact, reviewable, and digest-bound; two sequential single-file
   applies were rejected because a failure between them leaves the non-atomic state the workflow
   forbids.
@@ -330,12 +330,12 @@ without expanding the canonical structure.
   resolver instead.
 - Relaxing Docusaurus's `onBrokenLinks` to a warning was rejected in favour of `pathname://` view
   links so broken references keep failing the build.
-- A per-attempt reflection log under `attempt/` with a per-entry disposition at hardening
+- A per-attempt reflection log under `attempt/` with a per-entry disposition at acceptance
   (the first draft of Feature 005) was rejected on 2026-08-28: it could not hold problems about
   other features' implementations and vanished with the attempt (R-004). `.concorde/` as the log's
   home was rejected because that directory holds control state and receipts, not maintained intent.
-- A `reflections` block in the hardening proposal was rejected once nothing is deleted at
-  hardening; the citation gate on the candidate's content proves the same thing with no proposal
+- A `reflections` block in the acceptance proposal was rejected once nothing is deleted at
+  acceptance; the citation gate on the candidate's content proves the same thing with no proposal
   change.
 - Creating the log eagerly at `speckit.concorde.init` was deferred; the first phase that records
   seeds it from `reflections-template`, so the read-only adapter and the runtime gained no writer.
@@ -361,22 +361,22 @@ without expanding the canonical structure.
   paths moved to `architecture/diagrams/level-view.json` and `architecture/contracts/`. The
   constitution was amended to 2.1.0 in the same change.
 - 2026-08-29 — Adopted the feature-root `abstract.md` / `design.md` / `implementation.md` trio and
-  temporal `attempt/` directory. Protocol v6, proposal v4, `CONCORDE-ABSTRACT-*`, Build Manifest v7,
+  temporal `attempt/` directory. Protocol v7, proposal v5, `CONCORDE-ABSTRACT-*`, Build Manifest v7,
   runtime fields, templates, installed helpers, publication routes, fixtures, documentation, and all
   existing feature roots were migrated together; module `design.md` remained unchanged.
-- 2026-08-28 — Hardened the first milestone of `feature.concorde.record-workflow-reflections`: one
+- 2026-08-28 — Accepted the first milestone of `feature.concorde.record-workflow-reflections`: one
   project reflection log at `specs/concorde/reflections.md` with the Concorde Reflection Log v1
   grammar; `reflections-template` (six preset templates at 0.3.0); a byte-identical Reflection
   Recording block in the five phase instructions after specification; runtime parser, rule family
   `CONCORDE-REFLECT-001..004`, per-feature `reflections_open` in workspace results and bounded
-  context, `reflection_summary` and the citation gate `CONCORDE-HARDEN-011/012` in hardening;
+  context, `reflection_summary` and the citation gate `CONCORDE-ACCEPT-011/012` in acceptance;
   additive Protocol v5 and Architecture Service v1 fields; the root view gains the fifth root
   feature. Planned work recorded in the log: `claude` support in the self-hosting tooling (R-001),
   one rule for `module.md` edits during an attempt (R-002), a root-view column order that can draw
   both realizing modules (R-005), reconciling the execute-and-reconcile sub-feature's read-only
   analysis with the log's one permitted write (R-006), and a specify-guidance rule on abstract link
   targets (R-007).
-- 2026-08-28 — Hardened the three-tier document-model attempt of `feature.concorde.workflow`:
+- 2026-08-28 — Accepted the three-tier document-model attempt of `feature.concorde.workflow`:
   Profile 3, Protocol v5, proposal v3, and Manifest v6 are in force; every feature root owns
   `abstract.md`, `design.md`, and `implementation.md` (the accepted realization, formerly `implementation.md`);
   `design.md` means the design reference at every level; the preset carries `abstract-template` and
@@ -387,17 +387,17 @@ without expanding the canonical structure.
   written against the previous model, `FR-NNN` numbering in the five module-level feature
   specifications, publication of feature-root contract documents, and `claude` support in the
   self-hosting tooling.
-- 2026-08-27 — Hardened the document-model attempt of `feature.concorde.workflow`: Profile 2,
+- 2026-08-27 — Accepted the document-model attempt of `feature.concorde.workflow`: Profile 2,
   Protocol v4, proposal v2, and Manifest v5 are in force; the repository's twenty feature roots own
   `implementation.md`, its five modules own `design.md`, all five summaries are in the required
-  shape, and this reference received its first hardening amendment (the host-integration and mirror
+  shape, and this reference received its first acceptance amendment (the host-integration and mirror
   findings above). Deferred: leaf-module level views, other roots' accepted realizations still
   written against the previous model, the comprehension pilot, and `claude` support in the
   self-hosting tooling.
 - 2026-08-27 — Adopted the module summary / design reference split and renamed feature design.md to
   implementation.md (feature.concorde.workflow). Decisions recorded in the attempt's research:
   Feature Workspace Protocol v3 to v4 with `feature_implementation`, `module_summary`, and
-  `module_design` paths (R-01); hardening proposal v1 to v2 carrying `implementation` and optional
+  `module_design` paths (R-01); acceptance proposal v1 to v2 carrying `implementation` and optional
   full-content `module_design`, digest-bound to the module reference (R-02); atomic multi-file
   staging with full rollback (R-03); Architecture Source Profile 1 to 2 with no Profile 1 reader
   retained (R-04); the eight-section summary shape with view link or leaf rationale, inventory
@@ -421,6 +421,6 @@ without expanding the canonical structure.
   sub-features first-class; added the self-hosted development workflow; renamed `concorde-starter`
   to `concorde-bundle`; rendered Archify diagrams during docsite builds; published to GitHub Pages.
 - 2026-08-25 — Added the source-grounded read-only `ask` command; renamed feature 001 to Concorde
-  Workflow; hardened the checklist-aware core workflow; aligned the framework guides with the specs.
-- 2026-08-24 — Added durable feature design and approval-gated hardening.
+  Workflow; accepted the checklist-aware core workflow; aligned the framework guides with the specs.
+- 2026-08-24 — Added durable feature design and approval-gated acceptance.
 - 2026-08-22 — Completed the Concorde core workflow and Spec Kit delivery.

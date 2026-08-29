@@ -19,7 +19,7 @@ canonical_design: specs/concorde/features/003-install-concorde-speckit/subfeatur
 # Feature Design: Publish a Concorde Release
 
 **Created**: 2026-08-27
-**Status**: Specified; no publication realization has been hardened yet
+**Status**: Specified; no publication realization has been accepted yet
 **Input**: Publish a real, publicly reachable Concorde release with catalogs and archives so that
 installation no longer requires a Concorde checkout, a local build, or a local catalog server.
 

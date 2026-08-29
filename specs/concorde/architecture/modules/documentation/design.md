@@ -83,7 +83,7 @@ treated as perceptual evidence.
 - 2026-08-27 — Adopted the module summary / design reference split and renamed feature design.md to
   implementation.md (feature.concorde.workflow); this module's `module.md` was rewritten to the
   summary shape and its renderer narrative and evidence status moved here. The same attempt proposes,
-  pending hardening: the feature-realization collection becomes `feature-implementations`
+  pending acceptance: the feature-realization collection becomes `feature-implementations`
   (the feature-root `implementation.md` beside feature `design.md`, paired by directory, with `abstract.md` as the landing page), module `design.md` joins the
   Architecture collection as kind `module-design` linked from the module page, and Build Manifest
   moves from v4 to v5.

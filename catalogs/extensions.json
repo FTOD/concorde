@@ -1,10 +1,10 @@
 {
-  "catalog_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/extensions.json",
+  "catalog_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0/extensions.json",
   "extensions": {
     "concorde": {
       "author": "Concorde maintainers",
-      "description": "Initialize, retrieve, validate, harden, and explain bounded hierarchical feature work",
-      "download_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/concorde-0.1.0.zip",
+      "description": "Initialize, retrieve, validate, accept, and explain bounded hierarchical feature work",
+      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0/concorde-0.4.0.zip",
       "effect": "read-write",
       "id": "concorde",
       "license": "MIT",
@@ -13,18 +13,18 @@
         "commands": 5,
         "scripts": 4
       },
-      "repository": "https://github.com/concorde-workflow/concorde",
+      "repository": "https://github.com/FTOD/concorde",
       "requires": {
         "speckit_version": ">=0.16.4,<0.16.5"
       },
-      "sha256": "sha256:271e20191d090251c9272798cec404929acd167cf7f3d3d97940d7f3dea3b4da",
+      "sha256": "sha256:3a5e134c65d67b505cda1739d4913fb2373e233eb860923db94220af5f7d7597",
       "tags": [
         "architecture",
         "context",
         "validation"
       ],
       "verified": false,
-      "version": "0.1.0"
+      "version": "0.4.0"
     }
   },
   "schema_version": "1.0",

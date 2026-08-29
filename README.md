@@ -34,8 +34,8 @@ standalone views.
 ## Project status
 
 Feature 001 defines the Concorde architecture-aware development workflow. Its root initialization,
-Feature Workspace Protocol v6 resolution of the standard Spec Kit selection, bounded context,
-deterministic validation, approval-gated feature hardening, and the read-only `ask` procedure are
+Feature Workspace Protocol v7 resolution of the standard Spec Kit selection, bounded context,
+deterministic validation, approval-gated feature acceptance, and the read-only `ask` procedure are
 implemented and covered by the automated suites, and this repository itself lives under the
 three-tier feature document model (`abstract.md`, `design.md`, `implementation.md`) and the module summary/design
 reference pair that the feature specifies. Feature 002's docsite publication pipeline, Feature 003's
@@ -43,13 +43,13 @@ native bundle, preset composition, five-surface extension, and release tooling, 
 review-first self-hosting are implemented and tested. Feature 005 adds the project-wide reflection
 log (`specs/concorde/reflections.md`): every phase after specification records the difficulties it
 meets there, attributed to the feature being worked on and naming the source concerned, and
-hardening cites a feature's open entries; its runtime, guidance, and evidence are in progress in this
+acceptance cites a feature's open entries; its runtime, guidance, and evidence are in progress in this
 checkout. Timed human comprehension pilots and browser-based diagram review remain pending and are
 kept separate from automated evidence.
 
 The newest published release is `v0.1.0`, which predates the module design reference, the feature
 abstract, and the removal of the `feature.create`/`feature.select` commands. This README and the guides
-under `docs/` describe the `0.3.0` sources in this checkout; until `0.3.0` is published, the local
+under `docs/` describe the `0.4.0` sources in this checkout; until `0.4.0` is published, the local
 build path below is the way to use them.
 
 Concorde can also install the current checkout's framework sources into this repository for
@@ -116,7 +116,7 @@ specify bundle build --path bundles/concorde-bundle --output dist
 uv run python scripts/release/verify-release.py --dist dist
 ```
 
-The release contains exactly `concorde-core@0.3.0` and `concorde@0.3.0`. It does not install a custom
+The release contains exactly `concorde-core@0.4.0` and `concorde@0.4.0`. It does not install a custom
 workflow or reusable Spec Kit steps. `--base-url` is written into the generated catalog metadata; the
 builder does not contact it. The value must match the address that serves `dist/` in the next step.
 
@@ -176,7 +176,7 @@ After installation, invoke these agent skills from the target project:
 
 ```text
 $speckit-concorde-init
-$speckit-concorde-feature-harden feature.<project-slug>.<name>
+$speckit-concorde-feature-accept feature.<project-slug>.<name>
 $speckit-concorde-context module.<project-slug>
 $speckit-concorde-validate
 $speckit-concorde-ask When should I use context instead of changing the selected feature?
@@ -190,8 +190,8 @@ $speckit-concorde-ask When should I use context instead of changing the selected
   or `<parent feature root>/subfeatures/NNN-<short-name>` for a sub-feature—and are selected
   through the standard `.specify/feature.json`; Concorde adds no creation or selection command.
   Every feature root owns `abstract.md` (read first), `design.md` (the authority), and
-  `implementation.md` (the accepted implementation, written by hardening).
-- `feature.harden` proposes the feature `implementation.md`—and, when the attempt produced detail or
+  `implementation.md` (the accepted implementation, written by acceptance).
+- `feature.accept` proposes the feature `implementation.md`—and, when the attempt produced detail or
   rationale worth keeping, an amendment to the `design.md` of the module at which the feature is
   specified—from a task-complete implementation attempt and, only after explicit approval, applies
   both atomically and removes that temporal `attempt/` directory.

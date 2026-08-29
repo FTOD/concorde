@@ -76,8 +76,8 @@ version stays available at its own `releases/download/v<version>/` location; see
 
 The newest published version is currently `v0.1.0`, which predates the module design reference, the
 feature abstract, and the removal of the `feature.create`/`feature.select` commands. These guides
-describe the `0.3.0` sources in this checkout; to work under the document model they describe, use
-the development path in part 3 until `0.3.0` is published. Otherwise continue with part 4.
+describe the `0.4.0` sources in this checkout; to work under the document model they describe, use
+the development path in part 3 until `0.4.0` is published. Otherwise continue with part 4.
 
 ## 3. Build the current local release (development path)
 
@@ -239,10 +239,10 @@ stay under the single active `attempt/` attempt.
 ## 5. Finish the milestone deliberately
 
 When all tasks and every existing checklist item are complete, validation has been reviewed, and you
-accept the implementation, ask the agent to harden the feature:
+accept the implementation, ask the agent to accept the feature:
 
 ```text
-$speckit-concorde-feature-harden feature.<project>.<name>
+$speckit-concorde-feature-accept feature.<project>.<name>
 ```
 
 The first result is a proposal, not a mutation. Review the full candidate feature `implementation.md`, any

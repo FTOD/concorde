@@ -26,7 +26,7 @@ TASK_LINE = re.compile(r"^\s*-\s+\[([ xX])\]\s+(T\d{3,})\b")
 TASK_REFERENCE = re.compile(r"\bT\d{3,}\b")
 CHECKLIST_LINE = re.compile(r"^\s*-\s+\[([ xX])\](?:\s+.*)?$")
 CHECKBOX_LIKE_LINE = re.compile(r"^\s*-\s+\[[^\]]*\]")
-PLACEHOLDER_MARKER = "No implementation realization has been hardened yet."
+PLACEHOLDER_MARKER = "No implementation realization has been accepted yet."
 REQUIRED_IMPLEMENTATION_HEADINGS = (
     "## Realization Overview",
     "## Module and Feature Collaboration",
@@ -55,11 +55,11 @@ def _resolve_target(project: Path, package: Any, target: str | None) -> tuple[So
 def _attempt_files(project: Path, attempt_dir: str, ignored: str | None = None) -> list[str]:
     attempt = project / attempt_dir
     if not attempt.is_dir() or attempt.is_symlink():
-        raise WorkspaceError("hardening requires one real attempt/ directory")
+        raise WorkspaceError("acceptance requires one real attempt/ directory")
     files: list[str] = []
     for path in sorted(attempt.rglob("*")):
         if path.is_symlink():
-            raise WorkspaceError(f"hardening input may not be a symlink: {path.relative_to(project).as_posix()}")
+            raise WorkspaceError(f"acceptance input may not be a symlink: {path.relative_to(project).as_posix()}")
         if path.is_file():
             relative = path.relative_to(project).as_posix()
             if relative != ignored:
@@ -67,7 +67,7 @@ def _attempt_files(project: Path, attempt_dir: str, ignored: str | None = None) 
     return files
 
 
-def _hardening_digest(project: Path, package: Any, paths: Any, ignored: str | None = None) -> str:
+def _acceptance_digest(project: Path, package: Any, paths: Any, ignored: str | None = None) -> str:
     sources = [item.path for item in package.sources]
     sources.extend(package.views)
     sources.extend(package.diagrams)
@@ -103,11 +103,11 @@ def _checklist_state(
 ) -> tuple[int, list[str], list[str], list[str]]:
     directory = project / checklists_dir
     if directory.is_symlink():
-        raise WorkspaceError(f"hardening checklist directory may not be a symlink: {checklists_dir}")
+        raise WorkspaceError(f"acceptance checklist directory may not be a symlink: {checklists_dir}")
     if not directory.exists():
         return 0, [], [], []
     if not directory.is_dir():
-        raise WorkspaceError(f"hardening checklist path is not a directory: {checklists_dir}")
+        raise WorkspaceError(f"acceptance checklist path is not a directory: {checklists_dir}")
 
     complete: list[str] = []
     incomplete: list[str] = []
@@ -116,7 +116,7 @@ def _checklist_state(
     for path in sorted(directory.glob("*.md")):
         relative = path.relative_to(project).as_posix()
         if path.is_symlink():
-            raise WorkspaceError(f"hardening checklist input may not be a symlink: {relative}")
+            raise WorkspaceError(f"acceptance checklist input may not be a symlink: {relative}")
         if not path.is_file():
             continue
         files += 1
@@ -130,7 +130,7 @@ def _checklist_state(
     return files, complete, incomplete, malformed
 
 
-def propose_hardening(
+def propose_acceptance(
     project_root: str | Path,
     target: str | None = None,
     ignored_proposal: str | None = None,
@@ -144,29 +144,29 @@ def propose_hardening(
             project,
             paths.checklists_dir,
         )
-        source_digest = _hardening_digest(project, package, paths, ignored_proposal)
+        source_digest = _acceptance_digest(project, package, paths, ignored_proposal)
     except (RepositoryError, WorkspaceError, OSError, UnicodeError) as error:
         return OperationResult(
-            "feature.harden",
+            "feature.accept",
             target or ".",
             "invalid",
-            findings=(_finding("CONCORDE-HARDEN-001", ".specify/feature.json", str(error), "Select a valid feature with real durable abstract.md, design.md, and implementation.md files and an active attempt."),),
+            findings=(_finding("CONCORDE-ACCEPT-001", ".specify/feature.json", str(error), "Select a valid feature with real durable abstract.md, design.md, and implementation.md files and an active attempt."),),
         )
     findings: list[Finding] = []
     if incomplete:
-        findings.append(_finding("CONCORDE-HARDEN-002", paths.tasks, "Unchecked tasks block hardening: " + ", ".join(incomplete), "Complete or deliberately remove the blocking work through the normal task workflow."))
+        findings.append(_finding("CONCORDE-ACCEPT-002", paths.tasks, "Unchecked tasks block acceptance: " + ", ".join(incomplete), "Complete or deliberately remove the blocking work through the normal task workflow."))
     if malformed:
-        findings.append(_finding("CONCORDE-HARDEN-003", paths.tasks, "Task completion cannot be proven: " + ", ".join(malformed), "Use canonical '- [ ] T###' or '- [X] T###' task items and complete every task."))
+        findings.append(_finding("CONCORDE-ACCEPT-003", paths.tasks, "Task completion cannot be proven: " + ", ".join(malformed), "Use canonical '- [ ] T###' or '- [X] T###' task items and complete every task."))
     if checklist_incomplete:
-        findings.append(_finding("CONCORDE-HARDEN-009", paths.checklists_dir, "Unchecked checklist items block hardening: " + ", ".join(checklist_incomplete), "Resolve every existing checklist item through the normal specification and implementation workflow."))
+        findings.append(_finding("CONCORDE-ACCEPT-009", paths.checklists_dir, "Unchecked checklist items block acceptance: " + ", ".join(checklist_incomplete), "Resolve every existing checklist item through the normal specification and implementation workflow."))
     if checklist_malformed:
-        findings.append(_finding("CONCORDE-HARDEN-010", paths.checklists_dir, "Checklist completion cannot be proven: " + ", ".join(checklist_malformed), "Use canonical '- [ ]' or '- [X]' checklist markers and resolve every item."))
+        findings.append(_finding("CONCORDE-ACCEPT-010", paths.checklists_dir, "Checklist completion cannot be proven: " + ", ".join(checklist_malformed), "Use canonical '- [ ]' or '- [X]' checklist markers and resolve every item."))
     reflection_summary = {"entries": 0, "open": 0, "resolved": 0, "dismissed": 0}
     reflections_body = package.auxiliary.get(log_path(package.specification_root))
     if reflections_body is not None:
         parsed = parse_reflection_log(reflections_body)
         if parsed.problems:
-            findings.append(_finding("CONCORDE-HARDEN-011", paths.reflections, "The project reflection log is malformed: " + "; ".join(problem.message for problem in parsed.problems), "Repair the log per the reflection-log contract (speckit.concorde.validate reports each CONCORDE-REFLECT finding) and re-propose."))
+            findings.append(_finding("CONCORDE-ACCEPT-011", paths.reflections, "The project reflection log is malformed: " + "; ".join(problem.message for problem in parsed.problems), "Repair the log per the reflection-log contract (speckit.concorde.validate reports each CONCORDE-REFLECT finding) and re-propose."))
         reflection_summary = parsed.summary(feature.identifier)
     changes = [
         {"path": paths.feature_implementation, "action": "update", "meaning": "Replace the durable feature implementation with the reviewed candidate."},
@@ -183,7 +183,7 @@ def propose_hardening(
             "incomplete": len(checklist_incomplete),
             "malformed": len(checklist_malformed),
         },
-        "proposal_path": f"{paths.attempt_dir}/harden-proposal.json",
+        "proposal_path": f"{paths.attempt_dir}/accept-proposal.json",
         "reflection_summary": reflection_summary,
     }
     artifacts = [paths.feature_design, paths.feature_implementation, paths.tasks]
@@ -194,7 +194,7 @@ def propose_hardening(
     if (project / paths.module_design).is_file():
         artifacts.append(paths.module_design)
     return OperationResult(
-        "feature.harden",
+        "feature.accept",
         feature.identifier,
         "eligible" if not findings else "invalid",
         tuple(artifacts),
@@ -209,9 +209,9 @@ def _load_proposal(project: Path, proposal_path: str) -> tuple[str, dict[str, An
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
-        raise WorkspaceError(f"cannot read hardening proposal: {error}") from error
+        raise WorkspaceError(f"cannot read acceptance proposal: {error}") from error
     if not isinstance(value, dict):
-        raise WorkspaceError("hardening proposal must be a JSON object")
+        raise WorkspaceError("acceptance proposal must be a JSON object")
     return relative, value
 
 
@@ -250,7 +250,7 @@ def _amendment_target(paths: dict[str, Any], amendment: Any) -> str:
     if not isinstance(path, str) or not path:
         raise WorkspaceError("module_design.path is required")
     if path.endswith("/module.md") or path == "module.md":
-        raise WorkspaceError("hardening may not edit a module summary (module.md); amend the module design.md instead")
+        raise WorkspaceError("acceptance may not edit a module summary (module.md); amend the module design.md instead")
     if path != paths["module_design"]:
         if path.startswith(paths["feature_directory"] + "/"):
             raise WorkspaceError("module_design must name the providing module's design.md, not a path inside the feature root")
@@ -267,18 +267,18 @@ def _uncited_open_reflections(project: Path, paths: dict[str, Any], target: str,
     return [entry.identifier for entry in parsed.entries_for(target) if entry.status == "open" and entry.identifier not in content]
 
 
-def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationResult:
+def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationResult:
     project = Path(project_root).resolve()
     try:
         relative_proposal, proposal = _load_proposal(project, proposal_path)
-        if proposal.get("proposal_version") != 4 or proposal.get("operation") != "feature.harden":
-            raise WorkspaceError("unsupported hardening proposal; proposal_version 4 is required")
+        if proposal.get("proposal_version") != 5 or proposal.get("operation") != "feature.accept":
+            raise WorkspaceError("unsupported acceptance proposal; proposal_version 5 is required")
         if "design" in proposal:
-            raise WorkspaceError("proposal v4 names the durable feature implementation under 'implementation'; 'design' is not accepted")
+            raise WorkspaceError("proposal v5 names the durable feature implementation under 'implementation'; 'design' is not accepted")
         target = proposal.get("target")
         if not isinstance(target, str) or not target:
-            raise WorkspaceError("hardening proposal target is required")
-        eligibility = propose_hardening(project, target, relative_proposal)
+            raise WorkspaceError("acceptance proposal target is required")
+        eligibility = propose_acceptance(project, target, relative_proposal)
         if eligibility.status != "eligible":
             return eligibility
         paths = eligibility.result["workspace"]
@@ -286,10 +286,10 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
             raise WorkspaceError(f"proposal must be stored at {eligibility.result['proposal_path']}")
         if proposal.get("source_digest") != eligibility.result["source_digest"]:
             return OperationResult(
-                "feature.harden",
+                "feature.accept",
                 target,
                 "conflict",
-                findings=(_finding("CONCORDE-HARDEN-004", relative_proposal, "Hardening inputs changed after proposal.", "Regenerate and review a proposal against the current completed attempt."),),
+                findings=(_finding("CONCORDE-ACCEPT-004", relative_proposal, "Acceptance inputs changed after proposal.", "Regenerate and review a proposal against the current completed attempt."),),
                 result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"]},
             )
         realization = proposal.get("implementation")
@@ -298,7 +298,7 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
         realization_path = realization.get("path")
         if realization_path != paths["feature_implementation"]:
             if isinstance(realization_path, str) and realization_path.rsplit("/", 1)[-1] in {"abstract.md", "design.md", "module.md", "spec.md", "tldr.md"}:
-                raise WorkspaceError("hardening writes only feature implementation.md; it never writes abstract.md, design.md, module.md, spec.md, or tldr.md")
+                raise WorkspaceError("acceptance writes only feature implementation.md; it never writes abstract.md, design.md, module.md, spec.md, or tldr.md")
             raise WorkspaceError("proposal implementation path must be the selected feature's root implementation.md")
         if proposal.get("remove") != [paths["attempt_dir"]]:
             raise WorkspaceError("proposal removal set must contain exactly the selected feature's attempt/ directory")
@@ -306,10 +306,10 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
         uncited = _uncited_open_reflections(project, paths, target, content)
         if uncited:
             return OperationResult(
-                "feature.harden",
+                "feature.accept",
                 target,
                 "invalid",
-                findings=(_finding("CONCORDE-HARDEN-012", paths["reflections"], "Open reflection entries attributed to this feature are not cited by the candidate implementation.md: " + ", ".join(uncited), "Cite every open entry's identifier under ## Known Limitations (or resolve or dismiss it in the log with a note), then regenerate the proposal."),),
+                findings=(_finding("CONCORDE-ACCEPT-012", paths["reflections"], "Open reflection entries attributed to this feature are not cited by the candidate implementation.md: " + ", ".join(uncited), "Cite every open entry's identifier under ## Known Limitations (or resolve or dismiss it in the log with a note), then regenerate the proposal."),),
                 result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"], "reflection_summary": eligibility.result["reflection_summary"]},
             )
         repository = ProjectRepository(project)
@@ -322,7 +322,7 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
             module_design_path = repository.resolve(_amendment_target(paths, amendment))
             module_design_content = _validate_module_design(amendment.get("content"))
         if implementation_path.is_symlink() or attempt_path.is_symlink() or (module_design_path is not None and module_design_path.is_symlink()):
-            raise WorkspaceError("hardening targets may not be symlinks")
+            raise WorkspaceError("acceptance targets may not be symlinks")
         old_content = implementation_path.read_text(encoding="utf-8") if implementation_path.is_file() else None
         old_module_design = (
             module_design_path.read_text(encoding="utf-8")
@@ -332,10 +332,10 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
         removed_artifacts = _attempt_files(project, paths["attempt_dir"])
     except (RepositoryError, WorkspaceError, OSError, UnicodeError) as error:
         return OperationResult(
-            "feature.harden",
+            "feature.accept",
             ".",
             "invalid",
-            findings=(_finding("CONCORDE-HARDEN-005", proposal_path, str(error), "Correct and re-review the hardening proposal before applying it."),),
+            findings=(_finding("CONCORDE-ACCEPT-005", proposal_path, str(error), "Correct and re-review the acceptance proposal before applying it."),),
         )
 
     # Ordered file set promoted atomically with the attempt removal: all succeed or all are restored.
@@ -348,9 +348,9 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
     try:
         for _, staged, backup in stages:
             if staged.exists() or backup.exists():
-                raise WorkspaceError("stale hardening stage or recovery artifact exists")
+                raise WorkspaceError("stale acceptance stage or recovery artifact exists")
         if attempt_backup.exists():
-            raise WorkspaceError("stale hardening stage or recovery artifact exists")
+            raise WorkspaceError("stale acceptance stage or recovery artifact exists")
         for (target_path, new_content), (_, staged, _) in zip(updates, stages):
             staged.write_text(new_content, encoding="utf-8", newline="\n")
         for target_path, _, backup in stages:
@@ -370,10 +370,10 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
                 target_path.unlink(missing_ok=True)
                 backup.replace(target_path)
         return OperationResult(
-            "feature.harden",
+            "feature.accept",
             target,
             "failed",
-            findings=(_finding("CONCORDE-HARDEN-006", paths["feature_directory"], f"Hardening commit failed: {error}", "Resolve the filesystem failure; the prior feature implementation.md, module design.md, and attempt were restored."),),
+            findings=(_finding("CONCORDE-ACCEPT-006", paths["feature_directory"], f"Acceptance commit failed: {error}", "Resolve the filesystem failure; the prior feature implementation.md, module design.md, and attempt were restored."),),
             result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"]},
         )
 
@@ -383,7 +383,7 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
         for _, _, backup in stages:
             backup.unlink(missing_ok=True)
     except OSError as error:
-        cleanup_findings.append(Finding("CONCORDE-HARDEN-007", "warning", paths["feature_directory"], f"Hardening committed but recovery cleanup is pending: {error}", "Remove the hidden Concorde backup after confirming the durable realization and version-control recovery."))
+        cleanup_findings.append(Finding("CONCORDE-ACCEPT-007", "warning", paths["feature_directory"], f"Acceptance committed but recovery cleanup is pending: {error}", "Remove the hidden Concorde backup after confirming the durable realization and version-control recovery."))
     retained_artifacts = [paths["feature_abstract"], paths["feature_design"], paths["module_summary"]]
     if (project / paths["reflections"]).is_file():
         retained_artifacts.append(paths["reflections"])
@@ -408,9 +408,9 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
         changes.insert(1, {"path": paths["module_design"], "action": "update", "meaning": "Amend the module design reference with the reviewed implementation detail and rationale."})
         result_artifacts.append(paths["module_design"])
     return OperationResult(
-        "feature.harden",
+        "feature.accept",
         target,
-        "hardened",
+        "accepted",
         tuple(result_artifacts),
         tuple(cleanup_findings),
         {

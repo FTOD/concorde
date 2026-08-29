@@ -70,7 +70,7 @@ Feature-owned explanatory views supplement the root view; they do not expand or 
 | `feature.concorde.publish-project-docsite` | A maintainer browses architecture sources and views, project documentation, and Spec Kit feature specifications in one generated site. | [design.md](features/002-create-project-docsite/design.md) |
 | `feature.concorde.install-with-spec-kit` | A maintainer inspects, installs, verifies, updates, and removes Concorde through the native Spec Kit ecosystem. | [design.md](features/003-install-concorde-speckit/design.md) |
 | `feature.concorde.self-host-framework` | A maintainer installs, refreshes, and verifies the current Concorde framework sources in this same checkout so framework improvements are used during Concorde's own development. | [design.md](features/004-self-host-concorde/design.md) |
-| `feature.concorde.record-workflow-reflections` | A coding agent records every difficulty or problem it meets while planning or implementing — about this feature, another feature's existing implementation, a module, the guidance, or a tool — in the project's one reflection log, through the existing phases and no new command; the maintainer reviews it and hardening cites the feature's entries. | [design.md](features/005-record-workflow-reflections/design.md) |
+| `feature.concorde.record-workflow-reflections` | A coding agent records every difficulty or problem it meets while planning or implementing — about this feature, another feature's existing implementation, a module, the guidance, or a tool — in the project's one reflection log, through the existing phases and no new command; the maintainer reviews it and acceptance cites the feature's entries. | [design.md](features/005-record-workflow-reflections/design.md) |
 
 The feature nodes in the root view are observable capabilities, not runtime services. Each is
 reached from user intent through the immediate modules that provide the behavior:
@@ -79,9 +79,9 @@ reached from user intent through the immediate modules that provide the behavior
 |---|---|---|
 | Spec Kit's bundle inspect, install, update, or removal operations | `feature.concorde.install-with-spec-kit` | Distribution owns the bundle lifecycle; Spec Kit Integration supplies and activates the preset and command extension. |
 | Install, refresh, or verify the current framework sources in this checkout | `feature.concorde.self-host-framework` | Distribution identifies the authoritative local component set; Spec Kit Integration materializes it through the active integration; Architecture Core contributes deterministic freshness findings. |
-| Normal Spec Kit phases, one of four runtime-backed Concorde operations (`init`, `feature.harden`, `context`, `validate`), or a read-only workflow question through `ask` | `feature.concorde.workflow` | Spec Kit Integration resolves the standard Spec Kit selection to the nested workspace, composes phase guidance, and presents all five Concorde surfaces; Architecture Core executes the four deterministic operations; the coding agent answers `ask` directly from cited installed guidance and bounded project sources. |
+| Normal Spec Kit phases, one of four runtime-backed Concorde operations (`init`, `feature.accept`, `context`, `validate`), or a read-only workflow question through `ask` | `feature.concorde.workflow` | Spec Kit Integration resolves the standard Spec Kit selection to the nested workspace, composes phase guidance, and presents all five Concorde surfaces; Architecture Core executes the four deterministic operations; the coding agent answers `ask` directly from cited installed guidance and bounded project sources. |
 | Validate, build, serve, or browse the generated project site | `feature.concorde.publish-project-docsite` | Documentation builds the read model from validated Architecture Core sources and canonical Spec Kit feature specifications. |
-| A plan, tasks, implement, analyze, or converge phase meets a difficulty or problem | `feature.concorde.record-workflow-reflections` | Spec Kit Integration's phase guidance and log template carry the recording obligation into the project reflection log (`reflections.md` at the specification root); Architecture Core validates the log's shape, exposes it in bounded context, and requires hardening to cite the feature's open entries. |
+| A plan, tasks, implement, analyze, or converge phase meets a difficulty or problem | `feature.concorde.record-workflow-reflections` | Spec Kit Integration's phase guidance and log template carry the recording obligation into the project reflection log (`reflections.md` at the specification root); Architecture Core validates the log's shape, exposes it in bounded context, and requires acceptance to cite the feature's open entries. |
 
 ## Contracts
 
@@ -147,7 +147,7 @@ bundle installs a tested preset and extension pair, and Spec Kit keeps ownership
 lifecycle. Every level of the specification hierarchy separates a summary that is read (`module.md`,
 the level view, and the contracts) from a reference that is consulted (`design.md`), so a reader can
 stop at one level. Maintained sources remain the only authorities: deterministic validation reports
-every breach as a finding, hardening changes durable documents only under explicit approval, and
+every breach as a finding, acceptance changes durable documents only under explicit approval, and
 generated views and sites are disposable read models. The ideas, alternatives, and decisions behind
 this level are recorded in the [design reference](design.md).
 

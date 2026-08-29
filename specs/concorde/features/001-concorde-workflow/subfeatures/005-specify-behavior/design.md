@@ -21,7 +21,7 @@ canonical_design: specs/concorde/features/001-concorde-workflow/subfeatures/005-
 **Created**: 2026-08-26
 **Revised**: 2026-08-28
 **Status**: Specified and revised for the parent's three-tier feature document model; existing
-realization has not been hardened into this sub-feature's `implementation.md`
+realization has not been accepted into this sub-feature's `implementation.md`
 **Input**: Route `speckit.specify`, `speckit.clarify`, and `speckit.checklist` through one selected
 Concorde root, authoring `abstract.md` and `design.md` together and seeding or preserving the feature
 `implementation.md`.
@@ -58,7 +58,7 @@ context reads.
    `abstract.md` and `design.md` change and its existing `implementation.md` is preserved byte-for-byte.
 2. **Given** a new canonical root, **When** specification runs, **Then** it authors a self-contained
    `abstract.md` in the parent's five-section shape within the reading budget, authors `design.md`, seeds
-   a `implementation.md` whose only content is the explicit not-yet-hardened state, and creates no
+   a `implementation.md` whose only content is the explicit not-yet-accepted state, and creates no
    `implementation.md`.
 3. **Given** material ambiguity, **When** clarification completes, **Then** accepted answers are
    encoded into that same specification without creating a competing copy, and the abstract is
@@ -100,8 +100,8 @@ context reads.
   encode accepted answers durably in `design.md`, and update the abstract wherever it summarized the
   changed behavior.
 - **FR-008**: For a new root, specification MUST author `abstract.md` and `design.md` and seed a
-  `implementation.md` holding only the explicit not-yet-hardened state; substantive implementation
-  content is written by hardening.
+  `implementation.md` holding only the explicit not-yet-accepted state; substantive implementation
+  content is written by acceptance.
 - **FR-009**: These phases MUST use the level's `module.md` as bounded architecture context and MUST
   NOT treat the level's `design.md` as an implicit input or write to it.
 - **FR-010**: The authored abstract MUST be self-contained (understood without opening any other

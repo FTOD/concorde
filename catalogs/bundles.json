@@ -3,7 +3,7 @@
     "concorde-bundle": {
       "author": "Concorde maintainers",
       "description": "Pinned Concorde preset and extension installation recipe for Spec Kit",
-      "download_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/concorde-bundle-0.1.0.zip",
+      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0/concorde-bundle-0.4.0.zip",
       "id": "concorde-bundle",
       "license": "MIT",
       "name": "Concorde Bundle",
@@ -13,12 +13,12 @@
         "steps": 0,
         "workflows": 0
       },
-      "repository": "https://github.com/concorde-workflow/concorde",
+      "repository": "https://github.com/FTOD/concorde",
       "requires": {
         "speckit_version": ">=0.16.4,<0.16.5"
       },
       "role": "developer",
-      "sha256": "sha256:ae0079f5e78b89bbb30eaa46279f036553395f1be1c94f9af8de962ab0670608",
+      "sha256": "sha256:b4d4f884be21a7e4d5450284ea36804cea51a7f33fffb3633eab3d692dccf461",
       "tags": [
         "architecture",
         "context",
@@ -26,10 +26,10 @@
         "spec-driven-development"
       ],
       "verified": false,
-      "version": "0.1.0"
+      "version": "0.4.0"
     }
   },
-  "catalog_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/bundles.json",
+  "catalog_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0/bundles.json",
   "schema_version": "1.0",
   "updated_at": "2026-08-20T00:00:00Z"
 }

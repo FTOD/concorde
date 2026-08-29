@@ -59,7 +59,7 @@ must reject the host version and require an upstream-supported capability instea
 The extension supplies these five canonical intents:
 
 1. `speckit.concorde.init`
-2. `speckit.concorde.feature.harden`
+2. `speckit.concorde.feature.accept`
 3. `speckit.concorde.context`
 4. `speckit.concorde.validate`
 5. `speckit.concorde.ask`
@@ -100,7 +100,7 @@ unregistered package member is not an installed command surface.
 | Tasks | `attempt/tasks.md` | Root `tasks.md` |
 | Implement / analyze / converge / taskstoissues | Feature-root durable intent plus the same active `attempt/` attempt | Root temporal copies, symlinks, or a second active attempt |
 | Init / context / validate | Feature 001 contract paths and result envelopes | Checkout-relative runtime or agent-specific semantic drift |
-| Feature harden | Root trio, module summary/design, completed tasks/checklists, returned proposal metadata, digest-bound proposal v4 (candidate feature `implementation.md`, optional module `design.md` amendment), exact `attempt/` removal | Derived paths, wrong targets, unchecked work, implicit approval, stale apply, or broader deletion |
+| Feature accept | Root trio, module summary/design, completed tasks/checklists, returned proposal metadata, digest-bound proposal v5 (candidate feature `implementation.md`, optional module `design.md` amendment), exact `attempt/` removal | Derived paths, wrong targets, unchecked work, implicit approval, stale apply, or broader deletion |
 | Ask | Installed extension/preset guidance plus the smallest relevant bounded maintained project sources | Launcher/runtime invocation, checkout dependency, uncited facts, unrelated deeper context, mutation, or implicit lifecycle work |
 
 ## Acceptance Evidence
@@ -117,9 +117,9 @@ of the fourteen surfaces it must:
    checkout access;
 6. compare behavior across one skills-based and one slash-command-based integration.
 
-For an eligible installed hardening proposal, acceptance also records the runtime-returned
+For an eligible installed acceptance proposal, acceptance also records the runtime-returned
 `proposal_path`, `task_summary`, and `checklist_summary`. The proposal path must be exactly
-`<workspace.attempt_dir>/harden-proposal.json`; installed agents must consume it without
+`<workspace.attempt_dir>/accept-proposal.json`; installed agents must consume it without
 derivation, and apply must revalidate both summaries before mutation.
 
 Acceptance fails on any checkout read, missing required archive member, wrong winner, late workspace

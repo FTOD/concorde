@@ -48,7 +48,7 @@ one command (target dir, integration) ──▶ obtain pinned Spec Kit CLI ─�
 ```
 
 The default version resolves through the sibling publication feature's stable locations; the
-install itself is the Distribution module's bundle lifecycle. No realization is hardened yet.
+install itself is the Distribution module's bundle lifecycle. No realization is accepted yet.
 
 ## Logic
 
@@ -91,7 +91,7 @@ install itself is the Distribution module's bundle lifecycle. No realization is 
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): four user stories,
   FR-001 to FR-013, and SC-001 to SC-006.
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (a
-  placeholder until a realization is hardened).
+  placeholder until a realization is accepted).
 - **The parent** — [abstract](../../abstract.md) and [design.md](../../design.md) of
   `feature.concorde.install-with-spec-kit`, with its
   `../../contracts/bundle-distribution.md` contract; the sibling

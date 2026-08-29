@@ -19,7 +19,7 @@ selected workspace before touching any artifact:
 
 | Surface | Reads | Writes |
 |---|---|---|
-| `speckit.specify` | The level's `module.md` and bounded view; the existing `abstract.md` and `design.md` | `abstract.md` and `design.md` together; for a new root also a `implementation.md` holding only the not-yet-hardened state |
+| `speckit.specify` | The level's `module.md` and bounded view; the existing `abstract.md` and `design.md` | `abstract.md` and `design.md` together; for a new root also a `implementation.md` holding only the not-yet-accepted state |
 | `speckit.clarify` | `abstract.md`, `design.md` | Accepted answers encoded into the same `design.md`; `abstract.md` wherever it summarized the changed behavior |
 | `speckit.checklist` | `abstract.md`, `design.md` | A checklist under the selected root's `attempt/checklists/` covering, among other items, the abstract's shape, budget, and faithfulness |
 
@@ -31,7 +31,7 @@ one focused outcome and does not repeat parent-owned facts; a cross-component sp
 one text-backed core diagram or records why prose and the bounded view suffice.
 
 **Not part of this step**: resolving the selection itself (the workspaces step), planning an attempt
-(the plan step), and writing substantive content into any `implementation.md` (the harden step).
+(the plan step), and writing substantive content into any `implementation.md` (the accept step).
 
 ## Structure
 
@@ -75,7 +75,7 @@ Maintainer ──describe · answer · review──▶ specify · clarify · che
 - Clarification prioritizes consequential choices, encodes answers in `design.md`, and updates the
   abstract where it summarized the changed behavior (FR-007).
 - A new root gets `abstract.md`, `design.md`, and placeholder `implementation.md`, never a legacy filename;
-  substantive implementation is written by hardening (FR-008).
+  substantive implementation is written by acceptance (FR-008).
 - The level's `module.md` is bounded architecture context; module `design.md` is never an
   implicit input and is never written here (FR-009).
 - The authored abstract is self-contained, has exactly the five sections in order, links a structure
@@ -87,7 +87,7 @@ Maintainer ──describe · answer · review──▶ specify · clarify · che
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): FR-001 to FR-010 and
   SC-001 to SC-006.
 - **How the accepted implementation realizes this step** — [implementation.md](implementation.md) (states that no
-  realization has been hardened yet).
+  realization has been accepted yet).
 - **The parent feature** — its [abstract](../../abstract.md) and [design.md](../../design.md), which define the
   abstract shape, the reading budget, and how the tiers stay honest.
 - **Contracts** — `../../contracts/agent-commands.md` for the three surfaces and

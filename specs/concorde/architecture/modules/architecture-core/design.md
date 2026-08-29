@@ -60,8 +60,8 @@ The runtime is standard-library Python (3.11 or later) under `extensions/concord
 `frontmatter.py` and `model.py` own the supported YAML subset and source model; `initialize.py`,
 `context.py`, `readiness.py`, and `validate.py` own the deterministic operations; `projection.py`
 owns bounded module and feature projections; the `validation/` package holds the rule families
-(hierarchy, layout, summary, diagrams, contracts, scenarios, evidence, freshness); `feature_hardening.py` owns
-approval-gated, atomic hardening; and `diagnostics.py` produces versioned canonical envelopes. Module
+(hierarchy, layout, summary, diagrams, contracts, scenarios, evidence, freshness); `feature_acceptance.py` owns
+approval-gated, atomic acceptance; and `diagnostics.py` produces versioned canonical envelopes. Module
 containment, feature refinement, and feature containment are validated as three separate acyclic
 graphs. Generated outputs are checked for freshness through the responsible deterministic adapter;
 renderer and publication validators keep ownership of their formats and their findings are
@@ -108,7 +108,7 @@ normalized rather than reimplemented.
 - 2026-08-27 — Adopted the module summary / design reference split and renamed feature design.md to
   implementation.md (feature.concorde.workflow); this module's `module.md` was rewritten to the
   summary shape and its protocol narrative moved here. Decisions of the same attempt that touch this
-  module, pending the feature's hardening: Architecture Source Profile 2; the summary rule family
+  module, pending the feature's acceptance: Architecture Source Profile 2; the summary rule family
   `CONCORDE-SUMMARY-001..005` and reference rule `CONCORDE-MODULE-002`; layout rules
   `CONCORDE-LAYOUT-005/007/008` for feature-root pairing and legacy names; additive navigation
-  references in the v1 context result; and atomic multi-file hardening apply with rollback.
+  references in the v1 context result; and atomic multi-file acceptance apply with rollback.

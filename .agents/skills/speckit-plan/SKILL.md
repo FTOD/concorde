@@ -23,7 +23,7 @@ Before any hook, setup step, prerequisite check, or artifact access, run `.venv/
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
 the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
 `workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
-Require Protocol v6 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+Require Protocol v7 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
@@ -77,12 +77,12 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Outline
 
-1. **Setup**: Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase plan` from repo root and parse JSON for FEATURE_DESIGN, FEATURE_IMPLEMENTATION, IMPL_PLAN, ATTEMPT_DIR, SPECS_DIR, BRANCH. `FEATURE_DESIGN`, `FEATURE_IMPLEMENTATION` (the returned `workspace.feature_implementation`), and feature contracts are durable sources at the feature root; `IMPL_PLAN` and the other plan-phase artifacts belong to the temporal `ATTEMPT_DIR`. After a hardening, planning creates a fresh `attempt/` beneath the same root and never a root-level copy. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. **Setup**: Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase plan` from repo root and parse JSON for FEATURE_DESIGN, FEATURE_IMPLEMENTATION, IMPL_PLAN, ATTEMPT_DIR, SPECS_DIR, BRANCH. `FEATURE_DESIGN`, `FEATURE_IMPLEMENTATION` (the returned `workspace.feature_implementation`), and feature contracts are durable sources at the feature root; `IMPL_PLAN` and the other plan-phase artifacts belong to the temporal `ATTEMPT_DIR`. After a acceptance, planning creates a fresh `attempt/` beneath the same root and never a root-level copy. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
 2. **Load context**: Read FEATURE_DESIGN, FEATURE_IMPLEMENTATION, and `.specify/memory/constitution.md`. Treat
    FEATURE_IMPLEMENTATION as the accepted realization baseline and plan the current attempt as an explicit
    delta from it; do not update the accepted realization during planning. When it still holds the
-   placeholder ("No implementation realization has been hardened yet."), there is NO baseline: the
+   placeholder ("No implementation realization has been accepted yet."), there is NO baseline: the
    plan's realization-delta section states "no accepted baseline" rather than inventing one. Read the
    level's `module.md` (`workspace.module_summary`) as bounded architecture context. Consult the
    module `design.md` (`workspace.module_design`) only for a specific recorded detail and cite it.
@@ -110,7 +110,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
      durable document or another feature's sources
    - Identify which accepted `implementation.md` sections remain unchanged and which implementation decisions the
      current attempt proposes to replace or extend (or state "no accepted baseline" when the
-     placeholder is present), so a later hardening can compact the result.
+     placeholder is present), so a later acceptance can compact the result.
 
 ## Reflection Recording
 

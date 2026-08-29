@@ -6,7 +6,7 @@ sidebar_position: 7
 # Commands and Installed Surfaces
 
 Concorde has two command families. Nine familiar Spec Kit phases continue to own feature delivery;
-five Concorde-specific surfaces manage architecture, selected-workspace validation, hardening, and
+five Concorde-specific surfaces manage architecture, selected-workspace validation, acceptance, and
 workflow questions. Four are deterministic runtime-backed operations. `ask` is a read-only procedure
 followed directly by the coding agent.
 
@@ -22,10 +22,10 @@ installed surfaces is defined by
 
 ## Concorde-specific operations
 
-Feature operations use Feature Workspace Protocol v6 (hardening proposal v4) over Architecture
+Feature operations use Feature Workspace Protocol v7 (acceptance proposal v5) over Architecture
 Source Profile 4. Features are created and selected through the
 normal Spec Kit lifecycle (see [Creating and selecting a feature](#creating-and-selecting-a-feature)
-below); Concorde adds no creation or selection command. `feature.harden` accepts either valid level
+below); Concorde adds no creation or selection command. `feature.accept` accepts either valid level
 while operating on exactly one lifecycle root. `context` reports containment summaries separately
 from cross-module refinement, and `validate` rejects a third feature level.
 
@@ -112,7 +112,7 @@ $speckit-specify Describe the feature's required behavior and why it matters.
 ```
 
 The Concorde specify addendum authors `abstract.md` and `design.md` and seeds adjacent placeholder
-`implementation.md`, which states that no realization has been hardened yet, and persists the root to
+`implementation.md`, which states that no realization has been accepted yet, and persists the root to
 `.specify/feature.json`. Record the
 feature's identity and placement in design front matter (`id`, `module`, and `parent_feature` for
 a sub-feature), register it in the module's `features` list (or the parent's `subfeatures` list),
@@ -128,12 +128,12 @@ kind, parent context and sibling summaries for a sub-feature, durable and tempor
 `module.md` and `design.md` of the module at which the feature is specified (`providing_module`) as
 navigation references, and `attempt_state`. A non-empty
 `attempt/` attempt appears as `attempt_state: active`; there is no separate resume
-step—decide whether to continue that attempt or harden or archive it.
+step—decide whether to continue that attempt or accept or archive it.
 
 ### `$speckit-concorde-validate [path-or-id]`
 
 Use after architecture, contract, feature metadata, diagram, or evidence changes; use it again before
-hardening. With no target it validates the configured package. A path or stable ID requests a safely
+acceptance. With no target it validates the configured package. A path or stable ID requests a safely
 bounded validation scope.
 
 Validation is deterministic and read-only. A successful runtime exit can still contain warnings;
@@ -157,7 +157,7 @@ budget (`CONCORDE-ABSTRACT-004`, a warning), and the durable trio: a missing `im
 `implementation/` attempt directory (`CONCORDE-LAYOUT-008`), or a missing `abstract.md`
 (`CONCORDE-LAYOUT-009`).
 
-### `$speckit-concorde-feature-harden [feature-id-or-root]`
+### `$speckit-concorde-feature-accept [feature-id-or-root]`
 
 Use only when the selected implementation attempt is task-complete, all existing checklist items are
 satisfied, evidence has been reviewed, and the maintainer accepts the result as a milestone.
@@ -172,7 +172,7 @@ and removes the complete `attempt/` directory as one atomic operation, reporting
 both documents; stale or unsafe proposals change nothing, and `abstract.md`, `design.md`, `module.md`, and
 the project reflection log are never edited. Eligibility summarizes the feature's reflection entries
 by status; the candidate must cite every open one among its known limitations or apply refuses with
-`CONCORDE-HARDEN-012`.
+`CONCORDE-ACCEPT-012`.
 
 ## Normal Spec Kit phases under Concorde
 
@@ -202,11 +202,11 @@ A common order is:
 
 ```text
 specify → clarify → checklist → plan → tasks → analyze
-        → implement → converge → validate → harden
+        → implement → converge → validate → accept
 ```
 
 The order is not a blind pipeline. `clarify` and custom checklists are used when needed; validation
-may run repeatedly; convergence can add tasks that require another implementation pass. Hardening is
+may run repeatedly; convergence can add tasks that require another implementation pass. Acceptance is
 never automatic.
 
 ## What actually runs
@@ -220,7 +220,7 @@ The installed workflow has four distinct layers:
 3. **A workspace adapter or portable launcher** resolves phase paths or locates the installed
    extension runtime using project-relative paths.
 4. **The Concorde Python runtime** performs deterministic initialization, selected-workspace
-   resolution, bounded-context projection, validation, and hardening controls.
+   resolution, bounded-context projection, validation, and acceptance controls.
 
 For a normal Spec Kit phase, the agent invokes the workspace adapter, obtains the selected durable
 and temporary paths, and continues the normal phase. For one of the four Concorde-specific
@@ -248,4 +248,4 @@ skill does not change the distributed framework.
 | Approved tasks are ready | `implement` |
 | Code may still be incomplete | `converge`, then implement remaining tasks |
 | Architecture or evidence may be inconsistent | `concorde-validate` |
-| The completed result is accepted as a milestone | `concorde-feature-harden` |
+| The completed result is accepted as a milestone | `concorde-feature-accept` |

@@ -356,7 +356,7 @@ representative changes.
   edit path.
 - **FR-038**: The maintained Documentation collection MUST explain the end-to-end Concorde workflow
   from root architecture and feature placement through specification, architecture review,
-  implementation, validation, hardening, and publication.
+  implementation, validation, acceptance, and publication.
 - **FR-039**: The maintained Documentation collection MUST distinguish normal Spec Kit lifecycle
   phases from Concorde-specific operations and distinguish agent-facing command presentation from
   adapters, launchers, and deterministic runtime behavior.

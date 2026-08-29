@@ -16,7 +16,7 @@ diagrams:
     scenarios:
       - record-during-planning-and-implementation
       - review-and-improve
-      - carry-lessons-through-hardening
+      - carry-lessons-through-acceptance
     output: generated/architecture/workflow-reflection-components.html
 evidence_status: unknown
 canonical_design: specs/concorde/features/005-record-workflow-reflections/design.md
@@ -54,7 +54,7 @@ already exist, with no new command, without touching any other durable document,
 stopping work that can continue. Each entry says which feature was being worked on and which source
 — in that feature, in another feature's existing implementation, in a module, in the guidance, or in
 a tool — the problem is about. A maintainer reads the log to improve the specification, the
-architecture, the guidance, or the tooling; hardening cites the attempt's entries in the design
+architecture, the guidance, or the tooling; acceptance cites the attempt's entries in the design
 reference; and the log itself outlives every attempt.
 
 ## Reflection Boundary
@@ -62,7 +62,7 @@ reference; and the log itself outlives every attempt.
 The workflow already tells an agent what to read, what to write, and what it may never edit. What
 it lacks is a place for the agent to say *this did not work as described*. Today such observations
 are scattered across chat transcripts, commit messages, or an ad-hoc paragraph in `research.md`,
-and they disappear when the attempt is hardened. This feature gives them one home and one lifecycle:
+and they disappear when the attempt is accepted. This feature gives them one home and one lifecycle:
 
 - **One log for the whole project.** A problem met while implementing one feature is usually about
   something that already exists — another feature's realization, a module boundary, a contract, an
@@ -77,15 +77,15 @@ and they disappear when the attempt is hardened. This feature gives them one hom
   actual improvement through the normal path: specification review for a specification problem, an
   architecture change for a placement or contract problem, a change to the installed guidance or
   runtime for a guidance or tooling problem.
-- **At hardening** the proposal presents the entries recorded for the feature by status; resolved
+- **At acceptance** the proposal presents the entries recorded for the feature by status; resolved
   entries that shaped the realization are cited among the design reference's decisions, and every
-  still-open entry is cited among its known limitations. Hardening never removes or rewrites the log.
+  still-open entry is cited among its known limitations. Acceptance never removes or rewrites the log.
 
 For the Concorde project itself, entries about guidance and tooling are the feedback loop the
 constitution's self-application principle asks for: they are the concrete, cumulative list of what
 the framework got wrong while developing itself.
 
-The feature adds no command surface. The recording obligation, the log's shape, and the hardening
+The feature adds no command surface. The recording obligation, the log's shape, and the acceptance
 citation rule are carried by the phases, templates, and operations the workflow already has.
 
 ## Core Component Diagram and Supplemental Scenario Views
@@ -97,7 +97,7 @@ citation rule are carried by the phases, templates, and operations the workflow 
   surfaces after specification (plan, tasks, implement, analyze, converge), this feature, the
   selected feature's durable specification (`abstract.md` + `design.md`, cited and never edited), the
   project reflection log at the specification root, the feature design reference (`implementation.md`), and
-  deterministic validation, feature hardening, and the level's module design reference. Every
+  deterministic validation, feature acceptance, and the level's module design reference. Every
   crossing from the phases and operations into maintained sources is governed by
   `contract.concorde.workflow`; the host phase behavior is required through
   `contract.concorde.spec-kit-platform`.
@@ -228,17 +228,17 @@ and all entries concerning one module within two minutes from the root module su
 
 ---
 
-### User Story 4 - Carry the Attempt's Lessons Through Hardening (Priority: P2)
+### User Story 4 - Carry the Attempt's Lessons Through Acceptance (Priority: P2)
 
 As a maintainer accepting a milestone, I can see every entry recorded for the feature and its status
 before the attempt is removed, so that the resolved lessons that shaped the realization reach the
 design reference and every open problem is stated as a known limitation, while the log itself stays
 intact for the next attempt on any feature.
 
-**Why this priority**: Hardening deletes the attempt and writes the design reference in full; it is
+**Why this priority**: Acceptance deletes the attempt and writes the design reference in full; it is
 the moment the attempt's experience must be reflected in the accepted realization.
 
-**Independent Test**: Harden an attempt whose feature has resolved, dismissed, and open entries in
+**Independent Test**: Accept an attempt whose feature has resolved, dismissed, and open entries in
 the project log, alongside entries attributed to other features. Verify that the proposal presents
 the feature's entries by status, that the accepted design reference cites the realization-shaping
 resolved entries among its decisions and every open entry among its known limitations, that an open
@@ -247,10 +247,10 @@ unlisted, and that the log is byte-identical after apply.
 
 **Acceptance Scenarios**:
 
-1. **Given** a resolved entry that changed how the feature is realized, **When** hardening drafts
+1. **Given** a resolved entry that changed how the feature is realized, **When** acceptance drafts
    the feature design reference, **Then** the decision appears among its durable implementation
    decisions citing the entry's identifier.
-2. **Given** an open entry attributed to the feature at hardening time, **When** the proposal is
+2. **Given** an open entry attributed to the feature at acceptance time, **When** the proposal is
    presented, **Then** the entry appears among the feature's known limitations with its identifier,
    and when it concerns the level's guidance, tooling, or architecture, also in the module design
    reference amendment as planned work.
@@ -270,7 +270,7 @@ a missing field, a duplicate identifier, an invalid status, an entry attributed 
 feature, an unresolvable reference — so that the log stays machine-checkable and trustworthy without
 a human reading every entry.
 
-**Why this priority**: The log feeds hardening and review; a malformed log would let entries be
+**Why this priority**: The log feeds acceptance and review; a malformed log would let entries be
 silently ignored. It is P3 because the core value exists once entries are written at all.
 
 **Independent Test**: Seed logs with one breach of each shape rule and one well-formed log. Run
@@ -300,7 +300,7 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   notes as authoritative and never reverse them.
 - An entry would contain a secret, a credential, or a large raw log: the entry cites the evidence
   file or the redacted location instead.
-- The attempt is discarded without hardening: the entries stay in the log with their statuses;
+- The attempt is discarded without acceptance: the entries stay in the log with their statuses;
   nothing is lost and nothing needs archiving.
 - Guidance is refreshed while an attempt is in progress: entries recorded against the previous
   guidance keep their original citation and are flagged by analysis as referencing changed sources.
@@ -362,7 +362,7 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   MUST NOT create work for dismissed entries.
 - **FR-010**: A maintainer MUST be able to resolve or dismiss any entry by editing the log directly,
   recording the note and, for a resolved entry, a reference to the change that resolved it.
-- **FR-011**: The hardening proposal MUST present every entry attributed to the feature with its
+- **FR-011**: The acceptance proposal MUST present every entry attributed to the feature with its
   status. The candidate feature `implementation.md` MUST cite the identifier of every such entry that is
   still `open` among its known limitations, and SHOULD cite resolved entries that shaped the
   realization among its decisions; entries whose lesson concerns the level's guidance, tooling, or
@@ -380,10 +380,10 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   evidence location instead, and its problem statement SHOULD stay under 150 words so that a log
   remains reviewable in minutes.
 - **FR-015**: The installed phase guidance and the log template MUST carry the recording obligation,
-  the log's shape, and the hardening citation rule, so that any project installed through Spec Kit
+  the log's shape, and the acceptance citation rule, so that any project installed through Spec Kit
   obtains this behavior without a Concorde checkout.
 - **FR-016**: The reflection log MUST be a maintained, version-controlled source that no workflow
-  operation removes, that hardening leaves byte-identical, and that this feature does not publish;
+  operation removes, that acceptance leaves byte-identical, and that this feature does not publish;
   generated sites and reports MAY link to it but MUST NOT treat it as a specification, design
   reference, or contract.
 - **FR-017**: In the Concorde project itself, an accepted `guidance` or `tooling` entry MUST be
@@ -400,7 +400,7 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   kind, concerned source, expected-versus-observed statement, effect, suggested improvement, status,
   resolution note, and occurrence history.
 - **Attributed Feature**: The stable ID of the feature or sub-feature selected when the entry was
-  recorded; the key by which hardening and phase reports select "the feature's entries".
+  recorded; the key by which acceptance and phase reports select "the feature's entries".
 - **Concerned Source**: The stable ID or path the problem is about — possibly a different feature,
   its design reference or code, a module, a contract, an installed instruction, or a tool.
 - **Kind**: The classification that tells the maintainer which authority the problem is about:
@@ -423,7 +423,7 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
 - **SC-003**: A maintainer who has not followed recent attempts finds every open entry for one
   feature, and every entry concerning one module, within two minutes of opening the root module
   summary, and reviews a log of ten entries in under ten minutes.
-- **SC-004**: At hardening, 100% of the feature's entries are presented with their status; 100% of
+- **SC-004**: At acceptance, 100% of the feature's entries are presented with their status; 100% of
   its open entries are cited in the accepted design reference; zero attempts are removed while an
   open attributed entry is uncited; and the log is byte-identical before and after apply in 100% of
   fixtures.
@@ -451,7 +451,7 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
 - Surfacing of the feature's entries in phase completion reports, analysis, and the root module's
   bounded context.
 - Maintainer resolution and dismissal directly in the log.
-- Citation of the feature's entries at hardening and the refusal to remove an attempt while an
+- Citation of the feature's entries at acceptance and the refusal to remove an attempt while an
   open attributed entry is uncited.
 - Deterministic shape validation of a present log.
 - The self-application loop for guidance and tooling entries in the Concorde project.
@@ -481,14 +481,14 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   content rather than adding a report.
 - Deterministic validation already reads every maintained source under the specification root and
   can add one more file there.
-- The maintainer reviews the log at the latest at hardening; the feature does not remind them
+- The maintainer reviews the log at the latest at acceptance; the feature does not remind them
   earlier.
 - Concurrent appends by two agents are rare; version control, not the workflow, arbitrates them.
 
 ## Dependencies
 
 - `feature.concorde.workflow` and its sub-features `plan-delivery`, `execute-and-reconcile`,
-  `validate-architecture`, and `harden-design`, whose phase behavior this feature extends and whose
+  `validate-architecture`, and `accept-milestone`, whose phase behavior this feature extends and whose
   specifications must be reconciled with FR-003, FR-009, FR-011, and FR-012.
 - `feature.concorde.workflow.specify-behavior` for the specification review through which a
   `specification` entry is resolved.
@@ -505,18 +505,18 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
 
 - **Stable feature ID**: `feature.concorde.record-workflow-reflections`
 - **Providing module**: `module.concorde`; the behavior is realized by Spec Kit Integration
-  (phase guidance and templates) and Architecture Core (validation, context, and hardening), both
+  (phase guidance and templates) and Architecture Core (validation, context, and acceptance), both
   visible at this level; the log itself is a root-level maintained source beside `module.md`.
 - **Decomposition decision**: atomic. The feature is one obligation with one artifact and one
   citation rule; splitting it by phase would duplicate the entry shape in every child.
 - **Feature containment**: none; this feature has no sub-features.
 - **Authority split**: this specification owns the log's location, shape, attribution, lifecycle,
-  and hardening citation rule; the workflow sub-features it extends keep ownership of their phase
+  and acceptance citation rule; the workflow sub-features it extends keep ownership of their phase
   behavior and must be reconciled with the requirements above rather than restating them.
 - **Observable textual outcome**: the Outcome section.
 - **Parent refinement**: none; this is a root-level feature.
 - **Representative scenarios**: `record-during-planning-and-implementation`, `review-and-improve`,
-  and `carry-lessons-through-hardening`, drawn as guided views of the core diagram. The root view
+  and `carry-lessons-through-acceptance`, drawn as guided views of the core diagram. The root view
   shows this feature as a root feature node; its scenarios are drawn only in the feature's core
   view because the root view's five guided scenario slots are full.
 - **Core feature diagram**: `diagrams/workflow-reflection-components.json` (`architecture`,

@@ -90,7 +90,7 @@ its parent's `subfeatures` list, matching the `design.md` front matter.
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): FR-001 to FR-009 and
   SC-001 to SC-004.
 - **How the accepted implementation realizes this step** — [implementation.md](implementation.md) (states that no
-  realization has been hardened yet).
+  realization has been accepted yet).
 - **The parent feature** — its [abstract](../../abstract.md) and [design.md](../../design.md).
 - **Contracts** — `../../contracts/feature-workspace.schema.json`
   (the protocol result), `../../contracts/agent-commands.md`, and

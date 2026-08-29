@@ -19,7 +19,7 @@ routed through the selected root's temporal attempt.
 | Input | Role in planning |
 |---|---|
 | `design.md` | Required behavior |
-| Feature `implementation.md` | The accepted realization baseline; the not-yet-hardened placeholder means there is no baseline, not an invented one |
+| Feature `implementation.md` | The accepted realization baseline; the not-yet-accepted placeholder means there is no baseline, not an invented one |
 | `abstract.md` | Orientation only; never a substitute for `design.md` |
 | The level's `module.md` and bounded view | Architecture context |
 | The level's `implementation.md` | Consulted only for a specific recorded detail, and cited in the plan |
@@ -33,7 +33,7 @@ Nothing durable changes — not `abstract.md`, `design.md`, the feature `impleme
 module `design.md` — and no root-level compatibility copy is created. External issue writes need
 separate authority.
 
-**Not part of this step**: executing tasks (the execute step), hardening the result (the harden
+**Not part of this step**: executing tasks (the execute step), acceptance the result (the accept
 step), and changing required behavior (the specify step).
 
 ## Structure
@@ -85,7 +85,7 @@ Maintainer ──approach · approve plan · request issues──▶ plan · tas
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): FR-001 to FR-008 and
   SC-001 to SC-005.
 - **How the accepted implementation realizes this step** — [implementation.md](implementation.md) (states that no
-  realization has been hardened yet).
+  realization has been accepted yet).
 - **The parent feature** — its [abstract](../../abstract.md) and [design.md](../../design.md), which define the
   durable/temporal split this step relies on.
 - **Contracts** — `../../contracts/agent-commands.md` for the three surfaces and

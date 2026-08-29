@@ -86,7 +86,7 @@ nested feature workspace before any phase-specific file is read or written. Dura
 (`abstract.md` and `design.md`) and the accepted design reference (`implementation.md`) stay at the feature root,
 while requirements-quality checklists, planning, and delivery artifacts stay under
 `attempt/`. The preset also supplies the feature abstract template and the permanent `implementation.md`
-template. The extension supplies `speckit.concorde.feature.harden`, which proposes and, only after
+template. The extension supplies `speckit.concorde.feature.accept`, which proposes and, only after
 explicit approval, atomically promotes a completed attempt into that design reference and removes
 `attempt/`.
 Repository-local `.agents/` skills and `.specify/` scripts are self-hosting evidence only: a released
@@ -224,7 +224,7 @@ preset is disabled or removed.
 6. **Given** one skills-based and one slash-command-based integration, **When** equivalent lifecycle
    and Concorde commands run, **Then** they produce equivalent selected-workspace, phase-path, result,
    and failure behavior.
-7. **Given** a completed implementation attempt, **When** the installed hardening command is proposed
+7. **Given** a completed implementation attempt, **When** the installed acceptance command is proposed
    and explicitly approved, **Then** the reviewed design replaces root `implementation.md` and the exact
    `attempt/` directory, including its resolved checklists, is removed; incomplete tasks,
    unresolved checklist items, or stale proposals make no change.
@@ -361,7 +361,7 @@ project-owned sources.
   evidence; verification MUST execute the installed winning command surfaces and compare their
   observable workspace results with the accepted distribution contract.
 - **FR-030**: Clean-project verification MUST prove that feature creation provides root `abstract.md`,
-  `design.md`, and `implementation.md` and that installed hardening refuses incomplete or stale attempts and applies only an explicitly
+  `design.md`, and `implementation.md` and that installed acceptance refuses incomplete or stale attempts and applies only an explicitly
   approved, digest-bound proposal to the selected feature.
 - **FR-031**: Installed `specify`, `clarify`, and `checklist` surfaces MUST route every generated
   requirements-quality artifact to the selected feature's `attempt/checklists/` directory;

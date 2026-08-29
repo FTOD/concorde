@@ -39,16 +39,16 @@
         "note": "The maintainer resolves or dismisses entries in the one project log and fixes the owning document through its normal path."
       },
       {
-        "id": "carry-lessons-through-hardening",
-        "label": "Carry lessons through hardening",
+        "id": "carry-lessons-through-acceptance",
+        "label": "Carry lessons through acceptance",
         "focus": [
           "maintainer",
           "reflectionLog",
-          "hardening",
+          "acceptance",
           "featureImplementation",
           "moduleDesign"
         ],
-        "note": "Hardening presents the feature's entries by status and cites the open ones as known limitations; the log itself stays intact."
+        "note": "Acceptance presents the feature's entries by status and cites the open ones as known limitations; the log itself stays intact."
       }
     ]
   },
@@ -127,10 +127,10 @@
       ]
     },
     {
-      "id": "hardening",
+      "id": "acceptance",
       "type": "backend",
-      "label": "Feature Hardening",
-      "sublabel": "concorde feature.harden",
+      "label": "Feature Acceptance",
+      "sublabel": "concorde feature.accept",
       "tag": "Cites the feature’s entries",
       "pos": [
         900,
@@ -260,9 +260,9 @@
       "toSide": "top"
     },
     {
-      "id": "logFeedsHardening",
+      "id": "logFeedsAcceptance",
       "from": "reflectionLog",
-      "to": "hardening",
+      "to": "acceptance",
       "label": "feature’s entries by status",
       "fromSide": "bottom",
       "toSide": "top",
@@ -272,8 +272,8 @@
       ]
     },
     {
-      "id": "hardeningWritesDesign",
-      "from": "hardening",
+      "id": "acceptanceWritesDesign",
+      "from": "acceptance",
       "to": "featureImplementation",
       "label": "accepted realization",
       "variant": "emphasis",
@@ -285,8 +285,8 @@
       ]
     },
     {
-      "id": "hardeningAmendsModule",
-      "from": "hardening",
+      "id": "acceptanceAmendsModule",
+      "from": "acceptance",
       "to": "moduleDesign",
       "label": "level lessons",
       "fromSide": "left",
@@ -315,7 +315,7 @@
     {
       "id": "maintainerApproves",
       "from": "maintainer",
-      "to": "hardening",
+      "to": "acceptance",
       "label": "approve proposal",
       "fromSide": "bottom",
       "toSide": "right"
@@ -335,7 +335,7 @@
       "title": "One log for the whole project",
       "items": [
         "An entry names the feature worked on and the source it concerns — any feature, module, guidance, or tool",
-        "Entries survive hardening; statuses record what the maintainer decided"
+        "Entries survive acceptance; statuses record what the maintainer decided"
       ]
     },
     {

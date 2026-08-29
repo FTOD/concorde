@@ -22,7 +22,7 @@ metadata, each with one job:
 | Catalog | Advertises identity, version, compatibility, location, integrity, and trust of each unit. | An installed component. |
 | Bundle `concorde-bundle` | A non-executable recipe that pins exactly one tested `concorde-core` preset and one `concorde` extension. | Behavior, a template layer, or a replacement workflow. |
 | Preset `concorde-core` | Composes Concorde guidance into the normal templates (specification, abstract, design reference, plan, tasks) and replaces the nine path-sensitive Spec Kit commands so the selected workspace is resolved first. | A new command namespace or a second feature specification. |
-| Extension `concorde` | Registers the five Concorde surfaces (`init`, `context`, `validate`, `feature.harden`, and the agent-only `ask`) with the selected-workspace adapter, launchers, and the deterministic runtime. | The owner of the normal phases or of agent presentation syntax. |
+| Extension `concorde` | Registers the five Concorde surfaces (`init`, `context`, `validate`, `feature.accept`, and the agent-only `ask`) with the selected-workspace adapter, launchers, and the deterministic runtime. | The owner of the normal phases or of agent presentation syntax. |
 | Coding-agent integration | Materializes the resolved commands as the active agent's skills or slash commands. | A change to command intent or paths. |
 
 **What the maintainer can do.**
@@ -35,7 +35,7 @@ metadata, each with one job:
   project-authored `.concorde/`, `specs/`, or `docs/` sources.
 - **Verify the workflow, not just files**: in a clean project that cannot read the Concorde
   checkout, all nine normal commands and all five Concorde surfaces are materialized and actually
-  execute — durable files at the feature root, temporal files under `attempt/`, and hardening
+  execute — durable files at the feature root, temporal files under `attempt/`, and acceptance
   that refuses incomplete or stale attempts.
 - **Update, disable, or remove** with only Concorde-owned components changing; shared components
   and project sources stay, and failures never record success.
@@ -127,7 +127,7 @@ Project-owned, never component-owned:  .concorde/config.json · specs/** · .spe
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): the delivery model
   table, the four user stories, FR-001 to FR-033, and the measurable outcomes.
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (accepted realization and
-  implementation detail, written by hardening).
+  implementation detail, written by acceptance).
 - **The contracts** — `contracts/bundle-distribution.md`,
   `contracts/installed-command-surfaces.md`, and
   `contracts/ecosystem-explanation.md`; the boundary promise is

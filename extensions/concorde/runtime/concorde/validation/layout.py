@@ -71,7 +71,7 @@ def validate_layout(package: Any) -> list[Finding]:
             legacy_names = ", ".join(name for name, path in (("spec.md", legacy_spec), ("tldr.md", legacy_tldr)) if path.exists())
             findings.append(Finding("CONCORDE-LAYOUT-007", "error", relative_root, f"The feature root still uses legacy document names: {legacy_names}.", "Rename tldr.md to abstract.md, spec.md to design.md, and the former feature design.md to implementation.md.", subject_id=feature.identifier))
         if not implementation.is_file() or implementation.is_symlink():
-            findings.append(Finding("CONCORDE-LAYOUT-005", "error", f"{relative_root}/implementation.md", "The feature has no real durable implementation.md.", "Create implementation.md at the feature root from the implementation-template; before the first hardening, state that no realization has been hardened.", subject_id=feature.identifier))
+            findings.append(Finding("CONCORDE-LAYOUT-005", "error", f"{relative_root}/implementation.md", "The feature has no real durable implementation.md.", "Create implementation.md at the feature root from the implementation-template; before the first acceptance, state that no realization has been accepted.", subject_id=feature.identifier))
         if not abstract.is_file() or abstract.is_symlink():
             findings.append(Finding("CONCORDE-LAYOUT-009", "error", f"{relative_root}/abstract.md", "The feature has no real abstract.md.", "Author the feature abstract from the abstract-template with the sections Purpose, Functionality, Structure, Logic, and Read Next.", subject_id=feature.identifier))
         for name in FORBIDDEN_ROOT_FILES:

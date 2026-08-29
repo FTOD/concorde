@@ -21,7 +21,7 @@ canonical_design: specs/concorde/features/001-concorde-workflow/subfeatures/004-
 **Created**: 2026-08-26
 **Revised**: 2026-08-28
 **Status**: Specified and revised for the parent's three-tier feature document model; existing
-realization has not been hardened into this sub-feature's `implementation.md`
+realization has not been accepted into this sub-feature's `implementation.md`
 **Input**: Resolve, validate, and route the standard Spec Kit selection of one canonical top-level
 feature or immediate sub-feature workspace whose durable trio is `abstract.md`, `design.md`, and
 `implementation.md`.
@@ -58,7 +58,7 @@ legacy-name and missing-abstract fixtures.
 **Acceptance Scenarios**:
 1. **Given** `SPECIFY_FEATURE_DIRECTORY` names a canonical unused root beneath a module's `features/`
    or a top-level parent's `subfeatures/`, **When** `speckit.specify` runs, **Then** the root
-   contains `abstract.md`, `design.md`, and a `implementation.md` holding only the not-yet-hardened state,
+   contains `abstract.md`, `design.md`, and a `implementation.md` holding only the not-yet-accepted state,
    contains no `implementation.md`, and `.specify/feature.json` records that root.
 2. **Given** a selected root whose spec front matter (`id`, `module`, and `parent_feature` for a
    sub-feature) agrees with its module or parent registration, **When** any normal phase runs,

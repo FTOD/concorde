@@ -18,7 +18,7 @@ from tests.concorde.support.specify_project import SpecifyProject
 
 
 class InstalledCodexWorkflowTests(unittest.TestCase):
-    def test_five_surfaces_preserve_four_runtime_operations_and_hardening(self):
+    def test_five_surfaces_preserve_four_runtime_operations_and_acceptance(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
             dist = base / "dist"
@@ -50,7 +50,7 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     check=True,
                 )
                 checklist_payload = json.loads(checklist_paths.stdout)
-                self.assertEqual(checklist_payload["schema_version"], 6)
+                self.assertEqual(checklist_payload["schema_version"], 7)
                 workspace_payload = checklist_payload["workspace"]
                 self.assertEqual(workspace_payload["workspace_kind"], "subfeature")
                 self.assertEqual(workspace_payload["parent_context"]["feature_id"], "feature.example.checkout")
@@ -94,27 +94,27 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 attempt = root / "specs/example/features/001-checkout/subfeatures/001-authorize-payment/attempt"
                 attempt.mkdir(exist_ok=True)
                 (attempt / "tasks.md").write_text("# Tasks\n\n- [X] T001 Complete installed fixture\n", encoding="utf-8")
-                harden = subprocess.run(
-                    [sys.executable, str(launcher), "--project-root", str(root), "feature", "harden", "--propose"],
+                accept = subprocess.run(
+                    [sys.executable, str(launcher), "--project-root", str(root), "feature", "accept", "--propose"],
                     cwd=root,
                     text=True,
                     capture_output=True,
                 )
-                self.assertEqual(harden.returncode, 0, harden.stdout + harden.stderr)
-                harden_payload = json.loads(harden.stdout)
-                self.assertEqual(harden_payload["status"], "eligible")
+                self.assertEqual(accept.returncode, 0, accept.stdout + accept.stderr)
+                accept_payload = json.loads(accept.stdout)
+                self.assertEqual(accept_payload["status"], "eligible")
                 self.assertEqual(
-                    harden_payload["proposal_path"],
-                    harden_payload["workspace"]["attempt_dir"] + "/harden-proposal.json",
+                    accept_payload["proposal_path"],
+                    accept_payload["workspace"]["attempt_dir"] + "/accept-proposal.json",
                 )
-                self.assertEqual(harden_payload["task_summary"], {"complete": 1, "incomplete": 0, "malformed": 0})
+                self.assertEqual(accept_payload["task_summary"], {"complete": 1, "incomplete": 0, "malformed": 0})
                 self.assertEqual(
-                    harden_payload["checklist_summary"],
+                    accept_payload["checklist_summary"],
                     {"files": 0, "complete": 0, "incomplete": 0, "malformed": 0},
                 )
-                self.assertEqual(harden_payload["schema_version"], 6)
-                self.assertEqual(harden_payload["workspace"]["module_design"], "specs/example/design.md")
-                self.assertIn("specs/example/design.md", harden_payload["artifacts"])
+                self.assertEqual(accept_payload["schema_version"], 7)
+                self.assertEqual(accept_payload["workspace"]["module_design"], "specs/example/design.md")
+                self.assertIn("specs/example/design.md", accept_payload["artifacts"])
                 # Proposal v4 with a module-reference amendment: review boundary holds until explicit apply.
                 before = {
                     path.relative_to(root): path.read_bytes()
@@ -122,30 +122,30 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     if path.is_file()
                 }
                 candidate = (
-                    "# Feature Implementation: Authorize Payment\n\n**Realization status**: Hardened in the installed fixture.\n\n"
+                    "# Feature Implementation: Authorize Payment\n\n**Realization status**: Accepted in the installed fixture.\n\n"
                     "## Realization Overview\n\nInstalled.\n\n## Module and Feature Collaboration\n\nInstalled.\n\n"
                     "## Scenario Realization\n\nInstalled.\n\n## Durable Implementation Decisions\n\nInstalled.\n\n"
                     "## Traceability and Evidence\n\nInstalled.\n\n## Known Limitations\n\nNone.\n"
                 )
-                amendment = "# Design Reference: Example Commerce\n\n## Decision Log\n\n- Hardened authorize-payment in the installed fixture.\n"
-                proposal_path = root / harden_payload["proposal_path"]
+                amendment = "# Design Reference: Example Commerce\n\n## Decision Log\n\n- Accepted authorize-payment in the installed fixture.\n"
+                proposal_path = root / accept_payload["proposal_path"]
                 proposal_path.write_text(
                     json.dumps(
                         {
-                            "proposal_version": 4,
-                            "operation": "feature.harden",
-                            "target": harden_payload["target"],
-                            "source_digest": harden_payload["source_digest"],
-                            "implementation": {"path": harden_payload["workspace"]["feature_implementation"], "content": candidate},
-                            "module_design": {"path": harden_payload["workspace"]["module_design"], "content": amendment},
-                            "remove": [harden_payload["workspace"]["attempt_dir"]],
+                            "proposal_version": 5,
+                            "operation": "feature.accept",
+                            "target": accept_payload["target"],
+                            "source_digest": accept_payload["source_digest"],
+                            "implementation": {"path": accept_payload["workspace"]["feature_implementation"], "content": candidate},
+                            "module_design": {"path": accept_payload["workspace"]["module_design"], "content": amendment},
+                            "remove": [accept_payload["workspace"]["attempt_dir"]],
                         }
                     )
                     + "\n",
                     encoding="utf-8",
                 )
                 reviewed = subprocess.run(
-                    [sys.executable, str(launcher), "--project-root", str(root), "feature", "harden", "--propose"],
+                    [sys.executable, str(launcher), "--project-root", str(root), "feature", "accept", "--propose"],
                     cwd=root,
                     text=True,
                     capture_output=True,
@@ -154,13 +154,13 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 after_review = {
                     path.relative_to(root): path.read_bytes()
                     for path in (root / "specs").rglob("*")
-                    if path.is_file() and path.name != "harden-proposal.json"
+                    if path.is_file() and path.name != "accept-proposal.json"
                 }
-                self.assertEqual({k: v for k, v in before.items() if k.name != "harden-proposal.json"}, after_review)
+                self.assertEqual({k: v for k, v in before.items() if k.name != "accept-proposal.json"}, after_review)
                 applied = subprocess.run(
                     [
                         sys.executable, str(launcher), "--project-root", str(root),
-                        "feature", "harden", "--apply", "--proposal", harden_payload["proposal_path"],
+                        "feature", "accept", "--apply", "--proposal", accept_payload["proposal_path"],
                     ],
                     cwd=root,
                     text=True,
@@ -168,7 +168,7 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 )
                 self.assertEqual(applied.returncode, 0, applied.stdout + applied.stderr)
                 applied_payload = json.loads(applied.stdout)
-                self.assertEqual(applied_payload["status"], "hardened")
+                self.assertEqual(applied_payload["status"], "accepted")
                 self.assertRegex(applied_payload["module_design_digest_after"], r"^sha256:[0-9a-f]{64}$")
                 self.assertEqual((root / "specs/example/design.md").read_text(encoding="utf-8"), amendment)
                 self.assertEqual(

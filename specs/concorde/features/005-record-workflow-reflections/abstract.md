@@ -12,7 +12,7 @@ says — a requirement reads two ways, another feature's code disagrees with its
 tool fails, an instruction cannot be followed, a dependency is missing, a workaround has to be taken
 — it writes that problem down, in the phase where it happened, in the project's one reflection log.
 The maintainer reads that log to improve the specification, the architecture, the guidance, or the
-tooling across all features; hardening cites the attempt's entries in the design reference; and the
+tooling across all features; acceptance cites the attempt's entries in the design reference; and the
 log outlives every attempt.
 
 The log is project-wide on purpose: a problem met while implementing one feature is usually about
@@ -33,7 +33,7 @@ cumulative list of what the framework got wrong.
 | Kinds | `specification`, `architecture`, `guidance`, `tooling`, `environment`, `implementation` — which authority the problem is about. |
 | Surfacing | Every recording phase lists the entries it added and the feature's open count in its completion report; analysis lists the feature's open entries and flags entries whose referenced source has since changed; the root level's bounded context exposes the log and open counts. |
 | Review | The maintainer resolves or dismisses entries by editing the log; the real fix goes through the phase that owns the document (specification review, an architecture change, a guidance or runtime change). |
-| Hardening | The proposal presents the feature's entries by status; the candidate `implementation.md` cites every open one among its known limitations (and resolved, realization-shaping ones among its decisions); apply refuses while an open entry is uncited and never touches the log. |
+| Acceptance | The proposal presents the feature's entries by status; the candidate `implementation.md` cites every open one among its known limitations (and resolved, realization-shaping ones among its decisions); apply refuses while an open entry is uncited and never touches the log. |
 | Validation | A present log is checked deterministically for unique identifiers, required fields, permitted values, a resolvable feature, and resolvable references; an absent log is not a breach. |
 
 **Not part of this feature**: any new command, skill, or slash command; the agent fixing a
@@ -54,7 +54,7 @@ Specification root ── reflections.md  (one log for the whole project; mainta
         ▲ validate: shape findings          ▲ maintainer: review · resolve · dismiss
         │                                   │
 Selected feature root ─┬─ abstract.md + design.md          (read-only: cited, never edited)
-                       └─ implementation.md  ◀── feature.harden cites the feature's entries
+                       └─ implementation.md  ◀── feature.accept cites the feature's entries
                                           (open → known limitations; resolved → decisions)
                                           ──▶ module implementation.md amendment (level lessons)
 ```
@@ -65,7 +65,7 @@ Selected feature root ─┬─ abstract.md + design.md          (read-only: cit
 - **The reflection log** is the only maintained document an agent may extend in response to a
   problem with a durable document or an existing implementation; every entry names the feature
   being worked on and the source it concerns.
-- **Hardening and validation** are the existing Concorde operations; they gain the citation rule
+- **Acceptance and validation** are the existing Concorde operations; they gain the citation rule
   and the shape check respectively.
 
 ## Logic
@@ -86,7 +86,7 @@ Selected feature root ─┬─ abstract.md + design.md          (read-only: cit
 5. The maintainer resolves or dismisses entries in the log and makes the improvement through the
    owning path; in the Concorde project a guidance or tooling fix counts as used only once the
    self-hosted installation is refreshed.
-6. At hardening the proposal presents the feature's entries by status; the accepted `implementation.md`
+6. At acceptance the proposal presents the feature's entries by status; the accepted `implementation.md`
    cites the open ones as known limitations; the log stays byte-identical.
 
 **Rules the implementation must keep**
@@ -109,7 +109,7 @@ Selected feature root ─┬─ abstract.md + design.md          (read-only: cit
 - Phases report what they added and what is open for the feature; analysis flags stale
   references; convergence makes work only from genuine deferred entries (FR-009).
 - Maintainers resolve or dismiss directly in the log with a note and a reference (FR-010, FR-017).
-- Hardening presents the feature's entries, the design reference cites every open one, apply
+- Acceptance presents the feature's entries, the design reference cites every open one, apply
   refuses otherwise, and the log is left byte-identical (FR-011).
 - Validation checks a present log read-only and reports nothing for an absent one (FR-012).
 - Entries cite evidence instead of pasting secrets or bulk output and stay short (FR-014).
@@ -119,7 +119,7 @@ Selected feature root ─┬─ abstract.md + design.md          (read-only: cit
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): the Reflection
   Boundary, five user stories, FR-001 to FR-017, and SC-001 to SC-009.
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (a
-  placeholder until the first milestone is hardened).
+  placeholder until the first milestone is accepted).
 - **The log's grammar** — `contracts/reflection-log.md` and the conforming example
   `contracts/examples/reflections.md` (repository files, not published pages); the boundary promise is
   [contract.concorde.workflow](../../architecture/contracts/concorde-workflow/contract.md); the host lifecycle
@@ -133,5 +133,5 @@ Selected feature root ─┬─ abstract.md + design.md          (read-only: cit
   [plan](../001-concorde-workflow/subfeatures/006-plan-delivery/design.md),
   [execute](../001-concorde-workflow/subfeatures/007-execute-and-reconcile/design.md),
   [validate](../001-concorde-workflow/subfeatures/008-validate-architecture/design.md), and
-  [harden](../001-concorde-workflow/subfeatures/009-harden-design/design.md); framework fixes reach
+  [accept](../001-concorde-workflow/subfeatures/009-accept-milestone/design.md); framework fixes reach
   this checkout through [Self-Host Concorde](../004-self-host-concorde/abstract.md).

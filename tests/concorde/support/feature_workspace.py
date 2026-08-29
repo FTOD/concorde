@@ -181,31 +181,31 @@ Fixtures stay minimal; see the [design reference](design.md).
 
 FEATURE_IMPLEMENTATION_PLACEHOLDER = """# Feature Implementation: Fixture
 
-**Realization status**: No implementation realization has been hardened yet.
+**Realization status**: No implementation realization has been accepted yet.
 
 ## Realization Overview
 
-No implementation realization has been hardened yet.
+No implementation realization has been accepted yet.
 
 ## Module and Feature Collaboration
 
-No implementation realization has been hardened yet.
+No implementation realization has been accepted yet.
 
 ## Scenario Realization
 
-No implementation realization has been hardened yet.
+No implementation realization has been accepted yet.
 
 ## Durable Implementation Decisions
 
-No implementation realization has been hardened yet.
+No implementation realization has been accepted yet.
 
 ## Traceability and Evidence
 
-No implementation realization has been hardened yet.
+No implementation realization has been accepted yet.
 
 ## Known Limitations
 
-No implementation realization has been hardened yet.
+No implementation realization has been accepted yet.
 """
 
 
@@ -264,14 +264,14 @@ Not recorded yet.
 """
 
 
-def write_hardened_root(project_root: Path, relative: str, feature_id: str, module_id: str = "module.example") -> Path:
-    """Create a feature root whose implementation.md is hardened and that has no attempt."""
+def write_accepted_root(project_root: Path, relative: str, feature_id: str, module_id: str = "module.example") -> Path:
+    """Create a feature root whose implementation.md is accepted and that has no attempt."""
     root = create_feature_root(project_root, relative, feature_id, module_id)
     (root / "implementation.md").write_text(
-        "# Feature Implementation: Fixture\n\n**Realization status**: Hardened fixture milestone.\n\n"
-        "## Realization Overview\n\nHardened.\n\n## Module and Feature Collaboration\n\nHardened.\n\n"
-        "## Scenario Realization\n\nHardened.\n\n## Durable Implementation Decisions\n\nHardened.\n\n"
-        "## Traceability and Evidence\n\nHardened.\n\n## Known Limitations\n\nNone recorded.\n",
+        "# Feature Implementation: Fixture\n\n**Realization status**: Accepted fixture milestone.\n\n"
+        "## Realization Overview\n\nAccepted.\n\n## Module and Feature Collaboration\n\nAccepted.\n\n"
+        "## Scenario Realization\n\nAccepted.\n\n## Durable Implementation Decisions\n\nAccepted.\n\n"
+        "## Traceability and Evidence\n\nAccepted.\n\n## Known Limitations\n\nNone recorded.\n",
         encoding="utf-8",
     )
     return root

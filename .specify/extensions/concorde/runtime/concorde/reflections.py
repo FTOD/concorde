@@ -3,7 +3,7 @@
 The log is the one maintained file in which coding agents record every difficulty or problem met
 during the plan, tasks, implement, analyze, and converge phases of any attempt. Its grammar is
 normative in Feature 005's ``contracts/reflection-log.md``; this module is shared by validation,
-bounded context, the workspace adapter, and feature hardening so that every consumer parses the log
+bounded context, the workspace adapter, and feature acceptance so that every consumer parses the log
 identically. It never writes the log.
 """
 

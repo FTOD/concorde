@@ -21,21 +21,21 @@ canonical_design: specs/concorde/features/001-concorde-workflow/subfeatures/007-
 **Created**: 2026-08-26
 **Revised**: 2026-08-28
 **Status**: Specified and revised for the parent's three-tier feature document model; existing
-realization has not been hardened into this sub-feature's `implementation.md`
+realization has not been accepted into this sub-feature's `implementation.md`
 **Input**: Route `speckit.implement`, `speckit.analyze`, and `speckit.converge` through the selected
-attempt, keeping every discovery inside it until hardening.
+attempt, keeping every discovery inside it until acceptance.
 
 ## Outcome
 
 A coding agent can execute the approved task list, report cross-artifact inconsistencies without
 mutation, and append only genuine remaining work while staying inside bounded selected context and
-recording what it learns where hardening can later find it.
+recording what it learns where acceptance can later find it.
 
 ## Parent Context and Boundary
 
 The parent owns lifecycle authority, review boundaries, and the document model. This child owns task
 execution, non-destructive consistency analysis, and convergence of discovered remaining work. It
-does not own architecture validation or hardening. The parent core diagram and selected workspace
+does not own architecture validation or acceptance. The parent core diagram and selected workspace
 model are sufficient; no child diagram is needed.
 
 ## User Scenarios & Testing
@@ -68,7 +68,7 @@ module references.
 - Tests disagree with maintained intent or cannot establish evidence.
 - The abstract and the specification disagree on a behavior a task implements.
 - Convergence finds no genuine remaining work.
-- Execution learns something that would belong in a module `design.md` before any hardening.
+- Execution learns something that would belong in a module `design.md` before any acceptance.
 
 ## Requirements
 
@@ -87,7 +87,7 @@ module references.
 - **FR-007**: None of these phases may update `abstract.md`, `design.md`, the feature `implementation.md`, any
   module `module.md` or `implementation.md`, or remove the temporal attempt.
 - **FR-008**: Rationale, alternatives, and implementation detail discovered during execution MUST be
-  recorded within the selected attempt so that hardening can carry the durable parts into the
+  recorded within the selected attempt so that acceptance can carry the durable parts into the
   feature `implementation.md` and the level's `implementation.md`.
 
 ## Success Criteria

@@ -21,7 +21,7 @@ canonical_design: specs/concorde/features/001-concorde-workflow/subfeatures/001-
 **Created**: 2026-08-26
 **Revised**: 2026-08-28
 **Status**: Specified and revised for the parent's three-tier feature document model; existing
-realization has not been hardened into this sub-feature's `implementation.md`
+realization has not been accepted into this sub-feature's `implementation.md`
 **Input**: Establish a minimal Concorde root through `speckit.concorde.init` without overwriting
 maintained intent, seeding the root module summary and its design reference together.
 

@@ -6,7 +6,7 @@ sidebar_position: 6
 # Concorde Workflow
 
 Concorde surrounds the normal Spec Kit lifecycle with architectural ownership, bounded context,
-deterministic validation, and approval-gated hardening. It does not replace specification, planning,
+deterministic validation, and approval-gated acceptance. It does not replace specification, planning,
 tasks, or implementation.
 
 Contributors changing the Concorde framework itself must also use the explicit local synchronization
@@ -67,7 +67,7 @@ Concorde has no feature-creation command. For a new feature, set `SPECIFY_FEATUR
 canonical feature root inside the hierarchy—`<module directory>/features/NNN-<short-name>`, for
 example `specs/example/architecture/modules/api/features/002-observe-health`—and run the normal
 `speckit.specify` phase. The Concorde specify addendum authors root `abstract.md` and `design.md`, seeds
-placeholder `implementation.md` that explicitly states no realization has yet been hardened, and persists
+placeholder `implementation.md` that explicitly states no realization has yet been accepted, and persists
 the root to `.specify/feature.json`. Record the feature's identity and placement in design front matter (`id`
 and `module`), register it in the module's `features` list, and run `speckit.concorde.validate`,
 which deterministically checks registration, canonical path, two-level containment, and identity.
@@ -80,7 +80,7 @@ root: safe path, canonical `abstract.md`/`design.md`/`implementation.md` trio wi
 workspace kind, parent context and sibling summaries for a sub-feature, durable and temporal paths,
 the module's `module.md` and `design.md` as navigation references, and `attempt_state`. A
 non-empty `attempt/` attempt appears as `attempt_state: active`; there is no separate
-resume step—decide whether to continue that attempt or harden or archive it.
+resume step—decide whether to continue that attempt or accept or archive it.
 
 Selection is what routes later Spec Kit phases. Context retrieval is only a read operation.
 
@@ -213,7 +213,7 @@ installation is refreshed.
 ## 7. Validate and reconcile disagreement
 
 Run `speckit.concorde.validate` after maintained structural changes, during implementation, and
-before hardening. It deterministically checks source parsing, unique identities, containment and
+before acceptance. It deterministically checks source parsing, unique identities, containment and
 refinement, feature ownership, contract completeness, scenario scope, view depth and coverage,
 module diagram references (`CONCORDE-VIEW-006`), legacy module layout
 (`CONCORDE-LAYOUT-010`/`-011`), references, evidence status, module summary and feature abstract shape and reading budgets (the budgets as warnings
@@ -228,9 +228,9 @@ specification, accepted realization, code, tests, or projections are reported as
 Review behavioral, architectural, implementation, and evidence changes together. Do not resolve a
 finding by weakening the wrong authority.
 
-## 8. Harden an accepted milestone
+## 8. Accept an accepted milestone
 
-Hardening is appropriate only when:
+Acceptance is appropriate only when:
 
 - the active attempt has a real `attempt/tasks.md` with at least one task;
 - every recognizable task is complete;
@@ -255,8 +255,8 @@ Checked boxes do not grant approval. Only explicit acceptance of that exact prop
 runtime to write feature `implementation.md`, amend module `design.md` when proposed, and remove
 `attempt/` as one atomic operation; the result reports digests for both documents. A stale
 digest, changed path, symlink, incomplete task, unresolved checklist, amendment aimed at `abstract.md`,
-`design.md`, `module.md`, or another level, an uncited open reflection entry (`CONCORDE-HARDEN-012`),
-or failed apply leaves the previous state recoverable. Hardening never edits `abstract.md`, `design.md`,
+`design.md`, `module.md`, or another level, an uncited open reflection entry (`CONCORDE-ACCEPT-012`),
+or failed apply leaves the previous state recoverable. Acceptance never edits `abstract.md`, `design.md`,
 `module.md`, the reflection log, contracts, or architecture diagrams.
 
 ## 9. Publish the read model
@@ -273,11 +273,11 @@ The publication behavior is specified separately by
 
 ## Starting the next change
 
-A hardened feature has no active `attempt/` directory. Select it again by pointing
+A accepted feature has no active `attempt/` directory. Select it again by pointing
 `SPECIFY_FEATURE_DIRECTORY` (and therefore `.specify/feature.json`) at its root, revise `design.md`
 and its abstract if the required behavior changes, review any affected architecture, and start a fresh
 plan. Current feature `implementation.md` remains the accepted realization until another complete
-attempt is explicitly hardened.
+attempt is explicitly accepted.
 
 Use [Commands and installed surfaces](commands.md) for exact command timing, side effects, and the
 difference between agent skills and terminal commands.

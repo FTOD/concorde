@@ -29,5 +29,5 @@
 
 ## Notes
 
-The adjacent design intentionally records no child-specific hardened realization. Existing repository
+The adjacent design intentionally records no child-specific accepted realization. Existing repository
 evidence is being reviewed separately and does not become accepted child design by implication.

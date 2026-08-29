@@ -219,7 +219,7 @@ def build_release(output: Path, base_url: str | None = None, version: str | None
                     "id": "concorde",
                     "name": "Concorde Architecture Workflow",
                     "version": version,
-                    "description": "Initialize, retrieve, validate, harden, and explain bounded hierarchical feature work",
+                    "description": "Initialize, retrieve, validate, accept, and explain bounded hierarchical feature work",
                     "effect": "read-write",
                     "download_url": f"{base_url}/concorde-{version}.zip",
                     "sha256": f"sha256:{digests[f'concorde-{version}.zip']}",

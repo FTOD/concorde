@@ -1,6 +1,6 @@
 {
-  "proposal_version": 4,
-  "operation": "feature.harden",
+  "proposal_version": 5,
+  "operation": "feature.accept",
   "target": "feature.example.api.health-check",
   "source_digest": "sha256:3a4b8170a27c10f664308295149c300ef5e98323214b90c2ea365dad061e0f00",
   "implementation": {
@@ -9,7 +9,7 @@
   },
   "module_design": {
     "path": "specs/example/architecture/modules/api/design.md",
-    "content": "# Design Reference: API\n\n## Implementation Notes\n\nThe health-check endpoint computes status from cached dependency probes refreshed every 30 seconds.\n\n## Design Rationale\n\nCached probes keep the endpoint side-effect free and bounded in latency under load.\n\n## Alternatives Considered\n\nLive dependency calls per request were rejected because they amplify upstream outages.\n\n## Decision Log\n\n- 2026-08-27: Adopted cached probes while hardening feature.example.api.health-check.\n"
+    "content": "# Design Reference: API\n\n## Implementation Notes\n\nThe health-check endpoint computes status from cached dependency probes refreshed every 30 seconds.\n\n## Design Rationale\n\nCached probes keep the endpoint side-effect free and bounded in latency under load.\n\n## Alternatives Considered\n\nLive dependency calls per request were rejected because they amplify upstream outages.\n\n## Decision Log\n\n- 2026-08-27: Adopted cached probes while acceptance feature.example.api.health-check.\n"
   },
   "remove": [
     "specs/example/architecture/modules/api/features/002-add-health-check/attempt"

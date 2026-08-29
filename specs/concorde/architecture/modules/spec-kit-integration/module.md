@@ -52,7 +52,7 @@ installed surfaces, adapter, and control state at use time.
 | Feature ID | Outcome | Refines | Specification |
 |---|---|---|---|
 | `feature.integration.compose-concorde-workflow` | A supported Spec Kit project receives composed Concorde guidance and authoritative selected-workspace routing in its normal feature lifecycle, plus portable installed commands for deterministic architecture services; in Concorde's own checkout the same public preset and extension development lifecycle materializes current local sources. | `feature.concorde.install-with-spec-kit`, `feature.concorde.self-host-framework` | [design.md](features/001-compose-concorde-workflow/design.md) |
-| `feature.integration.manage-feature-workspace` | A maintainer can review a feature's placement, create its one nested canonical workspace through the standard Spec Kit specify phase or select an existing one through the standard Spec Kit pointer, run every normal phase with durable intent at the feature root and temporal delivery artifacts under `attempt/`, then explicitly harden a completed attempt. | `feature.concorde.workflow` | [design.md](features/002-manage-feature-workspace/design.md) |
+| `feature.integration.manage-feature-workspace` | A maintainer can review a feature's placement, create its one nested canonical workspace through the standard Spec Kit specify phase or select an existing one through the standard Spec Kit pointer, run every normal phase with durable intent at the feature root and temporal delivery artifacts under `attempt/`, then explicitly accept a completed attempt. | `feature.concorde.workflow` | [design.md](features/002-manage-feature-workspace/design.md) |
 
 ## Contracts
 

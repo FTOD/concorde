@@ -1,6 +1,6 @@
 # Feature Implementation: Self-Host the Concorde Framework
 
-**Realization status**: Accepted self-hosting realization proposed for hardening on 2026-08-26.
+**Realization status**: Accepted self-hosting realization proposed for acceptance on 2026-08-26.
 
 ## Realization Overview
 
@@ -68,7 +68,7 @@ The Concorde validator reports zero architecture findings. The compacted core co
 
 The framework was applied to this checkout from an explicitly approved exact proposal. Post-apply status reports source, installed, registry, and surfaces as matching with no findings. A later fresh agent interaction exposed all seven installed Concorde skills, including the five surfaces absent before self-hosting, providing separate activation evidence without rewriting the original apply receipt.
 
-The retained authorities after hardening are `design.md`, this `implementation.md`, the feature contracts and core diagram, root and child architecture sources, the bootstrap source, documentation, tests, maintained component sources, and reproducible generated projections.
+The retained authorities after acceptance are `design.md`, this `implementation.md`, the feature contracts and core diagram, root and child architecture sources, the bootstrap source, documentation, tests, maintained component sources, and reproducible generated projections.
 
 ## Known Limitations
 
@@ -77,4 +77,4 @@ The retained authorities after hardening are `design.md`, this `implementation.m
 - On-disk status cannot prove what an already-running external coding agent loaded. Apply receipts remain honest about `reload_required`; fresh-session activation evidence must be established separately.
 - Self-hosting verifies local-source materialization, not released archive isolation. Feature 003's clean catalog/archive installation and removal evidence remains independently required.
 - Browser-based containment and perceptual review of the Feature 004 diagram remain pending because Chrome/Chromium was unavailable; structural showcase validation and docsite embedding are verified.
-- Freshness findings are implemented by the root-owned bootstrap rather than by invoking the Architecture Core runtime. Maintained root prose currently describes Architecture Core as contributing deterministic freshness findings; a future architecture revision should make clear that this is a shared diagnostic convention, not a runtime call in the hardened implementation.
+- Freshness findings are implemented by the root-owned bootstrap rather than by invoking the Architecture Core runtime. Maintained root prose currently describes Architecture Core as contributing deterministic freshness findings; a future architecture revision should make clear that this is a shared diagnostic convention, not a runtime call in the accepted implementation.

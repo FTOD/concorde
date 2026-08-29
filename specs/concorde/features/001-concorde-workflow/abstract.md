@@ -27,8 +27,8 @@ approved milestone turns work in progress into accepted realization.
 | module root | `implementation.md` | the module design reference: implementation notes, rationale, alternatives, decision log; consulted, never required |
 | feature root | `abstract.md` | this kind of page: purpose, functionality, structure, logic; under 15 minutes |
 | feature root | `design.md` | the complete behavioral authority: scenarios, requirements, success criteria |
-| feature root | `implementation.md` | the feature design reference: how the accepted implementation realizes the feature, in full detail; written only by hardening |
-| feature root | `attempt/` | the one attempt in progress: plan, tasks, checklists, research, evidence; removed when hardened |
+| feature root | `implementation.md` | the feature design reference: how the accepted implementation realizes the feature, in full detail; written only by acceptance |
+| feature root | `attempt/` | the one attempt in progress: plan, tasks, checklists, research, evidence; removed when accepted |
 
 **The command surfaces** — 14 in total, all reached through the active coding-agent integration as
 skills or slash commands:
@@ -39,7 +39,7 @@ skills or slash commands:
 | `speckit.concorde.context` | Returns exactly one level — a module with its immediate children, current-level features, contracts, and scenarios, or a feature with its parent and siblings — with any `implementation.md` as a link, never as content. |
 | `speckit.concorde.ask` | Answers a workflow question read-only from installed guidance, module summaries, and feature abstracts, citing anything deeper it opens. Agent-followed; no runtime. |
 | `speckit.concorde.validate` | Checks every maintained source deterministically and returns sorted findings with rule, severity, location, and remediation; byte-equivalent on repeat. |
-| `speckit.concorde.feature.harden` | Turns a completed attempt into accepted realization: proposal, exact review, explicit approval, atomic apply. |
+| `speckit.concorde.feature.accept` | Turns a completed attempt into accepted realization: proposal, exact review, explicit approval, atomic apply. |
 | `speckit.specify` · `clarify` · `checklist` | Author `abstract.md` and `design.md` for the selected root, seed a placeholder `implementation.md` for a new root, and write review checklists under `attempt/checklists/`. |
 | `speckit.plan` · `tasks` · `taskstoissues` | Plan one attempt from `design.md`, the accepted `implementation.md`, and the level's `module.md`; write only under `attempt/`. |
 | `speckit.implement` · `analyze` · `converge` | Execute the task list inside the attempt, report inconsistencies read-only, and append only genuine remaining work. |
@@ -58,9 +58,9 @@ The core view is <a href="/architecture/concorde-workflow-components.html">workf
 Maintainer ──invoke · review · approve──▶ Coding-agent integration (skills / slash commands)
                                             ├─ 9 Spec Kit phase surfaces ──▶ selected-workspace adapter ──▶ .specify/feature.json
                                             └─ 5 Concorde surfaces ─────────▶ launchers + Python runtime ──▶ architecture sources
-                                                 (init · context · validate · feature.harden · ask)        (module.md · implementation.md · architecture/: diagrams · contracts · modules)
+                                                 (init · context · validate · feature.accept · ask)        (module.md · implementation.md · architecture/: diagrams · contracts · modules)
 
-Selected feature root:   abstract.md   design.md   implementation.md      +   attempt/  (one attempt, until hardened)
+Selected feature root:   abstract.md   design.md   implementation.md      +   attempt/  (one attempt, until accepted)
                          read      authority reference           plan · tasks · checklists · research · evidence
 ```
 
@@ -96,7 +96,7 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
    appends only real remaining work.
 7. **Validate** whenever maintained structure changed; budget overruns are warnings, everything
    else in the document model is an error.
-8. **Harden**: the agent drafts the candidate feature `implementation.md` (optionally with a module
+8. **Accept**: the agent drafts the candidate feature `implementation.md` (optionally with a module
    `implementation.md` amendment), the maintainer reviews the exact proposal, and only an explicit yes
    applies it atomically and removes `attempt/`. The next attempt starts again from the
    trio.
@@ -113,9 +113,9 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   `design.md` prevails when they disagree (FR-006, FR-007).
 - Module `design.md` and feature `implementation.md` are never implicit inputs; context, questions,
   and planning reach them deliberately and cite them (FR-004, FR-011, FR-012, FR-015).
-- The feature `implementation.md` is written only by hardening: a placeholder until the first accepted
+- The feature `implementation.md` is written only by acceptance: a placeholder until the first accepted
   milestone, written in full then, completed later (FR-008, FR-017).
-- Hardening never edits `abstract.md`, `design.md`, or any `module.md`; a module `design.md` amendment
+- Acceptance never edits `abstract.md`, `design.md`, or any `module.md`; a module `design.md` amendment
   rides only on the same reviewed, digest-bound proposal and applies atomically with the
   compaction (FR-017, FR-028).
 - Every phase operates on the one selected canonical root through the Feature Workspace Protocol
@@ -135,11 +135,11 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   and "Where a fact lives" table, the Decomposition table, the End-to-End Workflow table, FR-001 to
   FR-034, and SC-001 to SC-013.
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (accepted realization and
-  implementation detail, written by hardening).
+  implementation detail, written by acceptance).
 - **The contracts this feature crosses** — `contracts/agent-commands.md`
   (command surfaces), `contracts/architecture-sources.md` (the source
   profile), and `contracts/feature-workspace.schema.json` (the
-  workspace protocol and hardening proposal); the boundary promise is
+  workspace protocol and acceptance proposal); the boundary promise is
   [contract.concorde.workflow](../../architecture/contracts/concorde-workflow/contract.md).
 - **The level this feature belongs to** — [module.md](../../module.md) (the root summary, linking the root
   level view under `../../architecture/diagrams/`) and its [design reference](../../design.md).
@@ -152,6 +152,6 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   [plan](subfeatures/006-plan-delivery/design.md),
   [execute](subfeatures/007-execute-and-reconcile/design.md),
   [validate](subfeatures/008-validate-architecture/design.md),
-  [harden](subfeatures/009-harden-design/design.md).
+  [accept](subfeatures/009-accept-milestone/design.md).
 - **Framework-level explanation** — [docs/concorde-workflow.md](../../../../docs/concorde-workflow.md)
   and [docs/specification-model.md](../../../../docs/specification-model.md).

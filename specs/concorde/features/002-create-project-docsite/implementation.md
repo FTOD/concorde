@@ -6,7 +6,7 @@
 
 Feature 002 is realized by the private TypeScript Docusaurus project under docsite/. It publishes one read-only project model from the two maintained roots specs/ and docs/. A shared registry classifies Architecture, Documentation, Feature Abstracts, Feature Designs, and Feature Implementations, then exposes them through three navigation families without making the generated site a second authority.
 
-Architecture and Features are independent semantic projections even though their canonical Markdown shares the same recursive specs/ module packages. Architecture keeps the module hierarchy. Features uses stable feature identity and explicit parent/sub-feature containment: a top-level feature opens at /features/<feature-id>, an immediate child opens below its declared parent route, and design and implementation companions append /design and /implementation. Module placement and adjacent-level refinement remain provenance, metadata, and cross-links; architecture/, modules/, and module-local features/ storage wrappers never become Features categories or route parents.
+Architecture and Features are independent semantic projections even though their canonical Markdown shares the same recursive `specs/` module packages. Architecture keeps the module hierarchy. Features uses stable feature identity and explicit parent/sub-feature containment: a top-level feature opens at `/features/<feature-id>`, an immediate child opens below its declared parent route, and design and implementation companions append `/design` and `/implementation`. Module placement and adjacent-level refinement remain provenance, metadata, and cross-links; `architecture/`, `modules/`, and module-local `features/` storage wrappers never become Features categories or route parents.
 
 Diagram publication remains part of the same preview and production workflow. The build discovers every module-owned and feature-owned Archify declaration, verifies the project-local Archify 2.16 package at .agents/skills/archify, validates every maintained JSON source at showcase quality, and delivers one complete disposable diagram set before Docusaurus consumes it. The generated/ tree, staged projections, renderer caches, search indexes, manifests, and site output are ignored read models.
 
@@ -57,7 +57,7 @@ All eight declared diagrams pass the Archify 2.16 delivery gate with 9/9 showcas
 
 ## Known Limitations
 
-- The Documentation refinement still requires both views to preserve one source-path hierarchy. Its FR-DOC-003 must be revised through that feature's own specification lifecycle; this hardening does not edit the adjacent feature (R-008).
+- The Documentation refinement still requires both views to preserve one source-path hierarchy. Its FR-DOC-003 must be revised through that feature's own specification lifecycle; this acceptance does not edit the adjacent feature (R-008).
 - The selected published-site contract's obsolete manifest-schema reference was corrected and now has cross-contract evidence, but the maintainer-owned reflection remains open until reviewed (R-009).
 - Duplicate feature IDs intentionally emit two identity findings plus six abstract/design/implementation route findings. These are actionable but may be noisy if diagnostics are later grouped (R-010).
 - Publication now clears .docusaurus and node_modules/.cache on every preview/build preparation. This favors route correctness over warm compiled-cache reuse and should remain aligned with future Docusaurus cache locations (R-011).

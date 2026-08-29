@@ -35,13 +35,13 @@ def create_parser() -> argparse.ArgumentParser:
 
     feature = subparsers.add_parser("feature")
     feature_commands = feature.add_subparsers(dest="feature_operation", required=True)
-    harden = feature_commands.add_parser("harden")
-    harden.add_argument("target", nargs="?")
-    harden_mode = harden.add_mutually_exclusive_group(required=True)
-    harden_mode.add_argument("--propose", action="store_true")
-    harden_mode.add_argument("--apply", action="store_true")
-    harden.add_argument("--proposal")
-    harden.add_argument("--format", choices=["json"], default="json")
+    accept = feature_commands.add_parser("accept")
+    accept.add_argument("target", nargs="?")
+    accept_mode = accept.add_mutually_exclusive_group(required=True)
+    accept_mode.add_argument("--propose", action="store_true")
+    accept_mode.add_argument("--apply", action="store_true")
+    accept.add_argument("--proposal")
+    accept.add_argument("--format", choices=["json"], default="json")
     return parser
 
 
@@ -65,18 +65,18 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
 
         return bounded_context(root, arguments.target)
     if arguments.operation == "feature":
-        from .feature_hardening import apply_hardening, propose_hardening
+        from .feature_acceptance import apply_acceptance, propose_acceptance
 
         if arguments.apply:
             if not arguments.proposal:
                 return OperationResult(
-                    "feature.harden",
+                    "feature.accept",
                     arguments.target or ".",
                     "invalid",
-                    findings=(Finding("CONCORDE-HARDEN-008", "error", ".specify/feature.json", "--apply requires --proposal.", "Pass the project-relative reviewed hardening proposal."),),
+                    findings=(Finding("CONCORDE-ACCEPT-008", "error", ".specify/feature.json", "--apply requires --proposal.", "Pass the project-relative reviewed acceptance proposal."),),
                 )
-            return apply_hardening(root, arguments.proposal)
-        return propose_hardening(root, arguments.target)
+            return apply_acceptance(root, arguments.proposal)
+        return propose_acceptance(root, arguments.target)
     from .validate import validate_project
 
     return validate_project(root, arguments.target)

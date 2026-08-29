@@ -1,5 +1,5 @@
 ---
-description: Harden a completed Concorde attempt into the durable feature implementation.
+description: Accept a completed Concorde attempt into the durable feature implementation.
 ---
 
 ## User Input
@@ -19,7 +19,7 @@ module's `design.md`. This is an explicit milestone operation. Checked
 tasks and every existing item under `attempt/checklists/` establish eligibility; they do not
 grant approval.
 
-Protocol v6 classifies the selected lifecycle root. For a sub-feature, parent durable paths and
+Protocol v7 classifies the selected lifecycle root. For a sub-feature, parent durable paths and
 sibling summaries are read-only retained authorities. Apply may update only the selected child's
 feature `implementation.md`, optionally the providing module's `design.md`, and remove only that child's
 complete `attempt/`; the child's `abstract.md` and `design.md`, parent, siblings, their attempts,
@@ -28,7 +28,7 @@ and every `module.md` remain byte-identical.
 ## Workflow
 
 1. From the target project root, invoke
-   `.specify/extensions/concorde/scripts/bash/concorde.sh feature harden --propose` (or the installed
+   `.specify/extensions/concorde/scripts/bash/concorde.sh feature accept --propose` (or the installed
    PowerShell launcher on PowerShell projects). Pass a user-supplied stable feature ID or canonical
    feature-root path before `--propose`; otherwise use the selected feature.
 2. Read the returned `proposal_path`, `task_summary`, and `checklist_summary` directly. Stop on any
@@ -52,10 +52,10 @@ and every `module.md` remain byte-identical.
    links; omit transient task ordering and raw validation logs. Alternatives and module-level
    rationale belong in the module `design.md` amendment, not here. Cite the feature's reflection
    entries by identifier: every entry whose `Feature` is this root and whose `Status` is `open`
-   under `## Known Limitations` (apply refuses with `CONCORDE-HARDEN-012` while one is uncited);
+   under `## Known Limitations` (apply refuses with `CONCORDE-ACCEPT-012` while one is uncited);
    resolved entries that shaped the realization under `## Durable Implementation Decisions`. Never
-   edit, resolve, or dismiss entries from here — the log is maintainer-owned and hardening leaves
-   it byte-identical; a malformed log is `CONCORDE-HARDEN-011` and must be repaired first.
+   edit, resolve, or dismiss entries from here — the log is maintainer-owned and acceptance leaves
+   it byte-identical; a malformed log is `CONCORDE-ACCEPT-011` and must be repaired first.
 5. When the attempt produced implementation detail, rationale, alternatives, or decisions worth
    keeping at module level, draft a FULL replacement of the providing module's `design.md` (its path
    is `workspace.module_design`). Add that material under the reference's stable headings
@@ -66,7 +66,7 @@ and every `module.md` remain byte-identical.
    when nothing module-level was learned.
 6. Write the candidate to the exact project-contained `proposal_path` returned by the runtime. The JSON
    must conform to the installed Feature Workspace Protocol and contain:
-   - `proposal_version: 4` and `operation: "feature.harden"`;
+   - `proposal_version: 5` and `operation: "feature.accept"`;
    - the resolved stable feature ID as `target`;
    - the exact returned `source_digest`;
    - `implementation.path` equal to the returned `workspace.feature_implementation` and
@@ -83,7 +83,7 @@ and every `module.md` remain byte-identical.
    Silence is not approval; neither are prior milestone acceptance, passing validation, or checked
    tasks and checklists.
 8. Only after the maintainer's explicit yes, invoke the same installed launcher with
-   `feature harden --apply --proposal <returned-project-relative-proposal-path>`. Never invoke
+   `feature accept --apply --proposal <returned-project-relative-proposal-path>`. Never invoke
    `--apply` without that yes. Present the complete
    normative result, including stale-digest conflicts, warnings, removed artifacts, and the
    feature-implementation and module-design digests.
@@ -96,7 +96,7 @@ and every `module.md` remain byte-identical.
 - Do not remove individual implementation files, keep a second archived attempt below the selected
   root, or target a parent, sibling, child, or any path outside the selected lifecycle root.
 - Do not modify `abstract.md`, feature `design.md`, `module.md`, the project reflection log, module
-  architecture, code, tests, or generated projections during hardening.
+  architecture, code, tests, or generated projections during acceptance.
 - On any conflict or failure, stop and preserve the proposal for review. Never retry apply against a
   changed digest without regenerating and re-presenting the proposal.
 - Apply rejects, and you must never propose, an `implementation` target other than the selected root's

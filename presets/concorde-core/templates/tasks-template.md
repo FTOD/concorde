@@ -24,9 +24,9 @@ copy or symlink. Generate tasks against both feature `design.md` and accepted `i
 (a placeholder means no accepted baseline), but do
 not generate a task that edits `abstract.md`, feature `design.md`, feature `implementation.md`, any
 module `module.md` or `design.md`, or removes `attempt/`; after every task is complete,
-the user may invoke the separate Concorde hardening command.
+the user may invoke the separate Concorde acceptance command.
 
 For a selected sub-feature, every task path must remain beneath that child root except explicit
 read-only references to the parent durable design/implementation. Do not generate tasks that mutate or
-harden a parent/sibling root, read a parent/sibling attempt implicitly, or create another
+accept a parent/sibling root, read a parent/sibling attempt implicitly, or create another
 `subfeatures/` directory beneath the child.

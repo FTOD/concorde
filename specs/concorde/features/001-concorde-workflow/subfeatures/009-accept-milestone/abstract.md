@@ -1,6 +1,6 @@
-# Feature Abstract: Harden Design
+# Feature Abstract: Accept Milestone
 
-`feature.concorde.workflow.harden-design` · sub-feature of `feature.concorde.workflow`, specified at
+`feature.concorde.workflow.accept-milestone` · sub-feature of `feature.concorde.workflow`, specified at
 `module.concorde` · about four minutes. This page is enough to understand this workflow step; the
 links at the end only redirect you when you want more.
 
@@ -13,7 +13,7 @@ milestone's `attempt/` attempt. It never touches the abstract or the specificati
 
 ## Functionality
 
-The owned command surface is `speckit.concorde.feature.harden`, in two modes bound together by an
+The owned command surface is `speckit.concorde.feature.accept`, in two modes bound together by an
 exact proposal:
 
 | Mode | Reads | Produces |
@@ -40,7 +40,7 @@ exact proposal; only their approval lets the runtime mutate the selected root an
 level's module reference.
 
 ```text
-Maintainer ──review · explicit approval──▶ speckit.concorde.feature.harden ──▶ launcher + runtime
+Maintainer ──review · explicit approval──▶ speckit.concorde.feature.accept ──▶ launcher + runtime
                                                                                  ├─ proposal: attempt/ (tasks · checklists · research · evidence) + trio + module.md + module implementation.md
                                                                                  │            → candidate feature implementation.md · optional module implementation.md amendment · cleanup manifest · digest
                                                                                  └─ apply:    feature implementation.md ⟵ candidate · module implementation.md ⟵ amendment · attempt/ removed   (atomic)
@@ -76,7 +76,7 @@ Maintainer ──review · explicit approval──▶ speckit.concorde.feature.h
   `module.md`, `abstract.md`, feature `design.md`, other-level `implementation.md`, or legacy name is rejected
   (FR-005).
 - Replacement, amendment, and removal complete atomically or every prior state is restored (FR-006).
-- Child hardening preserves the parent and siblings; parent hardening preserves every child root
+- Child milestone acceptance preserves the parent and siblings; parent milestone acceptance preserves every child root
   (FR-007).
 - A success result reports prior and resulting feature `implementation.md` and module `design.md` digests, removed
   artifacts, the selected feature, and retained authorities (FR-008).
@@ -84,17 +84,20 @@ Maintainer ──review · explicit approval──▶ speckit.concorde.feature.h
   never restates or alters facts owned by `module.md`, contracts, or the level view (FR-009).
 - The first accepted milestone writes the feature `implementation.md` in full; later ones complete or update
   it, never leaving the placeholder beside accepted content (FR-010).
+- Every current command, runtime operation, status, diagnostic, contract, schema, example, test,
+  guide, and specification uses Accept Milestone consistently; the superseded interface is rejected
+  without an alias or transition period (FR-011).
 
 ## Read Next
 
-- **Exact requirements, scenarios, and success criteria** — [design.md](design.md): FR-001 to FR-010 and
-  SC-001 to SC-004.
+- **Exact requirements, scenarios, and success criteria** — [design.md](design.md): FR-001 to FR-011 and
+  SC-001 to SC-005.
 - **How the accepted implementation realizes this step** — [implementation.md](implementation.md) (states that no
-  realization has been hardened yet).
+  realization has been accepted yet).
 - **The parent feature** — its [abstract](../../abstract.md) and [design.md](../../design.md), which define the
   six fixed sections of a feature `implementation.md`.
 - **Contracts** — `../../contracts/feature-workspace.schema.json`
-  (the hardening proposal), `../../contracts/agent-commands.md`, and
+  (the milestone-acceptance proposal), `../../contracts/agent-commands.md`, and
   `../../contracts/architecture-sources.md`.
 - **The level** — [module.md](../../../../module.md).
 - **Previous step** — [validate architecture](../008-validate-architecture/design.md); a later attempt

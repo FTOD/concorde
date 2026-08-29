@@ -8,7 +8,7 @@ workflow step; the links at the end only redirect you when you want more.
 
 Let a coding agent execute the approved task list, report cross-artifact inconsistencies without
 changing anything, and append only genuine remaining work — all inside the selected root's bounded
-context, with everything it learns recorded where hardening can later find it. The maintainer asks
+context, with everything it learns recorded where acceptance can later find it. The maintainer asks
 for the ready tasks to be delivered, verified, analyzed, and honestly reflected in the task list.
 
 ## Functionality
@@ -30,7 +30,7 @@ attempt. None of the three phases updates `abstract.md`, `design.md`, the featur
 `module.md` or module `design.md`, or removes the attempt.
 
 **Not part of this step**: validating maintained architecture (the validate step) and compacting the
-attempt into the accepted realization (the harden step).
+attempt into the accepted realization (the accept step).
 
 ## Structure
 
@@ -76,14 +76,14 @@ Maintainer ──execute · analyze · converge──▶ implement · analyze ·
 - No phase updates `abstract.md`, `design.md`, the feature `implementation.md`, any `module.md` or module
   `implementation.md`, or removes the attempt (FR-007).
 - Rationale, alternatives, and implementation detail discovered during execution are recorded in the
-  attempt so hardening can carry the durable parts forward (FR-008).
+  attempt so acceptance can carry the durable parts forward (FR-008).
 
 ## Read Next
 
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): FR-001 to FR-008 and
   SC-001 to SC-004.
 - **How the accepted implementation realizes this step** — [implementation.md](implementation.md) (states that no
-  realization has been hardened yet).
+  realization has been accepted yet).
 - **The parent feature** — its [abstract](../../abstract.md) and [design.md](../../design.md), which state that
   `design.md` prevails over the abstract and that attempts are temporal.
 - **Contracts** — `../../contracts/agent-commands.md` for the three surfaces and

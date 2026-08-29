@@ -21,7 +21,7 @@ canonical_design: specs/concorde/features/001-concorde-workflow/subfeatures/006-
 **Created**: 2026-08-26
 **Revised**: 2026-08-28
 **Status**: Specified and revised for the parent's three-tier feature document model; existing
-realization has not been hardened into this sub-feature's `implementation.md`
+realization has not been accepted into this sub-feature's `implementation.md`
 **Input**: Route `speckit.plan`, `speckit.tasks`, and `speckit.taskstoissues` through one temporal
 attempt, planning from `design.md`, the accepted feature `implementation.md`, and the level's `module.md`.
 
@@ -33,7 +33,7 @@ bounded, dependency-ordered delivery attempt and, when requested, a faithful iss
 ## Parent Context and Boundary
 
 The parent owns workflow ordering, durable/temporal authority, and the document model. This child
-owns planning, task generation, and task-to-issue conversion. It does not execute tasks or harden the
+owns planning, task generation, and task-to-issue conversion. It does not execute tasks or accept the
 result. The parent component diagram and selected workspace paths sufficiently describe participants.
 
 ## User Scenarios & Testing
@@ -43,7 +43,7 @@ result. The parent component diagram and selected workspace paths sufficiently d
 A maintainer reviews architecture and contracts, chooses an implementation approach, and receives an
 ordered task list confined to the selected root's active attempt.
 
-**Independent Test**: Plan top-level and child fixtures with and without a hardened baseline,
+**Independent Test**: Plan top-level and child fixtures with and without a accepted baseline,
 generate tasks, convert them to issues in a test sink, and compare paths, requirement coverage,
 dependency order, and reference citations.
 
@@ -51,7 +51,7 @@ dependency order, and reference citations.
 1. **Given** a selected root, **When** planning starts, **Then** it reads that root's `design.md` and
    `implementation.md`, uses the abstract only to orient, uses the level's `module.md` and bounded view as
    architecture context, and writes only beneath its `attempt/` directory.
-2. **Given** a root whose `implementation.md` holds only the not-yet-hardened state, **When** planning
+2. **Given** a root whose `implementation.md` holds only the not-yet-accepted state, **When** planning
    starts, **Then** it treats the feature as having no accepted baseline rather than inventing one.
 3. **Given** the plan needs a constraint or rationale recorded only in the level's `implementation.md`,
    **When** the planner consults it, **Then** the plan cites that reference and does not copy it into
@@ -63,7 +63,7 @@ dependency order, and reference citations.
 
 ### Edge Cases
 
-- The accepted realization is unhardened, stale, or conflicts with the current specification.
+- The accepted realization is unaccepted, stale, or conflicts with the current specification.
 - A constraint the plan depends on exists only in a module design reference.
 - A planner treats the abstract as if it were the specification.
 - Tasks omit architecture or validation work required by the selected change.
@@ -74,7 +74,7 @@ dependency order, and reference citations.
 - **FR-001**: Planning MUST resolve the selected root and create or continue only its temporal
   attempt.
 - **FR-002**: Planning MUST treat selected `design.md` as required behavior and the selected feature
-  `implementation.md` as the accepted realization baseline, treating the not-yet-hardened placeholder as
+  `implementation.md` as the accepted realization baseline, treating the not-yet-accepted placeholder as
   the absence of a baseline; the abstract MAY orient the planner but MUST NOT substitute for `design.md`.
 - **FR-003**: Child planning MAY read parent durable aggregate context but MUST NOT read sibling or
   parent attempts implicitly.

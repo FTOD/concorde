@@ -1,6 +1,6 @@
 {
-  "schema_version": 6,
-  "operation": "feature.harden",
+  "schema_version": 7,
+  "operation": "feature.accept",
   "target": "feature.example.api.health-check",
   "status": "eligible",
   "workspace": {
@@ -19,7 +19,7 @@
     "checklists_dir": "specs/example/architecture/modules/api/features/002-add-health-check/attempt/checklists",
     "diagrams_dir": "specs/example/architecture/modules/api/features/002-add-health-check/diagrams",
     "attempt_dir": "specs/example/architecture/modules/api/features/002-add-health-check/attempt",
-    "attempt_state": "ready_to_harden",
+    "attempt_state": "ready_to_accept",
     "plan": "specs/example/architecture/modules/api/features/002-add-health-check/attempt/plan.md",
     "research": "specs/example/architecture/modules/api/features/002-add-health-check/attempt/research.md",
     "data_model": "specs/example/architecture/modules/api/features/002-add-health-check/attempt/data-model.md",
@@ -51,7 +51,7 @@
   ],
   "findings": [],
   "source_digest": "sha256:3a4b8170a27c10f664308295149c300ef5e98323214b90c2ea365dad061e0f00",
-  "proposal_path": "specs/example/architecture/modules/api/features/002-add-health-check/attempt/harden-proposal.json",
+  "proposal_path": "specs/example/architecture/modules/api/features/002-add-health-check/attempt/accept-proposal.json",
   "task_summary": {
     "complete": 27,
     "incomplete": 0,

@@ -36,10 +36,10 @@
         "note": "Separate control, architecture, selected intent, read-only parent context, feature design reference, and root-local temporal work."
       },
       {
-        "id": "harden-milestone",
-        "label": "Harden a milestone",
+        "id": "accept-milestone",
+        "label": "Accept a milestone",
         "focus": ["maintainer", "agent", "concordeCommands", "runtime", "featureSpec", "featureDesign", "implementation"],
-        "note": "A reviewed complete attempt is compacted into the feature design.md, with any module-reference amendment, and removed only on approval."
+        "note": "A reviewed complete attempt is compacted into feature implementation.md, with any module-design amendment, and removed only on approval."
       }
     ]
   },
@@ -190,8 +190,8 @@
     {"id": "govern-architecture", "from": "runtime", "to": "architectureSources", "label": "init / context / validate", "variant": "security"},
     {"id": "answer-question", "from": "concordeCommands", "to": "architectureSources", "label": "ask: cited read-only guidance", "labelAt": [675, 810], "variant": "dashed"},
     {"id": "guide-attempt", "from": "featureSpec", "to": "implementation", "label": "selected intent + parent context", "labelAt": [1275, 340], "variant": "emphasis"},
-    {"id": "harden-design", "from": "implementation", "to": "featureDesign", "label": "approved realization + cleanup", "labelAt": [1275, 590], "variant": "security"},
-    {"id": "apply-harden", "from": "runtime", "to": "implementation", "label": "verify tasks + stage removal", "labelAt": [1060, 600], "variant": "security"}
+    {"id": "accept-milestone", "from": "implementation", "to": "featureDesign", "label": "approved realization + cleanup", "labelAt": [1275, 590], "variant": "security"},
+    {"id": "apply-accept", "from": "runtime", "to": "implementation", "label": "verify tasks + stage removal", "labelAt": [1060, 600], "variant": "security"}
   ],
   "cards": [
     {

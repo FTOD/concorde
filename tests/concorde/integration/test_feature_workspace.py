@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.feature_workspace import write_hardened_root
+from tests.concorde.support.feature_workspace import write_accepted_root
 from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT, TWO_LEVEL_PROJECT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -82,32 +82,32 @@ class FeatureWorkspaceIntegrationTests(unittest.TestCase):
         self.assertEqual(child.siblings[0]["design"], child.siblings[0]["feature_directory"] + "/design.md")
         self.assertEqual(child.siblings[0]["abstract"], child.siblings[0]["feature_directory"] + "/abstract.md")
 
-    def test_resume_after_hardening_starts_a_fresh_attempt_from_durable_authority(self):
+    def test_resume_after_acceptance_starts_a_fresh_attempt_from_durable_authority(self):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
-            root = write_hardened_root(project, "specs/example/features/001-deliver", "feature.example.deliver")
+            root = write_accepted_root(project, "specs/example/features/001-deliver", "feature.example.deliver")
             relative = root.relative_to(project).as_posix()
-            hardened = resolve_phase_paths(project, relative)
-            self.assertEqual(hardened.attempt_state, "absent")
-            self.assertEqual(hardened.feature_implementation, f"{relative}/implementation.md")
-            self.assertIn("Hardened fixture milestone", (root / "implementation.md").read_text(encoding="utf-8"))
-            self.assertEqual(phase_target(hardened, "plan"), f"{relative}/attempt")
+            accepted = resolve_phase_paths(project, relative)
+            self.assertEqual(accepted.attempt_state, "absent")
+            self.assertEqual(accepted.feature_implementation, f"{relative}/implementation.md")
+            self.assertIn("Accepted fixture milestone", (root / "implementation.md").read_text(encoding="utf-8"))
+            self.assertEqual(phase_target(accepted, "plan"), f"{relative}/attempt")
             (root / "attempt").mkdir()
             (root / "attempt/plan.md").write_text("# Plan for a later attempt\n", encoding="utf-8")
             resumed = resolve_phase_paths(project, relative)
             self.assertEqual(resumed.attempt_state, "active")
-            self.assertEqual(resumed.feature_implementation, hardened.feature_implementation)
-            self.assertEqual(resumed.module_design, hardened.module_design)
+            self.assertEqual(resumed.feature_implementation, accepted.feature_implementation)
+            self.assertEqual(resumed.module_design, accepted.module_design)
             for name in ("plan.md", "tasks.md", "checklists"):
                 self.assertFalse((root / name).exists(), name)
 
-    def test_resume_after_child_hardening_keeps_parent_pair_and_module_paths(self):
+    def test_resume_after_child_acceptance_keeps_parent_pair_and_module_paths(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary, TWO_LEVEL_PROJECT)
             child = root / "specs/example/features/001-checkout/subfeatures/001-authorize-payment"
             shutil.rmtree(child / "attempt")
             (child / "implementation.md").write_text(
-                "# Feature Implementation: Authorize Payment\n\n**Realization status**: Hardened.\n", encoding="utf-8"
+                "# Feature Implementation: Authorize Payment\n\n**Realization status**: Accepted.\n", encoding="utf-8"
             )
             paths = resolve_phase_paths(root, child.relative_to(root).as_posix())
             self.assertEqual(paths.workspace_kind, "subfeature")

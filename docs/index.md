@@ -45,7 +45,7 @@ If you are already working in a Concorde project:
    information you are changing.
 2. Use [Project structure and source authority](project-structure.md) to find its canonical file.
 3. Follow the [Concorde workflow](concorde-workflow.md) from placement and specification through validation
-   and hardening.
+   and acceptance.
 4. Consult [Commands and installed surfaces](commands.md) to choose the right operation and
    understand what actually executes it.
 5. If you are contributing to Concorde itself, read

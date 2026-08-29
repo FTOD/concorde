@@ -12,7 +12,7 @@ subfeatures:
   - feature.concorde.workflow.plan-delivery
   - feature.concorde.workflow.execute-and-reconcile
   - feature.concorde.workflow.validate-architecture
-  - feature.concorde.workflow.harden-design
+  - feature.concorde.workflow.accept-milestone
 scenarios:
   - scenario-concorde-establish-and-place-feature
   - scenario-concorde-review-implement-and-reconcile
@@ -45,7 +45,7 @@ realization**: [implementation.md](implementation.md) — consulted when writing
 **Status**: Revised around the feature-root `abstract.md` / `design.md` / `implementation.md` trio
 and temporal `attempt/` directory. `abstract.md` is read first, `design.md` owns required behavior,
 and `implementation.md` records accepted realization. Modules retain `module.md` / `design.md`.
-Protocol v6, proposal v4, and Build Manifest v8 carry these names through every surface, and
+Protocol v7, proposal v5, and Build Manifest v8 carry these names through every surface, and
 Architecture Source Profile 4 places each module's diagrams, boundary contracts, and submodules under
 its `architecture/` directory beside `features/`. The nine
 workflow-step sub-features remain the decomposition.
@@ -68,14 +68,14 @@ source ownership.
 ### Session 2026-08-27
 
 - Q: Should a new feature root get a placeholder `implementation.md` at specification time, or
-  should the file not exist until the first hardening writes it? → A: Specification seeds a
-  placeholder whose only content is the explicit "no realization has been hardened yet" state;
-  the first hardening overwrites it in full and later hardenings complete it. A valid root always
+  should the file not exist until the first acceptance writes it? → A: Specification seeds a
+  placeholder whose only content is the explicit "no realization has been accepted yet" state;
+  the first acceptance overwrites it in full and later acceptances complete it. A valid root always
   owns the durable pair `design.md` + `implementation.md`.
 - Q: When and by whom is implementation detail and rationale written into a module's `implementation.md`?
-  → A: During work it is captured inside `attempt/`; only an approved hardening proposal
+  → A: During work it is captured inside `attempt/`; only an approved acceptance proposal
   writes attempt-derived content into `implementation.md`. Maintainers may edit `implementation.md` directly at any
-  time as an ordinary maintained source; no workflow phase other than hardening writes it.
+  time as an ordinary maintained source; no workflow phase other than acceptance writes it.
 - Q: What form must the required structure diagram in `module.md` take? → A: A maintained
   level view (an `architecture`-kind diagram under the module's `architecture/diagrams/`), linked
   explicitly from the summary and embedded in the published page; a leaf without one records a
@@ -92,8 +92,8 @@ source ownership.
   transition period is introduced.
 
 Revision note (2026-08-29): feature roots use `abstract.md`, `design.md`, and `implementation.md`,
-with temporal work under `attempt/`. The placeholder is seeded at specification and written in full by the first hardening,
-a module `design.md` is written only by hardening or directly by a maintainer, the level view is
+with temporal work under `attempt/`. The placeholder is seeded at specification and written in full by the first acceptance,
+a module `design.md` is written only by acceptance or directly by a maintainer, the level view is
 the required module diagram, reading-budget overruns are warnings, and adoption is a one-time
 refactor of this repository.
 
@@ -160,8 +160,8 @@ features/<number-name>/
 |---|---|---|---|
 | `abstract.md` | Give a self-contained quick understanding of the feature: its purpose, its functionality (what it does and does not do), its basic structure (the participating parts and how they collaborate, with the declared core diagram when there is one), and its logic (how it works and the rules code must not break), plus where the rest lives. | The first — and for most questions the only — feature document a programmer or agent opens. Complete on its own for a quick understanding; its links to `design.md` and `implementation.md` redirect, they are never required reading. It summarizes; it never defines. | Under 15 minutes of reading; five fixed sections (`Purpose`, `Functionality`, `Structure`, `Logic`, `Read Next`); a diagram or text sketch, short lists, short prose. |
 | `design.md` | Define required behavior completely: user scenarios, functional requirements, success criteria, scope, key entities, clarifications, assumptions, dependencies, and architecture alignment. | The authority whenever a requirement is defined, reviewed, tested, or disputed. Self-contained: readable without the abstract, more detailed than it, and still free of realization detail; it may link to `abstract.md` and `implementation.md` for redirection. | The Spec Kit specification shape. No deterministic reading budget; anything that explains *how* rather than *what* belongs in `implementation.md`. |
-| `implementation.md` | Record how the currently accepted implementation realizes the feature: collaborating modules and lower-level features, contracts and data/control flow, scenario realization, durable implementation decisions, evidence references, known limitations, and the full implementation detail a coder needs. | Required only when writing code or fixing a bug. Written by hardening; before the first accepted milestone it states only that no realization has been hardened. | Six fixed sections followed by any further implementation-detail headings; unbounded and navigable. |
-| `attempt/` | The one attempt in progress: plan, tasks, checklists, research, models, guidance, evidence. | Hardening compacts it into `implementation.md` and removes it. | Temporal; never published. |
+| `implementation.md` | Record how the currently accepted implementation realizes the feature: collaborating modules and lower-level features, contracts and data/control flow, scenario realization, durable implementation decisions, evidence references, known limitations, and the full implementation detail a coder needs. | Required only when writing code or fixing a bug. Written by acceptance; before the first accepted milestone it states only that no realization has been accepted. | Six fixed sections followed by any further implementation-detail headings; unbounded and navigable. |
+| `attempt/` | The one attempt in progress: plan, tasks, checklists, research, models, guidance, evidence. | Acceptance compacts it into `implementation.md` and removes it. | Temporal; never published. |
 
 The reading path is **orientation → authority → realization**: `abstract.md` answers "what is this",
 `design.md` answers "exactly what must hold", `implementation.md` answers "how is it built". A feature root
@@ -182,7 +182,7 @@ names. No compatibility alias or symlink may stand in for the canonical paths.
 - Validation checks the abstract deterministically for presence, section shape, its structure link,
   and the reading budget; whether it is a faithful summary remains a review responsibility.
 - The feature `implementation.md` explains and realizes `design.md`; it never redefines required behavior.
-  A behavior change goes through specification review, then through a new attempt and hardening.
+  A behavior change goes through specification review, then through a new attempt and acceptance.
 
 ### Where a fact lives
 
@@ -204,12 +204,12 @@ names. No compatibility alias or symlink may stand in for the canonical paths.
 | 1 | `feature.concorde.workflow.initialize-architecture` | `speckit.concorde.init` | Unchanged: initialization creates the root module package and no feature root. |
 | 2 | `feature.concorde.workflow.retrieve-bounded-context` | `speckit.concorde.context` | Feature summaries expose abstract/design/implementation paths; module `design.md` and feature `implementation.md` are navigation references only. |
 | 3 | `feature.concorde.workflow.answer-workflow-questions` | `speckit.concorde.ask` | Answers ground in installed guidance, module summaries, and feature abstracts first; `design.md` is opened for a requirement's exact wording and a `implementation.md` only for implementation detail or rationale, each cited. |
-| 4 | `feature.concorde.workflow.manage-feature-workspaces` | Feature Workspace Protocol routing of the standard Spec Kit selection (no Concorde command) | Protocol v6 exposes the durable trio and `attempt/`; legacy filenames are invalid. |
+| 4 | `feature.concorde.workflow.manage-feature-workspaces` | Feature Workspace Protocol routing of the standard Spec Kit selection (no Concorde command) | Protocol v7 exposes the durable trio and `attempt/`; legacy filenames are invalid. |
 | 5 | `feature.concorde.workflow.specify-behavior` | `speckit.specify`, `speckit.clarify`, `speckit.checklist` | Specification authors `abstract.md` and `design.md` together and seeds or preserves the placeholder `implementation.md`; clarification keeps the abstract current; checklists review the abstract. |
 | 6 | `feature.concorde.workflow.plan-delivery` | `speckit.plan`, `speckit.tasks`, `speckit.taskstoissues` | The accepted baseline is the feature `implementation.md`; the abstract is orientation, not a planning input. |
 | 7 | `feature.concorde.workflow.execute-and-reconcile` | `speckit.implement`, `speckit.analyze`, `speckit.converge` | Implementation reads the feature `implementation.md` as its baseline; analysis reports abstract/specification disagreement. |
 | 8 | `feature.concorde.workflow.validate-architecture` | `speckit.concorde.validate` | Rules cover abstract shape, durable trio, and legacy names. |
-| 9 | `feature.concorde.workflow.harden-design` | `speckit.concorde.feature.harden` | Compaction targets feature `implementation.md`; the proposal may amend module `design.md`. |
+| 9 | `feature.concorde.workflow.accept-milestone` | `speckit.concorde.feature.accept` | Compaction targets feature `implementation.md`; the proposal may amend module `design.md`. |
 
 The decomposition follows maintainer outcomes rather than implementation packages. Commands are
 grouped only when they operate on the same selected artifacts as one recognizable workflow step.
@@ -239,7 +239,7 @@ children, and remain distinct from adjacent-module feature refinement.
   reports are projections, not maintained intent.
 - A **reading budget** bounds every document that is read first: under 20 minutes for a module
   summary and under 15 minutes for a feature abstract, for a first-time reader.
-- Human approval is required before architecture creation or hardening mutates maintained intent.
+- Human approval is required before architecture creation or acceptance mutates maintained intent.
   Read-only questions, context retrieval, analysis, and validation do not grant approval.
 - Feature containment and adjacent-module feature refinement are separate relationships with
   separate validation and documentation labels.
@@ -256,7 +256,7 @@ children, and remain distinct from adjacent-module feature refinement.
 | 5 | Plan one implementation attempt, order its work, and optionally project tasks into issues. | `speckit.plan` / `speckit.tasks` / `speckit.taskstoissues` | `design.md`, feature `implementation.md`, level summary; the module reference on demand | `attempt/` |
 | 6 | Execute tasks, analyze artifact consistency, and append only genuine remaining work. | `speckit.implement` / `speckit.analyze` / `speckit.converge` | The attempt and the durable trio | `attempt/`, code, tests |
 | 7 | Deterministically validate maintained architecture and evidence references. | `speckit.concorde.validate` | All maintained sources | — |
-| 8 | Review and explicitly compact a completed attempt into the accepted realization. | `speckit.concorde.feature.harden` | Durable trio, complete attempt, level summary and module reference | Feature `implementation.md`; optional reviewed module `design.md` amendment; removes `attempt/` |
+| 8 | Review and explicitly compact a completed attempt into the accepted realization. | `speckit.concorde.feature.accept` | Durable trio, complete attempt, level summary and module reference | Feature `implementation.md`; optional reviewed module `design.md` amendment; removes `attempt/` |
 
 Validation may be invoked after any maintained structural change, not only at stage 7. Context and
 the question surface may be used whenever a maintainer needs to navigate or understand the workflow.
@@ -267,7 +267,7 @@ Initialization must precede operations that depend on an existing Concorde hiera
 first writer of a module summary and reference. Workspace management establishes the selected root
 consumed by all normal Spec Kit phases. Specification is the durable behavioral input to planning
 and is the only writer of the abstract; planning creates the temporal artifacts consumed by execution;
-validation may challenge any maintained structural claim; hardening is eligible only after execution
+validation may challenge any maintained structural claim; acceptance is eligible only after execution
 work and review state are complete, is the only writer of the feature implementation, and is the
 only workflow step that carries rationale developed during an attempt into a module design
 reference. A later attempt begins again from the durable specification and the last accepted
@@ -334,7 +334,7 @@ A maintainer establishes architectural ownership, selects the right feature root
 change as a abstract plus a specification, plans it, directs implementation, validates maintained
 sources, and accepts the resulting realization, with the accepted realization landing in the feature
 `implementation.md`, the ideas developed along the way landing in the module `design.md`, and the abstract and
-specification untouched by hardening.
+specification untouched by acceptance.
 
 **Why this priority**: The lifecycle is the product; the document model is only real if every step
 reads and writes the right tier.
@@ -346,11 +346,11 @@ that every phase uses only the selected root's authoritative paths and the three
 
 1. **Given** an initialized project, **When** a maintainer completes all ordered stages, **Then** the
    result has one canonical `abstract.md` and `design.md`, one accepted feature `implementation.md`, no temporal
-   attempt, a module summary untouched by hardening, and — when the reviewed proposal included one —
+   attempt, a module summary untouched by acceptance, and — when the reviewed proposal included one —
    a module `design.md` amended exactly as reviewed.
 2. **Given** a new root is created through specification, **When** the phase completes, **Then**
    the root contains an `abstract.md` in the required shape, `design.md`, and `implementation.md`
-   stating that no realization is hardened, with no legacy filenames.
+   stating that no realization is accepted, with no legacy filenames.
 3. **Given** a clarification changes the specification, **When** the phase completes, **Then** the
    abstract reflects the accepted answer wherever it summarized the changed behavior, and no
    `implementation.md` changed.
@@ -397,7 +397,7 @@ A maintainer can inspect any proposal, question answer, context result, analysis
 finding before authorizing a mutation.
 
 **Why this priority**: Explicit human authority over maintained intent is a constitutional
-obligation, and hardening may now touch two design references in one proposal, so review must see
+obligation, and acceptance may now touch two design references in one proposal, so review must see
 both.
 
 **Independent Test**: Exercise every review-only mode against a snapshot and verify maintained
@@ -405,9 +405,9 @@ sources are byte-identical afterward.
 
 **Acceptance Scenarios**:
 
-1. **Given** an initialization or hardening proposal, **When** approval is withheld, **Then** no
+1. **Given** an initialization or acceptance proposal, **When** approval is withheld, **Then** no
    maintained source or selection state changes.
-2. **Given** a hardening proposal that includes a module `design.md` amendment, **When** it is
+2. **Given** a acceptance proposal that includes a module `design.md` amendment, **When** it is
    presented, **Then** the maintainer sees the exact reference change alongside the candidate
    feature `implementation.md` and the cleanup manifest before deciding.
 3. **Given** missing or conflicting evidence, **When** validation or analysis runs, **Then** the
@@ -422,12 +422,12 @@ realization without depending on a previous temporal task log.
 
 **Why this priority**: Durable authority is what makes the temporal attempt safe to discard.
 
-**Independent Test**: Harden one attempt, begin another, and verify the new attempt resolves the same
+**Independent Test**: Accept one attempt, begin another, and verify the new attempt resolves the same
 durable root without root-level compatibility copies.
 
 **Acceptance Scenarios**:
 
-1. **Given** a hardened feature, **When** planning starts again, **Then** a fresh `attempt/`
+1. **Given** a accepted feature, **When** planning starts again, **Then** a fresh `attempt/`
    workspace is created beneath that feature root and `abstract.md`, `design.md`, and `implementation.md` remain
    authoritative.
 
@@ -442,7 +442,7 @@ durable root without root-level compatibility copies.
   level view, or a contract.
 - A feature root contains legacy `tldr.md`/`spec.md` files or an `implementation/` directory, or
   lacks one of the durable trio.
-- A hardening proposal tries to edit `abstract.md`, feature `design.md`, `module.md`, or module `design.md` at
+- A acceptance proposal tries to edit `abstract.md`, feature `design.md`, `module.md`, or module `design.md` at
   a level other than the one at which the feature is specified.
 - A question or planning step needs a detail that exists only in a design reference.
 - A command receives an unknown, ambiguous, unsafe, or stale module/feature target.
@@ -476,7 +476,7 @@ durable root without root-level compatibility copies.
   nothing has been recorded yet, and MUST NOT redefine responsibility, boundary, contracts, or
   organization owned by `module.md`, the contract documents, and the level view. A maintainer MAY
   edit it directly as an ordinary maintained source; workflow operations write it only through an
-  approved hardening proposal.
+  approved acceptance proposal.
 - **FR-004**: No workflow operation MAY treat module `design.md` or feature `implementation.md` as an
   implicit input. They are reached through deliberate navigation and cited when used.
 
@@ -509,8 +509,8 @@ durable root without root-level compatibility copies.
   Collaboration`, `Scenario Realization`, `Durable Implementation Decisions`, `Traceability and
   Evidence`, `Known Limitations`), followed by any further headings the full implementation detail
   needs; before the first accepted milestone it MUST hold only the explicit "no realization
-  hardened" state. The first accepted hardening MUST overwrite the placeholder in full and each later
-  hardening MUST complete it; no other workflow step writes its substantive content.
+  accepted" state. The first accepted acceptance MUST overwrite the placeholder in full and each later
+  acceptance MUST complete it; no other workflow step writes its substantive content.
 - **FR-009**: Module `design.md`, feature `design.md`, and feature `implementation.md` MUST retain
   their distinct meanings. Legacy `tldr.md`/`spec.md` files and `implementation/` attempt directories
   MUST be rejected, with no compatibility alias or symlink.
@@ -530,7 +530,7 @@ durable root without root-level compatibility copies.
   `implementation.md` as its durable trio (and the parent's read-only trio for a sub-feature) and MUST
   reject a root containing any legacy feature name.
 - **FR-014**: Specification MUST author `abstract.md` and `design.md` together for a new root and seed a
-  `implementation.md` holding only the not-yet-hardened state; for an existing root it MUST preserve
+  `implementation.md` holding only the not-yet-accepted state; for an existing root it MUST preserve
   `implementation.md` byte-for-byte. Clarification MUST encode accepted answers into `design.md` and update
   the abstract wherever it summarized the changed behavior. Requirements-quality review MUST cover the
   abstract's shape, budget, and faithfulness to `design.md`.
@@ -540,11 +540,11 @@ durable root without root-level compatibility copies.
 - **FR-016**: Implementation MUST read the feature `implementation.md` as its accepted baseline; analysis
   MUST report any disagreement between `abstract.md` and `design.md` alongside its other inconsistencies;
   neither they nor convergence MAY write a durable document.
-- **FR-017**: Hardening MUST compact the completed attempt into the selected root's `implementation.md` and
+- **FR-017**: Acceptance MUST compact the completed attempt into the selected root's `implementation.md` and
   remove `attempt/`; the same reviewed proposal MAY carry the implementation details and
   rationales developed during the attempt into module `design.md` of the level at which the feature is
   specified. Every part of the proposal MUST apply atomically under one explicit approval or not at
-  all, and hardening MUST NOT edit `abstract.md`, `design.md`, or any `module.md`.
+  all, and acceptance MUST NOT edit `abstract.md`, `design.md`, or any `module.md`.
 - **FR-018**: Validation MUST deterministically check module summary shape (required sections, an
   explicit link to the level view or a recorded leaf rationale, inventory tables) and reading
   budget; module reference presence and reachability; abstract presence, section shape, structure
@@ -607,7 +607,7 @@ two-document module model; the reading budgets; the one-time feature-root rename
 `tldr.md`/`spec.md`/`design.md` to `abstract.md`/`design.md`/`implementation.md` and from
 `implementation/` to `attempt/`; root initialization; bounded context; workflow questions; Feature Workspace Protocol
 resolution of the standard Spec Kit selection; selected-root routing for all nine normal Spec Kit
-phases; architecture validation; feature hardening including reviewed module-reference amendments;
+phases; architecture validation; feature acceptance including reviewed module-reference amendments;
 migration of installed guidance and of Concorde's own hierarchy; the shared authority and
 containment model connecting those operations.
 
@@ -684,7 +684,7 @@ remains a separately tracked follow-up.
   specification and the design reference; every generated parent page lists its immediate
   sub-features once in authored order; every child page exposes parent and sibling navigation; no
   temporal attempt is published.
-- **SC-012**: A completed approved hardening leaves the reviewed feature `implementation.md` and any
+- **SC-012**: A completed approved acceptance leaves the reviewed feature `implementation.md` and any
   reviewed module `design.md` amendment, removes exactly the selected attempt, and preserves every
   `abstract.md`, `design.md`, parent, sibling, child, and summary authority not named by the proposal.
 - **SC-013**: In every analysis fixture with a seeded abstract/specification disagreement, the report
@@ -709,8 +709,8 @@ remains a separately tracked follow-up.
 - Naming the accepted feature realization `implementation.md` is deliberate: it distinguishes that
   content from behavioral feature `design.md`; module `design.md` retains its module-level meaning.
 - The feature `implementation.md` is required for every feature root; a seeded reference that states no
-  realization has been hardened is valid content, mirroring the empty module reference.
-- Hardening is the reviewed vehicle by which rationale developed during an attempt reaches the
+  realization has been accepted is valid content, mirroring the empty module reference.
+- Acceptance is the reviewed vehicle by which rationale developed during an attempt reaches the
   module `design.md`; until then that rationale lives inside `attempt/`. No other workflow
   step writes a design reference, maintainers may edit one directly like any maintained source, and
   architecture changes to a summary continue to go through reviewed architecture edits and

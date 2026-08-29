@@ -27,7 +27,7 @@ NORMAL_PHASES = {
 
 CONCORDE_RUNTIME_COMMANDS = (
     "speckit.concorde.init",
-    "speckit.concorde.feature-harden",
+    "speckit.concorde.feature-accept",
     "speckit.concorde.context",
     "speckit.concorde.validate",
 )

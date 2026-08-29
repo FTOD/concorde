@@ -50,7 +50,7 @@
 specs/[###-feature]/
 ├── design.md              # Durable feature intent ($speckit-specify output)
 ├── abstract.md              # Feature abstract: self-contained quick understanding ($speckit-specify output)
-├── implementation.md            # Feature design reference (placeholder until hardening writes it)
+├── implementation.md            # Feature design reference (placeholder until milestone acceptance writes it)
 ├── diagrams/            # Optional maintained feature-owned Archify explanations
 │   └── <scenario>.json
 ├── contracts/           # Durable external interface specifications

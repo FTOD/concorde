@@ -6,14 +6,14 @@ Define the one machine-checkable shape of the project reflection log — `reflec
 inside the specification root — in which coding agents record every difficulty or problem met during
 the plan, tasks, implement, analyze, and converge phases of any attempt, so that a maintainer can
 read it in minutes, deterministic validation can check it, phase reports and bounded context can
-count it, and hardening can cite it.
+count it, and acceptance can cite it.
 
 ## Representation
 
 Custom format: **Concorde Reflection Log v1**, a Markdown grammar (this document is its normative
 definition). One conforming example is maintained at [examples/reflections.md](examples/reflections.md);
 the project's actual log is `specs/concorde/reflections.md`. The log is carried by
-`contract.concorde.workflow` through the Feature Workspace Protocol v6 path `workspace.reflections`
+`contract.concorde.workflow` through the Feature Workspace Protocol v7 path `workspace.reflections`
 (project-level, identical for every selected root) and the optional `reflections_open` count in
 workspace results and bounded-context feature summaries (both defined in Feature 001's contracts).
 
@@ -61,7 +61,7 @@ Required fields, in this order: `Phase`, `Date`, `Feature`, `Kind`, `Concerns`, 
   `Expected`/`Observed`/`Action` under about 150 words together.
 - Phases that record list the added identifiers and the open count for `Feature` = the selected
   root in their completion report.
-- Hardening presents every entry whose `Feature` is the selected root by status; the candidate
+- Acceptance presents every entry whose `Feature` is the selected root by status; the candidate
   feature `design.md` cites the identifier of every such `open` entry; apply refuses otherwise and
   never modifies the log.
 - Validation reads the log read-only and reports `CONCORDE-REFLECT-001` to `-004` findings; it
@@ -71,11 +71,11 @@ Required fields, in this order: `Phase`, `Date`, `Feature`, `Kind`, `Concerns`, 
 
 ## Failure Semantics
 
-A malformed log is a validation finding and blocks hardening eligibility (`CONCORDE-HARDEN-011`);
+A malformed log is a validation finding and blocks acceptance eligibility (`CONCORDE-ACCEPT-011`);
 it never causes a phase to stop, and no operation rewrites the log to repair it. A `Concerns` or
 `Feature` reference that stops resolving after a source change is reported by analysis as stale and
 by validation as `CONCORDE-REFLECT-004`. An open entry of the feature that the candidate design
-reference does not cite is `CONCORDE-HARDEN-012` at apply time.
+reference does not cite is `CONCORDE-ACCEPT-012` at apply time.
 
 ## Compatibility
 
@@ -86,5 +86,5 @@ and migration guidance in the feature specification.
 ## Evidence
 
 Planned: `tests/concorde/unit/test_reflection_rules.py` (grammar and rules),
-`tests/concorde/integration/test_feature_hardening.py` (citation gate), and the schema/example
+`tests/concorde/integration/test_feature_acceptance.py` (citation gate), and the schema/example
 contract tests of Feature 001. Evidence status: `unknown` until the attempt is implemented.

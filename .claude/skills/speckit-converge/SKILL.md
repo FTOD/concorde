@@ -25,7 +25,7 @@ Before any hook, setup step, prerequisite check, or artifact access, run `.venv/
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
 the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
 `workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
-Require Protocol v6 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+Require Protocol v7 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
@@ -268,7 +268,7 @@ Append to the **end** of `tasks.md`, per the append contract:
    separately-numbered one below it — do not touch the old one.
 5. When execution surfaced rationale, alternatives, or implementation detail worth keeping, append a
    task that records it inside the attempt (`attempt/research.md` or
-   `attempt/validation.md`) so hardening can carry it forward. Never append a task that edits
+   `attempt/validation.md`) so acceptance can carry it forward. Never append a task that edits
    `abstract.md`, feature `design.md`, feature `implementation.md`, or any module `module.md`/`design.md`.
 6. Treat an `open` reflection entry attributed to this feature with `Effect: deferred` as candidate
    remaining work only when it is genuine remaining work of this feature's specification; never

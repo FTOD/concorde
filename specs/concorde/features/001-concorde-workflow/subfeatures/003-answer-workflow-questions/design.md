@@ -21,7 +21,7 @@ canonical_design: specs/concorde/features/001-concorde-workflow/subfeatures/003-
 **Created**: 2026-08-26
 **Revised**: 2026-08-28
 **Status**: Specified and revised for the parent's three-tier feature document model; existing
-realization has not been hardened into this sub-feature's `implementation.md`
+realization has not been accepted into this sub-feature's `implementation.md`
 **Input**: Answer grounded Concorde questions through `speckit.concorde.ask` from installed guidance,
 module summaries, and feature abstracts first, opening specifications and design references only on
 demand, without becoming a new authority.

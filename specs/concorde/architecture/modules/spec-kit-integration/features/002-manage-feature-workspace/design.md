@@ -27,7 +27,7 @@ canonical_design: specs/concorde/architecture/modules/spec-kit-integration/featu
 A maintainer can review a feature's placement, create its one nested canonical workspace through the
 standard Spec Kit specify phase or select an existing one through the standard Spec Kit pointer, run
 every normal Spec Kit phase with durable intent and accepted design at the feature root and temporal
-delivery artifacts under `attempt/`, then explicitly harden a completed attempt into that
+delivery artifacts under `attempt/`, then explicitly accept a completed attempt into that
 permanent design.
 
 ## Representative Scenario
@@ -40,7 +40,7 @@ an example, not the feature definition.
 
 The parent feature's `diagrams/concorde-workflow-components.json` core architecture view shows the
 Coding Agent reaching this Integration-owned workspace service through the selected-workspace
-adapter that every normal phase invokes and through `feature.harden`, with the selected workspace
+adapter that every normal phase invokes and through `feature.accept`, with the selected workspace
 shared with the normal Spec Kit lifecycle and Architecture Core. It is the text-backed
 cross-component view for this refinement; another child diagram would duplicate that component
 boundary.
@@ -63,7 +63,7 @@ boundary.
 - Plan, tasks, implement, analyze, and converge resolve from `attempt/`.
 - An existing non-empty delivery attempt is reported through `attempt_state: active` and is
   never replaced or removed silently.
-- Hardening requires complete tasks, a reviewed digest-bound design proposal, and explicit approval;
+- Acceptance requires complete tasks, a reviewed digest-bound design proposal, and explicit approval;
   it removes only the selected feature's temporal `attempt/` workspace.
 - Installed behavior must be delivered through supported preset/extension mechanisms and covered by
   clean-project compatibility tests.
@@ -71,7 +71,7 @@ boundary.
 ## Evidence
 
 Automated contract, integration, and acceptance tests verify deterministic nested resolution of the
-standard Spec Kit selection, active-attempt reporting, explicit hardening handling, all nine complete
+standard Spec Kit selection, active-attempt reporting, explicit acceptance handling, all nine complete
 phase-command replacements, and both Codex-skill and slash-command composition in clean projects.
 Evidence remains `partial` because the human placement and authority-comprehension protocols have not
 been conducted.

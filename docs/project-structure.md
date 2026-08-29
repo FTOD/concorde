@@ -82,9 +82,9 @@ it is committed under a project-specific policy.
 | Required behavior, scope, failure handling, or success criteria | The owning feature's `design.md` through specification review, with its `abstract.md` updated wherever it summarized the change |
 | The level at which a feature is specified, or the modules that realize it | The feature's placement (its `module` and canonical root) and the affected module packages, with architecture review |
 | A module boundary or immediate-child organization | `module.md`, the affected contracts under `architecture/contracts/`, and the level views under `architecture/diagrams/` together |
-| Why a level is built the way it is, or implementation detail beneath its summary | The module's `design.md`, edited directly or amended by an approved hardening proposal; keep `module.md` a summary |
+| Why a level is built the way it is, or implementation detail beneath its summary | The module's `design.md`, edited directly or amended by an approved acceptance proposal; keep `module.md` a summary |
 | Information crossing a boundary | The owning contract and any normative schema/example |
-| How an accepted implementation realizes a feature | Complete the attempt and use approved feature hardening to write feature `implementation.md`; do not directly promote a plan |
+| How an accepted implementation realizes a feature | Complete the attempt and use approved feature acceptance to write feature `implementation.md`; do not directly promote a plan |
 | The current implementation approach or work order | Files under the selected feature's `attempt/` directory |
 | Runtime behavior or executable proof | Source code and tests, reconciled against the durable sources |
 | Adoption or contributor explanation | Markdown under `docs/` |
@@ -105,7 +105,7 @@ or one immediate sub-feature. Selection itself is standard Spec Kit: the project
 explicitly through `SPECIFY_FEATURE_DIRECTORY`. Concorde adds no selection command and no second
 selection store.
 
-Feature Workspace Protocol v6 classifies the selected root before every normal phase: safe path,
+Feature Workspace Protocol v7 classifies the selected root before every normal phase: safe path,
 canonical `abstract.md`/`design.md`/`implementation.md` trio with no legacy names or attempt directory, workspace kind,
 `attempt_state`, and the `module.md` and `design.md` of the module at which the feature is
 specified (the result's `providing_module`) as navigation references. The result names the trio as
@@ -121,7 +121,7 @@ The installed workspace adapter derives phase-specific paths from the selection:
 | Checklist | Durable feature context, the abstract included | `attempt/checklists/*.md` |
 | Plan | Root `design.md` and feature `implementation.md`, module `module.md` as bounded context; the abstract for orientation only; module `design.md` only deliberately, with citation; appends problems to the project reflection log | Plan, research, model, and quick start under `attempt/` |
 | Tasks, implementation, analysis, convergence, issue conversion | Durable feature context; analysis also reads `abstract.md` to report disagreement with `design.md`; every phase appends problems to the project reflection log (`workspace.reflections`) and reports the feature's open count | The same active `attempt/` attempt |
-| Hardening | Root `abstract.md`, `design.md`, and current `implementation.md`, module `module.md` and `design.md`, the project reflection log, plus the complete attempt | Approved update to feature `implementation.md` (citing open reflection entries) and optional amendment of module `design.md`, applied atomically; exact removal of `attempt/`; the log is left byte-identical |
+| Acceptance | Root `abstract.md`, `design.md`, and current `implementation.md`, module `module.md` and `design.md`, the project reflection log, plus the complete attempt | Approved update to feature `implementation.md` (citing open reflection entries) and optional amendment of module `design.md`, applied atomically; exact removal of `attempt/`; the log is left byte-identical |
 
 Selecting a feature changes routing state; requesting bounded context does not. The distinction is
 explained in [Commands and installed surfaces](commands.md).

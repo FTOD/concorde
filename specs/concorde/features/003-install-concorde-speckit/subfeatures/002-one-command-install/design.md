@@ -20,7 +20,7 @@ canonical_design: specs/concorde/features/003-install-concorde-speckit/subfeatur
 # Feature Design: One-Command Installation
 
 **Created**: 2026-08-27
-**Status**: Specified; no installer realization has been hardened yet
+**Status**: Specified; no installer realization has been accepted yet
 **Input**: Provide a single-command installer that sequences the native Spec Kit lifecycle (project
 initialization, catalog registration, bundle installation) idempotently against a published release,
 with a development mode that installs from a local Concorde checkout.

@@ -21,7 +21,7 @@ canonical_design: specs/concorde/features/001-concorde-workflow/subfeatures/008-
 **Created**: 2026-08-26
 **Revised**: 2026-08-28
 **Status**: Specified and revised for the parent's three-tier feature document model; existing
-realization has not been hardened into this sub-feature's `implementation.md`
+realization has not been accepted into this sub-feature's `implementation.md`
 **Input**: Deterministically validate Concorde maintained sources through `speckit.concorde.validate`,
 including the module summary and feature abstract shape and reading-budget rules, reference presence,
 the durable trio, and legacy names.

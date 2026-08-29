@@ -9,7 +9,7 @@ the design: Purpose, Functionality, Structure, Logic, Read Next; under 15 minute
 `implementation.md` (the accepted realization). Design work may read `implementation.md` to avoid
 confusing accepted realization with required behavior, but must never update it. New features start
 with the resolved implementation template's explicit placeholder: no implementation realization has
-been hardened yet.
+been accepted yet.
 
 - **Stable feature ID**: `feature.<namespace>.<outcome>`
 - **Providing module**: exactly one current-level module

@@ -11,14 +11,14 @@ command contributions use `replace`: each complete command preserves the corresp
 0.16.4 phase while resolving Concorde's selected feature and durable/temporal paths before any
 path-sensitive work. The installed extension supplies that workspace adapter and five
 Concorde-specific surfaces: four runtime-backed operations, including task-complete feature
-hardening, plus the agent-only, read-only `ask` procedure.
+acceptance, plus the agent-only, read-only `ask` procedure.
 
 A feature keeps the canonical durable trio `abstract.md`, `design.md`, and `implementation.md` at
 `features/<number-name>/`; it may own one level of immediate sub-features at
 `subfeatures/<number-name>/`, each with the same focused durable trio and no children. The abstract is
 the self-contained page read first (purpose, functionality, structure, logic; under 15 minutes),
 feature `design.md` defines behavior, `implementation.md` records the accepted realization (a
-placeholder until the first hardening), and scenarios remain representative examples. The
+placeholder until the first acceptance), and scenarios remain representative examples. The
 `module.md` of the module at which the feature is specified is the summary read first; its
 `design.md` is a design reference opened only for a specific recorded detail and cited. A
 temporal work lives only in `attempt/`. The preset encourages
@@ -31,5 +31,5 @@ directory, is declared by feature `design.md`, and is embedded
 automatically by the project docsite; generated HTML never becomes specification authority.
 
 Parent specifications own aggregate outcomes and shared constraints; sub-feature specifications own
-focused behavior and inherit the parent module. Protocol v6 routes normal phases to exactly one
+focused behavior and inherit the parent module. Protocol v7 routes normal phases to exactly one
 selected root and exposes parent durable context read-only without sibling bodies or attempts.

@@ -28,6 +28,9 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
     `specify extension add … --dev --force` (plain `preset add` refuses an installed preset); byte
     equality proven by `diff -r` and `test_installed_command_surfaces`; a new agent session is
     still required before the refreshed skills are active.
+  - plan 2026-08-29 feature.concorde.workflow.accept-milestone — status again returned
+    `CONCORDE-SELF-HOST-005` for the active `claude` integration, so the terminology migration must
+    refresh canonical sources and installed mirrors through the supported public Spec Kit path.
 
 ### R-002 · Plan and tasks guidance disagree on whether an attempt may edit `module.md`
 
@@ -276,4 +279,92 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Action**: Added optional `refinements` using the existing `featureRelation` shape, updated the
   contract semantics and example, and retained schema version 8 under its additive-field rule.
 - **Improvement**: Update strict schemas in the same task that adds shared page-projection fields.
+- **Status**: open
+
+### R-015 · The self-host bootstrap requires an explicit Python interpreter
+
+- **Phase**: plan
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.workflow.accept-milestone
+- **Kind**: tooling
+- **Concerns**: scripts/development/self-host-concorde.py
+- **Expected**: The repository bootstrap status command can be invoked from the documented project
+  root to inspect installed-surface freshness before planning the terminology migration.
+- **Observed**: Direct execution returned permission denied because the tracked script is not
+  executable; invoking it through `.venv/bin/python` produced the structured status result.
+- **Effect**: worked-around
+- **Action**: Used the explicit project interpreter for status and planned the same invocation style
+  for later self-host checks.
+- **Improvement**: Keep contributor commands explicit about the Python interpreter, or make the
+  bootstrap executable consistently across supported checkouts.
+- **Status**: open
+
+### R-016 · The project environment does not install pytest
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.workflow.accept-milestone
+- **Kind**: environment
+- **Concerns**: feature.concorde.workflow.accept-milestone
+- **Expected**: The focused migration test command runs with the repository virtual environment.
+- **Observed**: `.venv/bin/python -m pytest` failed because pytest is not installed; the suite is
+  written for Python's standard-library unittest runner.
+- **Effect**: worked-around
+- **Action**: Replaced focused and full quickstart commands with `python -m unittest` module and
+  discovery invocations.
+- **Improvement**: Derive validation commands from the repository's existing test entry points rather
+  than assuming a third-party runner.
+- **Status**: open
+
+### R-017 · The shared-component fixture pinned the previous preset version
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.workflow.accept-milestone
+- **Kind**: implementation
+- **Concerns**: tests/concorde/fixtures/releases/shared-component/bundle.yml
+- **Expected**: Bundle lifecycle fixtures that deliberately share the real `concorde-core` source
+  resolve the current 0.4.0 preset during the terminology migration.
+- **Observed**: The shared-component fixture still pinned 0.3.0, so Spec Kit rejected installation
+  when the source manifest resolved 0.4.0.
+- **Effect**: worked-around
+- **Action**: Updated only the fixture's shared preset pin to 0.4.0; its independent bundle fixture
+  version remains unchanged.
+- **Improvement**: Make fixtures that consume live component sources derive or centrally declare the
+  expected source version.
+- **Status**: open
+
+### R-018 · Feature 002's accepted route placeholder was invalid MDX
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.workflow.accept-milestone
+- **Kind**: implementation
+- **Concerns**: specs/concorde/features/002-create-project-docsite/implementation.md
+- **Expected**: The full docsite gate publishes all accepted feature implementations while validating
+  the Accept Milestone terminology migration.
+- **Observed**: Feature 002 contained bare `/features/<feature-id>` text; MDX parsed `<feature-id>` as
+  an unclosed JSX tag and stopped the production build.
+- **Effect**: worked-around
+- **Action**: Applied a syntax-only correction by formatting the route and adjacent path tokens as
+  code spans; no Feature 002 behavior or architecture changed.
+- **Improvement**: Require accepted implementation candidates containing angle-bracket placeholders
+  to pass the docsite MDX build before milestone acceptance.
+- **Status**: open
+
+### R-019 · Sandbox policy rejected temporary-directory cleanup
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.workflow.accept-milestone
+- **Kind**: environment
+- **Concerns**: scripts/release/build-components.py
+- **Expected**: Ephemeral Codex-skill backup and release-build directories can be removed after their
+  contents are restored or published into maintained catalogs.
+- **Observed**: The execution policy rejected the explicit recursive removal command even though both
+  targets were task-specific `mktemp` directories outside the repository.
+- **Effect**: deferred
+- **Action**: Left the two temporary directories for normal operating-system cleanup; no project
+  source, mirror, receipt, or generated publication depends on them.
+- **Improvement**: Provide a sanctioned temporary-directory cleanup operation for task-scoped paths.
 - **Status**: open

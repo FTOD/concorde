@@ -234,7 +234,7 @@
       "id": "coreMaintainsHierarchy",
       "from": "architectureCore",
       "to": "specTree",
-      "label": "create / read / harden / validate",
+      "label": "create / read / accept / validate",
       "variant": "emphasis",
       "labelAt": [1290, 375]
     }

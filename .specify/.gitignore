@@ -10,6 +10,6 @@ extensions/*/local-config.yml
 
 # Concorde review proposals and self-hosting evidence are checkout-local.
 initialization-proposal.json
-harden-proposal.json
+accept-proposal.json
 self-hosting-proposal.json
 self-hosting.json

@@ -94,7 +94,7 @@ packages:
 - first level-one heading: required feature-implementation title.
 - Parent directory: the feature directory containing the paired `design.md`; the page is published as
   kind `feature-implementation` and linked with that design.
-- Content: the accepted durable realization of the feature (a not-yet-hardened placeholder is still
+- Content: the accepted durable realization of the feature (a not-yet-accepted placeholder is still
   published with its provenance); temporal files beneath `attempt/` remain excluded.
 
 ### Module Design References

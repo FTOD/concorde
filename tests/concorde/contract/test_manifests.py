@@ -18,7 +18,7 @@ class ManifestContractTests(unittest.TestCase):
     def test_bundle_is_native_and_exactly_two_components(self):
         manifest = (REPOSITORY_ROOT / "bundles/concorde-bundle/bundle.yml").read_text()
         self.assertIn('id: "concorde-bundle"', manifest)
-        self.assertIn('version: "0.3.0"', manifest)
+        self.assertIn('version: "0.4.0"', manifest)
         self.assertEqual(len(re.findall(r'^    - id:', manifest, re.MULTILINE)), 2)
         self.assertRegex(manifest, r"steps: \[\]")
         self.assertRegex(manifest, r"workflows: \[\]")

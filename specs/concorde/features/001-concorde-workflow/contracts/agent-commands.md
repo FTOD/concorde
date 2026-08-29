@@ -6,18 +6,18 @@
 
 ## Shared Rules
 
-- Canonical names are `speckit.concorde.init`, `speckit.concorde.feature.harden`,
+- Canonical names are `speckit.concorde.init`, `speckit.concorde.feature.accept`,
   `speckit.concorde.context`, `speckit.concorde.validate`, and `speckit.concorde.ask`.
 - Agent-specific invocation punctuation is presentation only. Codex skills and slash-command outputs
   must preserve the intent, arguments, runtime operation, result schema, and failure behavior below.
 - The command body locates the installed extension runtime relative to the project and invokes it
   using the project's selected script flavor. It does not embed an absolute installation path.
 - Architecture operation JSON conforms to `architecture-service.schema.json` (Protocol v1);
-  selected-workspace resolution and hardening JSON conforms to `feature-workspace.schema.json`
-  (Feature Workspace Protocol v6, hardening proposal v4). Agent prose may
+  selected-workspace resolution and acceptance JSON conforms to `feature-workspace.schema.json`
+  (Feature Workspace Protocol v7, acceptance proposal v5). Agent prose may
   summarize either normative result but must not hide findings or claim stronger evidence.
-- Context, validation, and hardening eligibility/proposal checks are read-only. Initialization and
-  hardening apply write only after an explicit accepted proposal is supplied to apply mode.
+- Context, validation, and acceptance eligibility/proposal checks are read-only. Initialization and
+  acceptance apply write only after an explicit accepted proposal is supplied to apply mode.
 - The question command is agent-answered and read-only. It does not claim deterministic runtime
   execution and does not invoke another lifecycle operation merely because that operation would help
   answer the question.
@@ -81,7 +81,7 @@ Unsafe paths, malformed proposals, duplicate IDs, changed target state, existing
 or incomplete promotion return `conflict`, `invalid`, or `failed` with findings. Existing maintained
 content is never silently overwritten.
 
-## `speckit.concorde.feature.harden`
+## `speckit.concorde.feature.accept`
 
 ### Intent
 
@@ -97,7 +97,7 @@ atomic operation, only after explicit approval.
 |---|---:|---|
 | `[feature-id-or-root]` | no | Stable feature ID or canonical feature root; defaults to the selected feature. |
 | `--propose` | eligibility | Return task/checklist completion status, current paths, digest, and required proposal shape without mutation. |
-| `--proposal <path>` | apply only | Project-relative reviewed hardening proposal (proposal v4) containing candidate feature `implementation.md`, optional module `design.md` amendment, and exact cleanup manifest. |
+| `--proposal <path>` | apply only | Project-relative reviewed acceptance proposal (proposal v5) containing candidate feature `implementation.md`, optional module `design.md` amendment, and exact cleanup manifest. |
 | `--apply` | no | Apply the unchanged reviewed proposal; absent means eligibility/proposal-only. |
 
 ### Agent and runtime responsibilities
@@ -108,7 +108,7 @@ atomic operation, only after explicit approval.
    exists, a task is unchecked or malformed, or an existing checklist item is unresolved or
    malformed. A missing optional checklist directory represents zero checklist items; symlinked
    checklist paths are unsafe and invalid.
-2. An eligible schema-v6 result directly returns `proposal_path`, `task_summary`, and
+2. An eligible schema-v7 result directly returns `proposal_path`, `task_summary`, and
    `checklist_summary` alongside `workspace` (including `feature_abstract`, `feature_design`,
    `feature_implementation`, `module_summary`, and `module_design`) and a `source_digest` that covers
    current `abstract.md`, feature `implementation.md`, and module `design.md`; the agent never derives or guesses the proposal or
@@ -296,7 +296,7 @@ Repeated runs over unchanged bytes and arguments produce byte-equivalent JSON an
   skills root.
 - One slash-command integration contains the five corresponding registered command artifacts.
 - Each supported presentation exercises top-level and sub-feature selection through the standard
-  Spec Kit pointer, phase routing, hardening eligibility/apply, context, validation, and read-only
+  Spec Kit pointer, phase routing, acceptance eligibility/apply, context, validation, and read-only
   workflow questions against the same fixture. Runtime-backed operations return equivalent normative JSON, parent context stays
   read-only and bounded, and the question surface preserves equivalent grounding, citation,
   uncertainty, bounded-context, and non-mutation behavior.
@@ -310,7 +310,7 @@ handoff consists of:
 
 | Item | Required identity |
 |---|---|
-| Workspace protocol | `feature-workspace.schema.json`, Protocol/schema version 6 (hardening proposal v4), all examples, and their combined source digest |
+| Workspace protocol | `feature-workspace.schema.json`, Protocol/schema version 7 (acceptance proposal v5), all examples, and their combined source digest |
 | Normal phase obligations | `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues` write only the selected feature/sub-feature root; `specify` authors `abstract.md` and `design.md` and seeds placeholder `implementation.md`; only `specify` and `clarify` write `abstract.md` or feature `design.md`, and no normal phase writes feature `implementation.md` or module `design.md`; a selected sub-feature additionally reads its parent durable trio as aggregate context and never reads/writes parent/sibling attempts implicitly |
 | Concorde command intents | The five canonical IDs and behavior sections in this contract; four are runtime-backed and `ask` is agent-followed/read-only |
 | Installed support | Extension-relative workspace adapter, launchers, schemas, runtime sources, preset templates, and complete phase commands needed by those intents |

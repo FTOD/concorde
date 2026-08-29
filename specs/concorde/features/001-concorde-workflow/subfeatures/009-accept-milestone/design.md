@@ -1,5 +1,5 @@
 ---
-id: feature.concorde.workflow.harden-design
+id: feature.concorde.workflow.accept-milestone
 kind: feature
 module: module.concorde
 parent_feature: feature.concorde.workflow
@@ -13,33 +13,36 @@ contracts:
   required:
     - contract.concorde.spec-kit-platform
 evidence_status: partial
-canonical_design: specs/concorde/features/001-concorde-workflow/subfeatures/009-harden-design/design.md
+canonical_design: specs/concorde/features/001-concorde-workflow/subfeatures/009-accept-milestone/design.md
 ---
 
-# Feature Design: Harden Design
+# Feature Design: Accept Milestone
 
 **Created**: 2026-08-26
-**Revised**: 2026-08-28
-**Status**: Specified and revised for the parent's three-tier feature document model; existing
-realization has not been hardened into this sub-feature's `implementation.md`
-**Input**: Review and compact a completed attempt through `speckit.concorde.feature.harden` into the
-selected root's `implementation.md`, optionally amending the level's module `design.md` in the same
-approval.
+**Revised**: 2026-08-29
+**Status**: Specified for the Accept Milestone terminology and the parent's three-tier feature
+document model; the existing realization has not yet been accepted into this sub-feature's
+`implementation.md`.
+**Input**: Rename the former milestone-finalization terminology throughout commands, documentation, code, and
+specifications. Review and compact a completed attempt through `speckit.concorde.feature.accept`
+into the selected root's `implementation.md`, optionally amending the level's module `design.md` in
+the same approval.
 
 ## Outcome
 
-A maintainer can explicitly accept the durable realization of one completed feature or sub-feature
-milestone into its feature `implementation.md`, carry the rationale developed during the attempt into the
-level's module `design.md` when the proposal includes it, and atomically remove exactly that
-milestone's temporal attempt.
+A maintainer can explicitly accept one completed feature or sub-feature milestone as its durable
+realization in feature `implementation.md`, carry attempt-developed rationale into the level's module
+`design.md` when the proposal includes it, and atomically remove exactly that milestone's temporal
+attempt.
 
 ## Parent Context and Boundary
 
 The parent owns the durable/temporal authority model, the document model, and the lifecycle
-placement of hardening. This child owns eligibility, candidate synthesis, exact review, approval
+placement of milestone acceptance. This child owns eligibility, candidate synthesis, exact review, approval
 binding, failure-safe apply, and result reporting. It does not execute incomplete work, change
-behavior requirements, or touch the abstract or specification. The stable ID and title are retained;
-the hardened feature artifact is the feature `implementation.md`. The parent diagram already depicts the
+behavior requirements, or touch the abstract or specification. The stable ID and title use the
+Accept Milestone vocabulary;
+the accepted feature artifact is the feature `implementation.md`. The parent diagram already depicts the
 agent/runtime approval split and the artifact transition.
 
 ## User Scenarios & Testing
@@ -54,7 +57,7 @@ repeat, parent, and child attempts, with and without a module-reference amendmen
 snapshotting all related roots, abstracts, specifications, module summaries, and module references.
 
 **Acceptance Scenarios**:
-1. **Given** incomplete tasks or unresolved checklist items, **When** hardening is proposed, **Then**
+1. **Given** incomplete tasks or unresolved checklist items, **When** milestone acceptance is proposed, **Then**
    it is ineligible and changes nothing.
 2. **Given** an eligible attempt, **When** proposal mode completes, **Then** the maintainer sees the
    candidate feature `implementation.md`, any candidate module `design.md` amendment, the exact whole-attempt
@@ -63,9 +66,9 @@ snapshotting all related roots, abstracts, specifications, module summaries, and
    feature `implementation.md` matches the reviewed candidate, the level's module `design.md` matches the
    reviewed amendment when one was proposed, only the selected attempt is absent, and `abstract.md` and
    `design.md` are byte-identical.
-4. **Given** a first hardening of a root whose `implementation.md` holds only the not-yet-hardened state,
+4. **Given** a first acceptance of a root whose `implementation.md` holds only the not-yet-accepted state,
    **When** apply completes, **Then** the feature `implementation.md` is written in full; **Given** a later
-   hardening, **Then** it is completed and updated rather than duplicated.
+   acceptance, **Then** it is completed and updated rather than duplicated.
 5. **Given** a stale or interrupted apply, **When** the operation fails, **Then** the previous feature
    `implementation.md`, the previous module `design.md`, and the complete attempt remain recoverable.
 
@@ -76,6 +79,7 @@ snapshotting all related roots, abstracts, specifications, module summaries, and
 - The proposal names a `module.md`, a `abstract.md`, a `design.md`, a module `design.md` at a level other
   than the one at which the feature is specified, or a legacy filename.
 - Parent, child, sibling, selection, or source digest changes after review.
+- A caller submits the superseded command, operation name, proposal shape, status, or diagnostic code.
 
 ## Requirements
 
@@ -94,7 +98,7 @@ snapshotting all related roots, abstracts, specifications, module summaries, and
   any other level's `implementation.md`, and any legacy filename.
 - **FR-006**: Realization replacement, reference amendment, and attempt removal MUST complete
   atomically or restore every prior state.
-- **FR-007**: Child hardening MUST preserve parent and siblings; parent hardening MUST preserve every
+- **FR-007**: Child milestone acceptance MUST preserve parent and siblings; parent milestone acceptance MUST preserve every
   child root.
 - **FR-008**: A success result MUST report prior/resulting feature `implementation.md` digests,
   prior/resulting module `design.md` digests when amended, removed artifacts, selected feature, and
@@ -102,9 +106,13 @@ snapshotting all related roots, abstracts, specifications, module summaries, and
 - **FR-009**: A candidate module `design.md` amendment MUST contain only implementation detail and
   rationale developed during the attempt, organized under the reference's stable headings, and MUST
   NOT restate or alter facts owned by `module.md`, contracts, or the level view.
-- **FR-010**: Hardening MUST write the feature `implementation.md` in full on the first accepted milestone
-  and complete or update it on later ones, never leaving the not-yet-hardened placeholder beside
+- **FR-010**: Milestone acceptance MUST write the feature `implementation.md` in full on the first accepted milestone
+  and complete or update it on later ones, never leaving the not-yet-accepted placeholder beside
   accepted content.
+- **FR-011**: Current commands, agent surfaces, runtime operations, statuses, diagnostics, contracts,
+  schemas, examples, tests, documentation, and specifications MUST use the Accept Milestone
+  vocabulary consistently, MUST reject the superseded interface, and MUST provide no compatibility
+  alias or transition period.
 
 ## Success Criteria
 
@@ -117,11 +125,15 @@ snapshotting all related roots, abstracts, specifications, module summaries, and
   `implementation.md`, and the complete attempt.
 - **SC-004**: All parent, child, and sibling roots, every `abstract.md` and `design.md`, and every
   `module.md` outside the selected mutation targets remain byte-identical.
+- **SC-005**: Repository validation finds zero current command, documentation, code, contract,
+  schema, example, test, or specification references to the superseded terminology or interface,
+  apart from immutable version-control history and append-only historical entries in the
+  maintainer-owned project reflection log.
 
 ## Assumptions
 
-- Requirements changes occur through specification review, not through hardening; the abstract is
-  never refreshed by hardening.
-- The level at which the feature is specified is the level whose module `design.md` a hardening
+- Requirements changes occur through specification review, not through milestone acceptance; the
+  abstract is never refreshed by milestone acceptance.
+- The level at which the feature is specified is the level whose module `design.md` an acceptance
   proposal may amend; a feature realized across several modules records lower-level detail in those
-  modules' references through their own features' hardening.
+  modules' references through their own feature milestones.

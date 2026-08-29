@@ -2,7 +2,7 @@
 
 `feature.integration.manage-feature-workspace` · specified at `module.concorde.spec-kit-integration`
 · refines `feature.concorde.workflow` · about three minutes. This page is enough to understand how a
-feature root is created, selected, routed, and hardened, and what must hold; the links at the end
+feature root is created, selected, routed, and accepted, and what must hold; the links at the end
 only redirect you when you want more.
 
 ## Purpose
@@ -10,7 +10,7 @@ only redirect you when you want more.
 A maintainer can review a feature's placement, create its one nested canonical workspace through the
 standard Spec Kit specify phase or select an existing one through the standard Spec Kit pointer, run
 every normal Spec Kit phase with durable intent and accepted design at the feature root and temporal
-delivery artifacts under `attempt/`, then explicitly harden a completed attempt into that
+delivery artifacts under `attempt/`, then explicitly accept a completed attempt into that
 permanent design. It exists so that one selected root, and never a competing root-level artifact,
 is the place every phase reads and writes.
 
@@ -23,7 +23,7 @@ is the place every phase reads and writes.
 | Routing | Before every normal phase, the selected-workspace adapter validates the root and returns durable and temporal paths, the workspace kind, parent context and sibling summaries for a sub-feature, and `attempt_state`. |
 | Durable paths | Specify and contracts resolve from the feature root; the permanent accepted realization resolves from the root design reference and is never changed by a normal phase. |
 | Temporal paths | Plan, tasks, implement, analyze, and converge resolve from `attempt/`; every checklist lives under `attempt/checklists/` while reading the durable specification. |
-| Hardening | Requires complete tasks, a reviewed digest-bound design proposal, and explicit approval; removes only the selected feature's `attempt/`. |
+| Acceptance | Requires complete tasks, a reviewed digest-bound design proposal, and explicit approval; removes only the selected feature's `attempt/`. |
 
 **Not part of this feature**: Spec Kit's core phases, choosing or changing architectural ownership
 silently, a second registry or root-level temporal aliases, and more than one active implementation
@@ -35,14 +35,14 @@ The parent feature's core view
 <a href="/architecture/concorde-workflow-components.html">workflow components</a> (maintained source
 `specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json`) shows
 the coding agent reaching this workspace service through the adapter every normal phase invokes and
-through `feature.harden`, sharing the selected workspace with Spec Kit and Architecture Core.
+through `feature.accept`, sharing the selected workspace with Spec Kit and Architecture Core.
 
 ```text
 speckit.specify (SPECIFY_FEATURE_DIRECTORY) ──▶ .specify/feature.json ◀── standard Spec Kit selection
 normal phase override ──▶ selected-workspace adapter ──feature-workspace──▶ validated root
                                                             ├─ durable: design.md · design reference · contracts
                                                             └─ temporal: attempt/ (plan · tasks · checklists) + attempt_state
-feature.harden ──▶ digest-bound proposal ──▶ explicit approval ──▶ root design updated · attempt/ removed
+feature.accept ──▶ digest-bound proposal ──▶ explicit approval ──▶ root design updated · attempt/ removed
 architecture context / validation ──architecture-services──▶ Architecture Core (read-only relay)
 ```
 
@@ -52,7 +52,7 @@ The module provides `contract.integration.feature-workspace`,
 
 ## Logic
 
-**One feature, start to hardening**
+**One feature, start to acceptance**
 
 1. The maintainer reviews placement and runs the standard specify phase at the canonical root,
    which writes the durable pair and the selection.
@@ -60,7 +60,7 @@ The module provides `contract.integration.feature-workspace`,
    unknown, or ambiguous targets return findings and change nothing.
 3. Durable work stays at the root; planning, tasks, checklists, and execution stay under
    `attempt/`, and an existing non-empty attempt is reported as active.
-4. When tasks are complete, hardening proposes the design, the maintainer approves the exact
+4. When tasks are complete, acceptance proposes the design, the maintainer approves the exact
    proposal, and the attempt is promoted and removed.
 
 **Rules the implementation must keep**
@@ -76,7 +76,7 @@ The module provides `contract.integration.feature-workspace`,
   analyze, and converge resolve from `attempt/` (Requirements, items 5 and 6).
 - A non-empty attempt is reported as active and never replaced or removed silently (Requirements,
   item 7).
-- Hardening needs complete tasks, a digest-bound reviewed proposal, and explicit approval, and
+- Acceptance needs complete tasks, a digest-bound reviewed proposal, and explicit approval, and
   removes only the selected feature's temporal workspace (Requirements, item 8).
 - Installed behavior ships through supported preset and extension mechanisms with clean-project
   compatibility tests (Requirements, item 9).
@@ -97,6 +97,6 @@ The module provides `contract.integration.feature-workspace`,
 - **The parent feature** — [Concorde Workflow](../../../../../features/001-concorde-workflow/abstract.md)
   and the steps this feature serves:
   [workspaces](../../../../../features/001-concorde-workflow/subfeatures/004-manage-feature-workspaces/design.md)
-  and [harden](../../../../../features/001-concorde-workflow/subfeatures/009-harden-design/design.md).
+  and [accept](../../../../../features/001-concorde-workflow/subfeatures/009-accept-milestone/design.md).
 - **Framework guides** — [docs/project-structure.md](../../../../../../../docs/project-structure.md)
   (nested feature selection) and [docs/concorde-workflow.md](../../../../../../../docs/concorde-workflow.md).

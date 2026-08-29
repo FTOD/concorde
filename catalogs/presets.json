@@ -1,29 +1,29 @@
 {
-  "catalog_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/presets.json",
+  "catalog_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0/presets.json",
   "presets": {
     "concorde-core": {
       "author": "Concorde maintainers",
       "description": "Architecture guidance plus authoritative nested-workspace routing for the Spec Kit lifecycle",
-      "download_url": "https://github.com/concorde-workflow/concorde/releases/download/v0.1.0/concorde-core-0.1.0.zip",
+      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0/concorde-core-0.4.0.zip",
       "id": "concorde-core",
       "license": "MIT",
       "name": "Concorde Core",
       "provides": {
         "commands": 9,
-        "templates": 4
+        "templates": 6
       },
-      "repository": "https://github.com/concorde-workflow/concorde",
+      "repository": "https://github.com/FTOD/concorde",
       "requires": {
         "speckit_version": ">=0.16.4,<0.16.5"
       },
-      "sha256": "sha256:08df5ad9d49d2af557b786dc30504f9666d3b09d7cce23f077f1fbdda6ffe94d",
+      "sha256": "sha256:093c3280a477495d63aae01241086551fa77b81d5c68c986423e31498419c20a",
       "tags": [
         "architecture",
         "contracts",
         "spec-driven-development"
       ],
       "verified": false,
-      "version": "0.1.0"
+      "version": "0.4.0"
     }
   },
   "schema_version": "1.0",

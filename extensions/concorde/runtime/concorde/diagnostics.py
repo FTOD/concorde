@@ -16,7 +16,7 @@ STATUS_EXIT_CODES = {
     "proposal": 0,
     "eligible": 0,
     "selected": 0,
-    "hardened": 0,
+    "accepted": 0,
     "unchanged": 0,
     "invalid": 1,
     "conflict": 2,
@@ -59,9 +59,9 @@ def envelope(
 
 
 def operation_envelope(value: OperationResult) -> dict[str, Any]:
-    if value.operation == "feature.harden":
+    if value.operation == "feature.accept":
         return {
-            "schema_version": 6,
+            "schema_version": 7,
             "operation": value.operation,
             "target": value.target,
             "status": value.status,

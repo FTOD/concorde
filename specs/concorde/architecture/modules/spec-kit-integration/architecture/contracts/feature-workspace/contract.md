@@ -13,8 +13,8 @@ representation:
   version: "6"
   definition: specs/concorde/features/001-concorde-workflow/contracts/feature-workspace.schema.json
 examples:
-  - specs/concorde/features/001-concorde-workflow/contracts/examples/feature-harden-eligible-response.json
-  - specs/concorde/features/001-concorde-workflow/contracts/examples/feature-harden-proposal.json
+  - specs/concorde/features/001-concorde-workflow/contracts/examples/feature-accept-eligible-response.json
+  - specs/concorde/features/001-concorde-workflow/contracts/examples/feature-accept-proposal.json
 features:
   - feature.integration.manage-feature-workspace
 evidence_status: partial
@@ -26,14 +26,14 @@ evidence_status: partial
 
 Resolve the standard Spec Kit selection to exactly one nested canonical feature root before every
 normal Spec Kit phase, return that root's validated durable/temporal paths and bounded relationship
-context, and explicitly harden a completed attempt into durable feature `implementation.md`,
+context, and explicitly accept a completed attempt into durable feature `implementation.md`,
 optionally amending the providing module's `design.md`, without creating
 duplicate lifecycle artifacts.
 
 ## Information
 
 The custom JSON representation passes the operation, stable feature target, safe workspace paths,
-selected kind and relationship context, attempt state, proposed or applied hardening changes,
+selected kind and relationship context, attempt state, proposed or applied acceptance changes,
 deterministic findings, and the source digest that binds review to the inspected hierarchy
 (including the current module `design.md`). The selected root is Spec Kit's project-local
 `.specify/feature.json` `feature_directory` field, written by `speckit.specify` or set through
@@ -57,8 +57,8 @@ command. Complete field types and allowed values are defined by the linked schem
   `plan.md` or `tasks.md` aliases.
 - An existing non-empty `attempt/` attempt MUST be reported through `attempt_state:
   active` and MUST never be replaced, archived as a second authority, or removed except by an
-  approved hardening apply.
-- Hardening proves every canonical task is complete and every recognizable existing checklist item
+  approved acceptance apply.
+- Acceptance proves every canonical task is complete and every recognizable existing checklist item
   is satisfied, binds the reviewed realization, the optional module design-reference amendment, and
   the exact removal set to a source digest, returns the exact proposal path and task/checklist
   summaries, requires explicit approval, atomically replaces root feature `implementation.md` and (when
@@ -77,12 +77,12 @@ sources, the active attempt, and the standard Spec Kit selection unchanged.
 
 ## Compatibility
 
-Protocol v6 sets `schema_version` 6 and exposes `feature_abstract`, `feature_design`,
+Protocol v7 sets `schema_version` 7 and exposes `feature_abstract`, `feature_design`,
 `feature_implementation`, `attempt_dir`, `attempt_state`, `module_summary`, and `module_design`.
-Hardening proposal v4 uses `implementation`, optional `module_design`, and `remove`, and results use
+Acceptance proposal v5 uses `implementation`, optional `module_design`, and `remove`, and results use
 `implementation_digest_*`. Protocol v3 withdrew `feature.create` and `feature.select` together with their
 creation/selection request options in favour of standard Spec Kit creation (`speckit.specify` with
-`SPECIFY_FEATURE_DIRECTORY`) and selection (`.specify/feature.json`); `feature.harden` is the only
+`SPECIFY_FEATURE_DIRECTORY`) and selection (`.specify/feature.json`); `feature.accept` is the only
 remaining operation. The constitution (v2.0.0, principle A.III) no longer requires one providing
 module per feature, and the withdrawn operations encoded that assumption. Removing a required field,
 changing the meaning of the selected root, or changing durable/temporal path authority requires a
@@ -92,6 +92,6 @@ for explicitly tested Spec Kit versions.
 ## Evidence
 
 Automated evidence verifies selected-root resolution, collision and unsafe-path safety, idempotency,
-hardening eligibility/apply/rollback, cross-integration command parity, and the complete
+acceptance eligibility/apply/rollback, cross-integration command parity, and the complete
 phase-to-path matrix. Evidence remains `partial` until the human placement and explicit
 architecture-approval protocols are completed.

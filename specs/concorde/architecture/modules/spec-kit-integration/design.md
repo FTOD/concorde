@@ -54,25 +54,25 @@ Maintained definitions live under `contracts/*/contract.md`.
 - **Representation**: commonly adopted Spec Kit extension command Markdown, version `0.16.4`.
 - **Information**: user arguments, bounded project context, requested action, result, and diagnostics.
 - **Guarantees**: canonical commands `speckit.concorde.init`, `speckit.concorde.context`,
-  `speckit.concorde.validate`, and `speckit.concorde.feature.harden`, plus the agent-only
+  `speckit.concorde.validate`, and `speckit.concorde.feature.accept`, plus the agent-only
   `speckit.concorde.ask`, register in the active integration without hard-coded invocation syntax.
   Framework rules, project observations, inference, and uncertainty remain visibly distinguished in
   question answers, which inspect only the smallest relevant installed and maintained sources.
 - **Failure**: unsupported integrations or missing dependencies produce an actionable diagnostic.
 - **Evidence**: all five command artifacts register in Codex skills mode; the four runtime-backed
   operations remain distinct from `ask`; initialization, context, and validation execute in Codex
-  skills and Gemini slash-command modes. Evidence remains partial until feature hardening,
+  skills and Gemini slash-command modes. Evidence remains partial until feature acceptance,
   question-surface semantic review, and the complete normal-command matrix execute from release
-  archives in both modes; the platform-compatible registered spelling is `feature-harden`.
+  archives in both modes; the platform-compatible registered spelling is `feature-accept`.
 
 `contract.integration.feature-workspace`
 
 - **Role / flow**: provided, bidirectional.
 - **Consumers**: maintainers and normal Spec Kit lifecycle commands.
-- **Representation**: custom Concorde Feature Workspace Protocol v6 plus Spec Kit's standard
+- **Representation**: custom Concorde Feature Workspace Protocol v7 plus Spec Kit's standard
   project-local `feature_directory` selection field.
 - **Information**: the resolved standard Spec Kit selection, exact durable/temporal paths,
-  relationship context, implementation state, hardening changes, conflicts, findings, and inspected
+  relationship context, implementation state, acceptance changes, conflicts, findings, and inspected
   source digest.
 - **Guarantees**: one nested canonical specification, no root-level plan/task aliases, read-only
   resolution of the standard Spec Kit selection, and no silent replacement of an implementation
@@ -136,9 +136,9 @@ Maintained definitions live under `contracts/*/contract.md`.
 - 2026-08-27 — Adopted the module summary / design reference split and renamed feature design.md to
   implementation.md (feature.concorde.workflow); this module's `module.md` was rewritten to the
   summary shape and the preset/extension model and contract narratives moved here. The same attempt
-  proposes, pending contract updates and hardening: Feature Workspace Protocol v4
+  proposes, pending contract updates and acceptance: Feature Workspace Protocol v4
   (`feature_implementation`, `module_summary`, `module_design`, `implementation_digest_*`,
-  `module_design_digest_*`); hardening proposal v2; the preset `implementation-template` replacing
+  `module_design_digest_*`); acceptance proposal v2; the preset `implementation-template` replacing
   `implementation-template`; `FEATURE_IMPLEMENTATION` in the tracked bash scripts; and a 0.2.0 bump of
   `concorde-core` and `concorde`.
 - 2026-08-27 — Removed `feature.create` and `feature.select`; installed the Claude Code agent

@@ -88,11 +88,11 @@ Maintainer ──project or target──▶ speckit.concorde.validate ──▶ 
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): FR-001 to FR-011 and
   SC-001 to SC-005.
 - **How the accepted implementation realizes this step** — [implementation.md](implementation.md) (states that no
-  realization has been hardened yet).
+  realization has been accepted yet).
 - **The parent feature** — its [abstract](../../abstract.md) and [design.md](../../design.md), which define the
   document model and the reading-budget proxies.
 - **Contracts** — `../../contracts/architecture-sources.md` for the source
   profile validated and `../../contracts/agent-commands.md` for the surface.
 - **The level** — [module.md](../../../../module.md).
 - **Previous and next steps** — [execute and reconcile](../007-execute-and-reconcile/design.md) and
-  [harden design](../009-harden-design/design.md).
+  [accept design](../009-accept-milestone/design.md).

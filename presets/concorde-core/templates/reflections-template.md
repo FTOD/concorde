@@ -3,7 +3,7 @@
 The project's one reflection log: every difficulty or problem a coding agent met while planning or
 implementing any feature, attributed to the feature that was being worked on and naming the source
 the problem concerns (any feature, module, contract, guidance, tool, or file in the project).
-Agents append entries and occurrences; maintainers resolve or dismiss them in place; hardening cites
+Agents append entries and occurrences; maintainers resolve or dismiss them in place; acceptance cites
 a feature's open entries in its design reference; no operation removes this file.
 
 <!--
