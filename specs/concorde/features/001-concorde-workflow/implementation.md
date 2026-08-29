@@ -127,7 +127,7 @@ rollback, resume, installed surfaces, and all migrated fixtures. TypeScript comp
 Vitest tests pass, including an optimized production build. Content validation publishes 100 pages
 with zero errors and 24 deliberate exclusions; Build Manifest v8 contains 21 feature abstracts, 21
 feature designs, 21 feature implementations, 5 module designs, 21 architecture sources, and 10
-project documents. All nine declared views pass the build-owned Archify gate.
+project documents. All ten declared views pass the build-owned Archify gate.
 `speckit.concorde.validate` returns `success` with zero findings.
 The self-host apply refreshed Codex and Claude projections; status remains `unknown` while Claude is
 the active integration because the self-host status protocol currently validates Codex only.

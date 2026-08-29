@@ -10,7 +10,7 @@ import {discoverDiagramDeclarations} from '../../plugins/concorde-content/diagra
 import {assertValidRegistry} from '../../plugins/concorde-content/validation';
 
 async function hashes(root: string) {
-  const paths = (await fg(['README.md', 'docs/**/*.md', 'specs/**/*.{json,md}'], {cwd: root})).sort();
+  const paths = (await fg(['README.md', 'docs/**/*.{json,md}', 'specs/**/*.{json,md}'], {cwd: root})).sort();
   return Promise.all(paths.map(async (path) => [path, createHash('sha256').update(await readFile(resolve(root, path))).digest('hex')]));
 }
 
@@ -24,6 +24,6 @@ it('validation does not mutate canonical sources', async () => {
 it('diagram declaration discovery does not mutate canonical sources', async () => {
   const root = resolve(__dirname, '../../..');
   const before = await hashes(root);
-  expect(await discoverDiagramDeclarations(root)).toHaveLength(9);
+  expect(await discoverDiagramDeclarations(root)).toHaveLength(10);
   expect(await hashes(root)).toEqual(before);
 });

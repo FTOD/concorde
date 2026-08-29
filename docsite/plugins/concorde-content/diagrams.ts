@@ -40,14 +40,18 @@ async function requireRegularSource(projectRoot: string, sourcePath: string, own
 interface PendingDeclaration {
   ownerPath: string;
   sourcePath: string;
-  /** Declared by the owner (feature diagrams); a module diagram takes its kind from its own `diagram_type`. */
+  /** Declared by a feature or custom doc; a module diagram takes its kind from its own `diagram_type`. */
   declaredKind?: DiagramKind;
   declaredOutput?: string;
   role?: FeatureDiagram['role'];
   scenarios?: string[];
 }
 
-function featureDeclarations(ownerPath: string, raw: unknown): PendingDeclaration[] {
+function declaredDiagramDeclarations(
+  ownerPath: string,
+  raw: unknown,
+  ownerKind: 'feature' | 'documentation',
+): PendingDeclaration[] {
   if (raw === undefined) return [];
   if (!Array.isArray(raw)) throw new Error(`${ownerPath}: diagrams must be a list.`);
   const expectedDirectory = posix.join(posix.dirname(ownerPath), 'diagrams');
@@ -62,16 +66,19 @@ function featureDeclarations(ownerPath: string, raw: unknown): PendingDeclaratio
     const role = declaration.role;
     const scenarios = declaration.scenarios;
     if (!sourcePath || posix.dirname(sourcePath) !== expectedDirectory || posix.basename(sourcePath) === 'architecture.json') {
-      throw new Error(`${ownerPath}: feature diagram "${sourcePath || '<missing>'}" must be directly under ${expectedDirectory}/.`);
+      throw new Error(`${ownerPath}: declared diagram "${sourcePath || '<missing>'}" must be directly under ${expectedDirectory}/.`);
     }
     if (typeof kind !== 'string' || !diagramKinds.has(kind as DiagramKind)) {
-      throw new Error(`${ownerPath}: feature diagram "${sourcePath}" has an unsupported kind.`);
+      throw new Error(`${ownerPath}: declared diagram "${sourcePath}" has an unsupported kind.`);
     }
     if (role !== 'core' && role !== 'supplemental') {
-      throw new Error(`${ownerPath}: feature diagram "${sourcePath}" must declare core or supplemental role.`);
+      throw new Error(`${ownerPath}: declared diagram "${sourcePath}" must declare core or supplemental role.`);
     }
     if (role === 'core' && kind !== 'architecture') {
       throw new Error(`${ownerPath}: core feature diagram "${sourcePath}" must use architecture.`);
+    }
+    if (ownerKind === 'documentation' && role !== 'supplemental') {
+      throw new Error(`${ownerPath}: documentation diagram "${sourcePath}" must use supplemental role.`);
     }
     if (!Array.isArray(scenarios) || !scenarios.length || !scenarios.every((value) => typeof value === 'string' && value.length > 0)) {
       throw new Error(`${ownerPath}: feature diagram "${sourcePath}" requires scenarios or a named question.`);
@@ -118,7 +125,17 @@ export async function discoverDiagramDeclarations(projectRoot: string): Promise<
     }
     if (ownerFiles.includes(ownerFromSpecs.replace(/design\.md$/, 'module.md'))) continue; // module design reference
     const parsed = matter(await readFile(resolve(specsRoot, ownerFromSpecs), 'utf8'));
-    pending.push(...featureDeclarations(ownerPath, parsed.data.diagrams));
+    pending.push(...declaredDiagramDeclarations(ownerPath, parsed.data.diagrams, 'feature'));
+  }
+  const documentationFiles = await fg(['docs/**/*.md'], {
+    cwd: root,
+    onlyFiles: true,
+    unique: true,
+    followSymbolicLinks: false,
+  });
+  for (const ownerPath of documentationFiles.sort()) {
+    const parsed = matter(await readFile(resolve(root, ownerPath), 'utf8'));
+    pending.push(...declaredDiagramDeclarations(posixPath(ownerPath), parsed.data.diagrams, 'documentation'));
   }
 
   const declarations: DiagramDeclaration[] = [];

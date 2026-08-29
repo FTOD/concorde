@@ -10,7 +10,7 @@ A shared registry classifies the dedicated `home` collection, Architecture, Docu
 
 Architecture and Features remain independent semantic projections even though their canonical Markdown shares recursive `specs/` packages. Architecture pages follow module containment. The Features sidebar is generated from the same declared module tree and each module's ordered feature registration, with explicit sub-features beneath their parent feature. Routes remain stable and identity-derived: a top-level feature opens at `/features/<feature-id>`, an immediate child opens below its declared parent route, and design and implementation companions append `/design` and `/implementation`. Adjacent-level refinement remains provenance, metadata, and cross-links rather than containment, so a feature that refines several project outcomes still appears once beneath its owning module.
 
-Diagram publication remains part of preview and production. The build discovers every module-owned and feature-owned Archify source, verifies the project-local Archify 2.16 package, validates each maintained JSON source at showcase quality, and delivers one complete disposable diagram set before Docusaurus consumes it. Generated diagrams, staged Markdown, renderer caches, search indexes, manifests, and site output remain ignored read models.
+Diagram publication remains part of preview and production. The build discovers every module-owned, feature-owned, and docs-owned Archify source, verifies the project-local Archify 2.16 package, validates each maintained JSON source at showcase quality, and delivers one complete disposable diagram set before Docusaurus consumes it. Generated diagrams, staged Markdown, renderer caches, search indexes, manifests, and site output remain ignored read models.
 
 ## Module and Feature Collaboration
 
@@ -54,7 +54,7 @@ The homepage implementation is centered in `README.md`, `docsite/docusaurus.conf
 
 Executable evidence covers required README discovery, root routing, source hashing and provenance, opening-section order, Concorde and related Spec Kit commands, links into all three generated views, missing and broken homepage inputs, duplicate routes, body-faithful staging, source immutability, manifest schema v9, module-grouped Features navigation, search, rendered provenance, retained feature routes, and repeatable production output. The generated sidebar contains every feature exactly once beneath its owning module, keeps explicit sub-features beneath their parent, and leaves stable feature routes free of architecture or module-storage wrappers.
 
-All nine declared diagrams pass the Archify 2.16 delivery gate with 9/9 showcase checks, composition pass, and zero errors or warnings. Feature 002's supplemental publication sequence is freshly delivered and embedded with standalone route and provenance. Browser visual-check was not run, so no new perceptual-review claim is made.
+All ten declared diagrams pass the Archify 2.16 delivery gate with 9/9 showcase checks, composition pass, and zero errors or warnings. Feature 002's supplemental publication sequence and the workflow guide's docs-owned command/file view are freshly delivered and embedded with standalone routes and provenance. Browser visual-check was not run, so no new perceptual-review claim is made.
 
 ## Known Limitations
 

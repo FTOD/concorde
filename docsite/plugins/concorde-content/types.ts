@@ -62,6 +62,8 @@ export interface SourceDocument {
 export interface ProjectDocument extends SourceDocument {
   collectionId: 'home' | 'docs';
   contentKind: 'project-document';
+  /** Supplemental Archify views declared by a custom page beneath docs/. */
+  diagrams?: FeatureDiagram[];
 }
 
 export type FeatureLevel = 'feature' | 'subfeature';

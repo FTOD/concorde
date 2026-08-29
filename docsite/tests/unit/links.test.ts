@@ -21,6 +21,17 @@ describe('module diagram links', () => {
     expect(resolveContentLink('architecture/diagrams/missing-view.json', root, registry).reference.kind).toBe('asset');
   });
 
+  it('resolves a custom documentation diagram to its delivered route', async () => {
+    const registry = await buildRegistry(resolve(__dirname, '../../..'));
+    const workflow = registry.documents.find((item) => item.sourcePath === 'docs/concorde-workflow.md')!;
+    expect(resolveContentLink('diagrams/concorde-command-workspace-file-flow.json', workflow, registry).reference)
+      .toMatchObject({
+        kind: 'included-source',
+        targetSourcePath: 'docs/diagrams/concorde-command-workspace-file-flow.json',
+        targetRoute: '/architecture/concorde-command-workspace-file-flow.html',
+      });
+  });
+
   it('publishes module and contract pages at routes without the architecture/ grouping segment', async () => {
     const registry = await buildRegistry(resolve(__dirname, '../../..'));
     const byPath = (sourcePath: string) => registry.documents.find((item) => item.sourcePath === sourcePath)!;

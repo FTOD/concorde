@@ -18,7 +18,7 @@ Documentation collection reads `docs/**/*.md` directly; Architecture and Feature
 projections under `docsite/.generated/content/` because separate Docusaurus content-plugin instances
 cannot safely share the same physical `specs/` loader root.
 
-Within the plugin, `diagrams.ts` owns Archify declaration discovery and safe normalized mappings,
+Within the plugin, `diagrams.ts` owns module, feature, and custom-documentation Archify declaration discovery and safe normalized mappings,
 `links.ts` owns strict Markdown link mapping (a `.md` link must resolve to included content; other
 targets are treated as assets), `manifest.ts` and `validation.ts` own the build manifest and
 publication gate, and `routes.ts` owns logical routes. `docsite/scripts/render-diagrams.ts` adapts
@@ -62,7 +62,7 @@ treated as perceptual evidence.
   link canonical sources instead of copying normative text, so the site cannot drift into a second
   authority.
 - A publication gate rather than best effort: identities, links, and routes are validated, every
-  module and feature diagram must be deliverable, provenance and the manifest are deterministic, and the last
+  module, feature, and documentation diagram must be deliverable, provenance and the manifest are deterministic, and the last
   successful site survives a failed build.
 - Temporal `attempt/` artifacts are excluded so the site shows only durable intent and
   accepted realizations.

@@ -1,4 +1,4 @@
-# Content Sources Contract v9
+# Content Sources Contract v10
 
 **Contract ID**: `contract.auto-docs.project-content`
 
@@ -75,6 +75,10 @@ packages:
 - `slug`: optional route override constrained to the `/docs` route space.
 - Markdown links: repository-relative links to included Markdown are mapped to their published routes;
   fragments are preserved.
+- `diagrams`: optional list of docs-owned Archify declarations. Every source is directly below the
+  page's adjacent `diagrams/` directory, uses `role: supplemental`, and names its kind, scenarios or
+  question, and generated output. The JSON `diagram_type` and `meta.output` agree with the
+  declaration, and a Markdown link to the JSON resolves to the standalone delivery.
 - Concorde's self-hosting documentation baseline: `docs/index.md`, six framework learning guides,
   and `docs/contributing/docsite.md`; all remain ordinary Project Documents rather than a new content
   kind.
@@ -138,7 +142,9 @@ packages:
   `architecture_view` are Profile 3 remnants and are not read).
 - Each module diagram must be valid Archify JSON with a supported `diagram_type`, a `meta.title`,
   `meta.legend.mode` equal to `hidden`, and a `meta.output` beneath `generated/`. Feature diagrams
-  use the same hidden-legend policy. Preview and production publication discover the folder and
+  and docs-owned diagrams use the same hidden-legend policy. A custom documentation page may declare
+  supplemental JSON directly beneath its adjacent `diagrams/` directory using the same source,
+  kind, scenarios, and output fields as a feature diagram. Preview and production publication discover the folder and
   create each verified disposable HTML before the registry admits the route. The module page records
   every diagram's source hash and embeds each one in a sandbox; a Markdown link to a diagram's JSON
   resolves to its delivered route.
@@ -155,10 +161,11 @@ packages:
 - Consumers MUST expose content kind and project-relative provenance on every page; architecture pages
   additionally expose stable ID, kind, hierarchy metadata, and, for a module, the provenance of every
   diagram beneath its `architecture/diagrams/`.
-- Consumers MUST discover feature diagrams from `design.md` and module diagrams from
-  `architecture/diagrams/`, deliver and verify their generated outputs before publication, include
+- Consumers MUST discover feature diagrams from feature `design.md`, documentation diagrams from
+  docs-page front matter, and module diagrams from `architecture/diagrams/`; deliver and verify their generated outputs before publication; include
   their source hashes and routes in the manifest, and embed every feature diagram on the canonical
-  feature page and every module diagram on the module page, each with a standalone-view link.
+  feature page, every documentation diagram on its declaring page, and every module diagram on the
+  module page, each with a standalone-view link.
 - Consumers MUST reject duplicate, escaping, mismatched, stale, failed, or incomplete diagram
   deliveries and MUST NOT require committed HTML or machine-local visual-check evidence.
 - Providers MUST keep stable feature IDs unique and internal Markdown targets resolvable.
@@ -174,18 +181,20 @@ packages:
 
 ## Failure Semantics
 
-Missing or unreadable root `README.md`, unreadable sources, invalid YAML or JSON, missing required identity, invalid feature-diagram
+Missing or unreadable root `README.md`, unreadable sources, invalid YAML or JSON, missing required identity, invalid feature- or documentation-diagram
 placement/declarations, duplicate feature or architecture
 IDs, escaping paths, missing or ambiguous Markdown targets, excluded-source links, unpublishable
-module or feature diagrams (`architecture.diagram.unpublishable`), and route collisions are errors. Each
+module, feature, or documentation diagrams (`architecture.diagram.unpublishable`), and route collisions are errors. Each
 diagnostic includes a rule ID, source path when applicable, reason, and remediation. Any error stops
 candidate publication.
 
 ## Compatibility
 
-This is contract version 9. It adds root `README.md` as the required `home` collection and unique `/`
-project-document page. That source-root, collection, and route ownership change is incompatible with
-v8 manifests and site projections. Version 8 publishes `abstract.md` as `feature-abstract`, feature `design.md` as
+This is contract version 10. It adds docs-owned supplemental Archify declarations beneath adjacent
+`diagrams/` directories without changing documentation page routes. Version 9 added root `README.md`
+as the required `home` collection and unique `/` project-document page. That source-root,
+collection, and route ownership change is incompatible with v8 manifests and site projections.
+Version 8 publishes `abstract.md` as `feature-abstract`, feature `design.md` as
 `feature-design` at `/design`, and `implementation.md` as `feature-implementation` at
 `/implementation`, while excluding `attempt/**`; it matches Build Manifest schema version 8.
 Version 8 replaced module-path-derived feature routes and navigation with stable feature identity and

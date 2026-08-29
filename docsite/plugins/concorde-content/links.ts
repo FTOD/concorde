@@ -73,9 +73,9 @@ export function resolveContentLink(
 
 /**
  * Maintained Markdown links Archify JSON by path: a module summary or design reference links a diagram beneath
- * the module's `architecture/diagrams/`, an abstract may link a feature diagram beneath `diagrams/`. Spelled
- * relative to the document or to the repository root, the link resolves to the delivered view route, so the
- * published page never carries a dead link.
+ * the module's `architecture/diagrams/`; feature and custom documentation pages may link declared diagrams
+ * beneath their adjacent `diagrams/`. Spelled relative to the document or to the repository root, the link
+ * resolves to the delivered view route, so the published page never carries a dead link.
  */
 function resolveDiagramLink(
   rawTarget: string,

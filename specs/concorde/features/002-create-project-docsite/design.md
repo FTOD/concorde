@@ -401,8 +401,8 @@ and has no separate hand-authored landing-page copy.
 - **FR-040**: The Documentation landing page MUST provide a progressive reading path through the
   framework guides, and each guide that summarizes normative behavior MUST link readers to the
   relevant canonical architecture or feature sources for complete authority.
-- **FR-041**: Preview and production build entry points MUST discover every declared module and
-  feature-owned Archify JSON source and MUST validate and deliver its standalone HTML before content
+- **FR-041**: Preview and production build entry points MUST discover every declared module,
+  feature-owned, and docs-owned Archify JSON source and MUST validate and deliver its standalone HTML before content
   registry validation or site rendering consumes that delivery.
 - **FR-042**: A clean checkout containing maintained sources and documented prerequisites MUST build
   the complete site without committed diagram HTML, visual-check receipts, or a separate manual
@@ -446,6 +446,10 @@ and has no separate hand-authored landing-page copy.
 - **FR-055**: A missing or unreadable root README, an invalid supported README link, or any competing
   homepage route MUST stop publication with an actionable diagnostic and MUST NOT replace the last
   successful site.
+- **FR-056**: A custom Markdown page beneath `docs/` MUST be able to declare supplemental Archify
+  JSON directly beneath its adjacent `diagrams/` directory; preview and production MUST validate,
+  deliver, link, embed, and record provenance for each declared view without treating generated HTML
+  as maintained documentation.
 
 ### Key Entities
 
@@ -471,6 +475,8 @@ and has no separate hand-authored landing-page copy.
   from all currently declared Archify JSON sources for one preview or production build.
 - **Supplemental Feature Diagram**: A maintained, text-backed explanation of the publication
   invocation path whose generated HTML is a reproducible, non-authoritative projection.
+- **Documentation Diagram**: A supplemental, docs-owned Archify JSON view declared by one custom
+  Markdown page and embedded there with source provenance and a standalone route.
 
 ## Success Criteria *(mandatory)*
 
@@ -513,6 +519,9 @@ and has no separate hand-authored landing-page copy.
 - **SC-018**: Every eligible feature has exactly one deterministic, collision-free route derived
   independently of its module storage path, while 100% of supported inbound links resolve to the
   resulting page.
+- **SC-019**: A clean build discovers every valid docs-owned diagram, embeds it on exactly its
+  declaring documentation page, resolves its JSON link to the delivered route, and includes its
+  project-relative source hash in the build manifest.
 - **SC-019**: The repository and generated-site root present the same maintained README content, and
   a content change requires exactly one source edit to `README.md` before both surfaces agree.
 - **SC-020**: A reader can identify at least five key capabilities and all five Concorde-specific

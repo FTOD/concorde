@@ -1,6 +1,13 @@
 ---
 title: Concorde Workflow
 sidebar_position: 6
+diagrams:
+  - source: docs/diagrams/concorde-command-workspace-file-flow.json
+    role: supplemental
+    kind: dataflow
+    scenarios:
+      - command-file-ownership
+    output: generated/architecture/concorde-command-workspace-file-flow.html
 ---
 
 # Concorde Workflow
@@ -16,6 +23,14 @@ extension sources does not hot-reload their installed copies or the current agen
 The authoritative workflow, including requirements and edge cases, is
 [Feature 001](../specs/concorde/features/001-concorde-workflow/design.md). The stages below
 explain how to apply it in a project.
+
+## Commands and workspace files
+
+The interactive [command and workspace file flow](diagrams/concorde-command-workspace-file-flow.json)
+names every Concorde command and closely related Spec Kit command, the concrete files each reads or
+writes, the read-only results that remain in the conversation, and the external effects that do not
+become workspace authority. Use its guided views to isolate architecture, specification, planning,
+delivery, or reporting paths.
 
 At any stage, invoke `speckit.concorde.ask <question>` when the uncertainty is about the workflow
 itself rather than the product being implemented. The agent grounds its read-only answer in the

@@ -27,14 +27,14 @@ specifications alone.
 |---|---|---|
 | Home | root `README.md` | The same introduction visible in the repository, leading with the project summary, key features, and all Concorde-specific commands before status and detailed setup material. |
 | Architecture | `specs/**/module.md`, its sibling `design.md`, and `specs/**/architecture/contracts/**/contract.md` | The maintained hierarchy with stable ID, kind, owning module or parent, and provenance; every diagram beneath a module's `architecture/diagrams/` is delivered and embedded on the module page in a sandbox beside a standalone link. |
-| Documentation | every eligible Markdown file recursively under `docs/` | The authored hierarchy preserved, including the framework guides and a landing page with a recommended reading path. |
+| Documentation | every eligible Markdown file recursively under `docs/`, plus its declared supplemental diagrams | The authored hierarchy preserved, including the framework guides, docs-owned interactive views, and a landing page with a recommended reading path. |
 | Features | the canonical `abstract.md`, `design.md`, and `implementation.md` of every feature directory under `specs/` | Navigation mirrors the declared module hierarchy, lists each module's registered features, and nests explicit sub-features beneath their parent; routes remain identity-derived and drafts stay visible. |
 
 **What a maintainer can do.**
 
 - **Preview and build** from the independent `docsite/` project with one documented entry point;
   both operations use the same inclusion, routing, navigation, and validation rules.
-- **Deliver diagrams as part of the build**: every declared module- and feature-owned Archify JSON
+- **Deliver diagrams as part of the build**: every declared module-, feature-, and docs-owned Archify JSON
   source is discovered, validated, and rendered to standalone HTML before the site consumes it, using
   the officially installed project-local `.agents/skills/archify` package — no committed HTML, no
   manual rendering step, no machine-specific renderer environment variable.
@@ -148,16 +148,18 @@ specs/**      ─┘        │                  Archify skill (.agents/skills/a
   the authority and lifecycle of each artifact class, maps the workspace, walks the end-to-end
   workflow, distinguishes Spec Kit phases from Concorde operations, and links every summarizing
   guide to its canonical source (FR-034, FR-035, FR-036, FR-037, FR-038, FR-039, FR-040).
-- Preview and production discover, validate, and deliver every declared diagram before consuming
+- Preview and production discover, validate, and deliver every module-, feature-, or docs-owned diagram before consuming
   it; a clean checkout builds without committed HTML; the renderer is the compatibility-checked
   project-local skill; failed delivery stops publication with no stale fallback; deliveries,
   receipts, and build products stay out of version control; manifests carry only project-relative
   provenance (FR-041, FR-042, FR-043, FR-044, FR-045, FR-046, FR-047).
+- A custom page beneath `docs/` may declare supplemental Archify JSON from its adjacent `diagrams/`
+  directory; Auto-Docs embeds it on that page with source provenance and a standalone route (FR-056).
 
 ## Read Next
 
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): six user stories,
-  FR-001 to FR-055, and the measurable outcomes.
+  FR-001 to FR-056, and the measurable outcomes.
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (accepted
   realization and implementation detail).
 - **The contracts** — `contracts/content-sources.md`,

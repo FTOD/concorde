@@ -22,7 +22,7 @@ written; all source, page, exclusion, route, link, and check arrays are determin
   including the one-file `home` collection rooted at the project and mapped to `/`.
 - `pages`: one record per included source, including hash, route, title, navigation, provenance,
   optional feature identity/status, providing-module route, containment relationships, and
-  adjacent-level refinement relationships, plus architecture
+  adjacent-level refinement relationships, optional docs-owned `diagrams`, plus architecture
   identity metadata and, for a module page, `architectureDiagrams` (source, source hash, kind,
   title, and delivered route of every diagram beneath the module's `architecture/diagrams/`). Relationship summaries contain stable identity, title, source-owned
   outcome, status, and route without copying specification bodies.
@@ -56,3 +56,5 @@ and `specs/`.
   child order, parent/sibling/refinement navigation, providing-module links, and exclusion of
   parent/child attempts.
 - Production integration validates the emitted manifest and compares two unchanged builds.
+- Documentation-diagram evidence asserts source hash, supplemental role, kind, and delivered route
+  on the declaring project-document page.

@@ -96,6 +96,12 @@ and provides source provenance plus a standalone-view link; for a feature, that 
 abstract. A Markdown link to a diagram JSON from `module.md`, `design.md`, or an abstract is
 rewritten to the delivered HTML route.
 
+Custom Markdown beneath `docs/` uses the same declaration shape for supplemental diagrams. Keep the
+JSON directly beneath an adjacent `diagrams/` directory, declare it in the page's front matter with
+`source`, `role: supplemental`, `kind`, `scenarios`, and `output`, and link the JSON from the page.
+Auto-Docs delivers and embeds the view with documentation-specific wording and records its source
+hash and standalone route in the build manifest.
+
 For feature diagrams:
 
 - keep maintained JSON directly under the feature's `diagrams/` directory;
@@ -105,6 +111,7 @@ For feature diagrams:
 - keep the generated delivery fresh and provenance-bearing.
 
 A missing, invalid, escaping, duplicate, stale, or unpublishable diagram—declared by a feature or
+custom documentation page, or
 discovered under a module's `architecture/diagrams/` (`architecture.diagram.unpublishable`)—stops
 the build.
 Edit the JSON source and rerun preview/build; delivery is now part of that operation, so never patch
@@ -125,11 +132,11 @@ npm run check
 ```
 
 - `inspect` reports discovered and deliberately excluded sources.
-- `validate` checks identity, metadata, routes, links, module diagram folders, feature diagram
+- `validate` checks identity, metadata, routes, links, module diagram folders, feature and docs diagram
   declarations, and source-to-page
   mappings without mutating maintained sources.
 - `render-diagrams` verifies the installed `.agents/skills/archify` package and replaces the complete disposable
-  delivery set only after every module diagram and feature declaration passes.
+  delivery set only after every module diagram and feature or documentation declaration passes.
 - `start` delivers and validates before opening a local preview.
 - `build` delivers diagrams, renders the site, and verifies a candidate before atomic promotion.
 - `check` runs types, tests, validation, and the production build gate.

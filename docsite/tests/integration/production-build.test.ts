@@ -62,7 +62,9 @@ describe('production build', () => {
       .toContain('Concorde Self-Hosting Components');
     expect(await readFile(resolve(buildDir, 'architecture/project-docsite-publication-flow.html'), 'utf8'))
       .toContain('Project Docsite — Publication Invocation');
-    expect(Object.keys(firstDiagramHashes)).toHaveLength(9);
+    expect(await readFile(resolve(buildDir, 'architecture/concorde-command-workspace-file-flow.html'), 'utf8'))
+      .toContain('Concorde Commands and Workspace Files');
+    expect(Object.keys(firstDiagramHashes)).toHaveLength(10);
     expect((await readdir(resolve(siteDir, '../generated/architecture'))).every((name) => name.endsWith('.html'))).toBe(true);
     const concordeFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.workflow');
     const docsiteFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.publish-project-docsite');
@@ -103,6 +105,13 @@ describe('production build', () => {
       kind: 'architecture',
       route: '/architecture/concorde-self-hosting-components.html',
     })]));
+    const workflowGuide = manifest.pages.find((page: {sourcePath: string}) => page.sourcePath === 'docs/concorde-workflow.md');
+    expect(workflowGuide.diagrams).toEqual([expect.objectContaining({
+      source: 'docs/diagrams/concorde-command-workspace-file-flow.json',
+      role: 'supplemental',
+      kind: 'dataflow',
+      route: '/architecture/concorde-command-workspace-file-flow.html',
+    })]);
     const concordeFeatureHtml = await readFile(resolve(buildDir, `${concordeFeature.route.slice(1)}.html`), 'utf8');
     const docsiteFeatureHtml = await readFile(resolve(buildDir, `${docsiteFeature.route.slice(1)}.html`), 'utf8');
     const selfHostingFeatureHtml = await readFile(resolve(buildDir, `${selfHostingFeature.route.slice(1)}.html`), 'utf8');
@@ -119,6 +128,10 @@ describe('production build', () => {
     expect(selfHostingFeatureHtml).toContain('Feature diagrams');
     expect(selfHostingFeatureHtml).toContain('Concorde Self-Hosting Components');
     expect(selfHostingFeatureHtml).toContain('/architecture/concorde-self-hosting-components.html');
+    const workflowGuideHtml = await readFile(resolve(buildDir, 'docs/concorde-workflow.html'), 'utf8');
+    expect(workflowGuideHtml).toContain('Documentation diagrams');
+    expect(workflowGuideHtml).toContain('Concorde Commands and Workspace Files');
+    expect(workflowGuideHtml).toContain('/architecture/concorde-command-workspace-file-flow.html');
     // The landing page links design and implementation; each links back to the abstract.
     for (const landing of [concordeFeature, docsiteFeature, selfHostingFeature]) {
       const html = await readFile(resolve(buildDir, `${landing.route.slice(1)}.html`), 'utf8');

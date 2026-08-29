@@ -83,6 +83,23 @@ describe('maintained Concorde framework guides', () => {
     expect(manifest.pages.some((page) => page.sourcePath.includes('/attempt/'))).toBe(false);
   });
 
+  it('publishes a docs-owned Archify diagram on the Concorde workflow guide', async () => {
+    const registry = await buildRegistry(projectRoot);
+    const workflow = registry.documents.find((document) => document.sourcePath === 'docs/concorde-workflow.md');
+    expect(workflow).toMatchObject({
+      diagrams: [expect.objectContaining({
+        source: 'docs/diagrams/concorde-command-workspace-file-flow.json',
+        role: 'supplemental',
+        kind: 'dataflow',
+        route: '/architecture/concorde-command-workspace-file-flow.html',
+      })],
+    });
+    expect(workflow?.links).toContainEqual(expect.objectContaining({
+      targetSourcePath: 'docs/diagrams/concorde-command-workspace-file-flow.json',
+      targetRoute: '/architecture/concorde-command-workspace-file-flow.html',
+    }));
+  });
+
   it('documents ask as a cited read-only agent surface rather than a runtime operation', async () => {
     const registry = await buildRegistry(projectRoot);
     const commands = registry.documents.find((document) => document.sourcePath === 'docs/commands.md');

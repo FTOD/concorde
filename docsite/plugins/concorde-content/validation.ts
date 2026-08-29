@@ -1,7 +1,8 @@
 import {relative, resolve, sep} from 'node:path';
 
 import type {
-  ArchitectureSource, ContentRegistry, FeatureImplementation, FeatureDesign, FeatureAbstract, ModuleDesign, SourceDocument, ValidationFinding,
+  ArchitectureSource, ContentRegistry, FeatureImplementation, FeatureDesign, FeatureAbstract, ModuleDesign, ProjectDocument, SourceDocument,
+  ValidationFinding,
 } from './types';
 
 const isFeature = (document: SourceDocument): document is FeatureDesign => document.collectionId === 'features';
@@ -9,6 +10,7 @@ const isFeatureAbstract = (document: SourceDocument): document is FeatureAbstrac
 const isFeatureImplementation = (document: SourceDocument): document is FeatureImplementation => document.collectionId === 'feature-implementations';
 const isArchitecture = (document: SourceDocument): document is ArchitectureSource => document.contentKind === 'architecture-source';
 const isModuleDesign = (document: SourceDocument): document is ModuleDesign => document.contentKind === 'module-design';
+const isProjectDocument = (document: SourceDocument): document is ProjectDocument => document.contentKind === 'project-document';
 const temporalWorkspacePattern = /(^|\/)attempt\//;
 
 export function sortFindings(findings: ValidationFinding[]): ValidationFinding[] {
@@ -59,7 +61,7 @@ function duplicateFindings(
 
 export function validateRegistry(registry: ContentRegistry): ValidationFinding[] {
   const findings: ValidationFinding[] = [];
-  const featureDiagramRoutes = new Map<string, FeatureDesign[]>();
+  const declaredDiagramRoutes = new Map<string, SourceDocument[]>();
   for (const document of registry.documents) {
     if (!isContainedPath(registry.projectRoot, document.realPath)) {
       findings.push({
@@ -119,7 +121,12 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
         remediation: 'Add implementation.md beside design.md (a placeholder is acceptable) so required behavior and accepted implementation are published together.',
       });
       for (const diagram of document.diagrams) {
-        featureDiagramRoutes.set(diagram.route, [...(featureDiagramRoutes.get(diagram.route) ?? []), document]);
+        declaredDiagramRoutes.set(diagram.route, [...(declaredDiagramRoutes.get(diagram.route) ?? []), document]);
+      }
+    }
+    if (isProjectDocument(document)) {
+      for (const diagram of document.diagrams ?? []) {
+        declaredDiagramRoutes.set(diagram.route, [...(declaredDiagramRoutes.get(diagram.route) ?? []), document]);
       }
     }
     if (isFeatureAbstract(document) && !document.designRoute) {
@@ -171,12 +178,12 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
       });
     }
   }
-  for (const [route, owners] of featureDiagramRoutes) {
+  for (const [route, owners] of declaredDiagramRoutes) {
     if (owners.length < 2) continue;
     for (const owner of owners) findings.push({
-      ruleId: 'feature.diagram.route.duplicate', severity: 'error', sourcePath: owner.sourcePath,
-      message: `Feature diagram route "${route}" is declared by ${owners.length} feature designs.`,
-      remediation: 'Give each generated feature diagram a unique output beneath generated/.',
+      ruleId: 'diagram.route.duplicate', severity: 'error', sourcePath: owner.sourcePath,
+      message: `Diagram route "${route}" is declared by ${owners.length} content sources.`,
+      remediation: 'Give each declared diagram a unique output beneath generated/.',
     });
   }
   findings.push(...duplicateFindings(registry.documents, (document) => document.route, 'content.route.duplicate', 'Route'));

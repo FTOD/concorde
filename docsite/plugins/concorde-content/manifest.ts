@@ -1,6 +1,6 @@
 import type {
   ArchitectureSource, BuildManifest, ContentPage, ContentRegistry, FeatureImplementation, FeaturePageContext, FeatureDesign, FeatureAbstract,
-  ModuleDesign, SourceDocument,
+  ModuleDesign, ProjectDocument, SourceDocument,
 } from './types';
 
 const isFeature = (document: SourceDocument): document is FeatureDesign => document.collectionId === 'features';
@@ -8,6 +8,7 @@ const isFeatureAbstract = (document: SourceDocument): document is FeatureAbstrac
 const isFeatureImplementation = (document: SourceDocument): document is FeatureImplementation => document.collectionId === 'feature-implementations';
 const isArchitecture = (document: SourceDocument): document is ArchitectureSource => document.contentKind === 'architecture-source';
 const isModuleDesign = (document: SourceDocument): document is ModuleDesign => document.contentKind === 'module-design';
+const isProjectDocument = (document: SourceDocument): document is ProjectDocument => document.contentKind === 'project-document';
 
 /** The identity and abstract-routed navigation every feature page carries. */
 function featureContext(document: FeaturePageContext) {
@@ -49,6 +50,7 @@ export function pageFromDocument(document: SourceDocument): ContentPage {
       .filter((link) => link.targetSourcePath && link.targetRoute)
       .map((link) => ({targetSourcePath: link.targetSourcePath!, targetRoute: link.targetRoute!}))
       .sort((a, b) => `${a.targetSourcePath}\0${a.targetRoute}`.localeCompare(`${b.targetSourcePath}\0${b.targetRoute}`)),
+    ...(isProjectDocument(document) && document.diagrams?.length ? {diagrams: document.diagrams} : {}),
     ...(isFeatureAbstract(document) ? {
       ...featureContext(document),
       status: document.status,

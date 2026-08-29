@@ -19,7 +19,7 @@ providers:
   - external.spec-kit
 features:
   - feature.auto-docs.publish-project-docsite
-version: 5
+version: 8
 evidence:
   tests:
     - docsite/tests/contract/content-sources.test.ts
@@ -31,7 +31,8 @@ evidence_status: verified
 ## Purpose
 
 Provide UTF-8 architecture sources and canonical feature specifications and accepted implementations
-from the unified `specs/` hierarchy, plus project documentation from `docs/**/*.md`, without
+from the unified `specs/` hierarchy, plus project documentation from `docs/**/*.md` and its declared
+supplemental Archify JSON beneath adjacent `diagrams/` directories, without
 relocating or modifying any authority. Architecture publication selects `**/module.md`,
 `**/contracts/**/contract.md`, and every module-level `design.md` beside a `module.md` (the module
 design reference); feature publication selects feature-root `abstract.md`, `design.md`, and
@@ -43,7 +44,8 @@ semantics are defined once in `specs/concorde/features/002-create-project-docsit
 ## Information
 
 The boundary carries UTF-8 Markdown and YAML metadata from two maintained roots, project-relative
-links, stable feature and architecture identity, and declared Archify JSON view references.
+links, stable feature and architecture identity, and declared Archify JSON view references owned by
+modules, features, or custom documentation pages.
 
 ## Obligations
 
@@ -57,6 +59,8 @@ links, stable feature and architecture identity, and declared Archify JSON view 
   feature's accepted implementation and module design reference is published with source provenance.
 - Architecture IDs and kinds are explicit; declared JSON views are discovered without generated
   prerequisites and resolve to build-delivered Archify HTML before publication.
+- A documentation page may declare only supplemental diagrams directly beneath its adjacent
+  `diagrams/` directory; each is embedded on that page with source provenance and a standalone link.
 - Project-relative links resolve within or across the two accepted source roots and three published views.
 - Temporal plans, tasks, and supporting implementation files are observable exclusions, not
   permanent feature documentation.
@@ -69,7 +73,9 @@ route-colliding sources stop publication with rule, source, reason, and remediat
 
 ## Compatibility
 
-Version 7 adopts feature `abstract.md`, `design.md`, and `implementation.md` inputs and temporal
+Version 8 adds docs-owned supplemental Archify declarations beneath each declaring page's adjacent
+`diagrams/` directory without changing Documentation routes or Markdown authority. Version 7 adopts
+feature `abstract.md`, `design.md`, and `implementation.md` inputs and temporal
 `attempt/**` exclusion. Module `design.md` remains an architecture input. Version 4 introduced
 permanent feature publication and build-owned delivery of declared diagrams. The self-hosting guide baseline adds
 required document instances without changing the CommonMark/YAML representation, source roots,

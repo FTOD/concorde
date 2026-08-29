@@ -8,11 +8,13 @@ import {discoverDiagramDeclarations} from '../../plugins/concorde-content/diagra
 import type {ValidationFinding} from '../../plugins/concorde-content/types';
 
 describe('content source diagnostics', () => {
-  it('defines the README homepage and independent Architecture and Features projections in content-source contract v9', async () => {
+  it('defines the README homepage, docs diagrams, and independent Architecture and Features projections in content-source contract v10', async () => {
     const contract = await readFile(resolve(
       process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts/content-sources.md',
     ), 'utf8');
-    expect(contract).toContain('# Content Sources Contract v9');
+    expect(contract).toContain('# Content Sources Contract v10');
+    expect(contract).toContain('documentation diagrams from');
+    expect(contract).toContain('docs-page front matter');
     expect(contract).toContain('| Project homepage | project root | The regular file `README.md` | `/` |');
     expect(contract).toContain('Architecture navigation and routes follow declared module containment.');
     expect(contract).toContain("Features navigation follows declared module containment and each module's ordered `features`");
@@ -129,12 +131,17 @@ describe('content source diagnostics', () => {
 
   it('discovers maintained diagram declarations without treating HTML as an input source', async () => {
     const declarations = await discoverDiagramDeclarations(resolve(__dirname, '../../..'));
-    expect(declarations).toHaveLength(9);
-    expect(declarations.every((declaration) => declaration.ownerPath.startsWith('specs/'))).toBe(true);
+    expect(declarations).toHaveLength(10);
+    expect(declarations.every((declaration) => declaration.ownerPath.startsWith('specs/') || declaration.ownerPath.startsWith('docs/'))).toBe(true);
     expect(declarations.every((declaration) => declaration.outputPath.startsWith('generated/'))).toBe(true);
     expect(declarations).toContainEqual(expect.objectContaining({
       sourcePath: 'specs/concorde/architecture/diagrams/skill-workspace-file-flow.json',
       outputPath: 'generated/architecture/concorde-skill-workspace-file-flow.html',
+    }));
+    expect(declarations).toContainEqual(expect.objectContaining({
+      ownerPath: 'docs/concorde-workflow.md',
+      sourcePath: 'docs/diagrams/concorde-command-workspace-file-flow.json',
+      outputPath: 'generated/architecture/concorde-command-workspace-file-flow.html',
     }));
   });
 
