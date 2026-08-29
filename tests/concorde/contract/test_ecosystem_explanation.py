@@ -143,7 +143,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
             (REPOSITORY_ROOT / "specs/concorde/architecture/diagrams/level-view.json").read_text(encoding="utf-8")
         )
         root_ids = {component["id"] for component in root_view["components"]}
-        self.assertTrue({"distribution", "skills", "scripts", "workspaceFiles", "documentation"}.issubset(root_ids))
+        self.assertTrue({"distribution", "skills", "scripts", "workspaceFiles", "autoDocs"}.issubset(root_ids))
         self.assertTrue({"bundle", "preset", "extension", "catalogs"}.isdisjoint(root_ids))
 
         outputs = {

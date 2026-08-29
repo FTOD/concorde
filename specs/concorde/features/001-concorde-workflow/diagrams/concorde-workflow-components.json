@@ -5,6 +5,9 @@
     "title": "Concorde Workflow — Installed Surfaces, Runtime, and Workspace",
     "quality_profile": "showcase",
     "output": "../../../../../generated/architecture/concorde-workflow-components.html",
+    "legend": {
+      "mode": "hidden"
+    },
     "repository": {
       "url": "https://github.com/FTOD/concorde.git",
       "revision": "9b49609cfd9e166fbfb85a9847fbb589ac454422"

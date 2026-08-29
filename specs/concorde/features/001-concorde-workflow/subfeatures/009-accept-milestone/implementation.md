@@ -56,7 +56,7 @@ Focused runtime, contract, installed-surface, and bundle evidence passes 76 test
 
 The complete docsite gate passes TypeScript typechecking, 19 Vitest files with 77 tests, validation of 100 pages with 24 deliberate exclusions and zero errors, and verified production rendering. A syntax-only code-span correction to Feature 002's accepted route placeholder was required for MDX compilation and changed no behavior.
 
-All eight maintained diagrams pass the Archify 2.16 gate with 9/9 showcase checks, composition pass, and zero errors or warnings. The updated parent core view is freshly delivered and embedded at /architecture/concorde-workflow-components.html. No browser visual-check was performed, so the evidence makes no new perceptual-review claim.
+All nine maintained diagrams pass the Archify 2.16 gate with 9/9 showcase checks, composition pass, and zero errors or warnings. The updated parent core view is freshly delivered and embedded at /architecture/concorde-workflow-components.html. No browser visual-check was performed, so the evidence makes no new perceptual-review claim.
 
 The supported Codex self-host apply completed for 0.4.0 and reported source, installed bytes, registry, and surfaces matching. Claude was restored and materialized through the public Spec Kit preset/extension flow. Canonical preset and extension trees are byte-equal to their installed mirrors, the new skills exist, and the superseded skill paths are absent.
 

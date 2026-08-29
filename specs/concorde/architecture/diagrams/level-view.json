@@ -5,6 +5,9 @@
     "title": "Concorde Interaction Architecture",
     "output": "../../../../generated/architecture/concorde-interaction-architecture.html",
     "quality_profile": "showcase",
+    "legend": {
+      "mode": "hidden"
+    },
     "viewBox": [1390, 860],
     "views": [
       {

@@ -15,8 +15,10 @@ workflow, sequence, data-flow, or lifecycle views when narrower order, state, or
 need them. Plan each descriptive Archify JSON source under the feature's
 `diagrams/` directory, its declaration in `design.md`, complete textual counterpart, governing contract
 references, automatic feature-page embedding, deterministic validation/delivery, and generated-output
-freshness. Feature diagrams remain explanatory and must not overload the module's level views
-under `architecture/diagrams/` or become behavioral authority.
+freshness. Require `meta.legend.mode: hidden` in every maintained source so renderer-owned generic
+legend categories never substitute for the diagram's domain wording. Feature diagrams remain
+explanatory and must not overload the module's level views under `architecture/diagrams/` or become
+behavioral authority.
 
 Authority remains split by artifact meaning: `abstract.md` orients (a self-contained summary that never
 defines); feature `design.md` owns behavior; feature `implementation.md` records the accepted realization; module `module.md` (summary) and `design.md` (design reference) plus

@@ -88,7 +88,8 @@ operation and compare maintained bytes.
 - **FR-002**: Proposal mode MUST be read-only and silence MUST NOT count as approval.
 - **FR-003**: Application MUST accept only the explicitly reviewed project-contained proposal.
 - **FR-004**: Application MUST create the configuration, root `module.md` summary, root `design.md`
-  reference, root view, and approved initial contracts as one failure-safe change.
+  reference, root view with `meta.legend.mode` set to `hidden`, and approved initial contracts as one
+  failure-safe change.
 - **FR-005**: Conflicting existing content, unsafe paths, malformed proposals, and stale state MUST
   leave existing maintained sources unchanged and produce actionable findings.
 - **FR-006**: Repeating initialization against the same accepted hierarchy MUST be idempotent.
@@ -109,7 +110,8 @@ operation and compare maintained bytes.
 
 - **SC-001**: Every proposal-only test produces zero filesystem changes.
 - **SC-002**: Every approved clean initialization produces a deterministically valid root hierarchy
-  whose summary passes the parent's shape and reading-budget checks and whose reference is reachable.
+  whose summary passes the parent's shape and reading-budget checks, whose reference is reachable,
+  and whose seed view explicitly hides its legend.
 - **SC-003**: Every seeded conflict, partial package, or stale proposal preserves all pre-existing
   maintained bytes.
 - **SC-004**: Repeating initialization against unchanged sources returns unchanged in all fixtures.

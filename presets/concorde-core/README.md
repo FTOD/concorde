@@ -28,7 +28,8 @@ cross-component feature requires one `role: core` Archify architecture view or a
 that prose and the module's level views are sufficient. Dynamic views are `role: supplemental`; a
 sequence diagram can never be the core view. Maintained JSON lives under the feature's `diagrams/`
 directory, is declared by feature `design.md`, and is embedded
-automatically by the project docsite; generated HTML never becomes specification authority.
+automatically by the project docsite. Every maintained Concorde Archify source explicitly sets
+`meta.legend.mode` to `hidden`; generated HTML never becomes specification authority.
 
 Parent specifications own aggregate outcomes and shared constraints; sub-feature specifications own
 focused behavior and inherit the parent module. Protocol v8 routes normal phases to exactly one

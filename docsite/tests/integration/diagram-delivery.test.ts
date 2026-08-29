@@ -35,7 +35,12 @@ contracts:
     await writeFile(resolve(sourceDirectory, 'architecture/diagrams/level-view.json'), `${JSON.stringify({
       schema_version: 1,
       diagram_type: 'architecture',
-      meta: {title: name, output: `../../../../generated/architecture/${name}.html`, quality_profile: 'showcase'},
+      meta: {
+        title: name,
+        output: `../../../../generated/architecture/${name}.html`,
+        quality_profile: 'showcase',
+        legend: {mode: 'hidden'},
+      },
       components: [], boundaries: [], connections: [], cards: [],
     })}\n`, 'utf8');
   }

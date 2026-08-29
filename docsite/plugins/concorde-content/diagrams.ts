@@ -132,7 +132,10 @@ export async function discoverDiagramDeclarations(projectRoot: string): Promise<
       throw new Error(`${sourcePath}: duplicate diagram source declared by ${previousOwner} and ${candidate.ownerPath}.`);
     }
     sources.set(sourcePath, candidate.ownerPath);
-    let document: {diagram_type?: unknown; meta?: {title?: unknown; output?: unknown; quality_profile?: unknown}};
+    let document: {
+      diagram_type?: unknown;
+      meta?: {title?: unknown; output?: unknown; quality_profile?: unknown; legend?: {mode?: unknown}};
+    };
     try {
       document = JSON.parse(await readFile(absoluteSourcePath, 'utf8')) as typeof document;
     } catch (error) {
@@ -150,6 +153,9 @@ export async function discoverDiagramDeclarations(projectRoot: string): Promise<
     }
     if (document.meta.quality_profile !== 'showcase') {
       throw new Error(`${sourcePath}: meta.quality_profile must be showcase.`);
+    }
+    if (document.meta.legend?.mode !== 'hidden') {
+      throw new Error(`${sourcePath}: meta.legend.mode must be hidden.`);
     }
     if (typeof document.meta.output !== 'string' || !document.meta.output.trim()) {
       throw new Error(`${sourcePath}: meta.output is required beneath generated/.`);

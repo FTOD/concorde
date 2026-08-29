@@ -119,7 +119,9 @@ Keep the distinction clear: the prose defines the feature; scenarios illustrate 
 components collaborate, add one core Archify architecture diagram showing stable participants,
 responsibilities, interactions, and contracts, or state why the module's level views plus prose
 are sufficient. Add sequence, workflow, data-flow, or lifecycle diagrams only as supplemental answers to
-narrower dynamic questions.
+narrower dynamic questions. Every maintained Archify JSON explicitly sets `meta.legend.mode` to
+`hidden`; use domain wording in the view and its textual counterpart instead of renderer-default
+legend names.
 
 Requirements-quality checklists belong under `attempt/checklists/`. A checklist records the
 current review cycle; accepted behavioral conclusions must be incorporated into `design.md`.
@@ -216,7 +218,8 @@ Run `speckit.concorde.validate` after maintained structural changes, during impl
 before acceptance. It deterministically checks source parsing, unique identities, containment and
 refinement, feature ownership, contract completeness, scenario scope, view depth and coverage,
 module diagram references (`CONCORDE-VIEW-006`), legacy module layout
-(`CONCORDE-LAYOUT-010`/`-011`), references, evidence status, module summary and feature abstract shape and reading budgets (the budgets as warnings
+(`CONCORDE-LAYOUT-010`/`-011`), hidden diagram legends (`CONCORDE-VIEW-007`), references, evidence
+status, module summary and feature abstract shape and reading budgets (the budgets as warnings
 only), the presence of a `design.md` beside every `module.md`, the feature-root trio and the legacy
 `implementation.md` name, the shape of the project reflection log when present
 (`CONCORDE-REFLECT-001` to `-004`), and generated freshness.

@@ -5,6 +5,9 @@
     "title": "Concorde Self-Hosting Components",
     "quality_profile": "showcase",
     "output": "../../../../../generated/architecture/concorde-self-hosting-components.html",
+    "legend": {
+      "mode": "hidden"
+    },
     "viewBox": [1395, 850],
     "repository": {
       "url": "https://github.com/FTOD/concorde",

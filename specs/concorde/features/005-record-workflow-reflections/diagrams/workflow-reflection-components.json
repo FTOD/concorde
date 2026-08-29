@@ -5,6 +5,9 @@
     "title": "Workflow Reflection Components",
     "quality_profile": "showcase",
     "output": "../../../../../generated/architecture/workflow-reflection-components.html",
+    "legend": {
+      "mode": "hidden"
+    },
     "viewBox": [
       1390,
       980

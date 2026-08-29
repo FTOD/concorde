@@ -594,7 +594,8 @@ durable root without root-level compatibility copies.
 - **FR-031**: Generated diagrams, documentation, indexes, manifests, and reports MUST remain
   reproducible projections of maintained sources and MUST exclude temporal attempts.
 - **FR-032**: A feature-owned diagram MUST supplement text, declare its role, live under the owning
-  lifecycle root's `diagrams/`, and never silently define behavior or contracts.
+  lifecycle root's `diagrams/`, explicitly set `meta.legend.mode` to `hidden`, and never silently
+  define behavior or contracts. Module-owned diagrams MUST use the same hidden-legend policy.
 - **FR-033**: The workflow MUST remain usable in an installed project without depending on this
   repository's source-tree paths.
 - **FR-034**: Deterministic operations MUST return stable structured statuses and actionable findings

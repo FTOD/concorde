@@ -5,6 +5,9 @@
     "title": "Concorde — Auto-Docs Module",
     "output": "../../../../../../../generated/architecture/auto-docs.html",
     "quality_profile": "showcase",
+    "legend": {
+      "mode": "hidden"
+    },
     "viewBox": [1220, 680],
     "views": [
       {

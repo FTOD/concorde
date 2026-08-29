@@ -20,7 +20,7 @@ location, explanation, and actionable remediation.
 
 | Area | What is checked |
 |---|---|
-| Hierarchy and identity | Identities, paths, module hierarchy, contracts, scenarios, views, refinements, feature containment, diagrams, selection safety |
+| Hierarchy and identity | Identities, paths, module hierarchy, contracts, scenarios, views, refinements, feature containment, diagrams with explicitly hidden legends, selection safety |
 | Feature roots | Illegal third-level, alternate-depth, dangling, duplicate, cyclic, symlinked, or mismatched roots; containment and refinement as distinct acyclic relationships |
 | Module documents | `module.md` summary shape and reading budget; module `design.md` present and reachable |
 | Feature documents | `abstract.md` present with exactly the five sections in order, a structure section linking a maintained diagram or holding a text sketch, `Logic` rules citing requirement IDs present in the adjacent `design.md`, and the reading budget; the durable trio present |
@@ -67,7 +67,7 @@ Maintainer ──project or target──▶ speckit.concorde.validate ──▶ 
 - Every finding carries a stable rule ID, severity, location, explanation, and actionable
   remediation (FR-002).
 - Coverage spans identities, paths, hierarchy, contracts, scenarios, views, refinements,
-  containment, diagrams, selection safety, evidence references, both document models, the durable
+  containment, diagrams with explicitly hidden legends, selection safety, evidence references, both document models, the durable
   trio, and legacy names (FR-003).
 - Containment and refinement are validated as distinct acyclic relationships (FR-004).
 - Illegal third-level, alternate-depth, dangling, duplicate, cyclic, symlinked, or mismatched roots

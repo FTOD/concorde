@@ -51,6 +51,7 @@ class InitializationTests(unittest.TestCase):
             diagram = next(item for item in proposal["files"] if item["path"].endswith("/level-view.json"))
             diagram_content = json.loads(diagram["content"])
             self.assertEqual(diagram_content["meta"]["quality_profile"], "showcase")
+            self.assertEqual(diagram_content["meta"]["legend"], {"mode": "hidden"})
             self.assertRegex(diagram_content["meta"]["views"][0]["id"], r"^scenario-example-project-[a-z0-9-]+-root-overview$")
             self.assertNotIn("stable_id", diagram_content["components"][0])
             for item in proposal["files"]:

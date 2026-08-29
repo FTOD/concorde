@@ -42,7 +42,7 @@ contracts:
   await writeFile(resolve(directory, 'architecture/diagrams/level-view.json'), `${JSON.stringify({
     schema_version: 1,
     diagram_type: diagramType,
-    meta: {title: moduleName, output, quality_profile: 'showcase'},
+    meta: {title: moduleName, output, quality_profile: 'showcase', legend: {mode: 'hidden'}},
     components: [], boundaries: [], connections: [], cards: [],
   }, null, 2)}\n`, 'utf8');
 }
@@ -80,6 +80,17 @@ describe('diagram declaration discovery', () => {
     const escapeRoot = await temporaryRoot('concorde-diagram-escape-');
     await writeModuleDiagram(escapeRoot, 'escape', '../../../../../outside.html');
     await expect(discoverDiagramDeclarations(escapeRoot)).rejects.toThrow(/specs\/escape\/architecture\/diagrams\/level-view\.json.*generated/i);
+  });
+
+  it('rejects a maintained diagram whose legend is not explicitly hidden', async () => {
+    const root = await temporaryRoot('concorde-diagram-legend-');
+    await writeModuleDiagram(root, 'legend', '../../../../generated/architecture/legend.html');
+    const source = resolve(root, 'specs/legend/architecture/diagrams/level-view.json');
+    const diagram = JSON.parse(await readFile(source, 'utf8')) as {meta: {legend?: unknown}};
+    delete diagram.meta.legend;
+    await writeFile(source, `${JSON.stringify(diagram, null, 2)}\n`, 'utf8');
+
+    await expect(discoverDiagramDeclarations(root)).rejects.toThrow(/meta\.legend\.mode must be hidden/i);
   });
 });
 

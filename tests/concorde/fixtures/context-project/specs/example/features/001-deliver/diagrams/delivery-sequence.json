@@ -4,7 +4,8 @@
   "meta": {
     "title": "Example Delivery Invocation",
     "quality_profile": "showcase",
-    "output": "../../../../../generated/architecture/example-delivery-sequence.html"
+    "output": "../../../../../generated/architecture/example-delivery-sequence.html",
+    "legend": {"mode": "hidden"}
   },
   "participants": [
     { "id": "maintainer", "type": "external", "label": "Maintainer" },

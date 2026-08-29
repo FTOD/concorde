@@ -38,7 +38,11 @@ class ModuleDiagramRuleTests(unittest.TestCase):
         (root / RELEASE_FLOW).write_text(json.dumps({
             "schema_version": 1,
             "diagram_type": "sequence",
-            "meta": {"title": "Release flow", "views": [{"id": "scenario.example.release", "label": "Release", "focus": []}]},
+            "meta": {
+                "title": "Release flow",
+                "legend": {"mode": "hidden"},
+                "views": [{"id": "scenario.example.release", "label": "Release", "focus": []}],
+            },
         }), encoding="utf-8")
         if link_from == "design":
             design = root / "specs/example/design.md"
@@ -79,6 +83,26 @@ class ModuleDiagramRuleTests(unittest.TestCase):
             readiness = architecture_readiness(root, "feature.example.deliver")
             self.assertEqual(readiness["affected_views"], [LEVEL_VIEW, RELEASE_FLOW])
 
+    def test_every_maintained_diagram_must_explicitly_hide_its_legend(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_copy(temporary, CONTEXT_PROJECT)
+            module_view_path = root / LEVEL_VIEW
+            module_view = json.loads(module_view_path.read_text(encoding="utf-8"))
+            del module_view["meta"]["legend"]
+            module_view_path.write_text(json.dumps(module_view), encoding="utf-8")
+
+            feature_view_path = root / "specs/example/features/001-deliver/diagrams/delivery-sequence.json"
+            feature_view = json.loads(feature_view_path.read_text(encoding="utf-8"))
+            feature_view["meta"]["legend"] = {"mode": "auto"}
+            feature_view_path.write_text(json.dumps(feature_view), encoding="utf-8")
+
+            findings = [
+                item for item in validate_project(root).findings if item.rule_id == "CONCORDE-VIEW-007"
+            ]
+            expected_sources = sorted([LEVEL_VIEW, feature_view_path.relative_to(root).as_posix()])
+            self.assertEqual([item.source for item in findings], expected_sources)
+            self.assertTrue(all('meta.legend' in item.remediation for item in findings))
+
     def test_structure_must_link_one_architecture_diagram_but_a_dynamic_diagram_does_not_count(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary)
@@ -104,7 +128,9 @@ class ModuleDiagramRuleTests(unittest.TestCase):
             self.assertIn("CONCORDE-VIEW-003", rules(validate_project(root)))
             second = root / "specs/example/architecture/diagrams/api-view.json"
             second.write_text(json.dumps({
-                "schema_version": 1, "diagram_type": "architecture", "meta": {"title": "API"},
+                "schema_version": 1,
+                "diagram_type": "architecture",
+                "meta": {"title": "API", "legend": {"mode": "hidden"}},
                 "components": [api], "connections": [],
             }), encoding="utf-8")
             module = root / "specs/example/module.md"
@@ -117,7 +143,9 @@ class ModuleDiagramRuleTests(unittest.TestCase):
             self.assertNotIn("CONCORDE-VIEW-005", rules(result))
             grandchild = {"id": "store", "type": "database", "module_id": "module.example.api.store"}
             second.write_text(json.dumps({
-                "schema_version": 1, "diagram_type": "architecture", "meta": {"title": "API"},
+                "schema_version": 1,
+                "diagram_type": "architecture",
+                "meta": {"title": "API", "legend": {"mode": "hidden"}},
                 "components": [api, grandchild], "connections": [],
             }), encoding="utf-8")
             deep = finding(validate_project(root), "CONCORDE-VIEW-002")

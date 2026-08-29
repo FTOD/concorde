@@ -16,7 +16,8 @@ The extension registers five integration-neutral command surfaces:
   log's path and the open entry count per feature when the log exists.
 - `speckit.concorde.validate` deterministically validates the configured hierarchy, including the
   module `architecture/` layout (`CONCORDE-LAYOUT-010`/`-011`), module diagram references
-  (`CONCORDE-VIEW-006`), and the shape of the project reflection log (`CONCORDE-REFLECT-001` to
+  (`CONCORDE-VIEW-006`), hidden legends on maintained module and feature diagrams
+  (`CONCORDE-VIEW-007`), and the shape of the project reflection log (`CONCORDE-REFLECT-001` to
   `-004`).
 - `speckit.concorde.ask` tells the coding agent how to answer a Concorde workflow or framework
   question from cited installed guidance and bounded project sources without changing the workspace.

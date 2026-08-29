@@ -3,6 +3,7 @@
   "diagram_type": "architecture",
   "meta": {
     "title": "Example",
+    "legend": {"mode": "hidden"},
     "views": [
       {"id": "scenario.example.checkout", "label": "Checkout", "focus": []},
       {"id": "scenario.example.checkout.authorize", "label": "Authorize", "focus": []},

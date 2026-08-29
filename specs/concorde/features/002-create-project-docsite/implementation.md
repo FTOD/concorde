@@ -54,7 +54,7 @@ The homepage implementation is centered in `README.md`, `docsite/docusaurus.conf
 
 Executable evidence covers required README discovery, root routing, source hashing and provenance, opening-section order, Concorde and related Spec Kit commands, links into all three generated views, missing and broken homepage inputs, duplicate routes, body-faithful staging, source immutability, manifest schema v9, module-grouped Features navigation, search, rendered provenance, retained feature routes, and repeatable production output. The generated sidebar contains every feature exactly once beneath its owning module, keeps explicit sub-features beneath their parent, and leaves stable feature routes free of architecture or module-storage wrappers.
 
-All eight declared diagrams pass the Archify 2.16 delivery gate with 9/9 showcase checks, composition pass, and zero errors or warnings. Feature 002's supplemental publication sequence is freshly delivered and embedded with standalone route and provenance. Browser visual-check was not run, so no new perceptual-review claim is made.
+All nine declared diagrams pass the Archify 2.16 delivery gate with 9/9 showcase checks, composition pass, and zero errors or warnings. Feature 002's supplemental publication sequence is freshly delivered and embedded with standalone route and provenance. Browser visual-check was not run, so no new perceptual-review claim is made.
 
 ## Known Limitations
 

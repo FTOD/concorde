@@ -5,6 +5,9 @@
     "title": "Install, Materialize, and Prove Concorde",
     "output": "../../../../../generated/architecture/concorde-bundle-installation-flow.html",
     "quality_profile": "showcase",
+    "legend": {
+      "mode": "hidden"
+    },
     "viewBox": [1080, 714],
     "views": [
       {

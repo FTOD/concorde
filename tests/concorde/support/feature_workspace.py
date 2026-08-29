@@ -33,7 +33,7 @@ def create_feature_root(
     architecture = specification_root / "architecture" / "diagrams" / "level-view.json"
     architecture.parent.mkdir(parents=True, exist_ok=True)
     if not architecture.exists():
-        architecture.write_text('{"schema_version":1,"diagram_type":"architecture","meta":{"title":"Example","views":[]},"components":[],"connections":[]}\n', encoding="utf-8")
+        architecture.write_text('{"schema_version":1,"diagram_type":"architecture","meta":{"title":"Example","legend":{"mode":"hidden"},"views":[]},"components":[],"connections":[]}\n', encoding="utf-8")
     contract = specification_root / "architecture" / "contracts" / "workflow" / "contract.md"
     contract.parent.mkdir(parents=True, exist_ok=True)
     if not contract.exists():

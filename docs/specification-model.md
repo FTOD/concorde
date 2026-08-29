@@ -354,5 +354,10 @@ and have an equivalent textual explanation; module-owned views live under the mo
 Neither source JSON nor generated HTML may introduce requirements or boundaries absent from the
 owning text and contracts.
 
+Every maintained Concorde Archify source explicitly sets `meta.legend.mode` to `hidden`. Concorde
+views use domain-specific node, relationship, lane, and boundary labels plus their textual
+counterpart; they never expose Archify's renderer-owned generic legend categories as project
+terminology.
+
 Use [Project structure and source authority](project-structure.md) next when you need to identify the
 correct file for a change.

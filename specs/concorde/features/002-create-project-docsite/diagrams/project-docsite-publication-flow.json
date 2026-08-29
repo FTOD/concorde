@@ -5,6 +5,9 @@
     "title": "Project Docsite — Publication Invocation",
     "quality_profile": "showcase",
     "output": "../../../../../generated/architecture/project-docsite-publication-flow.html",
+    "legend": {
+      "mode": "hidden"
+    },
     "viewBox": [1040, 940],
     "views": [
       {

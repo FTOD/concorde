@@ -5,6 +5,9 @@
     "title": "Concorde Skills: Architecture and Feature Workspaces",
     "output": "../../../../generated/architecture/concorde-skill-workspace-file-flow.html",
     "quality_profile": "showcase",
+    "legend": {
+      "mode": "hidden"
+    },
     "viewBox": [1080, 900],
     "views": [
       {

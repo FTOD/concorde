@@ -1,1 +1,1 @@
-{"schema_version":1,"diagram_type":"architecture","meta":{"title":"API","views":[{"id":"scenario.example.api.invoke","label":"Invoke","focus":["store"]}]},"components":[{"id":"store","type":"database","label":"Store","module_id":"module.example.api.store"}],"connections":[]}
+{"schema_version":1,"diagram_type":"architecture","meta":{"title":"API","legend":{"mode":"hidden"},"views":[{"id":"scenario.example.api.invoke","label":"Invoke","focus":["store"]}]},"components":[{"id":"store","type":"database","label":"Store","module_id":"module.example.api.store"}],"connections":[]}

@@ -72,8 +72,8 @@ package begins.
   every proposed path, the source digest, and conflicts (FR-001).
 - Proposal mode is read-only, and silence never counts as approval (FR-002).
 - Apply accepts only the explicitly reviewed, project-contained proposal (FR-003).
-- Configuration, root `module.md`, root `design.md`, root view, and approved initial contracts are
-  created as one failure-safe change (FR-004).
+- Configuration, root `module.md`, root `design.md`, a root view with its legend explicitly hidden,
+  and approved initial contracts are created as one failure-safe change (FR-004).
 - Conflicts, unsafe paths, malformed proposals, and stale state leave existing sources unchanged and
   yield actionable findings (FR-005).
 - Re-running against the same accepted hierarchy is idempotent (FR-006).

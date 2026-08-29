@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "diagram_type": "architecture",
-  "meta": {"title": "Example", "views": [{"id": "scenario.example.deliver", "label": "Deliver", "focus": ["maintainer", "api"]}]},
+  "meta": {"title": "Example", "legend": {"mode": "hidden"}, "views": [{"id": "scenario.example.deliver", "label": "Deliver", "focus": ["maintainer", "api"]}]},
   "components": [
     {"id": "maintainer", "type": "external", "label": "Maintainer"},
     {"id": "api", "type": "backend", "label": "API", "module_id": "module.example.api"}

@@ -136,8 +136,9 @@ packages:
 - Module diagrams: every `*.json` directly beneath the module's `architecture/diagrams/` is a
   maintained Archify diagram of that level; nothing is declared in front matter (`view` and
   `architecture_view` are Profile 3 remnants and are not read).
-- Each module diagram must be valid Archify JSON with a supported `diagram_type`, a `meta.title`, and
-  a `meta.output` beneath `generated/`. Preview and production publication discover the folder and
+- Each module diagram must be valid Archify JSON with a supported `diagram_type`, a `meta.title`,
+  `meta.legend.mode` equal to `hidden`, and a `meta.output` beneath `generated/`. Feature diagrams
+  use the same hidden-legend policy. Preview and production publication discover the folder and
   create each verified disposable HTML before the registry admits the route. The module page records
   every diagram's source hash and embeds each one in a sandbox; a Markdown link to a diagram's JSON
   resolves to its delivered route.

@@ -153,7 +153,8 @@ tables, a reachable design reference), the reading budget (`CONCORDE-SUMMARY-005
 never changes the status), and the presence of a real `design.md` beside every `module.md`
 (`CONCORDE-MODULE-002`). Among the view and layout rules, every diagram under a module's
 `architecture/diagrams/` must be referenced from that level's `module.md`, `design.md`, or the
-reflection log (`CONCORDE-VIEW-006`), and legacy layout is reported: an `architecture.json`,
+reflection log (`CONCORDE-VIEW-006`); every maintained module or feature Archify source must set
+`meta.legend.mode` to `hidden` (`CONCORDE-VIEW-007`); and legacy layout is reported: an `architecture.json`,
 `contracts/`, or `modules/` directly at a module root or a `view`/`architecture_view` front-matter
 field (`CONCORDE-LAYOUT-010`), and a child module outside `<parent>/architecture/modules/<name>/`
 (`CONCORDE-LAYOUT-011`). At each feature root it checks the abstract shape—exactly the five sections

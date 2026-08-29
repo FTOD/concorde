@@ -4,7 +4,8 @@
   "meta": {
     "title": "Fixture Level View",
     "output": "../../../../generated/architecture/fixture-level-view.html",
-    "quality_profile": "showcase"
+    "quality_profile": "showcase",
+    "legend": {"mode": "hidden"}
   },
   "components": [],
   "boundaries": [],

@@ -50,6 +50,8 @@ class PresetWorkflowAcceptance(unittest.TestCase):
             self.assertIn("Evaluate feature-owned diagrams", (implementation / "plan.md").read_text())
             self.assertIn("Concorde Task Coverage", (implementation / "tasks.md").read_text())
             self.assertIn("For each required feature-owned diagram", (implementation / "tasks.md").read_text())
+            for artifact in (workspace / "design.md", implementation / "plan.md", implementation / "tasks.md"):
+                self.assertIn("meta.legend.mode", artifact.read_text(encoding="utf-8"))
             self.assertFalse((workspace / "plan.md").exists())
             self.assertFalse((workspace / "tasks.md").exists())
             self.assertFalse((workspace / "checklists").exists())
@@ -58,6 +60,9 @@ class PresetWorkflowAcceptance(unittest.TestCase):
                 content = (root / ".agents/skills" / skill / "SKILL.md").read_text(encoding="utf-8")
                 self.assertNotIn("FEATURE_DIR/checklists", content)
                 self.assertIn("CHECKLISTS_DIR", content)
+            for skill in ("speckit-specify", "speckit-plan", "speckit-tasks", "speckit-implement"):
+                content = (root / ".agents/skills" / skill / "SKILL.md").read_text(encoding="utf-8")
+                self.assertIn("meta.legend.mode", content)
 
 
 if __name__ == "__main__":

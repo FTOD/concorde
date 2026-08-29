@@ -78,7 +78,8 @@ scenario, refinement, containment, layout, diagram, selection, evidence, and doc
 - **FR-002**: Findings MUST include stable rule ID, severity, location, explanation, and actionable
   remediation.
 - **FR-003**: Validation MUST cover identities, paths, module hierarchy, contracts, scenarios, views,
-  refinements, feature containment, diagrams, selection safety, evidence references, module summary
+  refinements, feature containment, diagrams including the required `meta.legend.mode: hidden`
+  presentation policy, selection safety, evidence references, module summary
   shape and reading budget, module design-reference presence and reachability, feature abstract
   presence, shape, structure link, requirement citations, and reading budget, the feature-root
   durable trio, and legacy document names.
@@ -105,7 +106,8 @@ scenario, refinement, containment, layout, diagram, selection, evidence, and doc
 ## Success Criteria
 
 - **SC-001**: Repeated unchanged validation outputs are byte-equivalent in all deterministic fixtures.
-- **SC-002**: Every seeded structural rule violation is detected with its expected stable rule ID.
+- **SC-002**: Every seeded structural rule violation, including a maintained diagram with a visible
+  or implicit legend, is detected with its expected stable rule ID.
 - **SC-003**: Validation produces zero source changes in every success and failure fixture.
 - **SC-004**: All valid two-level feature fixtures pass containment validation with zero findings.
 - **SC-005**: Every seeded document-model violation (over-budget summary or abstract, missing diagram,

@@ -5,6 +5,9 @@
     "title": "How Concorde Commands Reach a Clean Project",
     "output": "../../../../../generated/architecture/concorde-spec-kit-component-model.html",
     "quality_profile": "showcase",
+    "legend": {
+      "mode": "hidden"
+    },
     "viewBox": [1395, 720],
     "views": [
       {

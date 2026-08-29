@@ -28,6 +28,8 @@ been accepted yet.
   sufficiency rationale is recorded
 - **Supplemental diagrams**: optional workflow, sequence, data-flow, or lifecycle views for narrower
   invocation, state, or movement questions; never substitutes for the core component view
+- **Legend policy**: every maintained Concorde Archify source explicitly sets
+  `meta.legend.mode: hidden`; domain labels and the textual counterpart carry the meaning
 - **Contracts**: at least one provided contract and every required boundary contract
 - **Level views**: the providing module's architecture diagrams under `architecture/diagrams/`,
   linked from its `module.md`; a feature never redefines them

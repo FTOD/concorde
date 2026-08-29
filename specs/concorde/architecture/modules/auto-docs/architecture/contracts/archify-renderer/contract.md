@@ -54,5 +54,5 @@ CLI, or receipt changes require coordinated source, adapter, contract, and test 
 
 ## Evidence
 
-All eight declared views pass the nine automated Archify 2.16 showcase checks and retain
+All nine declared views pass the nine automated Archify 2.16 showcase checks and retain
 deterministic delivery and provenance evidence.

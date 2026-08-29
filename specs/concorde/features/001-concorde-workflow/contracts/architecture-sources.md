@@ -376,7 +376,8 @@ module boundary. A prose-only scenario sets `prose_only: true` and supplies a ra
 Every `*.json` directly beneath a module's `architecture/diagrams/` is a maintained diagram of that
 level. Each is a JSON object whose `diagram_type` is one of `architecture`, `workflow`, `sequence`,
 `dataflow`, or `lifecycle` and whose `meta` object carries a non-empty `title` and, when the diagram
-is delivered, a safe `output` path (relative to the diagram) beneath `generated/`. Symlinks and
+is delivered, a safe `output` path (relative to the diagram) beneath `generated/`. Its
+`meta.legend.mode` is explicitly `hidden`. Symlinks and
 files at any other depth are invalid. Each diagram must be referenced by a Markdown link from the
 level's `module.md`, its `design.md`, or the project reflection log; an unreferenced diagram is a
 validation finding, not a silently ignored file.
@@ -398,7 +399,8 @@ A scenario a feature cites must be defined in `meta.views` of one of the providi
 ### Explanatory views (feature-owned, or module-owned beyond the level views)
 
 The JSON document follows the matching Archify schema for `architecture`, `workflow`, `sequence`,
-`dataflow`, or `lifecycle`. It must identify the scenario or question it explains, use participants
+`dataflow`, or `lifecycle` and explicitly sets `meta.legend.mode` to `hidden`. It must identify the
+scenario or question it explains, use participants
 consistent with maintained module/contract prose, preserve ordered and directional interactions, and
 have a complete textual counterpart in the owning feature `design.md` or, for a module-owned diagram,
 in the level's `module.md` or `design.md` (an abstract may link and summarize it but is not its

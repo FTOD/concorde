@@ -27,8 +27,10 @@ section holds a Markdown table or `None.`; and the summary links its adjacent `d
 reading budget is `CONCORDE-SUMMARY-005`, a WARNING that never changes the status. A missing, empty,
 or symlinked module `design.md` is `CONCORDE-MODULE-002`. Module package layout: a diagram under
 `architecture/diagrams/` that no `module.md`, `design.md`, or reflection-log link references is
-`CONCORDE-VIEW-006`; a Profile 3 remnant (`architecture.json`, `contracts/`, or `modules/` directly
-at a module root, or a `view`/`architecture_view` front-matter field) is `CONCORDE-LAYOUT-010`; a
+`CONCORDE-VIEW-006`; a maintained module or feature diagram whose `meta.legend.mode` is not
+`hidden` is `CONCORDE-VIEW-007`; a Profile 3 remnant (`architecture.json`, `contracts/`, or
+`modules/` directly at a module root, or a `view`/`architecture_view` front-matter field) is
+`CONCORDE-LAYOUT-010`; a
 child module not beneath its parent's `architecture/modules/` is `CONCORDE-LAYOUT-011`. Feature-root
 trio: a missing feature `implementation.md` is `CONCORDE-LAYOUT-005`, legacy feature-root
 `spec.md`/`tldr.md` names are `CONCORDE-LAYOUT-007`, a legacy `implementation/` attempt directory is
