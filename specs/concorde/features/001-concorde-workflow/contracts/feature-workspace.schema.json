@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.invalid/contracts/feature-workspace-v7.schema.json",
-  "title": "Concorde Feature Workspace Protocol v7",
+  "$id": "https://concorde.invalid/contracts/feature-workspace-v8.schema.json",
+  "title": "Concorde Feature Workspace Protocol v8",
   "oneOf": [
     {
       "$ref": "#/$defs/request"
@@ -17,7 +17,7 @@
     "operation": {
       "type": "string",
       "enum": [
-        "feature.accept"
+        "impl.accept"
       ]
     },
     "safePath": {
@@ -236,7 +236,7 @@
         },
         "feature_implementation": {
           "$ref": "#/$defs/safePath",
-          "description": "Accepted feature implementation of the selected root; a placeholder until the first approved acceptance."
+          "description": "Accepted implementation of the selected feature root; a placeholder until the first approved acceptance."
         },
         "module_summary": {
           "$ref": "#/$defs/safePath",
@@ -358,7 +358,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": 7
+          "const": 8
         },
         "operation": {
           "$ref": "#/$defs/operation"
@@ -400,7 +400,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": 7
+          "const": 8
         },
         "operation": {
           "$ref": "#/$defs/operation"
@@ -555,7 +555,7 @@
               "minimum": 0
             }
           },
-          "description": "Reflection entries attributed to the target feature, by status (feature.accept)."
+          "description": "Reflection entries attributed to the target feature, by status (impl.accept)."
         }
       }
     },
@@ -572,10 +572,10 @@
       ],
       "properties": {
         "proposal_version": {
-          "const": 5
+          "const": 6
         },
         "operation": {
-          "const": "feature.accept"
+          "const": "impl.accept"
         },
         "target": {
           "type": "string",

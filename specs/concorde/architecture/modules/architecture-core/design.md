@@ -60,7 +60,7 @@ The runtime is standard-library Python (3.11 or later) under `extensions/concord
 `frontmatter.py` and `model.py` own the supported YAML subset and source model; `initialize.py`,
 `context.py`, `readiness.py`, and `validate.py` own the deterministic operations; `projection.py`
 owns bounded module and feature projections; the `validation/` package holds the rule families
-(hierarchy, layout, summary, diagrams, contracts, scenarios, evidence, freshness); `feature_acceptance.py` owns
+(hierarchy, layout, summary, diagrams, contracts, scenarios, evidence, freshness); `implementation_acceptance.py` owns
 approval-gated, atomic acceptance; and `diagnostics.py` produces versioned canonical envelopes. Module
 containment, feature refinement, and feature containment are validated as three separate acyclic
 graphs. Generated outputs are checked for freshness through the responsible deterministic adapter;

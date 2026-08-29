@@ -13,7 +13,7 @@ count it, and acceptance can cite it.
 Custom format: **Concorde Reflection Log v1**, a Markdown grammar (this document is its normative
 definition). One conforming example is maintained at [examples/reflections.md](examples/reflections.md);
 the project's actual log is `specs/concorde/reflections.md`. The log is carried by
-`contract.concorde.workflow` through the Feature Workspace Protocol v7 path `workspace.reflections`
+`contract.concorde.workflow` through the Feature Workspace Protocol v8 path `workspace.reflections`
 (project-level, identical for every selected root) and the optional `reflections_open` count in
 workspace results and bounded-context feature summaries (both defined in Feature 001's contracts).
 
@@ -86,5 +86,5 @@ and migration guidance in the feature specification.
 ## Evidence
 
 Planned: `tests/concorde/unit/test_reflection_rules.py` (grammar and rules),
-`tests/concorde/integration/test_feature_acceptance.py` (citation gate), and the schema/example
+`tests/concorde/integration/test_implementation_acceptance.py` (citation gate), and the schema/example
 contract tests of Feature 001. Evidence status: `unknown` until the attempt is implemented.

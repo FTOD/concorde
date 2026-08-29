@@ -12,7 +12,7 @@ holds the level's Archify diagrams (`architecture/diagrams/`, any number, discov
 declared), its boundary contracts (`architecture/contracts/`), and its immediate submodules
 (`architecture/modules/`), beside the level's `features/`. It keeps Profile 3's document tiers:
 `abstract.md` as the read-first feature tier, `design.md` as feature behavioral authority,
-`implementation.md` as accepted feature realization, and module `design.md` as the module design
+`implementation.md` as the feature's accepted realization, and module `design.md` as the module design
 reference. Readers reject any other `profile_version`.
 
 ## Authority
@@ -131,7 +131,7 @@ The selected feature pointer identifies the feature root. Operations resolve fro
 | custom requirements checklists | read durable root plus available attempt context (the abstract is in scope); write only `attempt/checklists/` |
 | plan, research, technical model, quickstart | read root `design.md` + `implementation.md` and the module summary (the abstract orients only); consult the module `design.md` only deliberately and cite it; write `attempt/` |
 | tasks, implement, analyze, converge, task-to-issue conversion, delivery validation | `attempt/`; analysis also reads `abstract.md` to report disagreement with `design.md` |
-| feature acceptance | read root `abstract.md` + `design.md` + `implementation.md`, the module summary and `design.md`, and all attempt inputs; approved apply writes feature `implementation.md`, optionally module `design.md`, and removes `attempt/` |
+| implementation acceptance | read root `abstract.md` + `design.md` + `implementation.md`, the module summary and `design.md`, and all attempt inputs; approved apply writes feature `implementation.md`, optionally module `design.md`, and removes `attempt/` |
 
 `.specify/feature.json` is the standard project-scoped selection record and may point to a valid
 top-level feature or immediate sub-feature root. Read-only resolution may inspect but not rewrite
@@ -223,7 +223,7 @@ organized under stable headings such as `Implementation Notes`, `Design Rational
 `Alternatives Considered`, and `Decision Log`. Before anything is recorded it may state that no
 implementation detail or design rationale has been recorded yet. It must be a real, non-empty,
 non-symlink file. Maintainers may edit it directly; workflow operations write it only through an
-approved acceptance proposal targeting the module at which the accepted feature is specified. It is
+approved acceptance proposal targeting the module at which the selected feature is specified. It is
 included in the package's source digest and returned by context as a navigation reference only.
 
 ### Feature abstract

@@ -97,7 +97,7 @@ citation rule are carried by the phases, templates, and operations the workflow 
   surfaces after specification (plan, tasks, implement, analyze, converge), this feature, the
   selected feature's durable specification (`abstract.md` + `design.md`, cited and never edited), the
   project reflection log at the specification root, the feature design reference (`implementation.md`), and
-  deterministic validation, feature acceptance, and the level's module design reference. Every
+  deterministic validation, implementation acceptance, and the level's module design reference. Every
   crossing from the phases and operations into maintained sources is governed by
   `contract.concorde.workflow`; the host phase behavior is required through
   `contract.concorde.spec-kit-platform`.

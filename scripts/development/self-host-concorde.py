@@ -45,7 +45,7 @@ PRESET_COMMANDS = (
 )
 EXTENSION_COMMANDS = (
     "speckit.concorde.init",
-    "speckit.concorde.feature-accept",
+    "speckit.concorde.impl-accept",
     "speckit.concorde.context",
     "speckit.concorde.validate",
     "speckit.concorde.ask",

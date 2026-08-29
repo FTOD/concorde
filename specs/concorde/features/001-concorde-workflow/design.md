@@ -45,7 +45,7 @@ realization**: [implementation.md](implementation.md) — consulted when writing
 **Status**: Revised around the feature-root `abstract.md` / `design.md` / `implementation.md` trio
 and temporal `attempt/` directory. `abstract.md` is read first, `design.md` owns required behavior,
 and `implementation.md` records accepted realization. Modules retain `module.md` / `design.md`.
-Protocol v7, proposal v5, and Build Manifest v8 carry these names through every surface, and
+Protocol v8, proposal v6, and Build Manifest v8 carry these names through every surface, and
 Architecture Source Profile 4 places each module's diagrams, boundary contracts, and submodules under
 its `architecture/` directory beside `features/`. The nine
 workflow-step sub-features remain the decomposition.
@@ -204,12 +204,12 @@ names. No compatibility alias or symlink may stand in for the canonical paths.
 | 1 | `feature.concorde.workflow.initialize-architecture` | `speckit.concorde.init` | Unchanged: initialization creates the root module package and no feature root. |
 | 2 | `feature.concorde.workflow.retrieve-bounded-context` | `speckit.concorde.context` | Feature summaries expose abstract/design/implementation paths; module `design.md` and feature `implementation.md` are navigation references only. |
 | 3 | `feature.concorde.workflow.answer-workflow-questions` | `speckit.concorde.ask` | Answers ground in installed guidance, module summaries, and feature abstracts first; `design.md` is opened for a requirement's exact wording and a `implementation.md` only for implementation detail or rationale, each cited. |
-| 4 | `feature.concorde.workflow.manage-feature-workspaces` | Feature Workspace Protocol routing of the standard Spec Kit selection (no Concorde command) | Protocol v7 exposes the durable trio and `attempt/`; legacy filenames are invalid. |
+| 4 | `feature.concorde.workflow.manage-feature-workspaces` | Feature Workspace Protocol routing of the standard Spec Kit selection (no Concorde command) | Protocol v8 exposes the durable trio and `attempt/`; legacy filenames are invalid. |
 | 5 | `feature.concorde.workflow.specify-behavior` | `speckit.specify`, `speckit.clarify`, `speckit.checklist` | Specification authors `abstract.md` and `design.md` together and seeds or preserves the placeholder `implementation.md`; clarification keeps the abstract current; checklists review the abstract. |
 | 6 | `feature.concorde.workflow.plan-delivery` | `speckit.plan`, `speckit.tasks`, `speckit.taskstoissues` | The accepted baseline is the feature `implementation.md`; the abstract is orientation, not a planning input. |
 | 7 | `feature.concorde.workflow.execute-and-reconcile` | `speckit.implement`, `speckit.analyze`, `speckit.converge` | Implementation reads the feature `implementation.md` as its baseline; analysis reports abstract/specification disagreement. |
 | 8 | `feature.concorde.workflow.validate-architecture` | `speckit.concorde.validate` | Rules cover abstract shape, durable trio, and legacy names. |
-| 9 | `feature.concorde.workflow.accept-milestone` | `speckit.concorde.feature.accept` | Compaction targets feature `implementation.md`; the proposal may amend module `design.md`. |
+| 9 | `feature.concorde.workflow.accept-milestone` | `speckit.concorde.impl.accept` | Compaction targets feature `implementation.md`; the proposal may amend module `design.md`. |
 
 The decomposition follows maintainer outcomes rather than implementation packages. Commands are
 grouped only when they operate on the same selected artifacts as one recognizable workflow step.
@@ -225,7 +225,7 @@ children, and remain distinct from adjacent-module feature refinement.
   **durable trio** — feature **abstract** (`abstract.md`), **design** (`design.md`), and accepted
   **implementation** (`implementation.md`) — and
   at most one temporal `attempt/` attempt.
-- A **module design reference** is module `design.md`; an **accepted feature implementation** is
+- A **module design reference** is module `design.md`; a **feature's accepted implementation** is
   feature `implementation.md`. Both are consulted deliberately and cited when used.
 - A **selection** identifies exactly one canonical feature root. All lifecycle phases use the paths
   returned for that selected root.
@@ -256,7 +256,7 @@ children, and remain distinct from adjacent-module feature refinement.
 | 5 | Plan one implementation attempt, order its work, and optionally project tasks into issues. | `speckit.plan` / `speckit.tasks` / `speckit.taskstoissues` | `design.md`, feature `implementation.md`, level summary; the module reference on demand | `attempt/` |
 | 6 | Execute tasks, analyze artifact consistency, and append only genuine remaining work. | `speckit.implement` / `speckit.analyze` / `speckit.converge` | The attempt and the durable trio | `attempt/`, code, tests |
 | 7 | Deterministically validate maintained architecture and evidence references. | `speckit.concorde.validate` | All maintained sources | — |
-| 8 | Review and explicitly compact a completed attempt into the accepted realization. | `speckit.concorde.feature.accept` | Durable trio, complete attempt, level summary and module reference | Feature `implementation.md`; optional reviewed module `design.md` amendment; removes `attempt/` |
+| 8 | Review and explicitly compact a completed attempt into the accepted realization. | `speckit.concorde.impl.accept` | Durable trio, complete attempt, level summary and module reference | Feature `implementation.md`; optional reviewed module `design.md` amendment; removes `attempt/` |
 
 Validation may be invoked after any maintained structural change, not only at stage 7. Context and
 the question surface may be used whenever a maintainer needs to navigate or understand the workflow.
@@ -345,7 +345,7 @@ that every phase uses only the selected root's authoritative paths and the three
 **Acceptance Scenarios**:
 
 1. **Given** an initialized project, **When** a maintainer completes all ordered stages, **Then** the
-   result has one canonical `abstract.md` and `design.md`, one accepted feature `implementation.md`, no temporal
+   result has one canonical `abstract.md` and `design.md`, one accepted `implementation.md`, no temporal
    attempt, a module summary untouched by acceptance, and — when the reviewed proposal included one —
    a module `design.md` amended exactly as reviewed.
 2. **Given** a new root is created through specification, **When** the phase completes, **Then**
@@ -427,7 +427,7 @@ durable root without root-level compatibility copies.
 
 **Acceptance Scenarios**:
 
-1. **Given** a accepted feature, **When** planning starts again, **Then** a fresh `attempt/`
+1. **Given** a feature with an accepted implementation, **When** planning starts again, **Then** a fresh `attempt/`
    workspace is created beneath that feature root and `abstract.md`, `design.md`, and `implementation.md` remain
    authoritative.
 
@@ -607,7 +607,7 @@ two-document module model; the reading budgets; the one-time feature-root rename
 `tldr.md`/`spec.md`/`design.md` to `abstract.md`/`design.md`/`implementation.md` and from
 `implementation/` to `attempt/`; root initialization; bounded context; workflow questions; Feature Workspace Protocol
 resolution of the standard Spec Kit selection; selected-root routing for all nine normal Spec Kit
-phases; architecture validation; feature acceptance including reviewed module-reference amendments;
+phases; architecture validation; implementation acceptance including reviewed module-reference amendments;
 migration of installed guidance and of Concorde's own hierarchy; the shared authority and
 containment model connecting those operations.
 
@@ -706,7 +706,7 @@ remains a separately tracked follow-up.
   abstract may be very short.
 - `design.md` carries no deterministic budget; "slightly more detailed" is enforced by content rules
   (requirements only, no realization detail) and by review, not by a word count.
-- Naming the accepted feature realization `implementation.md` is deliberate: it distinguishes that
+- Naming the feature's accepted realization `implementation.md` is deliberate: it distinguishes that
   content from behavioral feature `design.md`; module `design.md` retains its module-level meaning.
 - The feature `implementation.md` is required for every feature root; a seeded reference that states no
   realization has been accepted is valid content, mirroring the empty module reference.

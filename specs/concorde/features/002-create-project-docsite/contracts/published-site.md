@@ -29,7 +29,7 @@ JavaScript, assets, a local search index, and `build-manifest.json`.
 | `/features/<feature-id>` | Top-level feature abstract, derived from stable feature identity rather than its module storage path |
 | `/features/<parent-feature-id>/<sub-feature-id>` | Immediate sub-feature abstract nested only by explicit feature containment |
 | `/features/**/design` | Canonical feature `design.md` companion page |
-| `/features/**/implementation` | Accepted feature `implementation.md` companion page |
+| `/features/**/implementation` | Accepted `implementation.md` companion page for a feature |
 | `/build-manifest.json` | Machine-readable successful-build inventory |
 
 For the Concorde self-hosting site, the Documentation route space includes this maintained baseline:

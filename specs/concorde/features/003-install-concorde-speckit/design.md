@@ -86,7 +86,7 @@ nested feature workspace before any phase-specific file is read or written. Dura
 (`abstract.md` and `design.md`) and the accepted design reference (`implementation.md`) stay at the feature root,
 while requirements-quality checklists, planning, and delivery artifacts stay under
 `attempt/`. The preset also supplies the feature abstract template and the permanent `implementation.md`
-template. The extension supplies `speckit.concorde.feature.accept`, which proposes and, only after
+template. The extension supplies `speckit.concorde.impl.accept`, which proposes and, only after
 explicit approval, atomically promotes a completed attempt into that design reference and removes
 `attempt/`.
 Repository-local `.agents/` skills and `.specify/` scripts are self-hosting evidence only: a released

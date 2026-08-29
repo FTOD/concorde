@@ -26,7 +26,7 @@ evidence, and generated read models. They must not be treated as interchangeable
 │   ├── features/<number>-<feature>/      # what this level can do
 │   │   ├── abstract.md                       # feature abstract: read first
 │   │   ├── design.md                       # feature behavioral authority
-│   │   ├── implementation.md               # accepted feature implementation
+│   │   ├── implementation.md               # feature's accepted implementation
 │   │   ├── diagrams/                       # feature-owned Archify JSON, declared in design.md
 │   │   ├── contracts/                      # feature-owned contracts
 │   │   ├── subfeatures/<number>-<sub-feature>/ # optional; one level only
@@ -52,7 +52,7 @@ evidence, and generated read models. They must not be treated as interchangeable
 ```
 
 Architecturally meaningful modules do not have to map one-to-one to source directories. The
-`specs/` hierarchy expresses ownership and abstraction; the accepted feature realization in the
+`specs/` hierarchy expresses ownership and abstraction; the feature's accepted implementation in
 feature `implementation.md` can point from that model to the concrete code that realizes it.
 
 ## Authority classes
@@ -84,7 +84,7 @@ it is committed under a project-specific policy.
 | A module boundary or immediate-child organization | `module.md`, the affected contracts under `architecture/contracts/`, and the level views under `architecture/diagrams/` together |
 | Why a level is built the way it is, or implementation detail beneath its summary | The module's `design.md`, edited directly or amended by an approved acceptance proposal; keep `module.md` a summary |
 | Information crossing a boundary | The owning contract and any normative schema/example |
-| How an accepted implementation realizes a feature | Complete the attempt and use approved feature acceptance to write feature `implementation.md`; do not directly promote a plan |
+| How an accepted implementation realizes a feature | Complete the attempt and use approved implementation acceptance to write feature `implementation.md`; do not directly promote a plan |
 | The current implementation approach or work order | Files under the selected feature's `attempt/` directory |
 | Runtime behavior or executable proof | Source code and tests, reconciled against the durable sources |
 | Adoption or contributor explanation | Markdown under `docs/` |
@@ -105,7 +105,7 @@ or one immediate sub-feature. Selection itself is standard Spec Kit: the project
 explicitly through `SPECIFY_FEATURE_DIRECTORY`. Concorde adds no selection command and no second
 selection store.
 
-Feature Workspace Protocol v7 classifies the selected root before every normal phase: safe path,
+Feature Workspace Protocol v8 classifies the selected root before every normal phase: safe path,
 canonical `abstract.md`/`design.md`/`implementation.md` trio with no legacy names or attempt directory, workspace kind,
 `attempt_state`, and the `module.md` and `design.md` of the module at which the feature is
 specified (the result's `providing_module`) as navigation references. The result names the trio as

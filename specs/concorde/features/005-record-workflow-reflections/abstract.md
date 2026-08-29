@@ -54,7 +54,7 @@ Specification root ── reflections.md  (one log for the whole project; mainta
         ▲ validate: shape findings          ▲ maintainer: review · resolve · dismiss
         │                                   │
 Selected feature root ─┬─ abstract.md + design.md          (read-only: cited, never edited)
-                       └─ implementation.md  ◀── feature.accept cites the feature's entries
+                       └─ implementation.md  ◀── impl.accept cites the feature's entries
                                           (open → known limitations; resolved → decisions)
                                           ──▶ module implementation.md amendment (level lessons)
 ```

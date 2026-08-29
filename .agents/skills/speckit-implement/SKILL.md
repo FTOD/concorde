@@ -23,7 +23,7 @@ Before any hook, setup step, prerequisite check, or artifact access, run `.venv/
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
 the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
 `workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
-Require Protocol v7 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+Require Protocol v8 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
@@ -118,7 +118,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - **REQUIRED**: Read FEATURE_DESIGN for behavioral authority and FEATURE_IMPLEMENTATION for the accepted
      realization baseline (the placeholder means no accepted baseline). Implement the plan's delta
      without editing `abstract.md`, feature `design.md`, feature `implementation.md`, or any module `module.md`/`design.md`; promotion belongs
-     only to the explicit Concorde feature-acceptance command after all tasks are complete. Record
+     only to the explicit Concorde implementation-acceptance command after all tasks are complete. Record
      rationale, alternatives, and implementation detail discovered during execution inside the
      attempt (`ATTEMPT_DIR/research.md` or `ATTEMPT_DIR/validation.md`) so acceptance
      can carry them into feature `implementation.md` and the module `design.md`. Record every

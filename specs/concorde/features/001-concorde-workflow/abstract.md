@@ -39,7 +39,7 @@ skills or slash commands:
 | `speckit.concorde.context` | Returns exactly one level — a module with its immediate children, current-level features, contracts, and scenarios, or a feature with its parent and siblings — with any `implementation.md` as a link, never as content. |
 | `speckit.concorde.ask` | Answers a workflow question read-only from installed guidance, module summaries, and feature abstracts, citing anything deeper it opens. Agent-followed; no runtime. |
 | `speckit.concorde.validate` | Checks every maintained source deterministically and returns sorted findings with rule, severity, location, and remediation; byte-equivalent on repeat. |
-| `speckit.concorde.feature.accept` | Turns a completed attempt into accepted realization: proposal, exact review, explicit approval, atomic apply. |
+| `speckit.concorde.impl.accept` | Turns a completed attempt into accepted realization: proposal, exact review, explicit approval, atomic apply. |
 | `speckit.specify` · `clarify` · `checklist` | Author `abstract.md` and `design.md` for the selected root, seed a placeholder `implementation.md` for a new root, and write review checklists under `attempt/checklists/`. |
 | `speckit.plan` · `tasks` · `taskstoissues` | Plan one attempt from `design.md`, the accepted `implementation.md`, and the level's `module.md`; write only under `attempt/`. |
 | `speckit.implement` · `analyze` · `converge` | Execute the task list inside the attempt, report inconsistencies read-only, and append only genuine remaining work. |
@@ -58,7 +58,7 @@ The core view is <a href="/architecture/concorde-workflow-components.html">workf
 Maintainer ──invoke · review · approve──▶ Coding-agent integration (skills / slash commands)
                                             ├─ 9 Spec Kit phase surfaces ──▶ selected-workspace adapter ──▶ .specify/feature.json
                                             └─ 5 Concorde surfaces ─────────▶ launchers + Python runtime ──▶ architecture sources
-                                                 (init · context · validate · feature.accept · ask)        (module.md · implementation.md · architecture/: diagrams · contracts · modules)
+                                                 (init · context · validate · impl.accept · ask)        (module.md · implementation.md · architecture/: diagrams · contracts · modules)
 
 Selected feature root:   abstract.md   design.md   implementation.md      +   attempt/  (one attempt, until accepted)
                          read      authority reference           plan · tasks · checklists · research · evidence

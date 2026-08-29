@@ -16,7 +16,7 @@ the level views under `architecture/diagrams/`, and the contract documents under
   implement, analyze, converge) carry a byte-identical Reflection Recording block.
 - `extensions/concorde/` holds the active capability package: five command definitions
   (`speckit.concorde.init`, `speckit.concorde.context`, `speckit.concorde.validate`,
-  `speckit.concorde.feature.accept`, and the agent-only `speckit.concorde.ask`), the portable
+  `speckit.concorde.impl.accept`, and the agent-only `speckit.concorde.ask`), the portable
   launchers `extensions/concorde/scripts/bash/concorde.sh`,
   `extensions/concorde/scripts/powershell/concorde.ps1`, and
   `extensions/concorde/scripts/python/concorde.py`, the selected-workspace adapter
@@ -58,7 +58,7 @@ paths, `initialize.py`, `context.py`, `readiness.py`, and `validate.py` own the 
 operations, `validation/` holds the rule families (hierarchy, layout, summary, abstract, reflections,
 contracts, scenarios, evidence, freshness), `reflections.py` is the single parser of the project
 reflection log shared by validation, context, the adapter, and acceptance, and
-`feature_acceptance.py` owns approval-gated, atomic acceptance, including the reflection citation gate
+`implementation_acceptance.py` owns approval-gated, atomic acceptance, including the reflection citation gate
 (`CONCORDE-ACCEPT-011/012`).
 
 ### Spec Kit ecosystem placement
@@ -121,8 +121,8 @@ The log's grammar is normative in
 `specs/concorde/features/005-record-workflow-reflections/contracts/reflection-log.md`. Its runtime
 realization is documented in that feature's `design.md`; at this level the durable facts are:
 the log joins `package.auxiliary` and every source digest, so any operation that reviewed it
-conflicts when it changes; `reflections` and `reflections_open` are additive Protocol v7 fields
-and `reflection_summary` an additive `feature.accept` response field, all optional in the schemas
+conflicts when it changes; `reflections` and `reflections_open` are additive Protocol v8 fields
+and `reflection_summary` an additive `impl.accept` response field, all optional in the schemas
 and always emitted; `analyze` holds the workflow's one explicit exception to its read-only rule
 (appending to the log); and the docsite excludes the log as a non-canonical artifact, so abstracts and
 summaries name it as a code span.
@@ -152,8 +152,8 @@ summaries name it as a code span.
   feature selection, public preset command composition, bounded active-feature context with
   navigation references, architecture readiness, contract example conformance, evidence
   disagreement, freshness normalization, deterministic validation including the summary, abstract,
-  implementation, and feature-root trio rules, and atomic acceptance (proposal v5) with an optional
-  module-reference amendment: 231 Python tests and 68 docsite tests pass, `speckit.concorde.validate`
+  implementation, and feature-root trio rules, and atomic acceptance (proposal v6) with an optional
+  module-reference amendment: 234 Python tests and 77 docsite tests pass, `speckit.concorde.validate`
   on this repository returns `success` with zero findings, the production build publishes Manifest
   v8 with abstract, feature-design, feature-implementation, and module-design pages (module pages
   carrying every diagram of their level), and all eight
@@ -163,10 +163,10 @@ summaries name it as a code span.
   under the checkout's active `claude` integration the codex-only tooling reports `unknown`.
 - All five module summaries are within the reading budget (392–1,273 body words) and all twenty
   feature abstracts are within theirs (at most 1,358 body words).
-- Feature 005 (project reflection log) is implemented and verified: 231 Python tests pass
+- Feature 005 (project reflection log) is implemented and verified: 234 Python tests pass
   including the parser, rule, context, workspace, contract, acceptance-gate, and composition cases;
   `speckit.concorde.validate` on this repository returns `success` with the log present; the root
-  view shows five root features and passes 9/9 showcase checks; the docsite validates 99 pages
+  view shows five root features and passes 9/9 showcase checks; the docsite validates 100 pages
   with 0 errors (2026-08-28). Its manual phase-run acceptance and the browser review of its core
   view remain pending.
 
@@ -361,7 +361,7 @@ without expanding the canonical structure.
   paths moved to `architecture/diagrams/level-view.json` and `architecture/contracts/`. The
   constitution was amended to 2.1.0 in the same change.
 - 2026-08-29 — Adopted the feature-root `abstract.md` / `design.md` / `implementation.md` trio and
-  temporal `attempt/` directory. Protocol v7, proposal v5, `CONCORDE-ABSTRACT-*`, Build Manifest v7,
+  temporal `attempt/` directory. Protocol v8, proposal v6, `CONCORDE-ABSTRACT-*`, Build Manifest v7,
   runtime fields, templates, installed helpers, publication routes, fixtures, documentation, and all
   existing feature roots were migrated together; module `design.md` remained unchanged.
 - 2026-08-28 — Accepted the first milestone of `feature.concorde.record-workflow-reflections`: one

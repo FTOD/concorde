@@ -231,7 +231,7 @@ without the abstract, more detailed than it, and free of realization detail; it 
 The prose is the definition. A scenario is an example used to make the behavior testable and show
 which visible components participate; it cannot silently narrow or expand the textual requirements.
 
-### `implementation.md`: the accepted feature implementation
+### `implementation.md`: the feature's accepted implementation
 
 `implementation.md` answers how the currently accepted implementation realizes the feature, with the full
 implementation detail a coder needs. It is needed only when writing the code or fixing a bug. It

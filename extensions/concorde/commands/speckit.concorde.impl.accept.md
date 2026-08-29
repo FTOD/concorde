@@ -1,5 +1,5 @@
 ---
-description: Accept a completed Concorde attempt into the durable feature implementation.
+description: Accept a completed implementation attempt as the durable implementation.
 ---
 
 ## User Input
@@ -19,7 +19,7 @@ module's `design.md`. This is an explicit milestone operation. Checked
 tasks and every existing item under `attempt/checklists/` establish eligibility; they do not
 grant approval.
 
-Protocol v7 classifies the selected lifecycle root. For a sub-feature, parent durable paths and
+Protocol v8 classifies the selected lifecycle root. For a sub-feature, parent durable paths and
 sibling summaries are read-only retained authorities. Apply may update only the selected child's
 feature `implementation.md`, optionally the providing module's `design.md`, and remove only that child's
 complete `attempt/`; the child's `abstract.md` and `design.md`, parent, siblings, their attempts,
@@ -28,7 +28,7 @@ and every `module.md` remain byte-identical.
 ## Workflow
 
 1. From the target project root, invoke
-   `.specify/extensions/concorde/scripts/bash/concorde.sh feature accept --propose` (or the installed
+   `.specify/extensions/concorde/scripts/bash/concorde.sh impl accept --propose` (or the installed
    PowerShell launcher on PowerShell projects). Pass a user-supplied stable feature ID or canonical
    feature-root path before `--propose`; otherwise use the selected feature.
 2. Read the returned `proposal_path`, `task_summary`, and `checklist_summary` directly. Stop on any
@@ -66,7 +66,7 @@ and every `module.md` remain byte-identical.
    when nothing module-level was learned.
 6. Write the candidate to the exact project-contained `proposal_path` returned by the runtime. The JSON
    must conform to the installed Feature Workspace Protocol and contain:
-   - `proposal_version: 5` and `operation: "feature.accept"`;
+   - `proposal_version: 6` and `operation: "impl.accept"`;
    - the resolved stable feature ID as `target`;
    - the exact returned `source_digest`;
    - `implementation.path` equal to the returned `workspace.feature_implementation` and
@@ -83,7 +83,7 @@ and every `module.md` remain byte-identical.
    Silence is not approval; neither are prior milestone acceptance, passing validation, or checked
    tasks and checklists.
 8. Only after the maintainer's explicit yes, invoke the same installed launcher with
-   `feature accept --apply --proposal <returned-project-relative-proposal-path>`. Never invoke
+   `impl accept --apply --proposal <returned-project-relative-proposal-path>`. Never invoke
    `--apply` without that yes. Present the complete
    normative result, including stale-digest conflicts, warnings, removed artifacts, and the
    feature-implementation and module-design digests.

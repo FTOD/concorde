@@ -40,7 +40,7 @@ an example, not the feature definition.
 
 The parent feature's `diagrams/concorde-workflow-components.json` core architecture view shows the
 Coding Agent reaching this Integration-owned workspace service through the selected-workspace
-adapter that every normal phase invokes and through `feature.accept`, with the selected workspace
+adapter that every normal phase invokes and through `impl.accept`, with the selected workspace
 shared with the normal Spec Kit lifecycle and Architecture Core. It is the text-backed
 cross-component view for this refinement; another child diagram would duplicate that component
 boundary.

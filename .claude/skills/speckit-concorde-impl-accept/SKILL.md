@@ -1,0 +1,1 @@
+../../../.specify/extensions/concorde/.specify-dev/agent-commands/claude/speckit-concorde-impl-accept/SKILL.md

@@ -22,10 +22,10 @@ installed surfaces is defined by
 
 ## Concorde-specific operations
 
-Feature operations use Feature Workspace Protocol v7 (acceptance proposal v5) over Architecture
+Feature operations use Feature Workspace Protocol v8 (acceptance proposal v6) over Architecture
 Source Profile 4. Features are created and selected through the
 normal Spec Kit lifecycle (see [Creating and selecting a feature](#creating-and-selecting-a-feature)
-below); Concorde adds no creation or selection command. `feature.accept` accepts either valid level
+below); Concorde adds no creation or selection command. `impl.accept` accepts either valid level
 while operating on exactly one lifecycle root. `context` reports containment summaries separately
 from cross-module refinement, and `validate` rejects a third feature level.
 
@@ -157,7 +157,7 @@ budget (`CONCORDE-ABSTRACT-004`, a warning), and the durable trio: a missing `im
 `implementation/` attempt directory (`CONCORDE-LAYOUT-008`), or a missing `abstract.md`
 (`CONCORDE-LAYOUT-009`).
 
-### `$speckit-concorde-feature-accept [feature-id-or-root]`
+### `$speckit-concorde-impl-accept [feature-id-or-root]`
 
 Use only when the selected implementation attempt is task-complete, all existing checklist items are
 satisfied, evidence has been reviewed, and the maintainer accepts the result as a milestone.
@@ -248,4 +248,4 @@ skill does not change the distributed framework.
 | Approved tasks are ready | `implement` |
 | Code may still be incomplete | `converge`, then implement remaining tasks |
 | Architecture or evidence may be inconsistent | `concorde-validate` |
-| The completed result is accepted as a milestone | `concorde-feature-accept` |
+| The completed result is accepted as a milestone | `concorde-impl-accept` |

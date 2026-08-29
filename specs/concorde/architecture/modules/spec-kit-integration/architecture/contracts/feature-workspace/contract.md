@@ -13,8 +13,8 @@ representation:
   version: "6"
   definition: specs/concorde/features/001-concorde-workflow/contracts/feature-workspace.schema.json
 examples:
-  - specs/concorde/features/001-concorde-workflow/contracts/examples/feature-accept-eligible-response.json
-  - specs/concorde/features/001-concorde-workflow/contracts/examples/feature-accept-proposal.json
+  - specs/concorde/features/001-concorde-workflow/contracts/examples/impl-accept-eligible-response.json
+  - specs/concorde/features/001-concorde-workflow/contracts/examples/impl-accept-proposal.json
 features:
   - feature.integration.manage-feature-workspace
 evidence_status: partial
@@ -77,12 +77,12 @@ sources, the active attempt, and the standard Spec Kit selection unchanged.
 
 ## Compatibility
 
-Protocol v7 sets `schema_version` 7 and exposes `feature_abstract`, `feature_design`,
+Protocol v8 sets `schema_version` 8 and exposes `feature_abstract`, `feature_design`,
 `feature_implementation`, `attempt_dir`, `attempt_state`, `module_summary`, and `module_design`.
-Acceptance proposal v5 uses `implementation`, optional `module_design`, and `remove`, and results use
+Acceptance proposal v6 uses `implementation`, optional `module_design`, and `remove`, and results use
 `implementation_digest_*`. Protocol v3 withdrew `feature.create` and `feature.select` together with their
 creation/selection request options in favour of standard Spec Kit creation (`speckit.specify` with
-`SPECIFY_FEATURE_DIRECTORY`) and selection (`.specify/feature.json`); `feature.accept` is the only
+`SPECIFY_FEATURE_DIRECTORY`) and selection (`.specify/feature.json`); `impl.accept` is the only
 remaining operation. The constitution (v2.0.0, principle A.III) no longer requires one providing
 module per feature, and the withdrawn operations encoded that assumption. Removing a required field,
 changing the meaning of the selected root, or changing durable/temporal path authority requires a

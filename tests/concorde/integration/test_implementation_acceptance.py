@@ -11,7 +11,7 @@ from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT, TWO_LEVE
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.feature_acceptance import apply_acceptance, propose_acceptance  # noqa: E402
+from concorde.implementation_acceptance import apply_acceptance, propose_acceptance  # noqa: E402
 
 
 CANDIDATE = """# Feature Implementation: Delivered Feature
@@ -59,11 +59,11 @@ Per-phase re-resolution was rejected because it could observe a changed selectio
 
 ## Decision Log
 
-- Accepted feature.example.deliver with the cached-resolution decision.
+- Accepted the implementation for feature.example.deliver with the cached-resolution decision.
 """
 
 
-class FeatureAcceptanceIntegrationTests(unittest.TestCase):
+class ImplementationAcceptanceIntegrationTests(unittest.TestCase):
     def project_copy(self, temporary: str, complete: bool = True) -> Path:
         root = Path(temporary) / "project"
         shutil.copytree(CONTEXT_PROJECT, root)
@@ -89,8 +89,8 @@ class FeatureAcceptanceIntegrationTests(unittest.TestCase):
     def write_proposal(self, root: Path, eligibility, module_design: str | None = None, module_design_path: str | None = None, design_path: str | None = None) -> Path:
         path = root / eligibility.result["proposal_path"]
         proposal = {
-            "proposal_version": 5,
-            "operation": "feature.accept",
+            "proposal_version": 6,
+            "operation": "impl.accept",
             "target": eligibility.target,
             "source_digest": eligibility.result["source_digest"],
             "implementation": {
@@ -335,7 +335,7 @@ class FeatureAcceptanceIntegrationTests(unittest.TestCase):
                 self.assertEqual(tree_hashes(root), before, failing_stage)
                 self.assertFalse(list(root.rglob(".*.concorde-stage")) + list(root.rglob(".*.concorde-backup")))
 
-    def test_subfeature_acceptance_preserves_parent_and_sibling(self):
+    def test_subimplementation_acceptance_preserves_parent_and_sibling(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(TWO_LEVEL_PROJECT, root)
@@ -414,7 +414,7 @@ class FeatureAcceptanceIntegrationTests(unittest.TestCase):
             self.assertNotIn("No implementation realization has been accepted yet.", implementation.read_text(encoding="utf-8"))
 
 
-class ReflectionAcceptanceTests(FeatureAcceptanceIntegrationTests):
+class ReflectionAcceptanceTests(ImplementationAcceptanceIntegrationTests):
     """Acceptance reads the project reflection log, summarizes the feature's entries, and gates on open ones."""
 
     def project_with_log(self, temporary: str, entries) -> Path:

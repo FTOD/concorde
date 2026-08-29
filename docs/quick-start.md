@@ -239,10 +239,10 @@ stay under the single active `attempt/` attempt.
 ## 5. Finish the milestone deliberately
 
 When all tasks and every existing checklist item are complete, validation has been reviewed, and you
-accept the implementation, ask the agent to accept the feature:
+accept the implementation, ask the agent to accept that implementation:
 
 ```text
-$speckit-concorde-feature-accept feature.<project>.<name>
+$speckit-concorde-impl-accept feature.<project>.<name>
 ```
 
 The first result is a proposal, not a mutation. Review the full candidate feature `implementation.md`, any

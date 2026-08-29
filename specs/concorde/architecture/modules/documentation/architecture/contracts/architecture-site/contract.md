@@ -52,7 +52,7 @@ manifest, and sandboxed delivered Archify views where architecture sources decla
 ## Failure Semantics
 
 Source, link, route, rendering, search, manifest, or promotion failure makes the candidate
-unpublishable. This version publishes accepted feature implementations within `/features` and module
+unpublishable. This version publishes accepted implementations within `/features` and module
 design references within `/architecture`; its three route bases remain stable within contract
 version 3, and the manifest schema version is owned by `contract.documentation.build-manifest`
 (schema version 5).

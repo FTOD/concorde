@@ -23,7 +23,7 @@ canonical_design: specs/concorde/features/001-concorde-workflow/subfeatures/006-
 **Status**: Specified and revised for the parent's three-tier feature document model; existing
 realization has not been accepted into this sub-feature's `implementation.md`
 **Input**: Route `speckit.plan`, `speckit.tasks`, and `speckit.taskstoissues` through one temporal
-attempt, planning from `design.md`, the accepted feature `implementation.md`, and the level's `module.md`.
+attempt, planning from `design.md`, the feature's accepted `implementation.md`, and the level's `module.md`.
 
 ## Outcome
 

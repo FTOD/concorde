@@ -31,5 +31,5 @@ directory, is declared by feature `design.md`, and is embedded
 automatically by the project docsite; generated HTML never becomes specification authority.
 
 Parent specifications own aggregate outcomes and shared constraints; sub-feature specifications own
-focused behavior and inherit the parent module. Protocol v7 routes normal phases to exactly one
+focused behavior and inherit the parent module. Protocol v8 routes normal phases to exactly one
 selected root and exposes parent durable context read-only without sibling bodies or attempts.

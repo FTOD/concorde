@@ -1,4 +1,4 @@
-"""Review-first compaction of a completed feature attempt into feature implementation.md,
+"""Review-first acceptance of a completed attempt into the feature's implementation.md,
 optionally amending the providing module's design reference in the same atomic apply."""
 
 from __future__ import annotations
@@ -147,7 +147,7 @@ def propose_acceptance(
         source_digest = _acceptance_digest(project, package, paths, ignored_proposal)
     except (RepositoryError, WorkspaceError, OSError, UnicodeError) as error:
         return OperationResult(
-            "feature.accept",
+            "impl.accept",
             target or ".",
             "invalid",
             findings=(_finding("CONCORDE-ACCEPT-001", ".specify/feature.json", str(error), "Select a valid feature with real durable abstract.md, design.md, and implementation.md files and an active attempt."),),
@@ -169,7 +169,7 @@ def propose_acceptance(
             findings.append(_finding("CONCORDE-ACCEPT-011", paths.reflections, "The project reflection log is malformed: " + "; ".join(problem.message for problem in parsed.problems), "Repair the log per the reflection-log contract (speckit.concorde.validate reports each CONCORDE-REFLECT finding) and re-propose."))
         reflection_summary = parsed.summary(feature.identifier)
     changes = [
-        {"path": paths.feature_implementation, "action": "update", "meaning": "Replace the durable feature implementation with the reviewed candidate."},
+        {"path": paths.feature_implementation, "action": "update", "meaning": "Replace the feature's durable implementation with the reviewed candidate."},
         {"path": paths.attempt_dir, "action": "delete", "meaning": "Remove the complete temporal attempt after the implementation is promoted."},
     ]
     result = {
@@ -194,7 +194,7 @@ def propose_acceptance(
     if (project / paths.module_design).is_file():
         artifacts.append(paths.module_design)
     return OperationResult(
-        "feature.accept",
+        "impl.accept",
         feature.identifier,
         "eligible" if not findings else "invalid",
         tuple(artifacts),
@@ -271,10 +271,10 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
     project = Path(project_root).resolve()
     try:
         relative_proposal, proposal = _load_proposal(project, proposal_path)
-        if proposal.get("proposal_version") != 5 or proposal.get("operation") != "feature.accept":
-            raise WorkspaceError("unsupported acceptance proposal; proposal_version 5 is required")
+        if proposal.get("proposal_version") != 6 or proposal.get("operation") != "impl.accept":
+            raise WorkspaceError("unsupported acceptance proposal; proposal_version 6 with operation impl.accept is required")
         if "design" in proposal:
-            raise WorkspaceError("proposal v5 names the durable feature implementation under 'implementation'; 'design' is not accepted")
+            raise WorkspaceError("proposal v6 names the durable implementation under 'implementation'; 'design' is not accepted")
         target = proposal.get("target")
         if not isinstance(target, str) or not target:
             raise WorkspaceError("acceptance proposal target is required")
@@ -286,7 +286,7 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
             raise WorkspaceError(f"proposal must be stored at {eligibility.result['proposal_path']}")
         if proposal.get("source_digest") != eligibility.result["source_digest"]:
             return OperationResult(
-                "feature.accept",
+                "impl.accept",
                 target,
                 "conflict",
                 findings=(_finding("CONCORDE-ACCEPT-004", relative_proposal, "Acceptance inputs changed after proposal.", "Regenerate and review a proposal against the current completed attempt."),),
@@ -306,7 +306,7 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
         uncited = _uncited_open_reflections(project, paths, target, content)
         if uncited:
             return OperationResult(
-                "feature.accept",
+                "impl.accept",
                 target,
                 "invalid",
                 findings=(_finding("CONCORDE-ACCEPT-012", paths["reflections"], "Open reflection entries attributed to this feature are not cited by the candidate implementation.md: " + ", ".join(uncited), "Cite every open entry's identifier under ## Known Limitations (or resolve or dismiss it in the log with a note), then regenerate the proposal."),),
@@ -332,7 +332,7 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
         removed_artifacts = _attempt_files(project, paths["attempt_dir"])
     except (RepositoryError, WorkspaceError, OSError, UnicodeError) as error:
         return OperationResult(
-            "feature.accept",
+            "impl.accept",
             ".",
             "invalid",
             findings=(_finding("CONCORDE-ACCEPT-005", proposal_path, str(error), "Correct and re-review the acceptance proposal before applying it."),),
@@ -370,7 +370,7 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
                 target_path.unlink(missing_ok=True)
                 backup.replace(target_path)
         return OperationResult(
-            "feature.accept",
+            "impl.accept",
             target,
             "failed",
             findings=(_finding("CONCORDE-ACCEPT-006", paths["feature_directory"], f"Acceptance commit failed: {error}", "Resolve the filesystem failure; the prior feature implementation.md, module design.md, and attempt were restored."),),
@@ -408,7 +408,7 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
         changes.insert(1, {"path": paths["module_design"], "action": "update", "meaning": "Amend the module design reference with the reviewed implementation detail and rationale."})
         result_artifacts.append(paths["module_design"])
     return OperationResult(
-        "feature.accept",
+        "impl.accept",
         target,
         "accepted",
         tuple(result_artifacts),

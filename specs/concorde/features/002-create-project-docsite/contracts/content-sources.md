@@ -11,7 +11,7 @@
 ## Purpose
 
 Provide the canonical project introduction from root `README.md`, architecture sources (including
-module design references), project documentation, feature specifications, and accepted feature
+module design references), project documentation, feature specifications, and accepted
 implementations to the generated site without copying or modifying their maintained sources.
 
 ## Representation

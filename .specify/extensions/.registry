@@ -4,20 +4,27 @@
     "concorde": {
       "version": "0.4.0",
       "source": "local",
-      "manifest_hash": "sha256:1bb42e92cb6847e788557096602252d25a81c04d716216c7f9dd5c7b7ab09033",
+      "manifest_hash": "sha256:de86d221381f059f79176a1d7921c9d8530b37b84f0640bceb5ed8f3600207ee",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
         "claude": [
           "speckit.concorde.init",
-          "speckit.concorde.feature-accept",
+          "speckit.concorde.impl-accept",
+          "speckit.concorde.context",
+          "speckit.concorde.validate",
+          "speckit.concorde.ask"
+        ],
+        "codex": [
+          "speckit.concorde.init",
+          "speckit.concorde.impl-accept",
           "speckit.concorde.context",
           "speckit.concorde.validate",
           "speckit.concorde.ask"
         ]
       },
       "registered_skills": [],
-      "installed_at": "2026-08-29T08:55:33.989963+00:00"
+      "installed_at": "2026-08-29T10:09:49.478115+00:00"
     }
   }
 }

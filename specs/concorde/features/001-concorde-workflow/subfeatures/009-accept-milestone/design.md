@@ -24,14 +24,14 @@ canonical_design: specs/concorde/features/001-concorde-workflow/subfeatures/009-
 document model; the existing realization has not yet been accepted into this sub-feature's
 `implementation.md`.
 **Input**: Rename the former milestone-finalization terminology throughout commands, documentation, code, and
-specifications. Review and compact a completed attempt through `speckit.concorde.feature.accept`
+specifications. Review and compact a completed attempt through `speckit.concorde.impl.accept`
 into the selected root's `implementation.md`, optionally amending the level's module `design.md` in
 the same approval.
 
 ## Outcome
 
-A maintainer can explicitly accept one completed feature or sub-feature milestone as its durable
-realization in feature `implementation.md`, carry attempt-developed rationale into the level's module
+A maintainer can explicitly accept one completed implementation attempt as the selected feature or
+sub-feature's durable realization in `implementation.md`, carry attempt-developed rationale into the level's module
 `design.md` when the proposal includes it, and atomically remove exactly that milestone's temporal
 attempt.
 
@@ -42,7 +42,7 @@ placement of milestone acceptance. This child owns eligibility, candidate synthe
 binding, failure-safe apply, and result reporting. It does not execute incomplete work, change
 behavior requirements, or touch the abstract or specification. The stable ID and title use the
 Accept Milestone vocabulary;
-the accepted feature artifact is the feature `implementation.md`. The parent diagram already depicts the
+the accepted implementation artifact is the feature `implementation.md`. The parent diagram already depicts the
 agent/runtime approval split and the artifact transition.
 
 ## User Scenarios & Testing

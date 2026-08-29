@@ -54,7 +54,7 @@ links, stable feature and architecture identity, and declared Archify JSON view 
 - The Documentation landing page links to all six learning guides, and every guide that summarizes
   normative architecture, feature, or command behavior links to its included canonical authority.
 - Feature IDs are unique; feature kind, module, title, and lifecycle status are present, and every
-  accepted feature implementation and module design reference is published with source provenance.
+  feature's accepted implementation and module design reference is published with source provenance.
 - Architecture IDs and kinds are explicit; declared JSON views are discovered without generated
   prerequisites and resolve to build-delivered Archify HTML before publication.
 - Project-relative links resolve within or across the two accepted source roots and three published views.

@@ -35,14 +35,14 @@ The parent feature's core view
 <a href="/architecture/concorde-workflow-components.html">workflow components</a> (maintained source
 `specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json`) shows
 the coding agent reaching this workspace service through the adapter every normal phase invokes and
-through `feature.accept`, sharing the selected workspace with Spec Kit and Architecture Core.
+through `impl.accept`, sharing the selected workspace with Spec Kit and Architecture Core.
 
 ```text
 speckit.specify (SPECIFY_FEATURE_DIRECTORY) ──▶ .specify/feature.json ◀── standard Spec Kit selection
 normal phase override ──▶ selected-workspace adapter ──feature-workspace──▶ validated root
                                                             ├─ durable: design.md · design reference · contracts
                                                             └─ temporal: attempt/ (plan · tasks · checklists) + attempt_state
-feature.accept ──▶ digest-bound proposal ──▶ explicit approval ──▶ root design updated · attempt/ removed
+impl.accept ──▶ digest-bound proposal ──▶ explicit approval ──▶ root design updated · attempt/ removed
 architecture context / validation ──architecture-services──▶ Architecture Core (read-only relay)
 ```
 

@@ -18,6 +18,17 @@
           "speckit.analyze",
           "speckit.converge",
           "speckit.taskstoissues"
+        ],
+        "codex": [
+          "speckit.specify",
+          "speckit.clarify",
+          "speckit.checklist",
+          "speckit.plan",
+          "speckit.tasks",
+          "speckit.implement",
+          "speckit.analyze",
+          "speckit.converge",
+          "speckit.taskstoissues"
         ]
       },
       "registered_skills": {
@@ -31,9 +42,20 @@
           "speckit-analyze",
           "speckit-converge",
           "speckit-taskstoissues"
+        ],
+        "codex": [
+          "speckit-specify",
+          "speckit-clarify",
+          "speckit-checklist",
+          "speckit-plan",
+          "speckit-tasks",
+          "speckit-implement",
+          "speckit-analyze",
+          "speckit-converge",
+          "speckit-taskstoissues"
         ]
       },
-      "installed_at": "2026-08-29T08:55:28.868334+00:00"
+      "installed_at": "2026-08-29T10:09:49.004101+00:00"
     }
   }
 }

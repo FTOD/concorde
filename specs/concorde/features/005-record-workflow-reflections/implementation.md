@@ -12,8 +12,8 @@ The feature is realized without a new command surface. Three existing parts carr
 | Part | Owner | What it now does |
 |---|---|---|
 | Phase guidance and templates | Spec Kit Integration (`presets/concorde-core`) | A byte-identical **Reflection Recording** block in the five phase instructions after specification (`speckit.plan`, `tasks`, `implement`, `analyze`, `converge`) tells the agent when, where, and how to record; `reflections-template` seeds the log; the plan and tasks append layers name the log as the one maintained file a phase may append to; each completion report ends with `Reflections added: … · open for this feature: N`. |
-| Runtime | Architecture Core (`extensions/concorde/runtime/concorde`) | `reflections.py` is the single parser of the log; `validation/reflections.py` emits `CONCORDE-REFLECT-001..004`; `repository.py` loads `<specification_root>/reflections.md` into `package.auxiliary` (and the digest); `feature_workspace.py` adds `reflections` and `reflections_open` to every workspace result; `context.py` adds `reflections` (path + open count per feature) and `reflections_open` on feature summaries; `feature_acceptance.py` adds `reflection_summary`, blocks on a malformed log (`CONCORDE-ACCEPT-011`), refuses an uncited open entry (`CONCORDE-ACCEPT-012`), and never writes the log. |
-| Protocol and documentation | Feature 001 contracts, guides, root view | Reflection fields remain additive in Feature Workspace Protocol v7; the root view shows the feature node with two governed crossings; guides and READMEs describe the review loop. |
+| Runtime | Architecture Core (`extensions/concorde/runtime/concorde`) | `reflections.py` is the single parser of the log; `validation/reflections.py` emits `CONCORDE-REFLECT-001..004`; `repository.py` loads `<specification_root>/reflections.md` into `package.auxiliary` (and the digest); `feature_workspace.py` adds `reflections` and `reflections_open` to every workspace result; `context.py` adds `reflections` (path + open count per feature) and `reflections_open` on feature summaries; `implementation_acceptance.py` adds `reflection_summary`, blocks on a malformed log (`CONCORDE-ACCEPT-011`), refuses an uncited open entry (`CONCORDE-ACCEPT-012`), and never writes the log. |
+| Protocol and documentation | Feature 001 contracts, guides, root view | Reflection fields remain additive in Feature Workspace Protocol v8; the root view shows the feature node with two governed crossings; guides and READMEs describe the review loop. |
 
 The log itself, `specs/concorde/reflections.md` for this project, is a maintained source beside the
 root `module.md`: created from the template by the first phase that records, appended to by every
@@ -45,7 +45,7 @@ phase, never removed, not published (the docsite excludes it as a non-canonical 
 
 Contracts crossed: `contract.concorde.workflow` (phases and operations into maintained sources),
 `contract.concorde.spec-kit-platform` (host phases), and internally
-`contract.integration.feature-workspace` (Protocol v7 fields) and
+`contract.integration.feature-workspace` (Protocol v8 fields) and
 `contract.core.architecture-services` (validation findings, context results).
 
 ## Scenario Realization
@@ -80,7 +80,7 @@ Contracts crossed: `contract.concorde.workflow` (phases and operations into main
   adapter stays read-only.
 - **Citation gate instead of dispositions**: because the log persists, acceptance only has to prove
   that the design reference is honest about open problems — the entry identifier in
-  `implementation.content` is that proof; proposal v5 gained no reflection field.
+  `implementation.content` is that proof; proposal v6 gained no reflection field.
 - **Additive protocol fields**, never a version bump: `reflections`/`reflections_open` optional in
   the schema and always emitted.
 - **Analysis may append to the log and nothing else** (R-006, open) — the one exception to its
@@ -96,7 +96,7 @@ Contracts crossed: `contract.concorde.workflow` (phases and operations into main
 - Tests (223 pass, 2026-08-28): `tests/concorde/unit/test_reflection_parser.py`,
   `unit/test_reflection_rules.py`, `unit/test_feature_workspace.py` (path and per-root count),
   `contract/test_feature_workspace_contract.py` (schema additive, examples validate),
-  `integration/test_context.py` (path and counts), `integration/test_feature_acceptance.py`
+  `integration/test_context.py` (path and counts), `integration/test_implementation_acceptance.py`
   (`ReflectionAcceptanceTests`), `integration/test_implementation_workspace.py` (adapter),
   `integration/test_validation.py` (malformed fixture; this repository `success`),
   `acceptance/test_workspace_composition.py` (block byte-identical on five surfaces;
@@ -183,7 +183,7 @@ specifics: plan lists unresolved problems in its architecture gate; implement re
 failing or halting a task; analyze reads the log as an artifact, reports a "Reflections" table with
 stale flags (`git log -1 --format=%cs -- <path>` later than `Date`, or an unresolvable ID), and
 never repairs it; converge makes candidate work only from genuine `deferred` entries of the
-feature. `speckit.concorde.feature.accept.md` states the citation rule; `context.md` and `ask.md`
+feature. `speckit.concorde.impl.accept.md` states the citation rule; `context.md` and `ask.md`
 present the log; `validate.md` lists the rule IDs.
 
 ### Refresh procedure used by this attempt

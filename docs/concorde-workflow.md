@@ -273,7 +273,7 @@ The publication behavior is specified separately by
 
 ## Starting the next change
 
-A accepted feature has no active `attempt/` directory. Select it again by pointing
+A feature with an accepted implementation has no active `attempt/` directory. Select it again by pointing
 `SPECIFY_FEATURE_DIRECTORY` (and therefore `.specify/feature.json`) at its root, revise `design.md`
 and its abstract if the required behavior changes, review any affected architecture, and start a fresh
 plan. Current feature `implementation.md` remains the accepted realization until another complete

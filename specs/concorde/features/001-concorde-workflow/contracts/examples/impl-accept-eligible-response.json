@@ -1,6 +1,6 @@
 {
-  "schema_version": 7,
-  "operation": "feature.accept",
+  "schema_version": 8,
+  "operation": "impl.accept",
   "target": "feature.example.api.health-check",
   "status": "eligible",
   "workspace": {
@@ -33,7 +33,7 @@
     {
       "path": "specs/example/architecture/modules/api/features/002-add-health-check/implementation.md",
       "action": "update",
-      "meaning": "Replace the durable feature implementation with the reviewed candidate."
+      "meaning": "Replace the feature's durable implementation with the reviewed candidate."
     },
     {
       "path": "specs/example/architecture/modules/api/features/002-add-health-check/attempt",

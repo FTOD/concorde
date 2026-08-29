@@ -33,9 +33,9 @@ def create_parser() -> argparse.ArgumentParser:
     validate.add_argument("target", nargs="?")
     validate.add_argument("--format", choices=["json"], default="json")
 
-    feature = subparsers.add_parser("feature")
-    feature_commands = feature.add_subparsers(dest="feature_operation", required=True)
-    accept = feature_commands.add_parser("accept")
+    implementation = subparsers.add_parser("impl")
+    implementation_commands = implementation.add_subparsers(dest="implementation_operation", required=True)
+    accept = implementation_commands.add_parser("accept")
     accept.add_argument("target", nargs="?")
     accept_mode = accept.add_mutually_exclusive_group(required=True)
     accept_mode.add_argument("--propose", action="store_true")
@@ -64,13 +64,13 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
         from .context import bounded_context
 
         return bounded_context(root, arguments.target)
-    if arguments.operation == "feature":
-        from .feature_acceptance import apply_acceptance, propose_acceptance
+    if arguments.operation == "impl":
+        from .implementation_acceptance import apply_acceptance, propose_acceptance
 
         if arguments.apply:
             if not arguments.proposal:
                 return OperationResult(
-                    "feature.accept",
+                    "impl.accept",
                     arguments.target or ".",
                     "invalid",
                     findings=(Finding("CONCORDE-ACCEPT-008", "error", ".specify/feature.json", "--apply requires --proposal.", "Pass the project-relative reviewed acceptance proposal."),),
@@ -90,7 +90,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except Exception as error:  # command boundary: always return the normative envelope
         operation = argv[0] if argv else "validate"
         payload = envelope(
-            operation if operation in {"init", "context", "validate"} else "validate",
+            "impl.accept" if operation == "impl" else operation if operation in {"init", "context", "validate"} else "validate",
             ".",
             "failed",
             [],

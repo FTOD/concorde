@@ -59,9 +59,9 @@ def envelope(
 
 
 def operation_envelope(value: OperationResult) -> dict[str, Any]:
-    if value.operation == "feature.accept":
+    if value.operation == "impl.accept":
         return {
-            "schema_version": 7,
+            "schema_version": 8,
             "operation": value.operation,
             "target": value.target,
             "status": value.status,

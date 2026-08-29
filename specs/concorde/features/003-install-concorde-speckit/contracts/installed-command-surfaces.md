@@ -59,7 +59,7 @@ must reject the host version and require an upstream-supported capability instea
 The extension supplies these five canonical intents:
 
 1. `speckit.concorde.init`
-2. `speckit.concorde.feature.accept`
+2. `speckit.concorde.impl.accept`
 3. `speckit.concorde.context`
 4. `speckit.concorde.validate`
 5. `speckit.concorde.ask`
@@ -100,7 +100,7 @@ unregistered package member is not an installed command surface.
 | Tasks | `attempt/tasks.md` | Root `tasks.md` |
 | Implement / analyze / converge / taskstoissues | Feature-root durable intent plus the same active `attempt/` attempt | Root temporal copies, symlinks, or a second active attempt |
 | Init / context / validate | Feature 001 contract paths and result envelopes | Checkout-relative runtime or agent-specific semantic drift |
-| Feature accept | Root trio, module summary/design, completed tasks/checklists, returned proposal metadata, digest-bound proposal v5 (candidate feature `implementation.md`, optional module `design.md` amendment), exact `attempt/` removal | Derived paths, wrong targets, unchecked work, implicit approval, stale apply, or broader deletion |
+| Implementation accept | Root trio, module summary/design, completed tasks/checklists, returned proposal metadata, digest-bound proposal v6 (candidate feature `implementation.md`, optional module `design.md` amendment), exact `attempt/` removal | Derived paths, wrong targets, unchecked work, implicit approval, stale apply, or broader deletion |
 | Ask | Installed extension/preset guidance plus the smallest relevant bounded maintained project sources | Launcher/runtime invocation, checkout dependency, uncited facts, unrelated deeper context, mutation, or implicit lifecycle work |
 
 ## Acceptance Evidence

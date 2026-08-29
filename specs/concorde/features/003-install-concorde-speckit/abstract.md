@@ -22,7 +22,7 @@ metadata, each with one job:
 | Catalog | Advertises identity, version, compatibility, location, integrity, and trust of each unit. | An installed component. |
 | Bundle `concorde-bundle` | A non-executable recipe that pins exactly one tested `concorde-core` preset and one `concorde` extension. | Behavior, a template layer, or a replacement workflow. |
 | Preset `concorde-core` | Composes Concorde guidance into the normal templates (specification, abstract, design reference, plan, tasks) and replaces the nine path-sensitive Spec Kit commands so the selected workspace is resolved first. | A new command namespace or a second feature specification. |
-| Extension `concorde` | Registers the five Concorde surfaces (`init`, `context`, `validate`, `feature.accept`, and the agent-only `ask`) with the selected-workspace adapter, launchers, and the deterministic runtime. | The owner of the normal phases or of agent presentation syntax. |
+| Extension `concorde` | Registers the five Concorde surfaces (`init`, `context`, `validate`, `impl.accept`, and the agent-only `ask`) with the selected-workspace adapter, launchers, and the deterministic runtime. | The owner of the normal phases or of agent presentation syntax. |
 | Coding-agent integration | Materializes the resolved commands as the active agent's skills or slash commands. | A change to command intent or paths. |
 
 **What the maintainer can do.**

@@ -129,8 +129,8 @@
     {
       "id": "acceptance",
       "type": "backend",
-      "label": "Feature Acceptance",
-      "sublabel": "concorde feature.accept",
+      "label": "Implementation Acceptance",
+      "sublabel": "concorde impl.accept",
       "tag": "Cites the feature’s entries",
       "pos": [
         900,

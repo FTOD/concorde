@@ -14,7 +14,7 @@ class AgentCommandContractTests(unittest.TestCase):
         commands = REPOSITORY_ROOT / "extensions/concorde/commands"
         expected = {
             "speckit.concorde.init.md",
-            "speckit.concorde.feature.accept.md",
+            "speckit.concorde.impl.accept.md",
             "speckit.concorde.context.md",
             "speckit.concorde.validate.md",
             "speckit.concorde.ask.md",
@@ -60,7 +60,7 @@ class AgentCommandContractTests(unittest.TestCase):
             "taskstoissues",
         ):
             self.assertIn(command, command_contract)
-        for command in ("init", "feature.accept", "context", "validate", "ask"):
+        for command in ("init", "impl.accept", "context", "validate", "ask"):
             self.assertIn(command, command_contract)
         self.assertEqual(schema["$defs"]["workspacePaths"]["required"], [
             "workspace_kind",
@@ -113,8 +113,8 @@ class AgentCommandContractTests(unittest.TestCase):
 
     def test_acceptance_surfaces_require_checklists_and_return_review_metadata(self):
         surfaces = (
-            REPOSITORY_ROOT / "extensions/concorde/commands/speckit.concorde.feature.accept.md",
-            REPOSITORY_ROOT / ".agents/skills/speckit-concorde-feature-accept/SKILL.md",
+            REPOSITORY_ROOT / "extensions/concorde/commands/speckit.concorde.impl.accept.md",
+            REPOSITORY_ROOT / ".agents/skills/speckit-concorde-impl-accept/SKILL.md",
         )
         for path in surfaces:
             content = path.read_text(encoding="utf-8")

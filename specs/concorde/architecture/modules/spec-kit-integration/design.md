@@ -54,22 +54,22 @@ Maintained definitions live under `contracts/*/contract.md`.
 - **Representation**: commonly adopted Spec Kit extension command Markdown, version `0.16.4`.
 - **Information**: user arguments, bounded project context, requested action, result, and diagnostics.
 - **Guarantees**: canonical commands `speckit.concorde.init`, `speckit.concorde.context`,
-  `speckit.concorde.validate`, and `speckit.concorde.feature.accept`, plus the agent-only
+  `speckit.concorde.validate`, and `speckit.concorde.impl.accept`, plus the agent-only
   `speckit.concorde.ask`, register in the active integration without hard-coded invocation syntax.
   Framework rules, project observations, inference, and uncertainty remain visibly distinguished in
   question answers, which inspect only the smallest relevant installed and maintained sources.
 - **Failure**: unsupported integrations or missing dependencies produce an actionable diagnostic.
 - **Evidence**: all five command artifacts register in Codex skills mode; the four runtime-backed
   operations remain distinct from `ask`; initialization, context, and validation execute in Codex
-  skills and Gemini slash-command modes. Evidence remains partial until feature acceptance,
+  skills and Gemini slash-command modes. Evidence remains partial until implementation acceptance,
   question-surface semantic review, and the complete normal-command matrix execute from release
-  archives in both modes; the platform-compatible registered spelling is `feature-accept`.
+  archives in both modes; the platform-compatible registered spelling is `impl-accept`.
 
 `contract.integration.feature-workspace`
 
 - **Role / flow**: provided, bidirectional.
 - **Consumers**: maintainers and normal Spec Kit lifecycle commands.
-- **Representation**: custom Concorde Feature Workspace Protocol v7 plus Spec Kit's standard
+- **Representation**: custom Concorde Feature Workspace Protocol v8 plus Spec Kit's standard
   project-local `feature_directory` selection field.
 - **Information**: the resolved standard Spec Kit selection, exact durable/temporal paths,
   relationship context, implementation state, acceptance changes, conflicts, findings, and inspected

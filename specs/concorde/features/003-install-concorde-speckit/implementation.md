@@ -26,7 +26,7 @@ The release builder produces separate preset, extension, and bundle archives plu
 
 ### Install into a project
 
-Spec Kit validates the accepted plan, installs the pinned components, and materializes their winning command layers through the active integration. The preset provides four templates and replaces `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues`. The extension registers `init`, `feature-accept`, `context`, `validate`, and the agent-only `ask`. Repeated installation converges on one bundle, preset, and extension record without changing project-authored `.concorde/`, `specs/`, or `docs/` sources.
+Spec Kit validates the accepted plan, installs the pinned components, and materializes their winning command layers through the active integration. The preset provides four templates and replaces `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues`. The extension registers `init`, `impl-accept`, `context`, `validate`, and the agent-only `ask`. Repeated installation converges on one bundle, preset, and extension record without changing project-authored `.concorde/`, `specs/`, or `docs/` sources.
 
 ### Execute the installed workflow
 

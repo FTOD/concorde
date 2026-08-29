@@ -6,14 +6,14 @@ links at the end only redirect you when you want more.
 
 ## Purpose
 
-Let a maintainer explicitly accept the durable realization of one completed feature or sub-feature
-milestone into that root's feature `implementation.md`, carry the rationale developed during the attempt
+Let a maintainer explicitly accept one completed implementation attempt as a feature or sub-feature
+root's durable `implementation.md`, carry the rationale developed during the attempt
 into the level's module `design.md` when the proposal includes it, and atomically remove exactly that
 milestone's `attempt/` attempt. It never touches the abstract or the specification.
 
 ## Functionality
 
-The owned command surface is `speckit.concorde.feature.accept`, in two modes bound together by an
+The owned command surface is `speckit.concorde.impl.accept`, in two modes bound together by an
 exact proposal:
 
 | Mode | Reads | Produces |
@@ -40,7 +40,7 @@ exact proposal; only their approval lets the runtime mutate the selected root an
 level's module reference.
 
 ```text
-Maintainer ──review · explicit approval──▶ speckit.concorde.feature.accept ──▶ launcher + runtime
+Maintainer ──review · explicit approval──▶ speckit.concorde.impl.accept ──▶ launcher + runtime
                                                                                  ├─ proposal: attempt/ (tasks · checklists · research · evidence) + trio + module.md + module implementation.md
                                                                                  │            → candidate feature implementation.md · optional module implementation.md amendment · cleanup manifest · digest
                                                                                  └─ apply:    feature implementation.md ⟵ candidate · module implementation.md ⟵ amendment · attempt/ removed   (atomic)

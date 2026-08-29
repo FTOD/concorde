@@ -67,6 +67,45 @@ class AcceptanceTerminologyContractTests(unittest.TestCase):
         self.assertFalse(legacy_skill.exists())
         self.assertFalse(legacy_command.exists())
 
+    def test_superseded_command_vocabulary_is_absent(self) -> None:
+        legacy_tokens = (
+            "feature" + "-accept",
+            "feature" + ".accept",
+            "feature" + " accept",
+            "feature_" + "acceptance",
+        )
+        matches: list[str] = []
+        for path in sorted(REPOSITORY_ROOT.rglob("*")):
+            if not path.is_file() or path.is_symlink():
+                continue
+            relative = path.relative_to(REPOSITORY_ROOT)
+            if relative == HISTORICAL_LOG or any(part in EXCLUDED_PARTS for part in relative.parts):
+                continue
+            try:
+                text = path.read_text(encoding="utf-8").lower()
+            except UnicodeDecodeError:
+                continue
+            for token in legacy_tokens:
+                if token in text:
+                    matches.append(f"{relative.as_posix()}:{token}")
+        self.assertEqual(matches, [])
+
+        self.assertFalse(
+            (REPOSITORY_ROOT / ".agents/skills" / ("speckit-concorde-feature" + "-accept")).exists()
+        )
+        self.assertFalse(
+            (
+                REPOSITORY_ROOT
+                / ("extensions/concorde/commands/speckit.concorde.feature" + ".accept.md")
+            ).exists()
+        )
+        self.assertFalse(
+            (
+                REPOSITORY_ROOT
+                / ("extensions/concorde/runtime/concorde/feature_" + "acceptance.py")
+            ).exists()
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

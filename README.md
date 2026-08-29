@@ -36,7 +36,7 @@ Concorde adds five agent-facing commands. Normal feature work still uses Spec Ki
 | `$speckit-concorde-context <module-or-feature-id>` | Retrieve exactly one bounded architectural level. |
 | `$speckit-concorde-ask <question>` | Get a cited, read-only answer about Concorde or its use in the current project. |
 | `$speckit-concorde-validate` | Deterministically validate the maintained hierarchy, contracts, views, documents, and evidence. |
-| `$speckit-concorde-feature-accept <feature-id>` | Propose and, after explicit approval, promote a task-complete attempt into the durable accepted realization. |
+| `$speckit-concorde-impl-accept <feature-id>` | Propose and, after explicit approval, accept a completed implementation as the durable realization. |
 
 Features are created with the normal `$speckit-specify` phase at their canonical module path and
 selected through `.specify/feature.json`; Concorde deliberately adds no separate create or select
@@ -78,8 +78,8 @@ standalone views.
 ## Project status
 
 Feature 001 defines the Concorde architecture-aware development workflow. Its root initialization,
-Feature Workspace Protocol v7 resolution of the standard Spec Kit selection, bounded context,
-deterministic validation, approval-gated feature acceptance, and the read-only `ask` procedure are
+Feature Workspace Protocol v8 resolution of the standard Spec Kit selection, bounded context,
+deterministic validation, approval-gated implementation acceptance, and the read-only `ask` procedure are
 implemented and covered by the automated suites, and this repository itself lives under the
 three-tier feature document model (`abstract.md`, `design.md`, `implementation.md`) and the module summary/design
 reference pair that the feature specifies. Feature 002's docsite publication pipeline, Feature 003's
@@ -220,7 +220,7 @@ After installation, invoke these agent skills from the target project:
 
 ```text
 $speckit-concorde-init
-$speckit-concorde-feature-accept feature.<project-slug>.<name>
+$speckit-concorde-impl-accept feature.<project-slug>.<name>
 $speckit-concorde-context module.<project-slug>
 $speckit-concorde-validate
 $speckit-concorde-ask When should I use context instead of changing the selected feature?
@@ -235,7 +235,7 @@ $speckit-concorde-ask When should I use context instead of changing the selected
   through the standard `.specify/feature.json`; Concorde adds no creation or selection command.
   Every feature root owns `abstract.md` (read first), `design.md` (the authority), and
   `implementation.md` (the accepted implementation, written by acceptance).
-- `feature.accept` proposes the feature `implementation.md`—and, when the attempt produced detail or
+- `impl.accept` proposes the feature `implementation.md`—and, when the attempt produced detail or
   rationale worth keeping, an amendment to the `design.md` of the module at which the feature is
   specified—from a task-complete implementation attempt and, only after explicit approval, applies
   both atomically and removes that temporal `attempt/` directory.

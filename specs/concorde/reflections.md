@@ -379,8 +379,8 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Date**: 2026-08-29
 - **Feature**: feature.concorde.publish-project-docsite
 - **Kind**: tooling
-- **Concerns**: specs/concorde/features/002-create-project-docsite/attempt/quickstart.md
-- **Expected**: The attempt quickstart invokes deterministic Concorde validation with the project
+- **Concerns**: specs/concorde/features/002-create-project-docsite/implementation.md
+- **Expected**: The accepted implementation guidance invokes deterministic Concorde validation with the project
   root explicitly selected.
 - **Observed**: The first command used `validate --root .`, but the CLI accepts the global
   `--project-root` option only before the `validate` verb.

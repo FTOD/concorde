@@ -4,7 +4,7 @@
 
 **Realization status**: Accepted realization of the architecture-aware Spec Kit workflow under the
 feature-root `abstract.md` / `design.md` / `implementation.md` model, module `module.md` / `design.md`
-pair, Architecture Source Profile 4, Feature Workspace Protocol v7, acceptance proposal v5, and Build
+pair, Architecture Source Profile 4, Feature Workspace Protocol v8, acceptance proposal v6, and Build
 Manifest v8. Revised 2026-08-29 for the canonical naming model and again for the module
 `architecture/` directory, and migrated across this repository.
 
@@ -22,14 +22,14 @@ implementations begin as the `implementation-template` placeholder and are repla
 acceptance. No alias or symlink stands in for any canonical name.
 
 Selection remains the standard Spec Kit `.specify/feature.json` pointer (or
-`SPECIFY_FEATURE_DIRECTORY`). Protocol v7 derives the selected kind, ID, providing module,
+`SPECIFY_FEATURE_DIRECTORY`). Protocol v8 derives the selected kind, ID, providing module,
 `feature_abstract`, `feature_design`, `feature_implementation`, `module_summary`, `module_design`,
 `attempt_dir`, `attempt_state`, nullable parent context, and bounded sibling summaries with
 `abstract`, `design`, and `implementation` paths but never bodies.
 
 ## Module and Feature Collaboration
 
-- `module.concorde.spec-kit-integration` provides Protocol v7, nine selected-workspace command
+- `module.concorde.spec-kit-integration` provides Protocol v8, nine selected-workspace command
   overrides, six templates (`spec`, `abstract`, `implementation`, `reflections`, `plan`, `tasks`),
   and the extension's five command surfaces.
 - `module.concorde.architecture-core` owns Profile 4 discovery (including every module diagram
@@ -78,7 +78,7 @@ remaining read-only.
 
 ### Accept one selected lifecycle root
 
-Proposal mode requires complete tasks and checklists and returns the Protocol v7 workspace and digest.
+Proposal mode requires complete tasks and checklists and returns the Protocol v8 workspace and digest.
 Proposal v4 uses `implementation.path == feature_implementation`, optional `module_design`, and a
 single `remove == [attempt_dir]`. Apply stages feature `implementation.md` and optional module
 `design.md`, moves the attempt aside, promotes atomically, restores on failure, and reports
@@ -91,7 +91,7 @@ single `remove == [attempt_dir]`. Apply stages feature `implementation.md` and o
 - The feature abstract is an authored, self-contained document with exactly the five sections in order, a structure link (declared diagram, level view, delivered `/architecture/*.html` route) or a fenced text sketch, `Logic` citations resolving to `**FR-NNN**` definitions in the adjacent `design.md`, and a 3,000-word budget reported as a warning; it is written by specification and clarification only and never by acceptance, and where it disagrees with `design.md` the specification prevails and analysis reports the disagreement.
 - `CONCORDE-ABSTRACT-003` fires on an unknown citation, or on no citation when the design defines at
   least one `**FR-NNN**`.
-- Feature Workspace Protocol v7 is a closed schema with `feature_abstract`, `feature_design`,
+- Feature Workspace Protocol v8 is a closed schema with `feature_abstract`, `feature_design`,
   `feature_implementation`, `attempt_dir`, and `attempt_state`; acceptance proposals are v4 and Build
   Manifest is v7.
 - The accepted realization is seeded as a placeholder at specification, written in full by the first acceptance, completed by later ones, keeps the six required headings first, and rejects the placeholder marker as candidate content.
@@ -112,19 +112,19 @@ single `remove == [attempt_dir]`. Apply stages feature `implementation.md` and o
 Behavior and acceptance criteria are in `design.md` and its nine sub-feature designs; the feature
 abstract is adjacent. Root ownership and interactions are in `specs/concorde/module.md` and the
 level view under `specs/concorde/architecture/diagrams/`; module rationale is in `specs/concorde/design.md`. Command behavior is governed
-by `contracts/agent-commands.md`; Protocol v7/proposal v5 by `feature-workspace.schema.json`; the
+by `contracts/agent-commands.md`; Protocol v8/proposal v6 by `feature-workspace.schema.json`; the
 documentation read model by the Documentation contracts and Build Manifest v8.
 
 Runtime realization is centered in `repository.py`, `feature_workspace.py`, `context.py`,
-`feature_acceptance.py`, `diagnostics.py`, and `validation/{abstract,diagrams,layout}.py`. Protocol and workspace
-adapters emit schema version 7. Publication realization is in `docsite/plugins/concorde-content/`
+`implementation_acceptance.py`, `diagnostics.py`, and `validation/{abstract,diagrams,layout}.py`. Protocol and workspace
+adapters emit schema version 8. Publication realization is in `docsite/plugins/concorde-content/`
 and its Abstract · Design · Implementation companion navigation.
 
-Executable evidence on 2026-08-29: 231 Python tests pass across unit, contract, integration, and
-acceptance suites, including Protocol v7 routing, proposal v5 acceptance, legacy-name findings,
-rollback, resume, installed surfaces, and all migrated fixtures. TypeScript compilation and all 68
-Vitest tests pass, including an optimized production build. Content validation publishes 99 pages
-with zero errors and 25 deliberate exclusions; Build Manifest v8 contains 21 feature abstracts, 21
+Executable evidence on 2026-08-29: 234 Python tests pass across unit, contract, integration, and
+acceptance suites, including Protocol v8 routing, proposal v6 acceptance, legacy-name findings,
+rollback, resume, installed surfaces, and all migrated fixtures. TypeScript compilation and all 77
+Vitest tests pass, including an optimized production build. Content validation publishes 100 pages
+with zero errors and 24 deliberate exclusions; Build Manifest v8 contains 21 feature abstracts, 21
 feature designs, 21 feature implementations, 5 module designs, 21 architecture sources, and 10
 project documents. All eight declared views pass the build-owned Archify gate.
 `speckit.concorde.validate` returns `success` with zero findings.
@@ -141,7 +141,7 @@ the active integration because the self-host status protocol currently validates
   designs number requirements without `**FR-NNN**` identifiers, so their abstracts cite by section.
 - The documentation site does not publish feature-root contract documents (`contracts/<name>.md`, schemas); widening that set is feature 002 scope.
 - Compatibility is bounded to Spec Kit 0.16.4; deterministic validation cannot prove that a abstract or summary is well written or faithful, and the reading-budget proxies are advisory.
-- The constitution's A.III relaxation of one providing module per feature remains a separately tracked follow-up; Protocol v7 still reports one `providing_module`.
+- The constitution's A.III relaxation of one providing module per feature remains a separately tracked follow-up; Protocol v8 still reports one `providing_module`.
 
 ## Implementation Detail
 
@@ -153,16 +153,16 @@ the active integration because the self-host status protocol currently validates
   `attempt_dir`, and `attempt_state`; parent and sibling projections carry the same durable meanings.
 - `validation/abstract.py` owns `REQUIRED_ABSTRACT_SECTIONS`, the 3,000-word budget, structure links,
   and FR citations; `validation/layout.py` owns trio, legacy-name, and selection findings.
-- `feature_acceptance.py` accepts proposal v5 `implementation`, updates only
+- `implementation_acceptance.py` accepts proposal v6 `implementation`, updates only
   `feature_implementation`, optionally amends `module_design`, and removes only `attempt_dir`.
-- `diagnostics.py` and `scripts/python/workspace.py` emit feature protocol schema version 7.
+- `diagnostics.py` and `scripts/python/workspace.py` emit feature protocol schema version 8.
 
 ### Preset, extension, and helpers
 
 - `preset.yml` lists `spec-template`, `abstract-template`, `implementation-template`,
   `reflections-template`, `plan-template`, `tasks-template`, and nine command replacements.
 - `speckit.specify.md` resolves the three templates, authors the abstract after the specification, seeds `implementation.md` when absent, and adds three abstract checklist items; `speckit.clarify.md` updates the abstract after each integrated answer; `speckit.checklist.md` names the abstract as in scope; `speckit.plan.md`, `speckit.tasks.md`, `speckit.implement.md`, `speckit.converge.md`, and `speckit.taskstoissues.md` read the feature `implementation.md` as baseline and never write the trio; `speckit.analyze.md` adds the "abstract Disagreement" detection pass.
-- Extension commands document proposal v5 and the `CONCORDE-ABSTRACT-*` / layout inventory.
+- Extension commands document proposal v6 and the `CONCORDE-ABSTRACT-*` / layout inventory.
 - Local helpers export `FEATURE_ABSTRACT`, `FEATURE_DESIGN`, `FEATURE_IMPLEMENTATION`, and
   `ATTEMPT_DIR`.
 
@@ -176,8 +176,8 @@ the active integration because the self-host status protocol currently validates
 
 ### Test map
 
-- Unit and integration suites cover abstract rules, Protocol v7 paths, layout migration findings,
-  proposal v5 acceptance, rollback, resume, and publication pairing.
+- Unit and integration suites cover abstract rules, Protocol v8 paths, layout migration findings,
+  proposal v6 acceptance, rollback, resume, and publication pairing.
 - Contract and acceptance suites cover installed Codex/Claude surfaces, six templates, protocol
   examples, and clean-project installation.
 - Docsite: `tests/unit/{registry,feature-designs,links}.test.ts`, `tests/contract/{build-manifest,content-sources}.test.ts`, `tests/integration/{feature-publication,production-build,performance,framework-guides}.test.ts`.
