@@ -22,4 +22,4 @@ Beta ──▶ docs/index.md
 
 ## Read Next
 
-- [design.md](design.md), [implementation.md](implementation.md), and the [documentation home](../../../docs/index.md).
+- [design.md](design.md), [implementation.md](implementation.md), and the [documentation home](../../../../../../../docs/index.md).

@@ -21,10 +21,14 @@ this package:
   `design.md`; each fresh generated view is embedded automatically on the feature abstract.
 
 Before preview or build, the package classifies the unified `specs/` tree and writes disposable
-Architecture and Features inputs beneath `.generated/content/`. Feature pages are staged with the
-route the registry assigned them (front matter `slug`, `sidebar_label`, and `sidebar_position`) so
-the abstract renders at `/features/<root>`. These are renderer projections only; all provenance,
-validation, and edits continue to reference the canonical files under `../specs/`.
+Architecture and Features inputs beneath `.generated/content/`. These are independent semantic
+projections even though their sources share module packages: Architecture staging follows module
+containment, while Features staging follows stable feature identity and explicit parent/sub-feature
+containment. A feature's module placement and `refines` relationships remain page metadata and links;
+`architecture/`, `modules/`, and module-local `features/` wrappers never become Features sidebar
+categories or route parents. Feature pages are staged with the registry-assigned stable-ID route and
+generated category metadata, so each category uses the feature title and opens on its abstract.
+All provenance, validation, and edits continue to reference canonical files under `../specs/`.
 
 ## Prerequisites
 

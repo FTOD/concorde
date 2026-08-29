@@ -22,6 +22,23 @@ describe('build manifest contract', () => {
 
     expect(validate(example), JSON.stringify(validate.errors, null, 2)).toBe(true);
     expect(example.schemaVersion).toBe(8);
+    const featurePages = example.pages.filter((page: {kind: string}) => page.kind.startsWith('feature-'));
+    expect(featurePages.map((page: {route: string}) => page.route)).toEqual([
+      '/features/feature.concorde.publish-project-docsite/implementation',
+      '/features/feature.concorde.publish-project-docsite/design',
+      '/features/feature.concorde.publish-project-docsite',
+    ]);
+    expect(JSON.stringify(featurePages)).not.toMatch(/\/features\/concorde\/features\//);
+  });
+
+  it('keeps published-site v4 aligned with Build Manifest schema v8', async () => {
+    const contractRoot = resolve(
+      process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts',
+    );
+    const publishedSite = await readFile(resolve(contractRoot, 'published-site.md'), 'utf8');
+    expect(publishedSite).toContain('# Published Project Site Contract v4');
+    expect(publishedSite).toContain('build-manifest contract (schema version 8)');
+    expect(publishedSite).toContain('/features/<feature-id>');
   });
 
   it('projects a fixture manifest that satisfies the v8 schema', async () => {

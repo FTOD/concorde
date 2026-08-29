@@ -18,9 +18,9 @@ The complete publication behavior is specified by
 |---|---|---|
 | Documentation | Every regular `docs/**/*.md` file | `/docs` |
 | Architecture | Every `specs/**/module.md` (module summary; the module-owned diagrams under `specs/**/architecture/diagrams/*.json`, discovered from that folder rather than declared, are embedded on its page), its adjacent `design.md` (module design reference, published as a separately linked page), and `specs/**/architecture/contracts/**/contract.md` | `/architecture` |
-| Feature abstracts | Every `specs/**/abstract.md` beside a canonical `design.md`; the page each feature opens on | `/features/<root>` |
-| Feature designs | Every canonical feature-root `design.md` | `/features/<root>/design` |
-| Feature implementations | Every feature-root `implementation.md` beside `design.md` | `/features/<root>/implementation` |
+| Feature abstracts | Every `specs/**/abstract.md` beside a canonical `design.md`; the page each feature opens on | `/features/<feature-id>` or `/features/<parent-feature-id>/<sub-feature-id>` |
+| Feature designs | Every canonical feature-root `design.md` | The feature abstract route plus `/design` |
+| Feature implementations | Every feature-root `implementation.md` beside `design.md` | The feature abstract route plus `/implementation` |
 
 The build manifest names these collections `docs`, `architecture`, `feature-abstracts`, `features`,
 and `feature-implementations`. Module and feature `design.md` files are distinguished by whether
@@ -29,6 +29,13 @@ error. Symbolic links are not followed. Plans, tasks,
 requirements checklists, research, technical models, quick-start evidence, and other files below
 `attempt/` are intentionally excluded from the Features collection. Their presence under
 `specs/` does not make them permanent project intent.
+
+The two `specs/` projections do not share a public hierarchy. Architecture navigation mirrors
+declared module containment. Features navigation is generated from stable feature IDs and explicit
+parent/sub-feature containment, regardless of which module package physically contains a feature.
+Providing modules and adjacent-level refinement remain metadata and cross-links. Do not add manual
+sidebar entries to compensate for source placement; the registry and disposable feature category
+metadata own that projection.
 
 Do not copy canonical content into `docsite/`. Docusaurus configuration, components, formatting, and
 build logic live there; project explanations live in `docs/`; architecture and feature authorities
@@ -42,9 +49,11 @@ A preview and a production build use the same inclusion, routing, and validation
    Archify source set.
 2. The build verifies the installed project-local Archify 2.16 skill, validates every source, and atomically delivers a fresh,
    complete ignored `generated/` set.
-3. The source registry discovers eligible files, routes, and deliberate exclusions against those
-   current deliveries.
-4. Disposable Docusaurus content is materialized under `docsite/.generated/content/`.
+3. The source registry discovers eligible files and deliberate exclusions, derives Architecture
+   routes from module containment, and derives Features routes from stable IDs plus explicit feature
+   containment.
+4. Independent disposable Architecture and Features trees are materialized under
+   `docsite/.generated/content/`; generated Features category metadata supplies human-readable titles.
 5. Docusaurus renders a candidate site.
 6. Candidate pages, routes, links, provenance, and the build manifest (Build Manifest v8) are
    validated.

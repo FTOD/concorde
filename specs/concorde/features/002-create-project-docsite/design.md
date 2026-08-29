@@ -26,7 +26,7 @@ canonical_design: specs/concorde/features/002-create-project-docsite/design.md
 
 **Created**: 2026-08-19
 
-**Revised**: 2026-08-27
+**Revised**: 2026-08-29
 
 **Status**: Implemented; build-owned Archify delivery and clean-checkout publication verified
 
@@ -41,6 +41,11 @@ the generated site teaches the Concorde framework rather than presenting specifi
 so a clean checkout does not depend on committed or manually pre-generated diagram output. Install
 Archify through its official project-local skill mechanism so preview, build, and deployment require
 no machine-specific renderer environment variable."
+
+**Revision Input**: "Although architecture and feature sources share the same `specs/` packages,
+publish them as independent read models: Architecture follows the module hierarchy, while Features
+follows the feature hierarchy without exposing architecture storage directories as feature
+navigation."
 
 ## Scenario and Component Diagram
 
@@ -83,9 +88,9 @@ Features navigation paths and project-wide discovery.
    documents in `docs/`, **When** a visitor opens the generated site, **Then**
    the visitor can reach all three navigation families from a
    project landing page without knowing their repository paths.
-2. **Given** multiple nested documentation pages and multiple features, **When** the visitor browses
-   the site navigation, **Then** documentation hierarchy is preserved and feature specifications are
-   grouped with their permanent designs under a clearly labeled Features area.
+2. **Given** features specified at the root and inside nested module packages, **When** the visitor
+   browses Features, **Then** feature navigation follows feature identity and explicit feature
+   containment without presenting architecture directories or modules as feature categories.
 3. **Given** a feature specification and design, **When** their pages are displayed, **Then** the
    specification's identifying facts and both pages' source provenance are visible.
 4. **Given** a visitor looking for a known phrase, module, or feature, **When** the visitor uses the
@@ -128,9 +133,10 @@ the feature-development lifecycle.
 **Why this priority**: Feature specifications are the second required content source, and preserving
 their authority is essential to the Concorde and Spec Kit ownership boundary.
 
-**Independent Test**: Change the title, status, and one requirement in an existing `design.md`, add a
-second feature directory, rebuild the site, and confirm that both feature pages reflect their current
-canonical files with no generated changes under `specs/`.
+**Independent Test**: Change the title, status, and one requirement in an existing `design.md`; add a
+feature beneath a nested module and a sub-feature beneath a parent feature; rebuild the site and
+confirm that all pages reflect their canonical files, the sub-feature is nested under its parent,
+and no Architecture or module-storage category appears in Features.
 
 **Acceptance Scenarios**:
 
@@ -143,6 +149,10 @@ canonical files with no generated changes under `specs/`.
    other supporting artifacts,
    **When** the first version of the site is built, **Then** those files are not presented as canonical
    feature specifications.
+4. **Given** a feature is physically stored beneath a module's architecture package, **When** its
+   feature page and navigation entry are generated, **Then** its providing module and refinement
+   relationships are available as metadata or links but do not become parent categories in the
+   feature hierarchy.
 
 ---
 
@@ -248,6 +258,10 @@ representative changes.
   current, creating an obvious documentation-freshness disagreement.
 - A reader mistakes installed skills, workflow-control state, temporary implementation files, or
   generated output for durable project intent.
+- Two features at different module levels use the same numeric directory prefix or short name; their
+  stable IDs remain distinct and their generated feature routes do not collide.
+- A feature refines behavior at an adjacent module level but is not a contained sub-feature; the site
+  shows the refinement as a relationship without inventing a parent-child navigation relationship.
 
 ## Requirements *(mandatory)*
 
@@ -273,8 +287,9 @@ representative changes.
   for Architecture, project Documentation, and Features.
 - **FR-010**: Documentation navigation MUST preserve the meaningful hierarchy expressed by paths and
   navigation metadata under `docs/`.
-- **FR-011**: Feature navigation MUST identify each specification by its feature title and MUST expose
-  its stable ID and lifecycle status when those values are present.
+- **FR-011**: Feature navigation MUST identify each specification by its feature title, MUST expose
+  its stable ID and lifecycle status when those values are present, and MUST derive hierarchy only
+  from explicit feature containment rather than module containment or source-directory wrappers.
 - **FR-012**: A newly added eligible document or canonical feature specification MUST be discovered on
   the next build without requiring a canonical copy or per-page registration in `docsite/`.
 - **FR-013**: Each generated content page MUST identify its maintained source path and content kind so
@@ -368,6 +383,18 @@ representative changes.
 - **FR-047**: Local preview, production build, tests, and repository deployment MUST consume the same
   version-controlled project-local Archify skill without requiring a machine-specific renderer
   environment variable, global CLI, additional renderer checkout, or agent-home installation.
+- **FR-048**: Architecture and Features MUST be generated as independent semantic projections even
+  when their canonical sources occupy the same recursive `specs/` packages: Architecture navigation
+  follows the declared module hierarchy, while Features navigation follows feature identity and
+  explicit parent/sub-feature containment.
+- **FR-049**: Architecture storage segments and module identities, including `architecture/`,
+  `modules/`, and module-local `features/` wrappers, MUST NOT appear as hierarchy categories or route
+  parents in the Features collection. A feature's providing module and adjacent-level `refines`
+  relationships MUST remain available as page metadata and links without being treated as feature
+  containment.
+- **FR-050**: Feature page routes MUST be deterministic and collision-free from stable feature
+  identity and explicit containment, independent of the module storage path; supported links from
+  architecture, documentation, and other feature pages MUST resolve to those routes.
 
 ### Key Entities
 
@@ -381,8 +408,9 @@ representative changes.
   by stable ID, kind, hierarchy metadata, source path, and an optional adjacent Archify JSON view.
 - **Content Page**: A read-only site projection of one maintained source, with a stable route, content
   kind, navigation placement, and provenance.
-- **Navigation Entry**: A relationship that places a content page in either the Documentation or
-  Features hierarchy while preserving meaningful source organization.
+- **Navigation Entry**: A relationship that places a content page in its public semantic hierarchy:
+  documentation paths for Documentation, module containment for Architecture, and explicit feature
+  containment for Features, independent of shared physical source placement.
 - **Build Manifest**: The deterministic inventory that maps every included maintained source to its
   content page and records exclusions, collisions, and validation outcomes.
 - **Diagram Delivery Set**: The complete, deterministic set of standalone HTML projections produced
@@ -425,6 +453,12 @@ representative changes.
   maintained source identified and zero fallback to prior diagram bytes.
 - **SC-016**: After preview and production builds, version-control status reports zero tracked or
   newly trackable diagram deliveries, visual-check evidence, or machine-specific absolute paths.
+- **SC-017**: Across fixtures containing root features, module-level features, and one level of
+  sub-features, 100% of feature navigation entries contain no architecture or module-storage
+  categories, and every sub-feature appears under exactly its declared parent feature.
+- **SC-018**: Every eligible feature has exactly one deterministic, collision-free route derived
+  independently of its module storage path, while 100% of supported inbound links resolve to the
+  resulting page.
 
 ## Assumptions
 
@@ -447,6 +481,9 @@ representative changes.
   global executable.
 - The site may create disposable staging and build output beneath its own ignored workspace, provided
   those projections are reproducible and never become canonical content.
+- Public navigation is a semantic read model rather than a literal directory browser. Feature
+  containment is defined only by the canonical parent/sub-feature relationship; module placement and
+  adjacent-level refinement remain cross-links, not parents in the Features hierarchy.
 - The existing root architecture view's `publish-architecture` scenario provides the current-level
   structural trace for this project-wide feature. The feature-owned publication sequence explains
   deeper invocation without expanding child internals in the root view; the Documentation-module

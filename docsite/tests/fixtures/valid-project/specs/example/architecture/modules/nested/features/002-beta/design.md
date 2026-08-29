@@ -8,4 +8,4 @@ module: module.fixture
 
 **Status**: Approved
 
-The beta feature links to the [documentation home](../../../docs/index.md).
+The beta feature links to the [documentation home](../../../../../../../docs/index.md).

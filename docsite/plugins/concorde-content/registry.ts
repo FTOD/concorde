@@ -12,7 +12,7 @@ import type {
 } from './types';
 import {diagramKinds, listModuleDiagramSources} from './diagrams';
 import {populateLinks} from './links';
-import {projectedSpecPath} from './routes';
+import {projectedSpecPath, semanticFeaturePath, semanticFeatureRoutes, semanticFeatureStagedPath} from './routes';
 
 export const collections: SourceCollection[] = [
   {
@@ -247,6 +247,10 @@ async function parseDocument(
     featureLevel: typeof parsed.data.parent_feature === 'string' ? 'subfeature' : 'feature',
     parentFeatureId: typeof parsed.data.parent_feature === 'string' ? parsed.data.parent_feature.trim() : undefined,
     outcome: sectionText(parsed.content, 'Outcome') || title,
+    refinementIds: Array.isArray(parsed.data.refines)
+      ? parsed.data.refines.filter((value): value is string => typeof value === 'string')
+      : [],
+    refinements: [],
     subfeatureIds: Array.isArray(parsed.data.subfeatures)
       ? parsed.data.subfeatures.filter((value): value is string => typeof value === 'string')
       : [],
@@ -260,11 +264,13 @@ function featureContext(design: FeatureDesign): FeaturePageContext {
   return {
     featureId: design.featureId,
     moduleId: design.moduleId,
+    moduleRoute: design.moduleRoute,
     featureLevel: design.featureLevel,
     parentFeatureId: design.parentFeatureId,
     parentFeatureRoute: design.parentFeatureRoute,
     subfeatures: design.subfeatures,
     siblings: design.siblings,
+    refinements: design.refinements,
   };
 }
 
@@ -306,8 +312,35 @@ function resolveFeatureRelations(documents: SourceDocument[], findings: Validati
       });
       continue;
     }
-    feature.parentFeatureRoute = parent.landingRoute;
   }
+
+  // Assign the public feature projection only after identity and containment have resolved. Canonical
+  // module/source paths remain provenance and never participate in Features hierarchy or route identity.
+  const semanticPaths = new Map<string, string>();
+  for (const feature of features.filter((item) => item.featureLevel === 'feature')) {
+    semanticPaths.set(feature.featureId, semanticFeaturePath(feature.featureId));
+  }
+  for (const feature of features.filter((item) => item.featureLevel === 'subfeature')) {
+    const parentPath = feature.parentFeatureId ? semanticPaths.get(feature.parentFeatureId) : undefined;
+    semanticPaths.set(feature.featureId, semanticFeaturePath(feature.featureId, parentPath));
+  }
+  for (const feature of features) {
+    const semanticPath = semanticPaths.get(feature.featureId) ?? semanticFeaturePath(feature.featureId);
+    const routes = semanticFeatureRoutes(semanticPath);
+    feature.landingRoute = routes.landing;
+    feature.route = routes.design;
+    feature.stagedPath = semanticFeatureStagedPath(semanticPath, 'design');
+    if (feature.parentFeatureId) feature.parentFeatureRoute = byId.get(feature.parentFeatureId)?.landingRoute;
+  }
+  for (const feature of features) {
+    feature.refinements = feature.refinementIds.flatMap((refinementId) => {
+      const target = byId.get(refinementId);
+      return target
+        ? [{featureId: target.featureId, title: target.title, outcome: target.outcome, status: target.status, route: target.landingRoute}]
+        : [];
+    });
+  }
+
   for (const parent of features.filter((feature) => feature.featureLevel === 'feature')) {
     parent.subfeatures = parent.subfeatureIds.flatMap((childId) => {
       const child = byId.get(childId);
@@ -337,9 +370,16 @@ function resolveFeatureRelations(documents: SourceDocument[], findings: Validati
     const implementation = implementations.get(design.featureDirectory);
     if (abstract) {
       abstract.route = design.landingRoute;
+      const semanticPath = posix.dirname(design.stagedPath ?? '');
+      abstract.stagedPath = semanticFeatureStagedPath(semanticPath, 'abstract');
       design.abstractRoute = abstract.route;
     }
-    if (implementation) design.implementationRoute = implementation.route;
+    if (implementation) {
+      const semanticPath = posix.dirname(design.stagedPath ?? '');
+      implementation.route = semanticFeatureRoutes(semanticPath).implementation;
+      implementation.stagedPath = semanticFeatureStagedPath(semanticPath, 'implementation');
+      design.implementationRoute = implementation.route;
+    }
     if (abstract) {
       Object.assign(abstract, featureContext(design), {
         status: design.status,
@@ -368,6 +408,10 @@ function resolveModuleRelations(documents: SourceDocument[]): void {
     design.moduleId = module.architectureId;
     design.moduleRoute = module.route;
     module.designReferenceRoute = design.route;
+  }
+  const modulesById = new Map([...modules.values()].map((module) => [module.architectureId, module]));
+  for (const feature of documents.filter((document): document is FeatureDesign => document.collectionId === 'features')) {
+    feature.moduleRoute = modulesById.get(feature.moduleId)?.route;
   }
 }
 
@@ -447,8 +491,8 @@ export async function buildRegistry(projectRoot: string): Promise<ContentRegistr
   }
 
   documents.sort((left, right) => left.sourcePath.localeCompare(right.sourcePath));
-  resolveFeatureRelations(documents, findings);
   resolveModuleRelations(documents);
+  resolveFeatureRelations(documents, findings);
   return populateLinks({projectRoot: root, collections, documents, excludedSources, findings});
 }
 

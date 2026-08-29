@@ -1,3 +1,4 @@
+import {rm} from 'node:fs/promises';
 import {resolve} from 'node:path';
 
 import {buildRegistry} from '../plugins/concorde-content/registry';
@@ -16,5 +17,11 @@ export async function preparePublication(projectRoot: string): Promise<PreparedP
   const diagrams = await renderDeclaredDiagrams(root);
   const registry = assertValidRegistry(await buildRegistry(root));
   await materializeContent(registry);
+  // Route and staging projections can change while Docusaurus's compiled content cache remains.
+  // Discard that ignored cache so preview and production consume only the just-materialized registry.
+  await Promise.all([
+    rm(resolve(__dirname, '../.docusaurus'), {recursive: true, force: true}),
+    rm(resolve(__dirname, '../node_modules/.cache'), {recursive: true, force: true}),
+  ]);
   return {registry, diagrams};
 }

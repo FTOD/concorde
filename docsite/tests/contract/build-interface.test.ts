@@ -16,6 +16,9 @@ describe('build interface', () => {
     expect(packageJson.scripts['render-diagrams']).toBe('tsx scripts/render-diagrams.ts');
     expect(await readFile(resolve(siteDir, 'scripts/start.ts'), 'utf8')).toContain('preparePublication(projectRoot)');
     expect(await readFile(resolve(siteDir, 'scripts/build.ts'), 'utf8')).toContain('preparePublication(projectRoot)');
+    const preparation = await readFile(resolve(siteDir, 'scripts/prepare-publication.ts'), 'utf8');
+    expect(preparation).toContain("rm(resolve(__dirname, '../.docusaurus'), {recursive: true, force: true})");
+    expect(preparation).toContain("rm(resolve(__dirname, '../node_modules/.cache'), {recursive: true, force: true})");
   });
 
   it('returns non-zero actionable diagnostics for invalid content', () => {

@@ -49,7 +49,10 @@ export interface SourceDocument {
   links: LinkReference[];
   state: SourceState;
   route: string;
-  /** For specs collections: the projected path the page is staged at (see `projectedSpecPath`). */
+  /**
+   * Disposable renderer path. Architecture mirrors projected module containment; Features use
+   * stable feature identity and explicit containment, independent of canonical module/source paths.
+   */
   stagedPath?: string;
   sidebarLabel?: string;
   sidebarPosition?: number;
@@ -67,12 +70,16 @@ export type FeatureLevel = 'feature' | 'subfeature';
 export interface FeaturePageContext {
   featureId?: string;
   moduleId?: string;
+  /** Architecture cross-link for the level at which the feature is specified. */
+  moduleRoute?: string;
   featureLevel?: FeatureLevel;
   parentFeatureId?: string;
   /** The parent feature's abstract landing route. */
   parentFeatureRoute?: string;
   subfeatures?: FeatureRelation[];
   siblings?: FeatureRelation[];
+  /** Adjacent-level refinement targets; relationships, never containment parents. */
+  refinements?: FeatureRelation[];
 }
 
 /** A feature root's abstract.md landing page, paired with design.md. */
@@ -104,6 +111,7 @@ export interface FeatureDesign extends SourceDocument {
   featureId: string;
   kind: 'feature';
   moduleId: string;
+  moduleRoute?: string;
   status: string;
   featureDirectory: string;
   /** The feature landing route, owned by sibling abstract.md. */
@@ -116,6 +124,8 @@ export interface FeatureDesign extends SourceDocument {
   subfeatureIds: string[];
   subfeatures: FeatureRelation[];
   siblings: FeatureRelation[];
+  refinementIds: string[];
+  refinements: FeatureRelation[];
   /** Companion link: the route of the paired abstract landing page. */
   abstractRoute?: string;
   /** Companion link: the route of the paired feature implementation page. */
@@ -236,6 +246,7 @@ export interface ContentPage {
   parentFeatureRoute?: string;
   subfeatures?: FeatureRelation[];
   siblings?: FeatureRelation[];
+  refinements?: FeatureRelation[];
   diagrams?: FeatureDiagram[];
   abstractRoute?: string;
   designRoute?: string;

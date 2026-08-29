@@ -34,6 +34,9 @@ standard error carries actionable diagnostics. All displayed repository paths ar
 ## Guarantees
 
 - Preview and production build use the same source registry and route rules.
+- Preview and production build discard the ignored Docusaurus metadata and bundler caches after
+  materializing the current projections, so a route migration cannot reuse compiled links from an
+  older registry.
 - Preview and production build discover, validate, and deliver the complete declared Archify set
   before registry validation or Docusaurus consumes generated HTML.
 - The build resolves the renderer only from `.agents/skills/archify`, verifies its installer lock and

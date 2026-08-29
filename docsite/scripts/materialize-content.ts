@@ -1,10 +1,10 @@
 import {copyFile, mkdir, rm, writeFile} from 'node:fs/promises';
-import {dirname, relative, resolve} from 'node:path';
+import {dirname, posix, relative, resolve} from 'node:path';
 
 import matter from 'gray-matter';
 
 import {buildRegistry} from '../plugins/concorde-content/registry';
-import type {CollectionId, ContentRegistry, SourceDocument} from '../plugins/concorde-content/types';
+import type {CollectionId, ContentRegistry, FeatureDesign, SourceDocument} from '../plugins/concorde-content/types';
 import {assertValidRegistry} from '../plugins/concorde-content/validation';
 
 const siteDir = resolve(__dirname, '..');
@@ -31,6 +31,20 @@ export function stageFeatureDocument(document: SourceDocument): string {
   });
 }
 
+export function featureCategoryPath(document: FeatureDesign): string {
+  if (!document.stagedPath) throw new Error(`Feature "${document.featureId}" has no semantic staged path.`);
+  return posix.join(posix.dirname(document.stagedPath), '_category_.json');
+}
+
+export function featureCategoryMetadata(document: FeatureDesign): {
+  label: string;
+  link: {type: 'doc'; id: string};
+} {
+  if (!document.stagedPath) throw new Error(`Feature "${document.featureId}" has no semantic staged path.`);
+  const directory = posix.dirname(document.stagedPath);
+  return {label: document.title, link: {type: 'doc', id: posix.join(directory, 'abstract')}};
+}
+
 export async function materializeContent(providedRegistry?: ContentRegistry): Promise<void> {
   const registry = providedRegistry ?? assertValidRegistry(await buildRegistry(projectRoot));
   await rm(generatedContentRoot, {recursive: true, force: true});
@@ -47,6 +61,12 @@ export async function materializeContent(providedRegistry?: ContentRegistry): Pr
     await mkdir(dirname(destination), {recursive: true});
     if (isFeaturePage) {
       await writeFile(destination, stageFeatureDocument(document), 'utf8');
+      if (document.collectionId === 'features') {
+        const feature = document as FeatureDesign;
+        const categoryDestination = resolve(generatedContentRoot, 'features', featureCategoryPath(feature));
+        await mkdir(dirname(categoryDestination), {recursive: true});
+        await writeFile(categoryDestination, `${JSON.stringify(featureCategoryMetadata(feature), null, 2)}\n`, 'utf8');
+      }
     } else {
       await copyFile(document.realPath, destination);
     }

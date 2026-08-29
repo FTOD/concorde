@@ -20,7 +20,8 @@ written; all source, page, exclusion, route, link, and check arrays are determin
 - `generator`: Concorde docsite and Docusaurus version identities; deliberately contains no timestamp.
 - `collections`: logical view definitions, canonical source roots, inclusion patterns, and route bases.
 - `pages`: one record per included source, including hash, route, title, navigation, provenance,
-  optional feature identity/status and parent/sub-feature relationships, and architecture
+  optional feature identity/status, providing-module route, containment relationships, and
+  adjacent-level refinement relationships, plus architecture
   identity metadata and, for a module page, `architectureDiagrams` (source, source hash, kind,
   title, and delivered route of every diagram beneath the module's `architecture/diagrams/`). Relationship summaries contain stable identity, title, source-owned
   outcome, status, and route without copying specification bodies.
@@ -47,5 +48,6 @@ status requires a new schema version. The schema and representative example chan
 
 - The representative example validates against the normative schema.
 - Unit tests validate sorting, relative paths, source hashes, feature conditional fields, authored
-  child order, parent/sibling navigation, and exclusion of parent/child attempts.
+  child order, parent/sibling/refinement navigation, providing-module links, and exclusion of
+  parent/child attempts.
 - Production integration validates the emitted manifest and compares two unchanged builds.

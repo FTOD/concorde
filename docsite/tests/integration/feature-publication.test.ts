@@ -7,9 +7,9 @@ import {buildRegistry} from '../../plugins/concorde-content/registry';
 
 const fixture = resolve(__dirname, '../fixtures/valid-project');
 const prepareRoot = 'specs/001-alpha/subfeatures/001-prepare';
-const prepareLanding = '/features/001-alpha/subfeatures/001-prepare/feature.fixture.alpha.prepare';
-const finishLanding = '/features/001-alpha/subfeatures/002-finish/feature.fixture.alpha.finish';
-const alphaLanding = '/features/001-alpha/feature.fixture.alpha';
+const prepareLanding = '/features/feature.fixture.alpha/feature.fixture.alpha.prepare';
+const finishLanding = '/features/feature.fixture.alpha/feature.fixture.alpha.finish';
+const alphaLanding = '/features/feature.fixture.alpha';
 
 describe('canonical feature publication', () => {
   it('includes permanent abstract.md, design.md, and implementation.md recursively and excludes temporal Markdown', async () => {
@@ -41,31 +41,31 @@ describe('canonical feature publication', () => {
       featureLevel: 'subfeature',
       parentFeatureId: 'feature.fixture.alpha',
       parentFeatureRoute: alphaLanding,
-      designRoute: `/features/001-alpha/subfeatures/001-prepare/design`,
-      implementationRoute: `/features/001-alpha/subfeatures/001-prepare/implementation`,
+      designRoute: `${prepareLanding}/design`,
+      implementationRoute: `${prepareLanding}/implementation`,
       navigation: {section: 'Features', label: 'Prepare Alpha', parentRoute: alphaLanding},
     });
     expect(design).toMatchObject({
       kind: 'feature-design',
-      route: '/features/001-alpha/subfeatures/001-prepare/design',
+      route: `${prepareLanding}/design`,
       featureId: 'feature.fixture.alpha.prepare',
       featureLevel: 'subfeature',
       parentFeatureRoute: alphaLanding,
       abstractRoute: prepareLanding,
-      implementationRoute: '/features/001-alpha/subfeatures/001-prepare/implementation',
+      implementationRoute: `${prepareLanding}/implementation`,
       navigation: {section: 'Features', label: 'Design', parentRoute: alphaLanding},
     });
     expect(implementation).toMatchObject({
       kind: 'feature-implementation',
       title: 'Feature Implementation: Prepare Alpha',
-      route: '/features/001-alpha/subfeatures/001-prepare/implementation',
+      route: `${prepareLanding}/implementation`,
       featureId: 'feature.fixture.alpha.prepare',
       moduleId: 'module.fixture',
       featureLevel: 'subfeature',
       parentFeatureId: 'feature.fixture.alpha',
       parentFeatureRoute: alphaLanding,
       abstractRoute: prepareLanding,
-      designRoute: '/features/001-alpha/subfeatures/001-prepare/design',
+      designRoute: `${prepareLanding}/design`,
       navigation: {section: 'Features', label: 'Implementation', parentRoute: alphaLanding},
     });
     for (const page of [abstract, design, implementation]) {
@@ -103,6 +103,24 @@ describe('canonical feature publication', () => {
     expect(landing?.links).toEqual(expect.arrayContaining([
       {targetSourcePath: `${prepareRoot}/abstract.md`, targetRoute: prepareLanding},
     ]));
+  });
+
+  it('publishes a deeply stored module-level feature as a top-level semantic feature', async () => {
+    const manifest = createManifest(await buildRegistry(fixture));
+    const sourceRoot = 'specs/example/architecture/modules/nested/features/002-beta';
+    const abstract = manifest.pages.find((page) => page.sourcePath === `${sourceRoot}/abstract.md`);
+    const design = manifest.pages.find((page) => page.sourcePath === `${sourceRoot}/design.md`);
+    const implementation = manifest.pages.find((page) => page.sourcePath === `${sourceRoot}/implementation.md`);
+
+    expect(abstract).toMatchObject({
+      kind: 'feature-abstract', featureId: 'feature.fixture.beta', moduleId: 'module.fixture',
+      moduleRoute: '/architecture/example/module.fixture',
+      route: '/features/feature.fixture.beta', navigation: {section: 'Features', label: 'Beta'}, refinements: [],
+    });
+    expect(abstract?.parentFeatureId).toBeUndefined();
+    expect(abstract?.parentFeatureRoute).toBeUndefined();
+    expect(design).toMatchObject({route: '/features/feature.fixture.beta/design', abstractRoute: abstract?.route});
+    expect(implementation).toMatchObject({route: '/features/feature.fixture.beta/implementation', abstractRoute: abstract?.route});
   });
 
   it('publishes the module design reference beside its module page with companion links', async () => {

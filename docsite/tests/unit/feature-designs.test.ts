@@ -14,18 +14,18 @@ describe('feature designs', () => {
       ['feature.fixture.alpha', 'module.fixture', 'Draft', 'specs/001-alpha'],
       ['feature.fixture.alpha.prepare', 'module.fixture', 'Ready', 'specs/001-alpha/subfeatures/001-prepare'],
       ['feature.fixture.alpha.finish', 'module.fixture', 'Planned', 'specs/001-alpha/subfeatures/002-finish'],
-      ['feature.fixture.beta', 'module.fixture', 'Approved', 'specs/nested/002-beta'],
+      ['feature.fixture.beta', 'module.fixture', 'Approved', 'specs/example/architecture/modules/nested/features/002-beta'],
     ]);
     expect(features.map((item) => item.route)).toEqual([
-      '/features/001-alpha/design',
-      '/features/001-alpha/subfeatures/001-prepare/design',
-      '/features/001-alpha/subfeatures/002-finish/design',
-      '/features/nested/002-beta/design',
+      '/features/feature.fixture.alpha/design',
+      '/features/feature.fixture.alpha/feature.fixture.alpha.prepare/design',
+      '/features/feature.fixture.alpha/feature.fixture.alpha.finish/design',
+      '/features/feature.fixture.beta/design',
     ]);
     const parent = features[0];
-    expect(parent.landingRoute).toBe('/features/001-alpha/feature.fixture.alpha');
+    expect(parent.landingRoute).toBe('/features/feature.fixture.alpha');
     expect(parent.abstractRoute).toBe(parent.landingRoute);
-    expect(parent.implementationRoute).toBe('/features/001-alpha/implementation');
+    expect(parent.implementationRoute).toBe('/features/feature.fixture.alpha/implementation');
     expect(parent.subfeatures.map((item) => item.featureId)).toEqual([
       'feature.fixture.alpha.prepare', 'feature.fixture.alpha.finish',
     ]);
@@ -37,11 +37,11 @@ describe('feature designs', () => {
     const registry = await buildRegistry(resolve(__dirname, '../fixtures/valid-project'));
     const features = registry.documents.filter((item): item is FeatureDesign => item.collectionId === 'features');
     expect(features[0].subfeatures.map((item) => item.route)).toEqual([
-      '/features/001-alpha/subfeatures/001-prepare/feature.fixture.alpha.prepare',
-      '/features/001-alpha/subfeatures/002-finish/feature.fixture.alpha.finish',
+      '/features/feature.fixture.alpha/feature.fixture.alpha.prepare',
+      '/features/feature.fixture.alpha/feature.fixture.alpha.finish',
     ]);
     expect(features[1].siblings.map((item) => item.route)).toEqual([
-      '/features/001-alpha/subfeatures/002-finish/feature.fixture.alpha.finish',
+      '/features/feature.fixture.alpha/feature.fixture.alpha.finish',
     ]);
     expect(features[0].subfeatures.map((item) => [item.title, item.outcome, item.status])).toEqual([
       ['Prepare Alpha', 'Alpha inputs are prepared.', 'Ready'],
@@ -51,9 +51,9 @@ describe('feature designs', () => {
 
   it('rejects duplicate feature IDs deterministically', async () => {
     const registry = await buildRegistry(resolve(__dirname, '../fixtures/invalid-projects/duplicate-id'));
-    expect(validateRegistry(registry).map((finding) => finding.ruleId)).toEqual([
-      'feature.id.duplicate', 'feature.id.duplicate',
-    ]);
+    const ruleIds = validateRegistry(registry).map((finding) => finding.ruleId);
+    expect(ruleIds.filter((ruleId) => ruleId === 'feature.id.duplicate')).toHaveLength(2);
+    expect(ruleIds.filter((ruleId) => ruleId === 'content.route.duplicate')).toHaveLength(6);
   });
 
   it('rejects disagreeing parent and child registration', async () => {

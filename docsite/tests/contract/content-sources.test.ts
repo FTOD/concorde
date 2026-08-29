@@ -1,3 +1,4 @@
+import {readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 
 import {formatFinding, sortFindings} from '../../plugins/concorde-content/validation';
@@ -7,6 +8,16 @@ import {discoverDiagramDeclarations} from '../../plugins/concorde-content/diagra
 import type {ValidationFinding} from '../../plugins/concorde-content/types';
 
 describe('content source diagnostics', () => {
+  it('defines independent Architecture and Features projections in content-source contract v8', async () => {
+    const contract = await readFile(resolve(
+      process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts/content-sources.md',
+    ), 'utf8');
+    expect(contract).toContain('# Content Sources Contract v8');
+    expect(contract).toContain('Architecture navigation and routes follow declared module containment.');
+    expect(contract).toContain('Features navigation and routes follow globally unique feature IDs');
+    expect(contract).toContain('never create parent categories or route segments in Features');
+  });
+
   it('formats stable rule, source, location, reason, and remediation lines', () => {
     const finding: ValidationFinding = {
       ruleId: 'feature.id.required',
@@ -104,5 +115,21 @@ describe('content source diagnostics', () => {
     expect(declarations).toHaveLength(8);
     expect(declarations.every((declaration) => declaration.ownerPath.startsWith('specs/'))).toBe(true);
     expect(declarations.every((declaration) => declaration.outputPath.startsWith('generated/'))).toBe(true);
+  });
+
+  it('publishes a real module-level feature without module storage segments in its feature route', async () => {
+    const registry = await buildRegistry(resolve(__dirname, '../../..'));
+    const page = registry.documents.find((document) =>
+      document.sourcePath === 'specs/concorde/architecture/modules/documentation/features/001-publish-project-docsite/abstract.md');
+    expect(page).toMatchObject({
+      route: '/features/feature.documentation.publish-project-docsite',
+      stagedPath: 'feature.documentation.publish-project-docsite/abstract.md',
+      moduleId: 'module.concorde.documentation',
+      moduleRoute: '/architecture/concorde/modules/documentation/module.concorde.documentation',
+      refinements: [expect.objectContaining({
+        featureId: 'feature.concorde.publish-project-docsite',
+        route: '/features/feature.concorde.publish-project-docsite',
+      })],
+    });
   });
 });

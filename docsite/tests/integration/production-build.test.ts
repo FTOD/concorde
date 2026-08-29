@@ -60,7 +60,16 @@ describe('production build', () => {
     const concordeFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.workflow');
     const docsiteFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.publish-project-docsite');
     const selfHostingFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.self-host-framework');
+    const documentationFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) =>
+      page.kind === 'feature-abstract' && page.featureId === 'feature.documentation.publish-project-docsite');
     if (!concordeFeature || !docsiteFeature || !selfHostingFeature) throw new Error('Expected the abstract landing pages of Features 001, 002, and 004 in the build manifest.');
+    expect(documentationFeature?.route).toBe('/features/feature.documentation.publish-project-docsite');
+    for (const page of manifest.pages.filter((candidate: {kind: string}) => candidate.kind.startsWith('feature-'))) {
+      expect(page.route.slice('/features/'.length)).not.toMatch(/(?:^|\/)(?:architecture|modules|features)(?:\/|$)/);
+    }
+    const stagedFeaturePaths = await readdir(resolve(siteDir, '.generated/content/features'), {recursive: true});
+    expect(stagedFeaturePaths).toContain('feature.documentation.publish-project-docsite/_category_.json');
+    expect(stagedFeaturePaths.every((path) => !/(?:^|\/)(?:architecture|modules|features)(?:\/|$)/.test(path))).toBe(true);
     expect(concordeFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
       source: 'specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json',
       role: 'core',
@@ -86,6 +95,10 @@ describe('production build', () => {
     expect(docsiteFeatureHtml).toContain('Feature diagrams');
     expect(docsiteFeatureHtml).toContain('Project Docsite — Publication Invocation');
     expect(docsiteFeatureHtml).toContain('/architecture/project-docsite-publication-flow.html');
+    expect(docsiteFeatureHtml).not.toMatch(/>modules<\/a>/i);
+    const documentationFeatureHtml = await readFile(resolve(buildDir, `${documentationFeature.route.slice(1)}.html`), 'utf8');
+    expect(documentationFeatureHtml).toContain('/architecture/concorde/modules/documentation/module.concorde.documentation');
+    expect(documentationFeatureHtml).toContain('/features/feature.concorde.publish-project-docsite');
     expect(selfHostingFeatureHtml).toContain('Feature diagrams');
     expect(selfHostingFeatureHtml).toContain('Concorde Self-Hosting Components');
     expect(selfHostingFeatureHtml).toContain('/architecture/concorde-self-hosting-components.html');

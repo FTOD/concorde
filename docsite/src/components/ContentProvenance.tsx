@@ -1,3 +1,5 @@
+import Link from '@docusaurus/Link';
+
 import type {ContentPage} from '../../plugins/concorde-content/types';
 
 function kindLabel(page: ContentPage): string {
@@ -18,7 +20,9 @@ export default function ContentProvenance({page}: {page: ContentPage}) {
       <span className="provenance__kind">{kindLabel(page)}</span>
       {page.featureId && <code>{page.featureId}</code>}
       {page.architectureId && <code>{page.architectureId}</code>}
-      {page.moduleId && <span>Owner: <code>{page.moduleId}</code></span>}
+      {page.moduleId && <span>Owner: {page.moduleRoute
+        ? <Link to={page.moduleRoute}><code>{page.moduleId}</code></Link>
+        : <code>{page.moduleId}</code>}</span>}
       {page.parentId && <span>Parent: <code>{page.parentId}</code></span>}
       {page.parentFeatureId && <span>Parent feature: <code>{page.parentFeatureId}</code></span>}
       {page.status && <span className="provenance__status">Status: {page.status}</span>}

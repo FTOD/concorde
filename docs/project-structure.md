@@ -133,8 +133,11 @@ The documentation site reads architecture and feature sources from `specs/` and 
 then promotes successful output. Each module page embeds every diagram beneath its
 `architecture/diagrams/` and links its `design.md` as a separate design-reference page; published
 routes drop the `architecture/` grouping segment (`/architecture/<root>/modules/<child>/…`,
-`/architecture/<root>/contracts/<id>/…`); each feature opens on its abstract page (`/features/<root>`) with
-the design (`…/design`) and implementation (`…/implementation`) as companion pages. Plans,
+`/architecture/<root>/contracts/<id>/…`). Features are a separate semantic projection: a top-level
+feature opens at `/features/<feature-id>`, and an immediate sub-feature opens beneath its explicit
+parent feature route. Module placement and adjacent-level refinement remain metadata and links, so
+architecture/module storage directories never become Features hierarchy nodes. The design
+(`…/design`) and implementation (`…/implementation`) remain companion pages. Plans,
 tasks, checklists, and other attempt artifacts are excluded from the public Features collection.
 
 See the [root architecture](../specs/concorde/module.md) for Concorde's own module hierarchy and

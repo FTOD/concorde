@@ -14,11 +14,13 @@ function featureContext(document: FeaturePageContext) {
   return {
     featureId: document.featureId,
     moduleId: document.moduleId,
+    moduleRoute: document.moduleRoute,
     featureLevel: document.featureLevel,
     parentFeatureId: document.parentFeatureId,
     parentFeatureRoute: document.parentFeatureRoute,
     subfeatures: document.subfeatures,
     siblings: document.siblings,
+    refinements: document.refinements,
   };
 }
 

@@ -1,4 +1,4 @@
-# Published Project Site Contract v3
+# Published Project Site Contract v4
 
 **Contract ID**: `contract.documentation.architecture-site`
 
@@ -26,7 +26,10 @@ JavaScript, assets, a local search index, and `build-manifest.json`.
 | `/` | Project landing page with Architecture, Documentation, and Features entry points and source counts |
 | `/architecture/**` | Architecture module, module design reference, and contract Markdown plus declared embedded views |
 | `/docs/**` | Project documents sourced from `docs/**/*.md` |
-| `/features/**` | Permanent feature pages: abstract landing page, feature `design.md` at `…/design`, and `implementation.md` at `…/implementation` |
+| `/features/<feature-id>` | Top-level feature abstract, derived from stable feature identity rather than its module storage path |
+| `/features/<parent-feature-id>/<sub-feature-id>` | Immediate sub-feature abstract nested only by explicit feature containment |
+| `/features/**/design` | Canonical feature `design.md` companion page |
+| `/features/**/implementation` | Accepted feature `implementation.md` companion page |
 | `/build-manifest.json` | Machine-readable successful-build inventory |
 
 For the Concorde self-hosting site, the Documentation route space includes this maintained baseline:
@@ -54,6 +57,11 @@ Draft status is visible and does not imply approval or implementation agreement.
 - Every eligible valid source has exactly one primary page and navigation entry.
 - Architecture, Documentation, and Features remain distinct navigation sections and share
   project-wide local search.
+- Architecture navigation follows module containment. Features navigation follows stable feature
+  identity and explicit parent/sub-feature containment; architecture/module source wrappers never
+  appear as Features categories or route parents.
+- Feature pages retain their providing module and refinement relationships as metadata and links
+  without treating those relationships as feature containment.
 - Delivered Archify HTML is sandboxed and paired with accessible, searchable architecture or feature
   Markdown; feature diagrams are embedded automatically from `design.md` declarations.
 - Cross-collection source links resolve to the corresponding site pages with fragments preserved.
@@ -73,17 +81,21 @@ build interface and the prior successful output remains untouched.
 
 ## Compatibility
 
-The three top-level route spaces remain stable within published-site contract version 3; the
-manifest schema version is owned by the build-manifest contract (schema version 5). The named
+The three top-level route spaces remain stable within published-site contract version 4; the
+manifest schema version is owned by the build-manifest contract (schema version 8). The named
 self-hosting Documentation baseline adds compatible pages within the
-existing `/docs` route space and does not change the representation or manifest schema. Source
-renames may change their derived routes unless a later redirect feature is specified. Adding new
-content pages is compatible; changing a route base or removing provenance is breaking.
+existing `/docs` route space and does not change the representation or manifest schema. Version 4
+replaces source/module-path-derived feature deep routes with stable-ID and explicit-containment
+routes; this is a breaking deep-link migration inside the stable `/features` route base. Source
+renames no longer change feature routes when stable IDs and containment remain unchanged. Adding new
+content pages is compatible; changing a route base, route identity semantics, or provenance is
+breaking.
 
 ## Evidence
 
 - Production build route-inventory test.
 - Navigation completeness and search smoke tests.
+- Feature hierarchy tests covering root, module-level, and explicitly contained feature sources.
 - Source-provenance component tests.
 - Cross-collection link fixtures.
 - Failed-candidate preservation test.

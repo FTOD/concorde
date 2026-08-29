@@ -1,4 +1,4 @@
-# Content Sources Contract v7
+# Content Sources Contract v8
 
 **Contract ID**: `contract.documentation.project-content`
 
@@ -37,6 +37,19 @@ Architecture, feature abstracts, feature designs, and feature implementations ar
 projections. A `design.md` beside `module.md` is a module design reference; otherwise a canonical
 feature `design.md` owns behavior. Missing feature companions and legacy names are errors.
 
+## Projection Semantics
+
+Architecture and Features are independent semantic projections of the same recursive `specs/`
+packages:
+
+- Architecture navigation and routes follow declared module containment.
+- Features navigation and routes follow globally unique feature IDs and explicit
+  parent/sub-feature containment.
+- A feature's module placement and adjacent-level `refines` relationships remain metadata and
+  cross-links. They never create parent categories or route segments in Features.
+- Source-directory wrappers such as `architecture/`, `modules/`, and module-local `features/` remain
+  canonical storage facts and provenance, not public Features hierarchy nodes.
+
 ## Field Semantics
 
 ### Project Documentation
@@ -63,6 +76,9 @@ feature `design.md` owns behavior. Missing feature companions and legacy names a
 - `parent_feature`: required on an immediate sub-feature and absent on a top-level feature. The child
   inherits its parent's module, cannot register children, and owns one non-empty `## Outcome` used in
   concise navigation summaries.
+- Public route: derived deterministically from the stable feature ID and, for a sub-feature, its
+  explicit containment parent. The route does not depend on module storage paths or numeric directory
+  prefixes.
 - first level-one heading: required feature title.
 - `Status` metadata line: required lifecycle status and displayed without changing its meaning.
 - `diagrams`: optional list of feature-owned Archify declarations. Every source must be directly
@@ -128,6 +144,9 @@ feature `design.md` owns behavior. Missing feature companions and legacy names a
 - Providers MUST keep parent registration and child back-references bidirectionally consistent.
   Consumers publish ordered child summaries on the parent and parent/sibling links on the child,
   without copying requirements or publishing any `attempt/` source.
+- Consumers MUST stage and navigate feature pages by stable identity and explicit feature
+  containment, MUST NOT expose architecture/module storage wrappers as Features categories, and MUST
+  retain module ownership and refinement as metadata and links.
 - The Concorde self-hosting provider MUST keep the eight-page framework guide baseline discoverable,
   keep the landing page linked to all six learning guides, and retain resolvable canonical-authority
   links from guides that summarize normative behavior.
@@ -143,10 +162,12 @@ candidate publication.
 
 ## Compatibility
 
-This is contract version 7. It publishes `abstract.md` as `feature-abstract`, feature `design.md` as
+This is contract version 8. It publishes `abstract.md` as `feature-abstract`, feature `design.md` as
 `feature-design` at `/design`, and `implementation.md` as `feature-implementation` at
-`/implementation`, while excluding `attempt/**`; it matches Build Manifest schema version 7.
-Earlier versions used the former filenames and route meanings. Version 4 moved diagram delivery from a
+`/implementation`, while excluding `attempt/**`; it matches Build Manifest schema version 8.
+Version 8 replaces module-path-derived feature routes and navigation with stable feature identity and
+explicit containment; this is a breaking deep-route migration while `/features` remains stable.
+Earlier versions used the former filenames, route meanings, and source-shaped Features hierarchy. Version 4 moved diagram delivery from a
 manually prepared prerequisite into preview/production publication. Adding optional metadata or more project
 documents is backward compatible. Changing source roots, eligibility globs, required fields, route
 bases, path semantics, or exclusion meaning requires a new contract version and a route/content
@@ -155,6 +176,8 @@ migration decision.
 ## Evidence
 
 - Contract fixtures for valid documents and feature specifications.
+- Semantic projection fixtures covering root features, module-level features, and immediate
+  sub-features without architecture/module categories in Features.
 - Negative fixtures for every failure class.
 - Source-immutability integration test around validation, preview setup, and production build.
 - Manifest completeness comparison against the discovered source inventory.

@@ -150,3 +150,130 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
   sources, or let the docsite publish feature contracts and the project log as repository assets.
 - **Status**: open
 
+### R-008 · The Documentation refinement still couples both published hierarchies
+
+- **Phase**: plan
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.publish-project-docsite
+- **Kind**: specification
+- **Concerns**: feature.documentation.publish-project-docsite
+- **Expected**: The Documentation refinement agrees with root Feature 002 that Architecture follows
+  module containment while Features follows only feature identity and explicit feature containment.
+- **Observed**: FR-DOC-003 still requires both views to preserve the same module/feature hierarchy
+  expressed by source paths and IDs, which would retain module-storage categories in Features.
+- **Effect**: deferred
+- **Action**: Implemented the maintainer-approved root Feature 002 delta without editing the adjacent
+  feature's durable sources; the refinement requires its own later specification review.
+- **Improvement**: Revise FR-DOC-003 through the Documentation feature's specify lifecycle so it
+  requires independent semantic projections from the shared `specs/` packages.
+- **Status**: open
+
+### R-009 · The published-site contract named an obsolete manifest schema
+
+- **Phase**: plan
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.publish-project-docsite
+- **Kind**: specification
+- **Concerns**: specs/concorde/features/002-create-project-docsite/contracts/published-site.md
+- **Expected**: The published-site compatibility section points to the current manifest schema owned
+  by `contract.documentation.build-manifest`.
+- **Observed**: It named schema version 5 while the build-manifest contract, schema, and implementation
+  use schema version 8.
+- **Effect**: worked-around
+- **Action**: Corrected the selected feature contract to schema version 8 during Phase 1 contract
+  design and included contract validation in the attempt evidence.
+- **Improvement**: Assert cross-contract version references in the docsite contract suite.
+- **Status**: open
+- **Occurrences**:
+  - implement 2026-08-29 feature.concorde.publish-project-docsite — added the cross-contract
+    assertion; its first wording expected a capitalized phrase rather than the contract's exact
+    compatibility sentence, then passed against the actual schema-v8 reference.
+
+### R-010 · Duplicate feature IDs now collide at every companion route
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.publish-project-docsite
+- **Kind**: implementation
+- **Concerns**: docsite/tests/unit/feature-designs.test.ts
+- **Expected**: The duplicate-ID fixture emits the two existing `feature.id.duplicate` findings.
+- **Observed**: Stable-ID-derived routing also emits six deterministic `content.route.duplicate`
+  findings for the two features' abstract, design, and implementation pages.
+- **Effect**: worked-around
+- **Action**: Kept both actionable validation classes and updated the test to assert two identity and
+  six paired-page route findings explicitly.
+- **Improvement**: If diagnostic noise becomes a usability problem, group companion route collisions
+  beneath the primary duplicate feature-ID finding without weakening route validation.
+- **Status**: open
+
+### R-011 · Docusaurus reused compiled links from the old feature routes
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.publish-project-docsite
+- **Kind**: tooling
+- **Concerns**: docsite/scripts/prepare-publication.ts
+- **Expected**: Preview and production render the freshly materialized semantic feature routes and
+  rewritten cross-collection links.
+- **Observed**: The first full production test reused `.docusaurus` cache entries compiled against
+  the former source-path routes and failed with broken links to `/features/concorde/features/...`.
+- **Effect**: worked-around
+- **Action**: Made shared publication preparation remove the ignored `.docusaurus` cache after
+  materialization, before either preview or production invokes Docusaurus.
+- **Improvement**: Keep renderer caches inside the publication freshness boundary whenever route or
+  content identity is derived from a generated registry.
+- **Status**: open
+- **Occurrences**:
+  - implement 2026-08-29 feature.concorde.publish-project-docsite — clearing `.docusaurus` alone did
+    not remove compiled Markdown links; the repeated full build identified `node_modules/.cache` as
+    the persistent bundler cache, so shared preparation now clears both disposable locations.
+
+### R-012 · The first final digest command used a root-relative path from docsite
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.publish-project-docsite
+- **Kind**: tooling
+- **Concerns**: specs/concorde/features/002-create-project-docsite/implementation.md
+- **Expected**: The final digest check proves the accepted implementation remained byte-identical.
+- **Observed**: The first `sha256sum` ran from `docsite/` with a repository-root-relative feature path
+  and reported that path missing after successfully hashing the generated diagram.
+- **Effect**: worked-around
+- **Action**: Reran the digest check from the repository root and confirmed the original
+  `418a774d…c7b` implementation digest.
+- **Improvement**: Run cross-package validation commands from the repository root when their evidence
+  spans `docsite/`, `generated/`, and `specs/`.
+- **Status**: open
+
+### R-013 · Refinement links observed routes before route assignment completed
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.publish-project-docsite
+- **Kind**: implementation
+- **Concerns**: docsite/plugins/concorde-content/registry.ts
+- **Expected**: A module-level feature's `refines` link targets the finalized stable-ID route of the
+  root feature it refines.
+- **Observed**: The first relationship pass assigned and consumed routes in source order, so the
+  Documentation feature captured Feature 002's old parsed source-path route.
+- **Effect**: worked-around
+- **Action**: Split projection into two deterministic passes: assign every feature route first, then
+  derive refinement relationship summaries from the finalized registry.
+- **Improvement**: Resolve graph node identities before projecting any edge that embeds node routes.
+- **Status**: open
+
+### R-014 · Refinement summaries were absent from the strict manifest schema
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.publish-project-docsite
+- **Kind**: implementation
+- **Concerns**: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json
+- **Expected**: The generated manifest validates after feature pages retain refinement cross-links.
+- **Observed**: Schema v8 uses `additionalProperties: false` and did not declare the compatible
+  optional `refinements` relationship array, so fixture and production manifests were rejected.
+- **Effect**: worked-around
+- **Action**: Added optional `refinements` using the existing `featureRelation` shape, updated the
+  contract semantics and example, and retained schema version 8 under its additive-field rule.
+- **Improvement**: Update strict schemas in the same task that adds shared page-projection fields.
+- **Status**: open

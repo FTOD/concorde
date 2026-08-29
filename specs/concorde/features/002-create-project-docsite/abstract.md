@@ -25,7 +25,7 @@ specifications alone.
 |---|---|---|
 | Architecture | `specs/**/module.md`, its sibling `design.md`, and `specs/**/architecture/contracts/**/contract.md` | The maintained hierarchy with stable ID, kind, owning module or parent, and provenance; every diagram beneath a module's `architecture/diagrams/` is delivered and embedded on the module page in a sandbox beside a standalone link. |
 | Documentation | every eligible Markdown file recursively under `docs/` | The authored hierarchy preserved, including the framework guides and a landing page with a recommended reading path. |
-| Features | the canonical `design.md` of every feature directory under `specs/` | Each feature by title, stable ID, and lifecycle status, grouped with its permanent design; drafts stay visible as drafts. |
+| Features | the canonical `abstract.md`, `design.md`, and `implementation.md` of every feature directory under `specs/` | A semantic feature hierarchy derived from stable feature identity and explicit parent/sub-feature containment; module placement and refinement remain metadata and links, never navigation parents; drafts stay visible as drafts. |
 
 **What a maintainer can do.**
 
@@ -86,11 +86,14 @@ specs/**      ─┴─▶ source registry ──▶ diagram delivery ──▶ 
    the disposable delivery tree.
 3. **Register** the sources: classify each file into its collection, derive its route, extract its
    identity, and validate links and metadata.
-4. **Materialize** the Architecture and Features projections and build the site with Docusaurus,
-   including search and the deterministic manifest.
-5. **Validate the candidate** and promote it atomically; any failure preserves the last successful
+4. **Project independently**: derive Architecture navigation from module containment and Features
+   navigation and routes from stable feature identity plus explicit feature containment, regardless
+   of their shared physical placement under `specs/`.
+5. **Materialize** the independent Architecture and Features projections and build the site with
+   Docusaurus, including search and the deterministic manifest.
+6. **Validate the candidate** and promote it atomically; any failure preserves the last successful
    output and names the responsible source.
-6. **Browse**: the visitor reaches all three families from the landing page, follows provenance back
+7. **Browse**: the visitor reaches all three families from the landing page, follows provenance back
    to the maintained file, and edits meaning there — never in a generated page.
 
 **Rules the implementation must keep**
@@ -105,9 +108,11 @@ specs/**      ─┴─▶ source registry ──▶ diagram delivery ──▶ 
   and other projections are disposable, and readers edit meaning only in maintained sources
   (FR-008, FR-021, FR-026).
 - The landing page offers distinct Architecture, Documentation, and Features entry points;
-  navigation preserves the maintained hierarchies and exposes title, stable ID, kind, status, and
-  provenance, and drafts remain discoverable with their recorded status (FR-009, FR-010, FR-011,
-  FR-018, FR-028).
+  Architecture follows module containment, Features follows only feature identity and explicit
+  parent/sub-feature containment, and raw architecture/module storage segments never become feature
+  categories or route parents. Providing modules and refinement relationships remain visible as
+  metadata and links; titles, stable IDs, kinds, statuses, provenance, and drafts remain available
+  (FR-009, FR-010, FR-011, FR-018, FR-028, FR-048, FR-049, FR-050).
 - Every page identifies its source path and kind, supported relative links resolve across the three
   families with a path back to the source, discovery spans the whole project, and one reading
   experience applies to all collections (FR-013, FR-014, FR-015, FR-016, FR-022).
@@ -137,7 +142,7 @@ specs/**      ─┴─▶ source registry ──▶ diagram delivery ──▶ 
 ## Read Next
 
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): five user stories,
-  FR-001 to FR-047, and the measurable outcomes.
+  FR-001 to FR-050, and the measurable outcomes.
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (accepted
   realization and implementation detail).
 - **The contracts** — `contracts/content-sources.md`,

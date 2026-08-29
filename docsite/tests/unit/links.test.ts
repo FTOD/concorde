@@ -29,7 +29,9 @@ describe('module diagram links', () => {
     expect(byPath('specs/concorde/architecture/contracts/concorde-workflow/contract.md').route)
       .toBe('/architecture/concorde/contracts/concorde-workflow/contract.concorde.workflow');
     expect(byPath('specs/concorde/architecture/modules/documentation/features/001-publish-project-docsite/abstract.md').route)
-      .toBe('/features/concorde/modules/documentation/features/001-publish-project-docsite/feature.documentation.publish-project-docsite');
+      .toBe('/features/feature.documentation.publish-project-docsite');
+    expect(byPath('specs/concorde/architecture/modules/documentation/features/001-publish-project-docsite/abstract.md').stagedPath)
+      .toBe('feature.documentation.publish-project-docsite/abstract.md');
     expect(byPath('specs/concorde/architecture/modules/documentation/module.md').stagedPath)
       .toBe('concorde/modules/documentation/module.md');
     expect(resolveContentLink('architecture/modules/documentation/module.md', byPath('specs/concorde/module.md'), registry).reference.targetRoute)
@@ -43,9 +45,9 @@ describe('repository-relative links', () => {
     const home = registry.documents.find((item) => item.sourcePath === 'docs/index.md')!;
     expect(resolveContentLink('guide/intro.md', home, registry).reference.targetRoute).toBe('/docs/guide/intro');
     expect(resolveContentLink('../specs/001-alpha/design.md#requirements', home, registry).reference.targetRoute)
-      .toBe('/features/001-alpha/design#requirements');
+      .toBe('/features/feature.fixture.alpha/design#requirements');
     expect(resolveContentLink('../specs/001-alpha/abstract.md', home, registry).reference.targetRoute)
-      .toBe('/features/001-alpha/feature.fixture.alpha');
+      .toBe('/features/feature.fixture.alpha');
   });
 
   it('resolves the three feature pages to each other as included sources', async () => {
@@ -55,15 +57,15 @@ describe('repository-relative links', () => {
     const design = byPath('specs/001-alpha/subfeatures/001-prepare/design.md');
     const implementation = byPath('specs/001-alpha/subfeatures/001-prepare/implementation.md');
     expect(resolveContentLink('design.md', abstract, registry).reference)
-      .toMatchObject({kind: 'included-source', targetRoute: '/features/001-alpha/subfeatures/001-prepare/design'});
+      .toMatchObject({kind: 'included-source', targetRoute: '/features/feature.fixture.alpha/feature.fixture.alpha.prepare/design'});
     expect(resolveContentLink('implementation.md', abstract, registry).reference)
-      .toMatchObject({kind: 'included-source', targetRoute: '/features/001-alpha/subfeatures/001-prepare/implementation'});
+      .toMatchObject({kind: 'included-source', targetRoute: '/features/feature.fixture.alpha/feature.fixture.alpha.prepare/implementation'});
     expect(resolveContentLink('abstract.md', design, registry).reference)
-      .toMatchObject({kind: 'included-source', targetRoute: '/features/001-alpha/subfeatures/001-prepare/feature.fixture.alpha.prepare'});
+      .toMatchObject({kind: 'included-source', targetRoute: '/features/feature.fixture.alpha/feature.fixture.alpha.prepare'});
     expect(resolveContentLink('abstract.md', implementation, registry).reference)
-      .toMatchObject({kind: 'included-source', targetRoute: '/features/001-alpha/subfeatures/001-prepare/feature.fixture.alpha.prepare'});
+      .toMatchObject({kind: 'included-source', targetRoute: '/features/feature.fixture.alpha/feature.fixture.alpha.prepare'});
     expect(resolveContentLink('../../abstract.md', abstract, registry).reference)
-      .toMatchObject({kind: 'included-source', targetRoute: '/features/001-alpha/feature.fixture.alpha'});
+      .toMatchObject({kind: 'included-source', targetRoute: '/features/feature.fixture.alpha'});
     expect(resolveContentLink('../002-finish/abstract.md', abstract, registry).finding).toBeUndefined();
   });
 
