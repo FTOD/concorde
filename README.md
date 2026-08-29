@@ -7,7 +7,7 @@ evidence, so that a maintainer can understand any level of the project in minute
 
 ## Key features
 
-- **Zoomable architecture** — start at the project, understand one module at a time, and descend only
+- **Hierarchical zoomable architecture** — start at the project, understand one module at a time, and descend only
   when the question needs more detail.
 - **Architecture-aware specifications** — place each feature where all participating modules are
   visible, with stable IDs and explicit refinement relationships.
@@ -75,30 +75,6 @@ and the full [Feature 003 setup specification](specs/concorde/features/003-insta
 The project docsite build turns module-owned and feature-declared diagram sources into interactive
 standalone views.
 
-## Project status
-
-Feature 001 defines the Concorde architecture-aware development workflow. Its root initialization,
-Feature Workspace Protocol v8 resolution of the standard Spec Kit selection, bounded context,
-deterministic validation, approval-gated implementation acceptance, and the read-only `ask` procedure are
-implemented and covered by the automated suites, and this repository itself lives under the
-three-tier feature document model (`abstract.md`, `design.md`, `implementation.md`) and the module summary/design
-reference pair that the feature specifies. Feature 002's docsite publication pipeline, Feature 003's
-native bundle, preset composition, five-surface extension, and release tooling, and Feature 004's
-review-first self-hosting are implemented and tested. Feature 005 adds the project-wide reflection
-log (`specs/concorde/reflections.md`): every phase after specification records the difficulties it
-meets there, attributed to the feature being worked on and naming the source concerned, and
-acceptance cites a feature's open entries; its runtime, guidance, and evidence are in progress in this
-checkout. Timed human comprehension pilots and browser-based diagram review remain pending and are
-kept separate from automated evidence.
-
-The newest published release is `v0.1.0`, which predates the module design reference, the feature
-abstract, and the removal of the `feature.create`/`feature.select` commands. This README and the guides
-under `docs/` describe the `0.4.0` sources in this checkout; until `0.4.0` is published, the local
-build path below is the way to use them.
-
-Concorde can also install the current checkout's framework sources into this repository for
-development self-application. That review-first path is deliberately separate from the release
-bundle used by other projects; see [Developing Concorde with Concorde](docs/self-hosting.md).
 
 ## Quick start: install Concorde as a Spec Kit bundle
 
@@ -320,3 +296,29 @@ production Docusaurus build. Start with the maintained [documentation overview](
 - [Releasing Concorde](docs/releasing.md)
 - [Development self-hosting specification](specs/concorde/features/004-self-host-concorde/design.md)
 - [Workflow reflections specification](specs/concorde/features/005-record-workflow-reflections/design.md); the maintained log is `specs/concorde/reflections.md`
+
+
+## Project status
+
+Feature 001 defines the Concorde architecture-aware development workflow. Its root initialization,
+Feature Workspace Protocol v8 resolution of the standard Spec Kit selection, bounded context,
+deterministic validation, approval-gated implementation acceptance, and the read-only `ask` procedure are
+implemented and covered by the automated suites, and this repository itself lives under the
+three-tier feature document model (`abstract.md`, `design.md`, `implementation.md`) and the module summary/design
+reference pair that the feature specifies. Feature 002's docsite publication pipeline, Feature 003's
+native bundle, preset composition, five-surface extension, and release tooling, and Feature 004's
+review-first self-hosting are implemented and tested. Feature 005 adds the project-wide reflection
+log (`specs/concorde/reflections.md`): every phase after specification records the difficulties it
+meets there, attributed to the feature being worked on and naming the source concerned, and
+acceptance cites a feature's open entries; its runtime, guidance, and evidence are in progress in this
+checkout. Timed human comprehension pilots and browser-based diagram review remain pending and are
+kept separate from automated evidence.
+
+The newest published release is `v0.1.0`, which predates the module design reference, the feature
+abstract, and the removal of the `feature.create`/`feature.select` commands. This README and the guides
+under `docs/` describe the `0.4.0` sources in this checkout; until `0.4.0` is published, the local
+build path below is the way to use them.
+
+Concorde can also install the current checkout's framework sources into this repository for
+development self-application. That review-first path is deliberately separate from the release
+bundle used by other projects; see [Developing Concorde with Concorde](docs/self-hosting.md).
