@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Concorde — Root Features and Invocation",
+    "title": "Concorde — Skills, Scripts, and Workspace Files",
     "output": "../../../../generated/architecture/concorde-root.html",
     "quality_profile": "showcase",
     "viewBox": [
@@ -18,10 +18,11 @@
           "specKit",
           "agentHost",
           "concordeWorkflowFeature",
-          "integration",
-          "architectureCore"
+          "skills",
+          "scripts",
+          "workspaceFiles"
         ],
-        "note": "Normal Spec Kit phases and Concorde commands meet at the Concorde workflow, which selects a workspace and retrieves bounded architecture."
+        "note": "A skill guides the phase, runs Scripts for deterministic work, and names every Workspace File it reads or writes."
       },
       {
         "id": "scenario-concorde-review-implement-and-reconcile",
@@ -31,11 +32,12 @@
           "specKit",
           "agentHost",
           "concordeWorkflowFeature",
-          "integration",
-          "architectureCore",
+          "skills",
+          "scripts",
+          "workspaceFiles",
           "documentation"
         ],
-        "note": "Plan and implement through Spec Kit; use agent commands for bounded context and validation; publish validated architecture for review."
+        "note": "Skills guide authoring; Scripts validate and accept; Workspace Files preserve durable intent and temporal attempt memory."
       },
       {
         "id": "inspect-install-and-verify-concorde",
@@ -45,10 +47,10 @@
           "specKit",
           "installFeature",
           "distribution",
-          "integration",
+          "skills",
           "agentHost"
         ],
-        "note": "Use Spec Kit's bundle lifecycle; Distribution packages Concorde and Integration registers its commands."
+        "note": "Use Spec Kit's bundle lifecycle; Distribution packages Concorde and Skills materializes its commands."
       },
       {
         "id": "manage-concorde-installation",
@@ -58,9 +60,9 @@
           "specKit",
           "installFeature",
           "distribution",
-          "integration"
+          "skills"
         ],
-        "note": "Spec Kit previews updates and removal while Distribution preserves provenance and Integration supplies independently packaged components."
+        "note": "Spec Kit previews updates and removal while Distribution preserves provenance and Skills supplies independently packaged components."
       },
       {
         "id": "publish-architecture",
@@ -69,7 +71,7 @@
           "maintainer",
           "publishFeature",
           "documentation",
-          "architectureCore",
+          "workspaceFiles",
           "specKit"
         ],
         "note": "Documentation projects validated architecture, feature specifications, and accepted realizations into one site."
@@ -210,11 +212,11 @@
       ]
     },
     {
-      "id": "integration",
-      "tag": "module.concorde.spec-kit-integration",
-      "type": "backend",
-      "label": "Spec Kit Integration",
-      "sublabel": "Workspace + command composition",
+      "id": "skills",
+      "tag": "module.concorde.skills",
+      "type": "frontend",
+      "label": "Skills",
+      "sublabel": "Only feature-work interface",
       "pos": [
         1070,
         220
@@ -225,14 +227,29 @@
       ]
     },
     {
-      "id": "architectureCore",
-      "tag": "module.concorde.architecture-core",
+      "id": "scripts",
+      "tag": "module.concorde.scripts",
       "type": "backend",
-      "label": "Architecture Core",
-      "sublabel": "Model, context, validation",
+      "label": "Scripts",
+      "sublabel": "Routing + deterministic operations",
       "pos": [
         1070,
         400
+      ],
+      "size": [
+        210,
+        78
+      ]
+    },
+    {
+      "id": "workspaceFiles",
+      "tag": "module.concorde.workspace-files",
+      "type": "database",
+      "label": "Workspace Files",
+      "sublabel": "Durable specs + temporal attempts",
+      "pos": [
+        1070,
+        540
       ],
       "size": [
         210,
@@ -266,8 +283,9 @@
         "reflectionsFeature",
         "publishFeature",
         "distribution",
-        "integration",
-        "architectureCore",
+        "skills",
+        "scripts",
+        "workspaceFiles",
         "documentation"
       ],
       "pad": 34
@@ -300,7 +318,7 @@
     },
     {
       "id": "contract_distribution_component-packages",
-      "from": "integration",
+      "from": "skills",
       "to": "distribution",
       "label": "preset + extension packages"
     },
@@ -315,9 +333,9 @@
       ]
     },
     {
-      "id": "contract_integration_agent-skills__self-hosting",
+      "id": "contract_skills_agent-surface__self-hosting",
       "from": "selfHostFeature",
-      "to": "integration",
+      "to": "skills",
       "label": "materialize + verify",
       "labelAt": [
         1080,
@@ -326,9 +344,9 @@
       "variant": "security"
     },
     {
-      "id": "contract_integration_agent-skills",
+      "id": "contract_skills_agent-surface",
       "from": "installFeature",
-      "to": "integration",
+      "to": "skills",
       "label": "compose overrides + commands",
       "variant": "emphasis"
     },
@@ -363,16 +381,53 @@
       "variant": "emphasis"
     },
     {
-      "id": "contract_integration_feature-workspace",
+      "id": "contract_skills_agent-surface__workflow",
       "from": "concordeWorkflowFeature",
-      "to": "integration",
+      "to": "skills",
       "label": "workspace + phase routing"
     },
     {
-      "id": "contract_core_architecture-services",
-      "from": "concordeWorkflowFeature",
-      "to": "architectureCore",
-      "label": "bounded architecture services",
+      "id": "contract_skills_script-operations",
+      "from": "skills",
+      "to": "scripts",
+      "label": "run deterministic operation",
+      "labelAt": [
+        1175,
+        312
+      ],
+      "variant": "emphasis"
+    },
+    {
+      "id": "contract_skills_workspace-files",
+      "from": "skills",
+      "to": "workspaceFiles",
+      "label": "read / write named files",
+      "labelAt": [
+        1330,
+        492
+      ],
+      "fromSide": "right",
+      "toSide": "right",
+      "via": [
+        [
+          1330,
+          259
+        ],
+        [
+          1330,
+          579
+        ]
+      ]
+    },
+    {
+      "id": "contract_scripts_workspace-files",
+      "from": "scripts",
+      "to": "workspaceFiles",
+      "label": "resolve · propose · validate",
+      "labelAt": [
+        1175,
+        492
+      ],
       "variant": "emphasis"
     },
     {
@@ -394,26 +449,10 @@
       ]
     },
     {
-      "id": "contract_core_architecture-services__reflections",
+      "id": "contract_workspace-files_records__reflections",
       "from": "reflectionsFeature",
-      "to": "architectureCore",
-      "label": "shape rule · open count · citation gate",
-      "fromSide": "right",
-      "toSide": "bottom",
-      "via": [
-        [
-          1120,
-          543
-        ],
-        [
-          1175,
-          543
-        ]
-      ],
-      "labelAt": [
-        1000,
-        525
-      ]
+      "to": "workspaceFiles",
+      "label": "append durable reflection"
     },
     {
       "id": "contract_documentation_architecture-site__maintainer",
@@ -446,13 +485,13 @@
       "variant": "emphasis"
     },
     {
-      "id": "contract_documentation_project-content__core",
-      "from": "architectureCore",
+      "id": "contract_documentation_project-content__workspace-files",
+      "from": "workspaceFiles",
       "to": "documentation",
-      "label": "validated architecture",
+      "label": "validated durable sources",
       "labelAt": [
-        1230,
-        580
+        1175,
+        632
       ]
     }
   ],
@@ -470,12 +509,12 @@
     },
     {
       "dot": "emerald",
-      "title": "How Concorde is invoked",
+      "title": "Primary interaction",
       "items": [
-        "Spec Kit owns bundle operations and the normal feature phases",
-        "The active integration presents nine composed lifecycle surfaces plus five Concorde surfaces",
-        "Four Concorde operations use the runtime; ask is cited and read-only",
-        "Documentation build and browse operations invoke the publication feature"
+        "Maintainers start feature work through Skills",
+        "Skills invoke Scripts only for routing or deterministic behavior",
+        "Skills and Scripts operate on named Workspace Files",
+        "Durable files live outside attempt; temporal memory lives inside attempt"
       ]
     },
     {

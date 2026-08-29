@@ -2,7 +2,7 @@
 
 **Profile ID**: `profile.concorde.architecture-sources.v4`
 
-**Governing boundary contract**: `contract.core.architecture-services`. This document is the
+**Governing boundary contract**: `contract.scripts.operations`. This document is the
 normative maintained-source representation used by that service, not an additional module boundary.
 
 **Representation**: UTF-8 Markdown with constrained YAML front matter and UTF-8 JSON
@@ -436,7 +436,7 @@ feature-workspace layout, selected-root safety, durable/temporal phase paths, cu
 definition/example resolution, scenario boundary contract references, explicit evidence references,
 and generated-output freshness through the responsible deterministic adapter. Unsupported custom
 formats are reported as unsupported rather than treated as conforming. Renderer and publication
-validators retain ownership of their formats; Architecture Core normalizes their findings without
+validators retain ownership of their formats; Scripts normalizes their findings without
 reimplementing them.
 
 ## Compatibility

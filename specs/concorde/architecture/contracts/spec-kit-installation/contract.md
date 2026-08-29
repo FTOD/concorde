@@ -42,8 +42,8 @@ The bundle is a recipe that pins one independently packaged preset and extension
 those packages. Spec Kit applies the preset through template and command resolution, materializes the
 winning normal-command layers, and registers the extension's Concorde-specific commands through the
 active coding-agent integration. None of those setup roles owns Feature 001's Concorde workflow
-semantics; Architecture Core begins handling project architecture only after setup activates the
-installed command surfaces.
+semantics. Setup materializes Skills as the user-facing surface and installs their supporting
+Scripts. Those paths operate on Workspace Files only after the command surfaces are active.
 
 For development self-hosting, the accepted local preset, extension, and bundle source state replaces
 a published archive as the expected component input. The same component roles, compatibility,

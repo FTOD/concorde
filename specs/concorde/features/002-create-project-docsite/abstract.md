@@ -58,7 +58,7 @@ presented as feature specifications.
 
 This feature declares no core diagram of its own: the root level view
 <a href="/architecture/concorde-root.html">Concorde root</a> (maintained source
-`specs/concorde/architecture/diagrams/level-view.json`) already shows Documentation, Architecture Core, Spec Kit
+`specs/concorde/architecture/diagrams/level-view.json`) already shows Documentation, Scripts, Spec Kit
 Integration, the coding agent, and the maintainer at the level where the feature is owned. The
 supplemental <a href="/architecture/project-docsite-publication-flow.html">docsite publication
 flow</a> (maintained source `diagrams/project-docsite-publication-flow.json`) answers only the
@@ -78,7 +78,7 @@ specs/**      ─┘        │                  Archify skill (.agents/skills/a
   behind `contract.documentation.build-interface`, `contract.documentation.build-manifest`, and
   `contract.documentation.architecture-site`.
 - **Root `README.md`, `docs/`, and `specs/`** are the maintained published sources, consumed through
-  `contract.documentation.project-content`; Architecture Core keeps the `specs/` sources valid.
+  `contract.documentation.project-content`; Scripts keeps the `specs/` sources valid.
 - **The Archify renderer**, reached through `contract.documentation.archify-renderer`, owns diagram
   validation and standalone HTML; Docusaurus owns the generated pages, search index, and manifest.
 - **Generated projections** — the delivered `generated/` tree, staged content, the build manifest,

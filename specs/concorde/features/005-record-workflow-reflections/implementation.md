@@ -11,8 +11,8 @@ The feature is realized without a new command surface. Three existing parts carr
 
 | Part | Owner | What it now does |
 |---|---|---|
-| Phase guidance and templates | Spec Kit Integration (`presets/concorde-core`) | A byte-identical **Reflection Recording** block in the five phase instructions after specification (`speckit.plan`, `tasks`, `implement`, `analyze`, `converge`) tells the agent when, where, and how to record; `reflections-template` seeds the log; the plan and tasks append layers name the log as the one maintained file a phase may append to; each completion report ends with `Reflections added: … · open for this feature: N`. |
-| Runtime | Architecture Core (`extensions/concorde/runtime/concorde`) | `reflections.py` is the single parser of the log; `validation/reflections.py` emits `CONCORDE-REFLECT-001..004`; `repository.py` loads `<specification_root>/reflections.md` into `package.auxiliary` (and the digest); `feature_workspace.py` adds `reflections` and `reflections_open` to every workspace result; `context.py` adds `reflections` (path + open count per feature) and `reflections_open` on feature summaries; `implementation_acceptance.py` adds `reflection_summary`, blocks on a malformed log (`CONCORDE-ACCEPT-011`), refuses an uncited open entry (`CONCORDE-ACCEPT-012`), and never writes the log. |
+| Phase guidance and templates | Skills (`presets/concorde-core`) | A byte-identical **Reflection Recording** block in the five phase instructions after specification (`speckit.plan`, `tasks`, `implement`, `analyze`, `converge`) tells the agent when, where, and how to record; `reflections-template` seeds the log; the plan and tasks append layers name the log as the one maintained file a phase may append to; each completion report ends with `Reflections added: … · open for this feature: N`. |
+| Runtime | Scripts (`extensions/concorde/runtime/concorde`) | `reflections.py` is the single parser of the log; `validation/reflections.py` emits `CONCORDE-REFLECT-001..004`; `repository.py` loads `<specification_root>/reflections.md` into `package.auxiliary` (and the digest); `feature_workspace.py` adds `reflections` and `reflections_open` to every workspace result; `context.py` adds `reflections` (path + open count per feature) and `reflections_open` on feature summaries; `implementation_acceptance.py` adds `reflection_summary`, blocks on a malformed log (`CONCORDE-ACCEPT-011`), refuses an uncited open entry (`CONCORDE-ACCEPT-012`), and never writes the log. |
 | Protocol and documentation | Feature 001 contracts, guides, root view | Reflection fields remain additive in Feature Workspace Protocol v8; the root view shows the feature node with two governed crossings; guides and READMEs describe the review loop. |
 
 The log itself, `specs/concorde/reflections.md` for this project, is a maintained source beside the
@@ -21,13 +21,13 @@ phase, never removed, not published (the docsite excludes it as a non-canonical 
 
 ## Module and Feature Collaboration
 
-- **Spec Kit Integration** composes the preset: `reflections-template` (`strategy: replace`, six
+- **Skills** composes the preset: `reflections-template` (`strategy: replace`, six
   templates in total) resolves through `specify preset resolve`; the nine normal command
   replacements keep `workspace.py --phase` as the path authority, so `workspace.reflections` is the
   only way a phase locates the log (FR-003, FR-013). The recording block lives in the five phase
   files at the point where each already says what it may write; `analyze` names the log as its
   single permitted write (see R-006).
-- **Architecture Core** owns every deterministic behavior: parsing, the four shape rules, the
+- **Scripts** owns every deterministic behavior: parsing, the four shape rules, the
   per-feature open count used by context and the adapter, and the acceptance summary and gate.
   All of them read the log through `package.auxiliary`, so a symlinked log is a source error and
   the log is part of `source_digest` and of the acceptance digest (a log edited after a proposal is
@@ -45,8 +45,8 @@ phase, never removed, not published (the docsite excludes it as a non-canonical 
 
 Contracts crossed: `contract.concorde.workflow` (phases and operations into maintained sources),
 `contract.concorde.spec-kit-platform` (host phases), and internally
-`contract.integration.feature-workspace` (Protocol v8 fields) and
-`contract.core.architecture-services` (validation findings, context results).
+`contract.workspace-files.feature-workspace` (Protocol v8 fields) and
+`contract.scripts.operations` (validation findings, context results).
 
 ## Scenario Realization
 
@@ -85,8 +85,8 @@ Contracts crossed: `contract.concorde.workflow` (phases and operations into main
   the schema and always emitted.
 - **Analysis may append to the log and nothing else** (R-006, open) — the one exception to its
   read-only contract, stated in the instruction.
-- **Root view shows two crossings** (R-005, open): agent → feature and feature → Architecture Core;
-  the Spec Kit Integration crossing is not drawable without corridor conflicts; the feature's core
+- **Root view shows two crossings** (R-005, open): agent → feature and feature → Scripts;
+  the Skills crossing is not drawable without corridor conflicts; the feature's core
   diagram shows every part.
 - **Alignment prose describes the end state** (R-003, resolved): the specification says the root
   view shows the feature; pending work is recorded in the log, not in durable prose.
@@ -123,7 +123,7 @@ Contracts crossed: `contract.concorde.workflow` (phases and operations into main
   edit `module.md`; this attempt presented its `module.md` reconciliation as a maintainer-approved
   diff rather than applying it.
 - **R-005** (open, architecture): the root view draws two of the three planned crossings for this
-  feature; the Spec Kit Integration crossing cannot be routed at showcase quality in the current
+  feature; the Skills crossing cannot be routed at showcase quality in the current
   column order.
 - **R-006** (open, specification): `feature.concorde.workflow.execute-and-reconcile` FR-004/SC-002
   still describe analysis as strictly read-only; this feature makes the log its one permitted write.

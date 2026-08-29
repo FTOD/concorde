@@ -29,13 +29,14 @@ Selection remains the standard Spec Kit `.specify/feature.json` pointer (or
 
 ## Module and Feature Collaboration
 
-- `module.concorde.spec-kit-integration` provides Protocol v8, nine selected-workspace command
-  overrides, six templates (`spec`, `abstract`, `implementation`, `reflections`, `plan`, `tasks`),
-  and the extension's five command surfaces.
-- `module.concorde.architecture-core` owns Profile 4 discovery (including every module diagram
-  beneath `architecture/diagrams/`), classification of feature `design.md`
-  versus module `design.md`, bounded context, readiness, validation, and auxiliary discovery of
-  feature abstracts, implementations, and attempt evidence.
+- `module.concorde.skills` owns the nine normal-phase command overrides, six templates (`spec`,
+  `abstract`, `implementation`, `reflections`, `plan`, `tasks`), and the extension's five
+  user-visible command surfaces.
+- `module.concorde.scripts` owns selected-workspace routing, Profile 4 discovery, bounded context,
+  readiness, validation, reflection diagnostics, and implementation-acceptance operations.
+- `module.concorde.workspace-files` owns Protocol v8 paths and lifetimes for the durable feature
+  trio, module summaries and references, selection state, reflections, and temporal `attempt/`
+  evidence.
 - `module.concorde.documentation` publishes Build Manifest v8 collections `architecture`, `docs`,
   `feature-abstracts`, `features`, and `feature-implementations`; routes are the abstract landing page,
   `/design`, and `/implementation`, and `attempt/**` is excluded.

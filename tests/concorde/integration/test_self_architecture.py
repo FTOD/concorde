@@ -17,7 +17,7 @@ class SelfArchitectureTests(unittest.TestCase):
         context = bounded_context(REPOSITORY_ROOT, "module.concorde")
         self.assertEqual(context.status, "success", context.findings)
         projection = context.result["context"]
-        self.assertEqual(len(projection["children"]), 4)
+        self.assertEqual(len(projection["children"]), 5)
         self.assertTrue(all("contracts" in child for child in projection["children"]))
         participants = {
             participant
@@ -34,7 +34,8 @@ class SelfArchitectureTests(unittest.TestCase):
         self.assertNotIn("feature.documentation.publish-project-docsite", repr(projection["children"]))
         refinements = {(item["from"], item["to"]) for item in projection["refinement_links"]}
         self.assertIn(("feature.distribution.package-concorde-bundle", "feature.concorde.install-with-spec-kit"), refinements)
-        self.assertIn(("feature.architecture-core.manage-bounded-sources", "feature.concorde.workflow"), refinements)
+        self.assertIn(("feature.scripts.run-workflow-operations", "feature.concorde.workflow"), refinements)
+        self.assertIn(("feature.workspace-files.manage-feature-workspace", "feature.concorde.workflow"), refinements)
 
     def test_question_surface_is_visible_but_not_a_runtime_operation(self):
         manifest = (REPOSITORY_ROOT / "extensions/concorde/extension.yml").read_text(encoding="utf-8")

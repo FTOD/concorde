@@ -64,7 +64,7 @@ remain the behavioral authority, and `specs/concorde/architecture/diagrams/level
 architecture view.
 
 This feature does not add a separate core component diagram because the bounded root view already
-shows Documentation, Architecture Core, Spec Kit Integration, the coding agent, and the maintainer at
+shows Documentation, Scripts, Skills, the coding agent, and the maintainer at
 the level where this root feature is owned. Repeating those components here would duplicate that
 canonical structure. The publication sequence is therefore explicitly `role: supplemental` and
 answers only the narrower call-order question.

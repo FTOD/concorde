@@ -5,7 +5,7 @@ module: module.concorde.distribution
 role: required
 flow: input
 counterparties:
-  - module.concorde.spec-kit-integration
+  - module.concorde.skills
 representation:
   kind: standard
   format: Spec Kit preset and extension packages

@@ -71,7 +71,9 @@ delivered as independently versioned ecosystem parts with different responsibili
 | **Preset** | Composes Concorde guidance into normal templates and authoritative routing into the existing Spec Kit lifecycle commands. | It introduces no new runtime command namespace and creates no second canonical feature specification. It does not register commands by itself; Spec Kit materializes its resolved command layers. |
 | **Extension** | Provides five Concorde-specific command definitions: four runtime-backed operations plus the agent-followed, read-only `ask` procedure, together with the selected-workspace adapter and deterministic runtime. | It does not own the normal Spec Kit phases or agent-specific presentation syntax, and `ask` is not a runtime operation. |
 | **Coding-agent integration** | Materializes both resolved core-command overrides and Concorde-specific commands using the active agent's supported skill or slash-command form. | It adapts invocation syntax without changing command intent or path semantics. |
-| **Architecture Core** | Performs project-scoped initialization, bounded context retrieval, and validation after setup. | Its behavior belongs to the Concorde workflow, not to installation. |
+| **Skills** | Are the installed user-facing instructions materialized from preset and extension command sources. | They guide the agent but do not own deterministic operation semantics. |
+| **Scripts** | Perform workspace routing and deterministic initialization, context, validation, and acceptance after setup. | Their behavior belongs to the Concorde workflow, not to installation. |
+| **Workspace Files** | Preserve durable specifications and accepted realization outside `attempt/` and temporal delivery memory inside it. | They are project-owned workflow state, never package content. |
 
 The `concorde-bundle` bundle pins exactly the tested `concorde-core` preset and `concorde` extension.
 Spec Kit expands the recipe before installation, installs each part through its native component
@@ -155,7 +157,7 @@ project-facing changes.
    pinned versions, compatibility, provenance, and effects.
 3. **Given** the textual explanation and diagrams, **When** a first-time maintainer reviews setup,
    **Then** they can distinguish catalog discovery, bundle composition, preset guidance, extension
-   behavior, active-agent presentation, and Architecture Core.
+   behavior, active-agent presentation, and Scripts.
 
 ---
 
@@ -346,7 +348,7 @@ project-owned sources.
 - **FR-024**: Failed installation, command materialization, or update MUST NOT record success and MUST
   report any residual state that could not be restored automatically.
 - **FR-025**: Setup documentation MUST explain Spec Kit, catalog, bundle, preset, extension,
-  coding-agent integration, and Architecture Core responsibilities without treating them as
+  coding-agent integration, and Scripts responsibilities without treating them as
   interchangeable.
 - **FR-026**: This feature MUST provide text-backed component and installation/use-flow diagrams that
   distinguish release sources from installed files, template composition from command composition,
@@ -478,7 +480,7 @@ project-owned sources.
 - A supported Spec Kit distribution with bundle, preset, extension, catalog, provenance, and active
   integration capabilities.
 - A supported coding-agent integration capable of presenting installed extension commands.
-- The Concorde distribution and Spec Kit Integration modules and their boundary contracts.
+- The Concorde distribution and Skills modules and their boundary contracts.
 - Feature 001 for the Concorde workflow used after setup.
 - The `publish-release` sub-feature for a publicly reachable release, and the `one-command-install`
   sub-feature for the accelerated path over it; the native path does not depend on either.

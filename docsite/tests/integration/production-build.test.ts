@@ -48,8 +48,8 @@ describe('production build', () => {
       page.sourcePath === 'README.md' && page.route === '/')).toHaveLength(1);
     const searchIndex = await readFile(resolve(buildDir, 'search-index.json'), 'utf8');
     expect(searchIndex).toContain('Create Unified Project Docsite');
-    expect(searchIndex).toContain('Architecture Core');
-    expect(await readFile(resolve(buildDir, 'architecture/concorde-root.html'), 'utf8')).toContain('Concorde — Root Features and Invocation');
+    expect(searchIndex).toContain('Scripts');
+    expect(await readFile(resolve(buildDir, 'architecture/concorde-root.html'), 'utf8')).toContain('Concorde — Skills, Scripts, and Workspace Files');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-spec-kit-component-model.html'), 'utf8'))
       .toContain('How Concorde Commands Reach a Clean Project');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-bundle-installation-flow.html'), 'utf8'))

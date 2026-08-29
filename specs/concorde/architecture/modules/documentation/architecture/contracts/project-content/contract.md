@@ -10,11 +10,11 @@ representation:
   version: CommonMark 0.31.2 / YAML 1.2.2
   definition: https://spec.commonmark.org/0.31.2/
 counterparties:
-  - module.concorde.architecture-core
+  - module.concorde.workspace-files
   - external.project-maintainer
   - external.spec-kit
 providers:
-  - module.concorde.architecture-core
+  - module.concorde.workspace-files
   - external.project-maintainer
   - external.spec-kit
 features:

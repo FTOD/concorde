@@ -1,6 +1,6 @@
 # Contract: Concorde Workflow Agent Commands
 
-**Contract ID**: `contract.integration.agent-skills`
+**Contract ID**: `contract.skills.agent-surface`
 
 **Representation**: Spec Kit extension command Markdown 1.0 rendered by the active integration
 

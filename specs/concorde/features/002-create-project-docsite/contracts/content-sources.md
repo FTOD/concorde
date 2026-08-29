@@ -6,7 +6,7 @@
 
 **Role / flow**: required, input
 
-**Providers**: Architecture Core and the Spec Kit lifecycle for `specs/`; project maintainers for root `README.md` and `docs/`
+**Providers**: Scripts and the Spec Kit lifecycle for `specs/`; project maintainers for root `README.md` and `docs/`
 
 ## Purpose
 

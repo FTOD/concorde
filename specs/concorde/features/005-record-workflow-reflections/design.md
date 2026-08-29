@@ -504,8 +504,8 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
 ## Concorde Architecture Alignment
 
 - **Stable feature ID**: `feature.concorde.record-workflow-reflections`
-- **Providing module**: `module.concorde`; the behavior is realized by Spec Kit Integration
-  (phase guidance and templates) and Architecture Core (validation, context, and acceptance), both
+- **Providing module**: `module.concorde`; the behavior is realized by Skills
+  (phase guidance and templates) and Scripts (validation, context, and acceptance), both
   visible at this level; the log itself is a root-level maintained source beside `module.md`.
 - **Decomposition decision**: atomic. The feature is one obligation with one artifact and one
   citation rule; splitting it by phase would duplicate the entry shape in every child.

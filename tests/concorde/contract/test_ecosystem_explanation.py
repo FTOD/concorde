@@ -60,7 +60,9 @@ class EcosystemExplanationContractTests(unittest.TestCase):
             "extension",
             "catalog",
             "coding-agent integration",
-            "architecture core",
+            "skills",
+            "scripts",
+            "workspace files",
         )
         for source in sources:
             text = source.read_text(encoding="utf-8").lower()
@@ -97,8 +99,8 @@ class EcosystemExplanationContractTests(unittest.TestCase):
                 "extension",
                 "featureLifecycle",
                 "agentHost",
-                "architectureCore",
-                "specTree",
+                "scripts",
+                "workspaceFiles",
                 "selfHosting",
             }.issubset(component_ids)
         )
@@ -109,7 +111,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         self.assertIn(("extension", "agentHost", "7 surfaces · 6 runtime-backed"), edges)
         self.assertIn(("selfHosting", "bundle", "excluded from release"), edges)
         self.assertIn(("featureLifecycle", "agentHost", "materialize winning layer"), edges)
-        self.assertIn(("agentHost", "architectureCore", "invoke services"), edges)
+        self.assertIn(("agentHost", "scripts", "run deterministic operation"), edges)
 
     def test_workflow_view_has_install_time_and_two_use_time_paths(self):
         source = FEATURE_ROOT / "diagrams" / "bundle-installation-flow.json"
@@ -141,7 +143,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
             (REPOSITORY_ROOT / "specs/concorde/architecture/diagrams/level-view.json").read_text(encoding="utf-8")
         )
         root_ids = {component["id"] for component in root_view["components"]}
-        self.assertTrue({"distribution", "integration", "architectureCore"}.issubset(root_ids))
+        self.assertTrue({"distribution", "skills", "scripts", "workspaceFiles", "documentation"}.issubset(root_ids))
         self.assertTrue({"bundle", "preset", "extension", "catalogs"}.isdisjoint(root_ids))
 
         outputs = {

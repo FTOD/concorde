@@ -53,7 +53,7 @@ explains the build sequence without redefining this structure.
 | `contract.documentation.architecture-site` | provided | output | Maintainer browser | [contract.md](architecture/contracts/architecture-site/contract.md) |
 | `contract.documentation.build-interface` | provided | bidirectional | Maintainer and CI | [contract.md](architecture/contracts/build-interface/contract.md) |
 | `contract.documentation.build-manifest` | provided | output | Maintainer and freshness checks | [contract.md](architecture/contracts/build-manifest/contract.md) |
-| `contract.documentation.project-content` | required | input | Maintainers and Spec Kit | [contract.md](architecture/contracts/project-content/contract.md) |
+| `contract.documentation.project-content` | required | input | Workspace Files, maintainers, and Spec Kit | [contract.md](architecture/contracts/project-content/contract.md) |
 | `contract.documentation.archify-renderer` | required | bidirectional | Archify | [contract.md](architecture/contracts/archify-renderer/contract.md) |
 
 ## Submodules

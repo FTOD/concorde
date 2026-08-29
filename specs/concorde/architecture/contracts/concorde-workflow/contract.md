@@ -33,10 +33,10 @@ normal Spec Kit lifecycle remains authoritative for behavioral delivery.
 
 ## Information
 
-The deterministic Architecture Core boundary uses Concorde Architecture Service Protocol v1. Its
+The deterministic Scripts boundary uses Concorde Architecture Service Protocol v1. Its
 normative schema is linked in the front matter, and representative context and validation values are
 maintained with Feature 001. Feature placement and selection use the separately owned
-`contract.integration.feature-workspace` and its Concorde Feature Workspace Protocol v8; normal
+`contract.workspace-files.feature-workspace` and its Concorde Feature Workspace Protocol v8; normal
 behavioral phases retain Spec Kit's standard contracts. Together these boundaries pass:
 
 - the requested operation and stable module, feature, or project-relative target;

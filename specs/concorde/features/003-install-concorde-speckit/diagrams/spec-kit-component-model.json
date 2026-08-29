@@ -16,13 +16,13 @@
       {
         "id": "preset-path",
         "label": "Normal command overrides",
-        "focus": ["preset", "featureLifecycle", "agentHost", "specTree"],
+        "focus": ["preset", "featureLifecycle", "agentHost", "workspaceFiles"],
         "note": "The preset supplies four template layers and authoritative routing for nine existing lifecycle commands."
       },
       {
         "id": "extension-path",
         "label": "Extension contribution",
-        "focus": ["extension", "agentHost", "architectureCore", "specTree"],
+        "focus": ["extension", "agentHost", "scripts", "workspaceFiles"],
         "note": "The extension supplies seven Concorde-specific surfaces: six runtime-backed operations plus read-only ask."
       }
     ]
@@ -93,10 +93,10 @@
       "size": [190, 76]
     },
     {
-      "id": "architectureCore",
+      "id": "scripts",
       "type": "backend",
-      "label": "Concorde Runtime",
-      "sublabel": "context + validation",
+      "label": "Scripts",
+      "sublabel": "routing + safe operations",
       "pos": [1010, 275],
       "size": [190, 76]
     },
@@ -109,10 +109,10 @@
       "size": [190, 76]
     },
     {
-      "id": "specTree",
+      "id": "workspaceFiles",
       "type": "database",
-      "label": "specs/ Hierarchy",
-      "sublabel": "spec + design",
+      "label": "Workspace Files",
+      "sublabel": "durable / attempt",
       "pos": [1240, 275],
       "size": [120, 76]
     }
@@ -127,7 +127,7 @@
     {
       "kind": "region",
       "label": "Clean installed project",
-      "wraps": ["featureLifecycle", "architectureCore", "agentHost", "specTree"],
+      "wraps": ["featureLifecycle", "scripts", "agentHost", "workspaceFiles"],
       "pad": 28
     }
   ],
@@ -218,22 +218,22 @@
     {
       "id": "normalCommandsUseSpecs",
       "from": "featureLifecycle",
-      "to": "specTree",
+      "to": "workspaceFiles",
       "label": "root intent / temporal review + work",
       "variant": "emphasis"
     },
     {
-      "id": "agentInvokesCore",
+      "id": "agentInvokesScripts",
       "from": "agentHost",
-      "to": "architectureCore",
-      "label": "invoke services",
+      "to": "scripts",
+      "label": "run deterministic operation",
       "variant": "emphasis",
       "labelAt": [1235, 405]
     },
     {
-      "id": "coreMaintainsHierarchy",
-      "from": "architectureCore",
-      "to": "specTree",
+      "id": "scriptsOperateOnFiles",
+      "from": "scripts",
+      "to": "workspaceFiles",
       "label": "create / read / accept / validate",
       "variant": "emphasis",
       "labelAt": [1290, 375]

@@ -41,7 +41,7 @@ The bundle pins the exact preset and extension versions it has passed acceptance
 | Preset | Composes templates and overrides existing lifecycle command instructions. It introduces no new runtime command namespace and owns no runtime; Spec Kit registers the resolved command layer. |
 | Extension | Actively supplies five Concorde-specific command intents: four invoke the selected-workspace adapter or deterministic runtime, while `ask` is agent-followed, source-grounded, and read-only. |
 | Active integration | Materializes both resolved normal-command overrides and Concorde-specific commands using agent-native presentation and invocation syntax; it does not own behavior or path semantics. |
-| Architecture Core / workspace runtime | Own deterministic initialization, bounded context, validation, feature workspace, and acceptance behavior behind the extension commands. |
+| Scripts / workspace runtime | Own deterministic initialization, bounded context, validation, feature workspace, and acceptance behavior behind the extension commands. |
 
 The root platform and workflow-composition contracts own this cross-module meaning. This distribution
 contract specializes it for packaging, catalog resolution, and lifecycle behavior.

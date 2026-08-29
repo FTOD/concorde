@@ -48,7 +48,7 @@ maintained sources are
 | Contract ID | Role | Flow | Counterparty | Definition |
 |---|---|---|---|---|
 | `contract.distribution.bundle-lifecycle` | provided | bidirectional | Spec Kit and the maintainer | [contract.md](architecture/contracts/bundle-lifecycle/contract.md) |
-| `contract.distribution.component-packages` | required | input | `module.concorde.spec-kit-integration` | [contract.md](architecture/contracts/component-packages/contract.md) |
+| `contract.distribution.component-packages` | required | input | `module.concorde.skills` | [contract.md](architecture/contracts/component-packages/contract.md) |
 
 ## Submodules
 
@@ -58,8 +58,8 @@ None.
 
 `scenario.distribution.install-bundle` shows a maintainer asking Spec Kit to preview `concorde-bundle`.
 Distribution expands the versioned recipe into its exact component plan, the pinned `concorde-core`
-preset and `concorde` extension resolved from permitted component catalogs and supplied by Spec Kit
-Integration across `contract.distribution.component-packages`, and reports versions, trust source,
+preset and `concorde` extension resolved from permitted component catalogs and supplied by Skills
+across `contract.distribution.component-packages`, and reports versions, trust source,
 and diagnostics across `contract.distribution.bundle-lifecycle`. After the maintainer accepts,
 installation delegates each component to Spec Kit's preset or extension machinery and records
 ownership so later update and removal touch only owned components. Unresolved or incompatible

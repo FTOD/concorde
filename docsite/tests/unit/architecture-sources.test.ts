@@ -16,7 +16,7 @@ describe('architecture source publication', () => {
       (document): document is ArchitectureSource => document.contentKind === 'architecture-source',
     );
     expect(validateRegistry(registry)).toEqual([]);
-    expect(sources).toHaveLength(21);
+    expect(sources).toHaveLength(25);
     expect(new Set(sources.map((source) => source.architectureId)).size).toBe(sources.length);
     expect(sources.find((source) => source.architectureId === 'module.concorde')).toMatchObject({
       architectureKind: 'module',
@@ -33,9 +33,9 @@ describe('architecture source publication', () => {
       route: '/architecture/concorde/modules/documentation/module.concorde.documentation',
       architectureDiagrams: [expect.objectContaining({route: '/architecture/documentation.html'})],
     });
-    expect(sources.find((source) => source.architectureId === 'contract.integration.feature-workspace')).toMatchObject({
+    expect(sources.find((source) => source.architectureId === 'contract.workspace-files.feature-workspace')).toMatchObject({
       architectureKind: 'contract',
-      moduleId: 'module.concorde.spec-kit-integration',
+      moduleId: 'module.concorde.workspace-files',
     });
   });
 

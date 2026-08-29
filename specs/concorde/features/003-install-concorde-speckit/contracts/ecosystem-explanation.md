@@ -19,7 +19,9 @@ including install-time composition and the two distinct use-time paths.
 | Preset | Composes architecture guidance into templates (including the Concorde-only `abstract-template` for the feature-root `abstract.md` and `implementation-template` for the feature-root `design.md`) and authoritative selected-workspace routing into nine existing lifecycle commands. It introduces no new runtime command namespace. |
 | Extension | Actively contributes five Concorde-specific surfaces: four runtime-backed intents, one agent-followed read-only question procedure, a selected-workspace adapter, and the deterministic runtime used only by the operations. |
 | Active coding-agent integration | Materializes resolved core-command overrides and Concorde-specific commands in agent-native syntax without owning their behavior. |
-| Architecture Core | Implements deterministic initialization, bounded-context projection, and validation. |
+| Skills | Are the installed user-facing command instructions materialized from the preset and extension sources. |
+| Scripts | Implement workspace routing and deterministic initialization, context, validation, and acceptance operations. |
+| Workspace Files | Preserve durable specification and accepted realization outside `attempt/`, and temporal delivery memory inside it. |
 
 The explanation must say that Concorde augments the standard Spec Kit lifecycle; it does not replace
 `specify`, `plan`, `tasks`, or the single canonical feature `design.md`. It must also distinguish the
@@ -49,7 +51,7 @@ that a clean target actually receives from release archives.
 These are feature-owned Feature 003 explanations: the component model is the single `role: core`
 architecture view and the installation flow is `role: supplemental`. Both supplement rather than
 replace the module-owned level views under `architecture/diagrams/`, do not participate in
-Architecture Core source Profile 4, and must not redefine the root module's one-level participants or contracts.
+Scripts source Profile 4, and must not redefine the root module's one-level participants or contracts.
 
 ## Accessibility and Evidence
 

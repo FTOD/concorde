@@ -61,7 +61,7 @@ Preserved, never owned:  specs/** · docs/** · code · tests · project config 
 - **Distribution** identifies the authoritative local component set: the `concorde-bundle` recipe
   pins the local `concorde-core` preset and `concorde` extension to one accepted version and
   constrains the composition without becoming a self-hosting runtime.
-- **Spec Kit Integration** materializes that composition through Spec Kit's public development-mode
+- **Skills** materializes that composition through Spec Kit's public development-mode
   preset and extension lifecycle, so the host owns registration, template composition, command
   layering, and the active integration's skills.
 - **The bootstrap** is a repository development script outside the installed extension, offering
@@ -140,7 +140,7 @@ Preserved, never owned:  specs/** · docs/** · code · tests · project config 
   [contract.concorde.spec-kit-platform](../../architecture/contracts/spec-kit-platform/contract.md).
 - **The level this feature belongs to** — [module.md](../../module.md) (the root summary) and the
   modules that contribute: [Distribution](../../architecture/modules/distribution/module.md) and
-  [Spec Kit Integration](../../architecture/modules/spec-kit-integration/module.md).
+  [Skills](../../architecture/modules/skills/module.md).
 - **The neighbours** — the released path this feature mirrors:
   [Install and Set Up Concorde with Spec Kit](../003-install-concorde-speckit/abstract.md); the workflow
   it activates: [Concorde Workflow](../001-concorde-workflow/abstract.md).

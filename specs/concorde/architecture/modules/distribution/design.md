@@ -48,7 +48,7 @@ The maintained definitions are `contracts/bundle-lifecycle/contract.md` and
 `contract.distribution.component-packages`
 
 - **Role / flow**: required, input.
-- **Provider**: `module.concorde.spec-kit-integration`.
+- **Provider**: `module.concorde.skills`.
 - **Representation**: commonly adopted Spec Kit preset and extension manifests, version `0.16.4`.
 - **Information**: component identity, version, compatibility, provided artifacts, and dependencies.
 - **Guarantees**: each component is independently valid and its declared files resolve.

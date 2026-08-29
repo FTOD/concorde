@@ -42,7 +42,7 @@ flow</a> (maintained sources
 lifecycle crossing; the module owns no diagram of its own.
 
 ```text
-Spec Kit Integration ──component packages──▶ Distribution: concorde-bundle recipe + release tooling
+Skills ──component packages──▶ Distribution: concorde-bundle recipe + release tooling
                                                  ├─ builds preset · extension · bundle archives + catalogs
                                                  └─ contract.distribution.bundle-lifecycle ──▶ Spec Kit + maintainer
                                                         preview ▸ accept ▸ install ▸ status ▸ update ▸ remove
