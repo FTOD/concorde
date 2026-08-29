@@ -16,6 +16,9 @@ const architectureLinkPlugin = [remarkConcordeLinks, {
 const featureLinkPlugin = [remarkConcordeLinks, {
   ...canonicalLinks, stagedRoot: resolve(__dirname, '.generated/content/features'), canonicalSourceBase: 'specs',
 }] as const;
+const homeLinkPlugin = [remarkConcordeLinks, {
+  ...canonicalLinks, stagedRoot: resolve(__dirname, '.generated/content/home'), canonicalCollectionId: 'home',
+}] as const;
 
 const config: Config = {
   title: 'Concorde',
@@ -46,6 +49,11 @@ const config: Config = {
   plugins: [
     [concordeContent as unknown as PluginModule, {projectRoot}],
     ['@docusaurus/plugin-content-docs', {
+      id: 'home', path: '.generated/content/home', routeBasePath: '/', sidebarPath: false,
+      include: ['README.md'], showLastUpdateAuthor: false, showLastUpdateTime: false,
+      numberPrefixParser: false, beforeDefaultRemarkPlugins: [homeLinkPlugin],
+    }],
+    ['@docusaurus/plugin-content-docs', {
       id: 'architecture', path: '.generated/content/architecture', routeBasePath: 'architecture', sidebarPath: './sidebars.architecture.ts',
       include: ['**/*.md'], showLastUpdateAuthor: false, showLastUpdateTime: false,
       numberPrefixParser: false, beforeDefaultRemarkPlugins: [architectureLinkPlugin],
@@ -56,8 +64,8 @@ const config: Config = {
       numberPrefixParser: false, beforeDefaultRemarkPlugins: [featureLinkPlugin],
     }],
     ['@easyops-cn/docusaurus-search-local', {
-      hashed: true, indexDocs: true, indexBlog: false, docsRouteBasePath: ['/architecture', '/docs', '/features'],
-      docsDir: ['.generated/content/architecture', '../docs', '.generated/content/features'],
+      hashed: true, indexDocs: true, indexBlog: false, docsRouteBasePath: ['/', '/architecture', '/docs', '/features'],
+      docsDir: ['.generated/content/home', '.generated/content/architecture', '../docs', '.generated/content/features'],
     }],
   ],
   themeConfig: {

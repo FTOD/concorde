@@ -6,11 +6,13 @@ links at the end only redirect you when you want more.
 
 ## Purpose
 
-Present the whole project as one website: the maintained architecture sources and their delivered
-Archify views, the project documentation authored under `docs/`, and every feature's canonical
-specification and permanent design under `specs/`, so that a maintainer, contributor, reviewer, or
-prospective user can understand intended behavior and accepted realization without navigating the
-repository by hand. The site is a read-only projection: it never becomes a second content authority.
+Present the whole project as one website: the root `README.md` project introduction, maintained
+architecture sources and their delivered Archify views, project documentation authored under
+`docs/`, and every feature's canonical specification and permanent design under `specs/`, so that a
+maintainer, contributor, reviewer, or prospective user can understand intended behavior and accepted
+realization without navigating the repository by hand. The site is a read-only projection: it never
+becomes a second content authority, and its `/` homepage is the maintained README rather than a
+separate site-only narrative.
 
 It also exists to teach. A maintained set of framework guides — overview, quick start, specification
 model, project structure, workflow, and command reference — gives a first-time reader a progressive
@@ -19,10 +21,11 @@ specifications alone.
 
 ## Functionality
 
-**Three navigation families over two canonical source roots.**
+**One project entry point and three navigation families over the maintained source hierarchy.**
 
 | Family | Sources | What a visitor gets |
 |---|---|---|
+| Home | root `README.md` | The same introduction visible in the repository, leading with the project summary, key features, and all Concorde-specific commands before status and detailed setup material. |
 | Architecture | `specs/**/module.md`, its sibling `design.md`, and `specs/**/architecture/contracts/**/contract.md` | The maintained hierarchy with stable ID, kind, owning module or parent, and provenance; every diagram beneath a module's `architecture/diagrams/` is delivered and embedded on the module page in a sandbox beside a standalone link. |
 | Documentation | every eligible Markdown file recursively under `docs/` | The authored hierarchy preserved, including the framework guides and a landing page with a recommended reading path. |
 | Features | the canonical `abstract.md`, `design.md`, and `implementation.md` of every feature directory under `specs/` | A semantic feature hierarchy derived from stable feature identity and explicit parent/sub-feature containment; module placement and refinement remain metadata and links, never navigation parents; drafts stay visible as drafts. |
@@ -37,6 +40,9 @@ specifications alone.
   manual rendering step, no machine-specific renderer environment variable.
 - **Author without registration**: a new document under `docs/` or a new `design.md` under `specs/`
   appears on the next build; nothing is copied into `docsite/`.
+- **Maintain one introduction**: editing root `README.md` updates both the repository presentation and
+  the next generated homepage; the manifest records one source-to-`/` mapping and the page displays
+  that provenance.
 - **Search and trace**: project-wide discovery across all three families, and every page records
   its maintained source path and content kind.
 - **Fail loudly**: broken internal links, unreadable sources, invalid metadata, route collisions,
@@ -59,8 +65,9 @@ flow</a> (maintained source `diagrams/project-docsite-publication-flow.json`) an
 call-order question. In one sketch:
 
 ```text
-docs/**/*.md ─┐                                   Archify skill (.agents/skills/archify)
-specs/**      ─┴─▶ source registry ──▶ diagram delivery ──▶ content materialization ──▶ Docusaurus build
+README.md ────┐
+docs/**/*.md ─┼─▶ source registry ──▶ diagram delivery ──▶ content materialization ──▶ Docusaurus build
+specs/**      ─┘        │                  Archify skill (.agents/skills/archify)                 │
    (module.md · contract.md · design.md · design)     │ validate + deliver every declared JSON     │
                                                     ▼                                            ▼
                                              generated/ (disposable)         candidate validation ──▶ atomic promotion ──▶ browser
@@ -70,7 +77,7 @@ specs/**      ─┴─▶ source registry ──▶ diagram delivery ──▶ 
   realized by the Documentation module's refinement `feature.documentation.publish-project-docsite`
   behind `contract.documentation.build-interface`, `contract.documentation.build-manifest`, and
   `contract.documentation.architecture-site`.
-- **`docs/` and `specs/`** are the only maintained content roots, consumed through
+- **Root `README.md`, `docs/`, and `specs/`** are the maintained published sources, consumed through
   `contract.documentation.project-content`; Architecture Core keeps the `specs/` sources valid.
 - **The Archify renderer**, reached through `contract.documentation.archify-renderer`, owns diagram
   validation and standalone HTML; Docusaurus owns the generated pages, search index, and manifest.
@@ -84,8 +91,8 @@ specs/**      ─┴─▶ source registry ──▶ diagram delivery ──▶ 
 1. **Discover** every declared Archify JSON source and verify the project-local renderer.
 2. **Validate and deliver** each diagram to a candidate set; only a complete, verified set replaces
    the disposable delivery tree.
-3. **Register** the sources: classify each file into its collection, derive its route, extract its
-   identity, and validate links and metadata.
+3. **Register** the sources: map `README.md` uniquely to `/`, classify every other file into its
+   collection, derive routes, extract identity, and validate links and metadata.
 4. **Project independently**: derive Architecture navigation from module containment and Features
    navigation and routes from stable feature identity plus explicit feature containment, regardless
    of their shared physical placement under `specs/`.
@@ -93,8 +100,9 @@ specs/**      ─┴─▶ source registry ──▶ diagram delivery ──▶ 
    Docusaurus, including search and the deterministic manifest.
 6. **Validate the candidate** and promote it atomically; any failure preserves the last successful
    output and names the responsible source.
-7. **Browse**: the visitor reaches all three families from the landing page, follows provenance back
-   to the maintained file, and edits meaning there — never in a generated page.
+7. **Browse**: the visitor reads the same README at the repository or site root, reaches all three
+   families from it, follows provenance back to maintained files, and edits meaning there — never in
+   a generated page.
 
 **Rules the implementation must keep**
 
@@ -107,7 +115,14 @@ specs/**      ─┴─▶ source registry ──▶ diagram delivery ──▶ 
 - Collection and presentation never modify `docs/` or `specs/`; the site, staged content, indexes,
   and other projections are disposable, and readers edit meaning only in maintained sources
   (FR-008, FR-021, FR-026).
-- The landing page offers distinct Architecture, Documentation, and Features entry points;
+- Root `README.md` is the only maintained project introduction and owns `/`; it opens with the
+  project explanation, key features, and all five Concorde-specific commands, and no site-only page
+  duplicates that narrative (FR-009, FR-051, FR-052).
+- The homepage preserves supported README Markdown and rewrites repository-relative links for the
+  generated routes without altering repository rendering; registry, validation, search, manifest,
+  and provenance treat it as exactly one project document, while missing, invalid, or competing
+  homepage sources fail before publication (FR-053, FR-054, FR-055).
+- The homepage offers distinct Architecture, Documentation, and Features entry points;
   Architecture follows module containment, Features follows only feature identity and explicit
   parent/sub-feature containment, and raw architecture/module storage segments never become feature
   categories or route parents. Providing modules and refinement relationships remain visible as
@@ -141,8 +156,8 @@ specs/**      ─┴─▶ source registry ──▶ diagram delivery ──▶ 
 
 ## Read Next
 
-- **Exact requirements, scenarios, and success criteria** — [design.md](design.md): five user stories,
-  FR-001 to FR-050, and the measurable outcomes.
+- **Exact requirements, scenarios, and success criteria** — [design.md](design.md): six user stories,
+  FR-001 to FR-055, and the measurable outcomes.
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (accepted
   realization and implementation detail).
 - **The contracts** — `contracts/content-sources.md`,
@@ -153,5 +168,6 @@ specs/**      ─┴─▶ source registry ──▶ diagram delivery ──▶ 
   module that realizes it: [Documentation](../../architecture/modules/documentation/module.md) with its
   refinement [publish-project-docsite](../../architecture/modules/documentation/features/001-publish-project-docsite/design.md).
 - **Contributing to the site** — [docs/contributing/docsite.md](../../../../docs/contributing/docsite.md),
-  and the guides the site publishes: [docs/index.md](../../../../docs/index.md) and
+  the shared project homepage [README.md](../../../../README.md), and the guides the site publishes:
+  [docs/index.md](../../../../docs/index.md) and
   [docs/project-structure.md](../../../../docs/project-structure.md).

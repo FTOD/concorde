@@ -3,6 +3,8 @@
 This private package builds the read-only Concorde project website. Canonical content remains outside
 this package:
 
+- `../README.md` owns the repository introduction and generated `/` homepage. The build adds only
+  disposable route metadata; the maintained README remains ordinary GitHub-flavored Markdown.
 - `../docs/**/*.md` owns project documentation.
 - Feature-root `design.md` owns required behavior. Sibling `abstract.md` is the landing page and
   sibling `implementation.md` owns the accepted realization; the three publish at `<root>`,
@@ -20,15 +22,16 @@ this package:
 - `../specs/**/features/*/diagrams/*.json` owns feature scenario explanations declared by feature
   `design.md`; each fresh generated view is embedded automatically on the feature abstract.
 
-Before preview or build, the package classifies the unified `specs/` tree and writes disposable
-Architecture and Features inputs beneath `.generated/content/`. These are independent semantic
+Before preview or build, the package classifies the root README and unified `specs/` tree and writes
+disposable Home, Architecture, and Features inputs beneath `.generated/content/`. These are semantic
 projections even though their sources share module packages: Architecture staging follows module
 containment, while Features staging follows stable feature identity and explicit parent/sub-feature
 containment. A feature's module placement and `refines` relationships remain page metadata and links;
 `architecture/`, `modules/`, and module-local `features/` wrappers never become Features sidebar
 categories or route parents. Feature pages are staged with the registry-assigned stable-ID route and
 generated category metadata, so each category uses the feature title and opens on its abstract.
-All provenance, validation, and edits continue to reference canonical files under `../specs/`.
+All provenance, validation, and edits continue to reference the canonical root README, `../docs/`,
+and `../specs/` files.
 
 ## Prerequisites
 
@@ -59,7 +62,7 @@ Run all commands from `docsite/`:
 
 Validation diagnostics use a stable rule ID, project-relative source, reason, and remediation. A
 failed candidate is removed and never replaces the last verified `build/`. Successful builds emit
-`build/build-manifest.json` (Build Manifest v8), including actual routes, SHA-256 source provenance,
+`build/build-manifest.json` (Build Manifest v9), including actual routes, SHA-256 source provenance,
 and each module page's `architectureDiagrams`.
 
 Ordinary builds do not run Archify `visual-check`: it requires Chrome/Chromium and produces captures

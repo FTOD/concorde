@@ -41,7 +41,7 @@ export default function concordeContentPlugin(
         resolve(projectRoot, 'specs/**/*.md'), resolve(projectRoot, 'specs/**/architecture/diagrams/*.json'),
         resolve(projectRoot, 'specs/**/features/*/diagrams/*.json'),
         resolve(projectRoot, 'specs/**/features/*/subfeatures/*/diagrams/*.json'),
-        resolve(projectRoot, 'docs/**/*.md'),
+        resolve(projectRoot, 'docs/**/*.md'), resolve(projectRoot, 'README.md'),
       ];
     },
     async postBuild({outDir, routesPaths}) {

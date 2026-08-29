@@ -3,8 +3,20 @@ import {resolve} from 'node:path';
 import {describe, expect, it} from 'vitest';
 
 import {buildRegistry} from '../../plugins/concorde-content/registry';
-import type {FeatureDesign} from '../../plugins/concorde-content/types';
-import {featureCategoryMetadata, featureCategoryPath} from '../../scripts/materialize-content';
+import type {FeatureDesign, ProjectDocument} from '../../plugins/concorde-content/types';
+import {featureCategoryMetadata, featureCategoryPath, stageHomepageDocument} from '../../scripts/materialize-content';
+
+describe('homepage materialization', () => {
+  it('adds disposable root-route metadata without changing the maintained README body', async () => {
+    const registry = await buildRegistry(resolve(__dirname, '../fixtures/valid-project'));
+    const homepage = registry.documents.find((item): item is ProjectDocument => item.collectionId === 'home')!;
+    const staged = stageHomepageDocument(homepage);
+    expect(staged).toContain('slug: /');
+    expect(staged).toContain('# Fixture Project');
+    expect(staged).toContain(homepage.content.trim());
+    expect(homepage.frontMatter.slug).toBeUndefined();
+  });
+});
 
 describe('feature content materialization', () => {
   it('derives human-readable categories from the semantic feature tree', async () => {

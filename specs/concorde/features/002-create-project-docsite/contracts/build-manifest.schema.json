@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.dev/contracts/documentation/build-manifest-v8.schema.json",
-  "title": "Concorde Documentation Build Manifest v8",
+  "$id": "https://concorde.dev/contracts/documentation/build-manifest-v9.schema.json",
+  "title": "Concorde Documentation Build Manifest v9",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,7 +15,7 @@
   ],
   "properties": {
     "schemaVersion": {
-      "const": 8
+      "const": 9
     },
     "generator": {
       "type": "object",
@@ -29,17 +29,17 @@
     },
     "collections": {
       "type": "array",
-      "minItems": 5,
-      "maxItems": 5,
+      "minItems": 6,
+      "maxItems": 6,
       "uniqueItems": true,
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["id", "sourceBase", "routeBase", "include"],
         "properties": {
-          "id": { "enum": ["architecture", "docs", "feature-abstracts", "features", "feature-implementations"] },
-          "sourceBase": { "enum": ["docs", "specs"] },
-          "routeBase": { "enum": ["/architecture", "/docs", "/features"] },
+          "id": { "enum": ["home", "architecture", "docs", "feature-abstracts", "features", "feature-implementations"] },
+          "sourceBase": { "enum": [".", "docs", "specs"] },
+          "routeBase": { "enum": ["/", "/architecture", "/docs", "/features"] },
           "include": {
             "type": "array",
             "minItems": 1,
@@ -95,7 +95,7 @@
   "$defs": {
     "sourcePath": {
       "type": "string",
-      "pattern": "^(docs|specs)/[^\\\\]+$"
+      "pattern": "^(README\\.md|(docs|specs)/[^\\\\]+)$"
     },
     "route": {
       "type": "string",

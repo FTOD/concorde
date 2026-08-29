@@ -25,7 +25,7 @@ function featureContext(document: FeaturePageContext) {
 }
 
 function navigationFor(document: SourceDocument) {
-  const section = document.collectionId === 'docs'
+  const section = document.collectionId === 'home' || document.collectionId === 'docs'
     ? 'Documentation' as const
     : document.collectionId === 'architecture'
       ? 'Architecture' as const
@@ -84,9 +84,10 @@ export function pageFromDocument(document: SourceDocument): ContentPage {
 }
 
 export function createManifest(registry: ContentRegistry, routeInventory?: string[]): BuildManifest {
-  const pages = registry.documents.map(pageFromDocument).sort((a, b) => a.sourcePath.localeCompare(b.sourcePath));
+  const pages = registry.documents.map(pageFromDocument).sort((a, b) =>
+    a.sourcePath < b.sourcePath ? -1 : a.sourcePath > b.sourcePath ? 1 : 0);
   return {
-    schemaVersion: 8,
+    schemaVersion: 9,
     generator: {name: 'concorde-docsite', version: '0.3.0', docusaurusVersion: '3.10.2'},
     collections: registry.collections.map(({id, sourceBase, routeBase, include}) => ({id, sourceBase, routeBase, include})),
     pages,

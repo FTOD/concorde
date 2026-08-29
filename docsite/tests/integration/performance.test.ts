@@ -14,6 +14,7 @@ afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, {recurs
 it('discovers and validates 1,000 documents and 250 three-page feature roots within five seconds', async () => {
   const root = await mkdtemp(resolve(tmpdir(), 'concorde-scale-')); roots.push(root);
   await Promise.all([
+    writeFile(resolve(root, 'README.md'), '# Scale Fixture\n'),
     ...Array.from({length: 1000}, async (_, index) => {
       const dir = resolve(root, 'docs', String(Math.floor(index / 100))); await mkdir(dir, {recursive: true});
       await writeFile(resolve(dir, `${index}.md`), `# Document ${index}\n`);
@@ -28,6 +29,6 @@ it('discovers and validates 1,000 documents and 250 three-page feature roots wit
   const start = performance.now();
   const registry = await buildRegistry(root);
   expect(validateRegistry(registry)).toEqual([]);
-  expect(registry.documents).toHaveLength(1750);
+  expect(registry.documents).toHaveLength(1751);
   expect(performance.now() - start).toBeLessThan(5000);
 }, 20_000);

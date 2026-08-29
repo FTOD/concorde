@@ -26,6 +26,26 @@ const learningGuides = [...baseline.keys()].filter(
 );
 
 describe('maintained Concorde framework guides', () => {
+  it('opens the shared README with key features and all five Concorde commands before project status', async () => {
+    const registry = await buildRegistry(projectRoot);
+    const readme = registry.documents.find((document) => document.sourcePath === 'README.md');
+    if (!readme) throw new Error('Expected root README.md in the content registry.');
+    const features = readme.content.indexOf('## Key features');
+    const commands = readme.content.indexOf('## Concorde commands');
+    const status = readme.content.indexOf('## Project status');
+    expect(features).toBeGreaterThan(-1);
+    expect(commands).toBeGreaterThan(features);
+    expect(status).toBeGreaterThan(commands);
+    for (const command of ['init', 'context', 'ask', 'validate', 'feature-accept']) {
+      expect(readme.content).toContain(`$speckit-concorde-${command}`);
+    }
+    expect(readme.links.some((link) => link.targetSourcePath === 'docs/commands.md')).toBe(true);
+    const homepageTargets = new Set(readme.links.map((link) => link.targetRoute));
+    for (const route of ['/architecture/concorde/module.concorde', '/docs', '/features/feature.concorde.workflow']) {
+      expect(homepageTargets).toContain(route);
+    }
+  });
+
   it('publishes the ten-page baseline exactly once at stable Documentation routes', async () => {
     const registry = await buildRegistry(projectRoot);
     expect(validateRegistry(registry)).toEqual([]);

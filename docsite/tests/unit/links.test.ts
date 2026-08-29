@@ -40,6 +40,18 @@ describe('module diagram links', () => {
 });
 
 describe('repository-relative links', () => {
+  it('maps README links into every published collection and delivered diagrams', async () => {
+    const registry = await buildRegistry(fixture);
+    const readme = registry.documents.find((item) => item.sourcePath === 'README.md')!;
+    expect(resolveContentLink('docs/index.md', readme, registry).reference.targetRoute).toBe('/docs');
+    expect(resolveContentLink('specs/example/module.md', readme, registry).reference.targetRoute)
+      .toBe('/architecture/example/module.fixture');
+    expect(resolveContentLink('specs/001-alpha/abstract.md', readme, registry).reference.targetRoute)
+      .toBe('/features/feature.fixture.alpha');
+    expect(resolveContentLink('specs/001-alpha/diagrams/alpha-components.json', readme, registry).reference.targetRoute)
+      .toBe('/architecture/fixture-alpha-components.html');
+  });
+
   it('maps same-collection and cross-collection Markdown while preserving fragments', async () => {
     const registry = await buildRegistry(fixture);
     const home = registry.documents.find((item) => item.sourcePath === 'docs/index.md')!;

@@ -1,4 +1,4 @@
-# Published Project Site Contract v4
+# Published Project Site Contract v5
 
 **Contract ID**: `contract.documentation.architecture-site`
 
@@ -10,9 +10,9 @@
 
 ## Purpose
 
-Provide one browsable, searchable, read-only projection of canonical architecture sources (including
-module design references), project documentation, and permanent feature specifications and accepted
-implementations.
+Provide one browsable, searchable, read-only projection of the root README introduction, canonical
+architecture sources (including module design references), project documentation, and permanent
+feature specifications and accepted implementations.
 
 ## Representation
 
@@ -23,7 +23,7 @@ JavaScript, assets, a local search index, and `build-manifest.json`.
 
 | Route | Meaning |
 |---|---|
-| `/` | Project landing page with Architecture, Documentation, and Features entry points and source counts |
+| `/` | Root `README.md`, leading with project purpose, key features, and all Concorde-specific commands, with Architecture, Documentation, and Features entry points |
 | `/architecture/**` | Architecture module, module design reference, and contract Markdown plus declared embedded views |
 | `/docs/**` | Project documents sourced from `docs/**/*.md` |
 | `/features/<feature-id>` | Top-level feature abstract, derived from stable feature identity rather than its module storage path |
@@ -55,6 +55,8 @@ Draft status is visible and does not imply approval or implementation agreement.
 ## Guarantees
 
 - Every eligible valid source has exactly one primary page and navigation entry.
+- Root `README.md` has exactly one source-derived page at `/`, includes visible source provenance,
+  and replaces any independently authored site-only homepage narrative.
 - Architecture, Documentation, and Features remain distinct navigation sections and share
   project-wide local search.
 - Architecture navigation follows module containment. Features navigation follows stable feature
@@ -81,10 +83,12 @@ build interface and the prior successful output remains untouched.
 
 ## Compatibility
 
-The three top-level route spaces remain stable within published-site contract version 4; the
-manifest schema version is owned by the build-manifest contract (schema version 8). The named
+The three collection route spaces remain stable within published-site contract version 5; the
+manifest schema version is owned by the build-manifest contract (schema version 9). Version 5 makes
+the existing `/` route a source-backed projection of root `README.md`, changing its content authority
+and provenance while preserving the public URL. The named
 self-hosting Documentation baseline adds compatible pages within the
-existing `/docs` route space and does not change the representation or manifest schema. Version 4
+existing `/docs` route space. Version 4
 replaces source/module-path-derived feature deep routes with stable-ID and explicit-containment
 routes; this is a breaking deep-link migration inside the stable `/features` route base. Source
 renames no longer change feature routes when stable IDs and containment remain unchanged. Adding new

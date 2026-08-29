@@ -4,7 +4,7 @@ import {dirname, posix, relative, resolve} from 'node:path';
 import matter from 'gray-matter';
 
 import {buildRegistry} from '../plugins/concorde-content/registry';
-import type {CollectionId, ContentRegistry, FeatureDesign, SourceDocument} from '../plugins/concorde-content/types';
+import type {CollectionId, ContentRegistry, FeatureDesign, ProjectDocument, SourceDocument} from '../plugins/concorde-content/types';
 import {assertValidRegistry} from '../plugins/concorde-content/validation';
 
 const siteDir = resolve(__dirname, '..');
@@ -31,6 +31,15 @@ export function stageFeatureDocument(document: SourceDocument): string {
   });
 }
 
+/** Add renderer-only route metadata while preserving the maintained README body and front matter. */
+export function stageHomepageDocument(document: ProjectDocument): string {
+  return matter.stringify(document.content, {
+    ...document.frontMatter,
+    slug: '/',
+    sidebar_label: document.sidebarLabel ?? document.title,
+  });
+}
+
 export function featureCategoryPath(document: FeatureDesign): string {
   if (!document.stagedPath) throw new Error(`Feature "${document.featureId}" has no semantic staged path.`);
   return posix.join(posix.dirname(document.stagedPath), '_category_.json');
@@ -50,6 +59,12 @@ export async function materializeContent(providedRegistry?: ContentRegistry): Pr
   await rm(generatedContentRoot, {recursive: true, force: true});
 
   for (const document of registry.documents) {
+    if (document.collectionId === 'home') {
+      const destination = resolve(generatedContentRoot, 'home', document.stagedPath ?? 'README.md');
+      await mkdir(dirname(destination), {recursive: true});
+      await writeFile(destination, stageHomepageDocument(document as ProjectDocument), 'utf8');
+      continue;
+    }
     const isFeaturePage = featureCollections.has(document.collectionId);
     if (document.collectionId !== 'architecture' && !isFeaturePage) continue;
     // Pages are staged at their projected path (the `architecture/` grouping segment dropped), which is the

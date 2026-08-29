@@ -1,11 +1,17 @@
 {
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "generator": {
     "name": "concorde-docsite",
     "version": "0.3.0",
     "docusaurusVersion": "3.10.2"
   },
   "collections": [
+    {
+      "id": "home",
+      "sourceBase": ".",
+      "routeBase": "/",
+      "include": ["README.md"]
+    },
     {
       "id": "architecture",
       "sourceBase": "specs",
@@ -38,6 +44,23 @@
     }
   ],
   "pages": [
+    {
+      "kind": "project-document",
+      "sourcePath": "README.md",
+      "sourceSha256": "9999999999999999999999999999999999999999999999999999999999999999",
+      "route": "/",
+      "title": "Concorde",
+      "navigation": {
+        "section": "Documentation",
+        "label": "Concorde"
+      },
+      "links": [
+        {
+          "targetSourcePath": "docs/index.md",
+          "targetRoute": "/docs/"
+        }
+      ]
+    },
     {
       "kind": "project-document",
       "sourcePath": "docs/index.md",

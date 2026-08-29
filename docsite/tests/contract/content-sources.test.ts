@@ -8,14 +8,31 @@ import {discoverDiagramDeclarations} from '../../plugins/concorde-content/diagra
 import type {ValidationFinding} from '../../plugins/concorde-content/types';
 
 describe('content source diagnostics', () => {
-  it('defines independent Architecture and Features projections in content-source contract v8', async () => {
+  it('defines the README homepage and independent Architecture and Features projections in content-source contract v9', async () => {
     const contract = await readFile(resolve(
       process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts/content-sources.md',
     ), 'utf8');
-    expect(contract).toContain('# Content Sources Contract v8');
+    expect(contract).toContain('# Content Sources Contract v9');
+    expect(contract).toContain('| Project homepage | project root | The regular file `README.md` | `/` |');
     expect(contract).toContain('Architecture navigation and routes follow declared module containment.');
     expect(contract).toContain('Features navigation and routes follow globally unique feature IDs');
     expect(contract).toContain('never create parent categories or route segments in Features');
+  });
+
+  it('requires the root README and rejects broken or competing homepage sources', async () => {
+    const missing = await buildRegistry(resolve(__dirname, '../fixtures/invalid-projects/missing-title'));
+    expect(validateRegistry(missing).some((finding) => finding.ruleId === 'content.home.required')).toBe(true);
+
+    const broken = await buildRegistry(resolve(__dirname, '../fixtures/invalid-projects/home-broken-link'));
+    expect(validateRegistry(broken).some((finding) =>
+      finding.ruleId === 'link.target.missing' && finding.sourcePath === 'README.md')).toBe(true);
+
+    const collision = await buildRegistry(resolve(__dirname, '../fixtures/valid-project'));
+    const competing = collision.documents.find((document) => document.sourcePath === 'docs/index.md');
+    if (!competing) throw new Error('Expected the fixture documentation landing page.');
+    competing.route = '/';
+    expect(validateRegistry(collision).some((finding) =>
+      finding.ruleId === 'content.route.duplicate' && finding.sourcePath === 'README.md')).toBe(true);
   });
 
   it('formats stable rule, source, location, reason, and remediation lines', () => {

@@ -37,10 +37,15 @@ beforeAll(async () => {
 describe('production build', () => {
   it('publishes landing, three-part navigation, provenance, diagrams, local search, and all manifest routes', async () => {
     const manifest = JSON.parse(firstManifest);
-    expect(manifest.schemaVersion).toBe(8);
+    expect(manifest.schemaVersion).toBe(9);
     const schema = JSON.parse(await readFile(resolve(siteDir, '../specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json'), 'utf8'));
     expect(new Ajv2020().compile(schema)(manifest)).toBe(true);
-    expect(await readFile(resolve(buildDir, 'index.html'), 'utf8')).toContain('One project, two source roots, three views');
+    const homepage = await readFile(resolve(buildDir, 'index.html'), 'utf8');
+    expect(homepage).toContain('Key features');
+    expect(homepage).toContain('Concorde commands');
+    expect(homepage).toContain('README.md');
+    expect(manifest.pages.filter((page: {sourcePath: string; route: string}) =>
+      page.sourcePath === 'README.md' && page.route === '/')).toHaveLength(1);
     const searchIndex = await readFile(resolve(buildDir, 'search-index.json'), 'utf8');
     expect(searchIndex).toContain('Create Unified Project Docsite');
     expect(searchIndex).toContain('Architecture Core');

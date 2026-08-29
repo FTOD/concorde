@@ -5,6 +5,50 @@ workflow for AI-developed software. It keeps feature specifications aligned with
 that realizes them, boundary contracts, bounded architecture views, and accepted implementation
 evidence, so that a maintainer can understand any level of the project in minutes.
 
+## Key features
+
+- **Zoomable architecture** — start at the project, understand one module at a time, and descend only
+  when the question needs more detail.
+- **Architecture-aware specifications** — place each feature where all participating modules are
+  visible, with stable IDs and explicit refinement relationships.
+- **Bounded agent context** — retrieve one architectural level without silently loading child
+  internals, unrelated features, or accepted implementation detail.
+- **Human-readable contracts** — record boundary direction, exchanged information, obligations, and
+  failure behavior alongside the modules and features that rely on them.
+- **Durable intent, temporal attempts** — keep specifications and accepted realizations separate from
+  disposable plans, tasks, research, validation, and in-progress implementation work.
+- **Deterministic validation and review gates** — check hierarchy, references, contracts, diagrams,
+  evidence, and generated-output freshness without an LLM; architecture and acceptance changes remain
+  explicit human decisions.
+- **One generated project read model** — publish the README, architecture, guides, feature abstracts,
+  designs, accepted implementations, contracts, and interactive diagrams as a searchable Docusaurus
+  site without turning generated pages into sources.
+
+## Concorde commands
+
+Concorde adds five agent-facing commands. Normal feature work still uses Spec Kit's standard
+`$speckit-specify`, `$speckit-clarify`, `$speckit-plan`, `$speckit-tasks`,
+`$speckit-implement`, `$speckit-analyze`, and `$speckit-converge` phases.
+
+| Command | Use it to |
+|---|---|
+| `$speckit-concorde-init` | Propose a root Concorde architecture and apply it only after explicit approval. |
+| `$speckit-concorde-context <module-or-feature-id>` | Retrieve exactly one bounded architectural level. |
+| `$speckit-concorde-ask <question>` | Get a cited, read-only answer about Concorde or its use in the current project. |
+| `$speckit-concorde-validate` | Deterministically validate the maintained hierarchy, contracts, views, documents, and evidence. |
+| `$speckit-concorde-feature-accept <feature-id>` | Propose and, after explicit approval, promote a task-complete attempt into the durable accepted realization. |
+
+Features are created with the normal `$speckit-specify` phase at their canonical module path and
+selected through `.specify/feature.json`; Concorde deliberately adds no separate create or select
+command. See [Commands](docs/commands.md) for timing, inputs, outputs, and the installed execution
+layers.
+
+Explore the project through its three generated views:
+[Architecture](specs/concorde/module.md), [Documentation](docs/index.md), and
+[Features](specs/concorde/features/001-concorde-workflow/abstract.md).
+
+## How Concorde fits Spec Kit
+
 Concorde is designed to be installed as a native Spec Kit bundle containing:
 
 - the `concorde-core` preset, which appends architecture guidance to Spec Kit's templates, supplies
@@ -217,11 +261,14 @@ The published site is available at [ftod.github.io/concorde](https://ftod.github
 Every push to `main` rebuilds the canonical sources and deploys the verified output through the
 repository's GitHub Pages workflow; generated site files are not committed.
 
-The independent [`docsite/`](docsite/) package builds Concorde's own read-only Docusaurus site from
-two canonical source roots, presented through three reader-facing navigation families:
+The independent `docsite/` package, documented in the
+[docsite contributor guide](docs/contributing/docsite.md), builds Concorde's own read-only Docusaurus
+site from the root README and two canonical source trees, presented through a shared homepage and
+three reader-facing navigation families:
 
 | Source | Published content |
 |---|---|
+| `README.md` | The project homepage at `/`, including this same introduction, feature summary, and command overview |
 | `specs/**/module.md`, its adjacent `design.md`, `specs/**/architecture/contracts/**/contract.md`, `specs/**/architecture/diagrams/*.json` | Architecture module summaries (each embedding its module-owned Archify diagrams), module design references, and boundary contracts |
 | `docs/**/*.md` | Project documentation |
 | Feature-root `abstract.md`, `design.md`, and `implementation.md` | Feature abstracts (the landing pages), behavioral designs, and accepted implementations |
@@ -265,11 +312,11 @@ production Docusaurus build. Start with the maintained [documentation overview](
 
 ## Project orientation
 
-- [Project constitution](.specify/memory/constitution.md)
+- [Project constitution](https://github.com/FTOD/concorde/blob/main/.specify/memory/constitution.md)
 - [Root architecture](specs/concorde/module.md) (module summary; its design reference is the adjacent `design.md`)
 - [Concorde workflow abstract](specs/concorde/features/001-concorde-workflow/abstract.md) and [specification](specs/concorde/features/001-concorde-workflow/design.md)
 - [Project docsite specification](specs/concorde/features/002-create-project-docsite/design.md)
 - [Spec Kit installation specification](specs/concorde/features/003-install-concorde-speckit/design.md)
 - [Releasing Concorde](docs/releasing.md)
 - [Development self-hosting specification](specs/concorde/features/004-self-host-concorde/design.md)
-- [Workflow reflections specification](specs/concorde/features/005-record-workflow-reflections/design.md) and the [project reflection log](specs/concorde/reflections.md)
+- [Workflow reflections specification](specs/concorde/features/005-record-workflow-reflections/design.md); the maintained log is `specs/concorde/reflections.md`

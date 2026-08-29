@@ -1,4 +1,4 @@
-# Content Sources Contract v8
+# Content Sources Contract v9
 
 **Contract ID**: `contract.documentation.project-content`
 
@@ -6,13 +6,13 @@
 
 **Role / flow**: required, input
 
-**Providers**: Architecture Core and the Spec Kit lifecycle for `specs/`; project maintainers for `docs/`
+**Providers**: Architecture Core and the Spec Kit lifecycle for `specs/`; project maintainers for root `README.md` and `docs/`
 
 ## Purpose
 
-Provide canonical architecture sources (including module design references), project documentation,
-feature specifications, and accepted feature implementations to the generated site without copying
-or modifying their maintained sources.
+Provide the canonical project introduction from root `README.md`, architecture sources (including
+module design references), project documentation, feature specifications, and accepted feature
+implementations to the generated site without copying or modifying their maintained sources.
 
 ## Representation
 
@@ -25,6 +25,7 @@ or modifying their maintained sources.
 
 | Collection | Source root | Eligible inputs | Public route base |
 |---|---|---|---|
+| Project homepage | project root | The regular file `README.md` | `/` |
 | Architecture | `specs/` | Every regular file matching `**/module.md` or `**/contracts/**/contract.md` | `/architecture` |
 | Architecture (module design references) | `specs/` | Every regular file named `design.md` whose directory also contains a `module.md`; published in the Architecture collection as kind `module-design` | `/architecture` |
 | Project documentation | `docs/` | Every regular file matching `**/*.md` | `/docs` |
@@ -49,8 +50,21 @@ packages:
   cross-links. They never create parent categories or route segments in Features.
 - Source-directory wrappers such as `architecture/`, `modules/`, and module-local `features/` remain
   canonical storage facts and provenance, not public Features hierarchy nodes.
+- The Project Homepage is a separate one-file projection: `README.md` owns `/` independently of the
+  recursive Documentation hierarchy under `docs/`.
 
 ## Field Semantics
+
+### Project Homepage
+
+- `title`: the first level-one Markdown heading; one is required.
+- Public route: exactly `/`; no authored site-only front matter is required in the maintained README.
+- Markdown links: repository-relative links to included Markdown and declared diagrams are mapped to
+  published routes; external links and fragments retain their meaning.
+- Opening order: concise explanation, key features, and the five Concorde-specific command surfaces
+  precede project status and detailed setup or operation sections.
+- Projection: a consumer may add disposable route metadata while staging, but MUST preserve the
+  authored body and MUST identify `README.md` as the maintained source.
 
 ### Project Documentation
 
@@ -128,6 +142,8 @@ packages:
 
 - Consumers MUST read sources without writing content, metadata, or timestamps.
 - Consumers MUST include each eligible valid source exactly once.
+- Consumers MUST require root `README.md`, map it to exactly one `/` page, include it in search and
+  the build manifest, and reject any competing homepage route.
 - Consumers MUST report deliberately excluded Markdown below `specs/` as
   `not-canonical-feature-artifact` in the build manifest.
 - Consumers MUST preserve authored prose, headings, code, tables, and supported links.
@@ -153,7 +169,7 @@ packages:
 
 ## Failure Semantics
 
-Unreadable sources, invalid YAML or JSON, missing required identity, invalid feature-diagram
+Missing or unreadable root `README.md`, unreadable sources, invalid YAML or JSON, missing required identity, invalid feature-diagram
 placement/declarations, duplicate feature or architecture
 IDs, escaping paths, missing or ambiguous Markdown targets, excluded-source links, unpublishable
 module or feature diagrams (`architecture.diagram.unpublishable`), and route collisions are errors. Each
@@ -162,10 +178,12 @@ candidate publication.
 
 ## Compatibility
 
-This is contract version 8. It publishes `abstract.md` as `feature-abstract`, feature `design.md` as
+This is contract version 9. It adds root `README.md` as the required `home` collection and unique `/`
+project-document page. That source-root, collection, and route ownership change is incompatible with
+v8 manifests and site projections. Version 8 publishes `abstract.md` as `feature-abstract`, feature `design.md` as
 `feature-design` at `/design`, and `implementation.md` as `feature-implementation` at
 `/implementation`, while excluding `attempt/**`; it matches Build Manifest schema version 8.
-Version 8 replaces module-path-derived feature routes and navigation with stable feature identity and
+Version 8 replaced module-path-derived feature routes and navigation with stable feature identity and
 explicit containment; this is a breaking deep-route migration while `/features` remains stable.
 Earlier versions used the former filenames, route meanings, and source-shaped Features hierarchy. Version 4 moved diagram delivery from a
 manually prepared prerequisite into preview/production publication. Adding optional metadata or more project
@@ -176,6 +194,7 @@ migration decision.
 ## Evidence
 
 - Contract fixtures for valid documents and feature specifications.
+- Homepage fixtures for required-source, root-route, repository-link, provenance, and collision behavior.
 - Semantic projection fixtures covering root features, module-level features, and immediate
   sub-features without architecture/module categories in Features.
 - Negative fixtures for every failure class.

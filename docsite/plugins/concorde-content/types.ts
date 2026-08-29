@@ -1,4 +1,4 @@
-export type CollectionId = 'architecture' | 'docs' | 'feature-abstracts' | 'features' | 'feature-implementations';
+export type CollectionId = 'home' | 'architecture' | 'docs' | 'feature-abstracts' | 'features' | 'feature-implementations';
 export type ContentKind =
   | 'architecture-source'
   | 'module-design'
@@ -10,8 +10,8 @@ export type SourceState = 'discovered' | 'parsed' | 'validated' | 'mapped' | 're
 
 export interface SourceCollection {
   id: CollectionId;
-  sourceBase: 'docs' | 'specs';
-  routeBase: '/architecture' | '/docs' | '/features';
+  sourceBase: '.' | 'docs' | 'specs';
+  routeBase: '/' | '/architecture' | '/docs' | '/features';
   include: string[];
   contentKind: ContentKind;
 }
@@ -60,7 +60,7 @@ export interface SourceDocument {
 }
 
 export interface ProjectDocument extends SourceDocument {
-  collectionId: 'docs';
+  collectionId: 'home' | 'docs';
   contentKind: 'project-document';
 }
 
@@ -274,7 +274,7 @@ export interface ValidationFinding {
 }
 
 export interface BuildManifest {
-  schemaVersion: 8;
+  schemaVersion: 9;
   generator: {
     name: 'concorde-docsite';
     version: string;

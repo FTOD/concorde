@@ -1,4 +1,4 @@
-# Build Manifest Contract v4
+# Build Manifest Contract v5
 
 **Contract ID**: `contract.documentation.build-manifest`
 
@@ -16,9 +16,10 @@ written; all source, page, exclusion, route, link, and check arrays are determin
 
 ## Semantics
 
-- `schemaVersion`: manifest compatibility version, currently `8`.
+- `schemaVersion`: manifest compatibility version, currently `9`.
 - `generator`: Concorde docsite and Docusaurus version identities; deliberately contains no timestamp.
-- `collections`: logical view definitions, canonical source roots, inclusion patterns, and route bases.
+- `collections`: logical view definitions, canonical source roots, inclusion patterns, and route bases,
+  including the one-file `home` collection rooted at the project and mapped to `/`.
 - `pages`: one record per included source, including hash, route, title, navigation, provenance,
   optional feature identity/status, providing-module route, containment relationships, and
   adjacent-level refinement relationships, plus architecture
@@ -43,10 +44,14 @@ schema path or governing rule.
 Consumers MUST reject unsupported `schemaVersion` values. Adding optional fields is compatible.
 Removing or redefining fields, weakening relative-path rules, or changing the meaning of validation
 status requires a new schema version. The schema and representative example change together.
+Version 5 adopts schema v9, which adds the required root README collection and admits `README.md` as
+a project-relative source path. Version 4 used schema v8 and five collections rooted only at `docs/`
+and `specs/`.
 
 ## Evidence
 
 - The representative example validates against the normative schema.
+- Homepage evidence asserts exactly one `README.md` page at `/` with project-document kind and provenance.
 - Unit tests validate sorting, relative paths, source hashes, feature conditional fields, authored
   child order, parent/sibling/refinement navigation, providing-module links, and exclusion of
   parent/child attempts.

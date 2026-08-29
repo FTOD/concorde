@@ -43,6 +43,7 @@ describe('architecture source publication', () => {
     const projectRoot = await mkdtemp(resolve(tmpdir(), 'concorde-architecture-'));
     try {
       await mkdir(resolve(projectRoot, 'specs/example/architecture/diagrams'), {recursive: true});
+      await writeFile(resolve(projectRoot, 'README.md'), '# Example Project\n', 'utf8');
       await writeFile(resolve(projectRoot, 'specs/example/module.md'), `---
 id: module.example
 kind: module

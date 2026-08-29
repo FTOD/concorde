@@ -11,14 +11,6 @@
 }
 
 [data-theme='dark'] {--concorde-surface: #202238; --concorde-border: #363a63;}
-.homeMain {max-width: 72rem; margin: 0 auto; padding: 5rem 1.5rem;}
-.heroBanner {max-width: 48rem; padding-bottom: 3rem;}
-.heroBanner h1 {font-size: clamp(2.5rem, 7vw, 5rem); line-height: .98; letter-spacing: -.045em;}
-.heroBanner__eyebrow {color: var(--ifm-color-primary); font-weight: 700; letter-spacing: .08em; text-transform: uppercase;}
-.projectSummary__grid {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem;}
-.projectSummary__card {display: flex; min-height: 9rem; flex-direction: column; justify-content: space-between; padding: 1.5rem; border: 1px solid var(--concorde-border); border-radius: 1rem; background: var(--concorde-surface); color: inherit; text-decoration: none; transition: transform .15s ease, border-color .15s ease;}
-.projectSummary__card strong {font-size: 1.5rem;}
-.projectSummary__card:hover {border-color: var(--ifm-color-primary); text-decoration: none; transform: translateY(-2px);}
 .provenanceShell {max-width: var(--ifm-container-width); margin: 1rem auto -1rem; padding: 0 var(--ifm-spacing-horizontal);}
 .provenance {display: flex; flex-wrap: wrap; gap: .55rem 1rem; align-items: center; padding: .75rem 1rem; border: 1px solid var(--concorde-border); border-radius: .65rem; background: var(--concorde-surface); font-size: .8rem;}
 .provenance__kind {font-weight: 700;}
@@ -57,8 +49,6 @@
 a:focus-visible, button:focus-visible {outline: 3px solid var(--ifm-color-primary-light); outline-offset: 3px;}
 
 @media (max-width: 640px) {
-  .homeMain {padding-top: 3rem;}
-  .projectSummary__grid {grid-template-columns: 1fr;}
   .provenance {align-items: flex-start; flex-direction: column;}
   .companionLinks {align-items: flex-start; flex-direction: column;}
   .companionLinks__separator {display: none;}

@@ -5,9 +5,9 @@ sidebar_position: 2
 
 # Contributing to the Docsite
 
-The docsite is a read-only publication system, not a content-authoring authority. It consumes two
-maintained roots—`docs/` and `specs/`—and presents three navigation families: Documentation,
-Architecture, and Features.
+The docsite is a read-only publication system, not a content-authoring authority. It consumes the
+root `README.md` plus the maintained `docs/` and `specs/` trees, then presents one shared homepage
+and three navigation families: Documentation, Architecture, and Features.
 
 The complete publication behavior is specified by
 [Feature 002](../../specs/concorde/features/002-create-project-docsite/design.md).
@@ -16,14 +16,15 @@ The complete publication behavior is specified by
 
 | Published collection | Maintained inputs | Public route family |
 |---|---|---|
+| Home | Root `README.md` | `/` |
 | Documentation | Every regular `docs/**/*.md` file | `/docs` |
 | Architecture | Every `specs/**/module.md` (module summary; the module-owned diagrams under `specs/**/architecture/diagrams/*.json`, discovered from that folder rather than declared, are embedded on its page), its adjacent `design.md` (module design reference, published as a separately linked page), and `specs/**/architecture/contracts/**/contract.md` | `/architecture` |
 | Feature abstracts | Every `specs/**/abstract.md` beside a canonical `design.md`; the page each feature opens on | `/features/<feature-id>` or `/features/<parent-feature-id>/<sub-feature-id>` |
 | Feature designs | Every canonical feature-root `design.md` | The feature abstract route plus `/design` |
 | Feature implementations | Every feature-root `implementation.md` beside `design.md` | The feature abstract route plus `/implementation` |
 
-The build manifest names these collections `docs`, `architecture`, `feature-abstracts`, `features`,
-and `feature-implementations`. Module and feature `design.md` files are distinguished by whether
+The build manifest names these collections `home`, `docs`, `architecture`, `feature-abstracts`,
+`features`, and `feature-implementations`. Module and feature `design.md` files are distinguished by whether
 `module.md` is adjacent. A feature `design.md` without `abstract.md` or `implementation.md` is an
 error. Symbolic links are not followed. Plans, tasks,
 requirements checklists, research, technical models, quick-start evidence, and other files below
@@ -38,8 +39,8 @@ sidebar entries to compensate for source placement; the registry and disposable 
 metadata own that projection.
 
 Do not copy canonical content into `docsite/`. Docusaurus configuration, components, formatting, and
-build logic live there; project explanations live in `docs/`; architecture and feature authorities
-live in `specs/`.
+build logic live there; the project introduction lives in root `README.md`, deeper explanations live
+in `docs/`, and architecture and feature authorities live in `specs/`.
 
 ## How a build works
 
@@ -49,13 +50,14 @@ A preview and a production build use the same inclusion, routing, and validation
    Archify source set.
 2. The build verifies the installed project-local Archify 2.16 skill, validates every source, and atomically delivers a fresh,
    complete ignored `generated/` set.
-3. The source registry discovers eligible files and deliberate exclusions, derives Architecture
-   routes from module containment, and derives Features routes from stable IDs plus explicit feature
-   containment.
-4. Independent disposable Architecture and Features trees are materialized under
-   `docsite/.generated/content/`; generated Features category metadata supplies human-readable titles.
+3. The source registry maps `README.md` uniquely to `/`, discovers other eligible files and deliberate
+   exclusions, derives Architecture routes from module containment, and derives Features routes from
+   stable IDs plus explicit feature containment.
+4. Independent disposable Home, Architecture, and Features trees are materialized under
+   `docsite/.generated/content/`; the Home projection adds only route metadata, while generated
+   Features category metadata supplies human-readable titles.
 5. Docusaurus renders a candidate site.
-6. Candidate pages, routes, links, provenance, and the build manifest (Build Manifest v8) are
+6. Candidate pages, routes, links, provenance, and the build manifest (Build Manifest v9) are
    validated.
 7. Only a successful candidate is promoted to `docsite/build/`.
 
@@ -64,6 +66,11 @@ files under `generated/`, `docsite/.generated/`, or `docsite/build/`. Correct th
 and rebuild.
 
 ## Author a documentation page
+
+Edit root `README.md` to change the repository and generated-site homepage. Keep it portable
+GitHub-flavored Markdown: the site projection owns its `/` route metadata and rewrites supported
+repository-relative links. The opening should continue to present the project, key features, and all
+Concorde-specific commands before status and detailed setup material.
 
 Add ordinary Markdown under `docs/`; no per-page registration in the Docusaurus configuration is
 required. Every page needs either a YAML `title` or a level-one heading. Optional

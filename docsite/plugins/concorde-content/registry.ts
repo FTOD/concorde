@@ -15,6 +15,7 @@ import {populateLinks} from './links';
 import {projectedSpecPath, semanticFeaturePath, semanticFeatureRoutes, semanticFeatureStagedPath} from './routes';
 
 export const collections: SourceCollection[] = [
+  {id: 'home', sourceBase: '.', routeBase: '/', include: ['README.md'], contentKind: 'project-document'},
   {
     // `**/design.md` is admitted here only beside `module.md`; feature design.md belongs to `features`.
     id: 'architecture', sourceBase: 'specs', routeBase: '/architecture',
@@ -37,6 +38,7 @@ const featureCompanionLabels: Partial<Record<CollectionId, string>> = {features:
 
 const posixPath = (value: string) => value.split('\\').join('/');
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
+const compareText = (left: string, right: string) => left < right ? -1 : left > right ? 1 : 0;
 
 function headingTitle(content: string): string {
   return content.match(/^#\s+(.+?)\s*$/m)?.[1]?.replace(/^(?:Feature Design|Feature Abstract):\s*/i, '').trim() ?? '';
@@ -49,6 +51,7 @@ function sectionText(content: string, heading: string): string {
 }
 
 function routeFor(collection: SourceCollection, relativePath: string, slug?: unknown, sourceId?: unknown): string {
+  if (collection.id === 'home') return '/';
   if (typeof slug === 'string' && slug.trim()) {
     const clean = slug.trim().replace(/^\/+|\/+$/g, '');
     return clean ? `${collection.routeBase}/${clean}` : collection.routeBase;
@@ -198,7 +201,12 @@ async function parseDocument(
     sidebarPosition: typeof parsed.data.sidebar_position === 'number' ? parsed.data.sidebar_position : undefined,
     slug: typeof parsed.data.slug === 'string' ? parsed.data.slug : undefined,
   };
-  if (collection.id === 'docs') return base as ProjectDocument;
+  if (collection.id === 'home' || collection.id === 'docs') {
+    return {
+      ...base,
+      ...(collection.id === 'home' ? {stagedPath: relativePath} : {}),
+    } as ProjectDocument;
+  }
   if (collection.id === 'feature-abstracts') {
     // The path-derived route stands in until the abstract is paired with design.md and takes the landing route.
     return {...base, collectionId: 'feature-abstracts', route: routeFor(collection, projectedPath, parsed.data.slug)} as FeatureAbstract;
@@ -478,6 +486,15 @@ export async function buildRegistry(projectRoot: string): Promise<ContentRegistr
     }
   }
 
+  if (!documents.some((document) => document.collectionId === 'home') &&
+      !findings.some((finding) => finding.sourcePath === 'README.md')) {
+    findings.push({
+      ruleId: 'content.home.required', severity: 'error', sourcePath: 'README.md',
+      message: 'The required project README homepage is missing.',
+      remediation: 'Add a readable root README.md with a level-one title and project introduction.',
+    });
+  }
+
   const includedSources = new Set(documents.map((document) => document.sourcePath));
   for (const path of [...specsMarkdown].sort()) {
     const sourcePath = posix.join('specs', path);
@@ -490,7 +507,7 @@ export async function buildRegistry(projectRoot: string): Promise<ContentRegistr
     if (legacyWorkspacePattern.test(path)) findings.push(legacyWorkspaceFinding(path));
   }
 
-  documents.sort((left, right) => left.sourcePath.localeCompare(right.sourcePath));
+  documents.sort((left, right) => compareText(left.sourcePath, right.sourcePath));
   resolveModuleRelations(documents);
   resolveFeatureRelations(documents, findings);
   return populateLinks({projectRoot: root, collections, documents, excludedSources, findings});

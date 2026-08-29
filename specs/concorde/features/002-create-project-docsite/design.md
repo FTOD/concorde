@@ -47,6 +47,10 @@ publish them as independent read models: Architecture follows the module hierarc
 follows the feature hierarchy without exposing architecture storage directories as feature
 navigation."
 
+**Revision Input**: "Improve the project README so key features and Concorde commands appear at the
+beginning, and publish that same maintained README as the generated Docusaurus site's home page
+instead of maintaining a separate site-only landing page."
+
 ## Scenario and Component Diagram
 
 `diagrams/project-docsite-publication-flow.json` is a maintained, supplemental sequence view for the
@@ -231,6 +235,36 @@ representative changes.
    authoritative detail, **Then** the guide links to the relevant architecture or feature source and
    does not claim authority over it.
 
+---
+
+### User Story 6 - Start from One Project Introduction Everywhere (Priority: P1)
+
+As a prospective user or contributor, I see the same project introduction in the repository and at
+the generated site's root so that I can learn Concorde's value and available commands immediately
+without reconciling two independently maintained home pages.
+
+**Why this priority**: The repository README and public site root are the two most likely first
+contacts with the project. They must share one maintained authority and put the information needed
+to evaluate and operate Concorde before project history and contributor detail.
+
+**Independent Test**: Change a heading, feature summary, and command entry in the root `README.md`,
+build the site, and verify that `/` contains the changed content, reports `README.md` as its source,
+and has no separate hand-authored landing-page copy.
+
+**Acceptance Scenarios**:
+
+1. **Given** a visitor opens either the repository README or the generated site root, **When** they
+   scan the opening sections, **Then** they encounter the project summary, key features, and the full
+   Concorde-specific command set before project status or detailed installation instructions.
+2. **Given** the maintained root `README.md` changes, **When** the next site build succeeds, **Then**
+   `/` reflects that exact maintained content without a second canonical homepage edit.
+3. **Given** links in `README.md` target project documentation, architecture, features, or external
+   resources, **When** the page is read in the repository or generated site, **Then** supported links
+   resolve appropriately in both contexts and broken internal links fail site validation.
+4. **Given** the generated homepage is included in a successful publication, **When** a reader or
+   maintainer inspects it, **Then** it identifies `README.md` as the maintained source and the build
+   manifest maps that source to exactly one `/` route.
+
 ### Edge Cases
 
 - `docs/` exists but contains no eligible Markdown pages, or `specs/` contains no canonical feature
@@ -262,6 +296,11 @@ representative changes.
   stable IDs remain distinct and their generated feature routes do not collide.
 - A feature refines behavior at an adjacent module level but is not a contained sub-feature; the site
   shows the refinement as a relationship without inventing a parent-child navigation relationship.
+- The README contains repository-relative links whose browser targets must be rewritten for the site
+  without changing the maintained Markdown.
+- A generated-site configuration or source page also claims `/`, colliding with the README homepage.
+- The README is renamed, unreadable, or missing; publication must not silently substitute a stale or
+  site-only introduction.
 
 ## Requirements *(mandatory)*
 
@@ -283,8 +322,8 @@ representative changes.
 - **FR-007**: The first version MUST NOT present plans, tasks, checklists, or other supporting files as
   feature specifications merely because they are stored under `specs/`.
 - **FR-008**: Content collection and presentation MUST NOT modify files under `docs/` or `specs/`.
-- **FR-009**: The site MUST provide a project landing page with distinct, clearly labeled entry points
-  for Architecture, project Documentation, and Features.
+- **FR-009**: The site MUST publish the root `README.md` as the project landing page at `/`, with
+  distinct, clearly labeled entry points for Architecture, project Documentation, and Features.
 - **FR-010**: Documentation navigation MUST preserve the meaningful hierarchy expressed by paths and
   navigation metadata under `docs/`.
 - **FR-011**: Feature navigation MUST identify each specification by its feature title, MUST expose
@@ -395,6 +434,20 @@ representative changes.
 - **FR-050**: Feature page routes MUST be deterministic and collision-free from stable feature
   identity and explicit containment, independent of the module storage path; supported links from
   architecture, documentation, and other feature pages MUST resolve to those routes.
+- **FR-051**: The root `README.md` MUST be the single maintained source for both the repository
+  introduction and the generated site's `/` homepage; `docsite/` MUST NOT maintain a separate
+  hand-authored homepage that duplicates its project narrative.
+- **FR-052**: The README's opening content MUST present, in this order, a concise project explanation,
+  a scannable key-feature summary, and the complete Concorde-specific command set before project
+  status, release caveats, detailed installation, development, or docsite-operation sections.
+- **FR-053**: The generated homepage MUST preserve the README's supported Markdown meaning and MUST
+  rewrite supported repository-relative links to their generated-site routes without modifying the
+  maintained README or breaking its repository rendering.
+- **FR-054**: The source registry, validation, build manifest, search/discovery behavior, and page
+  provenance MUST treat `README.md` as one eligible project document mapped to exactly one `/` route.
+- **FR-055**: A missing or unreadable root README, an invalid supported README link, or any competing
+  homepage route MUST stop publication with an actionable diagnostic and MUST NOT replace the last
+  successful site.
 
 ### Key Entities
 
@@ -402,6 +455,9 @@ representative changes.
   navigation metadata, links, and content.
 - **Framework Guide**: A project document that progressively explains adoption, concepts, workflow,
   or contribution without replacing the normative architecture and feature sources it references.
+- **Project README**: The root maintained Markdown introduction, optimized for repository readers and
+  projected unchanged in meaning as the generated site's `/` homepage, with one manifest entry and
+  explicit source provenance.
 - **Feature Specification**: A feature's canonical `design.md` under `specs/`, identified by its feature
   directory, stable ID, title, lifecycle status, requirements, scenarios, and source path.
 - **Architecture Source**: Maintained module or boundary-contract Markdown under `specs/`, identified
@@ -459,14 +515,23 @@ representative changes.
 - **SC-018**: Every eligible feature has exactly one deterministic, collision-free route derived
   independently of its module storage path, while 100% of supported inbound links resolve to the
   resulting page.
+- **SC-019**: The repository and generated-site root present the same maintained README content, and
+  a content change requires exactly one source edit to `README.md` before both surfaces agree.
+- **SC-020**: A reader can identify at least five key capabilities and all five Concorde-specific
+  command surfaces within the README's first three substantive sections, before encountering project
+  status or installation detail.
+- **SC-021**: The build manifest contains exactly one `README.md` entry at `/`, the generated homepage
+  visibly identifies that source, and no other source or hand-written site page claims `/`.
+- **SC-022**: In automated cases for a missing README, a broken supported internal README link, and a
+  competing root route, 100% of builds fail with an actionable diagnostic before publication.
 
 ## Assumptions
 
-- "The entire project" means three maintained human-facing content views over two source roots:
-  architecture and feature specifications under `specs/`, plus recursively discovered project
-  Markdown under `docs/`. Archify JSON remains structural authority and its generated HTML is
-  embedded from disposable projection output; API references, source-code extraction, and test reports
-  remain later features.
+- "The entire project" means three maintained human-facing content views over the root README and
+  two recursive source trees: the project introduction in `README.md`, architecture and feature
+  specifications under `specs/`, and project guides under `docs/`. Archify JSON remains structural
+  authority and its generated HTML is embedded from disposable projection output; API references,
+  source-code extraction, and test reports remain later features.
 - A canonical feature specification is the feature directory's root `design.md`. Temporal plans,
   tasks, and evidence live below `attempt/`; checklists and other supporting artifacts remain
   outside the first site's Features collection.
@@ -491,3 +556,6 @@ representative changes.
 - The hand-written Documentation collection is intentionally explanatory and task-oriented. It may
   summarize README material and canonical specifications for a progressive reader journey, but
   architecture and feature sources remain authoritative when wording or detail disagrees.
+- The README remains conventional GitHub-flavored Markdown without site-only imports or authored
+  React components. The generated site may stage a disposable metadata wrapper or rewritten-link
+  projection so long as the visible narrative and authority remain the root README.

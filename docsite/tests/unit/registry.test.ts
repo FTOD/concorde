@@ -9,13 +9,14 @@ import {validateRegistry} from '../../plugins/concorde-content/validation';
 const fixture = resolve(__dirname, '../fixtures/valid-project');
 
 describe('content registry', () => {
-  it('discovers all five collections with unique routes and stable source ordering', async () => {
+  it('discovers the homepage and all five recursive collections with unique routes and stable source ordering', async () => {
     const registry = await buildRegistry(fixture);
     expect(validateRegistry(registry)).toEqual([]);
     expect(registry.collections.map((collection) => collection.id)).toEqual([
-      'architecture', 'docs', 'feature-abstracts', 'features', 'feature-implementations',
+      'home', 'architecture', 'docs', 'feature-abstracts', 'features', 'feature-implementations',
     ]);
     expect(registry.documents.map((item) => item.sourcePath)).toEqual([
+      'README.md',
       'docs/guide/intro.md', 'docs/index.md',
       'specs/001-alpha/abstract.md',
       'specs/001-alpha/design.md',
@@ -32,8 +33,11 @@ describe('content registry', () => {
       'specs/example/design.md',
       'specs/example/module.md',
     ]);
-    expect(new Set(registry.documents.map((item) => item.route)).size).toBe(16);
+    expect(new Set(registry.documents.map((item) => item.route)).size).toBe(17);
     expect(registry.documents.every((item) => item.sourceSha256.length === 64)).toBe(true);
+    expect(registry.documents.find((item) => item.sourcePath === 'README.md')).toMatchObject({
+      collectionId: 'home', contentKind: 'project-document', route: '/', stagedPath: 'README.md', title: 'Fixture Project',
+    });
   });
 
   it('classifies module design, feature design, and feature implementation separately', async () => {
@@ -74,7 +78,7 @@ describe('content registry', () => {
     const manifest = createManifest(registry);
     expect(manifest.pages).toHaveLength(registry.documents.length);
     expect(manifest.pages.map((page) => page.navigation.section)).toEqual([
-      'Documentation', 'Documentation',
+      'Documentation', 'Documentation', 'Documentation',
       'Features', 'Features', 'Features', 'Features', 'Features', 'Features', 'Features', 'Features', 'Features',
       'Features', 'Features', 'Features',
       'Architecture', 'Architecture',

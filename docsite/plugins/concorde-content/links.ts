@@ -4,7 +4,7 @@ import {unified} from 'unified';
 import remarkParse from 'remark-parse';
 import {visit} from 'unist-util-visit';
 
-import type {ArchitectureSource, ContentRegistry, FeatureDesign, LinkReference, SourceDocument, ValidationFinding} from './types';
+import type {ArchitectureSource, CollectionId, ContentRegistry, FeatureDesign, LinkReference, SourceDocument, ValidationFinding} from './types';
 
 interface MarkdownLinkNode {
   type: 'link';
@@ -134,6 +134,7 @@ export function remarkConcordeLinks(options: {
   getRegistry: () => Promise<ContentRegistry>;
   stagedRoot?: string;
   canonicalSourceBase?: string;
+  canonicalCollectionId?: CollectionId;
 }) {
   return async (tree: unknown, file: {path?: string}) => {
     if (!file.path) return;
@@ -148,7 +149,9 @@ export function remarkConcordeLinks(options: {
     const source = isStaged
       ? registry.documents.find((document) =>
           document.stagedPath === posixPath(stagedRelative) &&
-          document.sourcePath.startsWith(`${options.canonicalSourceBase ?? 'specs'}/`))
+          (options.canonicalCollectionId
+            ? document.collectionId === options.canonicalCollectionId
+            : document.sourcePath.startsWith(`${options.canonicalSourceBase ?? 'specs'}/`)))
       : registry.documents.find((document) => document.sourcePath === posixPath(relative(projectRoot, filePath)));
     if (!source) return;
     visit(tree as Parameters<typeof visit>[0], 'link', (node: MarkdownLinkNode) => {

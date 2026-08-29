@@ -170,6 +170,10 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Improvement**: Revise FR-DOC-003 through the Documentation feature's specify lifecycle so it
   requires independent semantic projections from the shared `specs/` packages.
 - **Status**: open
+- **Occurrences**:
+  - plan 2026-08-29 feature.concorde.publish-project-docsite — the root feature now publishes
+    `README.md` at `/`, while FR-DOC-004 and the Documentation module's project-content contract still
+    describe exactly two accepted source roots; both require their own owning lifecycle update.
 
 ### R-009 · The published-site contract named an obsolete manifest schema
 
@@ -367,4 +371,21 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Action**: Left the two temporary directories for normal operating-system cleanup; no project
   source, mirror, receipt, or generated publication depends on them.
 - **Improvement**: Provide a sanctioned temporary-directory cleanup operation for task-scoped paths.
+- **Status**: open
+
+### R-020 · Validation quickstart placed the global project option after the verb
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.publish-project-docsite
+- **Kind**: tooling
+- **Concerns**: specs/concorde/features/002-create-project-docsite/attempt/quickstart.md
+- **Expected**: The attempt quickstart invokes deterministic Concorde validation with the project
+  root explicitly selected.
+- **Observed**: The first command used `validate --root .`, but the CLI accepts the global
+  `--project-root` option only before the `validate` verb.
+- **Effect**: worked-around
+- **Action**: Corrected the temporal quickstart to use `--project-root . validate` and reran it.
+- **Improvement**: Include the global-option ordering in generated quickstart examples for Concorde
+  validation.
 - **Status**: open
