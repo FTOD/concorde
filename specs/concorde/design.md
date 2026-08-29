@@ -356,8 +356,10 @@ without expanding the canonical structure.
   Manifest v8 with `architectureDiagrams`, module pages embedding every module diagram, routes
   unchanged. Concorde's own hierarchy, fixtures, guides, templates, command definitions, and installed
   mirrors were migrated together; preset, extension, and bundle stay at the unpublished 0.3.0. The
-  feature 001 core diagram keeps its pre-migration evidence pin (Archify proves evidence paths at a
-  committed revision), so re-pinning it to a revision that contains this layout is follow-up work.
+  feature 001 core diagram was re-pinned in the following commit to `9b49609`, the revision that
+  introduced this layout (Archify proves evidence paths at a committed revision), with its evidence
+  paths moved to `architecture/diagrams/level-view.json` and `architecture/contracts/`. The
+  constitution was amended to 2.1.0 in the same change.
 - 2026-08-29 — Adopted the feature-root `abstract.md` / `design.md` / `implementation.md` trio and
   temporal `attempt/` directory. Protocol v6, proposal v4, `CONCORDE-ABSTRACT-*`, Build Manifest v7,
   runtime fields, templates, installed helpers, publication routes, fixtures, documentation, and all

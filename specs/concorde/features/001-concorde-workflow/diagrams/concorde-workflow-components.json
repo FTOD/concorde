@@ -7,7 +7,7 @@
     "output": "../../../../../generated/architecture/concorde-workflow-components.html",
     "repository": {
       "url": "https://github.com/FTOD/concorde.git",
-      "revision": "65e2c59bfa74b3173a7fd6af284bfdfacbee0dea"
+      "revision": "9b49609cfd9e166fbfb85a9847fbb589ac454422"
     },
     "viewBox": [1395, 1000],
     "views": [
@@ -134,8 +134,8 @@
       "size": [190, 86],
       "sources": [
         {"path": "specs/concorde/module.md", "label": "module responsibility"},
-        {"path": "specs/concorde/architecture.json", "label": "one-level structure"},
-        {"path": "specs/concorde/contracts/concorde-workflow/contract.md", "label": "boundary contract"}
+        {"path": "specs/concorde/architecture/diagrams/level-view.json", "label": "one-level structure"},
+        {"path": "specs/concorde/architecture/contracts/concorde-workflow/contract.md", "label": "boundary contract"}
       ]
     },
     {
@@ -162,7 +162,7 @@
       "pos": [1170, 430],
       "size": [190, 86],
       "sources": [
-        {"path": "tests/concorde/integration/test_implementation_workspace.py", "label": "workspace evidence"}
+        {"path": "tests/concorde/integration/test_attempt_workspace.py", "label": "workspace evidence"}
       ]
     }
   ],
