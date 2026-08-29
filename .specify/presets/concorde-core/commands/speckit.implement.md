@@ -1,5 +1,5 @@
 ---
-description: "Execute all tasks in the selected feature implementation workspace."
+description: "Execute all tasks in the selected feature attempt workspace."
 scripts:
   py: .specify/extensions/concorde/scripts/python/workspace.py --phase implement
 ---
@@ -16,22 +16,22 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIPT}` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
-`workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v5 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+`workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
+Require Protocol v6 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
 recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
-sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
+read the parent `feature_design` and `feature_implementation` only as aggregate durable context. Never load a
+sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 Bind `CHECKLISTS_DIR` to the returned `workspace.checklists_dir`; never derive it from `FEATURE_DIR`.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
 step says to run `{SCRIPT}`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
 by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
-`implementation_dir` when absent and seed a missing artifact from the active `plan-template` or
+`attempt_dir` when absent and seed a missing artifact from the active `plan-template` or
 `tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
 For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
 
@@ -73,7 +73,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Outline
 
-1. Run `{SCRIPT}` from repo root and parse FEATURE_DIR, IMPLEMENTATION_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. Run `{SCRIPT}` from repo root and parse FEATURE_DIR, ATTEMPT_DIR, FEATURE_DESIGN, FEATURE_IMPLEMENTATION, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
 2. **Check checklists status** (if `CHECKLISTS_DIR/` exists):
    - Treat checklist markers as a read-only gate: scan checkbox state, report status, and ask before proceeding when needed; do NOT modify checklist files or markers
@@ -110,25 +110,25 @@ For `checklist`, resolve `checklist-template` separately through the same public
      - Automatically proceed to step 3
 
 3. Load and analyze the implementation context:
-   - **REQUIRED**: Read FEATURE_SPEC for behavioral authority and FEATURE_DESIGN for the accepted
+   - **REQUIRED**: Read FEATURE_DESIGN for behavioral authority and FEATURE_IMPLEMENTATION for the accepted
      realization baseline (the placeholder means no accepted baseline). Implement the plan's delta
-     without editing `tldr.md`, `spec.md`, the feature `design.md`, or any module `module.md`/`design.md`; promotion belongs
+     without editing `abstract.md`, feature `design.md`, feature `implementation.md`, or any module `module.md`/`design.md`; promotion belongs
      only to the explicit Concorde feature-hardening command after all tasks are complete. Record
      rationale, alternatives, and implementation detail discovered during execution inside the
-     attempt (`IMPLEMENTATION_DIR/research.md` or `IMPLEMENTATION_DIR/validation.md`) so hardening
-     can carry them into the feature `design.md` and the module `design.md`. Record every
+     attempt (`ATTEMPT_DIR/research.md` or `ATTEMPT_DIR/validation.md`) so hardening
+     can carry them into feature `implementation.md` and the module `design.md`. Record every
      difficulty or problem met while executing — including existing code or tests of another
      feature that disagree with that feature's design reference (an `implementation` entry whose
      `Concerns` names that feature; never edit its sources) — in the project reflection log per
      Reflection Recording below, in the same phase, before the completion report.
-   - **REQUIRED**: Read TASKS (`IMPLEMENTATION_DIR/tasks.md`) for the complete task list and execution plan
-   - **REQUIRED**: Read IMPL_PLAN (`IMPLEMENTATION_DIR/plan.md`) for tech stack, architecture, and file structure
-   - **IF EXISTS**: Read `IMPLEMENTATION_DIR/data-model.md` for entities and relationships
+   - **REQUIRED**: Read TASKS (`ATTEMPT_DIR/tasks.md`) for the complete task list and execution plan
+   - **REQUIRED**: Read IMPL_PLAN (`ATTEMPT_DIR/plan.md`) for tech stack, architecture, and file structure
+   - **IF EXISTS**: Read `ATTEMPT_DIR/data-model.md` for entities and relationships
    - **IF EXISTS**: Read `FEATURE_DIR/contracts/` for durable API specifications and test requirements
-   - **IF EXISTS**: Read `IMPLEMENTATION_DIR/research.md` for technical decisions and constraints
+   - **IF EXISTS**: Read `ATTEMPT_DIR/research.md` for technical decisions and constraints
    - **IF EXISTS**: Read .specify/memory/constitution.md for governance constraints
-   - **IF EXISTS**: Read `IMPLEMENTATION_DIR/quickstart.md` for integration scenarios
-   - **IF REFERENCED**: Read feature-owned Archify JSON beside the durable `spec.md` and its textual
+   - **IF EXISTS**: Read `ATTEMPT_DIR/quickstart.md` for integration scenarios
+   - **IF REFERENCED**: Read feature-owned Archify JSON beside the durable `design.md` and its textual
      explanation. Treat generated HTML and visual receipts as reproducible evidence, never as source.
 
 4. **Project Setup Verification**:
@@ -201,7 +201,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
      counterpart together; run Archify showcase validation after each candidate edit and delivery at
      completion; run visual checks when the environment supports them, inspect captures before
      claiming perceptual review, and record skipped/pending truthfully. Keep the source under
-     `diagrams/`, declare it in `spec.md`, and verify provenance, generated freshness, and automatic
+     `diagrams/`, declare it in `design.md`, and verify provenance, generated freshness, and automatic
      feature-page embedding.
 
 8. Progress tracking and error handling:
@@ -247,14 +247,14 @@ removes it.
   `Effect` (`assumed`, `worked-around`, `deferred`, or `blocked`), `Action`, `Improvement`, and
   `Status: open`. The grammar is fixed by the log template and checked by
   `speckit.concorde.validate` (`CONCORDE-REFLECT-001` to `-004`).
-- **Never fix in place**: a problem with `tldr.md`, `spec.md`, any `design.md`, any `module.md`, a
+- **Never fix in place**: a problem with `abstract.md`, feature `design.md`, feature `implementation.md`, any `module.md`, a
   contract, a view, a diagram, or another feature's code or tests is recorded, not edited; the
   owning phase or the maintainer changes that source later.
 - **Update, don't duplicate**: when the log already holds the same problem — recorded by any phase
   on any feature — add a line under its `- **Occurrences**:` list
   (`<phase> <date> <feature-id> — <context>`) instead of a new entry. Never change a `Status` or
   `Note` a maintainer set.
-- **Bounded**: recording never requires opening another root's `implementation/`; cite the other
+- **Bounded**: recording never requires opening another root's `attempt/`; cite the other
   feature by stable ID or path.
 - **Hygiene**: no secrets, credentials, or bulk output — cite the evidence path instead; keep
   `Expected`, `Observed`, and `Action` under about 150 words together.
@@ -305,6 +305,6 @@ Report final status with summary of completed work, then the line
 
 - [ ] All tasks in tasks.md completed and marked `[X]`
 - [ ] Implementation validated against specification, plan, and test coverage
-- [ ] Durable `implementation.md` and every module `module.md`/`design.md` were not updated and `implementation/` was not removed automatically
+- [ ] Durable `implementation.md` and every module `module.md`/`design.md` were not updated and `attempt/` was not removed automatically
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with summary of completed work

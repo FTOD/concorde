@@ -39,7 +39,7 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Expected**: One rule for module-summary edits during an attempt.
 - **Observed**: The tasks append layer says to include tasks that update "module registrations" and
   the "current-level Archify JSON", and also says not to generate a task that edits "any module
-  `module.md`"; the plan append layer forbids editing `tldr.md`, `spec.md`, the feature
+  `module.md`"; the plan append layer forbids editing `abstract.md`, `design.md`, the feature
   `design.md`, and a module `design.md` but not `module.md`.
 - **Effect**: assumed
 - **Action**: Planned the `architecture.json` change as an implementation task and the `module.md`
@@ -54,14 +54,14 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Date**: 2026-08-28
 - **Feature**: feature.concorde.record-workflow-reflections
 - **Kind**: specification
-- **Concerns**: specs/concorde/features/005-record-workflow-reflections/spec.md#concorde-architecture-alignment
+- **Concerns**: specs/concorde/features/005-record-workflow-reflections/design.md#concorde-architecture-alignment
 - **Expected**: The alignment section describes the root view's relationship to the feature
   durably.
 - **Observed**: It stated the root view "is not amended by this specification; drawing this feature
   in the root view is planned work", which becomes false when research D8 adds the node, and an
-  attempt may not edit `spec.md`.
+  attempt may not edit `design.md`.
 - **Effect**: deferred
-- **Action**: Left `spec.md` unchanged during planning; the 2026-08-28 specification revision
+- **Action**: Left `design.md` unchanged during planning; the 2026-08-28 specification revision
   (R-004) reworded the bullet to "the root view shows this feature as a root feature node".
 - **Improvement**: Keep alignment prose descriptive of the intended end state, not of pending work.
 - **Status**: resolved
@@ -74,21 +74,21 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Date**: 2026-08-28
 - **Feature**: feature.concorde.record-workflow-reflections
 - **Kind**: specification
-- **Concerns**: specs/concorde/features/005-record-workflow-reflections/spec.md#functional-requirements
-- **Expected**: FR-003 placed the reflection log inside each attempt's `implementation/`
+- **Concerns**: specs/concorde/features/005-record-workflow-reflections/design.md#functional-requirements
+- **Expected**: FR-003 placed the reflection log inside each attempt's `attempt/`
   directory, removed at hardening with a per-entry disposition.
 - **Observed**: The maintainer pointed out that problems met while implementing a feature usually
   concern existing implementations, often of other features; a per-attempt file scatters the same
   problem across roots and deletes it with the attempt.
 - **Effect**: worked-around
-- **Action**: Revised the specification, TL;DR, plan, research, data model, contract, quickstart,
+- **Action**: Revised the specification, abstract, plan, research, data model, contract, quickstart,
   and tasks on 2026-08-28: one project-wide log at the specification root, entries attributed to
   the selected feature with a free `Concerns` target, no removal at hardening, and a citation rule
   instead of dispositions; moved this attempt's entries here.
 - **Improvement**: When a record serves cross-feature review, specify it at the level where all
   the things it can concern are visible (the root), not at the feature.
 - **Status**: resolved
-- **Note**: Resolved by the 2026-08-28 revision of Feature 005 (spec.md "Revised" line).
+- **Note**: Resolved by the 2026-08-28 revision of Feature 005 (design.md "Revised" line).
 
 ### R-005 · The root view cannot draw the feature's crossing into Spec Kit Integration
 
@@ -129,24 +129,24 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
   SC-002 "zero filesystem changes") with this exception through specification review of that root.
 - **Status**: open
 
-### R-007 · The docsite rejects TL;DR links to the contract, its example, and the project log
+### R-007 · The docsite rejects abstract links to the contract, its example, and the project log
 
 - **Phase**: implement
 - **Date**: 2026-08-28
 - **Feature**: feature.concorde.record-workflow-reflections
 - **Kind**: tooling
 - **Concerns**: docsite/plugins/concorde-content/validation.ts
-- **Expected**: `npm run validate` and `npm run build` accept the feature page; the TL;DR's Read
+- **Expected**: `npm run validate` and `npm run build` accept the feature page; the abstract's Read
   Next links point readers at the log grammar, the example, and the actual project log.
-- **Observed**: The docsite reports `link.target.excluded` for the three links in `tldr.md`
+- **Observed**: The docsite reports `link.target.excluded` for the three links in `abstract.md`
   (`contracts/reflection-log.md`, `contracts/examples/reflections.md`, `../../reflections.md`)
   because those files are non-canonical Spec Kit artifacts that the site does not publish, and the
-  build stops; sibling TL;DRs avoid this by naming such files in backticks instead of linking.
+  build stops; sibling abstracts avoid this by naming such files in backticks instead of linking.
 - **Effect**: blocked
-- **Action**: Halted task T039 (docsite freshness). The fix is a three-line change to `tldr.md`
+- **Action**: Halted task T039 (docsite freshness). The fix is a three-line change to `abstract.md`
   (link → backtick path), which implementation may not make; presented to the maintainer for
   approval as a specification-tier edit.
-- **Improvement**: Let the specify guidance say that a TL;DR may link only to published canonical
+- **Improvement**: Let the specify guidance say that a abstract may link only to published canonical
   sources, or let the docsite publish feature contracts and the project log as repository assets.
 - **Status**: open
 

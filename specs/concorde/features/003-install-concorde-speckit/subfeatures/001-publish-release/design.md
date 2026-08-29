@@ -1,61 +1,168 @@
-# Feature Design Reference: Publish a Concorde Release
+---
+id: feature.concorde.install-with-spec-kit.publish-release
+kind: feature
+module: module.concorde
+parent_feature: feature.concorde.install-with-spec-kit
+refines: []
+subfeatures: []
+scenarios:
+  - inspect-install-and-verify-concorde
+contracts:
+  provided:
+    - contract.concorde.spec-kit-installation
+  required:
+    - contract.concorde.spec-kit-platform
+architecture_view: specs/concorde/architecture.json
+evidence_status: verified
+canonical_design: specs/concorde/features/003-install-concorde-speckit/subfeatures/001-publish-release/design.md
+---
 
-**Realization status**: Reviewed realization accepted for the `v0.1.0` publication milestone.
+# Feature Design: Publish a Concorde Release
 
-**Selected level**: Immediate sub-feature of `feature.concorde.install-with-spec-kit`; the parent `spec.md` and `design.md` remain read-only aggregate context and are not restated here.
+**Created**: 2026-08-27
+**Status**: Specified; no publication realization has been hardened yet
+**Input**: Publish a real, publicly reachable Concorde release with catalogs and archives so that
+installation no longer requires a Concorde checkout, a local build, or a local catalog server.
 
-## Realization Overview
+## Outcome
 
-A Concorde release is published as one GitHub release on the maintained repository `https://github.com/FTOD/concorde`, tagged `v<version>`, carrying exactly seven immutable assets: the three archives and three Spec Kit catalogs produced by the parent's deterministic release builder, plus a `release.json` current-release pointer. Every asset lives at `<repository>/releases/download/v<version>/<asset>`, which is exactly the location the catalogs advertise. The platform's `releases/latest/download/<asset>` alias serves as the stable current-release location: it resolves only to published, non-pre-release versions, so consumers and the sibling one-command installer can discover the newest version and its three catalog URLs without knowing a version number.
+A maintainer publishes one versioned Concorde release from the maintained sources, and any supported
+project can afterwards discover and install exactly that release from a stable public location,
+without cloning Concorde, building archives, or serving catalogs locally.
 
-Publication is automated by the `Publish Concorde release` workflow (`.github/workflows/publish-release.yml`). Pushing a `v*` tag runs unit tests, the release contract tests, the release build, the release verifier pinned to the tag's version and public base URL, and finally the publisher; a manual dispatch with `dry_run=true` runs the same sequence and prints the plan without any release-host operation. The publisher (`scripts/release/publish-release.py`) implements a fixed decision table: a tag that does not equal the manifest version or a failed verification stops before any host call; an absent release is created as a draft, receives all seven assets, and is published only then; a leftover draft is repaired and published; an already published identical release is a no-op; a published release with different content is refused. Assets of a published release are never replaced.
+## Parent Context and Boundary
 
-The release version has one authority: `bundle.version` in `bundles/concorde-bundle/bundle.yml`. The builder derives the base URL from it, requires the bundle's pinned component versions and the preset and extension manifests to agree with it, and requires every manifest to advertise the maintained repository.
+The parent defines what a release contains (one bundle recipe pinning one preset and one extension),
+how Spec Kit installs it, and how installed behavior is verified. This child owns only how a built
+and verified release becomes publicly available: when publication happens, where the archives and
+catalogs live, how their advertised locations stay truthful, and how a consumer finds the current
+release. It does not change package contents, bundle composition, or installed command behavior.
 
-## Module and Feature Collaboration
+The parent component and installation-flow diagrams already show the release, discovery, and
+installation stages; this child adds a publication step between "release built and verified" and
+"catalog discovered" and needs no diagram of its own.
 
-The parent `feature.concorde.install-with-spec-kit` continues to own what a release contains, Spec Kit's authority over installation, inspect-before-install, and the clean-project verification matrix. `feature.distribution.package-concorde-bundle` (Distribution module) supplies the reproducible archives and catalogs through `contract.distribution.bundle-lifecycle`; this sub-feature adds only publication transport, location truthfulness, immutability, and discovery on top of that build. Spec Kit remains the external consumer: the published catalogs are registered through its public catalog commands and satisfy its HTTPS-with-host and redirect re-validation rules, so installation proceeds through the root `contract.concorde.spec-kit-installation` exactly as the parent specifies. The sibling `feature.concorde.install-with-spec-kit.one-command-install` is the intended consumer of `release.json` and reads it through this sub-feature's `contracts/release-publication.md` interface profile. `feature.concorde.publish-project-docsite` publishes the maintainer guide `docs/releasing.md` and the published-release section of `docs/quick-start.md` as documentation, without becoming behavioral authority.
+## User Scenarios & Testing
 
-No module, hierarchy, scenario, or boundary contract changed. The parent's core component view and supplemental installation-flow view already show release, discovery, and installation; this sub-feature inserts the publication step between "release built and verified" and "catalog discovered" and maintains no diagram of its own.
+### User Story 1 - Publish a tagged release (Priority: P1)
 
-## Scenario Realization
+A maintainer marks a release version in the repository and the release archives and catalogs are
+built, verified, and published automatically to a public location that Spec Kit can read.
 
-### Publish a tagged release
+**Why this priority**: Without a published release every consumer must be a release builder, which
+is the root cause of the current installation complexity.
 
-A maintainer bumps `bundle.yml` and the component manifests together, merges, and pushes `v<version>`. The workflow resolves the tag, runs tests, builds, and verifies with `--expect-version` and `--expect-base-url`; the publisher then creates a draft with `--verify-tag`, uploads the archives, catalogs, and pointer, and flips the draft to published as its last operation. The Publication Record (`outcome`, ordered `plan`, `compared`, `residual_state`) is printed on stdout and appended to the job summary. A version mismatch, verification failure, or missing asset produces no host mutation; a host failure after the draft exists reports the draft and the uploaded assets as residual state, and the next run repairs it.
+**Independent Test**: Mark one release version, wait for publication, then from a machine without
+the Concorde checkout register the published catalogs in a fresh supported project and preview the
+bundle; the preview must name the published preset and extension versions.
 
-### Discover the current release
+**Acceptance Scenarios**:
 
-`release.json` is generated by the publisher from the verified `dist/` with no wall-clock fields and validates against the normative schema in `contracts/release-publication.md`: schema version, version, tag, repository, base URL, supported Spec Kit range, bundle id, the three catalog URLs, archive digests, and an optional `prerelease` flag. Because the release is created as a draft and published only after every asset exists, the `latest` alias never observes an incomplete release; pre-release versions (a `-` suffix) are published with `--prerelease` and skipped by the alias.
+1. **Given** a release version is marked on the maintained sources, **When** publication runs,
+   **Then** the bundle, preset, and extension archives plus their three catalogs become available at
+   the public location that the catalogs themselves advertise.
+2. **Given** the published catalogs, **When** a clean supported project registers them and previews
+   the bundle, **Then** Spec Kit resolves the pinned component versions and integrity data without any
+   local build or local server.
+3. **Given** release verification fails, **When** publication is attempted, **Then** nothing is
+   published for that version and the failure names the failing check.
 
-### Trust what was published
+---
 
-Verification rebuilds the archives and catalogs from the checked-out sources and requires byte equivalence before publication. Re-running the publisher for a published version downloads the published catalogs and pointer and compares versions, locations, and digests field by field: identical content is reported as `already-published` and nothing changes; any difference, including a missing asset, is reported as `divergent` with the differing fields and exits non-zero without mutation. The localhost catalog-server path used by the acceptance suite is untouched and remains the development install path.
+### User Story 2 - Discover the current release (Priority: P2)
 
-## Durable Implementation Decisions
+A consumer who does not know the latest version number can still find the current release catalogs
+and the version they point to.
 
-- Public location: GitHub Releases on `FTOD/concorde` with version-specific, immutable asset URLs; the `releases/latest/download/` alias is the current-release pointer. The advertised repository in the builder and both component manifests was corrected from `concorde-workflow/concorde` to `FTOD/concorde`.
-- One version authority: `bundle.yml` `bundle.version`; bundle pins, `preset.yml`, `extension.yml`, and the Spec Kit range must agree, and the tag must equal `v<version>`. The builder has no `--version` flag; a version override remains only as a function parameter for acceptance fixtures that simulate a later release.
-- Verify before publish: the verifier enforces the expected version, the expected public base URL on every `catalog_url` and `download_url`, the repository, digests, safe archive entries, and a byte-equivalent rebuild of archives and catalogs. Without an expected base URL it still accepts the acceptance localhost base.
-- Atomic and idempotent publication: draft → upload seven assets → publish last; identical re-run is a no-op; divergence is refused with exit code 2; drafts are repaired; `--clobber` is never used.
-- `release.json` pointer: schema `1.0`, reproducible from the same build, governed by the sub-feature's interface profile; adding optional fields is a minor change, removing or renaming required fields or changing the URL layout is a major change.
-- Release notes are rendered deterministically from the build (component versions, Spec Kit range, digest table, catalog registration commands, pointer location).
-- Workflow shape: tag push or manual dry-run dispatch, `contents: write`, per-ref concurrency, tests → build → verify → publish, `uv`-managed Python 3.11, GitHub CLI for every host operation.
-- Publication logic lives in a testable Python script with an injectable release-host seam; the workflow only sequences public commands.
-- Catalogs and `dist/` remain generated, git-ignored projections; the release-artifact contract test no longer depends on a locally generated `catalogs/` directory.
+**Why this priority**: The one-command installer and the documentation must not hard-code a version
+that goes stale.
 
-## Traceability and Evidence
+**Independent Test**: Publish two consecutive versions; resolve the current-release location after
+each and verify it identifies the newer version while the older version-specific location remains
+unchanged.
 
-- Behavioral authority: `spec.md` and `contracts/release-publication.md` (published layout, `release.json` schema, semantics, failure table).
-- Implementation: `.github/workflows/publish-release.yml`; `scripts/release/publish-release.py`; `scripts/release/build-components.py` (`read_release_identity`, `default_base_url`, `--print-version`); `scripts/release/verify-release.py` (`--expect-version`, `--expect-base-url`); repository fields in `presets/concorde-core/preset.yml` and `extensions/concorde/extension.yml`; `jsonschema` in the `dev` dependency group.
-- Documentation: `docs/releasing.md`, the published-release section of `docs/quick-start.md`, `README.md`, and `docs/index.md`; the docsite framework-guide baseline covers ten guides.
-- Tests: `tests/concorde/unit/test_publish_release.py` (decision table against a fake host, plan and ordering, pre-release, draft repair, residual state, pointer content, notes, CLI exit codes); `tests/concorde/contract/test_release_publication.py` (contract example and generated pointer validate against the schema and match catalog digests; workflow triggers, permissions, and step order); `tests/concorde/contract/test_release_artifacts.py` (published default locations, manifest agreement, verifier rejections). The full Concorde suite passes, proving the localhost acceptance path is unchanged.
-- Live evidence for `v0.1.0` (2026-08-27): dry-run dispatch run 33054887480 (`dry-run`, 20 s); tag-triggered run 33055060670 published seven assets within a minute of the push; a fresh project installed the bundle through public Spec Kit commands only in 7 s and materialized all seventeen Concorde skills; `releases/latest/download/release.json` resolved to `0.1.0`; re-dispatch run 33055138343 reported `already-published` with no change; a clean clone at `v0.1.0` rebuilt all three archives with digests identical to the published pointer.
+**Acceptance Scenarios**:
 
-## Known Limitations
+1. **Given** at least one published release, **When** a consumer reads the current-release
+   location, **Then** it identifies exactly one version and the catalog locations for that version.
+2. **Given** a newer release is published, **When** the current-release location is read again,
+   **Then** it identifies the newer version, and every previously published version-specific
+   location still serves its original, unchanged content.
 
-- The "newer version supersedes the pointer while older locations stay unchanged" scenario cannot be exercised until a second version is published.
-- Publication transport is GitHub-specific (releases, `latest` alias, GitHub CLI); moving to another host requires re-deciding the public location and pointer alias, though the pointer schema and decision table are host-neutral.
-- Published assets are not cryptographically signed; trust rests on HTTPS, catalog digests, and reproducible rebuilds.
-- The release job runs the unit and release contract tests, not the full acceptance suite; parent-level clean-project acceptance remains the parent feature's evidence.
-- A pre-release is recognised only by a `-` suffix in the manifest version; there is no separate release-channel concept.
+---
+
+### User Story 3 - Trust what was published (Priority: P2)
+
+A maintainer can confirm that the published archives are the ones built from the marked sources and
+that their advertised digests match.
+
+**Independent Test**: Rebuild the same version from the marked sources on another machine and compare
+digests with the published catalogs.
+
+**Acceptance Scenarios**:
+
+1. **Given** a published version, **When** the archives are rebuilt from the same marked sources,
+   **Then** every digest in the published catalogs matches the rebuilt archives.
+2. **Given** a published archive whose digest disagrees with its catalog entry, **When** Spec Kit
+   installs from that catalog, **Then** installation stops before claiming success.
+
+### Edge Cases
+
+- The advertised download location in the catalogs differs from the location actually used for
+  publication (today the catalogs advertise a repository that is not the maintained one).
+- A version is marked twice or publication is re-run for an already published version.
+- Publication succeeds for some archives and fails for others.
+- The publication platform is temporarily unreachable while a consumer installs.
+- The marked version does not match the version recorded in the maintained component manifests.
+
+## Requirements
+
+- **FR-001**: Publication MUST be triggered by marking a release version on the maintained sources
+  and MUST require no manual upload steps.
+- **FR-002**: Every published release MUST contain the bundle, preset, and extension archives and the
+  three matching catalogs produced by the parent's release build, unchanged.
+- **FR-003**: Catalog metadata MUST advertise the exact public locations at which the archives and
+  catalogs are actually published; a mismatch MUST fail publication.
+- **FR-004**: Publication MUST run the parent's release verification first and MUST publish nothing
+  for a version whose verification fails.
+- **FR-005**: The marked release version MUST equal the version recorded in the maintained bundle,
+  preset, and extension manifests, and publication MUST stop when they disagree.
+- **FR-006**: Every published version-specific location MUST be immutable once published; re-running
+  publication for the same version MUST either reproduce byte-identical content or stop with a
+  named conflict.
+- **FR-007**: A stable current-release location MUST identify the newest published version and its
+  catalog locations, and MUST be updated only after that version is fully published.
+- **FR-008**: Published catalogs MUST be registrable by Spec Kit's public catalog registration from a
+  clean supported project with no Concorde checkout and no local server.
+- **FR-009**: A published release MUST include human-readable notes naming the component versions and
+  the supported Spec Kit range.
+- **FR-010**: The development path that builds and serves catalogs locally MUST remain available and
+  unchanged for acceptance testing.
+
+### Key Entities
+
+- **Published Release**: One immutable version with its archives, catalogs, notes, and locations.
+- **Current-Release Pointer**: The stable location that names the newest published version.
+- **Publication Record**: The evidence that verification passed and which artifacts were published.
+
+## Success Criteria
+
+- **SC-001**: From a marked version to fully published release requires zero manual steps and
+  completes in under 15 minutes.
+- **SC-002**: 100% of published catalog digests match archives rebuilt from the same marked sources.
+- **SC-003**: A clean supported project on a machine without the Concorde checkout can register the
+  published catalogs and preview the bundle in under 2 minutes, using only public Spec Kit commands.
+- **SC-004**: Every seeded verification failure, version mismatch, and partial-publication case
+  results in no published content for that version and a named cause.
+
+## Assumptions
+
+- The repository's existing hosting platform publishes both versioned release assets and a stable,
+  publicly reachable site; the current-release pointer is published alongside the documentation site
+  that the parent already deploys automatically.
+- The advertised repository location in the release metadata is corrected to the maintained
+  repository before the first publication.
+- Publication uses the parent's existing release build and verification; it does not introduce a
+  second build path.
+- Release marking is done by a maintainer with permission to publish; no consumer-facing signing or
+  key management is in scope for the first published version.

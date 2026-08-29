@@ -57,7 +57,7 @@ TEMPLATE_SURFACES = (
 )
 PRESERVED = (
     "project-authored .concorde configuration",
-    "specifications, designs, contracts, diagrams, and temporal implementation work",
+    "feature abstracts, designs, implementations, contracts, diagrams, and temporal attempt work",
     "documentation, source code, tests, and generated evidence",
     "unrelated integration and agent assets",
     "authoritative preset, extension, and bundle sources",

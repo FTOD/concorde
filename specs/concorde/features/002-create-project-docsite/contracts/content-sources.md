@@ -1,4 +1,4 @@
-# Content Sources Contract v5
+# Content Sources Contract v7
 
 **Contract ID**: `contract.documentation.project-content`
 
@@ -28,17 +28,14 @@ or modifying their maintained sources.
 | Architecture | `specs/` | Every regular file matching `**/module.md` or `**/contracts/**/contract.md` | `/architecture` |
 | Architecture (module design references) | `specs/` | Every regular file named `design.md` whose directory also contains a `module.md`; published in the Architecture collection as kind `module-design` | `/architecture` |
 | Project documentation | `docs/` | Every regular file matching `**/*.md` | `/docs` |
-| Feature TL;DRs | `specs/` | Every regular file matching `**/tldr.md` beside a `spec.md`; the feature's landing page | `/features` |
-| Feature specifications | `specs/` | Every regular file matching `**/spec.md` | `/features` |
-| Feature design references | `specs/` | Every regular file named `design.md` whose directory also contains a `spec.md` | `/features` |
+| Feature abstracts | `specs/` | Every regular file matching `**/abstract.md` beside a `design.md`; the feature's landing page | `/features` |
+| Feature designs | `specs/` | Every canonical feature-root `design.md` | `/features` |
+| Feature implementations | `specs/` | Every feature-root `implementation.md` beside `design.md` | `/features` |
 
 Symbolic links are not followed. Normalized source paths must remain beneath their declared root.
-Architecture (including module design references), Feature TL;DRs, Feature Specifications, and
-Feature Design References are disjoint projections of the same specification tree: a `design.md` is
-classified by its sibling — beside a `module.md` it is a module design reference (Architecture),
-beside a `spec.md` it is a feature design reference (Features), and beside neither it is an error —
-while a legacy `implementation.md` beside a `spec.md` and a `spec.md` without a sibling `tldr.md` are
-errors. TL;DRs, specifications, and design references share the public Features navigation family.
+Architecture, feature abstracts, feature designs, and feature implementations are disjoint
+projections. A `design.md` beside `module.md` is a module design reference; otherwise a canonical
+feature `design.md` owns behavior. Missing feature companions and legacy names are errors.
 
 ## Field Semantics
 
@@ -56,7 +53,7 @@ errors. TL;DRs, specifications, and design references share the public Features 
 - Canonical authority links: a framework guide that summarizes normative architecture, feature, or
   command behavior includes at least one repository-relative link to the relevant included source.
 
-### Feature Specifications
+### Feature Designs
 
 - `id`: required globally unique stable feature ID.
 - `kind`: required and equal to `feature`.
@@ -73,16 +70,16 @@ errors. TL;DRs, specifications, and design references share the public Features 
   scenarios or question, and generated output. A feature may declare at most one core diagram, and
   its kind must be `architecture`; dynamic kinds are supplemental. The JSON `diagram_type` and
   `meta.output` must agree with the declaration.
-- Parent directory: the feature or immediate sub-feature directory; its `tldr.md`, `spec.md`, and
-  `design.md` are permanent site content. No third feature level is publishable.
+- Parent directory: the feature or immediate sub-feature directory; its `abstract.md`, `design.md`, and
+  `implementation.md` are permanent site content. No third feature level is publishable.
 
 ### Feature Implementations
 
 - first level-one heading: required feature-implementation title.
-- Parent directory: the feature directory containing the paired `spec.md`; the page is published as
-  kind `feature-implementation` and linked with that specification.
+- Parent directory: the feature directory containing the paired `design.md`; the page is published as
+  kind `feature-implementation` and linked with that design.
 - Content: the accepted durable realization of the feature (a not-yet-hardened placeholder is still
-  published with its provenance); temporal files beneath `implementation/` remain excluded.
+  published with its provenance); temporal files beneath `attempt/` remain excluded.
 
 ### Module Design References
 
@@ -97,7 +94,7 @@ errors. TL;DRs, specifications, and design references share the public Features 
 ### Architecture Sources
 
 - `id`: required globally unique stable architecture entity ID.
-- `kind`: required and equal to `module` or `contract`; feature `spec.md` is classified only as a
+- `kind`: required and equal to `module` or `contract`; feature `design.md` is classified only as a
   Feature Specification, and a module design reference derives kind `module-design` from its
   adjacency to `module.md`.
 - `module`: required owning module ID for feature and contract sources.
@@ -116,7 +113,7 @@ errors. TL;DRs, specifications, and design references share the public Features 
 - Consumers MUST preserve authored prose, headings, code, tables, and supported links.
 - Consumers MUST expose content kind and project-relative provenance on every page; architecture pages
   additionally expose stable ID, kind, hierarchy metadata, and view provenance when applicable.
-- Consumers MUST discover feature diagrams from `spec.md`, deliver and verify their generated outputs before publication, include
+- Consumers MUST discover feature diagrams from `design.md`, deliver and verify their generated outputs before publication, include
   their source hashes and routes in the manifest, and embed every declared view on the canonical
   feature page with a standalone-view link.
 - Consumers MUST reject duplicate, escaping, mismatched, stale, failed, or incomplete diagram
@@ -124,7 +121,7 @@ errors. TL;DRs, specifications, and design references share the public Features 
 - Providers MUST keep stable feature IDs unique and internal Markdown targets resolvable.
 - Providers MUST keep parent registration and child back-references bidirectionally consistent.
   Consumers publish ordered child summaries on the parent and parent/sibling links on the child,
-  without copying requirements or publishing any `implementation/` source.
+  without copying requirements or publishing any `attempt/` source.
 - The Concorde self-hosting provider MUST keep the eight-page framework guide baseline discoverable,
   keep the landing page linked to all six learning guides, and retain resolvable canonical-authority
   links from guides that summarize normative behavior.
@@ -140,14 +137,10 @@ candidate publication.
 
 ## Compatibility
 
-This is contract version 6. It adds the Feature TL;DR input (`**/tldr.md`, kind `feature-tldr`, the
-feature's landing route), classifies a feature-root `design.md` beside a `spec.md` as the feature
-design reference (kind `feature-design`, replacing the version-5 `**/implementation.md` input and
-kind `feature-implementation`), moves the specification page to the `/spec` route suffix, and
-matches Build Manifest schema version 6; source roots, route bases, and path semantics are otherwise
-unchanged. Version 5 replaced the feature-level `**/design.md` eligibility glob with
-`**/implementation.md` and added module-level `design.md` beside a `module.md` as an Architecture
-input (kind `module-design`). Version 4 moved diagram delivery from a
+This is contract version 7. It publishes `abstract.md` as `feature-abstract`, feature `design.md` as
+`feature-design` at `/design`, and `implementation.md` as `feature-implementation` at
+`/implementation`, while excluding `attempt/**`; it matches Build Manifest schema version 7.
+Earlier versions used the former filenames and route meanings. Version 4 moved diagram delivery from a
 manually prepared prerequisite into preview/production publication. Adding optional metadata or more project
 documents is backward compatible. Changing source roots, eligibility globs, required fields, route
 bases, path semantics, or exclusion meaning requires a new contract version and a route/content

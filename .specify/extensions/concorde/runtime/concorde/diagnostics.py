@@ -61,7 +61,7 @@ def envelope(
 def operation_envelope(value: OperationResult) -> dict[str, Any]:
     if value.operation == "feature.harden":
         return {
-            "schema_version": 5,
+            "schema_version": 6,
             "operation": value.operation,
             "target": value.target,
             "status": value.status,
@@ -76,8 +76,8 @@ def operation_envelope(value: OperationResult) -> dict[str, Any]:
                     "proposal_path",
                     "task_summary",
                     "checklist_summary",
-                    "design_digest_before",
-                    "design_digest_after",
+                    "implementation_digest_before",
+                    "implementation_digest_after",
                     "module_design_digest_before",
                     "module_design_digest_after",
                     "removed_artifacts",

@@ -137,9 +137,9 @@ def execute_workspace_surface(
     )
     payload = json.loads(completed.stdout)
     workspace = payload.get("workspace", {})
-    implementation_dir = workspace.get("implementation_dir")
+    attempt_dir = workspace.get("attempt_dir")
     checklists_dir = workspace.get("checklists_dir")
-    if not isinstance(implementation_dir, str) or checklists_dir != f"{implementation_dir}/checklists":
+    if not isinstance(attempt_dir, str) or checklists_dir != f"{attempt_dir}/checklists":
         raise AssertionError(
             f"{artifact} returned a non-canonical checklist workspace: {checklists_dir!r}"
         )

@@ -88,12 +88,12 @@ integration.
 The bundle-level preset `strategy: append` describes how the preset participates in the target's
 preset stack. It does not force every entry inside that preset to use append composition. The
 `concorde-core` manifest keeps its three inherited template entries as `append`, adds the
-Concorde-only `tldr-template` (the feature TL;DR that `speckit.specify` authors at a new feature
-root) and `design-template` (the placeholder feature `design.md`) as `replace`, and declares each of
+Concorde-only `abstract-template` (the feature abstract that `speckit.specify` authors at a new feature
+root) and `implementation-template` (the placeholder feature `design.md`) as `replace`, and declares each of
 the nine path-sensitive command entries as `replace`, as required below. The preset and extension
-that carry the five templates, Feature Workspace Protocol v5, and Architecture Source Profile 3 are
+that carry the six templates, Feature Workspace Protocol v6, and Architecture Source Profile 3 are
 their 0.3.0 releases, which the bundle pins; preset 0.2.0 carried an `implementation-template`
-instead, and preset 0.1.0 a `design-template` without a TL;DR.
+instead, and preset 0.1.0 a `implementation-template` without a abstract.
 
 ## Installed Command Surface Profile
 
@@ -101,8 +101,8 @@ The released preset owns Concorde's modifications to these existing Spec Kit com
 
 | Artifact authority | Commands | Required location behavior |
 |---|---|---|
-| Durable feature intent plus temporal review state | `speckit.specify`, `speckit.clarify` | Resolve the selected nested feature before reading or writing root `spec.md` or contracts, and write generated requirements-quality state only under `implementation/checklists/`. |
-| Temporal implementation workspace | `speckit.checklist`, `speckit.plan`, `speckit.tasks`, `speckit.implement`, `speckit.analyze`, `speckit.converge`, `speckit.taskstoissues` | Resolve the selected feature's single active `implementation/` directory before writing checklists, plan, task, research, implementation-model, or delivery evidence. |
+| Durable feature intent plus temporal review state | `speckit.specify`, `speckit.clarify` | Resolve the selected nested feature before reading or writing root `design.md` or contracts, and write generated requirements-quality state only under `attempt/checklists/`. |
+| Temporal implementation workspace | `speckit.checklist`, `speckit.plan`, `speckit.tasks`, `speckit.implement`, `speckit.analyze`, `speckit.converge`, `speckit.taskstoissues` | Resolve the selected feature's single active `attempt/` directory before writing checklists, plan, task, research, implementation-model, or delivery evidence. |
 
 The released extension owns these five new command intents: `speckit.concorde.init`,
 `speckit.concorde.feature.harden`, `speckit.concorde.context`, `speckit.concorde.validate`, and

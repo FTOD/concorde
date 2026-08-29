@@ -19,7 +19,7 @@ provides:
       description: "Propose and explicitly apply a root Concorde specification hierarchy"
     - name: "speckit.concorde.feature-harden"
       file: "commands/speckit.concorde.feature.harden.md"
-      description: "Promote a completed attempt into the durable feature design.md (optionally amending the module design reference) and remove temporal work"
+      description: "Promote a completed attempt into durable feature implementation.md (optionally amending the module design reference) and remove temporal work"
     - name: "speckit.concorde.context"
       file: "commands/speckit.concorde.context.md"
       description: "Retrieve exactly one bounded architectural level"

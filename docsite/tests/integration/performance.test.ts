@@ -20,9 +20,9 @@ it('discovers and validates 1,000 documents and 250 three-page feature roots wit
     }),
     ...Array.from({length: 250}, async (_, index) => {
       const dir = resolve(root, 'specs', String(index).padStart(3, '0')); await mkdir(dir, {recursive: true});
-      await writeFile(resolve(dir, 'tldr.md'), `# TL;DR: Feature ${index}\n\n## Purpose\n\nScale.\n\n## Functionality\n\nScale.\n\n## Structure\n\nScale.\n\n## Logic\n\nScale.\n\n## Read Next\n\n- [spec.md](spec.md) and [design.md](design.md).\n`);
-      await writeFile(resolve(dir, 'spec.md'), `---\nid: feature.scale.${index}\nkind: feature\nmodule: module.scale\n---\n# Feature ${index}\n\n**Status**: Draft\n`);
-      await writeFile(resolve(dir, 'design.md'), `# Feature Design Reference: Feature ${index}\n`);
+      await writeFile(resolve(dir, 'abstract.md'), `# Feature Abstract: Feature ${index}\n\n## Purpose\n\nScale.\n\n## Functionality\n\nScale.\n\n## Structure\n\nScale.\n\n## Logic\n\nScale.\n\n## Read Next\n\n- [design.md](design.md) and [implementation.md](implementation.md).\n`);
+      await writeFile(resolve(dir, 'design.md'), `---\nid: feature.scale.${index}\nkind: feature\nmodule: module.scale\n---\n# Feature Design: Feature ${index}\n\n**Status**: Draft\n`);
+      await writeFile(resolve(dir, 'implementation.md'), `# Feature Implementation: Feature ${index}\n`);
     }),
   ]);
   const start = performance.now();

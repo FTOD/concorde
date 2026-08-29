@@ -71,9 +71,9 @@ Unknown.
         )
     root = project_root / relative
     root.mkdir(parents=True, exist_ok=True)
-    spec_path = root / "spec.md"
-    if not spec_path.exists():
-        spec_path.write_text(
+    design_path = root / "design.md"
+    if not design_path.exists():
+        design_path.write_text(
             f"""---
 id: {feature_id}
 kind: feature
@@ -87,7 +87,7 @@ contracts:
   required: []
 architecture_view: specs/example/architecture.json
 evidence_status: unknown
-canonical_spec: {relative}/spec.md
+canonical_design: {relative}/design.md
 ---
 
 # Deliver
@@ -105,17 +105,17 @@ The fixture delivers its observable outcome.
 """,
             encoding="utf-8",
         )
-    design_path = root / "design.md"
-    if not design_path.exists():
-        design_path.write_text(FEATURE_DESIGN_PLACEHOLDER, encoding="utf-8")
-    tldr_path = root / "tldr.md"
-    if not tldr_path.exists():
-        tldr_path.write_text(FEATURE_TLDR_FIXTURE, encoding="utf-8")
+    implementation_path = root / "implementation.md"
+    if not implementation_path.exists():
+        implementation_path.write_text(FEATURE_IMPLEMENTATION_PLACEHOLDER, encoding="utf-8")
+    abstract_path = root / "abstract.md"
+    if not abstract_path.exists():
+        abstract_path.write_text(FEATURE_ABSTRACT_FIXTURE, encoding="utf-8")
     module_design = specification_root / "design.md"
     if not module_design.exists():
         module_design.write_text(MODULE_DESIGN_REFERENCE.format(name="Example"), encoding="utf-8")
     feature_ids = []
-    for candidate in sorted((specification_root / "features").glob("*/spec.md")):
+    for candidate in sorted((specification_root / "features").glob("*/design.md")):
         match = re.search(r"^id:\s*(\S+)", candidate.read_text(encoding="utf-8"), re.MULTILINE)
         if match:
             feature_ids.append(match.group(1))
@@ -180,7 +180,7 @@ Fixtures stay minimal; see the [design reference](design.md).
     return root
 
 
-FEATURE_DESIGN_PLACEHOLDER = """# Feature Design Reference: Fixture
+FEATURE_IMPLEMENTATION_PLACEHOLDER = """# Feature Implementation: Fixture
 
 **Realization status**: No implementation realization has been hardened yet.
 
@@ -210,7 +210,7 @@ No implementation realization has been hardened yet.
 """
 
 
-FEATURE_TLDR_FIXTURE = """# TL;DR: Deliver
+FEATURE_ABSTRACT_FIXTURE = """# Feature Abstract: Deliver
 
 `feature.example.deliver` · specified at `module.example` · one minute.
 
@@ -241,7 +241,7 @@ maintainer ──▶ example module ──▶ workflow contract
 
 ## Read Next
 
-- [spec.md](spec.md), [design.md](design.md), and the module summary [module.md](../../module.md).
+- [design.md](design.md), [implementation.md](implementation.md), and the module summary [module.md](../../module.md).
 """
 
 
@@ -266,10 +266,10 @@ Not recorded yet.
 
 
 def write_hardened_root(project_root: Path, relative: str, feature_id: str, module_id: str = "module.example") -> Path:
-    """Create a feature root whose design.md is already hardened and that has no attempt."""
+    """Create a feature root whose implementation.md is hardened and that has no attempt."""
     root = create_feature_root(project_root, relative, feature_id, module_id)
-    (root / "design.md").write_text(
-        "# Feature Design Reference: Fixture\n\n**Realization status**: Hardened fixture milestone.\n\n"
+    (root / "implementation.md").write_text(
+        "# Feature Implementation: Fixture\n\n**Realization status**: Hardened fixture milestone.\n\n"
         "## Realization Overview\n\nHardened.\n\n## Module and Feature Collaboration\n\nHardened.\n\n"
         "## Scenario Realization\n\nHardened.\n\n## Durable Implementation Decisions\n\nHardened.\n\n"
         "## Traceability and Evidence\n\nHardened.\n\n## Known Limitations\n\nNone recorded.\n",

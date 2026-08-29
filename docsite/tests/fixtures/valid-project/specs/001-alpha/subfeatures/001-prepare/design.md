@@ -1,3 +1,15 @@
-# Feature Design Reference: Prepare Alpha
+---
+id: feature.fixture.alpha.prepare
+kind: feature
+module: module.fixture
+parent_feature: feature.fixture.alpha
+subfeatures: []
+---
 
-Accepted preparation design reference.
+# Feature Design: Prepare Alpha
+
+**Status**: Ready
+
+## Outcome
+
+Alpha inputs are prepared.

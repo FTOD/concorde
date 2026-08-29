@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-20
 
-**Feature**: [spec.md](../spec.md)
+**Feature**: [design.md](../design.md)
 
 ## Content Quality
 

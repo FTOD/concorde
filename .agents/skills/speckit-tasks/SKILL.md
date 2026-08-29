@@ -1,6 +1,6 @@
 ---
 name: speckit-tasks
-description: Generate dependency-ordered tasks in the selected implementation workspace.
+description: Generate dependency-ordered tasks in the selected attempt workspace.
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
@@ -21,21 +21,21 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase tasks` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
-`workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v5 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+`workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
+Require Protocol v6 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
 recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
-sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
+read the parent `feature_design` and `feature_implementation` only as aggregate durable context. Never load a
+sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
 step says to run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase tasks`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
 by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
-`implementation_dir` when absent and seed a missing artifact from the active `plan-template` or
+`attempt_dir` when absent and seed a missing artifact from the active `plan-template` or
 `tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
 For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
 
@@ -77,19 +77,19 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Outline
 
-1. **Setup**: Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase tasks` from repo root and parse FEATURE_DIR, IMPLEMENTATION_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, TASKS_TEMPLATE_CONTENT, TASKS_TEMPLATE, and AVAILABLE_DOCS. Path fields must be absolute when provided. `AVAILABLE_DOCS` contains feature-root-relative paths such as `implementation.md`, `implementation/research.md`, and `contracts/`. After a hardening, the task list lives in the fresh `implementation/` beneath the same root, never in a root-level copy. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. **Setup**: Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase tasks` from repo root and parse FEATURE_DIR, ATTEMPT_DIR, FEATURE_DESIGN, FEATURE_IMPLEMENTATION, IMPL_PLAN, TASKS, TASKS_TEMPLATE_CONTENT, TASKS_TEMPLATE, and AVAILABLE_DOCS. Path fields must be absolute when provided. `AVAILABLE_DOCS` contains feature-root-relative paths such as `implementation.md`, `attempt/research.md`, and `contracts/`. After a hardening, the task list lives in the fresh `attempt/` beneath the same root, never in a root-level copy. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
 2. **Load design documents** using the returned paths:
-   - **Required**: IMPL_PLAN (proposed tech stack, libraries, structure), FEATURE_SPEC (user stories with priorities), FEATURE_DESIGN (accepted realization baseline; the placeholder means no accepted baseline)
-   - **Optional**: `IMPLEMENTATION_DIR/data-model.md` (entities), `FEATURE_DIR/contracts/` (durable interface contracts), `IMPLEMENTATION_DIR/research.md` (decisions), `IMPLEMENTATION_DIR/quickstart.md` (test scenarios)
-   - **IF REFERENCED**: Load feature-owned Archify JSON beside `FEATURE_SPEC` as durable explanatory
+   - **Required**: IMPL_PLAN (proposed tech stack, libraries, structure), FEATURE_DESIGN (user stories with priorities), FEATURE_IMPLEMENTATION (accepted realization baseline; the placeholder means no accepted baseline)
+   - **Optional**: `ATTEMPT_DIR/data-model.md` (entities), `FEATURE_DIR/contracts/` (durable interface contracts), `ATTEMPT_DIR/research.md` (decisions), `ATTEMPT_DIR/quickstart.md` (test scenarios)
+   - **IF REFERENCED**: Load feature-owned Archify JSON beside `FEATURE_DESIGN` as durable explanatory
      sources; do not confuse them with module-level `architecture.json` or generated HTML.
    - **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints
    - Note: Not all projects have all documents. Generate tasks based on what's available.
 
 3. **Execute task generation workflow**:
    - Load plan.md and extract tech stack, libraries, project structure
-   - Load spec.md and extract user stories with their priorities (P1, P2, P3, etc.)
+   - Load design.md and extract user stories with their priorities (P1, P2, P3, etc.)
    - Load the feature design.md and distinguish retained accepted realization from changes proposed by plan.md; when it is the placeholder, treat every planned decision as new work against no accepted baseline
    - Read the level's `module.md` as bounded architecture context; consult a module `design.md` only for a specific recorded detail and cite it
    - If data-model.md exists: Extract entities and map to user stories
@@ -107,11 +107,11 @@ For `checklist`, resolve `checklist-template` separately through the same public
      feature page. Require its source under the feature's `diagrams/` directory. Do not create a task
      that edits generated HTML as intent.
 
-4. **Generate TASKS (`IMPLEMENTATION_DIR/tasks.md`)**: Use TASKS_TEMPLATE_CONTENT (from the JSON output above) as the structure. For compatibility with older setup scripts that omit TASKS_TEMPLATE_CONTENT, read TASKS_TEMPLATE instead. Fill with:
+4. **Generate TASKS (`ATTEMPT_DIR/tasks.md`)**: Use TASKS_TEMPLATE_CONTENT (from the JSON output above) as the structure. For compatibility with older setup scripts that omit TASKS_TEMPLATE_CONTENT, read TASKS_TEMPLATE instead. Fill with:
    - Correct feature name from plan.md
    - Phase 1: Setup tasks (project initialization)
    - Phase 2: Foundational tasks (blocking prerequisites for all user stories)
-   - Phase 3+: One phase per user story (in priority order from spec.md)
+   - Phase 3+: One phase per user story (in priority order from design.md)
    - Each phase includes: story goal, independent test criteria, tests (if requested), implementation tasks
    - Final Phase: Polish & cross-cutting concerns
    - All tasks must follow the strict checklist format (see Task Generation Rules below)
@@ -119,6 +119,42 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - Dependencies section showing story completion order
    - Parallel execution examples per story
    - Implementation strategy section (MVP first, incremental delivery)
+
+## Reflection Recording
+
+Every phase after specification records the difficulties and problems it meets in the project's one
+reflection log: the maintained file returned as `workspace.reflections`
+(`<specification_root>/reflections.md`). It is never per feature or per attempt, and no operation
+removes it.
+
+- **When**: whenever this phase cannot follow the specification, the accepted design reference, an
+  existing implementation it depends on, the installed guidance, the level's architecture, or the
+  plan as written, or must assume, work around, defer, or stop — record it in this phase, before the
+  completion report, not later. A problem met and solved within the phase is still recorded.
+- **Where**: append to `workspace.reflections`. If the file does not exist, create it first from the
+  template resolved by `specify preset resolve reflections-template`. Append only; never rewrite,
+  reorder, renumber, or delete entries.
+- **What**: one `### R-NNN · <short title>` entry (the next unused identifier) with the fields, in
+  order, `Phase` (this phase), `Date`, `Feature` (`workspace.feature_id`), `Kind`
+  (`specification`, `architecture`, `guidance`, `tooling`, `environment`, or `implementation`),
+  `Concerns` (a stable ID or project-relative path anywhere in the project — another feature, its
+  design reference or code, a module, a contract, an instruction, a tool), `Expected`, `Observed`,
+  `Effect` (`assumed`, `worked-around`, `deferred`, or `blocked`), `Action`, `Improvement`, and
+  `Status: open`. The grammar is fixed by the log template and checked by
+  `speckit.concorde.validate` (`CONCORDE-REFLECT-001` to `-004`).
+- **Never fix in place**: a problem with `abstract.md`, feature `design.md`, feature `implementation.md`, any `module.md`, a
+  contract, a view, a diagram, or another feature's code or tests is recorded, not edited; the
+  owning phase or the maintainer changes that source later.
+- **Update, don't duplicate**: when the log already holds the same problem — recorded by any phase
+  on any feature — add a line under its `- **Occurrences**:` list
+  (`<phase> <date> <feature-id> — <context>`) instead of a new entry. Never change a `Status` or
+  `Note` a maintainer set.
+- **Bounded**: recording never requires opening another root's `attempt/`; cite the other
+  feature by stable ID or path.
+- **Hygiene**: no secrets, credentials, or bulk output — cite the evidence path instead; keep
+  `Expected`, `Observed`, and `Action` under about 150 words together.
+- **Report**: end the completion report with `Reflections added: <identifiers or none> · open for
+  this feature: <count>` (`workspace.reflections_open` at phase start plus the open entries added).
 
 ## Mandatory Post-Execution Hooks
 
@@ -164,6 +200,7 @@ Output the generated TASKS path and summary:
 - Independent test criteria for each story
 - Suggested MVP scope (typically just User Story 1)
 - Format validation: Confirm ALL tasks follow the checklist format (checkbox, ID, labels, file paths)
+- `Reflections added: <identifiers or none> · open for this feature: <count>` (see Reflection Recording)
 
 Context for task generation: $ARGUMENTS
 
@@ -189,7 +226,7 @@ Every task MUST strictly follow this format:
 2. **Task ID**: Sequential number (T001, T002, T003...) in execution order
 3. **[P] marker**: Include ONLY if task is parallelizable (different files, no dependencies on incomplete tasks)
 4. **[Story] label**: REQUIRED for user story phase tasks only
-   - Format: [US1], [US2], [US3], etc. (maps to user stories from spec.md)
+   - Format: [US1], [US2], [US3], etc. (maps to user stories from design.md)
    - Setup phase: NO story label
    - Foundational phase: NO story label
    - User Story phases: MUST have story label
@@ -209,7 +246,7 @@ Every task MUST strictly follow this format:
 
 ### Task Organization
 
-1. **From User Stories (spec.md)** - PRIMARY ORGANIZATION:
+1. **From User Stories (design.md)** - PRIMARY ORGANIZATION:
    - Each user story (P1, P2, P3...) gets its own phase
    - Map all related components to their story:
      - Models needed for that story
@@ -244,7 +281,7 @@ Every task MUST strictly follow this format:
 ## Done When
 
 - [ ] tasks.md generated with all phases, task IDs, and file paths
-- [ ] Tasks implement the planned delta from the durable feature `design.md` and do not edit that file, `tldr.md`, `spec.md`, any module `module.md`, or any module `design.md` directly
+- [ ] Tasks implement the planned delta from durable feature `implementation.md` and do not edit that file, `abstract.md`, feature `design.md`, any module `module.md`, or any module `design.md` directly
 - [ ] Every required feature diagram has complete source, validation, delivery, and freshness tasks
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with task count, story breakdown, and MVP scope

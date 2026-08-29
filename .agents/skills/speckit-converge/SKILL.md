@@ -21,21 +21,21 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase converge` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
-`workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v5 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+`workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
+Require Protocol v6 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
 recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
-sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
+read the parent `feature_design` and `feature_implementation` only as aggregate durable context. Never load a
+sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
 step says to run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase converge`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
 by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
-`implementation_dir` when absent and seed a missing artifact from the active `plan-template` or
+`attempt_dir` when absent and seed a missing artifact from the active `plan-template` or
 `tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
 For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
 
@@ -83,10 +83,10 @@ For `checklist`, resolve `checklist-template` separately through the same public
 ## Goal
 
 Close the gap between what a feature's specification, accepted realization, active implementation plan,
-and tasks call for and what the codebase currently implements. Read root `spec.md` as durable intent,
-root `design.md` (the feature design reference) as the accepted realization baseline (the placeholder means no accepted
+and tasks call for and what the codebase currently implements. Read root `design.md` as durable intent,
+root `implementation.md` as the accepted realization baseline (the placeholder means no accepted
 baseline), and the active
-`implementation/plan.md` plus `implementation/tasks.md` as the chosen delivery approach (with the
+`attempt/plan.md` plus `attempt/tasks.md` as the chosen delivery approach (with the
 constitution as governing constraints), then assess the current
 state of the code, determine which requirements, acceptance criteria, plan decisions, and
 existing tasks are unmet, incomplete, or only partially satisfied, and **append each piece
@@ -99,10 +99,11 @@ of the code relative to the feature's artifacts — no git, no branch comparison
 
 ## Operating Constraints
 
-**APPEND-ONLY, NEVER REWRITE**: The command's **only** write is appending a new
-`## Phase N: Convergence` section to `tasks.md`. It MUST NOT:
+**APPEND-ONLY, NEVER REWRITE**: The command's **only** writes are appending a new
+`## Phase N: Convergence` section to `tasks.md` and appending to the project reflection log
+(`workspace.reflections`, per Reflection Recording below). It MUST NOT:
 
-- modify `tldr.md`, `spec.md`, the feature `design.md`, `plan.md`, or any module `module.md`/`design.md` in any way;
+- modify `abstract.md`, feature `design.md`, feature `implementation.md`, `plan.md`, or any module `module.md`/`design.md` in any way;
 - rewrite, renumber, reorder, or delete any existing task (including tasks from a prior
   Convergence phase);
 - modify, create, or delete any application code — completing the appended tasks is the
@@ -120,14 +121,14 @@ skip constitution checks gracefully rather than failing.
 
 ### 1. Initialize Convergence Context
 
-Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase converge` once from repo root and parse JSON for FEATURE_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
+Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase converge` once from repo root and parse JSON for FEATURE_DIR, FEATURE_DESIGN, FEATURE_IMPLEMENTATION, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
 
-- SPEC = FEATURE_SPEC
-- IMPLEMENTATION = FEATURE_DESIGN
+- SPEC = FEATURE_DESIGN
+- IMPLEMENTATION = FEATURE_IMPLEMENTATION
 - PLAN = IMPL_PLAN
 - TASKS = TASKS
 - CONSTITUTION = `.specify/memory/constitution.md` (if present)
-If `spec.md`, `design.md`, `plan.md`, or `tasks.md` is missing, STOP with a clear, actionable message naming the
+If `design.md`, `implementation.md`, `plan.md`, or `tasks.md` is missing, STOP with a clear, actionable message naming the
 prerequisite command to run (`$speckit-specify` for a missing spec, `$speckit-plan` for a missing plan,
 `$speckit-tasks` for missing tasks). Do not produce partial output.
 For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
@@ -136,7 +137,7 @@ For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot
 
 Load only the minimal necessary context from each artifact:
 
-**From spec.md:**
+**From design.md:**
 
 - Functional Requirements (FR-###)
 - Success Criteria (SC-###) — include only items requiring buildable work; exclude
@@ -145,7 +146,7 @@ Load only the minimal necessary context from each artifact:
 - Edge Cases (if present)
 - Required feature diagrams, their core/supplemental roles, textual counterparts, and any explicit sufficiency rationale
 
-**From design.md (feature design reference):**
+**From implementation.md:**
 
 - Accepted module/feature collaboration and scenario realization (the placeholder means no accepted
   baseline)
@@ -196,7 +197,7 @@ For each item in the intent inventory, inspect the current code in scope and pro
 
 Treat a missing required core component view, multiple core views, a non-architecture core view, or
 missing, stale, unvalidated, or textually/contractually inconsistent required feature diagrams
-as buildable gaps. Append work for `diagrams/` placement, declaration in `spec.md`, maintained Archify
+as buildable gaps. Append work for `diagrams/` placement, declaration in `design.md`, maintained Archify
 JSON, prose alignment, contract references, delivery, automatic feature-page embedding, truthful
 visual-review evidence, and freshness; never append a task to hand-edit generated HTML or screenshots.
 
@@ -263,9 +264,13 @@ Append to the **end** of `tasks.md`, per the append contract:
 4. Never reuse or renumber existing IDs. If a prior Convergence phase exists, add a new,
    separately-numbered one below it — do not touch the old one.
 5. When execution surfaced rationale, alternatives, or implementation detail worth keeping, append a
-   task that records it inside the attempt (`implementation/research.md` or
-   `implementation/validation.md`) so hardening can carry it forward. Never append a task that edits
-   `tldr.md`, `spec.md`, the feature `design.md`, or any module `module.md`/`design.md`.
+   task that records it inside the attempt (`attempt/research.md` or
+   `attempt/validation.md`) so hardening can carry it forward. Never append a task that edits
+   `abstract.md`, feature `design.md`, feature `implementation.md`, or any module `module.md`/`design.md`.
+6. Treat an `open` reflection entry attributed to this feature with `Effect: deferred` as candidate
+   remaining work only when it is genuine remaining work of this feature's specification; never
+   append work for `dismissed` entries or for entries attributed to other features, and never
+   append a task that edits the log's maintainer-set statuses.
 
 **If there are no actionable findings** (`converged` outcome):
 
@@ -280,6 +285,43 @@ Append to the **end** of `tasks.md`, per the append contract:
   run will find fewer or no remaining items.
 - On `converged`: recommend proceeding to review / opening a PR. No further implement pass
   is needed for this feature's specified scope.
+- In both cases end with `Reflections added: <identifiers or none> · open for this feature: <count>`.
+
+## Reflection Recording
+
+Every phase after specification records the difficulties and problems it meets in the project's one
+reflection log: the maintained file returned as `workspace.reflections`
+(`<specification_root>/reflections.md`). It is never per feature or per attempt, and no operation
+removes it.
+
+- **When**: whenever this phase cannot follow the specification, the accepted design reference, an
+  existing implementation it depends on, the installed guidance, the level's architecture, or the
+  plan as written, or must assume, work around, defer, or stop — record it in this phase, before the
+  completion report, not later. A problem met and solved within the phase is still recorded.
+- **Where**: append to `workspace.reflections`. If the file does not exist, create it first from the
+  template resolved by `specify preset resolve reflections-template`. Append only; never rewrite,
+  reorder, renumber, or delete entries.
+- **What**: one `### R-NNN · <short title>` entry (the next unused identifier) with the fields, in
+  order, `Phase` (this phase), `Date`, `Feature` (`workspace.feature_id`), `Kind`
+  (`specification`, `architecture`, `guidance`, `tooling`, `environment`, or `implementation`),
+  `Concerns` (a stable ID or project-relative path anywhere in the project — another feature, its
+  design reference or code, a module, a contract, an instruction, a tool), `Expected`, `Observed`,
+  `Effect` (`assumed`, `worked-around`, `deferred`, or `blocked`), `Action`, `Improvement`, and
+  `Status: open`. The grammar is fixed by the log template and checked by
+  `speckit.concorde.validate` (`CONCORDE-REFLECT-001` to `-004`).
+- **Never fix in place**: a problem with `abstract.md`, feature `design.md`, feature `implementation.md`, any `module.md`, a
+  contract, a view, a diagram, or another feature's code or tests is recorded, not edited; the
+  owning phase or the maintainer changes that source later.
+- **Update, don't duplicate**: when the log already holds the same problem — recorded by any phase
+  on any feature — add a line under its `- **Occurrences**:` list
+  (`<phase> <date> <feature-id> — <context>`) instead of a new entry. Never change a `Status` or
+  `Note` a maintainer set.
+- **Bounded**: recording never requires opening another root's `attempt/`; cite the other
+  feature by stable ID or path.
+- **Hygiene**: no secrets, credentials, or bulk output — cite the evidence path instead; keep
+  `Expected`, `Observed`, and `Action` under about 150 words together.
+- **Report**: end the completion report with `Reflections added: <identifiers or none> · open for
+  this feature: <count>` (`workspace.reflections_open` at phase start plus the open entries added).
 
 ### 9. Check for extension hooks
 

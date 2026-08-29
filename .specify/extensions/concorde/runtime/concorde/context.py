@@ -108,7 +108,7 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
                         siblings.append(_summary(child_matches[0], package))
                 context["siblings"] = siblings
                 artifacts.add(parent.path)
-                parent_realization = f"{Path(parent.path).parent.as_posix()}/design.md"
+                parent_realization = f"{Path(parent.path).parent.as_posix()}/implementation.md"
                 if (package.project_root / parent_realization).is_file():
                     artifacts.add(parent_realization)
         else:
@@ -123,10 +123,14 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
         feature_root = Path(target.path).parent.as_posix()
         try:
             workspace_paths = resolve_phase_paths(project_root, feature_root)
-            implementation_artifacts = sorted(
-                path for path in package.auxiliary if path.startswith(workspace_paths.implementation_dir + "/")
+            attempt_artifacts = sorted(
+                path for path in package.auxiliary if path.startswith(workspace_paths.attempt_dir + "/")
             )
-            durable_artifacts = [target.path, workspace_paths.feature_tldr, workspace_paths.feature_design]
+            durable_artifacts = [
+                target.path,
+                workspace_paths.feature_abstract,
+                workspace_paths.feature_implementation,
+            ]
             diagram_projections = []
             for declaration in target.metadata.get("diagrams", []):
                 if not isinstance(declaration, dict):
@@ -145,7 +149,7 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
                 })
                 durable_artifacts.append(source)
             root_path = package.project_root / feature_root
-            for directory in ("contracts", "checklists"):
+            for directory in ("contracts",):
                 candidate = root_path / directory
                 if candidate.is_dir():
                     durable_artifacts.extend(
@@ -156,11 +160,11 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
             context["feature_workspace"] = {
                 **workspace_paths.to_dict(),
                 "durable_artifacts": sorted(durable_artifacts),
-                "implementation_artifacts": implementation_artifacts,
+                "attempt_artifacts": attempt_artifacts,
             }
             context["feature_diagrams"] = sorted(diagram_projections, key=lambda item: item["source"])
             artifacts.update(durable_artifacts)
-            artifacts.update(implementation_artifacts)
+            artifacts.update(attempt_artifacts)
         except WorkspaceError:
             context["feature_workspace"] = None
         contract_ids = set()

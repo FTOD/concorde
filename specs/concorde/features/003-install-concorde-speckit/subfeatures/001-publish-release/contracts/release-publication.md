@@ -133,4 +133,4 @@ Obligations:
   publisher-generated `release.json` for a local build validates and matches catalog digests; the
   workflow file declares the tag trigger, dry-run input, and `contents: write`.
 - `tests/concorde/unit/test_publish_release.py`: decision table above against a fake `gh`.
-- Live evidence after the first publication is recorded in `implementation/validation.md`.
+- Live evidence after the first publication is recorded in `attempt/validation.md`.

@@ -44,7 +44,7 @@ explains the build sequence without redefining this structure.
 
 | Feature ID | Outcome | Refines | Specification |
 |---|---|---|---|
-| `feature.documentation.publish-project-docsite` | Architecture sources, project docs, feature specifications, and accepted realizations from the unified `specs/` hierarchy and `docs/` become one searchable, traceable, read-only website, with each declared delivered Archify view embedded beside its textual source. | `feature.concorde.publish-project-docsite` | [spec.md](features/001-publish-project-docsite/spec.md) |
+| `feature.documentation.publish-project-docsite` | Architecture sources, project docs, feature specifications, and accepted realizations from the unified `specs/` hierarchy and `docs/` become one searchable, traceable, read-only website, with each declared delivered Archify view embedded beside its textual source. | `feature.concorde.publish-project-docsite` | [design.md](features/001-publish-project-docsite/design.md) |
 
 ## Contracts
 

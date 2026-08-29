@@ -7,11 +7,9 @@ normative maintained-source representation used by that service, not an addition
 
 **Representation**: UTF-8 Markdown with constrained YAML front matter and UTF-8 JSON
 
-**Supersedes**: Profile 2. Profile 3 introduces the feature TL;DR (`tldr.md`) as the read-first
-tier of every feature root, and names the feature-level accepted realization `design.md` — the same
-name the module design reference uses — so that `design.md` means "consulted design reference" at
-every level. The Profile 2 feature-root name `implementation.md` is legacy. Readers of Profile 3
-reject any other `profile_version`.
+**Supersedes**: Profile 2. Profile 3 uses `abstract.md` as the read-first feature tier, `design.md`
+as feature behavioral authority, `implementation.md` as accepted feature realization, and module
+`design.md` as the module design reference. Readers reject any other `profile_version`.
 
 ## Authority
 
@@ -22,12 +20,12 @@ reject any other `profile_version`.
     rationales, alternatives, and decisions developed during development; it explains the summary,
     the level view, and the contracts and never redefines them, and no operation reads it
     implicitly;
-  - `tldr.md` (feature TL;DR) gives a self-contained quick understanding of a feature — purpose,
-    functionality, basic structure, logic — within a reading budget; it summarizes `spec.md` and
+  - `abstract.md` (feature abstract) gives a self-contained quick understanding of a feature — purpose,
+    functionality, basic structure, logic — within a reading budget; it summarizes `design.md` and
     never defines beyond it;
-  - `spec.md` (feature specification) is the complete, self-contained authority for required
+  - `design.md` (feature specification) is the complete, self-contained authority for required
     behavior;
-  - the feature `design.md` (feature design reference, the accepted realization) records how the
+  - feature `implementation.md` records how the
     accepted implementation realizes the feature in full detail; it is consulted when writing the
     code or fixing a bug and no operation reads it implicitly.
 - A module's `architecture.json` owns its bounded component placement, connections, and canonical
@@ -35,17 +33,15 @@ reject any other `profile_version`.
   module- or feature-owned Archify JSON may supplement it; supplemental views do not own behavior or
   boundaries.
 - Each top-level feature has one canonical specification at
-  `specs/<root-slug>[/modules/<child-slug>...]/features/<number-name>/spec.md`. It may declare
-  immediate sub-features at `subfeatures/<number-name>/spec.md`; no deeper containment is valid.
-  Every lifecycle root owns the durable trio `tldr.md`, `spec.md`, and `design.md`. A parent
+  `specs/<root-slug>[/modules/<child-slug>...]/features/<number-name>/design.md`. It may declare
+  immediate sub-features at `subfeatures/<number-name>/design.md`; no deeper containment is valid.
+  Every lifecycle root owns the durable trio `abstract.md`, `design.md`, and `implementation.md`. A parent
   specification owns aggregate outcomes and shared constraints; a sub-feature specification owns
-  its focused outcome. The design reference at each root explains that root's realization while
+  its focused outcome. `implementation.md` at each root explains that root's realization while
   referring to, never redefining, parent intent or module architecture.
-- `design.md` is the design reference at every level. `implementation.md` at a feature root is a
-  legacy artifact and invalid; aliases and symlinks are invalid for `tldr.md`, `spec.md`, and
-  `design.md`.
-- Where `tldr.md` and `spec.md` disagree, `spec.md` prevails; the disagreement is a defect of the
-  TL;DR reported by analysis and fixed by specification review, never resolved by tooling.
+- Aliases and symlinks are invalid for `abstract.md`, feature `design.md`, and `implementation.md`.
+- Where `abstract.md` and `design.md` disagree, `design.md` prevails; the disagreement is a defect of the
+  abstract reported by analysis and fixed by specification review, never resolved by tooling.
 - Code and tests own implementation and executable evidence. Missing evidence remains `unknown`.
 
 ## Module Package Layout
@@ -68,21 +64,21 @@ attempt:
 
 ```text
 features/<number-name>/
-├── tldr.md            read first: self-contained quick understanding (under 15 minutes)
-├── spec.md            complete behavioral authority
-├── design.md          feature design reference: accepted realization, full implementation detail
+├── abstract.md            read first: self-contained quick understanding (under 15 minutes)
+├── design.md            complete behavioral authority
+├── implementation.md accepted realization, full implementation detail
 ├── diagrams/
 │   └── <scenario-or-question>.json
 ├── contracts/
 ├── subfeatures/
 │   └── <number-name>/
-│       ├── tldr.md
-│       ├── spec.md
+│       ├── abstract.md
 │       ├── design.md
+│       ├── implementation.md
 │       ├── diagrams/
 │       ├── contracts/
-│       └── implementation/
-└── implementation/
+│       └── attempt/
+└── attempt/
     ├── checklists/
     ├── plan.md
     ├── research.md
@@ -93,20 +89,20 @@ features/<number-name>/
 ```
 
 The `subfeatures/` directory is optional and valid only at a top-level feature root. A sub-feature
-cannot contain or register another sub-feature. `tldr.md`, `spec.md`, `design.md`, declared
+cannot contain or register another sub-feature. `abstract.md`, `design.md`, `implementation.md`, declared
 feature-owned Archify JSON below `diagrams/`, and feature-level contract definitions/representations
-are durable. Requirements-quality checklists and the other files below `implementation/` describe,
+are durable. Requirements-quality checklists and the other files below `attempt/` describe,
 review, and evidence at most one active delivery attempt. They are not architecture entities and do
 not amend feature behavior or accepted realization by changing. Root-level `checklists/`, `plan.md`,
 `tasks.md`, research, technical models, acceptance guides, or delivery evidence are invalid;
 compatibility copies and symlinks are prohibited.
 
 After every current task is complete, explicit maintainer approval may harden the accepted
-realization into the feature `design.md`, optionally amend the providing module's `design.md` in
-the same atomic operation, and remove the whole `implementation/` directory. A completed attempt
+realization into feature `implementation.md`, optionally amend the providing module's `design.md` in
+the same atomic operation, and remove the whole `attempt/` directory. A completed attempt
 remains temporal until this operation succeeds. An existing non-empty attempt is reported as
-`implementation_state: active` and must never be replaced, archived as a second authority, or
-removed silently. Hardening never writes `tldr.md` or `spec.md`.
+`attempt_state: active` and must never be replaced, archived as a second authority, or
+removed silently. Hardening never writes `abstract.md` or `design.md`.
 
 ## Phase Path Mapping
 
@@ -114,17 +110,17 @@ The selected feature pointer identifies the feature root. Operations resolve fro
 
 | Operation class | Resolved authority |
 |---|---|
-| specify, clarify, feature contracts | feature root for durable inputs/outputs; a new root receives an authored `tldr.md`, `spec.md`, and a placeholder `design.md`; clarification updates `spec.md` and the TL;DR wherever it summarized the changed behavior; generated review state goes only to `implementation/checklists/`; the providing module's `module.md` is bounded context |
-| custom requirements checklists | read durable root plus available attempt context (the TL;DR is in scope); write only `implementation/checklists/` |
-| plan, research, technical model, quickstart | read root `spec.md` + `design.md` and the module summary (the TL;DR orients only); consult the module `design.md` only deliberately and cite it; write `implementation/` |
-| tasks, implement, analyze, converge, task-to-issue conversion, delivery validation | `implementation/`; analysis also reads `tldr.md` to report disagreement with `spec.md` |
-| feature hardening | read root `tldr.md` + `spec.md` + `design.md`, the module summary and `design.md`, and all attempt inputs; approved apply writes the feature `design.md`, optionally the module `design.md`, and removes `implementation/` |
+| specify, clarify, feature contracts | feature root for durable inputs/outputs; a new root receives authored `abstract.md`, `design.md`, and placeholder `implementation.md`; clarification updates `design.md` and the abstract wherever it summarized the changed behavior; generated review state goes only to `attempt/checklists/`; the providing module's `module.md` is bounded context |
+| custom requirements checklists | read durable root plus available attempt context (the abstract is in scope); write only `attempt/checklists/` |
+| plan, research, technical model, quickstart | read root `design.md` + `implementation.md` and the module summary (the abstract orients only); consult the module `design.md` only deliberately and cite it; write `attempt/` |
+| tasks, implement, analyze, converge, task-to-issue conversion, delivery validation | `attempt/`; analysis also reads `abstract.md` to report disagreement with `design.md` |
+| feature hardening | read root `abstract.md` + `design.md` + `implementation.md`, the module summary and `design.md`, and all attempt inputs; approved apply writes feature `implementation.md`, optionally module `design.md`, and removes `attempt/` |
 
 `.specify/feature.json` is the standard project-scoped selection record and may point to a valid
 top-level feature or immediate sub-feature root. Read-only resolution may inspect but not rewrite
 it. `SPECIFY_FEATURE_DIRECTORY` is the explicit one-command override. Concorde does not maintain a
 second active-feature registry. When the selected root is a sub-feature, workspace resolution
-returns the parent feature's stable ID and durable `tldr.md`/`spec.md`/`design.md` paths as
+returns the parent feature's stable ID and durable `abstract.md`/`design.md`/`implementation.md` paths as
 read-only context plus bounded sibling summaries; it never exposes sibling bodies or parent/sibling
 attempt paths. Every workspace result also names the providing module's `module.md` and `design.md`
 as navigation references.
@@ -142,12 +138,13 @@ as navigation references.
 ```
 
 `specification_root` is the unified subtree recursively containing `module.md`, each module's
-adjacent `design.md`, `contracts/**/contract.md`, `features/*/spec.md`,
-`features/*/subfeatures/*/spec.md`, each feature root's adjacent `tldr.md` and `design.md`, and
-declared Archify JSON views. A feature-like `spec.md` at another depth is invalid rather than
-silently ignored, and so is an `implementation.md` beside a feature `spec.md`. Temporary
+adjacent `design.md`, `contracts/**/contract.md`, `features/*/design.md`,
+`features/*/subfeatures/*/design.md`, each feature root's adjacent `abstract.md` and `implementation.md`, and
+declared Archify JSON views. A feature-like `design.md` at another depth is invalid rather than
+silently ignored. Former `tldr.md`/`spec.md` files and `implementation/` attempt directories are
+invalid. Temporary
 requirements-quality checklists remain discoverable below each active lifecycle root's
-`implementation/` subtree but are not durable specification sources. Paths are project-relative
+`attempt/` subtree but are not durable specification sources. Paths are project-relative
 POSIX paths. Absolute paths, backslashes, empty segments, `.` segments, `..` segments, and symlink
 escapes are invalid.
 
@@ -211,10 +208,10 @@ non-symlink file. Maintainers may edit it directly; workflow operations write it
 approved hardening proposal targeting the module at which the hardened feature is specified. It is
 included in the package's source digest and returned by context as a navigation reference only.
 
-### Feature TL;DR
+### Feature abstract
 
-`tldr.md` is UTF-8 Markdown at exactly the feature root. It has no front matter and no independent
-ID, and is never parsed for metadata. Its H1 is conventionally `# TL;DR: <title>`. Its body
+`abstract.md` is UTF-8 Markdown at exactly the feature root. It has no front matter and no independent
+ID, and is never parsed for metadata. Its H1 is conventionally `# Feature Abstract: <title>`. Its body
 consists of exactly these H2 sections, in this order, each non-empty:
 
 | Section | Content rule |
@@ -222,14 +219,14 @@ consists of exactly these H2 sections, in this order, each non-empty:
 | `Purpose` | the outcome and for whom, in short prose |
 | `Functionality` | what the feature does and does not do: its operations, surfaces, parts, and boundaries; tables where an inventory helps |
 | `Structure` | the participating parts and how they collaborate; at least one link that resolves to a declared feature diagram source, the level view, or a delivered `/architecture/*.html` route, or a fenced ```` ```text ```` sketch |
-| `Logic` | how it works (the main flows in order) and the rules an implementer must not break; the section names at least one `FR-NNN` requirement identifier, and every identifier it names is defined in the adjacent `spec.md` as `**FR-NNN**` |
-| `Read Next` | links to `spec.md`, `design.md`, the contracts, the module summary, and any sub-features or parent, for the reader who wants the next level of detail |
+| `Logic` | how it works (the main flows in order) and the rules an implementer must not break; the section names at least one `FR-NNN` requirement identifier, and every identifier it names is defined in the adjacent `design.md` as `**FR-NNN**` |
+| `Read Next` | links to `design.md`, `implementation.md`, the contracts, the module summary, and any sub-features or parent, for the reader who wants the next level of detail |
 
-The TL;DR is self-contained: its links redirect and are never required to understand it. It must
-not state a requirement, scope boundary, or success criterion absent from `spec.md`. The body
+The abstract is self-contained: its links redirect and are never required to understand it. It must
+not state a requirement, scope boundary, or success criterion absent from `design.md`. The body
 (excluding front matter, fenced code blocks, and HTML comments) is expected to stay within the
 reading budget of 3,000 words; exceeding it is reported as a warning. It is authored by the specify
-phase from the `tldr-template`, kept current by the specify and clarify phases, and written by no
+phase from the `abstract-template`, kept current by the specify and clarify phases, and written by no
 other operation. It must be a real, non-empty, non-symlink file, is included in the package's
 source digest, and is returned by context and workspace results as a navigation reference only.
 
@@ -259,7 +256,7 @@ diagrams:
       - scenario.example.primary
     output: generated/architecture/example-component-interactions.html
 evidence_status: unknown
-canonical_spec: specs/example/features/001-outcome/spec.md
+canonical_design: specs/example/features/001-outcome/design.md
 ```
 
 A direct sub-feature uses the same `kind: feature` and stable ID namespace but declares:
@@ -267,7 +264,7 @@ A direct sub-feature uses the same `kind: feature` and stable ID namespace but d
 ```yaml
 parent_feature: feature.example.outcome
 subfeatures: []
-canonical_spec: specs/example/features/001-outcome/subfeatures/001-focused-part/spec.md
+canonical_design: specs/example/features/001-outcome/subfeatures/001-focused-part/design.md
 ```
 
 Its providing module must equal its parent's module, the parent must register its ID exactly once,
@@ -276,22 +273,22 @@ and it must not be registered as a top-level module feature. Its Markdown body i
 must include `internal: true` and a non-empty `internal_rationale`; containment never substitutes for
 the existing adjacent-module refinement rule. Every feature body contains the primary textual
 definition and requirements; scenario references supply examples and do not exhaustively define it.
-`spec.md` is self-contained — readable without the TL;DR — and may link `tldr.md` and `design.md`
+`design.md` is self-contained — readable without the abstract — and may link `abstract.md` and `implementation.md`
 for redirection.
 
-The `canonical_spec` path must equal the document's own project-relative path. Its containing feature
-root must match the providing module's package, contain real non-symlink `tldr.md` and `design.md`
-files, contain no `implementation.md`, and may contain at most one active `implementation/` child.
+The `canonical_design` path must equal the document's own project-relative path. Its containing feature
+root must match the providing module's package and contain real non-symlink `abstract.md` and
+`implementation.md` files with at most one active `attempt/` child.
 Durable feature metadata or accepted realization must never be inferred from that child without
 explicit hardening.
 
-### Feature design reference (accepted realization)
+### Feature implementation (accepted realization)
 
-The feature `design.md` is UTF-8 Markdown at exactly the feature root. It has no independent
-feature ID and does not duplicate `spec.md` front matter. Its H1 is conventionally
-`# Feature Design Reference: <title>`. Before the first hardened milestone it holds only the
+Feature `implementation.md` is UTF-8 Markdown at exactly the feature root. It has no independent
+feature ID and does not duplicate `design.md` front matter. Its H1 is conventionally
+`# Feature Implementation: <title>`. Before the first hardened milestone it holds only the
 explicit statement that no implementation realization has been hardened yet under the required
-headings (seeded from the `design-template`). The first approved hardening writes it in full and
+headings (seeded from the `implementation-template`). The first approved hardening writes it in full and
 each later hardening completes it. Once hardened, it contains enough current information to explain:
 
 - how related modules and lower-level features collaborate for the feature's scenarios;
@@ -307,8 +304,8 @@ Required H2 sections, in this order and before any further heading: `Realization
 `Traceability and Evidence`, `Known Limitations`. Further headings may follow for implementation
 detail. The document may quote stable identifiers and summarize the current structure, but module
 responsibility, ownership, contracts, and one-level organization remain authoritative only in
-module architecture sources, and required behavior remains authoritative only in `spec.md`.
-Planning and implementation commands read the feature `design.md` as a baseline (treating the
+module architecture sources, and required behavior remains authoritative only in `design.md`.
+Planning and implementation commands read feature `implementation.md` as a baseline (treating the
 placeholder as the absence of a baseline) and must not update it.
 
 `diagrams` is optional for a simple feature with a recorded sufficiency rationale. Each entry has a
@@ -321,7 +318,7 @@ questions; none may be designated as the core diagram. A cross-component feature
 component diagram unless the Markdown records why its text and module-level view are sufficient.
 The source filename must be descriptive and must not be `architecture.json`; its generated output is
 evidence, not maintained intent. Documentation publication discovers these declarations and embeds
-every fresh generated view on the canonical feature page, which is the TL;DR, automatically.
+every fresh generated view on the canonical feature page, which is the abstract, automatically.
 
 ### Contract
 
@@ -373,7 +370,7 @@ satisfy Concorde visibility rules:
 The JSON document follows the matching Archify schema for `architecture`, `workflow`, `sequence`,
 `dataflow`, or `lifecycle`. It must identify the scenario or question it explains, use participants
 consistent with maintained module/contract prose, preserve ordered and directional interactions, and
-have a complete textual counterpart in the owning `spec.md` or `module.md` (a TL;DR may link and
+have a complete textual counterpart in the owning `design.md` or `module.md` (a abstract may link and
 summarize it but is not its counterpart). Boundary-crossing interactions name or trace to their
 governing contract. Validation and delivery are deterministic; visual-check automation records
 containment/captures but never substitutes for human perceptual review.
@@ -396,10 +393,10 @@ reports all independently detectable findings in deterministic order.
 Validation also checks the module summary shape (required sections, structure link or leaf
 rationale, inventory tables, reachability of the design reference) and reading budget (warning
 severity; it never changes the validation status), module design-reference presence, the feature
-TL;DR shape (exactly the five sections in order, a structure link or inline sketch, `Logic`
-requirement citations that resolve in the adjacent `spec.md`) and reading budget (warning), the
-feature-root durable trio and legacy names (a feature-root `implementation.md`, or both
-`implementation.md` and `design.md` present, or a missing `tldr.md` or `design.md`),
+abstract shape (exactly the five sections in order, a structure link or inline sketch, `Logic`
+requirement citations that resolve in the adjacent `design.md`) and reading budget (warning), the
+feature-root durable trio and legacy names (former `tldr.md`/`spec.md` files, a former
+`implementation/` attempt directory, or a missing `abstract.md` or `implementation.md`),
 feature-workspace layout, selected-root safety, durable/temporal phase paths, custom
 definition/example resolution, scenario boundary contract references, explicit evidence references,
 and generated-output freshness through the responsible deterministic adapter. Unsupported custom

@@ -327,7 +327,7 @@ if [ "$BRANCH_NAME" != "$ORIGINAL_BRANCH_NAME" ]; then
 fi
 
 FEATURE_DIR="$SPECS_DIR/$BRANCH_NAME"
-SPEC_FILE="$FEATURE_DIR/spec.md"
+SPEC_FILE="$FEATURE_DIR/design.md"
 
 if [ "$DRY_RUN" != true ]; then
     if [ -d "$FEATURE_DIR" ] && [ "$ALLOW_EXISTING" != true ]; then

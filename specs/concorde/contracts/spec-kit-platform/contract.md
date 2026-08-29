@@ -75,7 +75,7 @@ workspace; setup and feature development remain separate responsibilities.
 - Normal lifecycle commands resolve the one explicitly selected nested feature workspace without
   copying it into a second feature store.
 - Concorde's path adapter preserves Spec Kit phase semantics while resolving durable feature intent
-  at the feature root and plan-phase artifacts under that feature's `implementation/` directory.
+  at the feature root and plan-phase artifacts under that feature's `attempt/` directory.
 - Installed-component provenance is available for safe update and removal.
 
 ## Failure Semantics

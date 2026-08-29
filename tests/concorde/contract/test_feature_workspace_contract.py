@@ -10,7 +10,7 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         examples = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples"
         for name in ("feature-harden-eligible-response.json",):
             payload = json.loads((examples / name).read_text(encoding="utf-8"))
-            self.assertEqual(payload["schema_version"], 5)
+            self.assertEqual(payload["schema_version"], 6)
             self.assertEqual(payload["operation"], "feature.harden")
             self.assertEqual(
                 set(payload["workspace"]),
@@ -21,16 +21,16 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
                     "parent_context",
                     "siblings",
                     "feature_directory",
-                    "feature_tldr",
-                    "feature_spec",
+                    "feature_abstract",
                     "feature_design",
+                    "feature_implementation",
                     "module_summary",
                     "module_design",
                     "contracts_dir",
                     "checklists_dir",
                     "diagrams_dir",
-                    "implementation_dir",
-                    "implementation_state",
+                    "attempt_dir",
+                    "attempt_state",
                     "plan",
                     "research",
                     "data_model",
@@ -43,7 +43,7 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
             )
             path_values = (
                 value for key, value in payload["workspace"].items()
-                if key not in {"workspace_kind", "feature_id", "providing_module", "parent_context", "siblings", "implementation_state", "reflections_open"}
+                if key not in {"workspace_kind", "feature_id", "providing_module", "parent_context", "siblings", "attempt_state", "reflections_open"}
             )
             for value in (*path_values, *payload["artifacts"]):
                 self.assertFalse(Path(value).is_absolute())
@@ -51,7 +51,7 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
                 self.assertNotIn("..", Path(value).parts)
             self.assertEqual(
                 payload["workspace"]["checklists_dir"],
-                payload["workspace"]["implementation_dir"] + "/checklists",
+                payload["workspace"]["attempt_dir"] + "/checklists",
             )
 
     def test_schema_keeps_workspace_protocol_separate_from_architecture_v1(self):
@@ -59,9 +59,9 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         workspace = json.loads((contracts / "feature-workspace.schema.json").read_text())
         architecture = json.loads((contracts / "architecture-service.schema.json").read_text())
         self.assertEqual(workspace["$defs"]["operation"]["enum"], ["feature.harden"])
-        self.assertEqual(workspace["$defs"]["request"]["properties"]["schema_version"]["const"], 5)
-        self.assertEqual(workspace["$defs"]["response"]["properties"]["schema_version"]["const"], 5)
-        self.assertIn("design_digest_before", response_properties := workspace["$defs"]["response"]["properties"])
+        self.assertEqual(workspace["$defs"]["request"]["properties"]["schema_version"]["const"], 6)
+        self.assertEqual(workspace["$defs"]["response"]["properties"]["schema_version"]["const"], 6)
+        self.assertIn("implementation_digest_before", response_properties := workspace["$defs"]["response"]["properties"])
         self.assertIn("module_design_digest_after", response_properties)
         response_properties = workspace["$defs"]["response"]["properties"]
         self.assertIn("proposal_path", response_properties)
@@ -72,12 +72,12 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
     def test_hardening_proposal_binds_one_realization_optional_reference_and_one_removal_target(self):
         path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples/feature-harden-proposal.json"
         proposal = json.loads(path.read_text(encoding="utf-8"))
-        self.assertEqual(proposal["proposal_version"], 3)
+        self.assertEqual(proposal["proposal_version"], 4)
         self.assertEqual(proposal["operation"], "feature.harden")
-        realization = Path(proposal["design"]["path"])
+        realization = Path(proposal["implementation"]["path"])
         removal = Path(proposal["remove"][0])
-        self.assertEqual(realization.name, "design.md")
-        self.assertEqual(removal.name, "implementation")
+        self.assertEqual(realization.name, "implementation.md")
+        self.assertEqual(removal.name, "attempt")
         self.assertEqual(realization.parent, removal.parent)
         self.assertEqual(len(proposal["remove"]), 1)
         reference = Path(proposal["module_design"]["path"])
@@ -85,9 +85,9 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         self.assertNotEqual(reference.parent, realization.parent)
         schema = json.loads((path.parents[1] / "feature-workspace.schema.json").read_text(encoding="utf-8"))
         hardening = schema["$defs"]["hardeningProposal"]
-        self.assertEqual(hardening["properties"]["proposal_version"]["const"], 3)
-        self.assertIn("design", hardening["required"])
-        self.assertNotIn("implementation", hardening["properties"])
+        self.assertEqual(hardening["properties"]["proposal_version"]["const"], 4)
+        self.assertIn("implementation", hardening["required"])
+        self.assertNotIn("design", hardening["properties"])
         self.assertNotIn("module_design", hardening["required"])
 
     def test_hardening_eligibility_example_exposes_review_metadata(self):
@@ -96,7 +96,7 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         self.assertEqual(payload["status"], "eligible")
         self.assertEqual(
             payload["proposal_path"],
-            payload["workspace"]["implementation_dir"] + "/harden-proposal.json",
+            payload["workspace"]["attempt_dir"] + "/harden-proposal.json",
         )
         self.assertEqual(payload["task_summary"]["incomplete"], 0)
         self.assertEqual(payload["checklist_summary"]["incomplete"], 0)

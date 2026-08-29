@@ -10,7 +10,7 @@ Self-hosting installs this checkout's maintained preset and extension into this 
 project. That lets subsequent Concorde work exercise the current local workflow instead of an older
 release or a set of manually maintained skills.
 
-The normative behavior is [Feature 004](../specs/concorde/features/004-self-host-concorde/spec.md).
+The normative behavior is [Feature 004](../specs/concorde/features/004-self-host-concorde/design.md).
 The feature's <a href="/architecture/concorde-self-hosting-components.html">component view</a>
 shows the authority flow: checked-in framework sources feed a review-first bootstrap, Spec Kit owns
 component registration and active-integration materialization, and a receipt supports later drift

@@ -31,10 +31,10 @@ composition strategy. Concorde contributes four template layers and nine existin
 
 ## Obligations
 
-Composition preserves core phase semantics and one canonical root `spec.md` while adding ownership,
+Composition preserves core phase semantics and one canonical root `design.md` while adding ownership,
 contract, view, evidence, and freshness gates. The installed winning command surface resolves the
 selected workspace before any inherited step assumes a root-level temporal artifact. Durable phases
-use the feature root; planning and delivery phases use `implementation/`; neither path creates root
+use the feature root; planning and delivery phases use `attempt/`; neither path creates root
 aliases. Repository-local self-hosting commands and scripts are not distributed evidence.
 
 ## Failure Semantics

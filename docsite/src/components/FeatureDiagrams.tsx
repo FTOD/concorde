@@ -10,7 +10,7 @@ export default function FeatureDiagrams({page}: {page: ContentPage}) {
       <div className="featureDiagrams__intro">
         <p className="featureDiagrams__eyebrow">Feature diagrams</p>
         <h2 id="feature-diagrams-heading">Explore component involvement</h2>
-        <p>These interactive views supplement the feature text; the specification and contracts remain authoritative.</p>
+        <p>These interactive views supplement the feature text; the design and contracts remain authoritative.</p>
       </div>
       <div className="featureDiagrams__list">
         {page.diagrams.map((diagram, index) => {

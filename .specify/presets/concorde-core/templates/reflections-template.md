@@ -25,8 +25,9 @@ a feature's open entries in its design reference; no operation removes this file
   - **Occurrences**:                                                 (optional; on re-encounter, never a new entry)
     - <phase> <date> <feature-id> — <context>
 
-  Rules: record in the phase the problem is met; never edit tldr.md, spec.md, any design.md, any
-  module.md, a contract, a view, a diagram, or another feature's code in response — record instead;
+  Rules: record in the phase the problem is met; never edit abstract.md, feature design.md,
+  implementation.md, any module design.md, module.md, a contract, a view, a diagram, or another
+  feature's code in response — record instead;
   update an existing entry rather than duplicate it; never delete, renumber, or reverse a
   maintainer's Status or Note; cite evidence paths instead of pasting secrets or bulk output; keep
   Expected/Observed/Action under about 150 words together. Old resolved or dismissed entries may be

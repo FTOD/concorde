@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.invalid/contracts/feature-workspace-v5.schema.json",
-  "title": "Concorde Feature Workspace Protocol v5",
+  "$id": "https://concorde.invalid/contracts/feature-workspace-v6.schema.json",
+  "title": "Concorde Feature Workspace Protocol v6",
   "oneOf": [
     {
       "$ref": "#/$defs/request"
@@ -82,8 +82,9 @@
         "outcome",
         "evidence_status",
         "feature_directory",
-        "tldr",
-        "design"
+        "abstract",
+        "design",
+        "implementation"
       ],
       "properties": {
         "feature_id": {
@@ -110,13 +111,17 @@
         "feature_directory": {
           "$ref": "#/$defs/safePath"
         },
-        "tldr": {
+        "abstract": {
           "$ref": "#/$defs/safePath",
-          "description": "tldr.md of the summarized root (navigation reference)."
+          "description": "abstract.md of the summarized root (navigation reference)."
         },
         "design": {
           "$ref": "#/$defs/safePath",
-          "description": "design.md of the summarized root (accepted realization; navigation reference)."
+          "description": "design.md behavioral authority of the summarized root."
+        },
+        "implementation": {
+          "$ref": "#/$defs/safePath",
+          "description": "implementation.md accepted realization of the summarized root."
         },
         "reflections_open": {
           "type": "integer",
@@ -131,9 +136,9 @@
       "required": [
         "feature_id",
         "feature_directory",
-        "feature_tldr",
-        "feature_spec",
-        "feature_design"
+        "feature_abstract",
+        "feature_design",
+        "feature_implementation"
       ],
       "properties": {
         "feature_id": {
@@ -143,10 +148,10 @@
         "feature_directory": {
           "$ref": "#/$defs/safePath"
         },
-        "feature_tldr": {
+        "feature_abstract": {
           "$ref": "#/$defs/safePath"
         },
-        "feature_spec": {
+        "feature_implementation": {
           "$ref": "#/$defs/safePath"
         },
         "feature_design": {
@@ -164,16 +169,16 @@
         "parent_context",
         "siblings",
         "feature_directory",
-        "feature_tldr",
-        "feature_spec",
+        "feature_abstract",
         "feature_design",
+        "feature_implementation",
         "module_summary",
         "module_design",
         "contracts_dir",
         "checklists_dir",
         "diagrams_dir",
-        "implementation_dir",
-        "implementation_state",
+        "attempt_dir",
+        "attempt_state",
         "plan",
         "research",
         "data_model",
@@ -222,16 +227,16 @@
         "feature_directory": {
           "$ref": "#/$defs/safePath"
         },
-        "feature_tldr": {
+        "feature_abstract": {
           "$ref": "#/$defs/safePath",
-          "description": "Feature TL;DR of the selected root: self-contained, five sections, authored by specification."
-        },
-        "feature_spec": {
-          "$ref": "#/$defs/safePath"
+          "description": "Feature abstract of the selected root: self-contained, five sections, authored by specification."
         },
         "feature_design": {
+          "$ref": "#/$defs/safePath"
+        },
+        "feature_implementation": {
           "$ref": "#/$defs/safePath",
-          "description": "Feature design reference (accepted realization) of the selected root; a placeholder until the first approved hardening."
+          "description": "Accepted feature implementation of the selected root; a placeholder until the first approved hardening."
         },
         "module_summary": {
           "$ref": "#/$defs/safePath",
@@ -246,15 +251,15 @@
         },
         "checklists_dir": {
           "$ref": "#/$defs/safePath",
-          "description": "Temporal requirements-quality review directory below the selected feature's implementation workspace."
+          "description": "Temporal requirements-quality review directory below the selected feature's attempt workspace."
         },
         "diagrams_dir": {
           "$ref": "#/$defs/safePath"
         },
-        "implementation_dir": {
+        "attempt_dir": {
           "$ref": "#/$defs/safePath"
         },
-        "implementation_state": {
+        "attempt_state": {
           "type": "string",
           "enum": [
             "absent",
@@ -353,7 +358,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": 5
+          "const": 6
         },
         "operation": {
           "$ref": "#/$defs/operation"
@@ -395,7 +400,7 @@
       ],
       "properties": {
         "schema_version": {
-          "const": 5
+          "const": 6
         },
         "operation": {
           "$ref": "#/$defs/operation"
@@ -481,14 +486,14 @@
         "checklist_summary": {
           "$ref": "#/$defs/checklistSummary"
         },
-        "design_digest_before": {
+        "implementation_digest_before": {
           "type": [
             "string",
             "null"
           ],
           "pattern": "^sha256:[0-9a-f]{64}$"
         },
-        "design_digest_after": {
+        "implementation_digest_after": {
           "type": [
             "string",
             "null"
@@ -562,12 +567,12 @@
         "operation",
         "target",
         "source_digest",
-        "design",
+        "implementation",
         "remove"
       ],
       "properties": {
         "proposal_version": {
-          "const": 3
+          "const": 4
         },
         "operation": {
           "const": "feature.harden"
@@ -580,7 +585,7 @@
           "type": "string",
           "pattern": "^sha256:[0-9a-f]{64}$"
         },
-        "design": {
+        "implementation": {
           "type": "object",
           "additionalProperties": false,
           "required": [
@@ -596,7 +601,7 @@
               "minLength": 1
             }
           },
-          "description": "Full content of the selected root's design.md (accepted realization); path must equal workspace.feature_design."
+          "description": "Full content of selected root implementation.md; path must equal workspace.feature_implementation."
         },
         "module_design": {
           "type": "object",

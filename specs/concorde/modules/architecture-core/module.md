@@ -37,7 +37,7 @@ the installed command surfaces reach this runtime and which architecture sources
 
 | Feature ID | Outcome | Refines | Specification |
 |---|---|---|---|
-| `feature.architecture-core.manage-bounded-sources` | A maintainer or coding agent can safely propose a root specification hierarchy, retrieve exactly one architectural level for feature placement or implementation, and deterministically validate maintained module, feature, contract, scenario, evidence, and view relationships. | `feature.concorde.workflow` | [spec.md](features/001-manage-bounded-sources/spec.md) |
+| `feature.architecture-core.manage-bounded-sources` | A maintainer or coding agent can safely propose a root specification hierarchy, retrieve exactly one architectural level for feature placement or implementation, and deterministically validate maintained module, feature, contract, scenario, evidence, and view relationships. | `feature.concorde.workflow` | [design.md](features/001-manage-bounded-sources/design.md) |
 
 ## Contracts
 

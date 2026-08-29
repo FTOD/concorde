@@ -8,7 +8,7 @@ representation:
   kind: custom
   format: JSON
   serialization: JSON
-  version: 5
+  version: 7
   definition: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json
   schema: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json
   example: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.example.json
@@ -18,7 +18,7 @@ consumers:
   - external.project-maintainer
 features:
   - feature.documentation.publish-project-docsite
-version: 5
+version: 7
 evidence:
   tests:
     - docsite/tests/contract/build-manifest.test.ts
@@ -47,7 +47,7 @@ records additionally carry stable entity and declared-view metadata.
   carry durable realization provenance; module-design pages carry the owning module's provenance;
   architecture pages carry stable ID, kind, hierarchy metadata, view source hash, and delivered-view
   route when applicable.
-- A successful manifest contains no timestamp and validates against schema version 5.
+- A successful manifest contains no timestamp and validates against schema version 7.
 - Only actual rendered routes enter the verified route inventory.
 
 ## Failure Semantics
@@ -57,10 +57,10 @@ missing fields, unsorted projections, and unverified routes fail publication.
 
 ## Compatibility
 
-Incompatible field-meaning changes require a new schema version. Version 5 renames the
-`feature-designs` collection to `feature-implementations` (page kind `feature-implementation`) and
-adds `module-design` pages to the `architecture` collection; version 3 added the feature-designs
-collection and `feature-design` page kind. Readers reject unsupported schema versions.
+Incompatible field-meaning changes require a new schema version. Version 7 names
+`feature-abstracts`, `features`, and `feature-implementations`, with page kinds `feature-abstract`,
+`feature-design`, and `feature-implementation` and companion route fields matching those meanings.
+Readers reject unsupported schema versions.
 
 ## Evidence
 

@@ -27,10 +27,10 @@ Read the smallest relevant set in this order:
 3. For project-specific questions only, the project constitution and the smallest bounded set of
    maintained `specs/` sources needed to answer, starting from summaries: the current module's
    `module.md`, one-level `architecture.json`, relevant contracts, and the named feature's durable
-   `tldr.md`. Open the feature `spec.md` only when a requirement's exact wording is needed, and a
-   module or feature `design.md` only when the question asks for implementation detail, rationale,
+   `abstract.md`. Open the feature `design.md` only when a requirement's exact wording is needed, and a
+   module `design.md` or feature `implementation.md` only when the question asks for implementation detail, rationale,
    or accepted realization; cite each opened file.
-   For a sub-feature question, include its parent durable `tldr.md` (and `spec.md` or `design.md`
+   For a sub-feature question, include its parent durable `abstract.md` (and feature `design.md` or `implementation.md`
    under the same rules) as aggregate context and only
    concise sibling summaries; do not read sibling bodies or parent/sibling attempts merely because
    they exist. Distinguish two-level feature containment from adjacent-module `refines` links.
@@ -59,9 +59,9 @@ Return standard Markdown containing:
   project fact used.
 
 Name the kind of source behind every project fact: module summary (`module.md`), module design
-reference (`design.md`), feature TL;DR (`tldr.md`), required behavior (`spec.md`), accepted
-realization (the feature `design.md`),
-temporal attempt (`implementation/`), project reflection log (`reflections.md`), or generated
+reference (`design.md`), feature abstract (`abstract.md`), required behavior (`design.md`), accepted
+realization (the feature `implementation.md`),
+temporal attempt (`attempt/`), project reflection log (`reflections.md`), or generated
 evidence. Keep feature containment distinct from
 adjacent-module refinement.
 

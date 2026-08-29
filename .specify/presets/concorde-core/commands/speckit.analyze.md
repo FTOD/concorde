@@ -1,5 +1,5 @@
 ---
-description: "Analyze durable specification and temporal implementation artifacts non-destructively."
+description: "Analyze durable design and temporal attempt artifacts non-destructively."
 scripts:
   py: .specify/extensions/concorde/scripts/python/workspace.py --phase analyze
 ---
@@ -16,21 +16,21 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIPT}` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
-`workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v5 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+`workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
+Require Protocol v6 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
 recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
-sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
+read the parent `feature_design` and `feature_implementation` only as aggregate durable context. Never load a
+sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
 step says to run `{SCRIPT}`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
 by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
-`implementation_dir` when absent and seed a missing artifact from the active `plan-template` or
+`attempt_dir` when absent and seed a missing artifact from the active `plan-template` or
 `tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
 For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
 
@@ -72,7 +72,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Goal
 
-Identify inconsistencies, duplications, ambiguities, and underspecified items across durable `spec.md`, durable accepted `implementation.md`, and the active `implementation/plan.md` and `implementation/tasks.md` before implementation. This command MUST run only after `$speckit-tasks` has successfully produced a complete task list.
+Identify inconsistencies, duplications, ambiguities, and underspecified items across durable `design.md`, durable accepted `implementation.md`, and the active `attempt/plan.md` and `attempt/tasks.md` before implementation. This command MUST run only after `$speckit-tasks` has successfully produced a complete task list.
 
 ## Operating Constraints
 
@@ -86,10 +86,10 @@ repairs that log. Output a structured analysis report. Offer an optional remedia
 
 ### 1. Initialize Analysis Context
 
-Run `{SCRIPT}` once from repo root and parse JSON for FEATURE_DIR, FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
+Run `{SCRIPT}` once from repo root and parse JSON for FEATURE_DIR, FEATURE_DESIGN, FEATURE_IMPLEMENTATION, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. Use the returned absolute paths:
 
-- SPEC = FEATURE_SPEC
-- IMPLEMENTATION = FEATURE_DESIGN
+- SPEC = FEATURE_DESIGN
+- IMPLEMENTATION = FEATURE_IMPLEMENTATION
 - PLAN = IMPL_PLAN
 - TASKS = TASKS
 
@@ -100,7 +100,7 @@ For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot
 
 Load only the minimal necessary context from each artifact:
 
-**From spec.md:**
+**From design.md:**
 
 - Overview/Context
 - Functional Requirements
@@ -118,11 +118,11 @@ Load only the minimal necessary context from each artifact:
   no longer resolves) — such an entry is **stale**
 - A malformed log is reported as a finding; it is never repaired here
 
-**From tldr.md:**
+**From abstract.md:**
 
-- Every statement of purpose, functionality, structure, and logic, and every `FR-NNN` it cites (the TL;DR summarizes spec.md and must not exceed it)
+- Every statement of purpose, functionality, structure, and logic, and every `FR-NNN` it cites (the abstract summarizes design.md and must not exceed it)
 
-**From design.md (feature design reference):**
+**From implementation.md:**
 
 - Accepted realization baseline, durable decisions, scenario realization, traceability, and known limitations (the placeholder means no accepted baseline)
 
@@ -200,14 +200,14 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 - More than one `role: core` diagram, a core diagram whose kind is not `architecture`, or a
   sequence/workflow/data-flow/lifecycle view presented as the feature's core component model
 
-#### E. TL;DR Disagreement
+#### E. abstract Disagreement
 
-- A `tldr.md` statement that `spec.md` does not support, or that contradicts a requirement, scope
+- A `abstract.md` statement that `design.md` does not support, or that contradicts a requirement, scope
   boundary, or success criterion: report it naming the disagreeing statement and the prevailing
-  `FR-NNN`/section (spec.md wins; the TL;DR is fixed through `$speckit-specify` or
+  `FR-NNN`/section (design.md wins; the abstract is fixed through `$speckit-specify` or
   `$speckit-clarify`, never by this command)
-- A `Logic` rule citing an `FR-NNN` that `spec.md` does not define, or a missing/extra/misordered
-  TL;DR section
+- A `Logic` rule citing an `FR-NNN` that `design.md` does not define, or a missing/extra/misordered
+  abstract section
 
 ### 5. Severity Assignment
 
@@ -226,7 +226,7 @@ Output a Markdown report (no file writes) with the following structure:
 
 | ID | Category | Severity | Location(s) | Summary | Recommendation |
 |----|----------|----------|-------------|---------|----------------|
-| A1 | Duplication | HIGH | spec.md:L120-134 | Two similar requirements ... | Merge phrasing; keep clearer version |
+| A1 | Duplication | HIGH | design.md:L120-134 | Two similar requirements ... | Merge phrasing; keep clearer version |
 
 (Add one row per finding; generate stable IDs prefixed by category initial.)
 
@@ -291,14 +291,14 @@ removes it.
   `Effect` (`assumed`, `worked-around`, `deferred`, or `blocked`), `Action`, `Improvement`, and
   `Status: open`. The grammar is fixed by the log template and checked by
   `speckit.concorde.validate` (`CONCORDE-REFLECT-001` to `-004`).
-- **Never fix in place**: a problem with `tldr.md`, `spec.md`, any `design.md`, any `module.md`, a
+- **Never fix in place**: a problem with `abstract.md`, feature `design.md`, feature `implementation.md`, any `module.md`, a
   contract, a view, a diagram, or another feature's code or tests is recorded, not edited; the
   owning phase or the maintainer changes that source later.
 - **Update, don't duplicate**: when the log already holds the same problem — recorded by any phase
   on any feature — add a line under its `- **Occurrences**:` list
   (`<phase> <date> <feature-id> — <context>`) instead of a new entry. Never change a `Status` or
   `Note` a maintainer set.
-- **Bounded**: recording never requires opening another root's `implementation/`; cite the other
+- **Bounded**: recording never requires opening another root's `attempt/`; cite the other
   feature by stable ID or path.
 - **Hygiene**: no secrets, credentials, or bulk output — cite the evidence path instead; keep
   `Expected`, `Observed`, and `Action` under about 150 words together.
@@ -350,7 +350,7 @@ After reporting, check if `.specify/extensions.yml` exists in the project root.
 ### Analysis Guidelines
 
 - **NEVER modify files** (this is read-only analysis; the only permitted write is appending to the project reflection log)
-- **NEVER propose editing `implementation.md` or any module `module.md`/`design.md`**; when analysis surfaces rationale, alternatives, or implementation detail worth keeping, recommend recording it inside the attempt (`implementation/research.md` or `implementation/validation.md`) so hardening can carry it forward
+- **NEVER propose editing `implementation.md` or any module `module.md`/`design.md`**; when analysis surfaces rationale, alternatives, or implementation detail worth keeping, recommend recording it inside the attempt (`attempt/research.md` or `attempt/validation.md`) so hardening can carry it forward
 - **NEVER hallucinate missing sections** (if absent, report them accurately)
 - **Prioritize constitution violations** (these are always CRITICAL)
 - **Use examples over exhaustive rules** (cite specific instances, not generic patterns)

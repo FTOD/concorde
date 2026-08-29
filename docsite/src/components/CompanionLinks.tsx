@@ -5,11 +5,11 @@ import type {ContentPage} from '../../plugins/concorde-content/types';
 /** A page that pairs with the current one; `route` is absent when the entry is the current page itself. */
 interface Companion {label: string; description: string; route?: string}
 
-const featureKinds = new Set<ContentPage['kind']>(['feature-tldr', 'feature-specification', 'feature-design']);
+const featureKinds = new Set<ContentPage['kind']>(['feature-abstract', 'feature-design', 'feature-implementation']);
 
 /**
  * The pages that pair with this one: module summary <-> design reference, or the three pages of one feature root
- * (TL;DR · Specification · Design reference) with the current page listed but not linked.
+ * (Abstract · Design · Implementation) with the current page listed but not linked.
  */
 export function companionsFor(page: ContentPage): Companion[] {
   if (page.kind === 'architecture-source' && page.architectureKind === 'module' && page.designReferenceRoute) {
@@ -24,16 +24,16 @@ export function companionsFor(page: ContentPage): Companion[] {
   if (featureKinds.has(page.kind)) {
     return [
       {
-        label: 'TL;DR', route: page.kind === 'feature-tldr' ? undefined : page.tldrRoute,
+        label: 'Abstract', route: page.kind === 'feature-abstract' ? undefined : page.abstractRoute,
         description: 'The self-contained quick understanding of this feature.',
       },
       {
-        label: 'Specification', route: page.kind === 'feature-specification' ? undefined : page.specificationRoute,
+        label: 'Design', route: page.kind === 'feature-design' ? undefined : page.designRoute,
         description: 'The durable behavior, requirements, and success criteria.',
       },
       {
-        label: 'Design reference', route: page.kind === 'feature-design' ? undefined : page.designRoute,
-        description: 'The accepted design that realizes this feature.',
+        label: 'Implementation', route: page.kind === 'feature-implementation' ? undefined : page.implementationRoute,
+        description: 'The accepted implementation that realizes this feature.',
       },
     ];
   }

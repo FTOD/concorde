@@ -79,7 +79,7 @@ class ContextTests(unittest.TestCase):
             root = Path(temporary) / "project"
             shutil.copytree(CONTEXT_PROJECT, root)
             feature = root / "specs/example/features/001-deliver"
-            (feature / "design.md").rename(feature / "implementation.md")
+            (feature / "spec.md").write_text("legacy name", encoding="utf-8")
             before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}
             result = bounded_context(root, "feature.example.deliver")
             self.assertEqual(result.status, "success")
@@ -90,28 +90,28 @@ class ContextTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(CONTEXT_PROJECT, root)
-            feature = root / "specs/example/features/001-deliver/spec.md"
+            feature = root / "specs/example/features/001-deliver/design.md"
             feature.write_text(feature.read_text().replace(
                 "evidence_status: unknown",
                 "evidence_status: unknown\nevidence:\n  - kind: test\n    target: tests/example/test_delivery.py\n    status: unknown\n    producer: unittest",
             ))
-            implementation = feature.parent / "implementation"
-            implementation.mkdir()
-            (implementation / "plan.md").write_text("# Plan\n")
-            (implementation / "tasks.md").write_text("# Tasks\n")
+            attempt = feature.parent / "attempt"
+            attempt.mkdir()
+            (attempt / "plan.md").write_text("# Plan\n")
+            (attempt / "tasks.md").write_text("# Tasks\n")
             context = bounded_context(root, "feature.example.deliver").result["context"]
             workspace = context["feature_workspace"]
-            self.assertEqual(workspace["feature_spec"], "specs/example/features/001-deliver/spec.md")
-            self.assertEqual(workspace["feature_tldr"], "specs/example/features/001-deliver/tldr.md")
             self.assertEqual(workspace["feature_design"], "specs/example/features/001-deliver/design.md")
+            self.assertEqual(workspace["feature_abstract"], "specs/example/features/001-deliver/abstract.md")
+            self.assertEqual(workspace["feature_implementation"], "specs/example/features/001-deliver/implementation.md")
             self.assertEqual(workspace["module_summary"], "specs/example/module.md")
             self.assertEqual(workspace["module_design"], "specs/example/design.md")
             self.assertIn("specs/example/features/001-deliver/design.md", workspace["durable_artifacts"])
-            self.assertIn("specs/example/features/001-deliver/tldr.md", workspace["durable_artifacts"])
+            self.assertIn("specs/example/features/001-deliver/abstract.md", workspace["durable_artifacts"])
             self.assertNotIn("Realization status", repr(context))
-            self.assertEqual(workspace["implementation_artifacts"], [
-                "specs/example/features/001-deliver/implementation/plan.md",
-                "specs/example/features/001-deliver/implementation/tasks.md",
+            self.assertEqual(workspace["attempt_artifacts"], [
+                "specs/example/features/001-deliver/attempt/plan.md",
+                "specs/example/features/001-deliver/attempt/tasks.md",
             ])
             self.assertEqual(context["evidence"][0]["status"], "unknown")
             self.assertEqual(context["feature_diagrams"], [{
@@ -132,7 +132,7 @@ class ContextTests(unittest.TestCase):
             [item["feature_id"] for item in parent["subfeatures"]],
             ["feature.example.checkout.authorize", "feature.example.checkout.confirm"],
         )
-        self.assertNotIn("implementation/plan.md", repr(parent["subfeatures"]))
+        self.assertNotIn("attempt/plan.md", repr(parent["subfeatures"]))
         self.assertEqual(
             parent["subfeatures"][0]["design"],
             "specs/example/features/001-checkout/subfeatures/001-authorize-payment/design.md",
@@ -141,8 +141,8 @@ class ContextTests(unittest.TestCase):
         child = bounded_context(TWO_LEVEL_PROJECT, "feature.example.checkout.authorize").result["context"]
         self.assertEqual(child["parent_feature"]["feature_id"], "feature.example.checkout")
         self.assertEqual(child["parent_feature"]["design"], "specs/example/features/001-checkout/design.md")
-        self.assertEqual(child["parent_feature"]["tldr"], "specs/example/features/001-checkout/tldr.md")
-        self.assertEqual(child["feature_workspace"]["parent_context"]["feature_design"], "specs/example/features/001-checkout/design.md")
+        self.assertEqual(child["parent_feature"]["abstract"], "specs/example/features/001-checkout/abstract.md")
+        self.assertEqual(child["feature_workspace"]["parent_context"]["feature_implementation"], "specs/example/features/001-checkout/implementation.md")
         self.assertEqual([item["feature_id"] for item in child["siblings"]], ["feature.example.checkout.confirm"])
         self.assertNotIn("Confirmation preserves", repr(child["siblings"]))
 

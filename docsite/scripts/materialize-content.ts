@@ -12,12 +12,12 @@ const projectRoot = resolve(siteDir, '..');
 export const generatedContentRoot = resolve(siteDir, '.generated/content');
 
 /** The three pages of a feature root are staged together beneath the Features root. */
-const featureCollections = new Set<CollectionId>(['feature-tldrs', 'features', 'feature-designs']);
-/** Sidebar order inside one feature root: the TL;DR landing page, then the specification, then the design reference. */
-const featureSidebarPositions = {'feature-tldr': 1, 'feature-specification': 2, 'feature-design': 3} as const;
+const featureCollections = new Set<CollectionId>(['feature-abstracts', 'features', 'feature-implementations']);
+/** Sidebar order inside one feature root: abstract, design, then implementation. */
+const featureSidebarPositions = {'feature-abstract': 1, 'feature-design': 2, 'feature-implementation': 3} as const;
 
 /**
- * A feature page is staged with the route the registry assigned it, so Docusaurus renders the TL;DR at
+ * A feature page is staged with the route the registry assigned it, so Docusaurus renders the abstract at
  * `/features/<root>` and the specification and design reference one segment below it instead of deriving
  * routes from the specification's front matter id. The staged copy is a renderer projection only.
  */
@@ -39,7 +39,7 @@ export async function materializeContent(providedRegistry?: ContentRegistry): Pr
     const isFeaturePage = featureCollections.has(document.collectionId);
     if (document.collectionId !== 'architecture' && !isFeaturePage) continue;
     const relativeSpecPath = relative(resolve(projectRoot, 'specs'), resolve(projectRoot, document.sourcePath));
-    // TL;DRs, specifications, and design references are staged beside each other under the Features root; module
+    // Abstracts, designs, and implementations are staged beside each other under the Features root; module
     // design references belong to the architecture collection and land beside their module.md.
     const destination = resolve(generatedContentRoot, isFeaturePage ? 'features' : document.collectionId, relativeSpecPath);
     await mkdir(dirname(destination), {recursive: true});

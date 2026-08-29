@@ -27,26 +27,27 @@ class ValidationRuleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary)
             feature = root / "specs/example/features/001-deliver"
-            (feature / "design.md").rename(feature / "implementation.md")
+            (feature / "spec.md").write_text("legacy feature name", encoding="utf-8")
             legacy = validate_project(root)
             self.assertIn("CONCORDE-LAYOUT-007", {item.rule_id for item in legacy.findings})
             self.assertNotIn("CONCORDE-LAYOUT-005", {item.rule_id for item in legacy.findings})
             finding = next(item for item in legacy.findings if item.rule_id == "CONCORDE-LAYOUT-007")
-            self.assertEqual(finding.source, "specs/example/features/001-deliver/implementation.md")
-            self.assertIn("design.md", finding.remediation)
-            (feature / "design.md").write_text("# Feature Design Reference: Deliver\n", encoding="utf-8")
+            self.assertEqual(finding.source, "specs/example/features/001-deliver")
+            self.assertIn("abstract.md", finding.remediation)
+            (feature / "implementation").mkdir()
             both = {item.rule_id for item in validate_project(root).findings}
             self.assertIn("CONCORDE-LAYOUT-008", both)
-            self.assertNotIn("CONCORDE-LAYOUT-007", both)
+            self.assertIn("CONCORDE-LAYOUT-007", both)
+            (feature / "implementation").rmdir()
+            (feature / "spec.md").unlink()
             (feature / "implementation.md").unlink()
-            (feature / "design.md").unlink()
             missing = {item.rule_id for item in validate_project(root).findings}
             self.assertIn("CONCORDE-LAYOUT-005", missing)
             self.assertNotIn("CONCORDE-LAYOUT-007", missing)
             self.assertNotIn("CONCORDE-LAYOUT-009", missing)
-            (feature / "tldr.md").unlink()
-            no_tldr = {item.rule_id for item in validate_project(root).findings}
-            self.assertIn("CONCORDE-LAYOUT-009", no_tldr)
+            (feature / "abstract.md").unlink()
+            no_abstract = {item.rule_id for item in validate_project(root).findings}
+            self.assertIn("CONCORDE-LAYOUT-009", no_abstract)
 
     def test_broken_reference_has_stable_actionable_finding(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -64,7 +65,7 @@ class ValidationRuleTests(unittest.TestCase):
             root = self.project_copy(temporary)
             child = root / "specs/example/modules/api/module.md"
             child.write_text(child.read_text().replace("children: []", "children:\n  - module.example"))
-            feature = root / "specs/example/features/001-deliver/spec.md"
+            feature = root / "specs/example/features/001-deliver/design.md"
             feature.write_text(feature.read_text().replace("evidence_status: unknown", "evidence_status: magical"))
             contract = root / "specs/example/contracts/workflow/contract.md"
             contract.write_text(contract.read_text().replace("counterparties:\n  - external.maintainer", "counterparties: []"))

@@ -64,7 +64,7 @@ treated as perceptual evidence.
 - A publication gate rather than best effort: identities, links, and routes are validated, every
   declared view must be deliverable, provenance and the manifest are deterministic, and the last
   successful site survives a failed build.
-- Temporal `implementation/` artifacts are excluded so the site shows only durable intent and
+- Temporal `attempt/` artifacts are excluded so the site shows only durable intent and
   accepted realizations.
 - Archify keeps ownership of schema validation and standalone HTML rendering and Docusaurus keeps
   ownership of the generated site; Documentation only orchestrates, embeds, and validates.
@@ -84,7 +84,7 @@ treated as perceptual evidence.
   implementation.md (feature.concorde.workflow); this module's `module.md` was rewritten to the
   summary shape and its renderer narrative and evidence status moved here. The same attempt proposes,
   pending hardening: the feature-realization collection becomes `feature-implementations`
-  (the feature-root `design.md` beside a `spec.md`, paired by directory, with `tldr.md` as the landing page), module `design.md` joins the
+  (the feature-root `implementation.md` beside feature `design.md`, paired by directory, with `abstract.md` as the landing page), module `design.md` joins the
   Architecture collection as kind `module-design` linked from the module page, and Build Manifest
   moves from v4 to v5.
 - 2026-08-27 — Switched diagram delivery to the project-local Archify 2.16 skill.

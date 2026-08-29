@@ -3,9 +3,9 @@ import type {ContentPage} from '../../plugins/concorde-content/types';
 function kindLabel(page: ContentPage): string {
   const level = page.featureLevel === 'subfeature' ? 'Sub-feature' : 'Feature';
   switch (page.kind) {
-    case 'feature-tldr': return `${level} TL;DR`;
-    case 'feature-specification': return `${level} specification`;
-    case 'feature-design': return `${level} design reference`;
+    case 'feature-abstract': return `${level} abstract`;
+    case 'feature-design': return `${level} design`;
+    case 'feature-implementation': return `${level} implementation`;
     case 'module-design': return 'Module design reference';
     case 'architecture-source': return `Architecture ${page.architectureKind ?? 'source'}`;
     default: return 'Project documentation';

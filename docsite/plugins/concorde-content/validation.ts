@@ -1,15 +1,15 @@
 import {relative, resolve, sep} from 'node:path';
 
 import type {
-  ArchitectureSource, ContentRegistry, FeatureDesign, FeatureSpecification, FeatureTldr, ModuleDesign, SourceDocument, ValidationFinding,
+  ArchitectureSource, ContentRegistry, FeatureImplementation, FeatureDesign, FeatureAbstract, ModuleDesign, SourceDocument, ValidationFinding,
 } from './types';
 
-const isFeature = (document: SourceDocument): document is FeatureSpecification => document.collectionId === 'features';
-const isFeatureTldr = (document: SourceDocument): document is FeatureTldr => document.collectionId === 'feature-tldrs';
-const isFeatureDesign = (document: SourceDocument): document is FeatureDesign => document.collectionId === 'feature-designs';
+const isFeature = (document: SourceDocument): document is FeatureDesign => document.collectionId === 'features';
+const isFeatureAbstract = (document: SourceDocument): document is FeatureAbstract => document.collectionId === 'feature-abstracts';
+const isFeatureImplementation = (document: SourceDocument): document is FeatureImplementation => document.collectionId === 'feature-implementations';
 const isArchitecture = (document: SourceDocument): document is ArchitectureSource => document.contentKind === 'architecture-source';
 const isModuleDesign = (document: SourceDocument): document is ModuleDesign => document.contentKind === 'module-design';
-const temporalWorkspacePattern = /(^|\/)implementation\//;
+const temporalWorkspacePattern = /(^|\/)attempt\//;
 
 export function sortFindings(findings: ValidationFinding[]): ValidationFinding[] {
   return [...findings].sort((left, right) =>
@@ -59,7 +59,7 @@ function duplicateFindings(
 
 export function validateRegistry(registry: ContentRegistry): ValidationFinding[] {
   const findings: ValidationFinding[] = [];
-  const featureDiagramRoutes = new Map<string, FeatureSpecification[]>();
+  const featureDiagramRoutes = new Map<string, FeatureDesign[]>();
   for (const document of registry.documents) {
     if (!isContainedPath(registry.projectRoot, document.realPath)) {
       findings.push({
@@ -78,62 +78,62 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
     if (temporalWorkspacePattern.test(document.sourcePath)) {
       findings.push({
         ruleId: 'content.path.temporal', severity: 'error', sourcePath: document.sourcePath,
-        message: 'Temporal implementation workspace content is never published.',
-        remediation: 'Keep publishable sources outside implementation/ directories; the accepted design reference lives in design.md beside spec.md.',
+        message: 'Temporal attempt content is never published.',
+        remediation: 'Keep publishable sources outside attempt/; durable feature implementation lives in implementation.md beside design.md.',
       });
     }
     if (isFeature(document)) {
       if (!document.featureId) findings.push({
         ruleId: 'feature.id.required', severity: 'error', sourcePath: document.sourcePath,
-        message: 'Canonical feature specifications require a stable front matter id.',
-        remediation: 'Add a non-empty id field to the specification front matter.',
+        message: 'Canonical feature designs require a stable front matter id.',
+        remediation: 'Add a non-empty id field to the design front matter.',
       });
       if (document.kind !== 'feature') findings.push({
         ruleId: 'feature.kind.invalid', severity: 'error', sourcePath: document.sourcePath,
-        message: 'Canonical feature specifications require kind: feature.',
+        message: 'Canonical feature designs require kind: feature.',
         remediation: 'Set front matter kind to feature.',
       });
       if (!document.moduleId) findings.push({
         ruleId: 'feature.module.required', severity: 'error', sourcePath: document.sourcePath,
-        message: 'Canonical feature specifications require an owning module.',
-        remediation: 'Add a non-empty module field to the specification front matter.',
+        message: 'Canonical feature designs require an owning module.',
+        remediation: 'Add a non-empty module field to the design front matter.',
       });
       if (!document.status) findings.push({
         ruleId: 'feature.status.required', severity: 'error', sourcePath: document.sourcePath,
-        message: 'Canonical feature specifications require a lifecycle status.',
-        remediation: 'Add a **Status** field to the specification body.',
+        message: 'Canonical feature designs require a lifecycle status.',
+        remediation: 'Add a **Status** field to the design body.',
       });
       if (document.featureLevel === 'subfeature' && (!document.parentFeatureId || !document.outcome)) findings.push({
         ruleId: 'feature.containment.summary', severity: 'error', sourcePath: document.sourcePath,
         message: 'Sub-feature pages require one parent and a non-empty Outcome section.',
         remediation: 'Declare parent_feature and add one concise ## Outcome section.',
       });
-      if (!document.tldrRoute) findings.push({
-        ruleId: 'feature.tldr.missing', severity: 'error', sourcePath: document.sourcePath,
-        message: 'Feature specification has no sibling tldr.md landing page.',
-        remediation: 'Add tldr.md beside spec.md (no front matter; H1 "TL;DR: <title>"; sections Purpose, Functionality, Structure, Logic, and Read Next) so the feature opens on its TL;DR.',
+      if (!document.abstractRoute) findings.push({
+        ruleId: 'feature.abstract.missing', severity: 'error', sourcePath: document.sourcePath,
+        message: 'Feature design has no sibling abstract.md landing page.',
+        remediation: 'Add abstract.md beside design.md with Purpose, Functionality, Structure, Logic, and Read Next so the feature opens on its abstract.',
       });
-      if (!document.designRoute) findings.push({
-        ruleId: 'feature.design.required', severity: 'error', sourcePath: document.sourcePath,
-        message: 'Feature specification has no companion design.md design reference.',
-        remediation: 'Add design.md beside spec.md (a placeholder design reference is acceptable) so the specification and its accepted design are published together.',
+      if (!document.implementationRoute) findings.push({
+        ruleId: 'feature.implementation.required', severity: 'error', sourcePath: document.sourcePath,
+        message: 'Feature design has no companion implementation.md.',
+        remediation: 'Add implementation.md beside design.md (a placeholder is acceptable) so required behavior and accepted implementation are published together.',
       });
       for (const diagram of document.diagrams) {
         featureDiagramRoutes.set(diagram.route, [...(featureDiagramRoutes.get(diagram.route) ?? []), document]);
       }
     }
-    if (isFeatureTldr(document) && !document.specificationRoute) {
+    if (isFeatureAbstract(document) && !document.designRoute) {
       findings.push({
-        ruleId: 'tldr.unpaired', severity: 'error', sourcePath: document.sourcePath,
-        message: 'tldr.md has no publishable sibling spec.md, so it cannot be published as a feature landing page.',
-        remediation: 'Place tldr.md beside the feature or sub-feature spec.md it summarizes, or remove it.',
+        ruleId: 'abstract.unpaired', severity: 'error', sourcePath: document.sourcePath,
+        message: 'abstract.md has no publishable sibling design.md, so it cannot be a feature landing page.',
+        remediation: 'Place abstract.md beside the feature or sub-feature design.md it summarizes, or remove it.',
       });
     }
-    if (isFeatureDesign(document) && !document.specificationRoute) {
+    if (isFeatureImplementation(document) && !document.designRoute) {
       findings.push({
-        ruleId: 'feature.design.unpaired', severity: 'error', sourcePath: document.sourcePath,
-        message: 'design.md has no publishable sibling spec.md, so it cannot be published as a feature design reference.',
-        remediation: 'Ensure the sibling spec.md is a readable canonical feature specification, or remove design.md.',
+        ruleId: 'feature.implementation.unpaired', severity: 'error', sourcePath: document.sourcePath,
+        message: 'implementation.md has no publishable sibling feature design.md.',
+        remediation: 'Ensure sibling design.md is a readable canonical feature design, or remove implementation.md.',
       });
     }
     if (isModuleDesign(document) && !document.moduleRoute) {
@@ -175,7 +175,7 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
     if (owners.length < 2) continue;
     for (const owner of owners) findings.push({
       ruleId: 'feature.diagram.route.duplicate', severity: 'error', sourcePath: owner.sourcePath,
-      message: `Feature diagram route "${route}" is declared by ${owners.length} feature specifications.`,
+      message: `Feature diagram route "${route}" is declared by ${owners.length} feature designs.`,
       remediation: 'Give each generated feature diagram a unique output beneath generated/.',
     });
   }

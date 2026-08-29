@@ -13,8 +13,8 @@ Present the returned current module, its current-level features and I/O, all imm
 their concise I/O, externals, scenarios, adjacent refinements, feature-containment summaries, and
 deeper navigation references. The module context result also returns the module's `summary`
 (`module.md` path), `design_reference` (`design.md` path), and `view` path as navigation references,
-and each feature summary names its `tldr.md` and `design.md` paths the same way. Present them as
-paths to open deliberately; never expand the body of a `tldr.md`, `spec.md`, or `design.md`.
+and each feature summary names its `abstract.md` and `design.md` paths the same way. Present them as
+paths to open deliberately; never expand the body of an `abstract.md`, feature `design.md`, or feature `implementation.md`.
 When the project reflection log exists, the result carries `reflections` (its path and the open
 entry count per feature) and each feature summary and workspace carries `reflections_open`; present
 the path and the counts, and open the log only when the maintainer asks about recorded problems.

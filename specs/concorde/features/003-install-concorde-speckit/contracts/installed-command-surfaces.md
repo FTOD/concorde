@@ -36,7 +36,7 @@ digest.
 | Phase root | Canonical command IDs | Required preset strategy |
 |---|---|---|
 | Durable feature intent plus temporal review state | `speckit.specify`, `speckit.clarify` | Complete `replace` layer for each command |
-| Temporal `implementation/` workspace | `speckit.checklist`, `speckit.plan`, `speckit.tasks`, `speckit.implement`, `speckit.analyze`, `speckit.converge`, `speckit.taskstoissues` | Complete `replace` layer for each command |
+| Temporal `attempt/` workspace | `speckit.checklist`, `speckit.plan`, `speckit.tasks`, `speckit.implement`, `speckit.analyze`, `speckit.converge`, `speckit.taskstoissues` | Complete `replace` layer for each command |
 
 Each replacement preserves the corresponding Spec Kit 0.16.4 phase responsibility. It must invoke
 the installed selected-workspace adapter before any setup, prerequisite check, inherited instruction,
@@ -45,8 +45,8 @@ or artifact access that could choose a legacy root-level plan or task path.
 `append`, `prepend`, and `wrap` are non-conforming for these nine command entries while the lower
 command can independently resolve legacy paths. The three spec/plan/tasks template contributions
 remain `append` layers because they add guidance and do not perform phase routing. The Concorde-only
-`tldr-template` (the feature TL;DR that `speckit.specify` authors at a new feature root) and
-`design-template` (the placeholder feature `design.md`; preset 0.2.0 had called it
+`abstract-template` (the feature abstract that `speckit.specify` authors at a new feature root) and
+`implementation-template` (the placeholder feature `design.md`; preset 0.2.0 had called it
 `implementation-template`) are `replace` contributions because Spec Kit core does not define those
 artifacts; both are reached through `specify preset resolve` and have no composed mirror.
 
@@ -94,13 +94,13 @@ unregistered package member is not an installed command surface.
 
 | Command | Required selected paths | Prohibited result |
 |---|---|---|
-| Specify / clarify | Feature-root `tldr.md` and `spec.md` (authored), a seeded placeholder `design.md`, and `contracts/`; generated review state at `implementation/checklists/requirements.md` | A second spec/contract, a feature-root `implementation.md`, or a root `checklists/` directory |
-| Checklist | Durable feature context plus `implementation/checklists/*.md` output and available attempt context | A root checklist, implementation behavior test, or second active attempt |
-| Plan | `implementation/plan.md`, `research.md`, `data-model.md`, `quickstart.md` (reading root `spec.md`/`design.md` and the module summary as baseline) | Root `plan.md`, root temporal copies, or any write to `tldr.md`, `spec.md`, the feature `design.md`, or a module `design.md` |
-| Tasks | `implementation/tasks.md` | Root `tasks.md` |
-| Implement / analyze / converge / taskstoissues | Feature-root durable intent plus the same active `implementation/` attempt | Root temporal copies, symlinks, or a second active attempt |
+| Specify / clarify | Feature-root `abstract.md` and `design.md` (authored), seeded placeholder `implementation.md`, and `contracts/`; generated review state at `attempt/checklists/requirements.md` | A second design/contract or root `checklists/` directory |
+| Checklist | Durable feature context plus `attempt/checklists/*.md` output and available attempt context | A root checklist, implementation behavior test, or second active attempt |
+| Plan | `attempt/plan.md`, `research.md`, `data-model.md`, `quickstart.md` (reading root `design.md`/`implementation.md` and module summary as baseline) | Root `plan.md`, root temporal copies, or writes to durable files |
+| Tasks | `attempt/tasks.md` | Root `tasks.md` |
+| Implement / analyze / converge / taskstoissues | Feature-root durable intent plus the same active `attempt/` attempt | Root temporal copies, symlinks, or a second active attempt |
 | Init / context / validate | Feature 001 contract paths and result envelopes | Checkout-relative runtime or agent-specific semantic drift |
-| Feature harden | Root `tldr.md`, `spec.md`, and `design.md`, the providing module's `module.md`/`design.md`, completed `implementation/tasks.md`, resolved `implementation/checklists/*.md`, returned `proposal_path`, `task_summary`, and `checklist_summary`, digest-bound proposal v3 (candidate feature `design.md`, optional module `design.md` amendment), exact `implementation/` removal | Agent-derived proposal path, direct realization or reference mutation, a `design` target other than the root `design.md`, an amendment targeting `module.md`, another level's `design.md`, or a feature-root path, unchecked tasks, unresolved checklist items, implicit approval, stale apply, or broader deletion |
+| Feature harden | Root trio, module summary/design, completed tasks/checklists, returned proposal metadata, digest-bound proposal v4 (candidate feature `implementation.md`, optional module `design.md` amendment), exact `attempt/` removal | Derived paths, wrong targets, unchecked work, implicit approval, stale apply, or broader deletion |
 | Ask | Installed extension/preset guidance plus the smallest relevant bounded maintained project sources | Launcher/runtime invocation, checkout dependency, uncited facts, unrelated deeper context, mutation, or implicit lifecycle work |
 
 ## Acceptance Evidence
@@ -119,7 +119,7 @@ of the fourteen surfaces it must:
 
 For an eligible installed hardening proposal, acceptance also records the runtime-returned
 `proposal_path`, `task_summary`, and `checklist_summary`. The proposal path must be exactly
-`<workspace.implementation_dir>/harden-proposal.json`; installed agents must consume it without
+`<workspace.attempt_dir>/harden-proposal.json`; installed agents must consume it without
 derivation, and apply must revalidate both summaries before mutation.
 
 Acceptance fails on any checkout read, missing required archive member, wrong winner, late workspace

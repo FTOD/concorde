@@ -5,9 +5,9 @@ description: "Task list template for feature implementation"
 
 # Tasks: [FEATURE NAME]
 
-**Input**: Temporal design documents from `/specs/[###-feature-name]/implementation/`, plus the durable feature specification and contracts at the feature root
+**Input**: Temporal design documents from `/specs/[###-feature-name]/attempt/`, plus the durable feature specification and contracts at the feature root
 
-**Prerequisites**: `implementation/plan.md` (required), `spec.md` (required for user stories), `implementation/research.md`, `implementation/data-model.md`, `contracts/`
+**Prerequisites**: `attempt/plan.md` (required), `design.md` (required for user stories), `attempt/research.md`, `attempt/data-model.md`, `contracts/`
 
 **Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
 
@@ -31,9 +31,9 @@ description: "Task list template for feature implementation"
   IMPORTANT: The tasks below are SAMPLE TASKS for illustration purposes only.
 
   The $speckit-tasks command MUST replace these with actual tasks based on:
-  - User stories from spec.md (with their priorities P1, P2, P3...)
-  - Feature requirements from root `spec.md`
-  - Entities from `implementation/data-model.md`
+  - User stories from design.md (with their priorities P1, P2, P3...)
+  - Feature requirements from root `design.md`
+  - Entities from `attempt/data-model.md`
   - Endpoints from contracts/
 
   Tasks MUST be organized by user story so each story can be:
@@ -158,7 +158,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Security hardening
 - [ ] TXXX Verify the optional single `role: core` diagram uses Archify `architecture`; validate and deliver all required feature-owned Archify diagrams from `diagrams/`, verify
   automatic feature-page embedding, record truthful visual-review status, and verify generated freshness
-- [ ] TXXX Run `implementation/quickstart.md` validation
+- [ ] TXXX Run `attempt/quickstart.md` validation
 
 ---
 

@@ -23,11 +23,11 @@ The principles behind this are the five workflow principles of the project const
 completeness beneath the surface, architecture-driven rather than only feature-driven development,
 contracts as human-readable promises, and deterministic validation with human-reviewed evidence. The
 normative definition of the workflow is
-[Feature 001](../specs/concorde/features/001-concorde-workflow/spec.md).
+[Feature 001](../specs/concorde/features/001-concorde-workflow/design.md).
 
 The installed `speckit.concorde.ask` surface makes that framework discoverable from inside the agent
 conversation. It answers from version-aligned extension/preset guidance, module summaries, and
-feature TL;DRs first, opens deeper sources only deliberately and with citation, labels its basis and
+feature abstracts first, opens deeper sources only deliberately and with citation, labels its basis and
 uncertainty, and is strictly read-only. It complements rather than replaces deterministic
 `context`/`validate` operations or normal Spec Kit delivery phases.
 
@@ -73,7 +73,7 @@ hierarchy stays aligned with the module hierarchy rather than becoming one flat 
 from architecture.
 
 Features also have one optional containment level. A large correlated feature may own immediate
-sub-features, each with its own TL;DR, specification, and design reference, but those children
+sub-features, each with its own abstract, specification, and design reference, but those children
 remain subordinate to the parent, inherit its level, and cannot contain more children. This is not
 cross-level refinement: containment simplifies behavioral documentation inside one feature, while
 `refines` explains realization across adjacent architecture levels.
@@ -88,7 +88,7 @@ Large systems require abstraction. At one Concorde architecture level, a maintai
 - the organization of those visible participants;
 - contract-governed interactions for current-level scenarios; and
 - navigation references to the level's summary, design reference, and view, and to each feature's
-  TL;DR, never their bodies.
+  abstract, never their bodies.
 
 Child feature bodies, grandchildren, classes, and deeper implementation details remain hidden. When
 the maintainer deliberately zooms into a child, that child becomes the current module and the same
@@ -103,21 +103,21 @@ decision.
 
 | Question | Authority |
 |---|---|
-| What must the feature do, and why? | Feature `spec.md` |
+| What must the feature do, and why? | Feature `design.md` |
 | At which level is it specified, which modules realize it, what are their boundaries, and how are immediate children organized? | `module.md` (the module summary), module contracts, and `architecture.json` |
 | Why is the level built this way, how is it implemented, and what was tried and rejected? | Module `design.md` (the design reference), consulted deliberately and never read implicitly |
-| How does the accepted implementation realize this feature across those boundaries? | Feature `design.md` (the feature design reference), needed only when writing the code or fixing a bug |
+| How does the accepted implementation realize this feature across those boundaries? | Feature `implementation.md`, needed only when writing the code or fixing a bug |
 | What exists and has been demonstrated? | Code, tests, and explicit evidence references |
 
-A feature's `tldr.md` is not a sixth authority but the read-first orientation over the feature: a
+A feature's `abstract.md` is not a sixth authority but the read-first orientation over the feature: a
 self-contained quick understanding of its purpose, functionality, structure, and logic that
-summarizes `spec.md` and never defines beyond it. Read it first; open `spec.md` for a requirement's
-exact wording and `design.md` only to write the code.
+summarizes `design.md` and never defines beyond it. Read it first; open `design.md` for a requirement's
+exact wording and `implementation.md` only to write the code.
 
 The current plan, task list, checklist state, research, and validation notes are useful during a
-delivery attempt, but they are not permanent intent. Concorde keeps them in `implementation/` and
+delivery attempt, but they are not permanent intent. Concorde keeps them in `attempt/` and
 requires an explicit hardening decision before accepted realization knowledge enters the feature
-`design.md` or attempt-derived rationale enters the module's `design.md`.
+`implementation.md` or attempt-derived rationale enters the module's `design.md`.
 
 ## What Concorde adds to Spec Kit
 
@@ -135,14 +135,14 @@ and convergence. Concorde adds architectural controls around that lifecycle:
 
 Installation is also Spec Kit-native. A bundle pins a preset and extension; the active coding-agent
 integration presents their command definitions as skills or slash commands. The detailed boundary is
-specified by [Feature 003](../specs/concorde/features/003-install-concorde-speckit/spec.md).
+specified by [Feature 003](../specs/concorde/features/003-install-concorde-speckit/design.md).
 
 ## What Concorde deliberately does not do
 
 Concorde does not replace Spec Kit, choose architecture without maintainer review, model every class
 or function, or treat valid diagrams as proof that code works. It also does not turn Docusaurus or
 generated HTML into a source of intent. The documentation site specified by
-[Feature 002](../specs/concorde/features/002-create-project-docsite/spec.md) is a reproducible read
+[Feature 002](../specs/concorde/features/002-create-project-docsite/design.md) is a reproducible read
 model over the maintained sources.
 
 The next guide, [Specifications, design, and architecture](specification-model.md), explains how these

@@ -10,7 +10,7 @@ maintained roots—`docs/` and `specs/`—and presents three navigation families
 Architecture, and Features.
 
 The complete publication behavior is specified by
-[Feature 002](../../specs/concorde/features/002-create-project-docsite/spec.md).
+[Feature 002](../../specs/concorde/features/002-create-project-docsite/design.md).
 
 ## Know which sources are eligible
 
@@ -18,17 +18,16 @@ The complete publication behavior is specified by
 |---|---|---|
 | Documentation | Every regular `docs/**/*.md` file | `/docs` |
 | Architecture | Every `specs/**/module.md` (module summary, with its level view embedded), its adjacent `design.md` (module design reference, published as a separately linked page), and `specs/**/contracts/**/contract.md` | `/architecture` |
-| Feature TL;DRs | Every `specs/**/tldr.md` beside a canonical `spec.md`; the page each feature opens on | `/features/<root>` |
-| Feature specifications | Every canonical `specs/**/spec.md` | `/features/<root>/spec` |
-| Feature design references | Every `specs/**/design.md` beside a feature `spec.md` | `/features/<root>/design` |
+| Feature abstracts | Every `specs/**/abstract.md` beside a canonical `design.md`; the page each feature opens on | `/features/<root>` |
+| Feature designs | Every canonical feature-root `design.md` | `/features/<root>/design` |
+| Feature implementations | Every feature-root `implementation.md` beside `design.md` | `/features/<root>/implementation` |
 
-The build manifest names these collections `docs`, `architecture`, `feature-tldrs`, `features`, and
-`feature-designs`. A `design.md` is classified by its neighbour: beside `module.md` it is the module
-design reference, beside `spec.md` the feature design reference, and beside neither it is an error.
-A legacy `implementation.md` beside a feature `spec.md` and a `spec.md` without a sibling `tldr.md`
-are validation errors rather than publishable pages. Symbolic links are not followed. Plans, tasks,
+The build manifest names these collections `docs`, `architecture`, `feature-abstracts`, `features`,
+and `feature-implementations`. Module and feature `design.md` files are distinguished by whether
+`module.md` is adjacent. A feature `design.md` without `abstract.md` or `implementation.md` is an
+error. Symbolic links are not followed. Plans, tasks,
 requirements checklists, research, technical models, quick-start evidence, and other files below
-`implementation/` are intentionally excluded from the Features collection. Their presence under
+`attempt/` are intentionally excluded from the Features collection. Their presence under
 `specs/` does not make them permanent project intent.
 
 Do not copy canonical content into `docsite/`. Docusaurus configuration, components, formatting, and
@@ -46,7 +45,7 @@ A preview and a production build use the same inclusion, routing, and validation
    current deliveries.
 4. Disposable Docusaurus content is materialized under `docsite/.generated/content/`.
 5. Docusaurus renders a candidate site.
-6. Candidate pages, routes, links, provenance, and the build manifest (Build Manifest v6) are
+6. Candidate pages, routes, links, provenance, and the build manifest (Build Manifest v7) are
    validated.
 7. Only a successful candidate is promoted to `docsite/build/`.
 
@@ -74,7 +73,7 @@ not present the summary as stronger or more current than that source.
 Architecture and feature Markdown may declare maintained Archify JSON. A declaration identifies the
 source, role, kind, explained scenarios, and generated output. The generated page embeds the delivered
 HTML in a sandbox and provides source provenance plus a standalone-view link; for a feature, that
-page is its TL;DR.
+page is its abstract.
 
 For feature diagrams:
 

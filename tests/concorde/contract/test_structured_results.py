@@ -40,9 +40,9 @@ class StructuredResultTests(unittest.TestCase):
             "feature.example.deliver",
             "eligible",
             result={
-                "workspace": {"implementation_dir": "specs/example/features/001-deliver/implementation"},
+                "workspace": {"attempt_dir": "specs/example/features/001-deliver/attempt"},
                 "source_digest": "sha256:" + "1" * 64,
-                "proposal_path": "specs/example/features/001-deliver/implementation/harden-proposal.json",
+                "proposal_path": "specs/example/features/001-deliver/attempt/harden-proposal.json",
                 "task_summary": {"complete": 1, "incomplete": 0, "malformed": 0},
                 "checklist_summary": {"files": 1, "complete": 2, "incomplete": 0, "malformed": 0},
             },
@@ -57,14 +57,14 @@ class StructuredResultTests(unittest.TestCase):
         for path in examples.glob("*.json"):
             payload = json.loads(path.read_text())
             if "schema_version" not in payload:
-                self.assertEqual(payload["proposal_version"], 3)
+                self.assertEqual(payload["proposal_version"], 4)
                 self.assertEqual(payload["operation"], "feature.harden")
-                proposal_paths = [payload["design"]["path"], *payload["remove"]]
+                proposal_paths = [payload["implementation"]["path"], *payload["remove"]]
                 if "module_design" in payload:
                     proposal_paths.append(payload["module_design"]["path"])
                 self.assertFalse(any(Path(item).is_absolute() or "\\" in item for item in proposal_paths))
                 continue
-            expected_version = 5 if payload["operation"].startswith("feature.") else 1
+            expected_version = 6 if payload["operation"].startswith("feature.") else 1
             self.assertEqual(payload["schema_version"], expected_version)
             self.assertFalse(any(Path(item).is_absolute() or "\\" in item for item in payload["artifacts"]))
 

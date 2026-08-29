@@ -6,40 +6,39 @@ import fg from 'fast-glob';
 import matter from 'gray-matter';
 
 import type {
-  ArchitectureKind, ArchitectureSource, CollectionId, ContentRegistry, ExcludedSource, FeatureDesign, FeatureDiagram,
-  FeaturePageContext, FeatureSpecification, FeatureTldr, ModuleDesign, ProjectDocument, SourceCollection, SourceDocument,
+  ArchitectureKind, ArchitectureSource, CollectionId, ContentRegistry, ExcludedSource, FeatureImplementation, FeatureDiagram,
+  FeaturePageContext, FeatureDesign, FeatureAbstract, ModuleDesign, ProjectDocument, SourceCollection, SourceDocument,
   ValidationFinding,
 } from './types';
 import {populateLinks} from './links';
 
 export const collections: SourceCollection[] = [
   {
-    // `**/design.md` is admitted here only beside a `module.md` (a module design reference, kind `module-design`);
-    // beside a `spec.md` it belongs to `feature-designs`, and buildRegistry reports any other design.md instead of publishing it.
+    // `**/design.md` is admitted here only beside `module.md`; feature design.md belongs to `features`.
     id: 'architecture', sourceBase: 'specs', routeBase: '/architecture',
     include: ['**/module.md', '**/design.md', '**/contracts/**/contract.md'], contentKind: 'architecture-source',
   },
   {id: 'docs', sourceBase: 'docs', routeBase: '/docs', include: ['**/*.md'], contentKind: 'project-document'},
-  // The TL;DR is the feature landing page: it takes `/features/<root>`, the route its spec.md used to own, while the
-  // specification and the design reference are published one segment below it (`<root>/spec`, `<root>/design`).
-  {id: 'feature-tldrs', sourceBase: 'specs', routeBase: '/features', include: ['**/tldr.md'], contentKind: 'feature-tldr'},
-  {id: 'features', sourceBase: 'specs', routeBase: '/features', include: ['**/spec.md'], contentKind: 'feature-specification'},
-  {id: 'feature-designs', sourceBase: 'specs', routeBase: '/features', include: ['**/design.md'], contentKind: 'feature-design'},
+  // The abstract takes the feature landing route; design and implementation are companion pages.
+  {id: 'feature-abstracts', sourceBase: 'specs', routeBase: '/features', include: ['**/abstract.md'], contentKind: 'feature-abstract'},
+  {id: 'features', sourceBase: 'specs', routeBase: '/features', include: ['**/design.md'], contentKind: 'feature-design'},
+  {id: 'feature-implementations', sourceBase: 'specs', routeBase: '/features', include: ['**/implementation.md'], contentKind: 'feature-implementation'},
 ];
 
-/** Temporal implementation attempts (`<feature root>/implementation/**`) are never publishable sources. */
-const temporalWorkspaceIgnore = ['**/implementation/**'];
-const temporalWorkspacePattern = /(^|\/)implementation\//;
+/** Temporal attempts (`<feature root>/attempt/**`) are never publishable sources. */
+const temporalWorkspaceIgnore = ['**/attempt/**'];
+const temporalWorkspacePattern = /(^|\/)attempt\//;
+const legacyWorkspacePattern = /(^|\/)implementation\//;
 
-/** Sidebar labels of the two feature pages that sit beneath the TL;DR landing page. */
-const featureCompanionLabels: Partial<Record<CollectionId, string>> = {features: 'Specification', 'feature-designs': 'Design reference'};
+/** Sidebar labels of the two feature pages that sit beneath the abstract landing page. */
+const featureCompanionLabels: Partial<Record<CollectionId, string>> = {features: 'Design', 'feature-implementations': 'Implementation'};
 
 const posixPath = (value: string) => value.split('\\').join('/');
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 const diagramKinds = new Set(['architecture', 'workflow', 'sequence', 'dataflow', 'lifecycle']);
 
 function headingTitle(content: string): string {
-  return content.match(/^#\s+(.+?)\s*$/m)?.[1]?.replace(/^(?:Feature Specification|TL;DR):\s*/i, '').trim() ?? '';
+  return content.match(/^#\s+(.+?)\s*$/m)?.[1]?.replace(/^(?:Feature Design|Feature Abstract):\s*/i, '').trim() ?? '';
 }
 
 function sectionText(content: string, heading: string): string {
@@ -160,12 +159,12 @@ async function parseDocument(
     slug: typeof parsed.data.slug === 'string' ? parsed.data.slug : undefined,
   };
   if (collection.id === 'docs') return base as ProjectDocument;
-  if (collection.id === 'feature-tldrs') {
-    // The path-derived route stands in until the TL;DR is paired with its sibling spec.md and takes the landing route.
-    return {...base, collectionId: 'feature-tldrs', route: routeFor(collection, posixPath(relativePath), parsed.data.slug)} as FeatureTldr;
+  if (collection.id === 'feature-abstracts') {
+    // The path-derived route stands in until the abstract is paired with design.md and takes the landing route.
+    return {...base, collectionId: 'feature-abstracts', route: routeFor(collection, posixPath(relativePath), parsed.data.slug)} as FeatureAbstract;
   }
-  if (collection.id === 'feature-designs') {
-    return {...base, collectionId: 'feature-designs', route: routeFor(collection, posixPath(relativePath), parsed.data.slug)} as FeatureDesign;
+  if (collection.id === 'feature-implementations') {
+    return {...base, collectionId: 'feature-implementations', route: routeFor(collection, posixPath(relativePath), parsed.data.slug)} as FeatureImplementation;
   }
   if (collection.id === 'architecture') {
     if (posix.basename(relativePath) === 'design.md') {
@@ -219,8 +218,7 @@ async function parseDocument(
   return {
     ...base,
     collectionId: 'features',
-    // The id-derived route this specification used to own now belongs to the sibling tldr.md; the specification
-    // itself is published at `<root>/spec`.
+    // The id-derived landing route belongs to abstract.md; design.md is published at `<root>/design`.
     route: routeFor(collection, posixPath(relativePath)),
     landingRoute: route,
     featureId: typeof parsed.data.id === 'string' ? parsed.data.id.trim() : '',
@@ -237,24 +235,24 @@ async function parseDocument(
       : [],
     subfeatures: [],
     siblings: [],
-  } as FeatureSpecification;
+  } as FeatureDesign;
 }
 
-/** The identity and TL;DR-routed navigation a specification shares with its sibling TL;DR and design reference. */
-function featureContext(specification: FeatureSpecification): FeaturePageContext {
+/** The identity and abstract-routed navigation shared by a feature root's three pages. */
+function featureContext(design: FeatureDesign): FeaturePageContext {
   return {
-    featureId: specification.featureId,
-    moduleId: specification.moduleId,
-    featureLevel: specification.featureLevel,
-    parentFeatureId: specification.parentFeatureId,
-    parentFeatureRoute: specification.parentFeatureRoute,
-    subfeatures: specification.subfeatures,
-    siblings: specification.siblings,
+    featureId: design.featureId,
+    moduleId: design.moduleId,
+    featureLevel: design.featureLevel,
+    parentFeatureId: design.parentFeatureId,
+    parentFeatureRoute: design.parentFeatureRoute,
+    subfeatures: design.subfeatures,
+    siblings: design.siblings,
   };
 }
 
 function resolveFeatureRelations(documents: SourceDocument[], findings: ValidationFinding[]): void {
-  const features = documents.filter((document): document is FeatureSpecification => document.collectionId === 'features');
+  const features = documents.filter((document): document is FeatureDesign => document.collectionId === 'features');
   const byId = new Map(features.map((feature) => [feature.featureId, feature]));
   for (const feature of features) {
     const childPath = /\/subfeatures\/[^/]+$/.test(`/${feature.featureDirectory}`);
@@ -310,33 +308,33 @@ function resolveFeatureRelations(documents: SourceDocument[], findings: Validati
       child.siblings = parent.subfeatures.filter((item) => item.featureId !== child.featureId);
     }
   }
-  // Pair each specification with its sibling TL;DR (which takes the landing route) and design reference.
-  const tldrs = new Map(documents
-    .filter((document): document is FeatureTldr => document.collectionId === 'feature-tldrs')
-    .map((tldr) => [posix.dirname(tldr.sourcePath), tldr]));
-  const designs = new Map(documents
-    .filter((document): document is FeatureDesign => document.collectionId === 'feature-designs')
-    .map((design) => [posix.dirname(design.sourcePath), design]));
-  for (const specification of features) {
-    const tldr = tldrs.get(specification.featureDirectory);
-    const design = designs.get(specification.featureDirectory);
-    if (tldr) {
-      tldr.route = specification.landingRoute;
-      specification.tldrRoute = tldr.route;
+  // Pair each design with its sibling abstract (which takes the landing route) and implementation.
+  const abstracts = new Map(documents
+    .filter((document): document is FeatureAbstract => document.collectionId === 'feature-abstracts')
+    .map((abstract) => [posix.dirname(abstract.sourcePath), abstract]));
+  const implementations = new Map(documents
+    .filter((document): document is FeatureImplementation => document.collectionId === 'feature-implementations')
+    .map((implementation) => [posix.dirname(implementation.sourcePath), implementation]));
+  for (const design of features) {
+    const abstract = abstracts.get(design.featureDirectory);
+    const implementation = implementations.get(design.featureDirectory);
+    if (abstract) {
+      abstract.route = design.landingRoute;
+      design.abstractRoute = abstract.route;
     }
-    if (design) specification.designRoute = design.route;
-    if (tldr) {
-      Object.assign(tldr, featureContext(specification), {
-        status: specification.status,
-        diagrams: specification.diagrams,
-        specificationRoute: specification.route,
-        designRoute: specification.designRoute,
+    if (implementation) design.implementationRoute = implementation.route;
+    if (abstract) {
+      Object.assign(abstract, featureContext(design), {
+        status: design.status,
+        diagrams: design.diagrams,
+        designRoute: design.route,
+        implementationRoute: design.implementationRoute,
       });
     }
-    if (design) {
-      Object.assign(design, featureContext(specification), {
-        tldrRoute: specification.tldrRoute,
-        specificationRoute: specification.route,
+    if (implementation) {
+      Object.assign(implementation, featureContext(design), {
+        abstractRoute: design.abstractRoute,
+        designRoute: design.route,
       });
     }
   }
@@ -356,31 +354,29 @@ function resolveModuleRelations(documents: SourceDocument[]): void {
   }
 }
 
-/** Which canonical sibling anchors a specs/ directory: `module.md` (a module level) or `spec.md` (a feature root). */
+/** Which canonical sibling anchors a specs/ directory: module.md or feature design.md. */
 function rootSibling(relativePath: string, specsMarkdown: Set<string>): 'module' | 'feature' | undefined {
   const directory = posix.dirname(relativePath);
   const sibling = (name: string) => (directory === '.' ? name : posix.join(directory, name));
   if (specsMarkdown.has(sibling('module.md'))) return 'module';
-  if (specsMarkdown.has(sibling('spec.md'))) return 'feature';
+  if (specsMarkdown.has(sibling('design.md'))) return 'feature';
   return undefined;
 }
 
-function unpairedDesignFinding(relativePath: string): ValidationFinding {
+function legacyNameFinding(relativePath: string): ValidationFinding {
   const directoryPath = posix.join('specs', posix.dirname(relativePath));
   return {
-    ruleId: 'design.unpaired', severity: 'error', sourcePath: posix.join('specs', relativePath),
-    message: 'design.md sits beside neither module.md nor spec.md, so it is neither a module design reference nor a feature design reference.',
-    remediation: `Add ${directoryPath}/module.md (for a module design reference) or ${directoryPath}/spec.md (for a feature design reference), or move design.md out of specs/.`,
+    ruleId: 'feature.name.legacy', severity: 'error', sourcePath: posix.join('specs', relativePath),
+    message: `${posix.basename(relativePath)} is a legacy feature artifact name.`,
+    remediation: `Use ${directoryPath}/abstract.md, ${directoryPath}/design.md, ${directoryPath}/implementation.md, and ${directoryPath}/attempt/ for the canonical feature layout.`,
   };
 }
 
-function legacyImplementationFinding(relativePath: string): ValidationFinding {
-  const sourcePath = posix.join('specs', relativePath);
-  const directoryPath = posix.join('specs', posix.dirname(relativePath));
+function legacyWorkspaceFinding(relativePath: string): ValidationFinding {
   return {
-    ruleId: 'feature.implementation.legacy', severity: 'error', sourcePath,
-    message: `Legacy realization "${sourcePath}" sits beside spec.md; a feature root's accepted design reference is published from design.md.`,
-    remediation: `Rename ${directoryPath}/implementation.md to ${directoryPath}/design.md (merging into an existing design.md first) so it is published as the feature's design reference page.`,
+    ruleId: 'feature.attempt.legacy', severity: 'error', sourcePath: posix.join('specs', relativePath),
+    message: 'A temporal artifact remains under the former implementation/ directory name.',
+    remediation: 'Rename the feature-root implementation/ directory to attempt/.',
   };
 }
 
@@ -402,11 +398,9 @@ export async function buildRegistry(projectRoot: string): Promise<ContentRegistr
     for (const path of paths.sort()) {
       const relativePath = posixPath(path);
       if (collection.sourceBase === 'specs' && posix.basename(relativePath) === 'design.md') {
-        // A design.md is classified by its sibling: module.md makes it a module design reference (architecture),
-        // spec.md makes it a feature design reference (feature-designs); neither is an error reported once.
+        // module.md makes design.md a module reference; otherwise it is the feature design authority.
         const sibling = rootSibling(relativePath, specsMarkdown);
         if (sibling !== (collection.id === 'architecture' ? 'module' : 'feature')) {
-          if (!sibling && collection.id === 'architecture') findings.push(unpairedDesignFinding(relativePath));
           continue;
         }
       }
@@ -429,10 +423,10 @@ export async function buildRegistry(projectRoot: string): Promise<ContentRegistr
     if (!includedSources.has(sourcePath)) {
       excludedSources.push({sourcePath, reason: 'not-canonical-feature-artifact'});
     }
-    // The pre-TL;DR name of the feature design reference is never published; it must be renamed.
-    if (posix.basename(path) === 'implementation.md' && !temporalWorkspacePattern.test(path) && rootSibling(path, specsMarkdown) === 'feature') {
-      findings.push(legacyImplementationFinding(path));
+    if (!temporalWorkspacePattern.test(path) && ['spec.md', 'tldr.md'].includes(posix.basename(path))) {
+      findings.push(legacyNameFinding(path));
     }
+    if (legacyWorkspacePattern.test(path)) findings.push(legacyWorkspaceFinding(path));
   }
 
   documents.sort((left, right) => left.sourcePath.localeCompare(right.sourcePath));

@@ -1,3 +1,11 @@
-# Feature Design Reference: Beta
+---
+id: feature.fixture.beta
+kind: feature
+module: module.fixture
+---
 
-Accepted design reference for the beta feature.
+# Feature Design: Beta
+
+**Status**: Approved
+
+The beta feature links to the [documentation home](../../../docs/index.md).

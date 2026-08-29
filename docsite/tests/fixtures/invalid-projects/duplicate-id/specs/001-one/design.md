@@ -1,3 +1,9 @@
-# Feature Design Reference: one
+---
+id: feature.fixture.duplicate
+kind: feature
+module: module.fixture
+---
 
-Accepted design reference placeholder for the one fixture.
+# Feature Design: One
+
+**Status**: Draft

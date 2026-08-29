@@ -28,8 +28,8 @@ directories published beside it.
 
 | Feature ID | Outcome | Specification |
 |---|---|---|
-| `feature.fixture.alpha` | Alpha coordinates two focused outcomes. | `001-alpha/spec.md` |
-| `feature.fixture.beta` | Beta links to the documentation home. | `nested/002-beta/spec.md` |
+| `feature.fixture.alpha` | Alpha coordinates two focused outcomes. | `001-alpha/design.md` |
+| `feature.fixture.beta` | Beta links to the documentation home. | `nested/002-beta/design.md` |
 
 ## Contracts
 

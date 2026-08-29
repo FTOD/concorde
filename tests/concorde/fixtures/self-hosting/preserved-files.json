@@ -6,8 +6,8 @@
   "specs/example/contracts/io/contract.md": "# Boundary contract\n",
   "specs/example/design.md": "# Durable design\n",
   "specs/example/diagrams/components.json": "{}\n",
-  "specs/example/implementation/tasks.md": "- [ ] temporal\n",
-  "specs/example/spec.md": "# Durable specification\n",
+  "specs/example/attempt/tasks.md": "- [ ] temporal\n",
+  "specs/example/design.md": "# Durable specification\n",
   "src/user.py": "VALUE = 1\n",
   "tests/user.txt": "test evidence\n",
   "specs/example/design.md": "# Accepted realization\n"

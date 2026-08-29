@@ -24,8 +24,8 @@ class ConcordeWorkflowAcceptance(unittest.TestCase):
             )
             payload = json.loads(selected.stdout)
             self.assertEqual(payload["status"], "selected")
-            self.assertEqual(payload["phase_root"], "specs/example/features/001-deliver/implementation")
-            self.assertTrue(payload["workspace"]["plan"].endswith("/implementation/plan.md"))
+            self.assertEqual(payload["phase_root"], "specs/example/features/001-deliver/attempt")
+            self.assertTrue(payload["workspace"]["plan"].endswith("/attempt/plan.md"))
             self.assertEqual(json.loads((root / ".specify/feature.json").read_text())["feature_directory"], "specs/example/features/001-deliver")
             feature_root = root / payload["workspace"]["feature_directory"]
             self.assertFalse((feature_root / "plan.md").exists())

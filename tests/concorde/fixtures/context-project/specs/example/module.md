@@ -30,7 +30,7 @@ The level view is [architecture.json](architecture.json).
 
 | Feature ID | Outcome | Specification |
 |---|---|---|
-| `feature.example.deliver` | Deliver a workflow. | `features/001-deliver/spec.md` |
+| `feature.example.deliver` | Deliver a workflow. | `features/001-deliver/design.md` |
 
 ## Contracts
 

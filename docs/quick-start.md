@@ -11,7 +11,7 @@ first architecture-aware feature. The installation paths are intentionally isola
 the bundle, preset, extension, and agent integration that a user project receives.
 
 The supported setup boundary and current evidence status are authoritative in
-[Feature 003](../specs/concorde/features/003-install-concorde-speckit/spec.md).
+[Feature 003](../specs/concorde/features/003-install-concorde-speckit/design.md).
 
 ## 1. Preview this project's read model
 
@@ -30,8 +30,8 @@ Open the local address printed by Docusaurus. The site has three views over main
 - **Architecture** publishes each module summary with its embedded level view, its linked `design.md`
   design reference, boundary contracts, and declared Archify views.
 - **Documentation** publishes the explanatory guides under `docs/`.
-- **Features** opens each feature on its `tldr.md`, with the `spec.md` and the feature `design.md`
-  as companion pages, while excluding its temporary `implementation/` workspace.
+- **Features** opens each feature on its `abstract.md`, with `design.md` and `implementation.md`
+  as companion pages, while excluding its temporary `attempt/` workspace.
 
 Before submitting a publication change, run the complete gate:
 
@@ -43,7 +43,7 @@ npm run check
 The gate checks types, tests, source validity, deterministic Archify delivery, routes, links,
 manifest completeness, and a production build. It recreates ignored standalone diagrams from their
 maintained JSON; a failed candidate is not promoted over the previous successful output. Publication
-behavior is specified by [Feature 002](../specs/concorde/features/002-create-project-docsite/spec.md).
+behavior is specified by [Feature 002](../specs/concorde/features/002-create-project-docsite/design.md).
 
 ## 2. Install the published release
 
@@ -75,7 +75,7 @@ version stays available at its own `releases/download/v<version>/` location; see
 [Releasing Concorde](releasing.md) for how releases are produced.
 
 The newest published version is currently `v0.1.0`, which predates the module design reference, the
-feature TL;DR, and the removal of the `feature.create`/`feature.select` commands. These guides
+feature abstract, and the removal of the `feature.create`/`feature.select` commands. These guides
 describe the `0.3.0` sources in this checkout; to work under the document model they describe, use
 the development path in part 3 until `0.3.0` is published. Otherwise continue with part 4.
 
@@ -154,7 +154,7 @@ components:
 
 | Installed component | Responsibility |
 |---|---|
-| `concorde-core` preset | Adds five architecture-aware templates (including the feature TL;DR and design-reference templates) and complete selected-workspace routing for nine normal Spec Kit phases |
+| `concorde-core` preset | Adds five architecture-aware templates (including the feature abstract and design-reference templates) and complete selected-workspace routing for nine normal Spec Kit phases |
 | `concorde` extension | Adds five Concorde-specific surfaces: four runtime-backed operations, one read-only agent question procedure, portable adapters and launchers, and the deterministic Python runtime |
 
 Spec Kit resolves and installs those components and asks the active coding-agent integration to
@@ -189,8 +189,8 @@ agent interaction.
 After deciding at which level the feature is specified (the level at which every module it uses is
 visible), create it with the normal specify phase.
 Concorde has no feature-creation command: export the canonical feature root in the terminal before
-invoking the skill, so the Concorde specify addendum authors `tldr.md` and `spec.md` and seeds a
-placeholder `design.md` there and records the root in `.specify/feature.json`:
+invoking the skill, so the Concorde specify addendum authors `abstract.md` and `design.md`, seeds a
+placeholder `implementation.md`, and records the root in `.specify/feature.json`:
 
 ```bash
 export SPECIFY_FEATURE_DIRECTORY=specs/<project>/features/001-<name>
@@ -200,7 +200,7 @@ export SPECIFY_FEATURE_DIRECTORY=specs/<project>/features/001-<name>
 $speckit-specify Describe the feature's required behavior and why it matters.
 ```
 
-Add the feature's `id` and `module` to the spec front matter, register it in the module's
+Add the feature's `id` and `module` to the design front matter, register it in the module's
 `features` list, and run `$speckit-concorde-validate` to confirm registration, canonical path, and
 identity. To work on an existing feature later, set `SPECIFY_FEATURE_DIRECTORY` to its root (or edit
 `.specify/feature.json`); standard Spec Kit selection is all Concorde uses.
@@ -229,9 +229,10 @@ $speckit-converge
 $speckit-concorde-validate
 ```
 
-The TL;DR (`tldr.md`), the specification (`spec.md`), and the design reference (`design.md`) stay at
+The abstract (`abstract.md`), behavioral design (`design.md`), and accepted implementation
+(`implementation.md`) stay at
 the feature root; read them in that order. Checklists, plans, tasks, research, and delivery evidence
-stay under the single active `implementation/` attempt.
+stay under the single active `attempt/` attempt.
 
 ## 5. Finish the milestone deliberately
 
@@ -242,9 +243,9 @@ accept the implementation, ask the agent to harden the feature:
 $speckit-concorde-feature-harden feature.<project>.<name>
 ```
 
-The first result is a proposal, not a mutation. Review the full candidate feature `design.md`, any
+The first result is a proposal, not a mutation. Review the full candidate feature `implementation.md`, any
 proposed amendment to the `design.md` of the module at which the feature is specified, the exact
-`implementation/` removal target, and the source digest. Only explicit approval applies that
+`attempt/` removal target, and the source digest. Only explicit approval applies that
 unchanged proposal. On success, the durable realization (and the amended design reference, when
 proposed) remains and the temporary attempt is removed.
 

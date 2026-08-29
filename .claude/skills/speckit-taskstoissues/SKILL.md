@@ -25,21 +25,21 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase taskstoissues` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
-`workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v5 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+`workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
+Require Protocol v6 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
 recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
-sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
+read the parent `feature_design` and `feature_implementation` only as aggregate durable context. Never load a
+sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
 step says to run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase taskstoissues`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
 by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
-`implementation_dir` when absent and seed a missing artifact from the active `plan-template` or
+`attempt_dir` when absent and seed a missing artifact from the active `plan-template` or
 `tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
 For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
 
@@ -82,9 +82,9 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Outline
 
-1. Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase taskstoissues` from repo root and parse FEATURE_DIR, IMPLEMENTATION_DIR, TASKS, and AVAILABLE_DOCS. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase taskstoissues` from repo root and parse FEATURE_DIR, ATTEMPT_DIR, TASKS, and AVAILABLE_DOCS. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 1. **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints.
-1. From the executed script, use the returned absolute **TASKS** path (`IMPLEMENTATION_DIR/tasks.md`).
+1. From the executed script, use the returned absolute **TASKS** path (`ATTEMPT_DIR/tasks.md`).
 1. Get the Git remote by running:
 
 ```bash

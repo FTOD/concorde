@@ -18,7 +18,7 @@
   data-flow, or lifecycle views for order, timing, state, or data movement.
 
   Keep maintained diagram JSON in the feature's diagrams/ directory under a descriptive filename
-  other than architecture.json, and declare it in spec.md so the project docsite embeds it
+  other than architecture.json, and declare it in design.md so the project docsite embeds it
   automatically. State the question/scenario explained, involved components, relevant contract
   crossings, and generated output. The prose must remain understandable without opening the diagram;
   diagrams supplement rather than redefine behavior, ownership, or contracts. Declare `role: core`

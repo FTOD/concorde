@@ -16,21 +16,21 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIPT}` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
-`workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v5 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+`workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
+Require Protocol v6 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
 recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
-sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
+read the parent `feature_design` and `feature_implementation` only as aggregate durable context. Never load a
+sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
 step says to run `{SCRIPT}`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
 by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
-`implementation_dir` when absent and seed a missing artifact from the active `plan-template` or
+`attempt_dir` when absent and seed a missing artifact from the active `plan-template` or
 `tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
 For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
 
@@ -72,10 +72,10 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Outline
 
-1. **Setup**: Run `{SCRIPT}` from repo root and parse JSON for FEATURE_SPEC, FEATURE_DESIGN, IMPL_PLAN, IMPLEMENTATION_DIR, SPECS_DIR, BRANCH. `FEATURE_SPEC`, `FEATURE_DESIGN` (the returned `workspace.feature_design`), and feature contracts are durable sources at the feature root; `IMPL_PLAN` and the other plan-phase artifacts belong to the temporal `IMPLEMENTATION_DIR`. After a hardening, planning creates a fresh `implementation/` beneath the same root and never a root-level copy. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. **Setup**: Run `{SCRIPT}` from repo root and parse JSON for FEATURE_DESIGN, FEATURE_IMPLEMENTATION, IMPL_PLAN, ATTEMPT_DIR, SPECS_DIR, BRANCH. `FEATURE_DESIGN`, `FEATURE_IMPLEMENTATION` (the returned `workspace.feature_implementation`), and feature contracts are durable sources at the feature root; `IMPL_PLAN` and the other plan-phase artifacts belong to the temporal `ATTEMPT_DIR`. After a hardening, planning creates a fresh `attempt/` beneath the same root and never a root-level copy. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
-2. **Load context**: Read FEATURE_SPEC, FEATURE_DESIGN, and `.specify/memory/constitution.md`. Treat
-   FEATURE_DESIGN as the accepted realization baseline and plan the current attempt as an explicit
+2. **Load context**: Read FEATURE_DESIGN, FEATURE_IMPLEMENTATION, and `.specify/memory/constitution.md`. Treat
+   FEATURE_IMPLEMENTATION as the accepted realization baseline and plan the current attempt as an explicit
    delta from it; do not update the accepted realization during planning. When it still holds the
    placeholder ("No implementation realization has been hardened yet."), there is NO baseline: the
    plan's realization-delta section states "no accepted baseline" rather than inventing one. Read the
@@ -89,8 +89,8 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
    - Fill Constitution Check section from constitution
    - Evaluate gates (ERROR if violations unjustified)
-   - Phase 0: Generate `IMPLEMENTATION_DIR/research.md` (resolve all NEEDS CLARIFICATION)
-   - Phase 1: Generate `IMPLEMENTATION_DIR/data-model.md`, durable feature-root `contracts/`, and `IMPLEMENTATION_DIR/quickstart.md`
+   - Phase 0: Generate `ATTEMPT_DIR/research.md` (resolve all NEEDS CLARIFICATION)
+   - Phase 1: Generate `ATTEMPT_DIR/data-model.md`, durable feature-root `contracts/`, and `ATTEMPT_DIR/quickstart.md`
    - Define the feature-diagram strategy in two layers. First define at most one `role: core`
      Archify `architecture` view for stable components, responsibilities, interactions, and
      governing contracts, or preserve an explicit sufficiency rationale. Then define any
@@ -103,7 +103,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
      resolve as an entry in the project reflection log (see Reflection Recording below) and list
      those entries in the plan's Concorde Architecture Gate; never resolve them by editing a
      durable document or another feature's sources
-   - Identify which accepted `design.md` sections remain unchanged and which implementation decisions the
+   - Identify which accepted `implementation.md` sections remain unchanged and which implementation decisions the
      current attempt proposes to replace or extend (or state "no accepted baseline" when the
      placeholder is present), so a later hardening can compact the result.
 
@@ -129,14 +129,14 @@ removes it.
   `Effect` (`assumed`, `worked-around`, `deferred`, or `blocked`), `Action`, `Improvement`, and
   `Status: open`. The grammar is fixed by the log template and checked by
   `speckit.concorde.validate` (`CONCORDE-REFLECT-001` to `-004`).
-- **Never fix in place**: a problem with `tldr.md`, `spec.md`, any `design.md`, any `module.md`, a
+- **Never fix in place**: a problem with `abstract.md`, feature `design.md`, feature `implementation.md`, any `module.md`, a
   contract, a view, a diagram, or another feature's code or tests is recorded, not edited; the
   owning phase or the maintainer changes that source later.
 - **Update, don't duplicate**: when the log already holds the same problem — recorded by any phase
   on any feature — add a line under its `- **Occurrences**:` list
   (`<phase> <date> <feature-id> — <context>`) instead of a new entry. Never change a `Status` or
   `Note` a maintainer set.
-- **Bounded**: recording never requires opening another root's `implementation/`; cite the other
+- **Bounded**: recording never requires opening another root's `attempt/`; cite the other
   feature by stable ID or path.
 - **Hygiene**: no secrets, credentials, or bulk output — cite the evidence path instead; keep
   `Expected`, `Observed`, and `Action` under about 150 words together.
@@ -201,18 +201,18 @@ line `Reflections added: <identifiers or none> · open for this feature: <count>
      Task: "Find best practices for {tech} in {domain}"
    ```
 
-3. **Consolidate findings** in `IMPLEMENTATION_DIR/research.md` using format:
+3. **Consolidate findings** in `ATTEMPT_DIR/research.md` using format:
    - Decision: [what was chosen]
    - Rationale: [why chosen]
    - Alternatives considered: [what else evaluated]
 
-**Output**: `IMPLEMENTATION_DIR/research.md` with all NEEDS CLARIFICATION resolved
+**Output**: `ATTEMPT_DIR/research.md` with all NEEDS CLARIFICATION resolved
 
 ### Phase 1: Design & Contracts
 
-**Prerequisites:** `IMPLEMENTATION_DIR/research.md` complete
+**Prerequisites:** `ATTEMPT_DIR/research.md` complete
 
-1. **Extract entities from feature spec** → `IMPLEMENTATION_DIR/data-model.md`:
+1. **Extract entities from feature spec** → `ATTEMPT_DIR/data-model.md`:
    - Entity name, fields, relationships
    - Validation rules from requirements
    - State transitions if applicable
@@ -223,14 +223,14 @@ line `Reflections added: <identifiers or none> · open for this feature: <count>
    - Examples: public APIs for libraries, command schemas for CLI tools, endpoints for web services, grammars for parsers, UI contracts for applications
    - Skip if project is purely internal (build scripts, one-off tools, etc.)
 
-3. **Create quickstart validation guide** → `IMPLEMENTATION_DIR/quickstart.md`:
+3. **Create quickstart validation guide** → `ATTEMPT_DIR/quickstart.md`:
    - Document runnable validation scenarios that prove the feature works end-to-end
    - Include prerequisites, setup commands, test/run commands, and expected outcomes
    - Use links or references to contracts and data model details instead of duplicating them
    - Do not include full implementation code, model/service/controller bodies, migrations, or complete test suites
    - Keep this artifact as a validation/run guide; implementation details belong in `tasks.md` and the implementation phase
 
-**Output**: `IMPLEMENTATION_DIR/data-model.md`, feature-root `/contracts/*`, `IMPLEMENTATION_DIR/quickstart.md`
+**Output**: `ATTEMPT_DIR/data-model.md`, feature-root `/contracts/*`, `ATTEMPT_DIR/quickstart.md`
 
 ## Key rules
 
@@ -240,7 +240,7 @@ line `Reflections added: <identifiers or none> · open for this feature: <count>
 ## Done When
 
 - [ ] Plan workflow executed and design artifacts generated
-- [ ] Durable feature `design.md` was used as the accepted baseline (or recorded as no accepted baseline) and remained byte-for-byte unchanged; `tldr.md`, `spec.md`, and every module `module.md`/`design.md` were not edited
+- [ ] Durable feature `implementation.md` was used as the accepted baseline (or recorded as no accepted baseline) and remained byte-for-byte unchanged; `abstract.md`, feature `design.md`, and every module `module.md`/`design.md` were not edited
 - [ ] Required feature diagrams or explicit sufficiency rationales are covered by the plan; diagram
       sources remain under `diagrams/` and their automatic feature-page publication is verified
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above

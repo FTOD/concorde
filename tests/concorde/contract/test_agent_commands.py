@@ -69,16 +69,16 @@ class AgentCommandContractTests(unittest.TestCase):
             "parent_context",
             "siblings",
             "feature_directory",
-            "feature_tldr",
-            "feature_spec",
+            "feature_abstract",
             "feature_design",
+            "feature_implementation",
             "module_summary",
             "module_design",
             "contracts_dir",
             "checklists_dir",
             "diagrams_dir",
-            "implementation_dir",
-            "implementation_state",
+            "attempt_dir",
+            "attempt_state",
             "plan",
             "research",
             "data_model",
@@ -105,8 +105,8 @@ class AgentCommandContractTests(unittest.TestCase):
             content = path.read_text(encoding="utf-8")
             self.assertNotIn("FEATURE_DIR/checklists", content, path.as_posix())
             self.assertTrue(
-                "implementation/checklists" in content
-                or "IMPLEMENTATION_DIR/checklists" in content
+                "attempt/checklists" in content
+                or "ATTEMPT_DIR/checklists" in content
                 or "CHECKLISTS_DIR" in content,
                 path.as_posix(),
             )
@@ -118,7 +118,7 @@ class AgentCommandContractTests(unittest.TestCase):
         )
         for path in surfaces:
             content = path.read_text(encoding="utf-8")
-            self.assertIn("implementation/checklists", content, path.as_posix())
+            self.assertIn("attempt/checklists", content, path.as_posix())
             self.assertIn("proposal_path", content, path.as_posix())
             self.assertIn("task_summary", content, path.as_posix())
             self.assertIn("checklist_summary", content, path.as_posix())

@@ -57,10 +57,9 @@ class ManifestContractTests(unittest.TestCase):
         self.assertEqual(manifest.count('type: "command"'), 9)
         self.assertEqual(manifest.count('strategy: "append"'), 3)
         self.assertEqual(manifest.count('strategy: "replace"'), 12)
-        self.assertIn('name: "tldr-template"', manifest)
-        self.assertIn('name: "design-template"', manifest)
-        self.assertNotIn("implementation-template", manifest)
-        for template in ("tldr-template", "design-template"):
+        self.assertIn('name: "abstract-template"', manifest)
+        self.assertIn('name: "implementation-template"', manifest)
+        for template in ("abstract-template", "implementation-template"):
             resolved = subprocess.run(
                 ["specify", "preset", "resolve", template],
                 cwd=REPOSITORY_ROOT,
@@ -71,7 +70,6 @@ class ManifestContractTests(unittest.TestCase):
             self.assertIn(f"presets/concorde-core/templates/{template}.md", resolved)
             self.assertTrue((REPOSITORY_ROOT / f".specify/presets/concorde-core/templates/{template}.md").is_file())
             self.assertFalse((REPOSITORY_ROOT / f".specify/templates/{template}.md").exists())
-        self.assertFalse((REPOSITORY_ROOT / ".specify/presets/concorde-core/templates/implementation-template.md").exists())
         for command in (
             "specify",
             "clarify",
@@ -84,21 +82,22 @@ class ManifestContractTests(unittest.TestCase):
             "taskstoissues",
         ):
             self.assertIn(f'name: "speckit.{command}"', manifest)
-        self.assertIn("temporal implementation/checklists/", manifest)
+        self.assertIn("temporal attempt/checklists/", manifest)
         self.assertNotIn("checklists at the durable feature root", manifest)
 
     def test_plan_and_checklist_templates_preserve_temporal_checklist_authority(self):
         preset_plan = (REPOSITORY_ROOT / "presets/concorde-core/templates/plan-template.md").read_text(encoding="utf-8")
         local_plan = (REPOSITORY_ROOT / ".specify/templates/plan-template.md").read_text(encoding="utf-8")
         checklist = (REPOSITORY_ROOT / ".specify/templates/checklist-template.md").read_text(encoding="utf-8")
-        self.assertIn("implementation/checklists/", preset_plan)
+        self.assertIn("attempt/checklists/", preset_plan)
         self.assertNotIn("`contracts/`, and `checklists/`", preset_plan)
-        self.assertIn("├── tldr.md", local_plan)
+        self.assertIn("├── abstract.md", local_plan)
         self.assertIn("├── design.md", local_plan)
-        self.assertNotIn("├── implementation.md", local_plan)
+        self.assertIn("├── implementation.md", local_plan)
+        self.assertIn("└── attempt/", local_plan)
         self.assertIn("    ├── checklists/", local_plan)
         self.assertNotIn("\n├── checklists/", local_plan)
-        self.assertIn("implementation/checklists/requirements.md", checklist)
+        self.assertIn("attempt/checklists/requirements.md", checklist)
 
 
 if __name__ == "__main__":

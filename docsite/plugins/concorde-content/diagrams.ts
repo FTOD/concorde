@@ -87,7 +87,7 @@ function featureDeclarations(ownerPath: string, raw: unknown): PendingDeclaratio
 export async function discoverDiagramDeclarations(projectRoot: string): Promise<DiagramDeclaration[]> {
   const root = resolve(projectRoot);
   const specsRoot = resolve(root, 'specs');
-  const ownerFiles = await fg(['**/module.md', '**/contracts/**/contract.md', '**/spec.md'], {
+  const ownerFiles = await fg(['**/module.md', '**/contracts/**/contract.md', '**/design.md'], {
     cwd: specsRoot,
     onlyFiles: true,
     unique: true,
@@ -97,7 +97,7 @@ export async function discoverDiagramDeclarations(projectRoot: string): Promise<
   for (const ownerFromSpecs of ownerFiles.sort()) {
     const ownerPath = posix.join('specs', ownerFromSpecs.replaceAll('\\', '/'));
     const parsed = matter(await readFile(resolve(specsRoot, ownerFromSpecs), 'utf8'));
-    if (ownerFromSpecs.endsWith('/spec.md') || ownerFromSpecs === 'spec.md') {
+    if ((ownerFromSpecs.endsWith('/design.md') || ownerFromSpecs === 'design.md') && !ownerFiles.includes(ownerFromSpecs.replace(/design\.md$/, 'module.md'))) {
       pending.push(...featureDeclarations(ownerPath, parsed.data.diagrams));
       continue;
     }

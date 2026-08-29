@@ -1,3 +1,9 @@
-# Feature Design Reference: two
+---
+id: feature.fixture.duplicate
+kind: feature
+module: module.fixture
+---
 
-Accepted design reference placeholder for the two fixture.
+# Feature Design: Two
+
+**Status**: Draft

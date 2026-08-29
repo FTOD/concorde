@@ -8,7 +8,7 @@ evidence, so that a maintainer can understand any level of the project in minute
 Concorde is designed to be installed as a native Spec Kit bundle containing:
 
 - the `concorde-core` preset, which appends architecture guidance to Spec Kit's templates, supplies
-  the feature TL;DR and design-reference templates, and replaces nine normal command instructions
+  the feature abstract and design-reference templates, and replaces nine normal command instructions
   with Concorde-aware workspace routing;
 - the `concorde` extension, which supplies five Concorde surfaces—four runtime-backed operations plus
   the read-only `ask` procedure—the workspace adapter, and runtime; and
@@ -20,23 +20,23 @@ The three Spec Kit package concepts have different jobs:
 | Concept | Concorde package | Role |
 |---|---|---|
 | Bundle | `concorde-bundle` | An installation recipe that pins the tested preset and extension versions. |
-| Preset | `concorde-core` | Five templates (three append layers plus the `tldr-template` and `design-template` feature documents) and nine complete normal-command replacements for nested workspace routing. |
+| Preset | `concorde-core` | Five templates (three append layers plus the `abstract-template` and `implementation-template` feature documents) and nine complete normal-command replacements for nested workspace routing. |
 | Extension | `concorde` | Five Concorde-specific surfaces: four deterministic operations and one agent-followed, read-only question procedure. |
 
 Catalogs are trusted discovery metadata for these independently versioned packages; they are not a
 fourth installed runtime component. See the maintained
 [component model](specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json),
 [installation flow](specs/concorde/features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json),
-and the full [Feature 003 setup specification](specs/concorde/features/003-install-concorde-speckit/spec.md).
+and the full [Feature 003 setup specification](specs/concorde/features/003-install-concorde-speckit/design.md).
 The project docsite build turns declared diagram sources into interactive standalone views.
 
 ## Project status
 
 Feature 001 defines the Concorde architecture-aware development workflow. Its root initialization,
-Feature Workspace Protocol v5 resolution of the standard Spec Kit selection, bounded context,
+Feature Workspace Protocol v6 resolution of the standard Spec Kit selection, bounded context,
 deterministic validation, approval-gated feature hardening, and the read-only `ask` procedure are
 implemented and covered by the automated suites, and this repository itself lives under the
-three-tier feature document model (`tldr.md`, `spec.md`, `design.md`) and the module summary/design
+three-tier feature document model (`abstract.md`, `design.md`, `implementation.md`) and the module summary/design
 reference pair that the feature specifies. Feature 002's docsite publication pipeline, Feature 003's
 native bundle, preset composition, five-surface extension, and release tooling, and Feature 004's
 review-first self-hosting are implemented and tested. Feature 005 adds the project-wide reflection
@@ -47,7 +47,7 @@ checkout. Timed human comprehension pilots and browser-based diagram review rema
 kept separate from automated evidence.
 
 The newest published release is `v0.1.0`, which predates the module design reference, the feature
-TL;DR, and the removal of the `feature.create`/`feature.select` commands. This README and the guides
+abstract, and the removal of the `feature.create`/`feature.select` commands. This README and the guides
 under `docs/` describe the `0.3.0` sources in this checkout; until `0.3.0` is published, the local
 build path below is the way to use them.
 
@@ -167,7 +167,7 @@ find .agents/skills -maxdepth 2 -name SKILL.md -print | sort
 
 For the published-release installation, follow the [framework quick start](docs/quick-start.md);
 release production and its acceptance evidence are described in [Releasing Concorde](docs/releasing.md)
-and the [publish-release sub-feature](specs/concorde/features/003-install-concorde-speckit/subfeatures/001-publish-release/spec.md).
+and the [publish-release sub-feature](specs/concorde/features/003-install-concorde-speckit/subfeatures/001-publish-release/design.md).
 
 ### 5. Use the Concorde commands
 
@@ -188,16 +188,16 @@ $speckit-concorde-ask When should I use context instead of changing the selected
   `SPECIFY_FEATURE_DIRECTORY` at their canonical path—`<module directory>/features/NNN-<short-name>`,
   or `<parent feature root>/subfeatures/NNN-<short-name>` for a sub-feature—and are selected
   through the standard `.specify/feature.json`; Concorde adds no creation or selection command.
-  Every feature root owns `tldr.md` (read first), `spec.md` (the authority), and `design.md` (the
-  design reference, written by hardening).
-- `feature.harden` proposes the feature `design.md`—and, when the attempt produced detail or
+  Every feature root owns `abstract.md` (read first), `design.md` (the authority), and
+  `implementation.md` (the accepted implementation, written by hardening).
+- `feature.harden` proposes the feature `implementation.md`—and, when the attempt produced detail or
   rationale worth keeping, an amendment to the `design.md` of the module at which the feature is
   specified—from a task-complete implementation attempt and, only after explicit approval, applies
-  both atomically and removes that temporal `implementation/` directory.
+  both atomically and removes that temporal `attempt/` directory.
 - `context` returns one bounded architectural level without expanding child internals or the body
-  of any module or feature `design.md`.
+  of any module `design.md` or feature `implementation.md`.
 - `validate` deterministically checks identities, hierarchy, references, contracts, views, evidence
-  status, module summary and feature TL;DR shape and reading budgets, and the feature-root document
+  status, module summary and feature abstract shape and reading budgets, and the feature-root document
   trio.
 - `ask` answers questions about Concorde concepts, command timing, artifact authority, or this
   project's use of the workflow from cited installed guidance and bounded maintained sources. It is
@@ -223,7 +223,7 @@ two canonical source roots, presented through three reader-facing navigation fam
 |---|---|
 | `specs/**/module.md`, its adjacent `design.md`, `specs/**/contracts/**/contract.md` | Architecture module summaries, module design references, boundary contracts, and declared Archify views |
 | `docs/**/*.md` | Project documentation |
-| `specs/**/tldr.md`, `specs/**/spec.md`, and the `design.md` beside each `spec.md` | Feature TL;DRs (the page each feature opens on), specifications, and design references |
+| Feature-root `abstract.md`, `design.md`, and `implementation.md` | Feature abstracts (the landing pages), behavioral designs, and accepted implementations |
 
 Generated pages never become maintained source documents.
 
@@ -266,9 +266,9 @@ production Docusaurus build. Start with the maintained [documentation overview](
 
 - [Project constitution](.specify/memory/constitution.md)
 - [Root architecture](specs/concorde/module.md) (module summary; its design reference is the adjacent `design.md`)
-- [Concorde workflow TL;DR](specs/concorde/features/001-concorde-workflow/tldr.md) and [specification](specs/concorde/features/001-concorde-workflow/spec.md)
-- [Project docsite specification](specs/concorde/features/002-create-project-docsite/spec.md)
-- [Spec Kit installation specification](specs/concorde/features/003-install-concorde-speckit/spec.md)
+- [Concorde workflow abstract](specs/concorde/features/001-concorde-workflow/abstract.md) and [specification](specs/concorde/features/001-concorde-workflow/design.md)
+- [Project docsite specification](specs/concorde/features/002-create-project-docsite/design.md)
+- [Spec Kit installation specification](specs/concorde/features/003-install-concorde-speckit/design.md)
 - [Releasing Concorde](docs/releasing.md)
-- [Development self-hosting specification](specs/concorde/features/004-self-host-concorde/spec.md)
-- [Workflow reflections specification](specs/concorde/features/005-record-workflow-reflections/spec.md) and the [project reflection log](specs/concorde/reflections.md)
+- [Development self-hosting specification](specs/concorde/features/004-self-host-concorde/design.md)
+- [Workflow reflections specification](specs/concorde/features/005-record-workflow-reflections/design.md) and the [project reflection log](specs/concorde/reflections.md)

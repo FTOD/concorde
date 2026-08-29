@@ -13,9 +13,9 @@ The preset and extension are complementary but not interchangeable:
 - `concorde-core` is a composition layer without its own runtime. Its template layers add Concorde
   prompts and gates to Spec Kit's existing spec, plan, and task templates. Its command layers override
   the nine affected normal lifecycle surfaces so selected-workspace routing occurs before any
-  inherited root-path assumption. Phase meanings remain unchanged: durable `spec.md` and contracts
+  inherited root-path assumption. Phase meanings remain unchanged: durable `design.md` and contracts
   stay at the feature root, while requirements-quality checklists and all planning/delivery artifacts
-  stay under `implementation/`.
+  stay under `attempt/`.
 - `concorde` is an active capability package. At installation time, Spec Kit registers its five
   command definitions through the target project's active coding-agent integration. At use time, four
   operational surfaces invoke the same deterministic Architecture Core runtime regardless of their
@@ -69,7 +69,7 @@ Maintained definitions live under `contracts/*/contract.md`.
 
 - **Role / flow**: provided, bidirectional.
 - **Consumers**: maintainers and normal Spec Kit lifecycle commands.
-- **Representation**: custom Concorde Feature Workspace Protocol v5 plus Spec Kit's standard
+- **Representation**: custom Concorde Feature Workspace Protocol v6 plus Spec Kit's standard
   project-local `feature_directory` selection field.
 - **Information**: the resolved standard Spec Kit selection, exact durable/temporal paths,
   relationship context, implementation state, hardening changes, conflicts, findings, and inspected
@@ -139,7 +139,7 @@ Maintained definitions live under `contracts/*/contract.md`.
   proposes, pending contract updates and hardening: Feature Workspace Protocol v4
   (`feature_implementation`, `module_summary`, `module_design`, `implementation_digest_*`,
   `module_design_digest_*`); hardening proposal v2; the preset `implementation-template` replacing
-  `design-template`; `FEATURE_IMPLEMENTATION` in the tracked bash scripts; and a 0.2.0 bump of
+  `implementation-template`; `FEATURE_IMPLEMENTATION` in the tracked bash scripts; and a 0.2.0 bump of
   `concorde-core` and `concorde`.
 - 2026-08-27 — Removed `feature.create` and `feature.select`; installed the Claude Code agent
   integration.

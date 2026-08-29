@@ -30,8 +30,8 @@ The level view is [architecture.json](architecture.json).
 
 | Feature ID | Outcome | Specification |
 |---|---|---|
-| `feature.example.checkout` | Complete a checkout. | `features/001-checkout/spec.md` |
-| `feature.example.atomic` | Commit atomically. | `features/002-atomic/spec.md` |
+| `feature.example.checkout` | Complete a checkout. | `features/001-checkout/design.md` |
+| `feature.example.atomic` | Commit atomically. | `features/002-atomic/design.md` |
 
 ## Contracts
 

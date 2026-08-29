@@ -17,7 +17,7 @@ from .validation.layout import validate_layout
 from .validation.evidence import validate_evidence
 from .validation.freshness import validate_freshness
 from .validation.summary import validate_summaries
-from .validation.tldr import validate_tldrs
+from .validation.abstract import validate_abstracts
 from .validation.reflections import validate_reflections
 
 
@@ -26,7 +26,7 @@ REQUIRED_CONTRACT_SECTIONS = ("Purpose", "Information", "Obligations", "Failure 
 FOCUSED_VALIDATORS = (
     validate_hierarchy,
     validate_summaries,
-    validate_tldrs,
+    validate_abstracts,
     validate_reflections,
     validate_layout,
     validate_contracts,
@@ -193,7 +193,7 @@ def validate_project(project_root: str | Path, target: str | None = None) -> Ope
                     findings.append(_finding("CONCORDE-CONTAIN-003", feature, "Sub-feature providing module differs from its parent.", "Use the same providing module as the parent feature."))
                 expected_parent_root = Path(feature.path).parent.parent.parent.as_posix()
                 if Path(parent.path).parent.as_posix() != expected_parent_root:
-                    findings.append(_finding("CONCORDE-CONTAIN-004", feature, "Sub-feature canonical path is not directly beneath its declared parent.", "Move it to <parent>/subfeatures/<NNN-name>/spec.md and update canonical_spec."))
+                    findings.append(_finding("CONCORDE-CONTAIN-004", feature, "Sub-feature canonical path is not directly beneath its declared parent.", "Move it to <parent>/subfeatures/<NNN-name>/design.md and update canonical_design."))
         for child_id in children:
             child = features.get(child_id)
             if child and child.metadata.get("parent_feature") != identifier:

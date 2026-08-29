@@ -1,64 +1,457 @@
-# Feature Design Reference: Publish Project Docsite
+---
+id: feature.concorde.publish-project-docsite
+kind: feature
+module: module.concorde
+refines: []
+scenarios:
+  - publish-architecture
+contracts:
+  provided:
+    - contract.documentation.architecture-site
+  required: []
+architecture_view: specs/concorde/architecture.json
+diagrams:
+  - source: specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json
+    role: supplemental
+    kind: sequence
+    scenarios:
+      - publish-architecture
+    output: generated/architecture/project-docsite-publication-flow.html
+evidence_status: verified
+canonical_design: specs/concorde/features/002-create-project-docsite/design.md
+---
 
-**Realization status**: Accepted realization of the unified project read model with build-owned Archify delivery.
+# Feature Design: Create Unified Project Docsite
 
-## Realization Overview
+**Feature Branch**: Not created; no `before_specify` branch hook is configured
 
-Feature 002 is realized by the private TypeScript Docusaurus project under `docsite/`. It publishes a read-only project model from two maintained source roots without creating a second content authority: `specs/` supplies architecture sources plus durable feature specifications and designs, while `docs/` supplies project-authored guidance. A shared registry classifies those inputs into four source collections—Architecture, Documentation, Feature Specifications, and Feature Designs—and presents them through three navigation families: Architecture, Documentation, and Features.
+**Created**: 2026-08-19
 
-Diagram publication is part of the same preview and production workflow. Before registry validation or Docusaurus rendering consumes diagram HTML, the build discovers every module-owned and feature-owned Archify declaration, verifies the officially installed project-local Archify 2.16 skill at `.agents/skills/archify` (`package.json` version `2.16.0-dev.0`), validates each maintained JSON source at showcase quality, and delivers a complete disposable diagram set. The delivered `generated/` tree, Docusaurus projections, search indexes, manifests, and site output are ignored read models; maintained Markdown and Archify JSON remain the authorities.
+**Revised**: 2026-08-27
 
-The Documentation collection reads `docs/**/*.md` directly. Architecture and Features use ignored projections under `docsite/.generated/content/` because separate Docusaurus content-plugin instances cannot safely share the same physical `specs/` loader root. Production output is rendered into a fresh candidate and promoted to `docsite/build/` only after source, route, rendering, and manifest validation succeeds.
+**Status**: Implemented; build-owned Archify delivery and clean-checkout publication verified
 
-## Module and Feature Collaboration
+**Input**: User description: "Create an independent root `docsite/` containing Docusaurus
+configuration and formatting, keep actual Markdown documentation in a separate root `docs/`, and
+present those documents, feature specifications under `specs/`, and Concorde architecture sources
+and views as one project website. Maintain a useful custom documentation baseline—including a quick
+start, project description, conceptual model, project structure, workflow, and command guidance—so
+the generated site teaches the Concorde framework rather than presenting specifications alone."
 
-The root feature `feature.concorde.publish-project-docsite` owns the project-wide publication outcome. Its Documentation-owned refinement, `feature.documentation.publish-project-docsite`, realizes that outcome behind the boundaries declared by `module.concorde.documentation`. The root and Documentation one-level structures remain authoritative in `specs/concorde/architecture.json` and `specs/concorde/modules/documentation/architecture.json`; this design references those views instead of redefining module responsibility or placement.
+**Revision Input**: "Make Archify validation and HTML delivery part of building the Docusaurus site
+so a clean checkout does not depend on committed or manually pre-generated diagram output. Install
+Archify through its official project-local skill mechanism so preview, build, and deployment require
+no machine-specific renderer environment variable."
 
-Architecture Core, Spec Kit, and maintainers provide maintained inputs through `contract.documentation.project-content`. The Documentation module exposes preview/build behavior through `contract.documentation.build-interface`, invokes the external renderer through `contract.documentation.archify-renderer`, emits deterministic inventory through `contract.documentation.build-manifest`, and provides the finished site through `contract.documentation.architecture-site`. Archify retains ownership of schema validation and standalone HTML rendering; Docusaurus retains ownership of the generated site.
+## Scenario and Component Diagram
 
-Inside Documentation, `docsite/plugins/concorde-content/diagrams.ts` owns declaration discovery and safe normalized mappings without requiring delivered bytes. `registry.ts` owns content discovery, classification, canonical hashes, logical routes, and metadata extraction. `docsite/scripts/render-diagrams.ts` adapts the Archify package/CLI contract and atomically promotes complete delivery sets. `prepare-publication.ts` orders delivery before registry validation and materialization. The preview and production wrappers invoke that shared preparation boundary before Docusaurus.
+`diagrams/project-docsite-publication-flow.json` is a maintained, supplemental sequence view for the
+`publish-architecture` scenario. Its generated projection is
+`generated/architecture/project-docsite-publication-flow.html`. The view shows the build command
+invoking the source registry, Archify delivery, disposable content materialization, Docusaurus build,
+candidate validation, and atomic publisher before a programmer or agent browses the result.
 
-## Scenario Realization
+The diagram explains component involvement and call order; the user stories and requirements below
+remain the behavioral authority, and `specs/concorde/architecture.json` remains the bounded root
+architecture view.
 
-For the `publish-architecture` scenario, the repository contains the official project-local Archify skill at `.agents/skills/archify`, recorded by `skills-lock.json`. The adapter resolves only that project-relative location, requires its real `package.json` to identify `archify` version `2.16.0-dev.0` and map its CLI to `bin/archify.mjs`, and runs Archify doctor before touching the live delivery set. It rejects missing, incompatible, escaping, or incomplete packages and never probes an agent home, global executable path, environment variable, or extra checkout as an authority.
+This feature does not add a separate core component diagram because the bounded root view already
+shows Documentation, Architecture Core, Spec Kit Integration, the coding agent, and the maintainer at
+the level where this root feature is owned. Repeating those components here would duplicate that
+canonical structure. The publication sequence is therefore explicitly `role: supplemental` and
+answers only the narrower call-order question.
 
-Declaration discovery reads eligible module and contract front matter plus canonical feature `spec.md` diagram declarations. It resolves only regular non-symbolic JSON sources, checks feature placement, role and kind rules, `meta.output` agreement, showcase quality, project/generated containment, HTML suffixes, and unique source/output mappings. It returns declarations in stable source-path order without requiring generated HTML, so `inspect` and `validate` remain non-rendering source checks that work in a clean checkout.
+## User Scenarios & Testing *(mandatory)*
 
-Preview and production preparation run Archify `validate` and `deliver` sequentially for each declaration, with explicit source and candidate-output paths. Architecture diagrams receive repository context; dynamic diagrams use the supported type-specific interface. The adapter verifies schema-v1 receipts, the exact diagram kind, maintained-source SHA-256 and byte count, delivered artifact SHA-256 and byte count, all nine showcase checks, composition pass, and zero errors or warnings. Raw receipts are process-local because they contain absolute paths; only normalized project-relative identities and hashes survive in build results. Browser-dependent `visual-check` is deliberately separate from ordinary publication.
+### User Story 1 - Browse the Whole Project in One Site (Priority: P1)
 
-All outputs are rendered beneath a private candidate root. Only a fully verified set atomically replaces the ignored root `generated/` tree, which removes stale and undeclared deliveries. Any discovery, package, renderer, receipt, or mid-set failure removes the candidate and preserves the previous complete diagram set. The registry then validates current logical routes and content, the materializer recreates Architecture and Feature projections, and Docusaurus produces pages, local search, and manifest data. A schema-valid site candidate is atomically promoted; later site failure leaves the last successful `docsite/build/` untouched.
+As a maintainer, contributor, or reviewer, I can open one project website and browse the maintained
+architecture, project documentation, and every feature's permanent specification and design so that
+I can understand both intended behavior and accepted realization without navigating the repository manually.
 
-Ordinary documentation remains recursively discovered from `docs/`. Architecture and feature pages retain canonical source provenance, textual content outside sandboxed interactive views, and standalone diagram links. Repository-relative links are mapped against canonical sources before rendering, and implementation artifacts remain deliberate exclusions from the permanent Features collection.
+**Why this priority**: A unified, browsable read model is the primary value of the feature. Without
+all three navigation families and all four source collections in one coherent site, the docsite does
+not represent the project as requested.
 
-## Durable Implementation Decisions
+**Independent Test**: Populate `specs/` with a module, boundary contract, delivered view, and two
+feature specifications and designs, and `docs/` with a small documentation hierarchy; build and open the site, then
+confirm that every eligible source is reachable through distinct Architecture, Documentation, and
+Features navigation paths and project-wide discovery.
 
-- `docs/` and `specs/` are the only maintained content roots; `generated/`, `docsite/.generated/`, and `docsite/build/` are ignored, reproducible projections.
-- Maintained Archify JSON and its textual counterpart own diagram meaning. Generated HTML, visual receipts, captures, and contact sheets are not version-controlled sources.
-- Diagram declaration discovery is independent of delivered-output existence. Publication delivery is a later mandatory gate, eliminating the prior clean-checkout cycle.
-- `.agents/skills/archify` is the single renderer boundary. The adapter requires the installed Archify 2.16 development package identity, bin containment, and doctor success instead of relying on an environment variable, `npx`, global PATH, agent-home installation, or CI-only checkout.
-- Each declaration is validated and delivered with explicit paths in deterministic order. Normalized receipts verify source and artifact digests plus 9/9 showcase acceptance without persisting absolute paths.
-- Diagram-set promotion and site-candidate promotion are separate atomic boundaries. A partial diagram set is never consumed, and an incomplete site never replaces the last successful publication.
-- The registry remains the single inclusion and route-mapping authority shared by validation, link rewriting, projections, presentation metadata, tests, and manifest generation. Logical diagram routes do not imply generated HTML is maintained input.
-- Four source collections map to three public navigation families. Feature specifications and durable designs remain distinct permanent collections grouped beneath `/features`; every Markdown file under `implementation/` is excluded.
-- Repository-relative Markdown is resolved against canonical sources before route rewriting. Missing, escaping, ambiguous, or temporally excluded targets fail validation.
-- The build remains pinned to Node.js 20+, Docusaurus 3.10.2, TypeScript 5.9, React 19, Ajv 8, Vitest 4, and the committed npm lockfile.
-- The root architecture view remains the sufficient Feature 002 core component model. `diagrams/project-docsite-publication-flow.json` remains one supplemental sequence view for publication order and is automatically delivered and embedded.
-- Visual checking remains an explicit browser-backed evidence step. Automated delivery success is never presented as completed perceptual review.
+**Acceptance Scenarios**:
 
-## Traceability and Evidence
+1. **Given** eligible architecture and feature sources in the hierarchical `specs/` tree and Markdown
+   documents in `docs/`, **When** a visitor opens the generated site, **Then**
+   the visitor can reach all three navigation families from a
+   project landing page without knowing their repository paths.
+2. **Given** multiple nested documentation pages and multiple features, **When** the visitor browses
+   the site navigation, **Then** documentation hierarchy is preserved and feature specifications are
+   grouped with their permanent designs under a clearly labeled Features area.
+3. **Given** a feature specification and design, **When** their pages are displayed, **Then** the
+   specification's identifying facts and both pages' source provenance are visible.
+4. **Given** a visitor looking for a known phrase, module, or feature, **When** the visitor uses the
+   site's discovery facilities, **Then** matching project documentation and feature specifications can
+   both be found.
 
-Behavior and outcomes remain in `spec.md`. Detailed source, renderer, command, manifest, and published-output guarantees are governed by `contracts/content-sources.md`, `specs/concorde/modules/documentation/contracts/archify-renderer/contract.md`, `contracts/build-interface.md`, `contracts/build-manifest-contract.md`, `contracts/build-manifest.schema.json`, and `contracts/published-site.md`. Module ownership and boundaries remain under `specs/concorde/modules/documentation/`.
+---
 
-Implementation is centered in `docsite/plugins/concorde-content/diagrams.ts`, `registry.ts`, and `types.ts`; `docsite/scripts/render-diagrams.ts`, `prepare-publication.ts`, `start.ts`, and `build.ts`; Docusaurus configuration and presentation components; and the maintained contributor guides. `.gitignore` excludes complete generated delivery sets and temporary candidates. README links now point to maintained JSON/specification sources instead of committed HTML.
+### User Story 2 - Author Documentation Outside the Site Project (Priority: P2)
 
-Executable evidence covers declaration ordering and containment, role/kind/output agreement, duplicate outputs, project-local skill lock and package compatibility, doctor and receipt gates, source/artifact digest agreement, stale-orphan removal, whole-set atomicity, rollback before and after backup movement, source immutability, clean-checkout production, all seven standalone diagram routes, automatic feature/module embedding, manifest repeatability, and failure preservation. The current documentation gate passes 18 Vitest files with 49 tests, source validation for 66 pages with 21 deliberate exclusions, and a clean production Docusaurus build without a renderer environment variable. The complete 134-test Concorde suite passes, and deterministic Concorde validation reports zero findings. All seven diagrams pass 9/9 Archify 2.16 showcase checks with zero errors and warnings. Feature 002's sequence source digest is `d483e6d7592dd378ba227bc7bf760cd88fb3e2c9e0f44d746827025806568116`; its delivered artifact digest is `03d566f5e44a3b957721e665cdbda449001ac968f521867f6676b79685cc00ec`.
+As a contributor, I can add or edit ordinary Markdown files in the root `docs/` directory without
+copying them into the site project or learning its presentation internals so that documentation stays
+simple to author and has one canonical location.
 
-## Known Limitations
+**Why this priority**: Separating maintained content from presentation configuration prevents the
+site project from becoming a second content authority and keeps documentation approachable.
 
-- The project-local Archify skill is an installed upstream snapshot rather than a registry dependency. Updating it requires an explicit official skill reinstall, review of `skills-lock.json` and package identity, and coordinated adapter, contract, diagram, and test verification.
-- Browser containment captures and human light/dark perceptual review remain pending. Ordinary builds intentionally do not run `visual-check` or claim visual polish.
-- Live preview prepares diagrams at startup. A maintained diagram changed while the Docusaurus server is already running requires explicit redelivery or preview restart before its HTML changes.
-- Diagram delivery and site publication have separate atomic boundaries. A later Docusaurus failure may leave a newer ignored diagram set on disk, while the last successfully published site remains intact.
-- Complete-set promotion currently owns the entire root `generated/` tree. Another future generated-output producer will require a coordinated namespace or narrower promotion boundary.
-- Public hosting, deployment, authentication, analytics, comments, in-site editing, versioned documentation releases, redirects, API extraction, source-code reference generation, and test-report publication remain outside Feature 002.
-- Source renames can change derived routes because redirects are not yet a published contract. The pinned Docusaurus/local-search dependency graph also retains previously recorded non-critical transitive advisories.
+**Independent Test**: Add a nested Markdown page under `docs/`, link it from another document, rebuild
+the site without editing `docsite/`, and verify that the new page and link appear in the expected
+documentation hierarchy.
+
+**Acceptance Scenarios**:
+
+1. **Given** a valid new Markdown file under `docs/`, **When** the site is rebuilt, **Then** the page is
+   included without a copied canonical file or a required manual registration in `docsite/`.
+2. **Given** a documentation page is renamed, moved, or removed, **When** the site is rebuilt, **Then**
+   the site reflects the new maintained state and does not retain an unexplained stale page.
+3. **Given** a document uses supported Markdown links and formatting, **When** it is presented in the
+   site, **Then** its meaning and link destinations are preserved under the site's shared visual
+   formatting.
+
+---
+
+### User Story 3 - Publish Feature Specifications From Their Canonical Location (Priority: P3)
+
+As a product owner or reviewer, I can read every feature's canonical specification from the same site
+while Spec Kit continues to own the files under `specs/`, so that publication does not fork or rewrite
+the feature-development lifecycle.
+
+**Why this priority**: Feature specifications are the second required content source, and preserving
+their authority is essential to the Concorde and Spec Kit ownership boundary.
+
+**Independent Test**: Change the title, status, and one requirement in an existing `design.md`, add a
+second feature directory, rebuild the site, and confirm that both feature pages reflect their current
+canonical files with no generated changes under `specs/`.
+
+**Acceptance Scenarios**:
+
+1. **Given** a feature directory containing a canonical `design.md`, **When** the site is rebuilt,
+   **Then** the feature appears in the Features area with its current title, status, identifier, and
+   full specification content.
+2. **Given** a canonical feature specification changes, **When** the next build succeeds, **Then** its
+   published page reflects that change without requiring a synchronized copy.
+3. **Given** a feature workspace also contains an `attempt/` directory, root checklists, or
+   other supporting artifacts,
+   **When** the first version of the site is built, **Then** those files are not presented as canonical
+   feature specifications.
+
+---
+
+### User Story 4 - Verify a Reproducible Site Build (Priority: P4)
+
+As a maintainer, I can preview and build the complete site from the independent `docsite/` project and
+receive actionable failures for invalid content so that only a complete, traceable read model is
+treated as publishable.
+
+**Why this priority**: A repeatable build and explicit failure behavior make the website trustworthy
+and suitable for later continuous integration and publication work.
+
+**Independent Test**: Remove all disposable diagram deliveries, build the same unchanged content
+twice, and compare the diagram and page inventories; then add an invalid diagram, a broken link, and
+a duplicate page identity and confirm that each failure names the affected source and prevents the
+incomplete result from being reported as successful.
+
+**Acceptance Scenarios**:
+
+1. **Given** a clean checkout with valid content, **When** a maintainer follows the documented preview
+   or build entry point from `docsite/`, **Then** the complete site is produced without first moving or
+   editing canonical content.
+2. **Given** unchanged maintained inputs and site configuration, **When** two builds run independently,
+   **Then** they produce the same page inventory, navigation relationships, and source-to-page mapping.
+3. **Given** an unreadable source, broken internal link, invalid required metadata, or route collision,
+   **When** the site build runs, **Then** it fails with an actionable diagnostic that identifies the
+   affected source and reason.
+4. **Given** a failed build, **When** the maintainer reviews its result, **Then** the incomplete output
+   is not represented as the current successful project site.
+5. **Given** the textual publication scenario and its feature-owned diagram, **When** a maintainer
+   reviews the build path, **Then** they can identify which component validates sources, renders
+   diagrams, materializes content, builds the site, validates the candidate, and promotes output.
+6. **Given** a clean checkout containing maintained diagram JSON but no delivered diagram HTML,
+   **When** preview or production publication starts, **Then** every declared diagram is validated and
+   delivered before the site consumes it, without a separate manual rendering step.
+7. **Given** a maintained diagram changes or a previous delivery is stale, **When** the next build
+   runs, **Then** the build replaces the disposable delivery from the current source and publishes
+   only the matching result.
+8. **Given** a diagram is invalid or its renderer fails, **When** the build runs, **Then** publication
+   stops with an actionable source-specific diagnostic and does not silently reuse an older delivery
+   or replace the last successful site.
+9. **Given** preview or production publication completes, **When** repository state is inspected,
+   **Then** generated diagram HTML and machine-local visual-check evidence remain disposable,
+   non-authoritative, and excluded from version control.
+
+---
+
+### User Story 5 - Learn and Adopt Concorde from Maintained Guides (Priority: P2)
+
+As a prospective user, maintainer, or contributor, I can follow a coherent set of project-authored
+guides that explains Concorde, gets me started, and tells me where workflow artifacts belong so that
+I do not have to reconstruct the framework from feature specifications or repository source alone.
+
+**Why this priority**: Specifications are the primary content of a spec-driven project, but they are
+organized as normative feature authorities rather than a progressive learning path. A useful
+Documentation collection must orient readers and connect concepts, tasks, and canonical sources.
+
+**Independent Test**: Give a reader only the generated site's landing page and ask them to explain
+Concorde's purpose, distinguish architecture/specification/design/implementation artifacts, locate a
+quick-start path, identify the two command families, and name the canonical file to edit for five
+representative changes.
+
+**Acceptance Scenarios**:
+
+1. **Given** a first-time visitor on the Documentation landing page, **When** they follow the
+   recommended path, **Then** they can reach a quick start, framework overview, specification model,
+   project structure guide, Concorde workflow, and command reference without browsing repository files.
+2. **Given** a reader learning Concorde's concepts, **When** they use the maintained guides, **Then**
+   they can distinguish Spec Kit's normal lifecycle from Concorde's architectural controls and
+   explain the roles of durable specifications, durable designs, temporary implementation attempts,
+   contracts, diagrams, and generated projections.
+3. **Given** a reader preparing a first project or contribution, **When** they follow the quick start
+   and workflow guidance, **Then** they can identify prerequisites, the next command or validation
+   step, the expected review gate, and the canonical source to change.
+4. **Given** a guide that summarizes normative project behavior, **When** a reader needs complete or
+   authoritative detail, **Then** the guide links to the relevant architecture or feature source and
+   does not claim authority over it.
+
+### Edge Cases
+
+- `docs/` exists but contains no eligible Markdown pages, or `specs/` contains no canonical feature
+  specifications.
+- A documentation file or feature specification has no display title, duplicate navigation identity,
+  invalid metadata, or a path that would map to an existing site route.
+- A feature workspace contains root `design.md` and checklists alongside nested implementation plans,
+  tasks, evidence, generated files, or unrelated Markdown.
+- Documents in different source collections have the same filename or title.
+- A relative link crosses from `docs/` to `specs/`, from a feature specification to `docs/`, or points
+  to a source that is not included in the site.
+- A source is renamed or removed after a prior build, leaving a formerly valid route or link.
+- A draft feature specification is present; it remains visible with its draft status rather than being
+  silently omitted or presented as approved.
+- Site output or staging content from an earlier build is stale, incomplete, or accidentally placed
+  beside canonical Markdown sources.
+- A clean checkout has no `generated/` directory, or a previous checkout has stale or extra diagram
+  deliveries that no maintained declaration owns.
+- The diagram renderer is missing, incompatible, exits unsuccessfully, emits malformed output, or
+  attempts to write outside the disposable delivery root.
+- Repository paths contain spaces or non-ASCII characters that are valid for maintained sources.
+- The Documentation collection technically publishes but contains only a landing page, forcing new
+  readers to infer the framework from normative specifications.
+- A guide repeats a setup detail that changes while its linked canonical specification remains
+  current, creating an obvious documentation-freshness disagreement.
+- A reader mistakes installed skills, workflow-control state, temporary implementation files, or
+  generated output for durable project intent.
+
+## Requirements *(mandatory)*
+
+### Functional Requirements
+
+- **FR-001**: The project MUST provide an independent root `docsite/` directory for the Docusaurus
+  site's configuration, formatting, presentation components, static presentation assets, and
+  documented preview and build entry points.
+- **FR-002**: The project MUST provide a separate root `docs/` directory as the canonical location for
+  project documentation authored as Markdown files.
+- **FR-003**: Canonical feature specifications MUST remain in their Spec Kit-owned locations under the
+  root `specs/` directory, nested beneath the module that owns each feature.
+- **FR-032**: Maintained architecture specifications MUST live in the same root `specs/` hierarchy as
+  feature specifications; a separate top-level architecture source tree MUST NOT be required.
+- **FR-004**: The `docsite/` directory MUST NOT contain canonical copies of content owned by `docs/` or
+  `specs/`.
+- **FR-005**: The site MUST include every eligible Markdown document found recursively under `docs/`.
+- **FR-006**: The site MUST include the canonical `design.md` for every feature directory under `specs/`.
+- **FR-007**: The first version MUST NOT present plans, tasks, checklists, or other supporting files as
+  feature specifications merely because they are stored under `specs/`.
+- **FR-008**: Content collection and presentation MUST NOT modify files under `docs/` or `specs/`.
+- **FR-009**: The site MUST provide a project landing page with distinct, clearly labeled entry points
+  for Architecture, project Documentation, and Features.
+- **FR-010**: Documentation navigation MUST preserve the meaningful hierarchy expressed by paths and
+  navigation metadata under `docs/`.
+- **FR-011**: Feature navigation MUST identify each specification by its feature title and MUST expose
+  its stable ID and lifecycle status when those values are present.
+- **FR-012**: A newly added eligible document or canonical feature specification MUST be discovered on
+  the next build without requiring a canonical copy or per-page registration in `docsite/`.
+- **FR-013**: Each generated content page MUST identify its maintained source path and content kind so
+  readers can distinguish project documentation from feature specifications and trace the page back
+  to its authority.
+- **FR-014**: The site MUST apply a consistent project-wide reading and navigation experience to both
+  content collections without changing their canonical Markdown meaning.
+- **FR-015**: The site MUST support project-wide discovery across architecture, documentation, and
+  feature specification content.
+- **FR-016**: Supported relative links within and between the three content collections MUST resolve to
+  the corresponding site pages while retaining an explicit path back to the source.
+- **FR-017**: Broken internal links, unreadable sources, invalid required metadata, and route collisions
+  MUST stop a successful build and identify the affected source, conflicting target when applicable,
+  and reason.
+- **FR-018**: Draft or otherwise non-final feature specifications MUST remain discoverable and MUST
+  display their recorded status; publication MUST NOT imply approval or implementation agreement.
+- **FR-019**: Preview and production build operations MUST use the same content inclusion, routing,
+  navigation, and validation rules.
+- **FR-020**: Repeated builds from identical maintained sources and configuration MUST produce the same
+  page inventory, navigation relationships, and source-to-page mapping without an LLM call.
+- **FR-021**: Build output, staged content, navigation indexes, and other generated projections MUST be
+  disposable and MUST NOT become maintained documentation or specification sources.
+- **FR-022**: Every generated page MUST record enough provenance to distinguish its source collection
+  and locate the corresponding maintained file.
+- **FR-023**: The project MUST document how a contributor installs the docsite prerequisites, starts a
+  local preview, performs a production build, and diagnoses content validation failures.
+- **FR-024**: Empty-source states MUST produce a valid explanatory landing experience or an actionable
+  diagnostic and MUST NOT fabricate documentation or feature content.
+- **FR-025**: A failed build MUST NOT be reported as a complete, publishable project site or silently
+  replace the last output known to have completed successfully.
+- **FR-026**: The generated site MUST remain a read-only projection; users MUST edit project meaning in
+  `docs/`, `specs/`, or the other maintained sources identified by provenance rather than in generated
+  pages.
+- **FR-027**: The site MUST include every eligible module and boundary-contract Markdown source found
+  recursively under `specs/` without copying those authorities into `docs/` or `docsite/`.
+- **FR-028**: Architecture navigation MUST mirror the maintained hierarchy and expose stable entity ID,
+  kind, owning module or parent when applicable, and project-relative provenance.
+- **FR-029**: When an architecture Markdown source declares an Archify JSON view, its page MUST embed
+  the corresponding delivered HTML in a sandbox and provide a direct link plus textual source
+  provenance outside the embedded view.
+- **FR-030**: Missing, invalid, escaping, or unpublishable declared architecture views MUST stop a
+  successful build with an actionable deterministic diagnostic.
+- **FR-031**: Architecture Markdown, Archify JSON, and delivered Archify HTML MUST remain separate
+  authorities and projections: publication MUST NOT rewrite maintained sources or treat generated HTML
+  as editable intent.
+- **FR-033**: This feature MUST maintain a text-backed Archify sequence view that identifies the
+  components invoked by the publication scenario, the information passed at documented boundaries,
+  the candidate failure boundary, and the generated output with deterministic provenance and
+  freshness validation. The canonical feature page MUST discover the declaration automatically,
+  embed the interactive diagram with source provenance, and retain an open-standalone-view link.
+- **FR-034**: The maintained Documentation collection MUST include a project overview that explains
+  the problem Concorde addresses, its combination of spec-driven development and Architecture as
+  Code, its hierarchical abstraction model, and the responsibilities it leaves to Spec Kit and
+  adjacent tools.
+- **FR-035**: The maintained Documentation collection MUST include a quick-start path that lets a
+  reader preview the project read model and follow the supported installation and first-feature path,
+  including prerequisites, verification, and approval boundaries.
+- **FR-036**: The maintained Documentation collection MUST explain the different authority and
+  lifecycle of architecture sources, feature specifications, permanent feature designs, contracts,
+  diagrams, current implementation attempts, workflow control, code/tests, and generated
+  projections.
+- **FR-037**: The maintained Documentation collection MUST provide a project structure guide that
+  maps the major workspace locations to their purpose, ownership, maintenance status, and correct
+  edit path.
+- **FR-038**: The maintained Documentation collection MUST explain the end-to-end Concorde workflow
+  from root architecture and feature placement through specification, architecture review,
+  implementation, validation, hardening, and publication.
+- **FR-039**: The maintained Documentation collection MUST distinguish normal Spec Kit lifecycle
+  phases from Concorde-specific operations and distinguish agent-facing command presentation from
+  adapters, launchers, and deterministic runtime behavior.
+- **FR-040**: The Documentation landing page MUST provide a progressive reading path through the
+  framework guides, and each guide that summarizes normative behavior MUST link readers to the
+  relevant canonical architecture or feature sources for complete authority.
+- **FR-041**: Preview and production build entry points MUST discover every declared module and
+  feature-owned Archify JSON source and MUST validate and deliver its standalone HTML before content
+  registry validation or site rendering consumes that delivery.
+- **FR-042**: A clean checkout containing maintained sources and documented prerequisites MUST build
+  the complete site without committed diagram HTML, visual-check receipts, or a separate manual
+  Archify command.
+- **FR-043**: Diagram delivery MUST use a deterministic, compatibility-checked Archify renderer,
+  resolved from the officially installed project-local `.agents/skills/archify` package, preserve the
+  declared diagram kind and output mapping, and expose source-specific validation or delivery
+  diagnostics on failure.
+- **FR-044**: A failed or incomplete diagram delivery MUST stop preview or production publication,
+  MUST NOT fall back to stale HTML, and MUST NOT replace the last successful published site.
+- **FR-045**: Generated diagram HTML, visual-check receipts, captures, contact sheets, and site build
+  products MUST remain reproducible disposable outputs excluded from version control; maintained
+  Archify JSON and its textual counterpart remain the reviewable sources.
+- **FR-046**: Build manifests and any retained deterministic diagram receipts MUST use normalized
+  project-relative provenance and MUST NOT persist machine-specific absolute workspace paths.
+- **FR-047**: Local preview, production build, tests, and repository deployment MUST consume the same
+  version-controlled project-local Archify skill without requiring a machine-specific renderer
+  environment variable, global CLI, additional renderer checkout, or agent-home installation.
+
+### Key Entities
+
+- **Project Document**: A maintained Markdown file under `docs/`, identified by its source path, title,
+  navigation metadata, links, and content.
+- **Framework Guide**: A project document that progressively explains adoption, concepts, workflow,
+  or contribution without replacing the normative architecture and feature sources it references.
+- **Feature Specification**: A feature's canonical `design.md` under `specs/`, identified by its feature
+  directory, stable ID, title, lifecycle status, requirements, scenarios, and source path.
+- **Architecture Source**: Maintained module or boundary-contract Markdown under `specs/`, identified
+  by stable ID, kind, hierarchy metadata, source path, and an optional adjacent Archify JSON view.
+- **Content Page**: A read-only site projection of one maintained source, with a stable route, content
+  kind, navigation placement, and provenance.
+- **Navigation Entry**: A relationship that places a content page in either the Documentation or
+  Features hierarchy while preserving meaningful source organization.
+- **Build Manifest**: The deterministic inventory that maps every included maintained source to its
+  content page and records exclusions, collisions, and validation outcomes.
+- **Diagram Delivery Set**: The complete, deterministic set of standalone HTML projections produced
+  from all currently declared Archify JSON sources for one preview or production build.
+- **Supplemental Feature Diagram**: A maintained, text-backed explanation of the publication
+  invocation path whose generated HTML is a reproducible, non-authoritative projection.
+
+## Success Criteria *(mandatory)*
+
+### Measurable Outcomes
+
+- **SC-001**: From a clean checkout with prerequisites available, a contributor can follow the project
+  instructions and open a complete local site in under 5 minutes.
+- **SC-002**: 100% of eligible architecture sources, project documents, and canonical feature specifications are reachable
+  from the generated navigation and represented exactly once in the build manifest.
+- **SC-003**: A contributor can add one valid project document or feature specification and see it in
+  the next successful site build without copying its content or registering the page elsewhere.
+- **SC-004**: Two independent builds from identical inputs produce identical page inventories,
+  navigation relationships, and source-to-page mappings.
+- **SC-005**: In validation tests, 100% of broken internal links, unreadable sources, missing required
+  identity metadata, and route collisions cause a failed build that names the affected source.
+- **SC-007**: Every displayed feature specification visibly identifies its title, source, stable ID,
+  and recorded lifecycle status when present, with zero cases in which a draft is presented as final.
+- **SC-008**: A repository check after preview and production builds finds zero generated or copied
+  content changes under the maintained `docs/` and `specs/` source directories.
+- **SC-009**: The publication sequence view passes all deterministic Archify showcase, provenance,
+  and freshness checks with zero errors or warnings and appears automatically on the canonical
+  Feature 002 page with source provenance and a standalone-view link.
+- **SC-010**: From the Documentation landing page, a first-time reader can reach the quick start,
+  framework overview, specification model, project structure, workflow, and command guidance in no
+  more than two navigation actions per destination.
+- **SC-013**: Every maintained framework guide that summarizes a normative workflow or boundary
+  provides at least one working link to its canonical architecture or feature authority, with zero
+  links to temporary implementation artifacts presented as permanent authority.
+- **SC-014**: From a clean checkout with zero delivered diagram files, one documented build command
+  validates and delivers 100% of declared diagrams and publishes every corresponding standalone and
+  embedded route without manual preparation.
+- **SC-015**: In tests covering missing tools, invalid sources, escaping outputs, renderer failures,
+  stale deliveries, and duplicate outputs, 100% of cases fail before publication with the responsible
+  maintained source identified and zero fallback to prior diagram bytes.
+- **SC-016**: After preview and production builds, version-control status reports zero tracked or
+  newly trackable diagram deliveries, visual-check evidence, or machine-specific absolute paths.
+
+## Assumptions
+
+- "The entire project" means three maintained human-facing content views over two source roots:
+  architecture and feature specifications under `specs/`, plus recursively discovered project
+  Markdown under `docs/`. Archify JSON remains structural authority and its generated HTML is
+  embedded from disposable projection output; API references, source-code extraction, and test reports
+  remain later features.
+- A canonical feature specification is the feature directory's root `design.md`. Temporal plans,
+  tasks, and evidence live below `attempt/`; checklists and other supporting artifacts remain
+  outside the first site's Features collection.
+- Docusaurus is a required product constraint selected by the maintainer. The implementation plan may
+  choose its supported configuration and content-integration mechanisms while preserving the source
+  ownership rules in this specification.
+- Local preview and reproducible production build are in scope. Public hosting, deployment,
+  authentication, analytics, comments, content editing, and versioned release archives are out of
+  scope for this feature.
+- The Archify renderer is installed through the official project-local skills mechanism and retained
+  at `.agents/skills/archify`; the build verifies that package rather than assuming an agent-home or
+  global executable.
+- The site may create disposable staging and build output beneath its own ignored workspace, provided
+  those projections are reproducible and never become canonical content.
+- The existing root architecture view's `publish-architecture` scenario provides the current-level
+  structural trace for this project-wide feature. The feature-owned publication sequence explains
+  deeper invocation without expanding child internals in the root view; the Documentation-module
+  feature and view remain the adjacent architectural refinement.
+- The hand-written Documentation collection is intentionally explanatory and task-oriented. It may
+  summarize README material and canonical specifications for a progressive reader journey, but
+  architecture and feature sources remain authoritative when wording or detail disagrees.

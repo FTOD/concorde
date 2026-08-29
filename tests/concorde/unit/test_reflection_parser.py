@@ -37,7 +37,7 @@ class ReflectionParserTests(unittest.TestCase):
         self.assertEqual(EFFECTS, {"assumed", "worked-around", "deferred", "blocked"})
         self.assertEqual(STATUSES, {"open", "resolved", "dismissed"})
         self.assertEqual(log_path("specs/example/"), "specs/example/reflections.md")
-        self.assertEqual(strip_reference_suffix("specs/x/spec.md#functional-requirements"), "specs/x/spec.md")
+        self.assertEqual(strip_reference_suffix("specs/x/design.md#functional-requirements"), "specs/x/design.md")
         self.assertEqual(strip_reference_suffix("src/api/invoke.py:42"), "src/api/invoke.py")
         self.assertEqual(strip_reference_suffix("feature.example.deliver"), "feature.example.deliver")
 

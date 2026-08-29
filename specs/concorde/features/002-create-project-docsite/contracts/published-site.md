@@ -26,7 +26,7 @@ JavaScript, assets, a local search index, and `build-manifest.json`.
 | `/` | Project landing page with Architecture, Documentation, and Features entry points and source counts |
 | `/architecture/**` | Architecture module, module design reference, and contract Markdown plus declared embedded views |
 | `/docs/**` | Project documents sourced from `docs/**/*.md` |
-| `/features/**` | Permanent feature pages: the TL;DR from `specs/**/tldr.md` at the feature route (with the declared feature diagrams embedded), the specification from `specs/**/spec.md` at `…/spec`, and the feature design reference from `specs/**/design.md` beside a `spec.md` at `…/design` |
+| `/features/**` | Permanent feature pages: abstract landing page, feature `design.md` at `…/design`, and `implementation.md` at `…/implementation` |
 | `/build-manifest.json` | Machine-readable successful-build inventory |
 
 For the Concorde self-hosting site, the Documentation route space includes this maintained baseline:
@@ -55,7 +55,7 @@ Draft status is visible and does not imply approval or implementation agreement.
 - Architecture, Documentation, and Features remain distinct navigation sections and share
   project-wide local search.
 - Delivered Archify HTML is sandboxed and paired with accessible, searchable architecture or feature
-  Markdown; feature diagrams are embedded automatically from `spec.md` declarations.
+  Markdown; feature diagrams are embedded automatically from `design.md` declarations.
 - Cross-collection source links resolve to the corresponding site pages with fragments preserved.
 - The Documentation landing page links directly to all six framework learning guides, and guides
   that summarize normative behavior link to the relevant canonical Architecture or Features page.

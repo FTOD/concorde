@@ -1,28 +1,44 @@
-# Feature Design Reference: Manage Bounded Architecture Sources
+---
+id: feature.architecture-core.manage-bounded-sources
+kind: feature
+module: module.concorde.architecture-core
+refines:
+  - feature.concorde.workflow
+scenarios:
+  - scenario.architecture-core.manage-bounded-sources
+contracts:
+  provided:
+    - contract.core.architecture-services
+  required: []
+evidence_status: verified
+canonical_design: specs/concorde/modules/architecture-core/features/001-manage-bounded-sources/design.md
+---
 
-**Realization status**: Accepted implementation baseline.
+# Manage Bounded Architecture Sources
 
-## Realization Overview
+**Status**: Implemented
 
-Architecture Core parses the recursive specification hierarchy and projects one module level at a time through deterministic services.
+## Outcome
 
-## Module and Feature Collaboration
+A maintainer or coding agent can safely propose a root specification hierarchy, retrieve exactly one
+architectural level for feature placement or implementation, and deterministically validate
+maintained module, feature, contract, scenario, evidence, and view relationships.
 
-The current module, immediate children, contracts, scenarios, and views are combined without exposing grandchildren.
+## Representative Scenario
 
-## Scenario Realization
+`scenario.architecture-core.manage-bounded-sources` shows proposal-only initialization followed by
+approved apply, bounded context retrieval, and read-only validation. It illustrates the feature but
+does not replace this textual definition.
 
-Initialization proposes sources; context projects a bounded level; validation runs focused deterministic rules.
+## Diagram Decision
 
-## Durable Implementation Decisions
+The parent feature's `diagrams/concorde-workflow-components.json` core architecture view shows Architecture
+Core's responsibility and its interactions with the agent, workspace, Integration, and evidence
+producers. A separate child diagram would repeat those same component boundaries; this specification
+relies on that text-backed parent view plus the Architecture Core module contract.
 
-Stable IDs and project-relative paths are resolved without agent inference; validation is read-only.
+## Requirements
 
-## Traceability and Evidence
-
-Architecture Core unit and integration tests provide evidence.
-
-## Known Limitations
-
-The runtime does not choose architectural ownership without maintainer review.
-
+- Initialization separates proposal from explicit accepted apply and refuses overwrites.
+- Context includes the current module and immediate children only, with concise boundary I/O.
+- Validation is deterministic, complete, non-mutating, and preserves unknown evidence honestly.

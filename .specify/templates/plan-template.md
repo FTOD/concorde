@@ -2,7 +2,7 @@
 
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
 
-**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+**Input**: Feature specification from `/specs/[###-feature-name]/design.md`
 
 **Note**: This template is filled in by the `$speckit-plan` command; its definition describes the execution workflow.
 
@@ -48,13 +48,13 @@
 
 ```text
 specs/[###-feature]/
-├── spec.md              # Durable feature intent ($speckit-specify output)
-├── tldr.md              # Feature TL;DR: self-contained quick understanding ($speckit-specify output)
-├── design.md            # Feature design reference (placeholder until hardening writes it)
+├── design.md              # Durable feature intent ($speckit-specify output)
+├── abstract.md              # Feature abstract: self-contained quick understanding ($speckit-specify output)
+├── implementation.md            # Feature design reference (placeholder until hardening writes it)
 ├── diagrams/            # Optional maintained feature-owned Archify explanations
 │   └── <scenario>.json
 ├── contracts/           # Durable external interface specifications
-└── implementation/      # One temporal delivery attempt
+└── attempt/      # One temporal delivery attempt
     ├── checklists/      # Temporal requirements-quality review state
     ├── plan.md          # This file ($speckit-plan command output)
     ├── research.md      # Phase 0 output ($speckit-plan command)

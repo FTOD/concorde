@@ -28,7 +28,7 @@ This leaf module has no submodules, so no separate level view is maintained; its
 
 | Feature ID | Outcome | Specification |
 |---|---|---|
-| `feature.example.api.invoke` | Invoke one API operation. | `features/001-invoke/spec.md` |
+| `feature.example.api.invoke` | Invoke one API operation. | `features/001-invoke/design.md` |
 
 ## Contracts
 

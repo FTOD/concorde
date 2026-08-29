@@ -22,9 +22,9 @@ class ValidationIntegrationTests(unittest.TestCase):
         self.assertNotIn('add_parser("ask")', cli)
 
         current_authorities = (
-            REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/spec.md",
+            REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/design.md",
             REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/agent-commands.md",
-            REPOSITORY_ROOT / "specs/concorde/features/003-install-concorde-speckit/spec.md",
+            REPOSITORY_ROOT / "specs/concorde/features/003-install-concorde-speckit/design.md",
             REPOSITORY_ROOT / "specs/concorde/features/003-install-concorde-speckit/contracts/installed-command-surfaces.md",
             REPOSITORY_ROOT / "specs/concorde/contracts/spec-kit-installation/contract.md",
             REPOSITORY_ROOT / "README.md",
@@ -60,9 +60,9 @@ class ValidationIntegrationTests(unittest.TestCase):
             root = Path(temporary) / "project"
             shutil.copytree(VALID_PROJECT, root)
             feature = root / "specs/example/features/001-deliver"
-            (feature / "design.md").rename(feature / "implementation.md")
+            (feature / "spec.md").write_text("legacy feature name", encoding="utf-8")
             (root / "specs/example/modules/api/design.md").unlink()
-            (root / "specs/example/modules/api/features/001-invoke/tldr.md").unlink()
+            (root / "specs/example/modules/api/features/001-invoke/abstract.md").unlink()
             before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}
             result = validate_project(root)
             rules = {item.rule_id for item in result.findings}
@@ -94,7 +94,7 @@ class ValidationIntegrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(VALID_PROJECT, root)
-            feature = root / "specs/example/features/001-deliver/spec.md"
+            feature = root / "specs/example/features/001-deliver/design.md"
             (feature.parent / "plan.md").write_text("invalid root plan")
             feature.write_text(feature.read_text().replace(
                 "evidence_status: unknown",

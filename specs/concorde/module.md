@@ -65,11 +65,11 @@ Feature-owned explanatory views supplement the root view; they do not expand or 
 
 | Feature ID | Outcome | Specification |
 |---|---|---|
-| `feature.concorde.workflow` | A maintainer directs feature development through a recursive specification hierarchy, architecture review gates, bounded context, and deterministic validation. | [spec.md](features/001-concorde-workflow/spec.md) |
-| `feature.concorde.publish-project-docsite` | A maintainer browses architecture sources and views, project documentation, and Spec Kit feature specifications in one generated site. | [spec.md](features/002-create-project-docsite/spec.md) |
-| `feature.concorde.install-with-spec-kit` | A maintainer inspects, installs, verifies, updates, and removes Concorde through the native Spec Kit ecosystem. | [spec.md](features/003-install-concorde-speckit/spec.md) |
-| `feature.concorde.self-host-framework` | A maintainer installs, refreshes, and verifies the current Concorde framework sources in this same checkout so framework improvements are used during Concorde's own development. | [spec.md](features/004-self-host-concorde/spec.md) |
-| `feature.concorde.record-workflow-reflections` | A coding agent records every difficulty or problem it meets while planning or implementing — about this feature, another feature's existing implementation, a module, the guidance, or a tool — in the project's one reflection log, through the existing phases and no new command; the maintainer reviews it and hardening cites the feature's entries. | [spec.md](features/005-record-workflow-reflections/spec.md) |
+| `feature.concorde.workflow` | A maintainer directs feature development through a recursive specification hierarchy, architecture review gates, bounded context, and deterministic validation. | [design.md](features/001-concorde-workflow/design.md) |
+| `feature.concorde.publish-project-docsite` | A maintainer browses architecture sources and views, project documentation, and Spec Kit feature specifications in one generated site. | [design.md](features/002-create-project-docsite/design.md) |
+| `feature.concorde.install-with-spec-kit` | A maintainer inspects, installs, verifies, updates, and removes Concorde through the native Spec Kit ecosystem. | [design.md](features/003-install-concorde-speckit/design.md) |
+| `feature.concorde.self-host-framework` | A maintainer installs, refreshes, and verifies the current Concorde framework sources in this same checkout so framework improvements are used during Concorde's own development. | [design.md](features/004-self-host-concorde/design.md) |
+| `feature.concorde.record-workflow-reflections` | A coding agent records every difficulty or problem it meets while planning or implementing — about this feature, another feature's existing implementation, a module, the guidance, or a tool — in the project's one reflection log, through the existing phases and no new command; the maintainer reviews it and hardening cites the feature's entries. | [design.md](features/005-record-workflow-reflections/design.md) |
 
 The feature nodes in the root view are observable capabilities, not runtime services. Each is
 reached from user intent through the immediate modules that provide the behavior:

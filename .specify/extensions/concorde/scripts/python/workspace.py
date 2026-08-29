@@ -30,15 +30,15 @@ def main() -> int:
         paths = resolve_selected_workspace(
             arguments.project_root,
             arguments.feature_directory,
-            allow_missing_spec=arguments.phase == "specify",
+            allow_missing_design=arguments.phase == "specify",
         )
         status = persist_selection(arguments.project_root, paths.feature_directory) if arguments.persist else "resolved"
-        payload = {"schema_version": 5, "status": status, "workspace": paths.to_dict()}
+        payload = {"schema_version": 6, "status": status, "workspace": paths.to_dict()}
         if arguments.phase:
             payload["phase"] = arguments.phase
             payload["phase_root"] = phase_target(paths, arguments.phase)
     except WorkspaceError as error:
-        payload = {"schema_version": 5, "status": "invalid", "error": str(error)}
+        payload = {"schema_version": 6, "status": "invalid", "error": str(error)}
         print(json.dumps(payload, sort_keys=True, separators=(",", ":")))
         return 1
     print(json.dumps(payload, sort_keys=True, separators=(",", ":")))

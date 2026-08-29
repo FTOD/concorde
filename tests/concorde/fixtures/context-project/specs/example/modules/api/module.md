@@ -30,7 +30,7 @@ The level view is [architecture.json](architecture.json).
 
 | Feature ID | Outcome | Specification |
 |---|---|---|
-| `feature.example.api.invoke` | Invoke a workflow API. | `features/001-invoke/spec.md` |
+| `feature.example.api.invoke` | Invoke a workflow API. | `features/001-invoke/design.md` |
 
 ## Contracts
 

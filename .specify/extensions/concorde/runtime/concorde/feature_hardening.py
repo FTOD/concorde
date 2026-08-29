@@ -1,4 +1,4 @@
-"""Review-first compaction of a completed feature attempt into the feature design reference (design.md),
+"""Review-first compaction of a completed feature attempt into feature implementation.md,
 optionally amending the providing module's design reference in the same atomic apply."""
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ TASK_REFERENCE = re.compile(r"\bT\d{3,}\b")
 CHECKLIST_LINE = re.compile(r"^\s*-\s+\[([ xX])\](?:\s+.*)?$")
 CHECKBOX_LIKE_LINE = re.compile(r"^\s*-\s+\[[^\]]*\]")
 PLACEHOLDER_MARKER = "No implementation realization has been hardened yet."
-REQUIRED_DESIGN_HEADINGS = (
+REQUIRED_IMPLEMENTATION_HEADINGS = (
     "## Realization Overview",
     "## Module and Feature Collaboration",
     "## Scenario Realization",
@@ -52,12 +52,12 @@ def _resolve_target(project: Path, package: Any, target: str | None) -> tuple[So
     return feature, paths
 
 
-def _attempt_files(project: Path, implementation_dir: str, ignored: str | None = None) -> list[str]:
-    implementation = project / implementation_dir
-    if not implementation.is_dir() or implementation.is_symlink():
-        raise WorkspaceError("hardening requires one real implementation/ directory")
+def _attempt_files(project: Path, attempt_dir: str, ignored: str | None = None) -> list[str]:
+    attempt = project / attempt_dir
+    if not attempt.is_dir() or attempt.is_symlink():
+        raise WorkspaceError("hardening requires one real attempt/ directory")
     files: list[str] = []
-    for path in sorted(implementation.rglob("*")):
+    for path in sorted(attempt.rglob("*")):
         if path.is_symlink():
             raise WorkspaceError(f"hardening input may not be a symlink: {path.relative_to(project).as_posix()}")
         if path.is_file():
@@ -71,11 +71,11 @@ def _hardening_digest(project: Path, package: Any, paths: Any, ignored: str | No
     sources = [item.path for item in package.sources]
     sources.extend(package.views)
     sources.extend(package.diagrams)
-    for durable in (paths.feature_tldr, paths.feature_design, paths.module_design, paths.reflections):
+    for durable in (paths.feature_abstract, paths.feature_implementation, paths.module_design, paths.reflections):
         candidate = project / durable
         if candidate.is_file() and not candidate.is_symlink():
             sources.append(durable)
-    sources.extend(_attempt_files(project, paths.implementation_dir, ignored))
+    sources.extend(_attempt_files(project, paths.attempt_dir, ignored))
     return digest_sources(project, sources)
 
 
@@ -150,7 +150,7 @@ def propose_hardening(
             "feature.harden",
             target or ".",
             "invalid",
-            findings=(_finding("CONCORDE-HARDEN-001", ".specify/feature.json", str(error), "Select a valid feature with a real durable tldr.md, spec.md, and design.md and an implementation attempt."),),
+            findings=(_finding("CONCORDE-HARDEN-001", ".specify/feature.json", str(error), "Select a valid feature with real durable abstract.md, design.md, and implementation.md files and an active attempt."),),
         )
     findings: list[Finding] = []
     if incomplete:
@@ -169,8 +169,8 @@ def propose_hardening(
             findings.append(_finding("CONCORDE-HARDEN-011", paths.reflections, "The project reflection log is malformed: " + "; ".join(problem.message for problem in parsed.problems), "Repair the log per the reflection-log contract (speckit.concorde.validate reports each CONCORDE-REFLECT finding) and re-propose."))
         reflection_summary = parsed.summary(feature.identifier)
     changes = [
-        {"path": paths.feature_design, "action": "update", "meaning": "Replace the feature design reference (accepted realization) with the reviewed candidate."},
-        {"path": paths.implementation_dir, "action": "delete", "meaning": "Remove the complete temporal implementation attempt after the realization is promoted."},
+        {"path": paths.feature_implementation, "action": "update", "meaning": "Replace the durable feature implementation with the reviewed candidate."},
+        {"path": paths.attempt_dir, "action": "delete", "meaning": "Remove the complete temporal attempt after the implementation is promoted."},
     ]
     result = {
         "workspace": paths.protocol_paths(),
@@ -183,14 +183,14 @@ def propose_hardening(
             "incomplete": len(checklist_incomplete),
             "malformed": len(checklist_malformed),
         },
-        "proposal_path": f"{paths.implementation_dir}/harden-proposal.json",
+        "proposal_path": f"{paths.attempt_dir}/harden-proposal.json",
         "reflection_summary": reflection_summary,
     }
-    artifacts = [paths.feature_spec, paths.feature_design, paths.tasks]
+    artifacts = [paths.feature_design, paths.feature_implementation, paths.tasks]
     if reflections_body is not None:
         artifacts.append(paths.reflections)
-    if (project / paths.feature_tldr).is_file():
-        artifacts.append(paths.feature_tldr)
+    if (project / paths.feature_abstract).is_file():
+        artifacts.append(paths.feature_abstract)
     if (project / paths.module_design).is_file():
         artifacts.append(paths.module_design)
     return OperationResult(
@@ -221,14 +221,14 @@ def _sha256_text(content: str | None) -> str | None:
     return "sha256:" + hashlib.sha256(content.replace("\r\n", "\n").encode("utf-8")).hexdigest()
 
 
-def _validate_design(content: Any) -> str:
+def _validate_implementation(content: Any) -> str:
     if not isinstance(content, str) or not content.strip():
-        raise WorkspaceError("candidate design.md content must be non-empty UTF-8 Markdown")
-    missing = [heading for heading in REQUIRED_DESIGN_HEADINGS if heading not in content]
+        raise WorkspaceError("candidate implementation.md content must be non-empty UTF-8 Markdown")
+    missing = [heading for heading in REQUIRED_IMPLEMENTATION_HEADINGS if heading not in content]
     if missing:
-        raise WorkspaceError("candidate design.md is missing required sections: " + ", ".join(missing))
+        raise WorkspaceError("candidate implementation.md is missing required sections: " + ", ".join(missing))
     if "[NEEDS CLARIFICATION" in content or "[TODO" in content or PLACEHOLDER_MARKER in content:
-        raise WorkspaceError("candidate design.md still contains unresolved or placeholder content")
+        raise WorkspaceError("candidate implementation.md still contains unresolved or placeholder content")
     return content.rstrip() + "\n"
 
 
@@ -259,7 +259,7 @@ def _amendment_target(paths: dict[str, Any], amendment: Any) -> str:
 
 
 def _uncited_open_reflections(project: Path, paths: dict[str, Any], target: str, content: str) -> list[str]:
-    """Identifiers of open entries attributed to ``target`` that the candidate design.md does not mention."""
+    """Identifiers of open entries attributed to ``target`` that candidate implementation.md omits."""
     log = project / paths["reflections"]
     if not log.is_file() or log.is_symlink():
         return []
@@ -271,10 +271,10 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
     project = Path(project_root).resolve()
     try:
         relative_proposal, proposal = _load_proposal(project, proposal_path)
-        if proposal.get("proposal_version") != 3 or proposal.get("operation") != "feature.harden":
-            raise WorkspaceError("unsupported hardening proposal; proposal_version 3 is required")
-        if "implementation" in proposal:
-            raise WorkspaceError("proposal v3 names the feature design reference under 'design'; 'implementation' is not accepted")
+        if proposal.get("proposal_version") != 4 or proposal.get("operation") != "feature.harden":
+            raise WorkspaceError("unsupported hardening proposal; proposal_version 4 is required")
+        if "design" in proposal:
+            raise WorkspaceError("proposal v4 names the durable feature implementation under 'implementation'; 'design' is not accepted")
         target = proposal.get("target")
         if not isinstance(target, str) or not target:
             raise WorkspaceError("hardening proposal target is required")
@@ -292,44 +292,44 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
                 findings=(_finding("CONCORDE-HARDEN-004", relative_proposal, "Hardening inputs changed after proposal.", "Regenerate and review a proposal against the current completed attempt."),),
                 result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"]},
             )
-        realization = proposal.get("design")
+        realization = proposal.get("implementation")
         if not isinstance(realization, dict):
-            raise WorkspaceError("proposal design must be an object with path and content")
+            raise WorkspaceError("proposal implementation must be an object with path and content")
         realization_path = realization.get("path")
-        if realization_path != paths["feature_design"]:
-            if isinstance(realization_path, str) and realization_path.rsplit("/", 1)[-1] in {"tldr.md", "spec.md", "module.md", "implementation.md"}:
-                raise WorkspaceError("hardening writes only the feature design.md; it never writes tldr.md, spec.md, module.md, or a legacy implementation.md")
-            raise WorkspaceError("proposal design path must be the selected feature's root design.md")
-        if proposal.get("remove") != [paths["implementation_dir"]]:
-            raise WorkspaceError("proposal removal set must contain exactly the selected feature's implementation/ directory")
-        content = _validate_design(realization.get("content"))
+        if realization_path != paths["feature_implementation"]:
+            if isinstance(realization_path, str) and realization_path.rsplit("/", 1)[-1] in {"abstract.md", "design.md", "module.md", "spec.md", "tldr.md"}:
+                raise WorkspaceError("hardening writes only feature implementation.md; it never writes abstract.md, design.md, module.md, spec.md, or tldr.md")
+            raise WorkspaceError("proposal implementation path must be the selected feature's root implementation.md")
+        if proposal.get("remove") != [paths["attempt_dir"]]:
+            raise WorkspaceError("proposal removal set must contain exactly the selected feature's attempt/ directory")
+        content = _validate_implementation(realization.get("content"))
         uncited = _uncited_open_reflections(project, paths, target, content)
         if uncited:
             return OperationResult(
                 "feature.harden",
                 target,
                 "invalid",
-                findings=(_finding("CONCORDE-HARDEN-012", paths["reflections"], "Open reflection entries attributed to this feature are not cited by the candidate design.md: " + ", ".join(uncited), "Cite every open entry's identifier under ## Known Limitations (or resolve or dismiss it in the log with a note), then regenerate the proposal."),),
+                findings=(_finding("CONCORDE-HARDEN-012", paths["reflections"], "Open reflection entries attributed to this feature are not cited by the candidate implementation.md: " + ", ".join(uncited), "Cite every open entry's identifier under ## Known Limitations (or resolve or dismiss it in the log with a note), then regenerate the proposal."),),
                 result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"], "reflection_summary": eligibility.result["reflection_summary"]},
             )
         repository = ProjectRepository(project)
-        design_path = repository.resolve(paths["feature_design"])
-        implementation_path = repository.resolve(paths["implementation_dir"])
+        implementation_path = repository.resolve(paths["feature_implementation"])
+        attempt_path = repository.resolve(paths["attempt_dir"])
         amendment = proposal.get("module_design")
         module_design_path: Path | None = None
         module_design_content: str | None = None
         if amendment is not None:
             module_design_path = repository.resolve(_amendment_target(paths, amendment))
             module_design_content = _validate_module_design(amendment.get("content"))
-        if design_path.is_symlink() or implementation_path.is_symlink() or (module_design_path is not None and module_design_path.is_symlink()):
+        if implementation_path.is_symlink() or attempt_path.is_symlink() or (module_design_path is not None and module_design_path.is_symlink()):
             raise WorkspaceError("hardening targets may not be symlinks")
-        old_content = design_path.read_text(encoding="utf-8") if design_path.is_file() else None
+        old_content = implementation_path.read_text(encoding="utf-8") if implementation_path.is_file() else None
         old_module_design = (
             module_design_path.read_text(encoding="utf-8")
             if module_design_path is not None and module_design_path.is_file()
             else None
         )
-        removed_artifacts = _attempt_files(project, paths["implementation_dir"])
+        removed_artifacts = _attempt_files(project, paths["attempt_dir"])
     except (RepositoryError, WorkspaceError, OSError, UnicodeError) as error:
         return OperationResult(
             "feature.harden",
@@ -339,11 +339,11 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
         )
 
     # Ordered file set promoted atomically with the attempt removal: all succeed or all are restored.
-    updates: list[tuple[Path, str]] = [(design_path, content)]
+    updates: list[tuple[Path, str]] = [(implementation_path, content)]
     if module_design_path is not None and module_design_content is not None:
         updates.append((module_design_path, module_design_content))
     stages = [(target_path, target_path.with_name(f".{target_path.name}.concorde-stage"), target_path.with_name(f".{target_path.name}.concorde-backup")) for target_path, _ in updates]
-    attempt_backup = implementation_path.with_name(".implementation.concorde-backup")
+    attempt_backup = attempt_path.with_name(".attempt.concorde-backup")
     moved_attempt = False
     try:
         for _, staged, backup in stages:
@@ -356,15 +356,15 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
         for target_path, _, backup in stages:
             if target_path.exists():
                 target_path.replace(backup)
-        implementation_path.replace(attempt_backup)
+        attempt_path.replace(attempt_backup)
         moved_attempt = True
         for target_path, staged, _ in stages:
             staged.replace(target_path)
     except (OSError, WorkspaceError) as error:
         for target_path, staged, backup in stages:
             staged.unlink(missing_ok=True)
-        if moved_attempt and attempt_backup.exists() and not implementation_path.exists():
-            attempt_backup.replace(implementation_path)
+        if moved_attempt and attempt_backup.exists() and not attempt_path.exists():
+            attempt_backup.replace(attempt_path)
         for target_path, _, backup in stages:
             if backup.exists():
                 target_path.unlink(missing_ok=True)
@@ -373,7 +373,7 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
             "feature.harden",
             target,
             "failed",
-            findings=(_finding("CONCORDE-HARDEN-006", paths["feature_directory"], f"Hardening commit failed: {error}", "Resolve the filesystem failure; the prior feature design.md, module design.md, and attempt were restored."),),
+            findings=(_finding("CONCORDE-HARDEN-006", paths["feature_directory"], f"Hardening commit failed: {error}", "Resolve the filesystem failure; the prior feature implementation.md, module design.md, and attempt were restored."),),
             result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"]},
         )
 
@@ -384,7 +384,7 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
             backup.unlink(missing_ok=True)
     except OSError as error:
         cleanup_findings.append(Finding("CONCORDE-HARDEN-007", "warning", paths["feature_directory"], f"Hardening committed but recovery cleanup is pending: {error}", "Remove the hidden Concorde backup after confirming the durable realization and version-control recovery."))
-    retained_artifacts = [paths["feature_tldr"], paths["feature_spec"], paths["module_summary"]]
+    retained_artifacts = [paths["feature_abstract"], paths["feature_design"], paths["module_summary"]]
     if (project / paths["reflections"]).is_file():
         retained_artifacts.append(paths["reflections"])
     if module_design_path is None and (project / paths["module_design"]).is_file():
@@ -392,18 +392,18 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
     parent_context = paths.get("parent_context")
     if isinstance(parent_context, dict):
         retained_artifacts.extend(
-            item for item in (parent_context.get("feature_tldr"), parent_context.get("feature_spec"), parent_context.get("feature_design"))
+            item for item in (parent_context.get("feature_abstract"), parent_context.get("feature_design"), parent_context.get("feature_implementation"))
             if isinstance(item, str)
         )
     for sibling in paths.get("siblings", []):
         sibling_root = sibling.get("feature_directory") if isinstance(sibling, dict) else None
         if isinstance(sibling_root, str):
-            for name in ("tldr.md", "spec.md", "design.md"):
+            for name in ("abstract.md", "design.md", "implementation.md"):
                 candidate = f"{sibling_root}/{name}"
                 if (project / candidate).is_file():
                     retained_artifacts.append(candidate)
     changes = list(eligibility.result["changes"])
-    result_artifacts = [paths["feature_design"]]
+    result_artifacts = [paths["feature_implementation"]]
     if module_design_path is not None:
         changes.insert(1, {"path": paths["module_design"], "action": "update", "meaning": "Amend the module design reference with the reviewed implementation detail and rationale."})
         result_artifacts.append(paths["module_design"])
@@ -414,11 +414,11 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
         tuple(result_artifacts),
         tuple(cleanup_findings),
         {
-            "workspace": {**paths, "implementation_state": "absent"},
+            "workspace": {**paths, "attempt_state": "absent"},
             "changes": changes,
             "source_digest": eligibility.result["source_digest"],
-            "design_digest_before": _sha256_text(old_content),
-            "design_digest_after": _sha256_text(content),
+            "implementation_digest_before": _sha256_text(old_content),
+            "implementation_digest_after": _sha256_text(content),
             "module_design_digest_before": _sha256_text(old_module_design) if module_design_path is not None else None,
             "module_design_digest_after": _sha256_text(module_design_content) if module_design_path is not None else None,
             "removed_artifacts": removed_artifacts,

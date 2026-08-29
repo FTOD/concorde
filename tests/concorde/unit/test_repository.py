@@ -43,7 +43,7 @@ class RepositoryTests(unittest.TestCase):
             shutil.copytree(TWO_LEVEL_PROJECT, root)
             third = root / "specs/example/features/001-checkout/subfeatures/001-authorize-payment/subfeatures/001-retry"
             third.mkdir(parents=True)
-            (third / "spec.md").write_text("---\nid: feature.example.retry\nkind: feature\n---\n# Retry\n", encoding="utf-8")
+            (third / "design.md").write_text("---\nid: feature.example.retry\nkind: feature\n---\n# Retry\n", encoding="utf-8")
             with self.assertRaisesRegex(RepositoryError, "must be features"):
                 ProjectRepository(root).load()
 
@@ -73,13 +73,13 @@ class RepositoryTests(unittest.TestCase):
                 with self.assertRaisesRegex(RepositoryError, "expected profile_version 3"):
                     ProjectRepository(root).load_config()
 
-    def test_discovers_module_and_feature_design_references_and_tldrs_as_durable_auxiliary(self):
+    def test_discovers_module_and_feature_implementation_references_and_abstracts_as_durable_auxiliary(self):
         package = ProjectRepository(VALID_PROJECT).load()
         self.assertIn("specs/example/design.md", package.auxiliary)
         self.assertIn("specs/example/modules/api/design.md", package.auxiliary)
-        self.assertIn("specs/example/features/001-deliver/design.md", package.auxiliary)
-        self.assertIn("specs/example/features/001-deliver/tldr.md", package.auxiliary)
-        self.assertNotIn("specs/example/features/001-deliver/implementation.md", package.auxiliary)
+        self.assertIn("specs/example/features/001-deliver/implementation.md", package.auxiliary)
+        self.assertIn("specs/example/features/001-deliver/abstract.md", package.auxiliary)
+        self.assertNotIn("specs/example/features/001-deliver/attempt/plan.md", package.auxiliary)
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(VALID_PROJECT, root)
@@ -91,7 +91,7 @@ class RepositoryTests(unittest.TestCase):
             root = Path(temporary) / "project"
             shutil.copytree(CONTEXT_PROJECT, root)
             feature_root = root / "specs/example/features/001-deliver"
-            source = feature_root / "spec.md"
+            source = feature_root / "design.md"
             source.write_text(
                 source.read_text(encoding="utf-8").replace(
                     "specs/example/features/001-deliver/diagrams/delivery-sequence.json",
@@ -107,7 +107,7 @@ class RepositoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(CONTEXT_PROJECT, root)
-            source = root / "specs/example/features/001-deliver/spec.md"
+            source = root / "specs/example/features/001-deliver/design.md"
             source.write_text(
                 source.read_text(encoding="utf-8").replace("role: supplemental", "role: core"),
                 encoding="utf-8",

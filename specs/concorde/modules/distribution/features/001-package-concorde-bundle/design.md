@@ -1,27 +1,55 @@
-# Feature Design Reference: Package Concorde Bundle
+---
+id: feature.distribution.package-concorde-bundle
+kind: feature
+module: module.concorde.distribution
+refines:
+  - feature.concorde.install-with-spec-kit
+  - feature.concorde.self-host-framework
+scenarios:
+  - scenario.distribution.install-bundle
+contracts:
+  provided:
+    - contract.distribution.bundle-lifecycle
+  required:
+    - contract.distribution.component-packages
+evidence_status: verified
+canonical_design: specs/concorde/modules/distribution/features/001-package-concorde-bundle/design.md
+---
 
-**Realization status**: Accepted implementation baseline.
+# Package the Concorde Bundle
 
-## Realization Overview
+**Status**: Automated package lifecycle and clean installed-command parity implemented and verified
 
-The distribution feature builds versioned preset, extension, and bundle archives plus inspectable catalog metadata.
+## Outcome
 
-## Module and Feature Collaboration
+A maintainer can inspect, install, update, and remove one native Spec Kit bundle whose resolved plan
+contains exactly the compatible Concorde preset and command extension, while project-owned sources
+and shared components remain safe. The same maintained bundle recipe also constrains development
+self-hosting: it proves that the local preset and extension identities and versions remain the pair
+distributed to user projects, without turning the bundle into a self-hosting runtime.
 
-The bundle pins the preset and extension; Spec Kit owns resolution, provenance, and installation lifecycle.
+## Representative Scenario
 
-## Scenario Realization
+`scenario.distribution.install-bundle` illustrates a maintainer previewing the bundle plan through
+Spec Kit, accepting it, and receiving an installation result governed by
+`contract.distribution.bundle-lifecycle`. The scenario is an example, not the feature definition.
 
-Release tooling validates manifests, builds archives, publishes catalog entries, and verifies their digests.
+## Diagram Decision
 
-## Durable Implementation Decisions
+The parent feature's `diagrams/spec-kit-component-model.json` identifies Distribution's package role, while
+`diagrams/bundle-installation-flow.json` shows preview, approval, install, update, and removal through Spec
+Kit. Those text-backed views already isolate this child scenario and its bundle-lifecycle crossing, so
+a separate Distribution-owned diagram would duplicate them.
 
-Components remain independently inspectable; the bundle contains no second orchestrator.
+## Requirements
 
-## Traceability and Evidence
-
-Release tests and receipts provide evidence for archive membership and provenance.
-
-## Known Limitations
-
-External catalog publication remains a separate release action.
+- The bundle pins one preset and one extension and inherits the active integration.
+- Release archives contain the exact preset template/command sources and extension command/runtime
+  sources required by a clean target; repository-local self-hosting files are excluded.
+- The bundle is presented as an installation recipe, while catalogs are presented as discovery and
+  trust metadata rather than runtime components.
+- Preview and installation resolve the same component identities and versions.
+- Repeat installation is idempotent; updates are explicit; removal respects ownership.
+- Failures do not record success and name residual state that could not be rolled back.
+- Acceptance executes the installed winning command surfaces and does not infer correctness from
+  archive membership or expected text alone.

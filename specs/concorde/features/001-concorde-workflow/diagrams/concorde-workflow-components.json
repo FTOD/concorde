@@ -142,7 +142,7 @@
       "id": "featureSpec",
       "type": "database",
       "label": "Selected Lifecycle Intent",
-      "sublabel": "tldr.md + spec.md",
+      "sublabel": "abstract.md + design.md",
       "pos": [1170, 180],
       "size": [190, 86]
     },
@@ -219,7 +219,7 @@
       "items": [
         "module.md summary + design.md reference: level architecture",
         "parent spec owns aggregate facts; child spec owns focused behavior",
-        "design.md and implementation/ remain isolated to one selected root"
+        "design.md and attempt/ remain isolated to one selected root"
       ]
     }
   ]

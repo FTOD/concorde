@@ -39,7 +39,7 @@ class Feature:
     provided_contracts: tuple[str, ...]
     required_contracts: tuple[str, ...]
     evidence_status: str
-    canonical_spec: str
+    canonical_design: str
 
 
 @dataclass(frozen=True)

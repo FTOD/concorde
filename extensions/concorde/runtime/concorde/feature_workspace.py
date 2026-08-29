@@ -31,16 +31,16 @@ class WorkspacePaths:
     parent_context: dict[str, str] | None
     siblings: tuple[dict[str, str], ...]
     feature_directory: str
-    feature_tldr: str
-    feature_spec: str
+    feature_abstract: str
     feature_design: str
+    feature_implementation: str
     module_summary: str
     module_design: str
     contracts_dir: str
     checklists_dir: str
     diagrams_dir: str
-    implementation_dir: str
-    implementation_state: str
+    attempt_dir: str
+    attempt_state: str
     plan: str
     research: str
     data_model: str
@@ -59,18 +59,18 @@ class WorkspacePaths:
 
 
 ROOT_PHASES = frozenset({"specify", "clarify", "checklist", "contracts"})
-IMPLEMENTATION_PHASES = frozenset(
+ATTEMPT_PHASES = frozenset(
     {"plan", "tasks", "implement", "analyze", "converge", "taskstoissues", "validation"}
 )
 
 
-def _implementation_state(root: Path) -> str:
-    implementation = root / "implementation"
-    if not implementation.exists():
+def _attempt_state(root: Path) -> str:
+    attempt = root / "attempt"
+    if not attempt.exists():
         return "absent"
-    if not implementation.is_dir() or implementation.is_symlink():
-        raise WorkspaceError("implementation must be a real directory below the feature root")
-    return "active" if any(implementation.iterdir()) else "active"
+    if not attempt.is_dir() or attempt.is_symlink():
+        raise WorkspaceError("attempt must be a real directory below the feature root")
+    return "active" if any(attempt.iterdir()) else "active"
 
 
 def _heading_value(body: str, heading: str) -> str:
@@ -92,7 +92,7 @@ def _heading_value(body: str, heading: str) -> str:
 def _title(body: str, fallback: str) -> str:
     for line in body.splitlines():
         if line.startswith("# "):
-            return re.sub(r"^Feature Specification:\s*", "", line[2:].strip())
+            return re.sub(r"^Feature Design:\s*", "", line[2:].strip())
     return fallback
 
 
@@ -103,8 +103,9 @@ def _summary(feature: SourceDocument, package: Any | None = None) -> dict[str, A
         "outcome": _heading_value(feature.body, "Outcome") or _title(feature.body, feature.identifier),
         "evidence_status": str(feature.metadata.get("evidence_status", "unknown")),
         "feature_directory": Path(feature.path).parent.as_posix(),
-        "tldr": f"{Path(feature.path).parent.as_posix()}/tldr.md",
-        "design": f"{Path(feature.path).parent.as_posix()}/design.md",
+        "abstract": f"{Path(feature.path).parent.as_posix()}/abstract.md",
+        "design": feature.path,
+        "implementation": f"{Path(feature.path).parent.as_posix()}/implementation.md",
     }
     if package is not None and package.auxiliary.get(log_path(package.specification_root)) is not None:
         summary["reflections_open"] = reflections_open_count(package, feature.identifier)
@@ -151,9 +152,9 @@ def _workspace_relationships(package: Any, feature: SourceDocument) -> tuple[str
     parent_context = {
         "feature_id": parent.identifier,
         "feature_directory": parent_root,
-        "feature_tldr": f"{parent_root}/tldr.md",
-        "feature_spec": parent.path,
-        "feature_design": f"{parent_root}/design.md",
+        "feature_abstract": f"{parent_root}/abstract.md",
+        "feature_design": parent.path,
+        "feature_implementation": f"{parent_root}/implementation.md",
     }
     siblings: list[dict[str, str]] = []
     for child_id in children:
@@ -185,24 +186,23 @@ def resolve_phase_paths(project_root: str | Path, feature_directory: str) -> Wor
         raise WorkspaceError(str(error)) from error
     if root.is_symlink():
         raise WorkspaceError("feature root may not be a symlink")
-    spec = root / "spec.md"
-    tldr = root / "tldr.md"
     design = root / "design.md"
-    legacy = root / "implementation.md"
-    if not root.is_dir() or not spec.is_file() or spec.is_symlink():
-        raise WorkspaceError(f"selected feature root has no canonical spec.md: {relative}")
-    if legacy.exists() and design.exists():
-        raise WorkspaceError(
-            f"selected feature root holds both implementation.md and design.md; merge the legacy implementation.md into design.md and remove it: {relative}"
-        )
-    if legacy.exists():
-        raise WorkspaceError(
-            f"selected feature root uses the legacy accepted-realization name implementation.md; rename it to design.md: {relative}"
-        )
-    if not design.is_file() or design.is_symlink():
+    abstract = root / "abstract.md"
+    implementation = root / "implementation.md"
+    legacy_spec = root / "spec.md"
+    legacy_tldr = root / "tldr.md"
+    legacy_attempt = root / "implementation"
+    if not root.is_dir() or not design.is_file() or design.is_symlink():
         raise WorkspaceError(f"selected feature root has no canonical design.md: {relative}")
-    if not tldr.is_file() or tldr.is_symlink():
-        raise WorkspaceError(f"selected feature root has no tldr.md; author the feature TL;DR: {relative}")
+    if not implementation.is_file() or implementation.is_symlink():
+        raise WorkspaceError(f"selected feature root has no canonical implementation.md: {relative}")
+    if not abstract.is_file() or abstract.is_symlink():
+        raise WorkspaceError(f"selected feature root has no abstract.md; author the feature abstract: {relative}")
+    if legacy_spec.exists() or legacy_tldr.exists() or legacy_attempt.exists():
+        raise WorkspaceError(
+            f"selected feature root still uses legacy names; rename tldr.md to abstract.md, "
+            f"spec.md to design.md, the former design.md to implementation.md, and implementation/ to attempt/: {relative}"
+        )
     feature = next(
         (item for item in package.documents("feature") if Path(item.path).parent.as_posix() == relative),
         None,
@@ -212,7 +212,7 @@ def resolve_phase_paths(project_root: str | Path, feature_directory: str) -> Wor
     workspace_kind, parent_context, siblings = _workspace_relationships(package, feature)
     if workspace_kind != classified_kind:
         raise WorkspaceError("feature containment metadata does not match its canonical path")
-    implementation = f"{relative}/implementation"
+    attempt = f"{relative}/attempt"
     reflections = log_path(package.specification_root)
     reflections_open = reflections_open_count(package, feature.identifier)
     module_summary, module_design = _module_paths(
@@ -225,22 +225,22 @@ def resolve_phase_paths(project_root: str | Path, feature_directory: str) -> Wor
         parent_context=parent_context,
         siblings=siblings,
         feature_directory=relative,
-        feature_tldr=f"{relative}/tldr.md",
-        feature_spec=f"{relative}/spec.md",
+        feature_abstract=f"{relative}/abstract.md",
         feature_design=f"{relative}/design.md",
+        feature_implementation=f"{relative}/implementation.md",
         module_summary=module_summary,
         module_design=module_design,
         contracts_dir=f"{relative}/contracts",
-        checklists_dir=f"{implementation}/checklists",
+        checklists_dir=f"{attempt}/checklists",
         diagrams_dir=f"{relative}/diagrams",
-        implementation_dir=implementation,
-        implementation_state=_implementation_state(root),
-        plan=f"{implementation}/plan.md",
-        research=f"{implementation}/research.md",
-        data_model=f"{implementation}/data-model.md",
-        quickstart=f"{implementation}/quickstart.md",
-        tasks=f"{implementation}/tasks.md",
-        validation=f"{implementation}/validation.md",
+        attempt_dir=attempt,
+        attempt_state=_attempt_state(root),
+        plan=f"{attempt}/plan.md",
+        research=f"{attempt}/research.md",
+        data_model=f"{attempt}/data-model.md",
+        quickstart=f"{attempt}/quickstart.md",
+        tasks=f"{attempt}/tasks.md",
+        validation=f"{attempt}/validation.md",
         reflections=reflections,
         reflections_open=reflections_open,
     )
@@ -277,9 +277,9 @@ def resolve_planned_phase_paths(project_root: str | Path, feature_directory: str
         parent_context = {
             "feature_id": parent.identifier,
             "feature_directory": parent_root,
-            "feature_tldr": f"{parent_root}/tldr.md",
-            "feature_spec": parent.path,
-            "feature_design": f"{parent_root}/design.md",
+            "feature_abstract": f"{parent_root}/abstract.md",
+            "feature_design": parent.path,
+            "feature_implementation": f"{parent_root}/implementation.md",
         }
         children = parent.metadata.get("subfeatures", [])
         if isinstance(children, list):
@@ -316,7 +316,7 @@ def _read_persisted_selection(project_root: Path) -> str:
 def resolve_selected_workspace(
     project_root: str | Path,
     explicit_feature_directory: str | None = None,
-    allow_missing_spec: bool = False,
+    allow_missing_design: bool = False,
 ) -> WorkspacePaths:
     project = Path(project_root).resolve()
     selected = explicit_feature_directory or os.environ.get("SPECIFY_FEATURE_DIRECTORY")
@@ -325,7 +325,7 @@ def resolve_selected_workspace(
     try:
         return resolve_phase_paths(project, selected)
     except WorkspaceError:
-        if not allow_missing_spec:
+        if not allow_missing_design:
             raise
         return resolve_planned_phase_paths(project, selected)
 
@@ -350,8 +350,8 @@ def persist_selection(project_root: str | Path, feature_directory: str) -> str:
 def phase_target(paths: WorkspacePaths, phase: str) -> str:
     if phase in ROOT_PHASES:
         return paths.feature_directory
-    if phase in IMPLEMENTATION_PHASES:
-        return paths.implementation_dir
+    if phase in ATTEMPT_PHASES:
+        return paths.attempt_dir
     raise WorkspaceError(f"unsupported Spec Kit phase: {phase}")
 
 
@@ -365,7 +365,7 @@ def _planned_paths(
     siblings: tuple[dict[str, str], ...] = (),
     specification_root: str | None = None,
 ) -> WorkspacePaths:
-    implementation = f"{relative}/implementation"
+    attempt = f"{relative}/attempt"
     module_directory = _module_directory(relative, workspace_kind)
     reflections = log_path(specification_root) if specification_root else f"{module_directory}/reflections.md"
     return WorkspacePaths(
@@ -375,22 +375,22 @@ def _planned_paths(
         parent_context=parent_context,
         siblings=siblings,
         feature_directory=relative,
-        feature_tldr=f"{relative}/tldr.md",
-        feature_spec=f"{relative}/spec.md",
+        feature_abstract=f"{relative}/abstract.md",
         feature_design=f"{relative}/design.md",
+        feature_implementation=f"{relative}/implementation.md",
         module_summary=f"{module_directory}/module.md",
         module_design=f"{module_directory}/design.md",
         contracts_dir=f"{relative}/contracts",
-        checklists_dir=f"{implementation}/checklists",
+        checklists_dir=f"{attempt}/checklists",
         diagrams_dir=f"{relative}/diagrams",
-        implementation_dir=implementation,
-        implementation_state="absent",
-        plan=f"{implementation}/plan.md",
-        research=f"{implementation}/research.md",
-        data_model=f"{implementation}/data-model.md",
-        quickstart=f"{implementation}/quickstart.md",
-        tasks=f"{implementation}/tasks.md",
-        validation=f"{implementation}/validation.md",
+        attempt_dir=attempt,
+        attempt_state="absent",
+        plan=f"{attempt}/plan.md",
+        research=f"{attempt}/research.md",
+        data_model=f"{attempt}/data-model.md",
+        quickstart=f"{attempt}/quickstart.md",
+        tasks=f"{attempt}/tasks.md",
+        validation=f"{attempt}/validation.md",
         reflections=reflections,
         reflections_open=0,
     )

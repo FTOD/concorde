@@ -34,9 +34,8 @@ Provide UTF-8 architecture sources and canonical feature specifications and acce
 from the unified `specs/` hierarchy, plus project documentation from `docs/**/*.md`, without
 relocating or modifying any authority. Architecture publication selects `**/module.md`,
 `**/contracts/**/contract.md`, and every module-level `design.md` beside a `module.md` (the module
-design reference); feature publication selects `**/tldr.md`, `**/spec.md`, and the feature-root
-`design.md` beside a `spec.md` (the feature design reference). A feature root never contains a legacy
-`implementation.md`. Markdown follows
+design reference); feature publication selects feature-root `abstract.md`, `design.md`, and
+`implementation.md`, while excluding `attempt/**`. Markdown follows
 [CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/); optional front matter follows
 [YAML 1.2.2](https://yaml.org/spec/1.2.2/). Complete field, inclusion, link, failure, and compatibility
 semantics are defined once in `specs/concorde/features/002-create-project-docsite/contracts/content-sources.md`.
@@ -70,12 +69,9 @@ route-colliding sources stop publication with rule, source, reason, and remediat
 
 ## Compatibility
 
-Version 6 adds the feature TL;DR input (`**/tldr.md`) and classifies a feature-root `design.md`
-beside a `spec.md` as the feature design reference, replacing the version-5 `**/implementation.md`
-input; source roots, route bases, and path semantics are unchanged. Version 5 replaced the
-feature-level `**/design.md` input with `**/implementation.md` (accepted realization) and admitted
-module-level `design.md` beside a `module.md` as an architecture input. Version 4 introduced permanent feature-design
-publication and build-owned delivery of declared diagrams. The self-hosting guide baseline adds
+Version 7 adopts feature `abstract.md`, `design.md`, and `implementation.md` inputs and temporal
+`attempt/**` exclusion. Module `design.md` remains an architecture input. Version 4 introduced
+permanent feature publication and build-owned delivery of declared diagrams. The self-hosting guide baseline adds
 required document instances without changing the CommonMark/YAML representation, source roots,
 inclusion globs, content kinds, or path semantics. Further changes to those structural contract
 elements require a new major contract version.

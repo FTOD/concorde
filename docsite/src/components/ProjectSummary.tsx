@@ -14,7 +14,7 @@ export default function ProjectSummary({architecture, docs, features}: ProjectSu
           <strong>Documentation</strong><span>{docs} maintained {docs === 1 ? 'page' : 'pages'}</span>
         </Link>
         <Link className="projectSummary__card" to="/features">
-          <strong>Features</strong><span>{features} canonical {features === 1 ? 'feature' : 'features'}, each opening on its TL;DR</span>
+          <strong>Features</strong><span>{features} canonical {features === 1 ? 'feature' : 'features'}, each opening on its abstract</span>
         </Link>
       </div>
     </section>

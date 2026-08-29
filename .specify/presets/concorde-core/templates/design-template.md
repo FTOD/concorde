@@ -1,35 +1,40 @@
-# Feature Design Reference: [FEATURE NAME]
 
-**Realization status**: No implementation realization has been hardened yet.
+## Concorde Architecture Alignment
 
-**Selected level**: [Top-level feature or immediate sub-feature. For a sub-feature, name the parent
-feature and treat its `tldr.md`/`spec.md`/`design.md` as read-only aggregate context; do not restate
-parent facts.]
+Record this feature in its single canonical `design.md` inside the providing module's
+`features/<number-name>/` workspace.
 
-## Realization Overview
+Keep the adjacent durable `abstract.md` (the self-contained overview this phase authors together with
+the design: Purpose, Functionality, Structure, Logic, Read Next; under 15 minutes) and
+`implementation.md` (the accepted realization). Design work may read `implementation.md` to avoid
+confusing accepted realization with required behavior, but must never update it. New features start
+with the resolved implementation template's explicit placeholder: no implementation realization has
+been hardened yet.
 
-No accepted implementation realization is recorded yet. Create a temporal `implementation/`
-workspace through the planning phase; after every task is complete and the milestone is accepted,
-use the Concorde feature-hardening command to write this document in full. Planning treats this
-placeholder as the absence of a baseline.
+- **Stable feature ID**: `feature.<namespace>.<outcome>`
+- **Providing module**: exactly one current-level module
+- **Decomposition decision**: keep the feature atomic unless one level of correlated sub-features
+  makes both aggregate and focused specifications materially simpler
+- **Feature containment**: a parent declares an ordered `subfeatures` list; each immediate child uses
+  the same `kind: feature`, declares `parent_feature`, inherits the parent module, owns one `## Outcome`,
+  and lives at `<parent>/subfeatures/<number-name>/`; a child cannot contain another child
+- **Authority split**: parent text owns aggregate outcomes, shared vocabulary/invariants, dependencies,
+  and decomposition rationale; child text owns only focused behavior and references shared parent facts
+- **Observable textual outcome**: primary definition of the feature
+- **Parent refinement**: adjacent parent-level feature IDs, or an explicit internal rationale
+- **Representative scenarios**: examples of behavior, not an exhaustive definition
+- **Core feature diagram**: at most one text-backed Archify `architecture` view for stable component
+  participation and interaction; required for a cross-component feature unless a concise
+  sufficiency rationale is recorded
+- **Supplemental diagrams**: optional workflow, sequence, data-flow, or lifecycle views for narrower
+  invocation, state, or movement questions; never substitutes for the core component view
+- **Contracts**: at least one provided contract and every required boundary contract
+- **Architecture view**: current module's one-level Archify JSON view
+- **Evidence status**: `unknown`, `partial`, `verified`, or `disagrees`
 
-## Module and Feature Collaboration
-
-No collaboration realization has been hardened yet. Module responsibilities and boundaries remain
-authoritative in the maintained module summaries, contracts, and level views.
-
-## Scenario Realization
-
-No scenario realization has been hardened yet.
-
-## Durable Implementation Decisions
-
-No implementation decisions have been hardened yet.
-
-## Traceability and Evidence
-
-No implementation evidence has been hardened yet.
-
-## Known Limitations
-
-The feature has no hardened implementation milestone.
+Place feature-owned diagrams under the selected feature/sub-feature's `diagrams/` directory and name them for the question
+or scenario they explain; do not call them `architecture.json`. Declare each diagram's `core` or
+`supplemental` role in `design.md` so
+the project docsite embeds it automatically. They supplement `design.md` and the providing module's
+bounded view, and must not silently define behavior or contracts. Do not create a parallel Concorde
+feature specification or a top-level `architecture/` source tree.

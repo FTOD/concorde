@@ -85,11 +85,11 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
                 )
                 receipts.append(receipt)
                 self.assertEqual(receipt.exit_status, 0)
-                expected = receipt.workspace["feature_directory"] if phase in {"specify", "clarify", "checklist"} else receipt.workspace["implementation_dir"]
+                expected = receipt.workspace["feature_directory"] if phase in {"specify", "clarify", "checklist"} else receipt.workspace["attempt_dir"]
                 self.assertEqual(receipt.phase_root, expected)
                 self.assertEqual(
                     receipt.workspace["checklists_dir"],
-                    receipt.workspace["implementation_dir"] + "/checklists",
+                    receipt.workspace["attempt_dir"] + "/checklists",
                 )
                 if phase in {"specify", "clarify", "checklist", "implement"}:
                     content = artifact.read_text(encoding="utf-8")

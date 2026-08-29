@@ -22,7 +22,7 @@
           "phaseSurfaces",
           "reflectionFeature",
           "reflectionLog",
-          "featureSpec"
+          "featureDesign"
         ],
         "note": "A phase meets a problem; the agent appends or updates an entry in the project log and continues, citing durable documents unchanged."
       },
@@ -33,7 +33,7 @@
           "maintainer",
           "reflectionLog",
           "validation",
-          "featureSpec",
+          "featureDesign",
           "reflectionFeature"
         ],
         "note": "The maintainer resolves or dismisses entries in the one project log and fixes the owning document through its normal path."
@@ -45,7 +45,7 @@
           "maintainer",
           "reflectionLog",
           "hardening",
-          "featureDesign",
+          "featureImplementation",
           "moduleDesign"
         ],
         "note": "Hardening presents the feature's entries by status and cites the open ones as known limitations; the log itself stays intact."
@@ -142,10 +142,10 @@
       ]
     },
     {
-      "id": "featureSpec",
+      "id": "featureDesign",
       "type": "frontend",
-      "label": "Feature Specification",
-      "sublabel": "selected root · tldr.md + spec.md",
+      "label": "Feature Design",
+      "sublabel": "abstract + design",
       "tag": "Cited, never edited",
       "pos": [
         590,
@@ -172,10 +172,10 @@
       ]
     },
     {
-      "id": "featureDesign",
+      "id": "featureImplementation",
       "type": "database",
-      "label": "Feature Design Reference",
-      "sublabel": "feature design.md",
+      "label": "Feature Implementation",
+      "sublabel": "implementation.md",
       "tag": "Decisions + known limitations",
       "pos": [
         900,
@@ -245,7 +245,7 @@
     {
       "id": "featureCitesSpec",
       "from": "reflectionFeature",
-      "to": "featureSpec",
+      "to": "featureDesign",
       "label": "cites, never edits",
       "fromSide": "top",
       "toSide": "bottom"
@@ -274,7 +274,7 @@
     {
       "id": "hardeningWritesDesign",
       "from": "hardening",
-      "to": "featureDesign",
+      "to": "featureImplementation",
       "label": "accepted realization",
       "variant": "emphasis",
       "fromSide": "bottom",

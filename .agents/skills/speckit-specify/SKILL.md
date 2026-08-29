@@ -22,22 +22,22 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase specify` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_spec`, `workspace.feature_design`, durable `workspace.*_dir` fields,
-`workspace.implementation_dir`, plan-phase paths, and `workspace.implementation_state` as the sole path authority.
-Require Protocol v5 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+`workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
+Require Protocol v6 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
 recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_spec` and `feature_design` only as aggregate durable context. Never load a
-sibling specification/implementation body or any parent/sibling `implementation/` artifact implicitly, and
+read the parent `feature_design` and `feature_implementation` only as aggregate durable context. Never load a
+sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 Bind `CHECKLISTS_DIR` to the returned `workspace.checklists_dir`; never derive it from `FEATURE_DIR`.
 
 Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
 step says to run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase specify`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
 by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
-`implementation_dir` when absent and seed a missing artifact from the active `plan-template` or
+`attempt_dir` when absent and seed a missing artifact from the active `plan-template` or
 `tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
 For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
 
@@ -129,19 +129,18 @@ Given that feature description, do this:
       - Set `SPECIFY_FEATURE_DIRECTORY` to `specs/<directory-name>`
       - If `branch_numbering` was used (and `feature_numbering` was absent), emit a one-line warning: "⚠️ `branch_numbering` in init-options.json is deprecated. Rename to `feature_numbering`."
 
-   **Create the directory and spec file**:
+   **Create the directory and feature design file**:
    - `mkdir -p SPECIFY_FEATURE_DIRECTORY`
    - Resolve the active `spec-template` through the Spec Kit preset/template resolution stack (equivalent to `specify preset resolve spec-template`)
-   - Copy the resolved `spec-template` file to `SPECIFY_FEATURE_DIRECTORY/spec.md` as the starting point
-   - Set `SPEC_FILE` to `SPECIFY_FEATURE_DIRECTORY/spec.md`
-   - Resolve `tldr-template` and `design-template` through the same public preset/template stack
-     (`specify preset resolve tldr-template`, `specify preset resolve design-template`)
-   - Set `TLDR_FILE` to `SPECIFY_FEATURE_DIRECTORY/tldr.md`; if it does not exist, copy the resolved
-     `tldr-template` to that path as the starting point of the TL;DR this command authors (step 7)
-   - If `SPECIFY_FEATURE_DIRECTORY/design.md` does not exist, copy the resolved `design-template` to
-     that path and set `DESIGN_FILE` accordingly. If it already exists, preserve it byte-for-byte;
-     specification revision never updates the accepted realization. Never create a feature-root
-     `implementation.md`; that is the legacy name of the design reference and validation rejects it.
+   - Copy the resolved `spec-template` file to `SPECIFY_FEATURE_DIRECTORY/design.md` as the starting point
+   - Set `SPEC_FILE` to `SPECIFY_FEATURE_DIRECTORY/design.md`
+   - Resolve `abstract-template` and `implementation-template` through the same public preset/template stack
+     (`specify preset resolve abstract-template`, `specify preset resolve implementation-template`)
+   - Set `ABSTRACT_FILE` to `SPECIFY_FEATURE_DIRECTORY/abstract.md`; if it does not exist, copy the resolved
+     `abstract-template` to that path as the starting point of the abstract this command authors (step 7)
+   - If `SPECIFY_FEATURE_DIRECTORY/implementation.md` does not exist, copy the resolved
+     `implementation-template` to that path and set `IMPLEMENTATION_FILE` accordingly. If it already
+     exists, preserve it byte-for-byte; design revision never updates the accepted implementation.
    - Persist the resolved path to `.specify/feature.json`:
      ```json
      {
@@ -157,9 +156,9 @@ Given that feature description, do this:
    - The spec directory and file are always created by this command, never by the hook
 
 4. Load the resolved active `spec-template` file to understand required sections. Treat the adjacent
-   `design.md` as read-only accepted realization context when it is relevant (its placeholder
-   means no realization has been hardened yet); do not move design or
-   implementation details into `spec.md` and do not update `design.md` from this command.
+   `implementation.md` as read-only accepted realization context when it is relevant (its placeholder
+   means no realization has been hardened yet); do not move implementation details into `design.md`
+   and do not update `implementation.md` from this command.
 
 5. **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints.
 
@@ -186,7 +185,7 @@ Given that feature description, do this:
        `role: supplemental` workflow, sequence, data-flow, or lifecycle diagrams when individual
        scenarios need order, timing, state, or data-movement detail. A sequence diagram MUST NOT be
        the feature's core diagram. Use descriptive filenames other than `architecture.json` and
-       declare every diagram in `spec.md` so Documentation can embed it automatically. Diagrams
+       declare every diagram in `design.md` so Documentation can embed it automatically. Diagrams
        supplement the textual feature and contracts; they do not define new behavior or low-level
        class/function inventories.
     5. Generate Functional Requirements
@@ -201,12 +200,12 @@ Given that feature description, do this:
 
 7. Write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (arguments) while preserving section order and headings.
 
-   Then author `TLDR_FILE` from the same description and the finished specification: a self-contained
+   Then author `ABSTRACT_FILE` from the same description and the finished specification: a self-contained
    quick understanding of the feature with exactly the five H2 sections `Purpose`, `Functionality`,
    `Structure` (link the declared core diagram, or the parent's core view or level view, or add a
    ```text sketch), `Logic` (the main flow, then \"**Rules the implementation must keep**\" bullets, each
    ending with the `FR-NNN` IDs it summarizes — every ID must exist in `SPEC_FILE`), and `Read Next`
-   (links to `spec.md`, `design.md`, contracts, the module summary, and any parent or sub-features).
+   (links to `design.md`, `implementation.md`, contracts, the module summary, and any parent or sub-features).
    Keep it under 3,000 body words and never let it state something `SPEC_FILE` does not.
 
 8. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
@@ -218,7 +217,7 @@ Given that feature description, do this:
 
       **Purpose**: Validate specification completeness and quality before proceeding to planning
       **Created**: [DATE]
-      **Feature**: [Link to spec.md]
+      **Feature**: [Link to design.md]
 
       ## Content Quality
 
@@ -243,9 +242,9 @@ Given that feature description, do this:
       - [ ] All functional requirements have clear acceptance criteria
       - [ ] User scenarios cover primary flows
       - [ ] Cross-component features have one core component-interaction architecture diagram or a clear sufficiency rationale
-      - [ ] The TL;DR has exactly the five sections Purpose, Functionality, Structure, Logic, Read Next, in order, and stays under 3,000 body words
-      - [ ] Every rule in the TL;DR's Logic section cites FR-NNN identifiers that spec.md defines
-      - [ ] The TL;DR is self-contained and states no requirement, scope boundary, or success criterion that spec.md does not state
+      - [ ] The abstract has exactly the five sections Purpose, Functionality, Structure, Logic, Read Next, in order, and stays under 3,000 body words
+      - [ ] Every rule in the abstract's Logic section cites FR-NNN identifiers that design.md defines
+      - [ ] The abstract is self-contained and states no requirement, scope boundary, or success criterion that design.md does not state
       - [ ] Dynamic scenario views are supplemental and no sequence diagram is designated as core
       - [ ] Feature meets measurable outcomes defined in Success Criteria
       - [ ] No implementation details leak into specification
@@ -416,7 +415,7 @@ Success criteria must be:
 ## Done When
 
 - [ ] Specification written to `SPEC_FILE` and validated against quality checklist
-- [ ] `TLDR_FILE` authored: self-contained, exactly the five sections `Purpose`, `Functionality`, `Structure`, `Logic`, `Read Next` in order, a structure link or text sketch, every `Logic` rule citing `FR-NNN` IDs defined in `SPEC_FILE`, under 3,000 body words, and nothing `SPEC_FILE` does not state
+- [ ] `ABSTRACT_FILE` authored: self-contained, exactly the five sections `Purpose`, `Functionality`, `Structure`, `Logic`, `Read Next` in order, a structure link or text sketch, every `Logic` rule citing `FR-NNN` IDs defined in `SPEC_FILE`, under 3,000 body words, and nothing `SPEC_FILE` does not state
 - [ ] Durable `DESIGN_FILE` exists, any pre-existing realization was preserved byte-for-byte, and no feature-root `implementation.md` was created
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with feature directory, spec file path, and checklist results

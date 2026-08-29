@@ -53,14 +53,14 @@ describe('maintained Concorde framework guides', () => {
       if (!guide) throw new Error(`Expected ${sourcePath} in the build manifest.`);
       expect(guide.links.some((link) =>
         link.targetSourcePath.startsWith('specs/') &&
-        /\/(tldr|spec|design|module|contract)\.md$/.test(link.targetSourcePath),
+        /\/(abstract|design|implementation|module|contract)\.md$/.test(link.targetSourcePath),
       )).toBe(true);
     }
   });
 
   it('does not present temporal implementation artifacts as permanent guide authority', async () => {
     const manifest = createManifest(await buildRegistry(projectRoot));
-    expect(manifest.pages.some((page) => page.sourcePath.includes('/implementation/'))).toBe(false);
+    expect(manifest.pages.some((page) => page.sourcePath.includes('/attempt/'))).toBe(false);
   });
 
   it('documents ask as a cited read-only agent surface rather than a runtime operation', async () => {

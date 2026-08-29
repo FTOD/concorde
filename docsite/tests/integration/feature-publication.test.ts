@@ -12,27 +12,27 @@ const finishLanding = '/features/001-alpha/subfeatures/002-finish/feature.fixtur
 const alphaLanding = '/features/001-alpha/feature.fixture.alpha';
 
 describe('canonical feature publication', () => {
-  it('includes permanent tldr.md, spec.md, and design.md recursively and excludes temporal Markdown', async () => {
+  it('includes permanent abstract.md, design.md, and implementation.md recursively and excludes temporal Markdown', async () => {
     const manifest = createManifest(await buildRegistry(fixture));
-    expect(manifest.pages.filter((page) => page.kind === 'feature-tldr')).toHaveLength(4);
-    expect(manifest.pages.filter((page) => page.kind === 'feature-specification')).toHaveLength(4);
+    expect(manifest.pages.filter((page) => page.kind === 'feature-abstract')).toHaveLength(4);
+    expect(manifest.pages.filter((page) => page.kind === 'feature-implementation')).toHaveLength(4);
     expect(manifest.pages.filter((page) => page.kind === 'feature-design')).toHaveLength(4);
     expect(manifest.pages.some((page) => page.sourcePath.endsWith('/plan.md'))).toBe(false);
-    expect(manifest.pages.some((page) => page.sourcePath.includes('/implementation/'))).toBe(false);
+    expect(manifest.pages.some((page) => page.sourcePath.includes('/attempt/'))).toBe(false);
     expect(manifest.excludedSources).toEqual([
-      {sourcePath: 'specs/001-alpha/implementation/contracts/draft/contract.md', reason: 'not-canonical-feature-artifact'},
+      {sourcePath: 'specs/001-alpha/attempt/contracts/draft/contract.md', reason: 'not-canonical-feature-artifact'},
       {sourcePath: 'specs/001-alpha/plan.md', reason: 'not-canonical-feature-artifact'},
-      {sourcePath: 'specs/001-alpha/subfeatures/001-prepare/implementation/plan.md', reason: 'not-canonical-feature-artifact'},
+      {sourcePath: 'specs/001-alpha/subfeatures/001-prepare/attempt/plan.md', reason: 'not-canonical-feature-artifact'},
     ]);
   });
 
-  it('opens every feature on its TL;DR with the specification and design reference one link away', async () => {
+  it('opens every feature on its abstract with design and implementation one link away', async () => {
     const manifest = createManifest(await buildRegistry(fixture));
-    const tldr = manifest.pages.find((page) => page.sourcePath === `${prepareRoot}/tldr.md`);
-    const specification = manifest.pages.find((page) => page.sourcePath === `${prepareRoot}/spec.md`);
+    const abstract = manifest.pages.find((page) => page.sourcePath === `${prepareRoot}/abstract.md`);
     const design = manifest.pages.find((page) => page.sourcePath === `${prepareRoot}/design.md`);
-    expect(tldr).toMatchObject({
-      kind: 'feature-tldr',
+    const implementation = manifest.pages.find((page) => page.sourcePath === `${prepareRoot}/implementation.md`);
+    expect(abstract).toMatchObject({
+      kind: 'feature-abstract',
       title: 'Prepare Alpha',
       route: prepareLanding,
       featureId: 'feature.fixture.alpha.prepare',
@@ -41,52 +41,52 @@ describe('canonical feature publication', () => {
       featureLevel: 'subfeature',
       parentFeatureId: 'feature.fixture.alpha',
       parentFeatureRoute: alphaLanding,
-      specificationRoute: `/features/001-alpha/subfeatures/001-prepare/spec`,
       designRoute: `/features/001-alpha/subfeatures/001-prepare/design`,
+      implementationRoute: `/features/001-alpha/subfeatures/001-prepare/implementation`,
       navigation: {section: 'Features', label: 'Prepare Alpha', parentRoute: alphaLanding},
-    });
-    expect(specification).toMatchObject({
-      kind: 'feature-specification',
-      route: '/features/001-alpha/subfeatures/001-prepare/spec',
-      featureId: 'feature.fixture.alpha.prepare',
-      featureLevel: 'subfeature',
-      parentFeatureRoute: alphaLanding,
-      tldrRoute: prepareLanding,
-      designRoute: '/features/001-alpha/subfeatures/001-prepare/design',
-      navigation: {section: 'Features', label: 'Specification', parentRoute: alphaLanding},
     });
     expect(design).toMatchObject({
       kind: 'feature-design',
-      title: 'Feature Design Reference: Prepare Alpha',
       route: '/features/001-alpha/subfeatures/001-prepare/design',
+      featureId: 'feature.fixture.alpha.prepare',
+      featureLevel: 'subfeature',
+      parentFeatureRoute: alphaLanding,
+      abstractRoute: prepareLanding,
+      implementationRoute: '/features/001-alpha/subfeatures/001-prepare/implementation',
+      navigation: {section: 'Features', label: 'Design', parentRoute: alphaLanding},
+    });
+    expect(implementation).toMatchObject({
+      kind: 'feature-implementation',
+      title: 'Feature Implementation: Prepare Alpha',
+      route: '/features/001-alpha/subfeatures/001-prepare/implementation',
       featureId: 'feature.fixture.alpha.prepare',
       moduleId: 'module.fixture',
       featureLevel: 'subfeature',
       parentFeatureId: 'feature.fixture.alpha',
       parentFeatureRoute: alphaLanding,
-      tldrRoute: prepareLanding,
-      specificationRoute: '/features/001-alpha/subfeatures/001-prepare/spec',
-      navigation: {section: 'Features', label: 'Design reference', parentRoute: alphaLanding},
+      abstractRoute: prepareLanding,
+      designRoute: '/features/001-alpha/subfeatures/001-prepare/design',
+      navigation: {section: 'Features', label: 'Implementation', parentRoute: alphaLanding},
     });
-    for (const page of [tldr, specification, design]) {
+    for (const page of [abstract, design, implementation]) {
       expect(page?.siblings).toEqual([expect.objectContaining({featureId: 'feature.fixture.alpha.finish', route: finishLanding})]);
     }
-    for (const landing of manifest.pages.filter((candidate) => candidate.kind === 'feature-tldr')) {
-      const pairedSpecification = manifest.pages.find((candidate) => candidate.route === landing.specificationRoute);
+    for (const landing of manifest.pages.filter((candidate) => candidate.kind === 'feature-abstract')) {
       const pairedDesign = manifest.pages.find((candidate) => candidate.route === landing.designRoute);
-      expect(pairedSpecification).toMatchObject({kind: 'feature-specification', tldrRoute: landing.route, designRoute: landing.designRoute});
-      expect(pairedDesign).toMatchObject({kind: 'feature-design', tldrRoute: landing.route, specificationRoute: landing.specificationRoute});
+      const pairedImplementation = manifest.pages.find((candidate) => candidate.route === landing.implementationRoute);
+      expect(pairedDesign).toMatchObject({kind: 'feature-design', abstractRoute: landing.route, implementationRoute: landing.implementationRoute});
+      expect(pairedImplementation).toMatchObject({kind: 'feature-implementation', abstractRoute: landing.route, designRoute: landing.designRoute});
       expect(landing.links).toEqual(expect.arrayContaining([
-        {targetSourcePath: pairedSpecification!.sourcePath, targetRoute: landing.specificationRoute!},
         {targetSourcePath: pairedDesign!.sourcePath, targetRoute: landing.designRoute!},
+        {targetSourcePath: pairedImplementation!.sourcePath, targetRoute: landing.implementationRoute!},
       ]));
     }
   });
 
-  it('embeds the declared core diagram on the TL;DR landing page and lists sub-features by TL;DR route', async () => {
+  it('embeds the declared core diagram on the abstract and lists sub-features by abstract route', async () => {
     const manifest = createManifest(await buildRegistry(fixture));
-    const landing = manifest.pages.find((page) => page.sourcePath === 'specs/001-alpha/tldr.md');
-    expect(landing).toMatchObject({kind: 'feature-tldr', route: alphaLanding, featureLevel: 'feature', status: 'Draft'});
+    const landing = manifest.pages.find((page) => page.sourcePath === 'specs/001-alpha/abstract.md');
+    expect(landing).toMatchObject({kind: 'feature-abstract', route: alphaLanding, featureLevel: 'feature', status: 'Draft'});
     expect(landing?.diagrams).toEqual([expect.objectContaining({
       source: 'specs/001-alpha/diagrams/alpha-components.json',
       role: 'core',
@@ -101,7 +101,7 @@ describe('canonical feature publication', () => {
     ]);
     expect(landing?.parentFeatureRoute).toBeUndefined();
     expect(landing?.links).toEqual(expect.arrayContaining([
-      {targetSourcePath: `${prepareRoot}/tldr.md`, targetRoute: prepareLanding},
+      {targetSourcePath: `${prepareRoot}/abstract.md`, targetRoute: prepareLanding},
     ]));
   });
 
@@ -120,6 +120,6 @@ describe('canonical feature publication', () => {
       navigation: {section: 'Architecture'},
     });
     expect(design?.architectureId).toBeUndefined();
-    expect(design?.tldrRoute).toBeUndefined();
+    expect(design?.abstractRoute).toBeUndefined();
   });
 });

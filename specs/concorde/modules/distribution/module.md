@@ -40,7 +40,7 @@ maintained sources are
 
 | Feature ID | Outcome | Refines | Specification |
 |---|---|---|---|
-| `feature.distribution.package-concorde-bundle` | A maintainer can inspect, install, update, and remove one native Spec Kit bundle whose resolved plan contains exactly the compatible Concorde preset and command extension, while project-owned sources and shared components remain safe; the same versioned recipe constrains development self-hosting without becoming a self-hosting runtime. | `feature.concorde.install-with-spec-kit`, `feature.concorde.self-host-framework` (the root self-hosting feature owns checkout mutation and freshness) | [spec.md](features/001-package-concorde-bundle/spec.md) |
+| `feature.distribution.package-concorde-bundle` | A maintainer can inspect, install, update, and remove one native Spec Kit bundle whose resolved plan contains exactly the compatible Concorde preset and command extension, while project-owned sources and shared components remain safe; the same versioned recipe constrains development self-hosting without becoming a self-hosting runtime. | `feature.concorde.install-with-spec-kit`, `feature.concorde.self-host-framework` (the root self-hosting feature owns checkout mutation and freshness) | [design.md](features/001-package-concorde-bundle/design.md) |
 
 ## Contracts
 

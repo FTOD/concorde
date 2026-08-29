@@ -1,28 +1,18 @@
-# Feature Design Reference: Fixture
-
-**Realization status**: Accepted fixture baseline.
-
-## Realization Overview
-
-The fixture feature is realized by its providing module.
-
-## Module and Feature Collaboration
-
-The providing module owns the behavior and its declared contracts.
-
-## Scenario Realization
-
-The representative scenario uses the declared workflow contract.
-
-## Durable Implementation Decisions
-
-The fixture keeps realization intentionally minimal.
-
-## Traceability and Evidence
-
-Tests provide fixture evidence.
-
-## Known Limitations
-
-This design exists only to exercise Concorde workspace behavior.
-
+---
+id: feature.example.api.invoke
+kind: feature
+module: module.example.api
+refines:
+  - feature.example.deliver
+scenarios:
+  - scenario.example.api.invoke
+contracts:
+  provided:
+    - contract.example.api
+  required: []
+evidence_status: unknown
+canonical_design: specs/example/modules/api/features/001-invoke/design.md
+---
+# Invoke
+## Outcome
+Invoke the API.

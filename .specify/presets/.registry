@@ -4,10 +4,21 @@
     "concorde-core": {
       "version": "0.3.0",
       "source": "local",
-      "manifest_hash": "sha256:13a77aada7d68ab36f15a81d8b9a6b3447662375db3b382a28cd67c19a1f3691",
+      "manifest_hash": "sha256:efc5978b8d8c38050aaa702cb2ef197c37fa71e5d96f3c1c7601d038598e2be6",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
+        "codex": [
+          "speckit.specify",
+          "speckit.clarify",
+          "speckit.checklist",
+          "speckit.plan",
+          "speckit.tasks",
+          "speckit.implement",
+          "speckit.analyze",
+          "speckit.converge",
+          "speckit.taskstoissues"
+        ],
         "claude": [
           "speckit.specify",
           "speckit.clarify",
@@ -21,6 +32,17 @@
         ]
       },
       "registered_skills": {
+        "codex": [
+          "speckit-specify",
+          "speckit-clarify",
+          "speckit-checklist",
+          "speckit-plan",
+          "speckit-tasks",
+          "speckit-implement",
+          "speckit-analyze",
+          "speckit-converge",
+          "speckit-taskstoissues"
+        ],
         "claude": [
           "speckit-specify",
           "speckit-clarify",
@@ -33,7 +55,7 @@
           "speckit-taskstoissues"
         ]
       },
-      "installed_at": "2026-08-29T04:53:53.192025+00:00"
+      "installed_at": "2026-08-29T06:08:30.103130+00:00"
     }
   }
 }

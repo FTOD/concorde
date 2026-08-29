@@ -25,14 +25,15 @@ Present the document-model rules by their stable IDs. Module summary shape
 rationale; each inventory section holds a Markdown table or `None.`; and the summary links its
 adjacent `design.md`. The reading budget is `CONCORDE-SUMMARY-005`, a WARNING that never changes the
 status. A missing, empty, or symlinked module `design.md` is `CONCORDE-MODULE-002`. Feature-root
-trio: a missing feature `design.md` is `CONCORDE-LAYOUT-005`, a legacy feature-root
-`implementation.md` is `CONCORDE-LAYOUT-007`, both names present is `CONCORDE-LAYOUT-008`, and a
-missing `tldr.md` is `CONCORDE-LAYOUT-009`. Feature TL;DR shape (`CONCORDE-TLDR-001` through
-`CONCORDE-TLDR-003`): exactly the sections `Purpose`, `Functionality`, `Structure`, `Logic`, and
+trio: a missing feature `implementation.md` is `CONCORDE-LAYOUT-005`, legacy feature-root
+`spec.md`/`tldr.md` names are `CONCORDE-LAYOUT-007`, a legacy `implementation/` attempt directory is
+`CONCORDE-LAYOUT-008`, and a
+missing `abstract.md` is `CONCORDE-LAYOUT-009`. Feature abstract shape (`CONCORDE-ABSTRACT-001` through
+`CONCORDE-ABSTRACT-003`): exactly the sections `Purpose`, `Functionality`, `Structure`, `Logic`, and
 `Read Next` in order; `Structure` links a maintained diagram, the level view, or a delivered
 architecture view, or contains a ```text sketch; and `Logic` cites only `FR-NNN` identifiers defined
-in the adjacent `spec.md` (and at least one when the spec defines any). The TL;DR reading budget
-(3,000 body words) is `CONCORDE-TLDR-004`, a WARNING that never changes the status. Project
+in the adjacent `design.md` (and at least one when the design defines any). The abstract reading budget
+(3,000 body words) is `CONCORDE-ABSTRACT-004`, a WARNING that never changes the status. Project
 reflection log (`reflections.md` directly inside the specification root; absent is not a breach):
 `CONCORDE-REFLECT-001` for an entry heading that is not `### R-NNN · title` or a missing or empty
 required field, `CONCORDE-REFLECT-002` for a duplicate identifier, `CONCORDE-REFLECT-003` for a
