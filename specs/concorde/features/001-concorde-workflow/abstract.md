@@ -24,7 +24,7 @@ approved milestone turns work in progress into accepted realization.
 | Where | File | What it is |
 |---|---|---|
 | module root | `module.md` | the summary of the level: responsibility, boundary, structure diagram, feature/contract/submodule tables, one scenario, key rationale; under 20 minutes |
-| module root | `implementation.md` | the module design reference: implementation notes, rationale, alternatives, decision log; consulted, never required |
+| module root | `design.md` | the module design reference: implementation notes, rationale, alternatives, decision log; consulted, never required |
 | feature root | `abstract.md` | this kind of page: purpose, functionality, structure, logic; under 15 minutes |
 | feature root | `design.md` | the complete behavioral authority: scenarios, requirements, success criteria |
 | feature root | `implementation.md` | the feature design reference: how the accepted implementation realizes the feature, in full detail; written only by acceptance |
@@ -35,7 +35,7 @@ skills or slash commands:
 
 | Surface | What it does |
 |---|---|
-| `speckit.concorde.init` | Proposes, and on approval creates, the root module package: `module.md`, `implementation.md`, a seed level view under `architecture/diagrams/`, initial contracts, `.concorde/config.json`. Idempotent. |
+| `speckit.concorde.init` | Proposes, and on approval creates, the root module package: `module.md`, `design.md`, a seed level view under `architecture/diagrams/`, initial contracts, `.concorde/config.json`. Reports an existing configured hierarchy as unchanged. |
 | `speckit.concorde.context` | Returns exactly one level — a module with its immediate children, current-level features, contracts, and scenarios, or a feature with its parent and siblings — with any `implementation.md` as a link, never as content. |
 | `speckit.concorde.ask` | Answers a workflow question read-only from installed guidance, module summaries, and feature abstracts, citing anything deeper it opens. Agent-followed; no runtime. |
 | `speckit.concorde.validate` | Checks every maintained source deterministically and returns sorted findings with rule, severity, location, and remediation; byte-equivalent on repeat. |
@@ -58,7 +58,7 @@ The core view is <a href="/architecture/concorde-workflow-components.html">workf
 Maintainer ──invoke · review · approve──▶ Coding-agent integration (skills / slash commands)
                                             ├─ 9 Spec Kit phase surfaces ──▶ selected-workspace adapter ──▶ .specify/feature.json
                                             └─ 5 Concorde surfaces ─────────▶ launchers + Python runtime ──▶ architecture sources
-                                                 (init · context · validate · impl.accept · ask)        (module.md · implementation.md · architecture/: diagrams · contracts · modules)
+                                                 (init · context · validate · impl.accept · ask)        (module.md · design.md · architecture/: diagrams · contracts · modules)
 
 Selected feature root:   abstract.md   design.md   implementation.md      +   attempt/  (one attempt, until accepted)
                          read      authority reference           plan · tasks · checklists · research · evidence

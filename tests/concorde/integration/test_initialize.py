@@ -24,6 +24,11 @@ class InitializationTests(unittest.TestCase):
             second = propose_initialization(root)
             self.assertEqual(first, second)
             self.assertEqual(first.status, "proposal")
+            interaction = first.result["interaction_model"]
+            self.assertEqual(interaction["user_interface"], "skills")
+            self.assertEqual(interaction["deterministic_operations"], "scripts")
+            self.assertEqual(interaction["workspace_state"], "files")
+            self.assertIn("attempt/", interaction["file_lifetimes"]["temporal"])
             proposal = first.result["proposal"]
             self.assertRegex(proposal["project_root_id"], r"^module\.[a-z0-9-]+$")
             self.assertTrue(proposal["responsibility"])
@@ -41,6 +46,13 @@ class InitializationTests(unittest.TestCase):
             module = next(item for item in proposal["files"] if item["path"].endswith("/module.md"))
             self.assertNotIn("view:", module["content"].split("---")[1])
             self.assertIn("(architecture/diagrams/level-view.json)", module["content"])
+            for concept in ("Skills", "Scripts", "Workspace Files", "attempt/"):
+                self.assertIn(concept, module["content"])
+            diagram = next(item for item in proposal["files"] if item["path"].endswith("/level-view.json"))
+            diagram_content = json.loads(diagram["content"])
+            self.assertEqual(diagram_content["meta"]["quality_profile"], "showcase")
+            self.assertRegex(diagram_content["meta"]["views"][0]["id"], r"^scenario-example-project-[a-z0-9-]+-root-overview$")
+            self.assertNotIn("stable_id", diagram_content["components"][0])
             for item in proposal["files"]:
                 self.assertEqual(item["sha256"], "sha256:" + hashlib.sha256(item["content"].encode()).hexdigest())
             self.assertEqual(list(root.rglob("*")), before)
@@ -63,6 +75,45 @@ class InitializationTests(unittest.TestCase):
             conflict = apply_proposal(root, "accepted.json")
             self.assertEqual(conflict.status, "conflict")
             self.assertEqual((root / "specs/sample/module.md").read_text(), "user change")
+
+    def test_existing_configured_architecture_is_reported_not_reproposed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            proposed = propose_initialization(root, "module.sample", "Sample")
+            (root / "accepted.json").write_text(json.dumps(proposed.result["proposal"]))
+            self.assertEqual(apply_proposal(root, "accepted.json").status, "success")
+            design = root / "specs/sample/design.md"
+            design.write_text(design.read_text() + "\nProject-specific decision.\n")
+
+            result = propose_initialization(root, "module.different", "Different")
+
+            self.assertEqual(result.status, "unchanged")
+            self.assertNotIn("proposal", result.result)
+            self.assertEqual(result.result["architecture"]["root_module_id"], "module.sample")
+            self.assertEqual(result.result["architecture"]["children"], ())
+            self.assertEqual(result.result["interaction_model"]["user_interface"], "skills")
+            self.assertEqual(set(result.artifacts), {
+                ".concorde/config.json",
+                "specs/sample/module.md",
+                "specs/sample/design.md",
+                "specs/sample/architecture/diagrams/level-view.json",
+            })
+
+    def test_existing_incomplete_configured_architecture_is_a_conflict(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / ".concorde").mkdir()
+            (root / ".concorde/config.json").write_text(json.dumps({
+                "profile_version": 4,
+                "root_module_id": "module.sample",
+                "specification_root": "specs/sample",
+            }))
+
+            result = propose_initialization(root)
+
+            self.assertEqual(result.status, "conflict")
+            self.assertEqual([item.rule_id for item in result.findings], ["CONCORDE-INIT-006"])
+            self.assertFalse((root / "specs").exists())
 
     def test_partial_package_conflicts_without_promotion(self):
         with tempfile.TemporaryDirectory() as temporary:

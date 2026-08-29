@@ -59,6 +59,12 @@ shape, a seeded `design.md` design reference, and a first level view at
 `<root>/architecture/contracts/`. Review the proposal before approval; it does not silently overwrite
 existing maintained content.
 
+The result names the workflow mechanics explicitly: Skills are the maintainer-facing interface,
+Scripts perform deterministic operations, and Workspace Files distinguish durable sources, temporal
+`attempt/` memory, and generated projections. These are not automatically created as product modules.
+When `.concorde/config.json` already resolves a complete root package, init returns `unchanged` with
+the current root paths, children, features, and contracts instead of comparing it with starter text.
+
 Do not use it to create every module in advance. Decompose only when another abstraction level has a
 meaningful responsibility and boundary.
 

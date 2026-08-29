@@ -59,13 +59,16 @@ Propose, review, and initialize a minimal root Concorde specification hierarchy.
    `proposal` or `unchanged`. Include responsibility, boundary, explicit provided/required contract
    sets, immediate child summaries, every proposed path (configuration, `module.md` summary in the
    Profile 4 shape linking its level view and reference, seeded `design.md` reference, and the
-   level view `architecture/diagrams/level-view.json`), and conflicts. A target holding a summary without a reference, or the
-   reverse, is a conflict, not a partial success.
+   level view `architecture/diagrams/level-view.json`), the Skills/Scripts/Workspace-Files
+   interaction model, and conflicts. A target holding a summary without a reference, or the reverse,
+   is a conflict, not a partial success.
 2. The agent presents that proposal for maintainer review and does not translate silence into
    acceptance.
 3. With `--apply --proposal <path>`, validate the proposal and current target state, stage all files,
    and promote them only when no conflict exists.
-4. Re-running against the same initialized package returns `unchanged` without modifying files.
+4. Re-running against a complete configured package returns `unchanged` with its current root paths,
+   children, features, and contracts, even if maintained content differs from the starter template;
+   no replacement proposal is emitted and no files are modified.
 
 ### Success artifacts
 

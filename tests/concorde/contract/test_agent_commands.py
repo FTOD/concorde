@@ -44,6 +44,18 @@ class AgentCommandContractTests(unittest.TestCase):
             self.assertNotIn(executable, ask_content)
         self.assertNotIn(str(REPOSITORY_ROOT), ask_content)
 
+        init_content = (commands / "speckit.concorde.init.md").read_text(encoding="utf-8")
+        for invariant in (
+            "interaction_model",
+            "Skills",
+            "Scripts",
+            "Workspace Files",
+            "attempt/",
+            "status is `unchanged`",
+            "do not invent product modules",
+        ):
+            self.assertIn(invariant, init_content)
+
     def test_distribution_handoff_names_nine_normal_and_five_concorde_intents(self):
         contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts"
         command_contract = (contracts / "agent-commands.md").read_text(encoding="utf-8")

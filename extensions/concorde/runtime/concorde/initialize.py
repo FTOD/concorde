@@ -6,10 +6,11 @@ import hashlib
 import json
 import re
 from dataclasses import asdict
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .model import MODULE_DIAGRAMS_DIRECTORY, Finding, InitializationProposal, OperationResult, ProposalFile
+from .projection import markdown_section
 from .repository import PROFILE_VERSION, ProjectRepository, RepositoryError, safe_relative_path
 
 
@@ -28,6 +29,83 @@ def _proposal_file(path: str, content: str) -> ProposalFile:
 
 def _proposal_payload(proposal: InitializationProposal) -> dict[str, Any]:
     return asdict(proposal)
+
+
+def _interaction_model() -> dict[str, Any]:
+    """Describe the workflow mechanics without pretending they are product modules."""
+    return {
+        "user_interface": "skills",
+        "deterministic_operations": "scripts",
+        "workspace_state": "files",
+        "file_lifetimes": {
+            "durable": "module and feature sources outside attempt/",
+            "temporal": "current delivery memory below the selected feature's attempt/",
+            "generated": "disposable projections that never become source authority",
+        },
+    }
+
+
+def _configured_architecture(project_root: Path) -> OperationResult | None:
+    """Report an existing initialized hierarchy instead of proposing a starter overwrite."""
+    config_path = project_root / ".concorde/config.json"
+    if not config_path.exists():
+        return None
+    repository = ProjectRepository(project_root)
+    try:
+        package = repository.load()
+        roots = package.by_id.get(package.root_module_id, ())
+        if len(roots) != 1 or roots[0].kind != "module":
+            raise RepositoryError("configured root_module_id does not resolve to exactly one module")
+        module = roots[0]
+        module_directory = PurePosixPath(module.path).parent
+        design_path = f"{module_directory}/design.md"
+        level_view = f"{module_directory}/{MODULE_DIAGRAMS_DIRECTORY}/level-view.json"
+        for required in (design_path, level_view):
+            target = repository.resolve(required)
+            if target.is_symlink() or not target.is_file():
+                raise RepositoryError(f"configured root package is incomplete: {required} is missing")
+    except RepositoryError as error:
+        finding = Finding(
+            "CONCORDE-INIT-006",
+            "error",
+            ".concorde/config.json",
+            f"A configured architecture already exists but cannot be treated as initialized: {error}",
+            "Reconcile the existing configuration and root package; initialization never replaces or migrates it.",
+        )
+        return OperationResult(
+            "init",
+            ".",
+            "conflict",
+            findings=(finding,),
+            result={"interaction_model": _interaction_model()},
+        )
+
+    contracts = module.metadata.get("contracts", {})
+    if not isinstance(contracts, dict):
+        contracts = {}
+    artifacts = (".concorde/config.json", module.path, design_path, level_view)
+    return OperationResult(
+        "init",
+        ".",
+        "unchanged",
+        artifacts=tuple(sorted(artifacts)),
+        result={
+            "architecture": {
+                "root_module_id": package.root_module_id,
+                "specification_root": package.specification_root,
+                "module_summary": module.path,
+                "module_design": design_path,
+                "level_view": level_view,
+                "responsibility": markdown_section(module.body, "Responsibility"),
+                "boundary": markdown_section(module.body, "Boundary"),
+                "children": tuple(module.metadata.get("children", [])),
+                "features": tuple(module.metadata.get("features", [])),
+                "provided_contracts": tuple(contracts.get("provided", [])),
+                "required_contracts": tuple(contracts.get("required", [])),
+            },
+            "interaction_model": _interaction_model(),
+        },
+    )
 
 
 def _create_proposal(project_root: Path, module_id: str | None, name: str | None) -> InitializationProposal:
@@ -59,18 +137,23 @@ contracts:
 
 ## Responsibility
 
-Provide the observable responsibility of {project_name}.
+Describe and govern the project-level outcome provided by {project_name}.
 
 ## Boundary
 
-Own the project-level outcome while excluding responsibilities delegated to future submodules.
+Own the project-level outcome and delegate distinct product responsibilities only to explicitly
+reviewed child modules. Concorde's Skills, Scripts, and Workspace Files are development-workflow
+mechanisms, not product modules unless {project_name} exposes those things as product behavior.
 
 ## Structure
 
 The level view is [level-view.json]({MODULE_DIAGRAMS_DIRECTORY}/level-view.json); it shows the root
-boundary and the maintainer. Add immediate submodules to the view before listing them below. Further
-diagrams of this level live beside it under `{MODULE_DIAGRAMS_DIRECTORY}/` and are linked from this
-summary or from the [design reference](design.md).
+boundary before any product decomposition has been accepted. Durable architecture lives in this
+`module.md`, the adjacent [design reference](design.md), and `architecture/`; feature intent and
+accepted realization will live under `features/`, while current delivery memory will live only below
+the selected feature's `attempt/`. Add an immediate product module to the view and the inventory
+together. Further diagrams of this level live beside the level view under
+`{MODULE_DIAGRAMS_DIRECTORY}/`.
 
 ## Features
 
@@ -86,31 +169,48 @@ None.
 
 ## Representative Scenario
 
-`scenario.{module_slug}.root-overview`: a maintainer reviews the root boundary before any
-submodule or feature is added.
+`scenario-{module_slug}-root-overview`: a maintainer reviews the durable root boundary and the empty
+product-module inventory before adding a feature or child module through the installed skills.
 
 ## Design Rationale
 
-The root starts as one module so ownership is explicit before decomposition; implementation notes
-and decisions are kept in the [design reference](design.md).
+The root starts without guessed product modules. Maintainers interact through Skills, those skills
+invoke Scripts for deterministic operations, and both operate on explicit Workspace Files. Product
+architecture remains separate from those workflow mechanics; implementation notes and decisions are
+kept in the [design reference](design.md).
 """
     design = f"""# Design Reference: {project_name}
 
 ## Implementation Notes
 
-No implementation detail has been recorded for this module yet.
+No product implementation detail has been recorded for this module yet.
+
+Concorde manages this architecture through three explicit mechanisms:
+
+- **Skills** are the maintainer-facing workflow interface.
+- **Scripts** provide workspace routing and deterministic proposal, context, validation, and
+  acceptance behavior when a skill requires it.
+- **Workspace Files** preserve durable architecture and feature intent outside `attempt/`, temporal
+  delivery memory inside the selected feature's `attempt/`, and generated projections outside the
+  maintained source hierarchy.
+
+These mechanisms support development; they do not determine {project_name}'s product-module names.
 
 ## Design Rationale
 
-No design rationale has been recorded for this module yet.
+The root is initialized without inferred product decomposition so maintainers can name modules after
+observable product responsibilities rather than after framework or tooling internals.
 
 ## Alternatives Considered
 
-None recorded yet.
+- Inferring child modules from repository directories was rejected because source layout is not
+  reliable evidence of product responsibility.
+- Creating Skills, Scripts, or Workspace Files as product modules by default was rejected because
+  those are Concorde workflow roles unless the project itself exposes them as product behavior.
 
 ## Decision Log
 
-- Initialized the root module package.
+- Initialized the durable root module package and kept workflow mechanics separate from product architecture.
 """
     architecture = json.dumps(
         {
@@ -119,19 +219,39 @@ None recorded yet.
             "meta": {
                 "title": f"{project_name} — Root Module",
                 "output": f"../../../../generated/architecture/{module_slug}-level-view.html",
+                "quality_profile": "showcase",
+                "viewBox": [720, 520],
                 "views": [
                     {
-                        "id": f"scenario.{module_slug}.root-overview",
+                        "id": f"scenario-{module_slug}-root-overview",
                         "label": "Root overview",
                         "focus": ["maintainer"],
-                        "note": "Review the root boundary before adding immediate submodules.",
+                        "note": "Review the durable root boundary before adding product features or immediate modules.",
                     }
                 ],
             },
             "components": [
-                {"id": "maintainer", "type": "external", "label": "Maintainer", "stable_id": "external.maintainer"}
+                {
+                    "id": "maintainer",
+                    "type": "external",
+                    "label": "Maintainer",
+                    "sublabel": "Reviews the durable root boundary",
+                    "pos": [250, 170],
+                    "size": [220, 88],
+                }
             ],
             "connections": [],
+            "cards": [
+                {
+                    "dot": "cyan",
+                    "title": "Concorde workflow mechanics",
+                    "items": [
+                        "Skills are the maintainer-facing interface",
+                        "Scripts perform deterministic operations",
+                        "Workspace Files separate durable intent from temporal attempts",
+                    ],
+                }
+            ],
         },
         indent=2,
         sort_keys=True,
@@ -150,8 +270,8 @@ None recorded yet.
     return InitializationProposal(
         proposal_version=1,
         project_root_id=identifier,
-        responsibility=f"Provide the observable responsibility of {project_name}.",
-        boundary="Own the project-level outcome; delegate internal responsibilities to explicit submodules.",
+        responsibility=f"Describe and govern the project-level outcome provided by {project_name}.",
+        boundary="Keep product responsibilities explicit while treating Skills, Scripts, and Workspace Files as workflow mechanics.",
         provided_contracts=(),
         required_contracts=(),
         children=(),
@@ -162,16 +282,30 @@ None recorded yet.
 
 def propose_initialization(project_root: str | Path, module_id: str | None = None, name: str | None = None) -> OperationResult:
     root = Path(project_root).resolve()
+    configured = _configured_architecture(root)
+    if configured is not None:
+        return configured
     try:
         proposal = _create_proposal(root, module_id, name)
     except ValueError as error:
         finding = Finding("CONCORDE-INIT-002", "error", ".concorde/config.json", str(error), "Use a lowercase stable module.<namespace> ID.")
-        return OperationResult("init", ".", "invalid", findings=(finding,))
+        return OperationResult("init", ".", "invalid", findings=(finding,), result={"interaction_model": _interaction_model()})
     files = proposal.files
     existing = [(root / item.path).is_file() and (root / item.path).read_text(encoding="utf-8") == item.content for item in files]
     if all(existing):
-        return OperationResult("init", ".", "unchanged", tuple(item.path for item in files), result={"proposal": _proposal_payload(proposal)})
-    return OperationResult("init", ".", "proposal", result={"proposal": _proposal_payload(proposal)})
+        return OperationResult(
+            "init",
+            ".",
+            "unchanged",
+            tuple(item.path for item in files),
+            result={"interaction_model": _interaction_model(), "proposal": _proposal_payload(proposal)},
+        )
+    return OperationResult(
+        "init",
+        ".",
+        "proposal",
+        result={"interaction_model": _interaction_model(), "proposal": _proposal_payload(proposal)},
+    )
 
 
 def _load_accepted(root: Path, proposal_path: str) -> InitializationProposal:
