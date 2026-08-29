@@ -22,6 +22,11 @@ defines); `spec.md` owns feature behavior; the feature `design.md` records the a
 contract Markdown own architecture prose; Archify JSON owns
 view structure; code owns implementation; and tests own executable evidence.
 
+Record every specification, architecture, cross-feature, or guidance problem planning cannot resolve
+as an entry in the project reflection log (`workspace.reflections`, the one maintained file a phase
+may append to) and list those entries in this gate; never resolve them by editing a durable document
+or another feature's sources.
+
 Read the root `design.md` as the accepted baseline and identify the proposed realization delta;
 when it still holds the placeholder, record "no accepted baseline" rather than inventing one. Read the
 providing module's `module.md` as bounded context and open its `design.md` only for a specific

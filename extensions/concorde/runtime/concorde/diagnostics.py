@@ -82,6 +82,7 @@ def operation_envelope(value: OperationResult) -> dict[str, Any]:
                     "module_design_digest_after",
                     "removed_artifacts",
                     "retained_artifacts",
+                    "reflection_summary",
                 )
                 if key in value.result
             },

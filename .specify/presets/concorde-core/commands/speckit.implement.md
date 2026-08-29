@@ -116,7 +116,11 @@ For `checklist`, resolve `checklist-template` separately through the same public
      only to the explicit Concorde feature-hardening command after all tasks are complete. Record
      rationale, alternatives, and implementation detail discovered during execution inside the
      attempt (`IMPLEMENTATION_DIR/research.md` or `IMPLEMENTATION_DIR/validation.md`) so hardening
-     can carry them into the feature `design.md` and the module `design.md`.
+     can carry them into the feature `design.md` and the module `design.md`. Record every
+     difficulty or problem met while executing — including existing code or tests of another
+     feature that disagree with that feature's design reference (an `implementation` entry whose
+     `Concerns` names that feature; never edit its sources) — in the project reflection log per
+     Reflection Recording below, in the same phase, before the completion report.
    - **REQUIRED**: Read TASKS (`IMPLEMENTATION_DIR/tasks.md`) for the complete task list and execution plan
    - **REQUIRED**: Read IMPL_PLAN (`IMPLEMENTATION_DIR/plan.md`) for tech stack, architecture, and file structure
    - **IF EXISTS**: Read `IMPLEMENTATION_DIR/data-model.md` for entities and relationships
@@ -202,6 +206,8 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 8. Progress tracking and error handling:
    - Report progress after each completed task
+   - Before marking a task failed, and before any halt, record the problem in the project reflection
+     log (Reflection Recording below); a halt gets `Effect: blocked` with the stop reason in `Action`
    - Halt execution if any non-parallel task fails
    - For parallel tasks [P], continue with successful tasks, report failed ones
    - Provide clear error messages with context for debugging
@@ -218,6 +224,42 @@ For `checklist`, resolve `checklist-template` separately through the same public
      for behavior or contracts
 
 Note: This command assumes a complete task breakdown exists in tasks.md. If tasks are incomplete or missing, suggest running `$speckit-tasks` first to regenerate the task list.
+
+## Reflection Recording
+
+Every phase after specification records the difficulties and problems it meets in the project's one
+reflection log: the maintained file returned as `workspace.reflections`
+(`<specification_root>/reflections.md`). It is never per feature or per attempt, and no operation
+removes it.
+
+- **When**: whenever this phase cannot follow the specification, the accepted design reference, an
+  existing implementation it depends on, the installed guidance, the level's architecture, or the
+  plan as written, or must assume, work around, defer, or stop — record it in this phase, before the
+  completion report, not later. A problem met and solved within the phase is still recorded.
+- **Where**: append to `workspace.reflections`. If the file does not exist, create it first from the
+  template resolved by `specify preset resolve reflections-template`. Append only; never rewrite,
+  reorder, renumber, or delete entries.
+- **What**: one `### R-NNN · <short title>` entry (the next unused identifier) with the fields, in
+  order, `Phase` (this phase), `Date`, `Feature` (`workspace.feature_id`), `Kind`
+  (`specification`, `architecture`, `guidance`, `tooling`, `environment`, or `implementation`),
+  `Concerns` (a stable ID or project-relative path anywhere in the project — another feature, its
+  design reference or code, a module, a contract, an instruction, a tool), `Expected`, `Observed`,
+  `Effect` (`assumed`, `worked-around`, `deferred`, or `blocked`), `Action`, `Improvement`, and
+  `Status: open`. The grammar is fixed by the log template and checked by
+  `speckit.concorde.validate` (`CONCORDE-REFLECT-001` to `-004`).
+- **Never fix in place**: a problem with `tldr.md`, `spec.md`, any `design.md`, any `module.md`, a
+  contract, a view, a diagram, or another feature's code or tests is recorded, not edited; the
+  owning phase or the maintainer changes that source later.
+- **Update, don't duplicate**: when the log already holds the same problem — recorded by any phase
+  on any feature — add a line under its `- **Occurrences**:` list
+  (`<phase> <date> <feature-id> — <context>`) instead of a new entry. Never change a `Status` or
+  `Note` a maintainer set.
+- **Bounded**: recording never requires opening another root's `implementation/`; cite the other
+  feature by stable ID or path.
+- **Hygiene**: no secrets, credentials, or bulk output — cite the evidence path instead; keep
+  `Expected`, `Observed`, and `Action` under about 150 words together.
+- **Report**: end the completion report with `Reflections added: <identifiers or none> · open for
+  this feature: <count>` (`workspace.reflections_open` at phase start plus the open entries added).
 
 ## Mandatory Post-Execution Hooks
 
@@ -256,7 +298,8 @@ Check if `.specify/extensions.yml` exists in the project root.
 
 ## Completion Report
 
-Report final status with summary of completed work.
+Report final status with summary of completed work, then the line
+`Reflections added: <identifiers or none> · open for this feature: <count>`.
 
 ## Done When
 

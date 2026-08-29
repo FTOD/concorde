@@ -7,7 +7,8 @@
     "specs/example/architecture.json",
     "specs/example/design.md",
     "specs/example/module.md",
-    "specs/example/modules/api/module.md"
+    "specs/example/modules/api/module.md",
+    "specs/example/reflections.md"
   ],
   "findings": [],
   "result": {
@@ -102,7 +103,13 @@
       "feature_workspace": null,
       "feature_diagrams": [],
       "contracts": [],
-      "evidence": []
+      "evidence": [],
+      "reflections": {
+        "path": "specs/example/reflections.md",
+        "open": {
+          "feature.example.deliver-workflow": 1
+        }
+      }
     }
   }
 }

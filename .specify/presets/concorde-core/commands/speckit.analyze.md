@@ -76,7 +76,9 @@ Identify inconsistencies, duplications, ambiguities, and underspecified items ac
 
 ## Operating Constraints
 
-**STRICTLY READ-ONLY**: Do **not** modify any files. Output a structured analysis report. Offer an optional remediation plan (user must explicitly approve before any follow-up editing commands would be invoked manually).
+**STRICTLY READ-ONLY**: Do **not** modify any files, with one exception: this phase may append to
+the project reflection log (`workspace.reflections`) per Reflection Recording below, and never
+repairs that log. Output a structured analysis report. Offer an optional remediation plan (user must explicitly approve before any follow-up editing commands would be invoked manually).
 
 **Constitution Authority**: The project constitution (`.specify/memory/constitution.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `$speckit-analyze`.
 
@@ -106,6 +108,15 @@ Load only the minimal necessary context from each artifact:
 - User Stories
 - Edge Cases (if present)
 - Feature-diagram roles, maintained JSON paths, textual counterparts, and sufficiency rationales
+
+**From the project reflection log (`workspace.reflections`, when present):**
+
+- Every entry whose `Feature` is the selected root: identifier, `Kind`, `Concerns`, `Effect`,
+  `Status`, `Date`
+- For each such entry, whether its `Concerns` or `Feature` source changed after its `Date`
+  (deterministic proxy: `git log -1 --format=%cs -- <path>` later than `Date`, or a stable ID that
+  no longer resolves) — such an entry is **stale**
+- A malformed log is reported as a finding; it is never repaired here
 
 **From tldr.md:**
 
@@ -219,6 +230,15 @@ Output a Markdown report (no file writes) with the following structure:
 
 (Add one row per finding; generate stable IDs prefixed by category initial.)
 
+**Reflections:** (when the project log exists)
+
+| Entry | Kind | Concerns | Effect | Status | Stale? |
+|-------|------|----------|--------|--------|--------|
+
+List every entry attributed to the selected feature; mark stale entries; end with
+`Open for this feature: <count>` and, when a `deferred` open entry names genuine remaining work,
+recommend `$speckit-converge`.
+
 **Coverage Summary Table:**
 
 | Requirement Key | Has Task? | Task IDs | Notes |
@@ -248,6 +268,42 @@ At end of report, output a concise Next Actions block:
 ### 8. Offer Remediation
 
 Ask the user: "Would you like me to suggest concrete remediation edits for the top N issues?" (Do NOT apply them automatically.)
+
+## Reflection Recording
+
+Every phase after specification records the difficulties and problems it meets in the project's one
+reflection log: the maintained file returned as `workspace.reflections`
+(`<specification_root>/reflections.md`). It is never per feature or per attempt, and no operation
+removes it.
+
+- **When**: whenever this phase cannot follow the specification, the accepted design reference, an
+  existing implementation it depends on, the installed guidance, the level's architecture, or the
+  plan as written, or must assume, work around, defer, or stop — record it in this phase, before the
+  completion report, not later. A problem met and solved within the phase is still recorded.
+- **Where**: append to `workspace.reflections`. If the file does not exist, create it first from the
+  template resolved by `specify preset resolve reflections-template`. Append only; never rewrite,
+  reorder, renumber, or delete entries.
+- **What**: one `### R-NNN · <short title>` entry (the next unused identifier) with the fields, in
+  order, `Phase` (this phase), `Date`, `Feature` (`workspace.feature_id`), `Kind`
+  (`specification`, `architecture`, `guidance`, `tooling`, `environment`, or `implementation`),
+  `Concerns` (a stable ID or project-relative path anywhere in the project — another feature, its
+  design reference or code, a module, a contract, an instruction, a tool), `Expected`, `Observed`,
+  `Effect` (`assumed`, `worked-around`, `deferred`, or `blocked`), `Action`, `Improvement`, and
+  `Status: open`. The grammar is fixed by the log template and checked by
+  `speckit.concorde.validate` (`CONCORDE-REFLECT-001` to `-004`).
+- **Never fix in place**: a problem with `tldr.md`, `spec.md`, any `design.md`, any `module.md`, a
+  contract, a view, a diagram, or another feature's code or tests is recorded, not edited; the
+  owning phase or the maintainer changes that source later.
+- **Update, don't duplicate**: when the log already holds the same problem — recorded by any phase
+  on any feature — add a line under its `- **Occurrences**:` list
+  (`<phase> <date> <feature-id> — <context>`) instead of a new entry. Never change a `Status` or
+  `Note` a maintainer set.
+- **Bounded**: recording never requires opening another root's `implementation/`; cite the other
+  feature by stable ID or path.
+- **Hygiene**: no secrets, credentials, or bulk output — cite the evidence path instead; keep
+  `Expected`, `Observed`, and `Action` under about 150 words together.
+- **Report**: end the completion report with `Reflections added: <identifiers or none> · open for
+  this feature: <count>` (`workspace.reflections_open` at phase start plus the open entries added).
 
 ### 9. Check for extension hooks
 
@@ -293,7 +349,7 @@ After reporting, check if `.specify/extensions.yml` exists in the project root.
 
 ### Analysis Guidelines
 
-- **NEVER modify files** (this is read-only analysis)
+- **NEVER modify files** (this is read-only analysis; the only permitted write is appending to the project reflection log)
 - **NEVER propose editing `implementation.md` or any module `module.md`/`design.md`**; when analysis surfaces rationale, alternatives, or implementation detail worth keeping, recommend recording it inside the attempt (`implementation/research.md` or `implementation/validation.md`) so hardening can carry it forward
 - **NEVER hallucinate missing sections** (if absent, report them accurately)
 - **Prioritize constitution violations** (these are always CRITICAL)

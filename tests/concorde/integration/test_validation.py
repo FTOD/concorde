@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT, VALID_PROJECT
+from tests.concorde.support.paths import INVALID_PROJECTS, REPOSITORY_ROOT, RUNTIME_ROOT, VALID_PROJECT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
@@ -73,6 +73,22 @@ class ValidationIntegrationTests(unittest.TestCase):
             self.assertEqual({path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}, before)
             for item in result.findings:
                 self.assertTrue(item.remediation)
+
+    def test_malformed_reflection_log_fixture_yields_one_finding_per_rule_and_this_repository_passes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "project"
+            shutil.copytree(VALID_PROJECT, root)
+            overlay = INVALID_PROJECTS / "reflections-malformed/specs/example/reflections.md"
+            (root / "specs/example/reflections.md").write_bytes(overlay.read_bytes())
+            before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}
+            result = validate_project(root)
+            rules = sorted(item.rule_id for item in result.findings if item.rule_id.startswith("CONCORDE-REFLECT-"))
+            self.assertEqual(result.status, "invalid")
+            self.assertEqual(rules, ["CONCORDE-REFLECT-001", "CONCORDE-REFLECT-002", "CONCORDE-REFLECT-003", "CONCORDE-REFLECT-004"])
+            self.assertEqual({path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}, before)
+        self.assertEqual(validate_project(VALID_PROJECT).status, "success")
+        repository = validate_project(REPOSITORY_ROOT)
+        self.assertEqual(repository.status, "success", [item.message for item in repository.findings])
 
     def test_layout_evidence_and_freshness_defects_are_distinct(self):
         with tempfile.TemporaryDirectory() as temporary:

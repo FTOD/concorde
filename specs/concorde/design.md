@@ -8,10 +8,11 @@ redefines responsibility, boundary, organization, or contracts; those remain own
 
 ### Maintained sources and installed mirrors
 
-- `presets/concorde-core/` holds the composition layer: five templates (three append-composed
-  spec/plan/tasks guidance layers and two replacement templates — the feature TL;DR and the
-  placeholder feature design reference) plus complete replacement layers for the nine
-  path-sensitive normal Spec Kit commands.
+- `presets/concorde-core/` holds the composition layer: six templates (three append-composed
+  spec/plan/tasks guidance layers and three replacement templates — the feature TL;DR, the
+  placeholder feature design reference, and the project reflection log) plus complete replacement
+  layers for the nine path-sensitive normal Spec Kit commands, five of which (plan, tasks,
+  implement, analyze, converge) carry a byte-identical Reflection Recording block.
 - `extensions/concorde/` holds the active capability package: five command definitions
   (`speckit.concorde.init`, `speckit.concorde.context`, `speckit.concorde.validate`,
   `speckit.concorde.feature.harden`, and the agent-only `speckit.concorde.ask`), the portable
@@ -32,9 +33,12 @@ redefines responsibility, boundary, organization, or contracts; those remain own
   plan template are Concorde-owned local edits, not Spec Kit outputs.
 - `docsite/` is the TypeScript Docusaurus project that publishes the read model; `generated/` and
   `docsite/.generated/` are ignored delivery and projection trees.
-- `specs/concorde/` is this hierarchy: the root module, four child modules, and twenty feature
+- `specs/concorde/` is this hierarchy: the root module, four child modules, and twenty-one feature
   roots, each root owning `tldr.md`, `spec.md`, and `design.md`; `.concorde/config.json` records
   the Architecture Source Profile in force.
+- `specs/concorde/reflections.md` is the project's one reflection log (Feature 005): a maintained
+  source beside this level's summary, appended to by every phase after specification, read by
+  validation, context, the workspace adapter, and hardening, never removed, and not published.
 
 ### Launcher and runtime model
 
@@ -47,8 +51,11 @@ sole path authority before any artifact is read or written, so selected-workspac
 every inherited root-path assumption. Inside the runtime, `repository.py` owns canonical discovery
 and safe path classification, `feature_workspace.py` and `cli.py` own workspace resolution and phase
 paths, `initialize.py`, `context.py`, `readiness.py`, and `validate.py` own the deterministic
-operations, `validation/` holds the rule families (hierarchy, layout, summary, TL;DR, contracts,
-scenarios, evidence, freshness), and `feature_hardening.py` owns approval-gated, atomic hardening.
+operations, `validation/` holds the rule families (hierarchy, layout, summary, TL;DR, reflections,
+contracts, scenarios, evidence, freshness), `reflections.py` is the single parser of the project
+reflection log shared by validation, context, the adapter, and hardening, and
+`feature_hardening.py` owns approval-gated, atomic hardening, including the reflection citation gate
+(`CONCORDE-HARDEN-011/012`).
 
 ### Spec Kit ecosystem placement
 
@@ -104,6 +111,18 @@ route the specification used to own, the specification `…/spec`, the design re
 The site publishes module contracts (`contracts/**/contract.md`) but not feature-root contract
 documents, so a TL;DR names those as code spans rather than links.
 
+### Project reflection log
+
+The log's grammar is normative in
+`specs/concorde/features/005-record-workflow-reflections/contracts/reflection-log.md`. Its runtime
+realization is documented in that feature's `design.md`; at this level the durable facts are:
+the log joins `package.auxiliary` and every source digest, so any operation that reviewed it
+conflicts when it changes; `reflections` and `reflections_open` are additive Protocol v5 fields
+and `reflection_summary` an additive `feature.harden` response field, all optional in the schemas
+and always emitted; `analyze` holds the workflow's one explicit exception to its read-only rule
+(appending to the log); and the docsite excludes the log as a non-canonical artifact, so TL;DRs and
+summaries name it as a code span.
+
 ### Evidence status
 
 - The root and Documentation views pass all 9 Archify showcase checks with zero errors or warnings.
@@ -138,6 +157,12 @@ documents, so a TL;DR names those as code spans rather than links.
   0.3.0); under the checkout's active `claude` integration the codex-only tooling reports `unknown`.
 - All five module summaries are within the reading budget (392–1,273 body words) and all twenty
   feature TL;DRs are within theirs (at most 1,358 body words).
+- Feature 005 (project reflection log) is implemented and verified: 223 Python tests pass
+  including the parser, rule, context, workspace, contract, hardening-gate, and composition cases;
+  `speckit.concorde.validate` on this repository returns `success` with the log present; the root
+  view shows five root features and passes 9/9 showcase checks; the docsite validates 99 pages
+  with 0 errors (2026-08-28). Its manual phase-run acceptance and the browser review of its core
+  view remain pending.
 
 ## Design Rationale
 
@@ -199,6 +224,18 @@ replaces the whole file so review sees exactly what will exist, the source diges
 reference so a concurrent manual edit is a conflict, and maintainers keep the ordinary right to edit
 the reference directly.
 
+### Why one project-wide reflection log
+
+A problem met while implementing a feature is usually about something that already exists —
+another feature's realization, a module boundary, a contract, an installed instruction, a tool —
+so a per-feature or per-attempt record scatters the same problem across roots and deletes it with
+the attempt (reflection R-004). One maintained file at the specification root, with every entry
+naming the feature that was being worked on and the source it concerns, is visible from the level
+where everything it can concern is visible, survives every attempt, and lets hardening prove that a
+design reference is honest about open problems by citing their identifiers instead of moving
+entries around. Recording rides on the existing phases and no new command, because a surface that
+must be invoked separately would not be used at the moment the problem is met.
+
 ### Why the root view stops at one level
 
 Each level shows only its immediate modules, current-level features, boundary contracts, and
@@ -258,9 +295,33 @@ without expanding the canonical structure.
   resolver instead.
 - Relaxing Docusaurus's `onBrokenLinks` to a warning was rejected in favour of `pathname://` view
   links so broken references keep failing the build.
+- A per-attempt reflection log under `implementation/` with a per-entry disposition at hardening
+  (the first draft of Feature 005) was rejected on 2026-08-28: it could not hold problems about
+  other features' implementations and vanished with the attempt (R-004). `.concorde/` as the log's
+  home was rejected because that directory holds control state and receipts, not maintained intent.
+- A `reflections` block in the hardening proposal was rejected once nothing is deleted at
+  hardening; the citation gate on the candidate's content proves the same thing with no proposal
+  change.
+- Creating the log eagerly at `speckit.concorde.init` was deferred; the first phase that records
+  seeds it from `reflections-template`, so the read-only adapter and the runtime gained no writer.
+- Drawing the feature's crossing into Spec Kit Integration in the root view was dropped after
+  every route crossed the workflow → Architecture Core edge or the Integration → Core corridor at
+  showcase quality (R-005); the feature's own core view shows all parts.
 
 ## Decision Log
 
+- 2026-08-28 — Hardened the first milestone of `feature.concorde.record-workflow-reflections`: one
+  project reflection log at `specs/concorde/reflections.md` with the Concorde Reflection Log v1
+  grammar; `reflections-template` (six preset templates at 0.3.0); a byte-identical Reflection
+  Recording block in the five phase instructions after specification; runtime parser, rule family
+  `CONCORDE-REFLECT-001..004`, per-feature `reflections_open` in workspace results and bounded
+  context, `reflection_summary` and the citation gate `CONCORDE-HARDEN-011/012` in hardening;
+  additive Protocol v5 and Architecture Service v1 fields; the root view gains the fifth root
+  feature. Planned work recorded in the log: `claude` support in the self-hosting tooling (R-001),
+  one rule for `module.md` edits during an attempt (R-002), a root-view column order that can draw
+  both realizing modules (R-005), reconciling the execute-and-reconcile sub-feature's read-only
+  analysis with the log's one permitted write (R-006), and a specify-guidance rule on TL;DR link
+  targets (R-007).
 - 2026-08-28 — Hardened the three-tier document-model attempt of `feature.concorde.workflow`:
   Profile 3, Protocol v5, proposal v3, and Manifest v6 are in force; every feature root owns
   `tldr.md`, `spec.md`, and `design.md` (the accepted realization, formerly `implementation.md`);

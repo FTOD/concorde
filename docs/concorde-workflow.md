@@ -155,6 +155,10 @@ only deliberately and cites it when used.
 
 It writes the proposed delta beneath `implementation/`: research, plan, technical model, quick start,
 and related artifacts. `tasks` then creates dependency-ordered executable work in the same attempt.
+Every specification, architecture, cross-feature, or guidance problem planning cannot resolve is
+recorded as an entry in the project reflection log (`reflections.md` at the specification root, the
+path returned as `workspace.reflections`) and listed in the plan's architecture gate; nothing is
+"fixed" by editing a durable document or another feature's sources.
 If architecture, contracts, diagrams, traceability, validation, or generated freshness are affected,
 the plan and tasks must include that work explicitly.
 
@@ -172,8 +176,33 @@ This keeps an agent from treating the whole repository as undifferentiated conte
 structural deviations visible: the agent can choose low-level code details, but it should not invent
 new cross-module dependencies or silently change contracts.
 
+Whenever a phase cannot follow the specification, the design baseline, an existing implementation,
+the guidance, or the plan — a tool fails, another feature's code disagrees with its design
+reference, an instruction cannot be followed, a dependency is missing, a workaround is taken — the
+agent records the problem in the project reflection log in that same phase, attributed to the
+selected feature and naming the source it concerns, and continues when it can; a halt is recorded
+with `Effect: blocked` first. Re-encountering a recorded problem, from any feature, adds an
+occurrence rather than a new entry. Every recording phase ends its report with the entries it added
+and the feature's open count, and `analyze` lists the feature's open entries and flags those whose
+referenced source has since changed.
+
 After implementation, use `converge` to compare code with intended behavior and append genuinely
-unbuilt work. Convergence must not rewrite the specification to make incomplete code appear correct.
+unbuilt work. Convergence must not rewrite the specification to make incomplete code appear correct;
+it treats an open, deferred reflection entry of the feature as candidate work only when it is
+genuine feature work.
+
+### Reviewing reflections
+
+The reflection log is one file for the whole project, so a maintainer reviews it in one place:
+filter by `Feature` for what one attempt met, or by `Concerns` for everything recorded against one
+module, contract, instruction, or tool. Bounded context (`speckit.concorde.context`) names the log
+and the open count per feature. Resolve or dismiss an entry by editing its `Status` and `Note`
+directly; the actual improvement goes through the path that owns the concerned source — `specify`
+or `clarify` for a requirement, an architecture change for a placement or contract, a guidance or
+runtime change for an instruction or tool. Agents never delete entries or reverse a maintainer's
+decision. In the Concorde project itself, an accepted `guidance` or `tooling` entry is planned
+framework work or a framework change, and that change counts as used only after the self-hosted
+installation is refreshed.
 
 ## 7. Validate and reconcile disagreement
 
@@ -182,7 +211,8 @@ before hardening. It deterministically checks source parsing, unique identities,
 refinement, feature ownership, contract completeness, scenario scope, view depth, references,
 evidence status, module summary and feature TL;DR shape and reading budgets (the budgets as warnings
 only), the presence of a `design.md` beside every `module.md`, the feature-root trio and the legacy
-`implementation.md` name, and generated freshness.
+`implementation.md` name, the shape of the project reflection log when present
+(`CONCORDE-REFLECT-001` to `-004`), and generated freshness.
 
 Validation is read-only. It reports rule, severity, location, and remediation in stable order. Valid
 architecture does not prove that code conforms; missing evidence remains `unknown`, and conflicting
@@ -201,9 +231,12 @@ Hardening is appropriate only when:
 - validation and evidence have been reviewed; and
 - the maintainer accepts the implementation as the new durable baseline.
 
-The agent first asks the runtime for eligibility, then synthesizes a proposed feature `design.md`
-from the complete attempt, the current feature `design.md`, the TL;DR and specification, the module
-summary and module `design.md`, relevant architecture, contracts, code, and tests. When the attempt
+The agent first asks the runtime for eligibility (which also summarizes the feature's reflection
+entries by status), then synthesizes a proposed feature `design.md` from the complete attempt, the
+current feature `design.md`, the TL;DR and specification, the module summary and module
+`design.md`, relevant architecture, contracts, code, tests, and the project reflection log: every
+open entry attributed to the feature is cited among the known limitations, and resolved entries that
+shaped the realization among the decisions. When the attempt
 produced implementation detail or rationale worth keeping, the same proposal carries a full
 replacement `design.md` for the module at which the feature is specified, adding that material
 under the reference's stable headings without restating what the summary owns. The proposal names
@@ -215,8 +248,9 @@ Checked boxes do not grant approval. Only explicit acceptance of that exact prop
 runtime to write the feature `design.md`, amend the module `design.md` when proposed, and remove
 `implementation/` as one atomic operation; the result reports digests for both documents. A stale
 digest, changed path, symlink, incomplete task, unresolved checklist, amendment aimed at `tldr.md`,
-`spec.md`, `module.md`, or another level, or failed apply leaves the previous state recoverable.
-Hardening never edits `tldr.md`, `spec.md`, `module.md`, contracts, or views.
+`spec.md`, `module.md`, or another level, an uncited open reflection entry (`CONCORDE-HARDEN-012`),
+or failed apply leaves the previous state recoverable. Hardening never edits `tldr.md`, `spec.md`,
+`module.md`, the reflection log, contracts, or views.
 
 ## 9. Publish the read model
 

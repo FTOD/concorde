@@ -284,3 +284,45 @@ def tree_hashes(root: Path) -> dict[str, str]:
         for path in sorted(root.rglob("*"))
         if path.is_file()
     }
+
+
+def write_reflection_log(project_root: Path, entries: list[dict[str, str]], specification_root: str = "specs/example") -> Path:
+    """Write the project reflection log from entry dicts (keys are the grammar's labels; ``id`` and ``title`` name the entry)."""
+    order = ("Phase", "Date", "Feature", "Kind", "Concerns", "Expected", "Observed", "Effect", "Action", "Improvement", "Status", "Note")
+    blocks = ["# Reflections: Example\n\nFixture log.\n"]
+    for entry in entries:
+        lines = [f"### {entry['id']} · {entry.get('title', 'Fixture problem')}", ""]
+        for label in order:
+            if label in entry:
+                lines.append(f"- **{label}**: {entry[label]}")
+        for occurrence in entry.get("occurrences", []):
+            if "- **Occurrences**:" not in lines:
+                lines.append("- **Occurrences**:")
+            lines.append(f"  - {occurrence}")
+        blocks.append("\n".join(lines) + "\n")
+    path = project_root / specification_root / "reflections.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(blocks), encoding="utf-8")
+    return path
+
+
+def reflection_entry(identifier: str, feature: str = "feature.example.deliver", status: str = "open", **overrides: str) -> dict[str, str]:
+    entry = {
+        "id": identifier,
+        "title": f"Fixture problem {identifier}",
+        "Phase": "implement",
+        "Date": "2026-08-28",
+        "Feature": feature,
+        "Kind": "tooling",
+        "Concerns": "contract.example.workflow",
+        "Expected": "The documented command succeeds.",
+        "Observed": "The command failed.",
+        "Effect": "worked-around",
+        "Action": "Used the fallback.",
+        "Improvement": "Fix the command.",
+        "Status": status,
+    }
+    if status != "open":
+        entry["Note"] = "Decided by the maintainer."
+    entry.update(overrides)
+    return entry

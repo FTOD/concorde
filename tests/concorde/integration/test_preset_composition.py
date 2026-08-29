@@ -10,10 +10,10 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 class PresetCompositionTests(unittest.TestCase):
     def test_templates_append_and_commands_replace_while_preserving_one_spec(self):
         manifest = (REPOSITORY_ROOT / "presets/concorde-core/preset.yml").read_text()
-        self.assertEqual(manifest.count('type: "template"'), 5)
+        self.assertEqual(manifest.count('type: "template"'), 6)
         self.assertEqual(manifest.count('type: "command"'), 9)
         self.assertEqual(manifest.count('strategy: "append"'), 3)
-        self.assertEqual(manifest.count('strategy: "replace"'), 11)
+        self.assertEqual(manifest.count('strategy: "replace"'), 12)
         fragments = REPOSITORY_ROOT / "presets/concorde-core/templates"
         combined = "\n".join(path.read_text() for path in fragments.glob("*.md"))
         self.assertIn("single canonical", combined)

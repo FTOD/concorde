@@ -102,8 +102,9 @@ of the code relative to the feature's artifacts — no git, no branch comparison
 
 ## Operating Constraints
 
-**APPEND-ONLY, NEVER REWRITE**: The command's **only** write is appending a new
-`## Phase N: Convergence` section to `tasks.md`. It MUST NOT:
+**APPEND-ONLY, NEVER REWRITE**: The command's **only** writes are appending a new
+`## Phase N: Convergence` section to `tasks.md` and appending to the project reflection log
+(`workspace.reflections`, per Reflection Recording below). It MUST NOT:
 
 - modify `tldr.md`, `spec.md`, the feature `design.md`, `plan.md`, or any module `module.md`/`design.md` in any way;
 - rewrite, renumber, reorder, or delete any existing task (including tasks from a prior
@@ -269,6 +270,10 @@ Append to the **end** of `tasks.md`, per the append contract:
    task that records it inside the attempt (`implementation/research.md` or
    `implementation/validation.md`) so hardening can carry it forward. Never append a task that edits
    `tldr.md`, `spec.md`, the feature `design.md`, or any module `module.md`/`design.md`.
+6. Treat an `open` reflection entry attributed to this feature with `Effect: deferred` as candidate
+   remaining work only when it is genuine remaining work of this feature's specification; never
+   append work for `dismissed` entries or for entries attributed to other features, and never
+   append a task that edits the log's maintainer-set statuses.
 
 **If there are no actionable findings** (`converged` outcome):
 
@@ -283,6 +288,43 @@ Append to the **end** of `tasks.md`, per the append contract:
   run will find fewer or no remaining items.
 - On `converged`: recommend proceeding to review / opening a PR. No further implement pass
   is needed for this feature's specified scope.
+- In both cases end with `Reflections added: <identifiers or none> · open for this feature: <count>`.
+
+## Reflection Recording
+
+Every phase after specification records the difficulties and problems it meets in the project's one
+reflection log: the maintained file returned as `workspace.reflections`
+(`<specification_root>/reflections.md`). It is never per feature or per attempt, and no operation
+removes it.
+
+- **When**: whenever this phase cannot follow the specification, the accepted design reference, an
+  existing implementation it depends on, the installed guidance, the level's architecture, or the
+  plan as written, or must assume, work around, defer, or stop — record it in this phase, before the
+  completion report, not later. A problem met and solved within the phase is still recorded.
+- **Where**: append to `workspace.reflections`. If the file does not exist, create it first from the
+  template resolved by `specify preset resolve reflections-template`. Append only; never rewrite,
+  reorder, renumber, or delete entries.
+- **What**: one `### R-NNN · <short title>` entry (the next unused identifier) with the fields, in
+  order, `Phase` (this phase), `Date`, `Feature` (`workspace.feature_id`), `Kind`
+  (`specification`, `architecture`, `guidance`, `tooling`, `environment`, or `implementation`),
+  `Concerns` (a stable ID or project-relative path anywhere in the project — another feature, its
+  design reference or code, a module, a contract, an instruction, a tool), `Expected`, `Observed`,
+  `Effect` (`assumed`, `worked-around`, `deferred`, or `blocked`), `Action`, `Improvement`, and
+  `Status: open`. The grammar is fixed by the log template and checked by
+  `speckit.concorde.validate` (`CONCORDE-REFLECT-001` to `-004`).
+- **Never fix in place**: a problem with `tldr.md`, `spec.md`, any `design.md`, any `module.md`, a
+  contract, a view, a diagram, or another feature's code or tests is recorded, not edited; the
+  owning phase or the maintainer changes that source later.
+- **Update, don't duplicate**: when the log already holds the same problem — recorded by any phase
+  on any feature — add a line under its `- **Occurrences**:` list
+  (`<phase> <date> <feature-id> — <context>`) instead of a new entry. Never change a `Status` or
+  `Note` a maintainer set.
+- **Bounded**: recording never requires opening another root's `implementation/`; cite the other
+  feature by stable ID or path.
+- **Hygiene**: no secrets, credentials, or bulk output — cite the evidence path instead; keep
+  `Expected`, `Observed`, and `Action` under about 150 words together.
+- **Report**: end the completion report with `Reflections added: <identifiers or none> · open for
+  this feature: <count>` (`workspace.reflections_open` at phase start plus the open entries added).
 
 ### 9. Check for extension hooks
 

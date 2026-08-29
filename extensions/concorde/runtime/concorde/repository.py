@@ -225,6 +225,13 @@ class ProjectRepository:
                 relative = reference.relative_to(self.project_root).as_posix()
                 auxiliary[relative] = reference.read_text(encoding="utf-8")
                 artifacts.append(relative)
+        reflections = self.resolve(f"{specification_root}/reflections.md")
+        if reflections.is_symlink():
+            raise RepositoryError(f"{specification_root}/reflections.md: the project reflection log may not be a symlink")
+        if reflections.is_file():
+            relative = reflections.relative_to(self.project_root).as_posix()
+            auxiliary[relative] = reflections.read_text(encoding="utf-8")
+            artifacts.append(relative)
         for feature in (source for source in sources if source.kind == "feature"):
             feature_root = PurePosixPath(feature.path).parent
             for durable_name in ("tldr.md", "design.md"):

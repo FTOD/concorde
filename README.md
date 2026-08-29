@@ -39,8 +39,12 @@ implemented and covered by the automated suites, and this repository itself live
 three-tier feature document model (`tldr.md`, `spec.md`, `design.md`) and the module summary/design
 reference pair that the feature specifies. Feature 002's docsite publication pipeline, Feature 003's
 native bundle, preset composition, five-surface extension, and release tooling, and Feature 004's
-review-first self-hosting are implemented and tested. Timed human comprehension pilots and
-browser-based diagram review remain pending and are kept separate from automated evidence.
+review-first self-hosting are implemented and tested. Feature 005 adds the project-wide reflection
+log (`specs/concorde/reflections.md`): every phase after specification records the difficulties it
+meets there, attributed to the feature being worked on and naming the source concerned, and
+hardening cites a feature's open entries; its runtime, guidance, and evidence are in progress in this
+checkout. Timed human comprehension pilots and browser-based diagram review remain pending and are
+kept separate from automated evidence.
 
 The newest published release is `v0.1.0`, which predates the module design reference, the feature
 TL;DR, and the removal of the `feature.create`/`feature.select` commands. This README and the guides
@@ -267,3 +271,4 @@ production Docusaurus build. Start with the maintained [documentation overview](
 - [Spec Kit installation specification](specs/concorde/features/003-install-concorde-speckit/spec.md)
 - [Releasing Concorde](docs/releasing.md)
 - [Development self-hosting specification](specs/concorde/features/004-self-host-concorde/spec.md)
+- [Workflow reflections specification](specs/concorde/features/005-record-workflow-reflections/spec.md) and the [project reflection log](specs/concorde/reflections.md)

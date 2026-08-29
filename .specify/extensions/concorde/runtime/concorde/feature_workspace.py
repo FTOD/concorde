@@ -10,6 +10,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .model import SourceDocument
+from .reflections import log_path, parse_reflection_log
 from .repository import (
     ProjectRepository,
     RepositoryError,
@@ -46,6 +47,8 @@ class WorkspacePaths:
     quickstart: str
     tasks: str
     validation: str
+    reflections: str = ""
+    reflections_open: int = 0
 
     def protocol_paths(self) -> dict[str, Any]:
         """Return the complete protocol-defined workspace path/state record."""
@@ -93,8 +96,8 @@ def _title(body: str, fallback: str) -> str:
     return fallback
 
 
-def _summary(feature: SourceDocument) -> dict[str, str]:
-    return {
+def _summary(feature: SourceDocument, package: Any | None = None) -> dict[str, Any]:
+    summary: dict[str, Any] = {
         "feature_id": feature.identifier,
         "title": _title(feature.body, feature.identifier),
         "outcome": _heading_value(feature.body, "Outcome") or _title(feature.body, feature.identifier),
@@ -103,6 +106,9 @@ def _summary(feature: SourceDocument) -> dict[str, str]:
         "tldr": f"{Path(feature.path).parent.as_posix()}/tldr.md",
         "design": f"{Path(feature.path).parent.as_posix()}/design.md",
     }
+    if package is not None and package.auxiliary.get(log_path(package.specification_root)) is not None:
+        summary["reflections_open"] = reflections_open_count(package, feature.identifier)
+    return summary
 
 
 def _module_directory(relative: str, workspace_kind: str) -> str:
@@ -155,8 +161,16 @@ def _workspace_relationships(package: Any, feature: SourceDocument) -> tuple[str
             continue
         child_matches = package.by_id.get(child_id, ())
         if len(child_matches) == 1 and child_matches[0].kind == "feature":
-            siblings.append(_summary(child_matches[0]))
+            siblings.append(_summary(child_matches[0], package))
     return "subfeature", parent_context, tuple(siblings)
+
+
+def reflections_open_count(package: Any, feature_id: str) -> int:
+    """Open entries of the project reflection log attributed to one feature (0 when absent)."""
+    body = package.auxiliary.get(log_path(package.specification_root))
+    if body is None:
+        return 0
+    return parse_reflection_log(body).open_count(feature_id)
 
 
 def resolve_phase_paths(project_root: str | Path, feature_directory: str) -> WorkspacePaths:
@@ -199,6 +213,8 @@ def resolve_phase_paths(project_root: str | Path, feature_directory: str) -> Wor
     if workspace_kind != classified_kind:
         raise WorkspaceError("feature containment metadata does not match its canonical path")
     implementation = f"{relative}/implementation"
+    reflections = log_path(package.specification_root)
+    reflections_open = reflections_open_count(package, feature.identifier)
     module_summary, module_design = _module_paths(
         package, feature.metadata.get("module"), _module_directory(relative, workspace_kind)
     )
@@ -225,6 +241,8 @@ def resolve_phase_paths(project_root: str | Path, feature_directory: str) -> Wor
         quickstart=f"{implementation}/quickstart.md",
         tasks=f"{implementation}/tasks.md",
         validation=f"{implementation}/validation.md",
+        reflections=reflections,
+        reflections_open=reflections_open,
     )
 
 
@@ -266,7 +284,7 @@ def resolve_planned_phase_paths(project_root: str | Path, feature_directory: str
         children = parent.metadata.get("subfeatures", [])
         if isinstance(children, list):
             siblings = tuple(
-                _summary(matches[0])
+                _summary(matches[0], package)
                 for child_id in children
                 if len(matches := package.by_id.get(child_id, ())) == 1 and matches[0].kind == "feature"
             )
@@ -276,6 +294,7 @@ def resolve_planned_phase_paths(project_root: str | Path, feature_directory: str
         providing_module=providing_module,
         parent_context=parent_context,
         siblings=siblings,
+        specification_root=specification_root,
     )
 
 
@@ -344,9 +363,11 @@ def _planned_paths(
     providing_module: str | None = None,
     parent_context: dict[str, str] | None = None,
     siblings: tuple[dict[str, str], ...] = (),
+    specification_root: str | None = None,
 ) -> WorkspacePaths:
     implementation = f"{relative}/implementation"
     module_directory = _module_directory(relative, workspace_kind)
+    reflections = log_path(specification_root) if specification_root else f"{module_directory}/reflections.md"
     return WorkspacePaths(
         workspace_kind=workspace_kind,
         feature_id=feature_id,
@@ -370,6 +391,8 @@ def _planned_paths(
         quickstart=f"{implementation}/quickstart.md",
         tasks=f"{implementation}/tasks.md",
         validation=f"{implementation}/validation.md",
+        reflections=reflections,
+        reflections_open=0,
     )
 
 

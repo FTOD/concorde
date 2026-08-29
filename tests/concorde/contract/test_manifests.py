@@ -51,12 +51,12 @@ class ManifestContractTests(unittest.TestCase):
             self.assertTrue((root / ".specify/extensions/concorde/extension.yml").is_file())
             self.assertTrue((root / ".specify/presets/concorde-core/preset.yml").is_file())
 
-    def test_preset_has_three_append_templates_two_replace_templates_and_nine_replace_commands(self):
+    def test_preset_has_three_append_templates_three_replace_templates_and_nine_replace_commands(self):
         manifest = (REPOSITORY_ROOT / "presets/concorde-core/preset.yml").read_text(encoding="utf-8")
-        self.assertEqual(manifest.count('type: "template"'), 5)
+        self.assertEqual(manifest.count('type: "template"'), 6)
         self.assertEqual(manifest.count('type: "command"'), 9)
         self.assertEqual(manifest.count('strategy: "append"'), 3)
-        self.assertEqual(manifest.count('strategy: "replace"'), 11)
+        self.assertEqual(manifest.count('strategy: "replace"'), 12)
         self.assertIn('name: "tldr-template"', manifest)
         self.assertIn('name: "design-template"', manifest)
         self.assertNotIn("implementation-template", manifest)

@@ -37,11 +37,13 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
                     "quickstart",
                     "tasks",
                     "validation",
+                    "reflections",
+                    "reflections_open",
                 },
             )
             path_values = (
                 value for key, value in payload["workspace"].items()
-                if key not in {"workspace_kind", "feature_id", "providing_module", "parent_context", "siblings", "implementation_state"}
+                if key not in {"workspace_kind", "feature_id", "providing_module", "parent_context", "siblings", "implementation_state", "reflections_open"}
             )
             for value in (*path_values, *payload["artifacts"]):
                 self.assertFalse(Path(value).is_absolute())
@@ -99,6 +101,30 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         self.assertEqual(payload["task_summary"]["incomplete"], 0)
         self.assertEqual(payload["checklist_summary"]["incomplete"], 0)
         self.assertEqual(payload["checklist_summary"]["malformed"], 0)
+
+    def test_reflection_fields_are_additive_and_the_proposal_gained_none(self):
+        contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts"
+        schema = json.loads((contracts / "feature-workspace.schema.json").read_text(encoding="utf-8"))
+        workspace = schema["$defs"]["workspacePaths"]
+        self.assertIn("reflections", workspace["properties"])
+        self.assertIn("reflections_open", workspace["properties"])
+        self.assertNotIn("reflections", workspace["required"])
+        self.assertNotIn("reflections_open", workspace["required"])
+        self.assertIn("reflections_open", schema["$defs"]["featureSummary"]["properties"])
+        self.assertIn("reflection_summary", schema["$defs"]["response"]["properties"])
+        self.assertNotIn("reflections", schema["$defs"]["hardeningProposal"]["properties"])
+        payload = json.loads((contracts / "examples/feature-harden-eligible-response.json").read_text(encoding="utf-8"))
+        self.assertEqual(payload["reflection_summary"], {"entries": 2, "open": 1, "resolved": 1, "dismissed": 0})
+        self.assertEqual(payload["workspace"]["reflections"], "specs/example/reflections.md")
+        context = json.loads((contracts / "examples/context-response.json").read_text(encoding="utf-8"))
+        self.assertEqual(context["result"]["context"]["reflections"]["path"], "specs/example/reflections.md")
+        try:
+            import jsonschema
+        except ImportError:  # pragma: no cover - dev dependency
+            self.skipTest("jsonschema unavailable")
+        jsonschema.validate(payload, {**schema, "$ref": "#/$defs/response"})
+        proposal = json.loads((contracts / "examples/feature-harden-proposal.json").read_text(encoding="utf-8"))
+        jsonschema.validate(proposal, {**schema, "$ref": "#/$defs/hardeningProposal"})
 
 
 if __name__ == "__main__":

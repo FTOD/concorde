@@ -244,7 +244,7 @@ def build_release(output: Path, base_url: str | None = None, version: str | None
                     "description": "Architecture guidance plus authoritative nested-workspace routing for the Spec Kit lifecycle",
                     "download_url": f"{base_url}/concorde-core-{version}.zip",
                     "sha256": f"sha256:{digests[f'concorde-core-{version}.zip']}",
-                    "provides": {"templates": 5, "commands": 9},
+                    "provides": {"templates": 6, "commands": 9},
                     "tags": ["architecture", "contracts", "spec-driven-development"],
                 }
             },

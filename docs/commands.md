@@ -69,6 +69,8 @@ context for implementation. A module target returns that module and its immediat
 of a module or feature `design.md`. A feature target resolves through the module at which it is
 specified and additionally returns feature workspace paths (`tldr.md`, `spec.md`, `design.md`, and
 the attempt), declared diagrams, relevant contract content, evidence, and architecture readiness.
+When the project reflection log exists, both targets return `reflections` (its path and the open
+entry count per feature) and feature summaries carry `reflections_open`.
 
 The runtime output is automatically available to the agent that invoked the skill. The operation is
 read-only and does not select the feature. Conversation context may retain the result temporarily,
@@ -158,28 +160,33 @@ digest-bound proposal location and exact cleanup target; the digest covers the c
 `design.md`. Nothing is changed until the maintainer explicitly approves those exact bytes and
 paths. Successful apply writes the feature `design.md`, amends the module `design.md` when proposed,
 and removes the complete `implementation/` directory as one atomic operation, reporting digests for
-both documents; stale or unsafe proposals change nothing, and `tldr.md`, `spec.md`, and `module.md`
-are never edited.
+both documents; stale or unsafe proposals change nothing, and `tldr.md`, `spec.md`, `module.md`, and
+the project reflection log are never edited. Eligibility summarizes the feature's reflection entries
+by status; the candidate must cite every open one among its known limitations or apply refuses with
+`CONCORDE-HARDEN-012`.
 
 ## Normal Spec Kit phases under Concorde
 
 The `concorde-core` preset replaces the agent instructions for these phases so selected-workspace
 resolution happens before any phase can choose a legacy flat path. It does not create a second
-planning or implementation engine. It also carries five templates: `spec-template`, `plan-template`,
-and `tasks-template` append Concorde guidance to Spec Kit's own templates, while `tldr-template` and
-`design-template` are whole feature documents that `specify` resolves with
-`specify preset resolve <name>`; they have no composed mirror under `.specify/templates/`.
+planning or implementation engine. It also carries six templates: `spec-template`, `plan-template`,
+and `tasks-template` append Concorde guidance to Spec Kit's own templates, while `tldr-template`,
+`design-template`, and `reflections-template` are whole documents that a phase resolves with
+`specify preset resolve <name>`; they have no composed mirror under `.specify/templates/`. Every
+phase after specification appends the problems it meets to the project reflection log
+(`workspace.reflections`, seeded from `reflections-template`) and ends its report with the entries
+added and the feature's open count.
 
 | Skill | Run it when | Concorde path behavior |
 |---|---|---|
 | `$speckit-specify` | Creating or revising required behavior and representative scenarios | Authors root `tldr.md` and `spec.md` together; seeds a placeholder `design.md` for a new root and preserves an existing one byte-for-byte; review state goes under `implementation/checklists/` |
 | `$speckit-clarify` | Important behavioral ambiguity remains before planning | Encodes answers into `spec.md` and updates the TL;DR wherever it summarized the changed behavior; keeps checklist state temporary |
 | `$speckit-checklist` | You need a requirements-quality review focused on a domain such as contracts, security, or UX | Reads durable context, the TL;DR included, and writes only `implementation/checklists/*.md` |
-| `$speckit-plan` | Behavior and architectural boundaries are ready for one implementation proposal | Reads root `spec.md` and the feature `design.md` with the module `module.md` as bounded context (the TL;DR orients only; module `design.md` only deliberately); writes plan artifacts under `implementation/` |
+| `$speckit-plan` | Behavior and architectural boundaries are ready for one implementation proposal | Reads root `spec.md` and the feature `design.md` with the module `module.md` as bounded context (the TL;DR orients only; module `design.md` only deliberately); writes plan artifacts under `implementation/`; records unresolved problems in the project reflection log |
 | `$speckit-tasks` | The plan is ready to become dependency-ordered executable work | Writes `implementation/tasks.md` |
-| `$speckit-analyze` | Tasks exist and you want a read-only consistency check before coding | Compares the durable trio with the active plan/tasks, reporting any TL;DR statement that `spec.md` does not make; does not edit them |
+| `$speckit-analyze` | Tasks exist and you want a read-only consistency check before coding | Compares the durable trio with the active plan/tasks, reporting any TL;DR statement that `spec.md` does not make and the feature's open reflection entries (flagging stale ones); edits nothing except appending to the reflection log |
 | `$speckit-implement` | The reviewed plan and tasks are ready to execute | Works from the selected durable sources, with the feature `design.md` as the accepted baseline, and the active attempt |
-| `$speckit-converge` | Code exists and you need to discover what remains unbuilt | Assesses code against intent and appends missing work to the same tasks file |
+| `$speckit-converge` | Code exists and you need to discover what remains unbuilt | Assesses code against intent and appends missing work to the same tasks file; an open, deferred reflection entry of the feature is candidate work only when genuine |
 | `$speckit-taskstoissues` | The active work should be executed as external issues | Converts the selected attempt's tasks without changing their authority |
 
 A common order is:

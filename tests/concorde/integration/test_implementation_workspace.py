@@ -43,6 +43,19 @@ class ImplementationWorkspaceIntegration(unittest.TestCase):
         self.assertEqual(paths["FEATURE_DESIGN"], str(feature_root / "design.md"))
         self.assertNotIn("FEATURE_IMPLEMENTATION", paths)
 
+    def test_adapter_exposes_the_project_reflection_log_and_open_count(self):
+        completed = subprocess.run(
+            [str(REPOSITORY_ROOT / ".venv/bin/python"), str(REPOSITORY_ROOT / "extensions/concorde/scripts/python/workspace.py"), "--phase", "plan", "--feature-directory", FEATURE_RELATIVE],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["workspace"]["reflections"], "specs/concorde/reflections.md")
+        self.assertIsInstance(payload["workspace"]["reflections_open"], int)
+        self.assertEqual(payload["phase_root"], FEATURE_RELATIVE + "/implementation")
+
     def test_resume_after_hardening_starts_a_fresh_attempt_from_the_trio(self):
         import sys
         import tempfile

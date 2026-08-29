@@ -18,6 +18,7 @@ from .validation.evidence import validate_evidence
 from .validation.freshness import validate_freshness
 from .validation.summary import validate_summaries
 from .validation.tldr import validate_tldrs
+from .validation.reflections import validate_reflections
 
 
 EVIDENCE_STATES = {"unknown", "partial", "verified", "disagrees", "implemented"}
@@ -26,6 +27,7 @@ FOCUSED_VALIDATORS = (
     validate_hierarchy,
     validate_summaries,
     validate_tldrs,
+    validate_reflections,
     validate_layout,
     validate_contracts,
     validate_scenarios,

@@ -245,6 +245,16 @@ These files may contain alternatives, sequencing decisions, incomplete work, and
 Their presence beneath `specs/` does not make them durable intent. There must be no compatibility
 copy of `plan.md`, `tasks.md`, or `checklists/` beside `tldr.md`, `spec.md`, and `design.md`.
 
+### `reflections.md`: the project's one reflection log
+
+Problems met during an attempt are not attempt-local: they usually concern something that already
+exists — another feature's realization, a module boundary, an instruction, a tool. They are recorded
+in one maintained file, `reflections.md` directly inside the specification root, as entries that
+name the feature being worked on (`Feature`) and the source the problem concerns (`Concerns`), with
+a kind, an effect, and a maintainer-owned status. Every phase after specification appends to it; no
+operation removes it; hardening cites a feature's open entries in its design reference and leaves
+the log byte-identical; validation checks its shape; the docsite does not publish it.
+
 ## Hardening changes the lifetime, not the behavior
 
 Once every recognizable task and every existing checklist item is complete, the maintainer may ask
@@ -270,6 +280,7 @@ behavior and the feature `design.md` as the accepted realization baseline—with
 
 | A reader wants to know… | Reads |
 |---|---|
+| what went wrong while building anything, and what was decided about it | `reflections.md` at the specification root |
 | what a level does, how its parts hang together, and where to go next | `module.md` |
 | why the level is designed this way, how it is implemented, what was tried and rejected | the module `design.md` |
 | what a boundary promises and what crosses it | the contract document |

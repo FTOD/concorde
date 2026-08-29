@@ -43,6 +43,7 @@ evidence, and generated read models. They must not be treated as interchangeable
 │   │   │   └── implementation/
 │   │   └── implementation/               # at most one temporal attempt
 │   └── modules/<child-module>/           # repeats the module package
+├── specs/<root>/reflections.md           # the project's one reflection log (maintained; never removed)
 ├── docs/                                 # explanatory project guides
 ├── <source directories>/                 # executable implementation
 ├── <test directories>/                   # executable evidence
@@ -66,6 +67,7 @@ feature `design.md` can point from that model to the concrete code that realizes
 | Durable feature intent | `spec.md`, feature contracts, declared diagrams | Required behavior, normative feature representations, and representative explanations |
 | Feature design reference | `design.md` beside each `spec.md` | How the accepted implementation realizes one feature, in full implementation detail |
 | Temporary attempt | `implementation/**` | Proposed work, task/checklist state, research, and current evidence |
+| Project reflection log | `reflections.md` beside the root `module.md` | Every difficulty or problem an agent met during any attempt, attributed to a feature and naming the source it concerns, with maintainer-owned statuses; not behavioral authority |
 | Executable reality | Source and tests | What code exists and what executable checks demonstrate |
 | Generated read model | `generated/`, `docsite/.generated/`, `docsite/build/` | An ignored, reproducible presentation of maintained sources |
 
@@ -118,9 +120,9 @@ The installed workspace adapter derives phase-specific paths from the selection:
 |---|---|---|
 | Specify and clarify | Root `tldr.md` and `spec.md` (a new root also receives a placeholder `design.md`), the existing feature `design.md` as read-only accepted context, feature contracts | Generated review state under `implementation/checklists/` |
 | Checklist | Durable feature context, the TL;DR included | `implementation/checklists/*.md` |
-| Plan | Root `spec.md` and the feature `design.md`, the module `module.md` as bounded context; the TL;DR for orientation only; the module `design.md` only deliberately, with citation | Plan, research, model, and quick start under `implementation/` |
-| Tasks, implementation, analysis, convergence, issue conversion | Durable feature context; analysis also reads `tldr.md` to report disagreement with `spec.md` | The same active `implementation/` attempt |
-| Hardening | Root `tldr.md`, `spec.md`, and current `design.md`, the module `module.md` and `design.md`, plus the complete attempt | Approved update to the feature `design.md` and optional amendment of the module `design.md`, applied atomically; exact removal of `implementation/` |
+| Plan | Root `spec.md` and the feature `design.md`, the module `module.md` as bounded context; the TL;DR for orientation only; the module `design.md` only deliberately, with citation; appends problems to the project reflection log | Plan, research, model, and quick start under `implementation/` |
+| Tasks, implementation, analysis, convergence, issue conversion | Durable feature context; analysis also reads `tldr.md` to report disagreement with `spec.md`; every phase appends problems to the project reflection log (`workspace.reflections`) and reports the feature's open count | The same active `implementation/` attempt |
+| Hardening | Root `tldr.md`, `spec.md`, and current `design.md`, the module `module.md` and `design.md`, the project reflection log, plus the complete attempt | Approved update to the feature `design.md` (citing the feature's open reflection entries) and optional amendment of the module `design.md`, applied atomically; exact removal of `implementation/`; the log is left byte-identical |
 
 Selecting a feature changes routing state; requesting bounded context does not. The distinction is
 explained in [Commands and installed surfaces](commands.md).

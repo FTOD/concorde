@@ -4,7 +4,7 @@
     "concorde-core": {
       "version": "0.3.0",
       "source": "local",
-      "manifest_hash": "sha256:ad39ffa434ac6089477f7e6e079631bda6848d990f96d380dd5ebd853e5d9a7d",
+      "manifest_hash": "sha256:13a77aada7d68ab36f15a81d8b9a6b3447662375db3b382a28cd67c19a1f3691",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
@@ -33,7 +33,7 @@
           "speckit-taskstoissues"
         ]
       },
-      "installed_at": "2026-08-28T10:14:58.713145+00:00"
+      "installed_at": "2026-08-29T04:53:53.192025+00:00"
     }
   }
 }

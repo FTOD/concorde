@@ -25,7 +25,9 @@
     "data_model": "specs/example/modules/api/features/002-add-health-check/implementation/data-model.md",
     "quickstart": "specs/example/modules/api/features/002-add-health-check/implementation/quickstart.md",
     "tasks": "specs/example/modules/api/features/002-add-health-check/implementation/tasks.md",
-    "validation": "specs/example/modules/api/features/002-add-health-check/implementation/validation.md"
+    "validation": "specs/example/modules/api/features/002-add-health-check/implementation/validation.md",
+    "reflections": "specs/example/reflections.md",
+    "reflections_open": 1
   },
   "changes": [
     {
@@ -44,7 +46,8 @@
     "specs/example/modules/api/features/002-add-health-check/design.md",
     "specs/example/modules/api/features/002-add-health-check/implementation/tasks.md",
     "specs/example/modules/api/features/002-add-health-check/spec.md",
-    "specs/example/modules/api/features/002-add-health-check/tldr.md"
+    "specs/example/modules/api/features/002-add-health-check/tldr.md",
+    "specs/example/reflections.md"
   ],
   "findings": [],
   "source_digest": "sha256:3a4b8170a27c10f664308295149c300ef5e98323214b90c2ea365dad061e0f00",
@@ -59,5 +62,11 @@
     "complete": 22,
     "incomplete": 0,
     "malformed": 0
+  },
+  "reflection_summary": {
+    "entries": 2,
+    "open": 1,
+    "resolved": 1,
+    "dismissed": 0
   }
 }

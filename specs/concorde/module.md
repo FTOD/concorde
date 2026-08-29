@@ -13,6 +13,7 @@ features:
   - feature.concorde.publish-project-docsite
   - feature.concorde.install-with-spec-kit
   - feature.concorde.self-host-framework
+  - feature.concorde.record-workflow-reflections
 contracts:
   provided:
     - contract.concorde.workflow
@@ -46,6 +47,9 @@ Integration, Architecture Core, Documentation) joined by the boundary contracts 
 The root view intentionally stops at one level; zooming into a module reveals that module's own
 features, contracts, and submodules.
 
+A fifth root feature, Record Workflow Reflections, is registered below but not yet drawn in the root
+view; adding its node to that view is planned work of the feature's implementation attempt.
+
 Feature-owned explanatory views supplement the root view; they do not expand or replace it:
 
 | View | Owner | Maintained source |
@@ -55,6 +59,7 @@ Feature-owned explanatory views supplement the root view; they do not expand or 
 | <a href="/architecture/concorde-spec-kit-component-model.html">Spec Kit component model</a> | Feature 003 | `features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` |
 | <a href="/architecture/concorde-bundle-installation-flow.html">Bundle installation flow</a> | Feature 003 | `features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json` |
 | <a href="/architecture/concorde-self-hosting-components.html">Self-hosting components</a> | Feature 004 (core) | `features/004-self-host-concorde/diagrams/concorde-self-hosting-components.json` |
+| <a href="/architecture/workflow-reflection-components.html">Workflow reflection components</a> | Feature 005 (core) | `features/005-record-workflow-reflections/diagrams/workflow-reflection-components.json` |
 
 ## Features
 
@@ -64,6 +69,7 @@ Feature-owned explanatory views supplement the root view; they do not expand or 
 | `feature.concorde.publish-project-docsite` | A maintainer browses architecture sources and views, project documentation, and Spec Kit feature specifications in one generated site. | [spec.md](features/002-create-project-docsite/spec.md) |
 | `feature.concorde.install-with-spec-kit` | A maintainer inspects, installs, verifies, updates, and removes Concorde through the native Spec Kit ecosystem. | [spec.md](features/003-install-concorde-speckit/spec.md) |
 | `feature.concorde.self-host-framework` | A maintainer installs, refreshes, and verifies the current Concorde framework sources in this same checkout so framework improvements are used during Concorde's own development. | [spec.md](features/004-self-host-concorde/spec.md) |
+| `feature.concorde.record-workflow-reflections` | A coding agent records every difficulty or problem it meets while planning or implementing — about this feature, another feature's existing implementation, a module, the guidance, or a tool — in the project's one reflection log, through the existing phases and no new command; the maintainer reviews it and hardening cites the feature's entries. | [spec.md](features/005-record-workflow-reflections/spec.md) |
 
 The feature nodes in the root view are observable capabilities, not runtime services. Each is
 reached from user intent through the immediate modules that provide the behavior:
@@ -74,6 +80,7 @@ reached from user intent through the immediate modules that provide the behavior
 | Install, refresh, or verify the current framework sources in this checkout | `feature.concorde.self-host-framework` | Distribution identifies the authoritative local component set; Spec Kit Integration materializes it through the active integration; Architecture Core contributes deterministic freshness findings. |
 | Normal Spec Kit phases, one of four runtime-backed Concorde operations (`init`, `feature.harden`, `context`, `validate`), or a read-only workflow question through `ask` | `feature.concorde.workflow` | Spec Kit Integration resolves the standard Spec Kit selection to the nested workspace, composes phase guidance, and presents all five Concorde surfaces; Architecture Core executes the four deterministic operations; the coding agent answers `ask` directly from cited installed guidance and bounded project sources. |
 | Validate, build, serve, or browse the generated project site | `feature.concorde.publish-project-docsite` | Documentation builds the read model from validated Architecture Core sources and canonical Spec Kit feature specifications. |
+| A plan, tasks, implement, analyze, or converge phase meets a difficulty or problem | `feature.concorde.record-workflow-reflections` | Spec Kit Integration's phase guidance and log template carry the recording obligation into the project reflection log (`reflections.md` at the specification root); Architecture Core validates the log's shape, exposes it in bounded context, and requires hardening to cite the feature's open entries. |
 
 ## Contracts
 

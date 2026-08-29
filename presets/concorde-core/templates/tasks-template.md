@@ -14,6 +14,10 @@ JSON source under `diagrams/`, declaration in `spec.md`, contract/scenario trace
 validation, generated HTML delivery, automatic feature-page embedding, visual evidence when
 available, and freshness checks. Do not treat generated HTML or screenshots as maintained intent.
 
+Execution records the problems it meets in the project reflection log (`workspace.reflections`), not
+in task text; a problem concerning another feature is recorded there and never fixed in that
+feature's sources; and no task edits a maintainer-set status or note in the log.
+
 Write the task list to `implementation/tasks.md` inside the selected feature workspace. Treat it as
 work for the active delivery attempt, not as durable feature intent, and do not create a root-level
 copy or symlink. Generate tasks against both `spec.md` and the accepted feature `design.md` baseline

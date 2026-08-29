@@ -4,7 +4,9 @@ This preset keeps the normal Spec Kit specification, planning, and task workflow
 Concorde's hierarchical architecture controls. It does not create another feature document.
 
 At priority 10, its three spec/plan/tasks template contributions use `append`, while its Concorde-only
-`tldr-template` and `design-template` feature documents use `replace`. Its nine normal lifecycle
+`tldr-template` and `design-template` feature documents and the project-wide `reflections-template`
+(the reflection log seeded at the specification root and appended to by every phase after
+specification) use `replace`. Its nine normal lifecycle
 command contributions use `replace`: each complete command preserves the corresponding Spec Kit
 0.16.4 phase while resolving Concorde's selected feature and durable/temporal paths before any
 path-sensitive work. The installed extension supplies that workspace adapter and five

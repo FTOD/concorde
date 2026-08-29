@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tests.concorde.support.feature_workspace import tree_hashes, write_selection
+from tests.concorde.support.feature_workspace import reflection_entry, tree_hashes, write_reflection_log, write_selection
 from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT, TWO_LEVEL_PROJECT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -412,6 +412,89 @@ class FeatureHardeningIntegrationTests(unittest.TestCase):
             self.assertEqual(result.status, "hardened", result.findings)
             self.assertEqual(design.read_text(encoding="utf-8"), CANDIDATE)
             self.assertNotIn("No implementation realization has been hardened yet.", design.read_text(encoding="utf-8"))
+
+
+class ReflectionHardeningTests(FeatureHardeningIntegrationTests):
+    """Hardening reads the project reflection log, summarizes the feature's entries, and gates on open ones."""
+
+    def project_with_log(self, temporary: str, entries) -> Path:
+        root = self.project_copy(temporary)
+        write_reflection_log(root, entries)
+        return root
+
+    def test_eligible_result_summarizes_only_the_target_feature_entries(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_with_log(temporary, [
+                reflection_entry("R-001"),
+                reflection_entry("R-002", status="resolved"),
+                reflection_entry("R-003", status="dismissed"),
+                reflection_entry("R-004", feature="feature.example.api.invoke"),
+            ])
+            eligibility = propose_hardening(root)
+            self.assertEqual(eligibility.status, "eligible", eligibility.findings)
+            self.assertEqual(eligibility.result["reflection_summary"], {"entries": 3, "open": 1, "resolved": 1, "dismissed": 1})
+            from concorde.diagnostics import operation_envelope
+            self.assertEqual(operation_envelope(eligibility)["reflection_summary"], {"entries": 3, "open": 1, "resolved": 1, "dismissed": 1})
+            self.assertEqual(eligibility.result["workspace"]["reflections"], "specs/example/reflections.md")
+            self.assertEqual(eligibility.result["workspace"]["reflections_open"], 1)
+            self.assertIn("specs/example/reflections.md", eligibility.artifacts)
+
+    def test_project_without_a_log_still_hardens(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_copy(temporary)
+            eligibility = propose_hardening(root)
+            self.assertEqual(eligibility.result["reflection_summary"], {"entries": 0, "open": 0, "resolved": 0, "dismissed": 0})
+            result = apply_hardening(root, self.write_proposal(root, eligibility).relative_to(root).as_posix())
+            self.assertEqual(result.status, "hardened", result.findings)
+
+    def test_malformed_log_blocks_eligibility_without_mutation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_with_log(temporary, [reflection_entry("R-001", Kind="bug")])
+            before = tree_hashes(root)
+            eligibility = propose_hardening(root)
+            self.assertEqual(eligibility.status, "invalid")
+            self.assertEqual([item.rule_id for item in eligibility.findings], ["CONCORDE-HARDEN-011"])
+            self.assertEqual(eligibility.findings[0].source, "specs/example/reflections.md")
+            self.assertEqual(tree_hashes(root), before)
+
+    def test_uncited_open_entry_refuses_apply_and_preserves_attempt_and_log(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_with_log(temporary, [reflection_entry("R-001"), reflection_entry("R-002", feature="feature.example.api.invoke")])
+            eligibility = propose_hardening(root)
+            proposal = self.write_proposal(root, eligibility)
+            before = tree_hashes(root)
+            result = apply_hardening(root, proposal.relative_to(root).as_posix())
+            self.assertEqual(result.status, "invalid")
+            self.assertEqual([item.rule_id for item in result.findings], ["CONCORDE-HARDEN-012"])
+            self.assertIn("R-001", result.findings[0].message)
+            self.assertNotIn("R-002", result.findings[0].message)
+            self.assertEqual(tree_hashes(root), before)
+
+    def test_cited_open_entries_harden_and_leave_the_log_byte_identical(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_with_log(temporary, [reflection_entry("R-001"), reflection_entry("R-002", status="resolved"), reflection_entry("R-003", feature="feature.example.api.invoke")])
+            log_before = (root / "specs/example/reflections.md").read_bytes()
+            eligibility = propose_hardening(root)
+            path = root / eligibility.result["proposal_path"]
+            proposal = json.loads(self.write_proposal(root, eligibility).read_text(encoding="utf-8"))
+            proposal["design"]["content"] = CANDIDATE.replace("No additional delivery variants are hardened in this fixture.", "Open reflection R-001 (fallback command) remains unresolved.")
+            path.write_text(json.dumps(proposal) + "\n", encoding="utf-8")
+            result = apply_hardening(root, path.relative_to(root).as_posix())
+            self.assertEqual(result.status, "hardened", result.findings)
+            self.assertEqual((root / "specs/example/reflections.md").read_bytes(), log_before)
+            self.assertEqual(result.result["reflection_summary"], {"entries": 2, "open": 1, "resolved": 1, "dismissed": 0})
+            self.assertIn("specs/example/reflections.md", result.result["retained_artifacts"])
+            self.assertFalse((root / "specs/example/features/001-deliver/implementation").exists())
+
+    def test_log_changed_after_proposal_is_a_conflict(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_with_log(temporary, [reflection_entry("R-001", status="resolved")])
+            eligibility = propose_hardening(root)
+            proposal = self.write_proposal(root, eligibility)
+            write_reflection_log(root, [reflection_entry("R-001", status="resolved"), reflection_entry("R-002", status="dismissed")])
+            result = apply_hardening(root, proposal.relative_to(root).as_posix())
+            self.assertEqual(result.status, "conflict")
+            self.assertEqual([item.rule_id for item in result.findings], ["CONCORDE-HARDEN-004"])
 
 
 if __name__ == "__main__":

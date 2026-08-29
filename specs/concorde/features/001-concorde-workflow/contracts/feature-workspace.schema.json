@@ -117,6 +117,11 @@
         "design": {
           "$ref": "#/$defs/safePath",
           "description": "design.md of the summarized root (accepted realization; navigation reference)."
+        },
+        "reflections_open": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Open reflection entries attributed to the summarized root; present only when the project log exists."
         }
       }
     },
@@ -274,6 +279,15 @@
         },
         "validation": {
           "$ref": "#/$defs/safePath"
+        },
+        "reflections": {
+          "$ref": "#/$defs/safePath",
+          "description": "The project reflection log at <specification_root>/reflections.md; identical for every root and appended to by every phase after specification."
+        },
+        "reflections_open": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Open reflection entries attributed to the selected root; 0 when the log is absent."
         }
       }
     },
@@ -508,6 +522,35 @@
             "$ref": "#/$defs/safePath"
           },
           "uniqueItems": true
+        },
+        "reflection_summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entries",
+            "open",
+            "resolved",
+            "dismissed"
+          ],
+          "properties": {
+            "entries": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "open": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "resolved": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dismissed": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "description": "Reflection entries attributed to the target feature, by status (feature.harden)."
         }
       }
     },

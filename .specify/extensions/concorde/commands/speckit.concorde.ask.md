@@ -34,9 +34,12 @@ Read the smallest relevant set in this order:
    under the same rules) as aggregate context and only
    concise sibling summaries; do not read sibling bodies or parent/sibling attempts merely because
    they exist. Distinguish two-level feature containment from adjacent-module `refines` links.
-4. Use `.concorde/config.json` and `.specify/feature.json` only to locate configured or selected
+4. For a question about difficulties or problems recorded while building the project, open the
+   project reflection log (`reflections.md` directly inside the specification root) and cite the
+   entry identifiers you rely on; it records what agents met, not required behavior.
+5. Use `.concorde/config.json` and `.specify/feature.json` only to locate configured or selected
    sources. They are control state, not behavioral authority.
-5. Use generated pages only to locate canonical sources when necessary. Prefer maintained sources in
+6. Use generated pages only to locate canonical sources when necessary. Prefer maintained sources in
    citations and never treat a generated read model as stronger authority than its source.
 
 Do not assume a Concorde authoring checkout exists. Do not read unrelated deeper modules or feature
@@ -58,7 +61,8 @@ Return standard Markdown containing:
 Name the kind of source behind every project fact: module summary (`module.md`), module design
 reference (`design.md`), feature TL;DR (`tldr.md`), required behavior (`spec.md`), accepted
 realization (the feature `design.md`),
-temporal attempt (`implementation/`), or generated evidence. Keep feature containment distinct from
+temporal attempt (`implementation/`), project reflection log (`reflections.md`), or generated
+evidence. Keep feature containment distinct from
 adjacent-module refinement.
 
 When installed guidance, maintained project sources, or versions conflict, cite each relevant source,

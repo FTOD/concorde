@@ -18,6 +18,7 @@ from .feature_workspace import (
     resolve_phase_paths,
 )
 from .model import Finding, OperationResult, SourceDocument
+from .reflections import log_path, parse_reflection_log
 from .repository import ProjectRepository, RepositoryError, safe_relative_path
 
 
@@ -70,7 +71,7 @@ def _hardening_digest(project: Path, package: Any, paths: Any, ignored: str | No
     sources = [item.path for item in package.sources]
     sources.extend(package.views)
     sources.extend(package.diagrams)
-    for durable in (paths.feature_tldr, paths.feature_design, paths.module_design):
+    for durable in (paths.feature_tldr, paths.feature_design, paths.module_design, paths.reflections):
         candidate = project / durable
         if candidate.is_file() and not candidate.is_symlink():
             sources.append(durable)
@@ -160,6 +161,13 @@ def propose_hardening(
         findings.append(_finding("CONCORDE-HARDEN-009", paths.checklists_dir, "Unchecked checklist items block hardening: " + ", ".join(checklist_incomplete), "Resolve every existing checklist item through the normal specification and implementation workflow."))
     if checklist_malformed:
         findings.append(_finding("CONCORDE-HARDEN-010", paths.checklists_dir, "Checklist completion cannot be proven: " + ", ".join(checklist_malformed), "Use canonical '- [ ]' or '- [X]' checklist markers and resolve every item."))
+    reflection_summary = {"entries": 0, "open": 0, "resolved": 0, "dismissed": 0}
+    reflections_body = package.auxiliary.get(log_path(package.specification_root))
+    if reflections_body is not None:
+        parsed = parse_reflection_log(reflections_body)
+        if parsed.problems:
+            findings.append(_finding("CONCORDE-HARDEN-011", paths.reflections, "The project reflection log is malformed: " + "; ".join(problem.message for problem in parsed.problems), "Repair the log per the reflection-log contract (speckit.concorde.validate reports each CONCORDE-REFLECT finding) and re-propose."))
+        reflection_summary = parsed.summary(feature.identifier)
     changes = [
         {"path": paths.feature_design, "action": "update", "meaning": "Replace the feature design reference (accepted realization) with the reviewed candidate."},
         {"path": paths.implementation_dir, "action": "delete", "meaning": "Remove the complete temporal implementation attempt after the realization is promoted."},
@@ -176,8 +184,11 @@ def propose_hardening(
             "malformed": len(checklist_malformed),
         },
         "proposal_path": f"{paths.implementation_dir}/harden-proposal.json",
+        "reflection_summary": reflection_summary,
     }
     artifacts = [paths.feature_spec, paths.feature_design, paths.tasks]
+    if reflections_body is not None:
+        artifacts.append(paths.reflections)
     if (project / paths.feature_tldr).is_file():
         artifacts.append(paths.feature_tldr)
     if (project / paths.module_design).is_file():
@@ -247,6 +258,15 @@ def _amendment_target(paths: dict[str, Any], amendment: Any) -> str:
     return path
 
 
+def _uncited_open_reflections(project: Path, paths: dict[str, Any], target: str, content: str) -> list[str]:
+    """Identifiers of open entries attributed to ``target`` that the candidate design.md does not mention."""
+    log = project / paths["reflections"]
+    if not log.is_file() or log.is_symlink():
+        return []
+    parsed = parse_reflection_log(log.read_text(encoding="utf-8"))
+    return [entry.identifier for entry in parsed.entries_for(target) if entry.status == "open" and entry.identifier not in content]
+
+
 def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationResult:
     project = Path(project_root).resolve()
     try:
@@ -283,6 +303,15 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
         if proposal.get("remove") != [paths["implementation_dir"]]:
             raise WorkspaceError("proposal removal set must contain exactly the selected feature's implementation/ directory")
         content = _validate_design(realization.get("content"))
+        uncited = _uncited_open_reflections(project, paths, target, content)
+        if uncited:
+            return OperationResult(
+                "feature.harden",
+                target,
+                "invalid",
+                findings=(_finding("CONCORDE-HARDEN-012", paths["reflections"], "Open reflection entries attributed to this feature are not cited by the candidate design.md: " + ", ".join(uncited), "Cite every open entry's identifier under ## Known Limitations (or resolve or dismiss it in the log with a note), then regenerate the proposal."),),
+                result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"], "reflection_summary": eligibility.result["reflection_summary"]},
+            )
         repository = ProjectRepository(project)
         design_path = repository.resolve(paths["feature_design"])
         implementation_path = repository.resolve(paths["implementation_dir"])
@@ -356,6 +385,8 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
     except OSError as error:
         cleanup_findings.append(Finding("CONCORDE-HARDEN-007", "warning", paths["feature_directory"], f"Hardening committed but recovery cleanup is pending: {error}", "Remove the hidden Concorde backup after confirming the durable realization and version-control recovery."))
     retained_artifacts = [paths["feature_tldr"], paths["feature_spec"], paths["module_summary"]]
+    if (project / paths["reflections"]).is_file():
+        retained_artifacts.append(paths["reflections"])
     if module_design_path is None and (project / paths["module_design"]).is_file():
         retained_artifacts.append(paths["module_design"])
     parent_context = paths.get("parent_context")
@@ -392,5 +423,6 @@ def apply_hardening(project_root: str | Path, proposal_path: str) -> OperationRe
             "module_design_digest_after": _sha256_text(module_design_content) if module_design_path is not None else None,
             "removed_artifacts": removed_artifacts,
             "retained_artifacts": sorted(set(retained_artifacts)),
+            "reflection_summary": eligibility.result["reflection_summary"],
         },
     )

@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.concorde.support.feature_workspace import reflection_entry, write_reflection_log
 from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT, TWO_LEVEL_PROJECT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -32,6 +33,27 @@ class ContextTests(unittest.TestCase):
         self.assertTrue(module_context["children"][0]["contracts"]["provided"][0]["flow"])
         self.assertEqual(module_context["scenarios"][0]["id"], "scenario.example.deliver")
         self.assertEqual(module_context["scenarios"][0]["interactions"][0]["contract"], "contract.example.workflow")
+
+    def test_context_exposes_the_project_reflection_log_and_open_counts_per_feature(self):
+        absent = bounded_context(CONTEXT_PROJECT, "module.example").result["context"]
+        self.assertIsNone(absent["reflections"])
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "project"
+            shutil.copytree(CONTEXT_PROJECT, root)
+            write_reflection_log(root, [
+                reflection_entry("R-001"),
+                reflection_entry("R-002", status="resolved"),
+                reflection_entry("R-003", feature="feature.example.api.invoke"),
+                reflection_entry("R-004", feature="feature.example.api.invoke"),
+            ])
+            by_module = bounded_context(root, "module.example")
+            context = by_module.result["context"]
+            self.assertEqual(context["reflections"], {"path": "specs/example/reflections.md", "open": {"feature.example.api.invoke": 2, "feature.example.deliver": 1}})
+            self.assertIn("specs/example/reflections.md", by_module.artifacts)
+            feature = bounded_context(root, "feature.example.deliver").result["context"]
+            self.assertEqual(feature["feature_workspace"]["reflections"], "specs/example/reflections.md")
+            self.assertEqual(feature["feature_workspace"]["reflections_open"], 1)
+            self.assertNotIn("R-001", repr(context))
 
     def test_zooming_to_child_repeats_the_one_level_rule(self):
         root = bounded_context(CONTEXT_PROJECT, "module.example").result["context"]

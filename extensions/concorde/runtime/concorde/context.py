@@ -9,6 +9,7 @@ from .model import Finding, OperationResult, SourceDocument
 from .projection import module_projection, scenario_projections
 from .repository import ProjectRepository, RepositoryError
 from .feature_workspace import WorkspaceError, _summary, resolve_phase_paths
+from .reflections import log_path, parse_reflection_log
 
 
 def bounded_context(project_root: str | Path, requested_id: str) -> OperationResult:
@@ -75,7 +76,20 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
         "feature_diagrams": [],
         "contracts": [],
         "evidence": [],
+        "reflections": None,
     }
+    reflections_path = log_path(package.specification_root)
+    reflections_body = package.auxiliary.get(reflections_path)
+    parsed_reflections = parse_reflection_log(reflections_body) if reflections_body is not None else None
+    if parsed_reflections is not None:
+        open_by_feature: dict[str, int] = {}
+        for entry in parsed_reflections.entries:
+            if entry.feature:
+                open_by_feature.setdefault(entry.feature, 0)
+                if entry.status == "open":
+                    open_by_feature[entry.feature] += 1
+        context["reflections"] = {"path": reflections_path, "open": dict(sorted(open_by_feature.items()))}
+        artifacts.add(reflections_path)
     if target.kind == "feature":
         from .readiness import architecture_readiness
 
@@ -84,14 +98,14 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
             parent_matches = package.by_id.get(parent_id, ())
             if len(parent_matches) == 1 and parent_matches[0].kind == "feature":
                 parent = parent_matches[0]
-                context["parent_feature"] = _summary(parent)
+                context["parent_feature"] = _summary(parent, package)
                 siblings = []
                 for child_id in parent.metadata.get("subfeatures", []):
                     if child_id == target.identifier:
                         continue
                     child_matches = package.by_id.get(child_id, ())
                     if len(child_matches) == 1 and child_matches[0].kind == "feature":
-                        siblings.append(_summary(child_matches[0]))
+                        siblings.append(_summary(child_matches[0], package))
                 context["siblings"] = siblings
                 artifacts.add(parent.path)
                 parent_realization = f"{Path(parent.path).parent.as_posix()}/design.md"
@@ -102,7 +116,7 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
             for child_id in target.metadata.get("subfeatures", []):
                 child_matches = package.by_id.get(child_id, ())
                 if len(child_matches) == 1 and child_matches[0].kind == "feature":
-                    children.append(_summary(child_matches[0]))
+                    children.append(_summary(child_matches[0], package))
             context["subfeatures"] = children
 
         context["architecture_readiness"] = architecture_readiness(project_root, target.identifier)

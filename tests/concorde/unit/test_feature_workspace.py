@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.feature_workspace import create_feature_root, tree_hashes, write_selection
+from tests.concorde.support.feature_workspace import create_feature_root, reflection_entry, tree_hashes, write_reflection_log, write_selection
 from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -21,6 +21,23 @@ from concorde.feature_workspace import (  # noqa: E402
 
 
 class FeatureWorkspaceTests(unittest.TestCase):
+    def test_reflection_log_path_is_project_level_and_open_count_is_per_root(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary)
+            root = create_feature_root(project)
+            other = create_feature_root(project, "specs/example/features/002-other", "feature.example.other")
+            paths = resolve_phase_paths(project, root.relative_to(project).as_posix())
+            self.assertEqual(paths.reflections, "specs/example/reflections.md")
+            self.assertEqual(paths.reflections_open, 0)
+            self.assertIn("reflections", paths.to_dict())
+            write_reflection_log(project, [reflection_entry("R-001"), reflection_entry("R-002", status="dismissed"), reflection_entry("R-003", feature="feature.example.other")])
+            paths = resolve_phase_paths(project, root.relative_to(project).as_posix())
+            self.assertEqual(paths.reflections_open, 1)
+            self.assertEqual(resolve_phase_paths(project, other.relative_to(project).as_posix()).reflections_open, 1)
+            planned = resolve_planned_phase_paths(project, "specs/example/features/003-planned")
+            self.assertEqual(planned.reflections, "specs/example/reflections.md")
+            self.assertEqual(planned.reflections_open, 0)
+
     def test_routes_durable_and_temporal_phases_without_aliases(self):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
