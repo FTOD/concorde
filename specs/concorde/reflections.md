@@ -152,6 +152,10 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Improvement**: Let the specify guidance say that a abstract may link only to published canonical
   sources, or let the docsite publish feature contracts and the project log as repository assets.
 - **Status**: open
+- **Occurrences**:
+  - implement 2026-08-29 feature.concorde.install-with-spec-kit.one-command-install — README and the
+    quick start initially linked the child `contracts/installer-cli.md`; changed the public links to
+    the published child `design.md` and retained the contract as a backtick path.
 
 ### R-008 · The Documentation refinement still couples both published hierarchies
 
@@ -388,4 +392,102 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Action**: Corrected the temporal quickstart to use `--project-root . validate` and reran it.
 - **Improvement**: Include the global-option ordering in generated quickstart examples for Concorde
   validation.
+- **Status**: open
+
+### R-021 · Immediate port rebinding observed TCP cleanup state
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.install-with-spec-kit.one-command-install
+- **Kind**: environment
+- **Concerns**: tests/concorde/acceptance/test_one_command_install.py
+- **Expected**: The development-mode acceptance test can immediately bind the ephemeral catalog port
+  after the installer stops and joins its loopback server.
+- **Observed**: The first plain bind reported `EADDRINUSE` after shutdown because completed HTTP
+  connections left normal TCP cleanup state; no server thread or listener remained.
+- **Effect**: worked-around
+- **Action**: Set `SO_REUSEADDR` on the probe before binding, matching the loopback HTTP server's own
+  reusable-address semantics while still proving that no listener owns the port.
+- **Improvement**: Use listener reachability or reusable-address rebinding when testing immediate
+  cleanup of short-lived TCP servers.
+- **Status**: open
+
+### R-022 · Ephemeral development catalog URLs broke byte-level rerun safety
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.install-with-spec-kit.one-command-install
+- **Kind**: implementation
+- **Concerns**: scripts/install-concorde.py
+- **Expected**: Repeating local-checkout installation at the same version changes no target bytes.
+- **Observed**: The first implementation retained installer-owned catalog URLs containing a new
+  ephemeral loopback port on every run, so three catalog configuration files changed despite the
+  component installation already being current.
+- **Effect**: worked-around
+- **Action**: Local mode now uses distinct `concorde-dev` registrations and removes them through the
+  public Spec Kit catalog commands before stopping the server; permanent `concorde` sources remain
+  untouched.
+- **Improvement**: Model the lifetime of temporary discovery metadata separately from installed
+  component provenance whenever a source is intentionally unreachable after a command exits.
+- **Status**: open
+- **Occurrences**:
+  - plan 2026-08-29 feature.concorde.install-with-spec-kit.one-command-install — reconciled the child
+    CLI contract, research decision, data model, and implementation plan with the proven
+    `concorde`/`concorde-dev` lifetime split.
+
+### R-023 · README and contract used different fallback labels
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.install-with-spec-kit.one-command-install
+- **Kind**: implementation
+- **Concerns**: README.md
+- **Expected**: Source, contract, README, and quick start consistently identify the retained manual
+  native Spec Kit fallback.
+- **Observed**: The first consistency test found README's phrase `maintained manual path` did not use
+  the contract and quick start's explicit `manual native` label.
+- **Effect**: worked-around
+- **Action**: Aligned the README phrase and retained the automated cross-source assertion.
+- **Improvement**: Add terminology assertions with the first documentation edit when two supported
+  paths must remain distinguishable.
+- **Status**: open
+- **Occurrences**:
+  - implement 2026-08-29 feature.concorde.install-with-spec-kit.one-command-install — the first
+    assertion was unnecessarily case-sensitive; normalized the guide text while keeping the shared
+    `manual native` term mandatory.
+
+### R-024 · Focused test wrapper reused zsh's reserved status variable
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.install-with-spec-kit.one-command-install
+- **Kind**: environment
+- **Concerns**: feature.concorde.install-with-spec-kit.one-command-install
+- **Expected**: A quiet focused-suite wrapper preserves the unittest exit code and prints the tail of
+  its log.
+- **Observed**: zsh rejected assignment to its reserved read-only `status` parameter after the tests
+  ran, causing the wrapper itself to exit 1 before it could report the test result.
+- **Effect**: worked-around
+- **Action**: Reran the unchanged suite using the task-specific variable `focused_result`.
+- **Improvement**: Avoid shell-reserved names in validation wrappers and prefer direct test commands
+  when their output volume is acceptable.
+- **Status**: open
+
+### R-025 · Development success preceded transient catalog cleanup
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.install-with-spec-kit.one-command-install
+- **Kind**: implementation
+- **Concerns**: scripts/install-concorde.py
+- **Expected**: No development-mode failure can print a success claim before every required cleanup
+  operation has completed.
+- **Observed**: Final review found `execute_install` printed success before `_operate` removed the
+  transient `concorde-dev` catalogs, so a public-command cleanup failure could follow a false success
+  line.
+- **Effect**: worked-around
+- **Action**: Deferred the development success report until after all three transient catalog removals
+  succeed; seeded verification failure also asserts that no success text is emitted.
+- **Improvement**: Treat cleanup as part of the success transaction and place terminal reporting only
+  after every mandatory finalizer.
 - **Status**: open

@@ -5,9 +5,46 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 FEATURE_ROOT = REPOSITORY_ROOT / "specs/concorde/features/003-install-concorde-speckit"
+INSTALLER_FEATURE_ROOT = FEATURE_ROOT / "subfeatures/002-one-command-install"
 
 
 class EcosystemExplanationContractTests(unittest.TestCase):
+    def test_one_command_installer_source_contract_and_guides_agree(self):
+        installer = (REPOSITORY_ROOT / "scripts/install-concorde.py").read_text(encoding="utf-8")
+        contract = (INSTALLER_FEATURE_ROOT / "contracts/installer-cli.md").read_text(encoding="utf-8")
+        readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
+        quick_start = (REPOSITORY_ROOT / "docs/quick-start.md").read_text(encoding="utf-8")
+
+        self.assertIn('SPECIFY_VERSION = "0.16.4"', installer)
+        self.assertIn('BUNDLE_ID = "concorde-bundle"', installer)
+        for source in (installer, contract, readme, quick_start):
+            self.assertIn("concorde-dev", source)
+        for option in ("--target", "--integration", "--integration-options", "--version", "--checkout", "--preview"):
+            with self.subTest(option=option):
+                self.assertIn(option, installer)
+                self.assertIn(option, contract)
+        for operation in (
+            '"init"',
+            '"extension", "catalog", "add"',
+            '"preset", "catalog", "add"',
+            '"bundle", "catalog", "add"',
+            '"bundle", "info"',
+            '"bundle", "install"',
+            '"bundle", "update"',
+        ):
+            with self.subTest(operation=operation):
+                self.assertIn(operation, installer)
+
+        public_source = "https://raw.githubusercontent.com/FTOD/concorde/main/scripts/install-concorde.py"
+        invocation = "uvx --from specify-cli==0.16.4 python - --integration codex"
+        for guide in (readme, quick_start):
+            with self.subTest(guide="README" if guide is readme else "quick-start"):
+                self.assertIn(public_source, guide)
+                self.assertIn(invocation, guide)
+                self.assertIn("--preview", guide)
+                self.assertIn("--checkout", guide)
+                self.assertIn("manual native", guide.lower())
+
     def test_textual_explanations_name_every_ecosystem_role(self):
         sources = [
             FEATURE_ROOT / "design.md",

@@ -47,32 +47,47 @@ behavior is specified by [Feature 002](../specs/concorde/features/002-create-pro
 
 ## 2. Install the published release
 
-This is the normal path for a project that wants Concorde. It needs only the pinned Spec Kit CLI —
-no Concorde checkout, no build, and no local server. Install the CLI once (`uv tool install
-specify-cli==0.16.4`, or run it ad hoc with `uvx --from specify-cli==0.16.4 specify …`), then, in
-your project directory:
+This is the normal path for a project that wants Concorde. It needs `uvx`, a shell, and network
+access—no preinstalled Python or Spec Kit CLI, Concorde checkout, release build, or local server.
+From an empty directory or existing Spec Kit project, run one command:
 
 ```bash
-specify init --here --integration claude
-base=https://github.com/FTOD/concorde/releases/download/v0.1.0
-specify extension catalog add "$base/extensions.json" --name concorde --install-allowed
-specify preset catalog add "$base/presets.json" --name concorde --install-allowed
-specify bundle catalog add "$base/bundles.json" --id concorde
-specify bundle info concorde-bundle --json
-specify bundle install concorde-bundle
+curl -fsSL https://raw.githubusercontent.com/FTOD/concorde/main/scripts/install-concorde.py \
+  | uvx --from specify-cli==0.16.4 python - --integration codex
 ```
 
-Use the integration your coding agent needs (`claude`, `codex --integration-options="--skills"`,
-`gemini`, …). `bundle info` shows the exact preset and extension versions before `bundle install`
-adds them. To find the current version without hard-coding it, read the pointer:
+Use the integration your coding agent needs (`claude`, `codex`, `gemini`, …). Codex defaults to
+skills mode; other initialization options can be passed with `--integration-options`. On an existing
+project, omit `--integration` to preserve its recorded default. Use `--target PATH` for another
+directory or `--version 0.1.0` for an immutable release.
+
+The installer obtains the pinned Spec Kit CLI in an ephemeral uv tool environment, validates the
+release pointer, initializes only a fresh empty target, reconciles three installer-owned catalogs,
+prints native `bundle info`, and chooses native install, update, or a byte-identical current no-op.
+It ends with exact component versions, reload status, and the next Concorde command.
+
+Preview performs the same native bundle resolution in a disposable project and changes zero target
+bytes:
 
 ```bash
-curl -fsSL https://github.com/FTOD/concorde/releases/latest/download/release.json
+curl -fsSL https://raw.githubusercontent.com/FTOD/concorde/main/scripts/install-concorde.py \
+  | uvx --from specify-cli==0.16.4 python - --integration codex --preview
 ```
 
-It names the newest published version and the three catalog URLs to register. Every published
-version stays available at its own `releases/download/v<version>/` location; see
-[Releasing Concorde](releasing.md) for how releases are produced.
+Review the plain-text installer before execution when desired:
+
+```bash
+curl -fsSLo install-concorde.py \
+  https://raw.githubusercontent.com/FTOD/concorde/main/scripts/install-concorde.py
+less install-concorde.py
+uvx --from specify-cli==0.16.4 python install-concorde.py --integration codex
+```
+
+The [one-command installation design](../specs/concorde/features/003-install-concorde-speckit/subfeatures/002-one-command-install/design.md)
+defines the required behavior, inputs, reports, and failure handling; its repository-owned
+`contracts/installer-cli.md` supplies the exact interface profile. The command is only an accelerator:
+it invokes the public Spec Kit operations in the manual path below and never copies component files
+itself.
 
 The newest published version is currently `v0.1.0`, which predates the module design reference, the
 feature abstract, and the removal of the `feature.create`/`feature.select` commands. These guides
@@ -81,38 +96,29 @@ the development path in part 3 until `0.4.0` is published. Otherwise continue wi
 
 ## 3. Build the current local release (development path)
 
-Use this path to try unreleased sources or to reproduce the acceptance suite. It requires:
-
-- Python 3.11;
-- `uv`;
-- Specify CLI 0.16.4, installed into the development environment by `uv sync`; and
-- a supported coding-agent integration such as Codex skills mode.
-
-Check the tools in a terminal:
+Use this one-command path to try unreleased checkout sources or reproduce the installer's acceptance
+journey:
 
 ```bash
-python3 --version
-uv --version
-uv sync
-source .venv/bin/activate
-specify --version
+target_project="$(mktemp -d)"
+uvx --from specify-cli==0.16.4 python scripts/install-concorde.py \
+  --target "$target_project" --integration codex --checkout "$PWD"
 ```
 
-From the Concorde checkout, build and verify the independently versioned packages:
+The command binds an ephemeral loopback port, builds and reproducibly verifies the checkout before
+target mutation, serves its catalogs for this run, follows the same catalog and bundle lifecycle,
+removes its transient `concorde-dev` registrations, and always stops the server. Run it again to
+verify the `already-current` byte-level no-op.
+
+### Manual native fallback
+
+Use the explicit sequence when auditing or debugging the lifecycle. First build and verify the
+release and keep the server running in a second terminal:
 
 ```bash
 uv run python scripts/release/build-components.py --output dist \
   --base-url http://127.0.0.1:8765
-specify bundle build --path bundles/concorde-bundle --output dist
 uv run python scripts/release/verify-release.py --dist dist
-```
-
-The base URL is written into catalog metadata as the future location of archives. The release
-builder does not contact that address while building.
-
-Start a local catalog server in a second terminal:
-
-```bash
 uv run python tests/concorde/support/catalog_server.py --dist dist --port 8765
 ```
 
@@ -146,7 +152,7 @@ concorde_checkout=/absolute/path/to/concorde
 specify bundle validate --offline \
   --path "$concorde_checkout/bundles/concorde-bundle"
 specify bundle info concorde-bundle --json
-specify bundle install "$concorde_checkout/bundles/concorde-bundle/bundle.yml"
+specify bundle install concorde-bundle
 ```
 
 The `concorde-bundle` bundle is an installation recipe. It pins exactly two independently versioned
