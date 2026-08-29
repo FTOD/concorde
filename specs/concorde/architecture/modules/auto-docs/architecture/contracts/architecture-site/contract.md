@@ -1,7 +1,7 @@
 ---
-id: contract.documentation.architecture-site
+id: contract.auto-docs.architecture-site
 kind: contract
-module: module.concorde.documentation
+module: module.concorde.auto-docs
 role: provided
 flow: output
 representation:
@@ -14,7 +14,7 @@ counterparties:
 consumers:
   - external.project-maintainer
 features:
-  - feature.documentation.publish-project-docsite
+  - feature.auto-docs.publish-project-docsite
 version: 3
 evidence:
   tests:
@@ -54,7 +54,7 @@ manifest, and sandboxed delivered Archify views where architecture sources decla
 Source, link, route, rendering, search, manifest, or promotion failure makes the candidate
 unpublishable. This version publishes accepted implementations within `/features` and module
 design references within `/architecture`; its three route bases remain stable within contract
-version 3, and the manifest schema version is owned by `contract.documentation.build-manifest`
+version 3, and the manifest schema version is owned by `contract.auto-docs.build-manifest`
 (schema version 5).
 
 ## Compatibility

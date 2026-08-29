@@ -52,7 +52,8 @@ until you invoke it separately.
 
 ### `$speckit-concorde-init`
 
-Use once when a Spec Kit project has no Concorde root architecture. It proposes four files:
+Use once when a Spec Kit project has no configured Concorde project architecture. It proposes four
+top-level specification files:
 `.concorde/config.json` (Architecture Source Profile 4), a `module.md` summary in the required
 shape, a seeded `design.md` design reference, and a first level view at
 `<root>/architecture/diagrams/level-view.json`, plus any accepted initial contracts under

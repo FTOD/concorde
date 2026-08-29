@@ -1,7 +1,7 @@
 ---
-id: contract.documentation.archify-renderer
+id: contract.auto-docs.archify-renderer
 kind: contract
-module: module.concorde.documentation
+module: module.concorde.auto-docs
 role: required
 flow: bidirectional
 counterparties:
@@ -12,7 +12,7 @@ representation:
   version: "2.16.0-dev.0"
   definition: specs/concorde/architecture/diagrams/level-view.json
 features:
-  - feature.documentation.publish-project-docsite
+  - feature.auto-docs.publish-project-docsite
 evidence_status: verified
 ---
 
@@ -30,13 +30,13 @@ interactive visual projection.
 
 ## Obligations
 
-Documentation supplies the officially installed and `skills-lock.json`-pinned project-local Archify skill, valid maintained JSON,
+Auto-Docs supplies the officially installed and `skills-lock.json`-pinned project-local Archify skill, valid maintained JSON,
 an explicit safe output candidate, showcase quality, and preserved source provenance. The build
 resolves `.agents/skills/archify`, verifies package identity and compatibility, runs deterministic
 validation, and invokes delivery in stable source order. Archify returns a self-contained rendering
 and deterministic validation receipt without changing the source.
 
-Raw renderer receipts may contain absolute process-local paths. Documentation verifies their type,
+Raw renderer receipts may contain absolute process-local paths. Auto-Docs verifies their type,
 source digest, artifact digest, 9/9 showcase checks, and zero errors/warnings, but retains only
 normalized project-relative provenance and content hashes in durable or published evidence.
 

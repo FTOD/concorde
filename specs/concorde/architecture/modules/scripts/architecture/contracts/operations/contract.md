@@ -6,7 +6,7 @@ role: provided
 flow: bidirectional
 counterparties:
   - module.concorde.skills
-  - module.concorde.documentation
+  - module.concorde.auto-docs
 representation:
   kind: custom
   format: Concorde Architecture Service Protocol

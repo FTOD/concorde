@@ -37,7 +37,7 @@ Selection remains the standard Spec Kit `.specify/feature.json` pointer (or
 - `module.concorde.workspace-files` owns Protocol v8 paths and lifetimes for the durable feature
   trio, module summaries and references, selection state, reflections, and temporal `attempt/`
   evidence.
-- `module.concorde.documentation` publishes Build Manifest v8 collections `architecture`, `docs`,
+- `module.concorde.auto-docs` publishes Build Manifest v8 collections `architecture`, `docs`,
   `feature-abstracts`, `features`, and `feature-implementations`; routes are the abstract landing page,
   `/design`, and `/implementation`, and `attempt/**` is excluded.
 - `module.concorde.distribution` packages the six templates, nine normal-phase replacements, five
@@ -100,7 +100,7 @@ single `remove == [attempt_dir]`. Apply stages feature `implementation.md` and o
 - The preset carries six templates; `abstract-template` and `implementation-template` resolve through
   the public preset stack; local helpers export `FEATURE_ABSTRACT`, `FEATURE_DESIGN`,
   `FEATURE_IMPLEMENTATION`, and `ATTEMPT_DIR`.
-- Documentation routes are registry-owned: abstract landing, `…/design`, and `…/implementation`.
+- Auto-Docs routes are registry-owned: abstract landing, `…/design`, and `…/implementation`.
 - Self-hosted mirrors are regenerated through feature 004's codex-only tooling by setting both host integration records to codex (skills mode), running `propose` → `apply --proposal .specify/self-hosting-proposal.json` → `status --require-current`, backing up the regenerated codex skills, restoring the `claude` records, re-materializing the `claude` skills through `preset remove` + `preset add --dev` and `extension add --dev --force`, and restoring the codex skills; `.claude/skills` contains symlinks into `.agents/skills`, so it is regenerated rather than copied.
 - The single core diagram remains an Archify `architecture` view whose intent node reads
   `abstract.md + design.md` and whose realization node reads `Feature Implementation / implementation.md`.
@@ -111,10 +111,10 @@ single `remove == [attempt_dir]`. Apply stages feature `implementation.md` and o
 ## Traceability and Evidence
 
 Behavior and acceptance criteria are in `design.md` and its nine sub-feature designs; the feature
-abstract is adjacent. Root ownership and interactions are in `specs/concorde/module.md` and the
+abstract is adjacent. Project-level ownership and interactions are in `specs/concorde/module.md` and the
 level view under `specs/concorde/architecture/diagrams/`; module rationale is in `specs/concorde/design.md`. Command behavior is governed
 by `contracts/agent-commands.md`; Protocol v8/proposal v6 by `feature-workspace.schema.json`; the
-documentation read model by the Documentation contracts and Build Manifest v8.
+documentation read model by the Auto-Docs contracts and Build Manifest v8.
 
 Runtime realization is centered in `repository.py`, `feature_workspace.py`, `context.py`,
 `implementation_acceptance.py`, `diagnostics.py`, and `validation/{abstract,diagrams,layout}.py`. Protocol and workspace
@@ -167,7 +167,7 @@ the active integration because the self-host status protocol currently validates
 - Local helpers export `FEATURE_ABSTRACT`, `FEATURE_DESIGN`, `FEATURE_IMPLEMENTATION`, and
   `ATTEMPT_DIR`.
 
-### Documentation site
+### Auto-Docs site
 
 - `registry.ts` declares `feature-abstracts`, `features`, and `feature-implementations`, pairs them by
   root, and excludes `attempt/**`; `manifest.ts` emits schema version 7.

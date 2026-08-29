@@ -1,8 +1,8 @@
 # Build Manifest Contract v5
 
-**Contract ID**: `contract.documentation.build-manifest`
+**Contract ID**: `contract.auto-docs.build-manifest`
 
-**Owner**: `module.concorde.documentation`
+**Owner**: `module.concorde.auto-docs`
 
 **Role / flow**: provided, output
 

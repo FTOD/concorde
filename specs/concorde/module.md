@@ -7,7 +7,7 @@ children:
   - module.concorde.scripts
   - module.concorde.workspace-files
   - module.concorde.distribution
-  - module.concorde.documentation
+  - module.concorde.auto-docs
 features:
   - feature.concorde.workflow
   - feature.concorde.publish-project-docsite
@@ -17,7 +17,7 @@ features:
 contracts:
   provided:
     - contract.concorde.workflow
-    - contract.documentation.architecture-site
+    - contract.auto-docs.architecture-site
     - contract.concorde.spec-kit-installation
   required:
     - contract.concorde.spec-kit-platform
@@ -45,10 +45,15 @@ The primary architecture is a three-part interaction:
 2. **Scripts** provide routing and deterministic operations requested by those skills.
 3. **Workspace Files** hold the durable specification and the current attempt's temporal working memory.
 
-**Distribution** installs the skill and script packages. **Documentation** reads validated workspace
+**Distribution** installs the skill and script packages. **Auto-Docs** reads validated workspace
 files and publishes a disposable read model. Neither supporting module participates in ordinary
-feature authoring. The maintained one-level view is
+feature authoring. The maintained interaction view is
 [level-view.json](architecture/diagrams/level-view.json).
+
+In tooling, `module.concorde` is the **specification root** only because `.concorde/config.json`
+selects it as the top-level package for this project. “Root” describes storage and lookup, not a
+runtime component or a special architectural layer. Features registered directly here are
+**project-level features**: user outcomes realized across the modules below, not blocks beside them.
 
 At setup time, Spec Kit resolves the `concorde-bundle` from a catalog, installs its preset and
 extension, and uses the active coding-agent integration to materialize their command sources.
@@ -64,7 +69,7 @@ read-only `ask` skill is followed directly by the coding agent.
 | `feature.concorde.record-workflow-reflections` | Record workflow problems in the one durable project reflection log. | Skills → Workspace Files |
 | `feature.concorde.install-with-spec-kit` | Inspect, install, update, and remove the supported Concorde package set. | Distribution → Skills + Scripts |
 | `feature.concorde.self-host-framework` | Materialize and verify the current checkout through the public installation path. | Distribution → Skills + Scripts |
-| `feature.concorde.publish-project-docsite` | Publish validated specifications and project docs as a browsable site. | Workspace Files → Documentation |
+| `feature.concorde.publish-project-docsite` | Publish validated specifications and project docs as a browsable site. | Workspace Files → Auto-Docs |
 
 The feature specifications remain under `features/`. They describe user outcomes; the
 module split above describes how those outcomes are realized.
@@ -75,7 +80,7 @@ module split above describes how those outcomes are realized.
 |---|---|---|
 | `contract.concorde.workflow` | provided | User-visible workflow behavior across installed skills. |
 | `contract.concorde.spec-kit-installation` | provided | Bundle inspection and installation behavior. |
-| `contract.documentation.architecture-site` | provided through Documentation | Published read-only project site. |
+| `contract.auto-docs.architecture-site` | provided through Auto-Docs | Published read-only project site. |
 | `contract.concorde.spec-kit-platform` | required | Spec Kit component and lifecycle host behavior. |
 
 ## Submodules
@@ -86,7 +91,7 @@ module split above describes how those outcomes are realized.
 | `module.concorde.scripts` | Launchers, workspace routing, structured runtime operations, and deterministic diagnostics. | User-facing workflow prose or agent-authored content. |
 | `module.concorde.workspace-files` | File roles, paths, lifetimes, selection state, and durable/temporal promotion rules. | The agent or scripts that operate on those files. |
 | `module.concorde.distribution` | Bundle, catalogs, release artifacts, install/update/remove lifecycle. | Workflow behavior after installation. |
-| `module.concorde.documentation` | Validation-gated site build and generated read model. | Maintained source authority. |
+| `module.concorde.auto-docs` | Validation-gated site build and generated read model. | Maintained source authority. |
 
 ## Interaction Rules
 
@@ -96,7 +101,7 @@ module split above describes how those outcomes are realized.
 - Scripts MUST treat Workspace Files as their input/output boundary and return structured results.
 - Durable files MUST live outside `attempt/`; temporal delivery memory MUST live inside `attempt/`.
 - Generated documentation MUST remain a disposable projection of validated maintained files.
-- Distribution and Documentation MUST NOT redefine skill, script, or workspace-file semantics.
+- Distribution and Auto-Docs MUST NOT redefine skill, script, or workspace-file semantics.
 
 ## Representative Scenario
 
@@ -109,6 +114,6 @@ returns a structured result to the skill. No other user-facing Concorde runtime 
 ## Design Rationale
 
 The modules are named after the things a maintainer can find in an installed project: skills,
-scripts, and workspace files. Distribution and Documentation remain explicit because they cross the
+scripts, and workspace files. Distribution and Auto-Docs remain explicit because they cross the
 project boundary, but they are supporting adapters rather than the center of the workflow. Detailed
 source mapping and file-lifetime rules are recorded in the [design reference](design.md).

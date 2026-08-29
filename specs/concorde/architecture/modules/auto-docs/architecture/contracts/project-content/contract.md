@@ -1,7 +1,7 @@
 ---
-id: contract.documentation.project-content
+id: contract.auto-docs.project-content
 kind: contract
-module: module.concorde.documentation
+module: module.concorde.auto-docs
 role: required
 flow: input
 representation:
@@ -18,7 +18,7 @@ providers:
   - external.project-maintainer
   - external.spec-kit
 features:
-  - feature.documentation.publish-project-docsite
+  - feature.auto-docs.publish-project-docsite
 version: 5
 evidence:
   tests:

@@ -4,10 +4,10 @@ kind: feature
 module: module.concorde
 refines: []
 scenarios:
-  - publish-architecture
+  - publication
 contracts:
   provided:
-    - contract.documentation.architecture-site
+    - contract.auto-docs.architecture-site
   required: []
 diagrams:
   - source: specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json
@@ -60,14 +60,14 @@ invoking the source registry, Archify delivery, disposable content materializati
 candidate validation, and atomic publisher before a programmer or agent browses the result.
 
 The diagram explains component involvement and call order; the user stories and requirements below
-remain the behavioral authority, and `specs/concorde/architecture/diagrams/level-view.json` remains the bounded root
-architecture view.
+remain the behavioral authority, and `specs/concorde/architecture/diagrams/level-view.json` remains
+the project-level interaction architecture.
 
-This feature does not add a separate core component diagram because the bounded root view already
-shows Documentation, Scripts, Skills, the coding agent, and the maintainer at
-the level where this root feature is owned. Repeating those components here would duplicate that
-canonical structure. The publication sequence is therefore explicitly `role: supplemental` and
-answers only the narrower call-order question.
+This feature does not add a separate core component diagram because the project-level interaction
+view already shows Auto-Docs consuming Workspace Files and publishing a disposable read model.
+Project-level features are outcomes realized across modules, so they are deliberately not drawn as
+peer components. The publication sequence is therefore explicitly `role: supplemental` and answers
+only the narrower call-order question.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -509,7 +509,7 @@ and has no separate hand-authored landing-page copy.
   maintained source identified and zero fallback to prior diagram bytes.
 - **SC-016**: After preview and production builds, version-control status reports zero tracked or
   newly trackable diagram deliveries, visual-check evidence, or machine-specific absolute paths.
-- **SC-017**: Across fixtures containing root features, module-level features, and one level of
+- **SC-017**: Across fixtures containing project-level features, module-level features, and one level of
   sub-features, 100% of feature navigation entries contain no architecture or module-storage
   categories, and every sub-feature appears under exactly its declared parent feature.
 - **SC-018**: Every eligible feature has exactly one deterministic, collision-free route derived
@@ -549,10 +549,9 @@ and has no separate hand-authored landing-page copy.
 - Public navigation is a semantic read model rather than a literal directory browser. Feature
   containment is defined only by the canonical parent/sub-feature relationship; module placement and
   adjacent-level refinement remain cross-links, not parents in the Features hierarchy.
-- The existing root architecture view's `publish-architecture` scenario provides the current-level
-  structural trace for this project-wide feature. The feature-owned publication sequence explains
-  deeper invocation without expanding child internals in the root view; the Documentation-module
-  feature and view remain the adjacent architectural refinement.
+- The project-level interaction view's `publication` viewpoint provides the structural trace for
+  this project-wide feature. The feature-owned publication sequence explains deeper invocation;
+  the Auto-Docs feature and module view remain the adjacent architectural refinement.
 - The hand-written Documentation collection is intentionally explanatory and task-oriented. It may
   summarize README material and canonical specifications for a progressive reader journey, but
   architecture and feature sources remain authoritative when wording or detail disagrees.

@@ -2,15 +2,15 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Concorde — Documentation Module",
-    "output": "../../../../../../../generated/architecture/documentation.html",
+    "title": "Concorde — Auto-Docs Module",
+    "output": "../../../../../../../generated/architecture/auto-docs.html",
     "quality_profile": "showcase",
     "viewBox": [1220, 680],
     "views": [
       {
         "id": "publish-project-docsite",
         "label": "Publish project docsite",
-        "focus": ["projectDocs", "projectSpecs", "archify", "documentation", "maintainer"],
+        "focus": ["projectDocs", "projectSpecs", "archify", "autoDocs", "maintainer"],
         "note": "The specs tree supplies architecture, feature specs, and accepted realizations; project Markdown completes three read-only views."
       }
     ]
@@ -41,9 +41,9 @@
       "size": [180, 72]
     },
     {
-      "id": "documentation",
+      "id": "autoDocs",
       "type": "frontend",
-      "label": "Documentation",
+      "label": "Auto-Docs",
       "sublabel": "validated read model",
       "pos": [480, 265],
       "size": [200, 84]
@@ -60,29 +60,29 @@
   "boundaries": [
     {
       "kind": "region",
-      "label": "Documentation module",
-      "wraps": ["documentation"],
+      "label": "Auto-Docs module",
+      "wraps": ["autoDocs"],
       "pad": 42
     }
   ],
   "connections": [
     {
-      "id": "contract_documentation_project-content__docs",
+      "id": "contract_auto-docs_project-content__docs",
       "from": "projectDocs",
-      "to": "documentation",
+      "to": "autoDocs",
       "label": "Markdown • project-content",
       "variant": "emphasis"
     },
     {
-      "id": "contract_documentation_project-content__specs",
+      "id": "contract_auto-docs_project-content__specs",
       "from": "projectSpecs",
-      "to": "documentation",
+      "to": "autoDocs",
       "label": "architecture + feature specs",
       "variant": "emphasis",
       "labelAt": [260, 413]
     },
     {
-      "id": "contract_documentation_archify-renderer__sources",
+      "id": "contract_auto-docs_archify-renderer__sources",
       "from": "projectSpecs",
       "to": "archify",
       "label": "architecture diagrams",
@@ -91,24 +91,24 @@
       "toSide": "left"
     },
     {
-      "id": "contract_documentation_archify-renderer__views",
+      "id": "contract_auto-docs_archify-renderer__views",
       "from": "archify",
-      "to": "documentation",
+      "to": "autoDocs",
       "label": "rendered views",
       "variant": "dashed",
       "fromSide": "top",
       "toSide": "bottom"
     },
     {
-      "id": "contract_documentation_build-interface",
+      "id": "contract_auto-docs_build-interface",
       "from": "maintainer",
-      "to": "documentation",
+      "to": "autoDocs",
       "label": "inspect / validate / build",
       "labelDy": -20
     },
     {
-      "id": "contract_documentation_architecture-site",
-      "from": "documentation",
+      "id": "contract_auto-docs_architecture-site",
+      "from": "autoDocs",
       "to": "maintainer",
       "label": "HTML + manifest",
       "variant": "emphasis",

@@ -56,10 +56,10 @@ presented as feature specifications.
 
 ## Structure
 
-This feature declares no core diagram of its own: the root level view
-<a href="/architecture/concorde-root.html">Concorde root</a> (maintained source
-`specs/concorde/architecture/diagrams/level-view.json`) already shows Documentation, Scripts, Spec Kit
-Integration, the coding agent, and the maintainer at the level where the feature is owned. The
+This feature declares no core diagram of its own: the project-level interaction view
+<a href="/architecture/concorde-interaction-architecture.html">Concorde interaction architecture</a>
+(maintained source `specs/concorde/architecture/diagrams/level-view.json`) already shows Auto-Docs,
+Workspace Files, Skills, Scripts, Spec Kit, and the maintainer. The
 supplemental <a href="/architecture/project-docsite-publication-flow.html">docsite publication
 flow</a> (maintained source `diagrams/project-docsite-publication-flow.json`) answers only the
 call-order question. In one sketch:
@@ -74,12 +74,12 @@ specs/**      ─┘        │                  Archify skill (.agents/skills/a
 ```
 
 - **`docsite/`** owns configuration, presentation, and the preview and build entry points; it is
-  realized by the Documentation module's refinement `feature.documentation.publish-project-docsite`
-  behind `contract.documentation.build-interface`, `contract.documentation.build-manifest`, and
-  `contract.documentation.architecture-site`.
+  realized by the Auto-Docs module's refinement `feature.auto-docs.publish-project-docsite`
+  behind `contract.auto-docs.build-interface`, `contract.auto-docs.build-manifest`, and
+  `contract.auto-docs.architecture-site`.
 - **Root `README.md`, `docs/`, and `specs/`** are the maintained published sources, consumed through
-  `contract.documentation.project-content`; Scripts keeps the `specs/` sources valid.
-- **The Archify renderer**, reached through `contract.documentation.archify-renderer`, owns diagram
+  `contract.auto-docs.project-content`; Scripts keeps the `specs/` sources valid.
+- **The Archify renderer**, reached through `contract.auto-docs.archify-renderer`, owns diagram
   validation and standalone HTML; Docusaurus owns the generated pages, search index, and manifest.
 - **Generated projections** — the delivered `generated/` tree, staged content, the build manifest,
   and the site — are reproducible, ignored read models.
@@ -165,8 +165,8 @@ specs/**      ─┘        │                  Archify skill (.agents/skills/a
   `contracts/build-manifest-contract.md` with its
   schema (`contracts/build-manifest.schema.json`), and `contracts/published-site.md`.
 - **The level this feature belongs to** — [module.md](../../module.md) (the root summary) and the
-  module that realizes it: [Documentation](../../architecture/modules/documentation/module.md) with its
-  refinement [publish-project-docsite](../../architecture/modules/documentation/features/001-publish-project-docsite/design.md).
+  module that realizes it: [Auto-Docs](../../architecture/modules/auto-docs/module.md) with its
+  refinement [publish-project-docsite](../../architecture/modules/auto-docs/features/001-publish-project-docsite/design.md).
 - **Contributing to the site** — [docs/contributing/docsite.md](../../../../docs/contributing/docsite.md),
   the shared project homepage [README.md](../../../../README.md), and the guides the site publishes:
   [docs/index.md](../../../../docs/index.md) and

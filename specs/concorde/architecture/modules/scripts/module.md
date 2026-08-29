@@ -43,7 +43,7 @@ Files contract.
 
 | Contract ID | Role | Counterparty |
 |---|---|---|
-| `contract.scripts.operations` | provided | Skills and Documentation |
+| `contract.scripts.operations` | provided | Skills and Auto-Docs |
 | `contract.scripts.workspace-files` | required | Workspace Files |
 
 ## Submodules

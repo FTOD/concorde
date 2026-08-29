@@ -63,7 +63,7 @@ command. Complete field types and allowed values are defined by the linked schem
 - Acceptance proves every canonical task is complete and every recognizable existing checklist item
   is satisfied, binds the reviewed realization, the optional module design-reference amendment, and
   the exact removal set to a source digest, returns the exact proposal path and task/checklist
-  summaries, requires explicit approval, atomically replaces root feature `implementation.md` and (when
+  summaries, requires explicit approval, atomically replaces the selected feature's `implementation.md` and (when
   proposed) the providing module's `design.md`, and removes only the selected feature's complete
   `attempt/` directory; `abstract.md`, feature `design.md`, `module.md`, and every other root remain
   byte-identical.

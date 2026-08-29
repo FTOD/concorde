@@ -7,7 +7,7 @@ flow: bidirectional
 counterparties:
   - module.concorde.skills
   - module.concorde.scripts
-  - module.concorde.documentation
+  - module.concorde.auto-docs
 representation:
   kind: standard
   format: Concorde workspace file model

@@ -1,8 +1,8 @@
 # Docsite Build Interface v1
 
-**Contract ID**: `contract.documentation.build-interface`
+**Contract ID**: `contract.auto-docs.build-interface`
 
-**Owner**: `module.concorde.documentation`
+**Owner**: `module.concorde.auto-docs`
 
 **Role / flow**: provided, bidirectional
 

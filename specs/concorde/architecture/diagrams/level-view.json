@@ -2,528 +2,191 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Concorde — Skills, Scripts, and Workspace Files",
-    "output": "../../../../generated/architecture/concorde-root.html",
+    "title": "Concorde Interaction Architecture",
+    "output": "../../../../generated/architecture/concorde-interaction-architecture.html",
     "quality_profile": "showcase",
-    "viewBox": [
-      1390,
-      880
-    ],
+    "viewBox": [1390, 860],
     "views": [
       {
-        "id": "scenario-concorde-establish-and-place-feature",
-        "label": "Establish and place a feature",
-        "focus": [
-          "maintainer",
-          "specKit",
-          "agentHost",
-          "concordeWorkflowFeature",
-          "skills",
-          "scripts",
-          "workspaceFiles"
-        ],
-        "note": "A skill guides the phase, runs Scripts for deterministic work, and names every Workspace File it reads or writes."
+        "id": "feature-work",
+        "label": "Feature work",
+        "focus": ["programmer", "skills", "scripts", "workspaceFiles"],
+        "note": "The skill guides the agent, delegates deterministic operations to scripts, and names the files used as workflow state."
       },
       {
-        "id": "scenario-concorde-review-implement-and-reconcile",
-        "label": "Review, implement, and reconcile",
-        "focus": [
-          "maintainer",
-          "specKit",
-          "agentHost",
-          "concordeWorkflowFeature",
-          "skills",
-          "scripts",
-          "workspaceFiles",
-          "documentation"
-        ],
-        "note": "Skills guide authoring; Scripts validate and accept; Workspace Files preserve durable intent and temporal attempt memory."
+        "id": "direct-authoring",
+        "label": "Agent-authored files",
+        "focus": ["programmer", "skills", "workspaceFiles"],
+        "note": "A skill may direct the coding agent to read or write named durable specifications or temporal attempt files without a script in the middle."
       },
       {
-        "id": "inspect-install-and-verify-concorde",
-        "label": "Install and verify Concorde",
-        "focus": [
-          "maintainer",
-          "specKit",
-          "installFeature",
-          "distribution",
-          "skills",
-          "agentHost"
-        ],
-        "note": "Use Spec Kit's bundle lifecycle; Distribution packages Concorde and Skills materializes its commands."
+        "id": "installation",
+        "label": "Installation",
+        "focus": ["specKit", "distribution", "skills", "scripts"],
+        "note": "Spec Kit installs the Concorde bundle; Distribution supplies the skill and script packages that become active in the project."
       },
       {
-        "id": "manage-concorde-installation",
-        "label": "Manage Concorde installation",
-        "focus": [
-          "maintainer",
-          "specKit",
-          "installFeature",
-          "distribution",
-          "skills"
-        ],
-        "note": "Spec Kit previews updates and removal while Distribution preserves provenance and Skills supplies independently packaged components."
-      },
-      {
-        "id": "publish-architecture",
-        "label": "Build and browse the project site",
-        "focus": [
-          "maintainer",
-          "publishFeature",
-          "documentation",
-          "workspaceFiles",
-          "specKit"
-        ],
-        "note": "Documentation projects validated architecture, feature specifications, and accepted realizations into one site."
+        "id": "publication",
+        "label": "Auto-Docs publication",
+        "focus": ["workspaceFiles", "autoDocs", "programmer"],
+        "note": "Auto-Docs publishes a disposable project site that the programmer reads while working."
       }
     ]
   },
   "components": [
     {
-      "id": "maintainer",
+      "id": "programmer",
       "type": "external",
-      "label": "Maintainer",
-      "sublabel": "Chooses a Concorde capability",
-      "pos": [
-        40,
-        330
-      ],
-      "size": [
-        170,
-        76
-      ]
+      "label": "Programmer",
+      "sublabel": "Uses skills · reads Auto-Docs",
+      "pos": [40, 280],
+      "size": [180, 82]
     },
     {
       "id": "specKit",
       "type": "external",
       "label": "Spec Kit",
-      "sublabel": "Bundle CLI + normal phases",
-      "pos": [
-        280,
-        230
-      ],
-      "size": [
-        180,
-        76
-      ]
-    },
-    {
-      "id": "agentHost",
-      "type": "external",
-      "label": "Coding Agent",
-      "sublabel": "7 surfaces · 6 runtime-backed",
-      "pos": [
-        280,
-        430
-      ],
-      "size": [
-        180,
-        76
-      ]
-    },
-    {
-      "id": "installFeature",
-      "tag": "feature.concorde.install-with-spec-kit",
-      "type": "cloud",
-      "label": "Install with Spec Kit",
-      "sublabel": "Root feature · setup lifecycle",
-      "pos": [
-        650,
-        60
-      ],
-      "size": [
-        230,
-        86
-      ]
-    },
-    {
-      "id": "concordeWorkflowFeature",
-      "tag": "feature.concorde.workflow",
-      "type": "backend",
-      "label": "Concorde Workflow",
-      "sublabel": "Root feature · direct development",
-      "pos": [
-        650,
-        320
-      ],
-      "size": [
-        230,
-        96
-      ]
-    },
-    {
-      "id": "reflectionsFeature",
-      "tag": "feature.concorde.record-workflow-reflections",
-      "type": "backend",
-      "label": "Record Workflow Reflections",
-      "sublabel": "Root feature · one project log",
-      "pos": [
-        650,
-        500
-      ],
-      "size": [
-        230,
-        86
-      ]
-    },
-    {
-      "id": "selfHostFeature",
-      "tag": "feature.concorde.self-host-framework",
-      "type": "security",
-      "label": "Self-Host Concorde",
-      "sublabel": "Root feature · development install",
-      "pos": [
-        650,
-        190
-      ],
-      "size": [
-        230,
-        86
-      ]
-    },
-    {
-      "id": "publishFeature",
-      "tag": "feature.concorde.publish-project-docsite",
-      "type": "frontend",
-      "label": "Publish Project Docsite",
-      "sublabel": "Root feature · generated read model",
-      "pos": [
-        650,
-        680
-      ],
-      "size": [
-        230,
-        86
-      ]
+      "sublabel": "Bundle installation host",
+      "pos": [40, 60],
+      "size": [180, 76]
     },
     {
       "id": "distribution",
-      "tag": "module.concorde.distribution",
       "type": "cloud",
       "label": "Distribution",
-      "sublabel": "Bundle and release lifecycle",
-      "pos": [
-        1070,
-        50
-      ],
-      "size": [
-        210,
-        78
-      ]
+      "sublabel": "Preset + extension packages",
+      "tag": "module.concorde.distribution",
+      "pos": [330, 60],
+      "size": [220, 82]
     },
     {
       "id": "skills",
-      "tag": "module.concorde.skills",
       "type": "frontend",
       "label": "Skills",
-      "sublabel": "Only feature-work interface",
-      "pos": [
-        1070,
-        220
-      ],
-      "size": [
-        210,
-        78
-      ]
+      "sublabel": "Only user-facing interface",
+      "tag": "module.concorde.skills",
+      "pos": [330, 280],
+      "size": [220, 92]
     },
     {
       "id": "scripts",
-      "tag": "module.concorde.scripts",
       "type": "backend",
       "label": "Scripts",
       "sublabel": "Routing + deterministic operations",
-      "pos": [
-        1070,
-        400
-      ],
-      "size": [
-        210,
-        78
-      ]
+      "tag": "module.concorde.scripts",
+      "pos": [690, 60],
+      "size": [230, 92]
     },
     {
       "id": "workspaceFiles",
-      "tag": "module.concorde.workspace-files",
       "type": "database",
       "label": "Workspace Files",
       "sublabel": "Durable specs + temporal attempts",
-      "pos": [
-        1070,
-        540
-      ],
-      "size": [
-        210,
-        78
-      ]
+      "tag": "module.concorde.workspace-files",
+      "pos": [1060, 250],
+      "size": [240, 92]
     },
     {
-      "id": "documentation",
-      "tag": "module.concorde.documentation",
+      "id": "autoDocs",
       "type": "frontend",
-      "label": "Documentation",
-      "sublabel": "Validate, build, and serve site",
-      "pos": [
-        1070,
-        680
-      ],
-      "size": [
-        210,
-        78
-      ]
-    }
-  ],
-  "boundaries": [
-    {
-      "kind": "region",
-      "label": "Concorde root · current features + immediate modules",
-      "wraps": [
-        "installFeature",
-        "selfHostFeature",
-        "concordeWorkflowFeature",
-        "reflectionsFeature",
-        "publishFeature",
-        "distribution",
-        "skills",
-        "scripts",
-        "workspaceFiles",
-        "documentation"
-      ],
-      "pad": 34
+      "label": "Auto-Docs",
+      "sublabel": "Validated, disposable read model",
+      "tag": "module.concorde.auto-docs",
+      "pos": [1060, 610],
+      "size": [240, 92]
     }
   ],
   "connections": [
     {
-      "id": "contract_concorde_spec-kit-platform__maintainer",
-      "from": "maintainer",
-      "to": "specKit",
-      "label": "Spec Kit CLI / phases",
-      "labelAt": [
-        245,
-        320
-      ],
-      "variant": "emphasis"
-    },
-    {
-      "id": "contract_concorde_spec-kit-installation__invoke",
-      "from": "specKit",
-      "to": "installFeature",
-      "label": "inspect / install / update"
-    },
-    {
-      "id": "contract_distribution_bundle-lifecycle",
-      "from": "installFeature",
-      "to": "distribution",
-      "label": "bundle lifecycle",
-      "variant": "emphasis"
-    },
-    {
-      "id": "contract_distribution_component-packages",
-      "from": "skills",
-      "to": "distribution",
-      "label": "preset + extension packages"
-    },
-    {
-      "id": "contract_concorde_spec-kit-installation__self-hosting",
-      "from": "specKit",
-      "to": "selfHostFeature",
-      "label": "local install / refresh",
-      "labelAt": [
-        660,
-        300
-      ]
-    },
-    {
-      "id": "contract_skills_agent-surface__self-hosting",
-      "from": "selfHostFeature",
+      "id": "contract_skills_agent-surface__programmer",
+      "from": "programmer",
       "to": "skills",
-      "label": "materialize + verify",
-      "labelAt": [
-        1080,
-        315
-      ],
-      "variant": "security"
-    },
-    {
-      "id": "contract_skills_agent-surface",
-      "from": "installFeature",
-      "to": "skills",
-      "label": "compose overrides + commands",
+      "label": "invoke a skill",
       "variant": "emphasis"
-    },
-    {
-      "id": "contract_concorde_workflow__spec-kit",
-      "from": "specKit",
-      "to": "concordeWorkflowFeature",
-      "label": "specify → converge",
-      "variant": "dashed"
-    },
-    {
-      "id": "contract_concorde_workflow__agent",
-      "from": "agentHost",
-      "to": "concordeWorkflowFeature",
-      "label": "6 operations + read-only ask",
-      "fromSide": "right",
-      "toSide": "left",
-      "via": [
-        [
-          555,
-          468
-        ],
-        [
-          555,
-          368
-        ]
-      ],
-      "labelAt": [
-        555,
-        520
-      ],
-      "variant": "emphasis"
-    },
-    {
-      "id": "contract_skills_agent-surface__workflow",
-      "from": "concordeWorkflowFeature",
-      "to": "skills",
-      "label": "workspace + phase routing"
     },
     {
       "id": "contract_skills_script-operations",
       "from": "skills",
       "to": "scripts",
-      "label": "run deterministic operation",
-      "labelAt": [
-        1175,
-        312
-      ],
+      "label": "request deterministic operation",
       "variant": "emphasis"
     },
     {
       "id": "contract_skills_workspace-files",
       "from": "skills",
       "to": "workspaceFiles",
-      "label": "read / write named files",
-      "labelAt": [
-        1330,
-        492
-      ],
-      "fromSide": "right",
-      "toSide": "right",
-      "via": [
-        [
-          1330,
-          259
-        ],
-        [
-          1330,
-          579
-        ]
-      ]
+      "label": "read / write named files"
     },
     {
       "id": "contract_scripts_workspace-files",
       "from": "scripts",
       "to": "workspaceFiles",
-      "label": "resolve · propose · validate",
-      "labelAt": [
-        1175,
-        492
-      ],
+      "label": "resolve · propose · validate · accept",
       "variant": "emphasis"
     },
     {
-      "id": "contract_concorde_workflow__reflections",
-      "from": "agentHost",
-      "to": "reflectionsFeature",
-      "label": "record problems during phases",
-      "fromSide": "bottom",
-      "toSide": "left",
-      "via": [
-        [
-          370,
-          543
-        ]
-      ],
-      "labelAt": [
-        510,
-        565
-      ]
+      "id": "contract_concorde_spec-kit-installation__bundle",
+      "from": "specKit",
+      "to": "distribution",
+      "label": "install / update / remove",
+      "labelAt": [275, 156]
     },
     {
-      "id": "contract_workspace-files_records__reflections",
-      "from": "reflectionsFeature",
-      "to": "workspaceFiles",
-      "label": "append durable reflection"
+      "id": "contract_distribution_component-packages__skills",
+      "from": "distribution",
+      "to": "skills",
+      "label": "install skill instructions",
+      "labelAt": [450, 218]
     },
     {
-      "id": "contract_documentation_architecture-site__maintainer",
-      "from": "maintainer",
-      "to": "publishFeature",
-      "label": "build / browse site",
-      "fromSide": "bottom",
-      "toSide": "bottom",
-      "via": [
-        [
-          125,
-          820
-        ],
-        [
-          765,
-          820
-        ]
-      ],
-      "labelAt": [
-        500,
-        810
-      ],
+      "id": "contract_distribution_component-packages__scripts",
+      "from": "distribution",
+      "to": "scripts",
+      "label": "install launchers + runtime",
+      "labelAt": [800, 180]
+    },
+    {
+      "id": "contract_auto-docs_project-content__workspace-files",
+      "from": "workspaceFiles",
+      "to": "autoDocs",
+      "label": "validated durable sources",
+      "labelAt": [1180, 530],
       "variant": "dashed"
     },
     {
-      "id": "contract_documentation_build-interface",
-      "from": "publishFeature",
-      "to": "documentation",
-      "label": "validate / build / serve",
-      "variant": "emphasis"
-    },
-    {
-      "id": "contract_documentation_project-content__workspace-files",
-      "from": "workspaceFiles",
-      "to": "documentation",
-      "label": "validated durable sources",
-      "labelAt": [
-        1175,
-        632
-      ]
+      "id": "contract_auto-docs_architecture-site__programmer",
+      "from": "autoDocs",
+      "to": "programmer",
+      "label": "read generated documentation",
+      "variant": "dashed"
     }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "Five root-level features",
+      "title": "How to read this diagram",
       "items": [
-        "Install with Spec Kit prepares user projects",
-        "Self-Host Concorde activates current sources here",
-        "Concorde Workflow directs feature delivery",
-        "Publish Project Docsite exposes the generated read model",
-        "Record Workflow Reflections keeps one project log of what went wrong"
+        "Each tagged block is a Concorde module",
+        "Its subtitle names the module's concrete responsibility",
+        "Project-level features are outcomes realized across modules, not structural peers"
       ]
     },
     {
       "dot": "emerald",
-      "title": "Primary interaction",
+      "title": "Primary workflow",
       "items": [
-        "Maintainers start feature work through Skills",
-        "Skills invoke Scripts only for routing or deterministic behavior",
-        "Skills and Scripts operate on named Workspace Files",
-        "Durable files live outside attempt; temporal memory lives inside attempt"
+        "Programmers interact with Workflow Skills",
+        "Skills use Helper Scripts only for deterministic operations",
+        "Skills and scripts operate on explicit Workspace Files"
       ]
     },
     {
       "dot": "violet",
-      "title": "One-level visibility",
+      "title": "File lifetimes",
       "items": [
-        "This view shows root features and immediate modules",
-        "Each feature delegates through documented contracts",
-        "Zoom into a child module to see its own features and submodules"
+        "Durable specifications record accepted intent",
+        "attempt/ holds temporal planning and delivery memory",
+        "Programmers read Auto-Docs output; it is never source authority"
       ]
     }
   ]

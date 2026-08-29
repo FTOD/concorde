@@ -6,7 +6,7 @@ parent_feature: feature.concorde.workflow
 refines: []
 subfeatures: []
 scenarios:
-  - scenario-concorde-establish-and-place-feature
+  - feature-work
 contracts:
   provided:
     - contract.concorde.workflow

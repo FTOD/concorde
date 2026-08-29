@@ -1,26 +1,26 @@
 ---
-id: feature.documentation.publish-project-docsite
+id: feature.auto-docs.publish-project-docsite
 kind: feature
-module: module.concorde.documentation
+module: module.concorde.auto-docs
 refines:
   - feature.concorde.publish-project-docsite
 scenarios:
   - publish-project-docsite
 contracts:
   provided:
-    - contract.documentation.architecture-site
-    - contract.documentation.build-interface
-    - contract.documentation.build-manifest
+    - contract.auto-docs.architecture-site
+    - contract.auto-docs.build-interface
+    - contract.auto-docs.build-manifest
   required:
-    - contract.documentation.project-content
-    - contract.documentation.archify-renderer
+    - contract.auto-docs.project-content
+    - contract.auto-docs.archify-renderer
 evidence_status: verified
-canonical_design: specs/concorde/architecture/modules/documentation/features/001-publish-project-docsite/design.md
+canonical_design: specs/concorde/architecture/modules/auto-docs/features/001-publish-project-docsite/design.md
 ---
 
 # Feature Design: Publish the Project Docsite
 
-**Feature Branch**: Not created; this is a Documentation-module refinement
+**Feature Branch**: Not created; this is an Auto-Docs-module refinement
 
 **Created**: 2026-08-20
 
@@ -28,14 +28,14 @@ canonical_design: specs/concorde/architecture/modules/documentation/features/001
 
 ## Outcome
 
-The Documentation module projects architecture plus permanent feature specifications and designs from the unified `specs/`
+The Auto-Docs module projects architecture plus permanent feature specifications and designs from the unified `specs/`
 hierarchy plus project Markdown from `docs/` into one searchable, traceable, read-only website, embedding each
 declared delivered Archify view beside its textual architecture source.
 
 ## Structural Refinement
 
-This feature realizes `feature.concorde.publish-project-docsite` inside the Documentation boundary.
-The parent specification owns the project-wide outcome; this specification owns the Documentation
+This feature realizes `feature.concorde.publish-project-docsite` inside the Auto-Docs boundary.
+The parent specification owns the project-wide outcome; this specification owns the Auto-Docs
 module's narrower behavior, contracts, scenario examples, and evidence links.
 
 ## User Scenarios & Testing
@@ -61,13 +61,13 @@ and project documentation; verify three distinct views, canonical provenance, an
 
 **ID**: `publish-project-docsite`
 
-A maintainer invokes the documented build interface. Documentation consumes module and contract
+A maintainer invokes the documented build interface. Auto-Docs consumes module and contract
 specifications, project Markdown, and canonical feature `abstract.md`/`design.md`/`implementation.md` trios through
-`contract.documentation.project-content`,
+`contract.auto-docs.project-content`,
 associates declared Archify JSON with delivered HTML, validates and renders the read model, emits
-`contract.documentation.build-manifest`, and provides
-`contract.documentation.architecture-site` to the maintainer's browser. The ordered structural trace
-is maintained in the Documentation module's `architecture/diagrams/level-view.json`.
+`contract.auto-docs.build-manifest`, and provides
+`contract.auto-docs.architecture-site` to the maintainer's browser. The ordered structural trace
+is maintained in the Auto-Docs module's `architecture/diagrams/level-view.json`.
 
 This scenario illustrates one normal interaction; it does not replace the feature's textual outcome
 and requirements.
@@ -76,7 +76,7 @@ and requirements.
 
 The parent feature's `diagrams/project-docsite-publication-flow.json` sequence explains invocation from the
 build command through registry, Archify, materialization, Docusaurus, validation, and publication.
-The Documentation module's level view (`architecture/diagrams/level-view.json`) remains the canonical bounded structural trace. A
+The Auto-Docs module's level view (`architecture/diagrams/level-view.json`) remains the canonical bounded structural trace. A
 second child sequence would duplicate those two complementary views.
 
 ## Requirements

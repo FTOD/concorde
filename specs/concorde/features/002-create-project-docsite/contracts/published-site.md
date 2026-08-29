@@ -1,8 +1,8 @@
 # Published Project Site Contract v5
 
-**Contract ID**: `contract.documentation.architecture-site`
+**Contract ID**: `contract.auto-docs.architecture-site`
 
-**Owner**: `module.concorde.documentation`
+**Owner**: `module.concorde.auto-docs`
 
 **Role / flow**: provided, output
 

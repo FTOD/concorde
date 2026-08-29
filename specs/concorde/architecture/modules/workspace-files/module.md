@@ -42,7 +42,7 @@ selection. Generated artifacts are projections and are never accepted back as so
 | Contract ID | Role | Counterparty |
 |---|---|---|
 | `contract.workspace-files.feature-workspace` | provided | Skills, Scripts, Spec Kit lifecycle |
-| `contract.workspace-files.records` | provided | Skills, Scripts, and Documentation |
+| `contract.workspace-files.records` | provided | Skills, Scripts, and Auto-Docs |
 
 ## Submodules
 

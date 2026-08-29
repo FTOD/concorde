@@ -26,12 +26,15 @@ class SelfArchitectureTests(unittest.TestCase):
         }
         self.assertTrue(
             {
-                "feature.concorde.workflow",
-                "feature.concorde.publish-project-docsite",
-                "feature.concorde.install-with-spec-kit",
+                "module.concorde.skills",
+                "module.concorde.scripts",
+                "module.concorde.workspace-files",
+                "module.concorde.distribution",
+                "module.concorde.auto-docs",
             }.issubset(participants)
         )
-        self.assertNotIn("feature.documentation.publish-project-docsite", repr(projection["children"]))
+        self.assertFalse(any(participant.startswith("feature.") for participant in participants))
+        self.assertNotIn("feature.auto-docs.publish-project-docsite", repr(projection["children"]))
         refinements = {(item["from"], item["to"]) for item in projection["refinement_links"]}
         self.assertIn(("feature.distribution.package-concorde-bundle", "feature.concorde.install-with-spec-kit"), refinements)
         self.assertIn(("feature.scripts.run-workflow-operations", "feature.concorde.workflow"), refinements)

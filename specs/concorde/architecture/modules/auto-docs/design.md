@@ -1,6 +1,6 @@
-# Design Reference: Documentation
+# Design Reference: Auto-Docs
 
-This reference explains and justifies the Documentation module. Responsibility, boundary, the level
+This reference explains and justifies the Auto-Docs module. Responsibility, boundary, the level
 view, and the five boundary contracts remain owned by `module.md`, the level view under
 `architecture/diagrams/`, and the contract documents under `architecture/contracts/`.
 
@@ -31,7 +31,7 @@ succeeds.
 
 ### Archify renderer contract (bounded summary)
 
-`contract.documentation.archify-renderer`
+`contract.auto-docs.archify-renderer`
 
 - **Role / flow**: required, bidirectional.
 - **Provider**: external Archify.
@@ -52,7 +52,7 @@ realization projection, sandboxed Archify embedding, local search, accessible pr
 schema-valid manifest, atomic promotion, repeatability, and source immutability all have executable
 evidence in `docsite/tests/` and
 `specs/concorde/features/002-create-project-docsite/design.md`. Browser containment
-and light/dark perceptual review of the current root and Documentation artifacts remain pending
+and light/dark perceptual review of the project-level and Auto-Docs artifacts remain pending
 because Chrome/Chromium is unavailable in the validation environment; structural checks are not
 treated as perceptual evidence.
 
@@ -67,7 +67,7 @@ treated as perceptual evidence.
 - Temporal `attempt/` artifacts are excluded so the site shows only durable intent and
   accepted realizations.
 - Archify keeps ownership of schema validation and standalone HTML rendering and Docusaurus keeps
-  ownership of the generated site; Documentation only orchestrates, embeds, and validates.
+  ownership of the generated site; Auto-Docs only orchestrates, embeds, and validates.
 
 ## Alternatives Considered
 

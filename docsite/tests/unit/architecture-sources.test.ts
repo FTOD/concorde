@@ -21,17 +21,24 @@ describe('architecture source publication', () => {
     expect(sources.find((source) => source.architectureId === 'module.concorde')).toMatchObject({
       architectureKind: 'module',
       route: '/architecture/concorde/module.concorde',
-      architectureDiagrams: [expect.objectContaining({
-        source: 'specs/concorde/architecture/diagrams/level-view.json',
-        kind: 'architecture',
-        route: '/architecture/concorde-root.html',
-      })],
+      architectureDiagrams: [
+        expect.objectContaining({
+          source: 'specs/concorde/architecture/diagrams/level-view.json',
+          kind: 'architecture',
+          route: '/architecture/concorde-interaction-architecture.html',
+        }),
+        expect.objectContaining({
+          source: 'specs/concorde/architecture/diagrams/skill-workspace-file-flow.json',
+          kind: 'dataflow',
+          route: '/architecture/concorde-skill-workspace-file-flow.html',
+        }),
+      ],
     });
-    expect(sources.find((source) => source.architectureId === 'module.concorde.documentation')).toMatchObject({
+    expect(sources.find((source) => source.architectureId === 'module.concorde.auto-docs')).toMatchObject({
       parentId: 'module.concorde',
-      sourcePath: 'specs/concorde/architecture/modules/documentation/module.md',
-      route: '/architecture/concorde/modules/documentation/module.concorde.documentation',
-      architectureDiagrams: [expect.objectContaining({route: '/architecture/documentation.html'})],
+      sourcePath: 'specs/concorde/architecture/modules/auto-docs/module.md',
+      route: '/architecture/concorde/modules/auto-docs/module.concorde.auto-docs',
+      architectureDiagrams: [expect.objectContaining({route: '/architecture/auto-docs.html'})],
     });
     expect(sources.find((source) => source.architectureId === 'contract.workspace-files.feature-workspace')).toMatchObject({
       architectureKind: 'contract',

@@ -129,20 +129,24 @@ describe('content source diagnostics', () => {
 
   it('discovers maintained diagram declarations without treating HTML as an input source', async () => {
     const declarations = await discoverDiagramDeclarations(resolve(__dirname, '../../..'));
-    expect(declarations).toHaveLength(8);
+    expect(declarations).toHaveLength(9);
     expect(declarations.every((declaration) => declaration.ownerPath.startsWith('specs/'))).toBe(true);
     expect(declarations.every((declaration) => declaration.outputPath.startsWith('generated/'))).toBe(true);
+    expect(declarations).toContainEqual(expect.objectContaining({
+      sourcePath: 'specs/concorde/architecture/diagrams/skill-workspace-file-flow.json',
+      outputPath: 'generated/architecture/concorde-skill-workspace-file-flow.html',
+    }));
   });
 
   it('publishes a real module-level feature without module storage segments in its feature route', async () => {
     const registry = await buildRegistry(resolve(__dirname, '../../..'));
     const page = registry.documents.find((document) =>
-      document.sourcePath === 'specs/concorde/architecture/modules/documentation/features/001-publish-project-docsite/abstract.md');
+      document.sourcePath === 'specs/concorde/architecture/modules/auto-docs/features/001-publish-project-docsite/abstract.md');
     expect(page).toMatchObject({
-      route: '/features/feature.documentation.publish-project-docsite',
-      stagedPath: 'feature.documentation.publish-project-docsite/abstract.md',
-      moduleId: 'module.concorde.documentation',
-      moduleRoute: '/architecture/concorde/modules/documentation/module.concorde.documentation',
+      route: '/features/feature.auto-docs.publish-project-docsite',
+      stagedPath: 'feature.auto-docs.publish-project-docsite/abstract.md',
+      moduleId: 'module.concorde.auto-docs',
+      moduleRoute: '/architecture/concorde/modules/auto-docs/module.concorde.auto-docs',
       refinements: [expect.objectContaining({
         featureId: 'feature.concorde.publish-project-docsite',
         route: '/features/feature.concorde.publish-project-docsite',

@@ -1,7 +1,7 @@
 ---
-id: contract.documentation.build-manifest
+id: contract.auto-docs.build-manifest
 kind: contract
-module: module.concorde.documentation
+module: module.concorde.auto-docs
 role: provided
 flow: output
 representation:
@@ -17,7 +17,7 @@ counterparties:
 consumers:
   - external.project-maintainer
 features:
-  - feature.documentation.publish-project-docsite
+  - feature.auto-docs.publish-project-docsite
 version: 7
 evidence:
   tests:

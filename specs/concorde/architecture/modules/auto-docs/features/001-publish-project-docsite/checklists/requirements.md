@@ -1,6 +1,6 @@
 # Specification Quality Checklist: Publish the Project Docsite
 
-**Purpose**: Validate the Documentation-module feature refinement
+**Purpose**: Validate the Auto-Docs-module feature refinement
 
 **Created**: 2026-08-20
 

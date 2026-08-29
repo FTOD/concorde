@@ -163,7 +163,7 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Date**: 2026-08-29
 - **Feature**: feature.concorde.publish-project-docsite
 - **Kind**: specification
-- **Concerns**: feature.documentation.publish-project-docsite
+- **Concerns**: feature.auto-docs.publish-project-docsite
 - **Expected**: The Documentation refinement agrees with root Feature 002 that Architecture follows
   module containment while Features follows only feature identity and explicit feature containment.
 - **Observed**: FR-DOC-003 still requires both views to preserve the same module/feature hierarchy
@@ -187,7 +187,7 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Kind**: specification
 - **Concerns**: specs/concorde/features/002-create-project-docsite/contracts/published-site.md
 - **Expected**: The published-site compatibility section points to the current manifest schema owned
-  by `contract.documentation.build-manifest`.
+  by `contract.auto-docs.build-manifest`.
 - **Observed**: It named schema version 5 while the build-manifest contract, schema, and implementation
   use schema version 8.
 - **Effect**: worked-around

@@ -14,14 +14,14 @@ evidence, and generated read models. They must not be treated as interchangeable
 ```text
 <project>/
 ├── .concorde/
-│   └── config.json                       # Concorde source profile and root module
+│   └── config.json                       # Concorde source profile and project module
 ├── .specify/
 │   ├── feature.json                      # selected nested feature
 │   └── extensions/concorde/              # installed adapter, launchers, runtime
 ├── .agents/skills/                       # one possible agent presentation
 ├── specs/<root-module>/
-│   ├── module.md                         # root module summary: read first
-│   ├── design.md                         # root module design reference
+│   ├── module.md                         # project module summary: read first
+│   ├── design.md                         # project module design reference
 │   ├── reflections.md                    # the project's one reflection log (maintained; never removed)
 │   ├── features/<number>-<feature>/      # what this level can do
 │   │   ├── abstract.md                       # feature abstract: read first

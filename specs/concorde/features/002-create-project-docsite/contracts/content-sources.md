@@ -1,8 +1,8 @@
 # Content Sources Contract v9
 
-**Contract ID**: `contract.documentation.project-content`
+**Contract ID**: `contract.auto-docs.project-content`
 
-**Owner**: `module.concorde.documentation`
+**Owner**: `module.concorde.auto-docs`
 
 **Role / flow**: required, input
 
@@ -195,7 +195,7 @@ migration decision.
 
 - Contract fixtures for valid documents and feature specifications.
 - Homepage fixtures for required-source, root-route, repository-link, provenance, and collision behavior.
-- Semantic projection fixtures covering root features, module-level features, and immediate
+- Semantic projection fixtures covering project-level features, module-level features, and immediate
   sub-features without architecture/module categories in Features.
 - Negative fixtures for every failure class.
 - Source-immutability integration test around validation, preview setup, and production build.

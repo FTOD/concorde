@@ -4,7 +4,7 @@
 
 ## Realization Overview
 
-The Documentation module converts validated architecture and feature sources into hierarchical pages and embeds fresh Archify HTML.
+The Auto-Docs module converts validated architecture and feature sources into hierarchical pages and embeds fresh Archify HTML.
 
 ## Module and Feature Collaboration
 
@@ -20,7 +20,7 @@ Generated content is reproducible and non-authoritative; source provenance remai
 
 ## Traceability and Evidence
 
-Documentation unit, integration, and production-build tests provide evidence.
+Auto-Docs unit, integration, and production-build tests provide evidence.
 
 ## Known Limitations
 

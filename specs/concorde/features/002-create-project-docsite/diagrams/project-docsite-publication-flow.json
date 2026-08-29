@@ -44,10 +44,10 @@
     { "from": 710, "to": 850, "label": "Validate and publish atomically" }
   ],
   "messages": [
-    { "id": "invoke-build", "from": "maintainer", "to": "build", "y": 180, "label": "build project docsite", "variant": "default", "note": "contract.documentation.build-interface" },
+    { "id": "invoke-build", "from": "maintainer", "to": "build", "y": 180, "label": "build project docsite", "variant": "default", "note": "contract.auto-docs.build-interface" },
     { "id": "discover-sources", "from": "build", "to": "registry", "y": 220, "label": "validate IDs + canonical paths", "variant": "security" },
     { "id": "read-sources", "from": "registry", "to": "workspace", "y": 260, "label": "read modules, contracts, features, docs", "variant": "default" },
-    { "id": "request-diagrams", "from": "build", "to": "archify", "y": 300, "label": "deliver declared JSON views", "variant": "emphasis", "note": "contract.documentation.archify-renderer" },
+    { "id": "request-diagrams", "from": "build", "to": "archify", "y": 300, "label": "deliver declared JSON views", "variant": "emphasis", "note": "contract.auto-docs.archify-renderer" },
     { "id": "write-diagrams", "from": "archify", "to": "workspace", "y": 340, "label": "fresh HTML + provenance", "variant": "return" },
     { "id": "return-registry", "from": "registry", "to": "build", "y": 380, "label": "canonical route map", "variant": "return" },
     { "id": "materialize-content", "from": "build", "to": "materializer", "y": 450, "label": "recreate Architecture + Features", "variant": "emphasis" },
@@ -55,7 +55,7 @@
     { "id": "render-site", "from": "build", "to": "docusaurus", "y": 535, "label": "build three document views", "variant": "emphasis" },
     { "id": "consume-projections", "from": "docusaurus", "to": "workspace", "y": 575, "label": "read docs + projections + diagrams", "variant": "default" },
     { "id": "write-candidate", "from": "docusaurus", "to": "workspace", "y": 615, "label": "pages + local search", "variant": "return" },
-    { "id": "write-manifest", "from": "build", "to": "workspace", "y": 655, "label": "manifest + provenance", "variant": "security", "note": "contract.documentation.build-manifest" },
+    { "id": "write-manifest", "from": "build", "to": "workspace", "y": 655, "label": "manifest + provenance", "variant": "security", "note": "contract.auto-docs.build-manifest" },
     { "id": "validate-candidate", "from": "build", "to": "workspace", "y": 725, "label": "verify routes, links, freshness", "variant": "security" },
     { "id": "promote-site", "from": "build", "to": "publisher", "y": 765, "label": "promote complete candidate", "variant": "emphasis" },
     { "id": "publish-read-model", "from": "publisher", "to": "reader", "y": 805, "label": "architecture / docs / features", "variant": "return" },

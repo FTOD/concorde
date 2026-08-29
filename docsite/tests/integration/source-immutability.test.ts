@@ -24,6 +24,6 @@ it('validation does not mutate canonical sources', async () => {
 it('diagram declaration discovery does not mutate canonical sources', async () => {
   const root = resolve(__dirname, '../../..');
   const before = await hashes(root);
-  expect(await discoverDiagramDeclarations(root)).toHaveLength(8);
+  expect(await discoverDiagramDeclarations(root)).toHaveLength(9);
   expect(await hashes(root)).toEqual(before);
 });

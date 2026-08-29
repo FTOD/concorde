@@ -6,7 +6,7 @@ parent_feature: feature.concorde.install-with-spec-kit
 refines: []
 subfeatures: []
 scenarios:
-  - inspect-install-and-verify-concorde
+  - installation
 contracts:
   provided:
     - contract.concorde.spec-kit-installation

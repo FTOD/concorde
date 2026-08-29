@@ -1,16 +1,16 @@
 # Feature Abstract: Publish the Project Docsite
 
-`feature.documentation.publish-project-docsite` · specified at `module.concorde.documentation` ·
+`feature.auto-docs.publish-project-docsite` · specified at `module.concorde.auto-docs` ·
 refines `feature.concorde.publish-project-docsite` · about three minutes. This page is enough to
-understand what the Documentation module builds and what must hold; the links at the end only
+understand what the Auto-Docs module builds and what must hold; the links at the end only
 redirect you when you want more.
 
 ## Purpose
 
-The Documentation module projects architecture, permanent feature specifications and designs from
+The Auto-Docs module projects architecture, permanent feature specifications and designs from
 the unified `specs/` hierarchy, and project Markdown from `docs/` into one searchable, traceable,
 read-only website, embedding each declared delivered Archify view beside its textual source. The
-root feature owns the project-wide outcome; this feature owns the module's narrower behavior,
+project-level feature owns the project-wide outcome; this feature owns the module's narrower behavior,
 contracts, scenario, and evidence, for the maintainer who builds and browses the site without ever
 treating a generated page as authority.
 
@@ -33,24 +33,24 @@ rendering itself, user-authored sources, and any mutation of `specs/` or `docs/`
 
 ## Structure
 
-The maintained level view is <a href="/architecture/documentation.html">Documentation</a>
-(maintained source `specs/concorde/architecture/modules/documentation/architecture/diagrams/level-view.json`): the validated read
+The maintained level view is <a href="/architecture/auto-docs.html">Auto-Docs</a>
+(maintained source `specs/concorde/architecture/modules/auto-docs/architecture/diagrams/level-view.json`): the validated read
 model inside its module boundary, its providers Project Docs, Project Specifications, and Archify,
 and the maintainer who builds and browses. The parent's supplemental
 <a href="/architecture/project-docsite-publication-flow.html">publication flow</a> explains the
 build sequence.
 
 ```text
-maintainer ──build-interface──▶ Documentation
+maintainer ──build-interface──▶ Auto-Docs
    docs/** · specs/** ──project-content──▶ │ registry: classify · route · validate
    Archify ◀──archify-renderer──▶          │ deliver declared views
                                            ├──build-manifest──▶ maintainer / freshness checks
                                            └──architecture-site──▶ maintainer browser
 ```
 
-Five contracts bound the module: it provides `contract.documentation.architecture-site`,
-`contract.documentation.build-interface`, and `contract.documentation.build-manifest`, and requires
-`contract.documentation.project-content` and `contract.documentation.archify-renderer`. When any step
+Five contracts bound the module: it provides `contract.auto-docs.architecture-site`,
+`contract.auto-docs.build-interface`, and `contract.auto-docs.build-manifest`, and requires
+`contract.auto-docs.project-content` and `contract.auto-docs.archify-renderer`. When any step
 fails, the last successful site is preserved.
 
 ## Logic
@@ -58,7 +58,7 @@ fails, the last successful site is preserved.
 **One build**
 
 1. The maintainer invokes the documented build interface.
-2. Documentation consumes module and contract specifications, project Markdown, and canonical
+2. Auto-Docs consumes module and contract specifications, project Markdown, and canonical
    feature specification and design pairs through the project-content contract.
 3. Each declared Archify JSON view is handed to the renderer and its delivered HTML associated with
    the source.
@@ -89,8 +89,8 @@ fails, the last successful site is preserved.
   [build-manifest](../../architecture/contracts/build-manifest/contract.md),
   [project-content](../../architecture/contracts/project-content/contract.md), and
   [archify-renderer](../../architecture/contracts/archify-renderer/contract.md).
-- **The level this feature belongs to** — [module.md](../../module.md) (the Documentation summary)
-  and its [design reference](../../design.md); the root summary is
+- **The level this feature belongs to** — [module.md](../../module.md) (the Auto-Docs summary)
+  and its [design reference](../../design.md); the project module summary is
   [module.md](../../../../../module.md).
 - **The parent feature** — [Create Unified Project Docsite](../../../../../features/002-create-project-docsite/abstract.md)
   and its [design.md](../../../../../features/002-create-project-docsite/design.md), which carries the

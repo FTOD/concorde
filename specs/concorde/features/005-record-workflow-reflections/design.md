@@ -106,10 +106,10 @@ citation rule are carried by the phases, templates, and operations the workflow 
   is not needed for three states.
 - **Generated view**: `generated/architecture/workflow-reflection-components.html`.
 
-The diagram supplements this specification. It does not replace the root one-level architecture in
-`specs/concorde/architecture/diagrams/level-view.json`, does not redefine the modules that realize the workflow, and
-does not add a scenario to the root view: the root view already uses its five guided scenario
-slots, so this feature's three journeys are drawn only in its own core view.
+The diagram supplements this specification. It does not replace the project-level interaction
+architecture in `specs/concorde/architecture/diagrams/level-view.json` or redefine the modules that
+realize the workflow. The project view shows shared module interactions; this feature's three
+behavioral journeys are drawn only in its own core view.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -514,16 +514,16 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   and acceptance citation rule; the workflow sub-features it extends keep ownership of their phase
   behavior and must be reconciled with the requirements above rather than restating them.
 - **Observable textual outcome**: the Outcome section.
-- **Parent refinement**: none; this is a root-level feature.
+- **Parent refinement**: none; this is a project-level feature.
 - **Representative scenarios**: `record-during-planning-and-implementation`, `review-and-improve`,
-  and `carry-lessons-through-acceptance`, drawn as guided views of the core diagram. The root view
-  shows this feature as a root feature node; its scenarios are drawn only in the feature's core
-  view because the root view's five guided scenario slots are full.
+  and `carry-lessons-through-acceptance`, drawn as guided views of the feature's core diagram. The
+  project-level interaction view intentionally shows module responsibilities and flows rather than
+  drawing project-level features as peer components.
 - **Core feature diagram**: `diagrams/workflow-reflection-components.json` (`architecture`,
   `core`).
 - **Supplemental diagrams**: none.
 - **Contracts**: provides `contract.concorde.workflow`; requires
   `contract.concorde.spec-kit-platform`.
-- **Level views**: the root module's diagrams under `specs/concorde/architecture/diagrams/`
+- **Level views**: the project module's diagrams under `specs/concorde/architecture/diagrams/`
   (`level-view.json`).
 - **Evidence status**: `unknown`; no implementation exists yet.

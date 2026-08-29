@@ -1,7 +1,7 @@
 ---
-id: contract.documentation.build-interface
+id: contract.auto-docs.build-interface
 kind: contract
-module: module.concorde.documentation
+module: module.concorde.auto-docs
 role: provided
 flow: bidirectional
 representation:
@@ -14,7 +14,7 @@ counterparties:
 consumers:
   - external.project-maintainer
 features:
-  - feature.documentation.publish-project-docsite
+  - feature.auto-docs.publish-project-docsite
 version: 1
 evidence:
   tests:

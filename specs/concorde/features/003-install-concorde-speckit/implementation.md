@@ -12,7 +12,7 @@ Release archives are built from explicit allowlists with stable member ordering,
 
 ## Module and Feature Collaboration
 
-This root feature is realized by existing module-level refinements rather than redefining their architecture. `feature.distribution.package-concorde-bundle` supplies the reproducible archives, catalogs, exact component plan, provenance, and install/update/remove lifecycle governed by the Distribution module's bundle and component-package contracts. `feature.skills.compose-workflow` supplies the preset and extension composition governed by the Skills module's workflow-composition, agent-skills, and Spec Kit platform contracts.
+This project-level feature is realized by existing module-level refinements rather than redefining their architecture. `feature.distribution.package-concorde-bundle` supplies the reproducible archives, catalogs, exact component plan, provenance, and install/update/remove lifecycle governed by the Distribution module's bundle and component-package contracts. `feature.skills.compose-workflow` supplies the preset and extension composition governed by the Skills module's workflow-composition, agent-skills, and Spec Kit platform contracts.
 
 Feature 001's `feature.workspace-files.manage-feature-workspace` remains authoritative for nested feature selection, durable and temporal paths, command intent, result envelopes, and acceptance semantics. Feature 003 packages that handoff and proves it from installed artifacts; it does not redefine the workflow. Scripts performs initialization, bounded context, and validation after an installed command invokes it. Feature 002 publishes the declared Feature 003 diagrams and prose without becoming behavioral authority.
 

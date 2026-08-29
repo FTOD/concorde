@@ -1,6 +1,6 @@
 # Design Reference: Concorde
 
-This reference explains how the root boundaries map to repository sources. `module.md`, module-owned
+This reference explains how the project-level boundaries map to repository sources. `module.md`, module-owned
 contracts, and the maintained level view remain authoritative for responsibility and organization.
 
 ## Implementation Notes
@@ -72,10 +72,19 @@ digest-bound implementation acceptance.
 | `concorde.impl.accept` | Completed attempt and durable targets | Approved durable realization and attempt cleanup | Atomic deterministic operation |
 | `concorde.ask` | Smallest relevant installed guidance and project sources | None | No runtime operation; agent answers with citations |
 
+### Skill and workspace-file data flow
+
+The maintained [skill-to-file data flow](architecture/diagrams/skill-workspace-file-flow.json)
+complements the matrix above with the related Spec Kit and Concorde skills, the file groups they
+consume or produce, and the transition from durable intent through temporal `attempt/` memory to an
+accepted realization. Its delivered
+<a href="/architecture/concorde-skill-workspace-file-flow.html">interactive view</a> keeps the main
+lifecycle path sparse; the embedded matrices name the exact per-skill exceptions and write sets.
+
 ### Supporting adapters
 
 Distribution packages the maintained preset and extension, publishes their catalogs, and delegates
-materialization to Spec Kit. Documentation validates maintained sources, renders declared diagrams,
+materialization to Spec Kit. Auto-Docs validates maintained sources, renders declared diagrams,
 and projects `specs/`, `docs/`, and the root README into a generated site. These adapters consume the
 three-part workflow architecture; they do not sit between a skill, script, and workspace file during
 normal feature work.
@@ -88,11 +97,11 @@ is a Python script runtime operating on files. The revised organization uses obs
 keeps each dependency directional:
 
 `Maintainer → Skills → Scripts → Workspace Files`, with a direct `Skills → Workspace Files` path for
-agent-authored phases. Distribution feeds Skills and Scripts; Documentation consumes Workspace Files.
+agent-authored phases. Distribution feeds Skills and Scripts; Auto-Docs consumes Workspace Files.
 
 This split also makes testing clearer: command-surface tests belong to Skills, runtime and launcher
 tests belong to Scripts, workspace-layout and acceptance tests belong to Workspace Files, release
-tests belong to Distribution, and site tests belong to Documentation.
+tests belong to Distribution, and site tests belong to Auto-Docs.
 
 ## Alternatives Considered
 
@@ -102,13 +111,13 @@ tests belong to Distribution, and site tests belong to Documentation.
   scripts are subordinate implementation mechanisms with structured, non-conversational results.
 - **Treat files as implementation details** — rejected because durable versus temporal file lifetime
   is the workflow's central state model and must be reviewable as architecture.
-- **Fold Distribution and Documentation into the three-part spine** — rejected because installation
+- **Fold Distribution and Auto-Docs into the three-part spine** — rejected because installation
   and publication cross project boundaries and have distinct failure and ownership rules.
 
 ## Decision Log
 
 - Replaced the host-centric module split with Skills, Scripts, and Workspace Files.
-- Retained Distribution and Documentation as supporting adapters.
+- Retained Distribution and Auto-Docs as supporting adapters.
 - Defined installed skills as the only feature-work interaction surface.
 - Made durable, temporal, selection, and generated file lifetimes explicit at the root.
 - Assigned deterministic operations and workspace routing to Scripts rather than to an abstract core.

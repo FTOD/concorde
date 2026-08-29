@@ -14,8 +14,8 @@ subfeatures:
   - feature.concorde.workflow.validate-architecture
   - feature.concorde.workflow.accept-milestone
 scenarios:
-  - scenario-concorde-establish-and-place-feature
-  - scenario-concorde-review-implement-and-reconcile
+  - feature-work
+  - direct-authoring
 contracts:
   provided:
     - contract.concorde.workflow
@@ -752,13 +752,13 @@ remains a separately tracked follow-up.
 - **Authority split**: this parent owns the document model, aggregate outcome, vocabulary, ordering,
   and cross-child relationships; each child owns focused step behavior and must be reconciled with
   the document model (FR-021).
-- **Parent refinement**: none; this is a root-level feature.
-- **Representative scenarios**: `scenario-concorde-establish-and-place-feature` and
-  `scenario-concorde-review-implement-and-reconcile`, maintained in the root view.
+- **Parent refinement**: none; this is a project-level feature.
+- **Representative interactions**: `feature-work` and `direct-authoring`, maintained in the
+  project-level interaction view. The feature's core diagram keeps its more detailed scenarios.
 - **Core feature diagram**: `diagrams/concorde-workflow-components.json` (`architecture`, `core`).
 - **Supplemental diagrams**: none.
 - **Contracts**: provides `contract.concorde.workflow`; requires `contract.concorde.spec-kit-platform`.
-- **Level views**: the root module's diagrams under `specs/concorde/architecture/diagrams/`
+- **Level views**: the project module's diagrams under `specs/concorde/architecture/diagrams/`
   (`level-view.json`).
 - **Evidence status**: `partial` — existing evidence covers the previous two-document model; the
   abstract tier and the feature-root rename have no realization yet.

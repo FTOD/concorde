@@ -13,7 +13,7 @@ The feature is realized without a new command surface. Three existing parts carr
 |---|---|---|
 | Phase guidance and templates | Skills (`presets/concorde-core`) | A byte-identical **Reflection Recording** block in the five phase instructions after specification (`speckit.plan`, `tasks`, `implement`, `analyze`, `converge`) tells the agent when, where, and how to record; `reflections-template` seeds the log; the plan and tasks append layers name the log as the one maintained file a phase may append to; each completion report ends with `Reflections added: … · open for this feature: N`. |
 | Runtime | Scripts (`extensions/concorde/runtime/concorde`) | `reflections.py` is the single parser of the log; `validation/reflections.py` emits `CONCORDE-REFLECT-001..004`; `repository.py` loads `<specification_root>/reflections.md` into `package.auxiliary` (and the digest); `feature_workspace.py` adds `reflections` and `reflections_open` to every workspace result; `context.py` adds `reflections` (path + open count per feature) and `reflections_open` on feature summaries; `implementation_acceptance.py` adds `reflection_summary`, blocks on a malformed log (`CONCORDE-ACCEPT-011`), refuses an uncited open entry (`CONCORDE-ACCEPT-012`), and never writes the log. |
-| Protocol and documentation | Feature 001 contracts, guides, root view | Reflection fields remain additive in Feature Workspace Protocol v8; the root view shows the feature node with two governed crossings; guides and READMEs describe the review loop. |
+| Protocol and documentation | Feature 001 contracts, guides, project interaction view | Reflection fields remain additive in Feature Workspace Protocol v8; the project view shows Skills, Scripts, and Workspace Files without treating the feature as a structural component; guides and READMEs describe the review loop. |
 
 The log itself, `specs/concorde/reflections.md` for this project, is a maintained source beside the
 root `module.md`: created from the template by the first phase that records, appended to by every
@@ -105,7 +105,7 @@ Contracts crossed: `contract.concorde.workflow` (phases and operations into main
 - Fixtures: `tests/concorde/fixtures/invalid-projects/reflections-malformed/` (one breach per
   rule); `tests/concorde/support/feature_workspace.py::write_reflection_log` / `reflection_entry`.
 - Deterministic checks on this repository: `speckit.concorde.validate` → `success`, 0 findings
-  with `specs/concorde/reflections.md` present; root view and feature core view pass all 9 Archify
+  with `specs/concorde/reflections.md` present; project interaction view and feature core view pass all 9 Archify
   showcase checks and are delivered; docsite `Validated 99 pages (33 excluded sources); 0 errors`,
   production build promoted.
 - Success criteria: SC-002, SC-004, SC-006, SC-007 met by automated evidence; SC-001, SC-003,
@@ -122,9 +122,9 @@ Contracts crossed: `contract.concorde.workflow` (phases and operations into main
 - **R-002** (open, guidance): the plan and tasks append layers disagree on whether an attempt may
   edit `module.md`; this attempt presented its `module.md` reconciliation as a maintainer-approved
   diff rather than applying it.
-- **R-005** (open, architecture): the root view draws two of the three planned crossings for this
-  feature; the Skills crossing cannot be routed at showcase quality in the current
-  column order.
+- **R-005** (superseded, architecture): the project interaction view now shows module flows rather
+  than feature nodes, so the former requirement to draw three feature-specific crossings no longer
+  applies.
 - **R-006** (open, specification): `feature.concorde.workflow.execute-and-reconcile` FR-004/SC-002
   still describe analysis as strictly read-only; this feature makes the log its one permitted write.
 - **R-007** (open, tooling): the docsite rejects abstract links to non-canonical artifacts; the

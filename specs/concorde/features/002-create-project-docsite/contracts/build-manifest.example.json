@@ -207,7 +207,7 @@
       "links": [
         {
           "targetSourcePath": "specs/concorde/architecture/diagrams/level-view.json",
-          "targetRoute": "/architecture/concorde-root.html"
+          "targetRoute": "/architecture/concorde-interaction-architecture.html"
         },
         {
           "targetSourcePath": "specs/concorde/design.md",
@@ -221,8 +221,8 @@
           "source": "specs/concorde/architecture/diagrams/level-view.json",
           "sourceSha256": "3333333333333333333333333333333333333333333333333333333333333333",
           "kind": "architecture",
-          "title": "Concorde — Root Features and Invocation",
-          "route": "/architecture/concorde-root.html"
+          "title": "Concorde Interaction Architecture",
+          "route": "/architecture/concorde-interaction-architecture.html"
         }
       ],
       "designReferenceRoute": "/architecture/concorde/design"
@@ -236,7 +236,7 @@
   ],
   "routeInventory": [
     "/",
-    "/architecture/concorde-root.html",
+    "/architecture/concorde-interaction-architecture.html",
     "/architecture/concorde/design",
     "/architecture/concorde/module.concorde",
     "/architecture/project-docsite-publication-flow.html",

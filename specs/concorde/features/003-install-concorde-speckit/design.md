@@ -7,8 +7,7 @@ subfeatures:
   - feature.concorde.install-with-spec-kit.publish-release
   - feature.concorde.install-with-spec-kit.one-command-install
 scenarios:
-  - inspect-install-and-verify-concorde
-  - manage-concorde-installation
+  - installation
 contracts:
   provided:
     - contract.concorde.spec-kit-installation
@@ -108,7 +107,7 @@ then materialization and an actual clean-project lifecycle before setup is accep
 demonstrate the encouraged Concorde pattern: use feature-owned diagrams when component roles or
 invocation order would be harder to understand from prose alone.
 
-These diagrams explain this feature and do not replace the canonical one-level root module view in
+These diagrams explain this feature and do not replace the canonical project interaction view in
 `specs/concorde/architecture/diagrams/level-view.json`.
 Their concise node context is the Archify 2.16 presentation of the same package roles and lifecycle;
 the textual requirements and contracts retain the complete semantics.

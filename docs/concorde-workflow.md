@@ -44,7 +44,7 @@ silently overwritten.
 
 ## 1. Find the level at which to specify it
 
-Request context for the root module. A feature is specified at the level at which every module it
+Request context for the configured project module. A feature is specified at the level at which every module it
 uses is visible, so ask whether the new behavior is realized by that module or by its visible
 children:
 
