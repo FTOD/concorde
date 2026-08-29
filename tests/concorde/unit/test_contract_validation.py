@@ -16,14 +16,14 @@ class ContractValidationTests(unittest.TestCase):
     def custom_project(self, temporary: str, value: object) -> Path:
         root = Path(temporary) / "project"
         shutil.copytree(VALID_PROJECT, root)
-        contract = root / "specs/example/contracts/workflow/contract.md"
+        contract = root / "specs/example/architecture/contracts/workflow/contract.md"
         text = contract.read_text()
         text = text.replace("kind: standard", "kind: custom")
         text = text.replace("format: HTTP", "format: JSON")
         text = text.replace("version: \"1.1\"", "version: \"1\"")
         text = text.replace(
             "definition: https://www.rfc-editor.org/rfc/rfc9110",
-            "definition: specs/example/contracts/workflow/schema.json\nexamples:\n  - specs/example/contracts/workflow/example.json",
+            "definition: specs/example/architecture/contracts/workflow/schema.json\nexamples:\n  - specs/example/architecture/contracts/workflow/example.json",
         )
         contract.write_text(text)
         (contract.parent / "schema.json").write_text(json.dumps({

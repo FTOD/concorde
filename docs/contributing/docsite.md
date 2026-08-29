@@ -17,7 +17,7 @@ The complete publication behavior is specified by
 | Published collection | Maintained inputs | Public route family |
 |---|---|---|
 | Documentation | Every regular `docs/**/*.md` file | `/docs` |
-| Architecture | Every `specs/**/module.md` (module summary, with its level view embedded), its adjacent `design.md` (module design reference, published as a separately linked page), and `specs/**/contracts/**/contract.md` | `/architecture` |
+| Architecture | Every `specs/**/module.md` (module summary; the module-owned diagrams under `specs/**/architecture/diagrams/*.json`, discovered from that folder rather than declared, are embedded on its page), its adjacent `design.md` (module design reference, published as a separately linked page), and `specs/**/architecture/contracts/**/contract.md` | `/architecture` |
 | Feature abstracts | Every `specs/**/abstract.md` beside a canonical `design.md`; the page each feature opens on | `/features/<root>` |
 | Feature designs | Every canonical feature-root `design.md` | `/features/<root>/design` |
 | Feature implementations | Every feature-root `implementation.md` beside `design.md` | `/features/<root>/implementation` |
@@ -38,14 +38,15 @@ live in `specs/`.
 
 A preview and a production build use the same inclusion, routing, and validation rules:
 
-1. Maintained module and feature declarations identify the complete Archify source set.
+1. Module `architecture/diagrams/` folders and feature diagram declarations identify the complete
+   Archify source set.
 2. The build verifies the installed project-local Archify 2.16 skill, validates every source, and atomically delivers a fresh,
    complete ignored `generated/` set.
 3. The source registry discovers eligible files, routes, and deliberate exclusions against those
    current deliveries.
 4. Disposable Docusaurus content is materialized under `docsite/.generated/content/`.
 5. Docusaurus renders a candidate site.
-6. Candidate pages, routes, links, provenance, and the build manifest (Build Manifest v7) are
+6. Candidate pages, routes, links, provenance, and the build manifest (Build Manifest v8) are
    validated.
 7. Only a successful candidate is promoted to `docsite/build/`.
 
@@ -70,10 +71,14 @@ not present the summary as stronger or more current than that source.
 
 ## Publish a diagram
 
-Architecture and feature Markdown may declare maintained Archify JSON. A declaration identifies the
-source, role, kind, explained scenarios, and generated output. The generated page embeds the delivered
-HTML in a sandbox and provides source provenance plus a standalone-view link; for a feature, that
-page is its abstract.
+A module owns any number of Archify JSON diagrams under its `architecture/diagrams/`. They are
+discovered from that folder, never declared in front matter, and each must be linked from the level's
+`module.md`, `design.md`, or reflection log; the module page embeds every one of them. Feature
+Markdown declares its maintained Archify JSON; a declaration identifies the source, role, kind,
+explained scenarios, and generated output. The generated page embeds the delivered HTML in a sandbox
+and provides source provenance plus a standalone-view link; for a feature, that page is its
+abstract. A Markdown link to a diagram JSON from `module.md`, `design.md`, or an abstract is
+rewritten to the delivered HTML route.
 
 For feature diagrams:
 
@@ -83,7 +88,9 @@ For feature diagrams:
 - provide an equivalent textual explanation; and
 - keep the generated delivery fresh and provenance-bearing.
 
-A missing, invalid, escaping, duplicate, stale, or unpublishable declared diagram stops the build.
+A missing, invalid, escaping, duplicate, stale, or unpublishable diagram—declared by a feature or
+discovered under a module's `architecture/diagrams/` (`architecture.diagram.unpublishable`)—stops
+the build.
 Edit the JSON source and rerun preview/build; delivery is now part of that operation, so never patch
 or commit the HTML output.
 
@@ -102,10 +109,11 @@ npm run check
 ```
 
 - `inspect` reports discovered and deliberately excluded sources.
-- `validate` checks identity, metadata, routes, links, diagram declarations, and source-to-page
+- `validate` checks identity, metadata, routes, links, module diagram folders, feature diagram
+  declarations, and source-to-page
   mappings without mutating maintained sources.
 - `render-diagrams` verifies the installed `.agents/skills/archify` package and replaces the complete disposable
-  delivery set only after every declaration passes.
+  delivery set only after every module diagram and feature declaration passes.
 - `start` delivers and validates before opening a local preview.
 - `build` delivers diagrams, renders the site, and verifies a candidate before atomic promotion.
 - `check` runs types, tests, validation, and the production build gate.
@@ -121,7 +129,8 @@ must not be committed.
 
 Publication diagnostics identify a rule, source path, reason, and remediation. Typical failures are
 unreadable Markdown, invalid front matter, duplicate stable IDs, route collisions, unresolved or
-excluded-source links, invalid diagram declarations, and stale generated deliveries.
+excluded-source links, invalid diagram declarations, unreferenced or unpublishable module
+diagrams, and stale generated deliveries.
 
 Fix the canonical source named by the diagnostic and rebuild. A failed candidate must not be
 reported as the current complete site, and it must not overwrite the previous successful build.

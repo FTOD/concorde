@@ -9,7 +9,6 @@ contracts:
   provided:
     - contract.documentation.architecture-site
   required: []
-architecture_view: specs/concorde/architecture.json
 diagrams:
   - source: specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json
     role: supplemental
@@ -52,7 +51,7 @@ invoking the source registry, Archify delivery, disposable content materializati
 candidate validation, and atomic publisher before a programmer or agent browses the result.
 
 The diagram explains component involvement and call order; the user stories and requirements below
-remain the behavioral authority, and `specs/concorde/architecture.json` remains the bounded root
+remain the behavioral authority, and `specs/concorde/architecture/diagrams/level-view.json` remains the bounded root
 architecture view.
 
 This feature does not add a separate core component diagram because the bounded root view already

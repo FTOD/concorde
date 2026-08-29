@@ -94,5 +94,5 @@ current-release pointer; the docsite publishes the maintainer guide.
   `feature.concorde.install-with-spec-kit`; the sibling
   [one-command-install](../002-one-command-install/design.md).
 - **The level this feature belongs to** — [module.md](../../../../module.md) (the root summary) and
-  [Distribution](../../../../modules/distribution/module.md).
+  [Distribution](../../../../architecture/modules/distribution/module.md).
 - **The maintainer guide** — [docs/releasing.md](../../../../../../docs/releasing.md).

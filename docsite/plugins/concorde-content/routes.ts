@@ -10,4 +10,13 @@ export function canonicalRoute(route: string, baseUrl: string): string {
     : normalizedRoute;
 }
 
+/**
+ * The published projection of a specs-relative path. A module package keeps its submodules and boundary
+ * contracts beneath `architecture/` (`<module>/architecture/modules/<child>/`, `<module>/architecture/contracts/<id>/`);
+ * the site drops that grouping segment so routes read `<module>/modules/<child>/` and `<module>/contracts/<id>/`.
+ */
+export function projectedSpecPath(relativeSpecPath: string): string {
+  return relativeSpecPath.replace(/(^|\/)architecture\/(modules|contracts)\//g, '$1$2/');
+}
+
 export {normalizeRoute};

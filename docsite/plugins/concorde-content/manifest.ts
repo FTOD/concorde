@@ -71,9 +71,7 @@ export function pageFromDocument(document: SourceDocument): ContentPage {
       architectureKind: document.architectureKind,
       moduleId: document.moduleId,
       parentId: document.parentId,
-      architectureViewSource: document.architectureViewSource,
-      architectureViewSha256: document.architectureViewSha256,
-      architectureViewRoute: document.architectureViewRoute,
+      ...(document.architectureDiagrams ? {architectureDiagrams: document.architectureDiagrams} : {}),
       designReferenceRoute: document.designReferenceRoute,
     } : {}),
     ...(isModuleDesign(document) ? {
@@ -86,7 +84,7 @@ export function pageFromDocument(document: SourceDocument): ContentPage {
 export function createManifest(registry: ContentRegistry, routeInventory?: string[]): BuildManifest {
   const pages = registry.documents.map(pageFromDocument).sort((a, b) => a.sourcePath.localeCompare(b.sourcePath));
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     generator: {name: 'concorde-docsite', version: '0.3.0', docusaurusVersion: '3.10.2'},
     collections: registry.collections.map(({id, sourceBase, routeBase, include}) => ({id, sourceBase, routeBase, include})),
     pages,

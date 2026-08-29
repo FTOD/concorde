@@ -88,7 +88,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
    module `design.md` (`workspace.module_design`) only for a specific recorded detail and cite it.
    Load IMPL_PLAN template (already
    copied). Also read every feature-owned Archify JSON source referenced by the specification; keep it
-   distinct from the providing module's canonical `architecture.json`.
+   distinct from the providing module's level views under `architecture/diagrams/`.
 
 3. **Execute plan workflow**: Follow the structure in IMPL_PLAN template to:
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")

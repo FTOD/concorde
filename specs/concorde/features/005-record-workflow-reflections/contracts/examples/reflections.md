@@ -9,7 +9,7 @@ re-encounter, from whichever feature meets it again.
 - **Date**: 2026-08-28
 - **Feature**: feature.example.api.health-check
 - **Kind**: specification
-- **Concerns**: specs/example/modules/api/features/002-add-health-check/design.md#functional-requirements
+- **Concerns**: specs/example/architecture/modules/api/features/002-add-health-check/design.md#functional-requirements
 - **Expected**: FR-002 defines how long a dependency probe may take before the check reports degraded.
 - **Observed**: No timeout is stated; two readings (fail fast, wait for the slowest probe) lead to
   different contracts.

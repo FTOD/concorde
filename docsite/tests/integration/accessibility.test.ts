@@ -16,7 +16,7 @@ describe('accessible presentation contract', () => {
     expect(home).toContain('<main');
     expect(home).toContain('<header');
     expect(provenance).toContain('aria-label="Content provenance"');
-    expect(architectureView).toContain('title={`Interactive architecture view for ${page.title}`}');
+    expect(architectureView).toContain('title={`Interactive architecture view for ${page.title}: ${diagram.title}`}');
     expect(architectureView).toContain('sandbox="allow-downloads allow-scripts"');
     expect(featureDiagrams).toContain('aria-labelledby="feature-diagrams-heading"');
     expect(featureDiagrams).toContain('sandbox="allow-downloads allow-scripts"');

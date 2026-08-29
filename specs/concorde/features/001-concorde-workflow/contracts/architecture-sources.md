@@ -1,15 +1,19 @@
-# Contract: Concorde Architecture Source Profile 3
+# Contract: Concorde Architecture Source Profile 4
 
-**Profile ID**: `profile.concorde.architecture-sources.v3`
+**Profile ID**: `profile.concorde.architecture-sources.v4`
 
 **Governing boundary contract**: `contract.core.architecture-services`. This document is the
 normative maintained-source representation used by that service, not an additional module boundary.
 
 **Representation**: UTF-8 Markdown with constrained YAML front matter and UTF-8 JSON
 
-**Supersedes**: Profile 2. Profile 3 uses `abstract.md` as the read-first feature tier, `design.md`
-as feature behavioral authority, `implementation.md` as accepted feature realization, and module
-`design.md` as the module design reference. Readers reject any other `profile_version`.
+**Supersedes**: Profile 3. Profile 4 gives every module package an `architecture/` directory that
+holds the level's Archify diagrams (`architecture/diagrams/`, any number, discovered rather than
+declared), its boundary contracts (`architecture/contracts/`), and its immediate submodules
+(`architecture/modules/`), beside the level's `features/`. It keeps Profile 3's document tiers:
+`abstract.md` as the read-first feature tier, `design.md` as feature behavioral authority,
+`implementation.md` as accepted feature realization, and module `design.md` as the module design
+reference. Readers reject any other `profile_version`.
 
 ## Authority
 
@@ -28,12 +32,15 @@ as feature behavioral authority, `implementation.md` as accepted feature realiza
   - feature `implementation.md` records how the
     accepted implementation realizes the feature in full detail; it is consulted when writing the
     code or fixing a bug and no operation reads it implicitly.
-- A module's `architecture.json` owns its bounded component placement, connections, and canonical
-  named scenario views and is the module summary's required structure diagram. Descriptively named
-  module- or feature-owned Archify JSON may supplement it; supplemental views do not own behavior or
-  boundaries.
+- A module's diagrams under `architecture/diagrams/` own its bounded component placement,
+  connections, and canonical named scenario views. Its `architecture`-kind diagrams are the level
+  views: together they show the current module, its immediate children, and permitted externals, and
+  at least one of them is the module summary's structure diagram, linked from `## Structure`. Any
+  further diagram of any supported kind explains one question or scenario of the level and is linked
+  from the summary, the design reference, or the project reflection log; no diagram owns behavior or
+  boundaries, and none is declared in front matter.
 - Each top-level feature has one canonical specification at
-  `specs/<root-slug>[/modules/<child-slug>...]/features/<number-name>/design.md`. It may declare
+  `specs/<root-slug>[/architecture/modules/<child-slug>...]/features/<number-name>/design.md`. It may declare
   immediate sub-features at `subfeatures/<number-name>/design.md`; no deeper containment is valid.
   Every lifecycle root owns the durable trio `abstract.md`, `design.md`, and `implementation.md`. A parent
   specification owns aggregate outcomes and shared constraints; a sub-feature specification owns
@@ -48,14 +55,24 @@ as feature behavioral authority, `implementation.md` as accepted feature realiza
 
 ```text
 <module>/
-├── module.md          summary (required)
-├── design.md          module design reference (required; may state nothing is recorded yet)
-├── architecture.json  level view (required for a non-leaf module)
-├── diagrams/          optional supplemental module-owned Archify views
-├── contracts/
-├── features/
-└── modules/
+├── module.md                      summary (required)
+├── design.md                      module design reference (required; may state nothing is recorded yet)
+├── reflections.md                 root module only: the project reflection log
+├── features/<number-name>/        features specified at this level (layout below)
+└── architecture/                  how the level is composed
+    ├── diagrams/<name>.json       module-owned Archify diagrams; a non-leaf module has at least one
+    │                              architecture-kind level view; every file is linked from module.md,
+    │                              design.md, or reflections.md
+    ├── contracts/<id>/contract.md the module's boundary contracts
+    └── modules/<child-slug>/      immediate submodules, each repeating this layout
 ```
+
+`features/` and `architecture/` sit side by side at every level: a feature says what the level can do;
+`architecture/` says how the level is composed. A child module lives at exactly
+`<parent>/architecture/modules/<child-slug>/`; the root module lives at the configured specification
+root. An `architecture.json`, `contracts/`, or `modules/` entry directly at a module root, a `view`
+field in `module.md`, and an `architecture_view` field in a feature `design.md` are Profile 3 remnants
+and are invalid.
 
 ## Feature Workspace Layout
 
@@ -131,18 +148,19 @@ as navigation references.
 
 ```json
 {
-  "profile_version": 3,
+  "profile_version": 4,
   "specification_root": "specs/example",
   "root_module_id": "module.example"
 }
 ```
 
 `specification_root` is the unified subtree recursively containing `module.md`, each module's
-adjacent `design.md`, `contracts/**/contract.md`, `features/*/design.md`,
+adjacent `design.md`, each module's `architecture/contracts/**/contract.md`, every `*.json` directly
+beneath each module's `architecture/diagrams/`, `features/*/design.md`,
 `features/*/subfeatures/*/design.md`, each feature root's adjacent `abstract.md` and `implementation.md`, and
-declared Archify JSON views. A feature-like `design.md` at another depth is invalid rather than
-silently ignored. Former `tldr.md`/`spec.md` files and `implementation/` attempt directories are
-invalid. Temporary
+declared feature-owned Archify JSON. A feature-like `design.md` at another depth is invalid rather than
+silently ignored. Former `tldr.md`/`spec.md` files, `implementation/` attempt directories, and the
+Profile 3 module entries named above are invalid. Temporary
 requirements-quality checklists remain discoverable below each active lifecycle root's
 `attempt/` subtree but are not durable specification sources. Paths are project-relative
 POSIX paths. Absolute paths, backslashes, empty segments, `.` segments, `..` segments, and symlink
@@ -150,7 +168,7 @@ escapes are invalid.
 
 ## Front-Matter Subset
 
-Profile 3 supports the same subset as Profiles 1 and 2:
+Profile 4 supports the same subset as Profiles 1 to 3:
 
 - a document beginning with `---`, a closing `---`, then Markdown;
 - mappings expressed by indentation in multiples of two spaces;
@@ -172,7 +190,6 @@ Required front matter:
 id: module.example
 kind: module
 parent: null
-view: specs/example/architecture.json
 children: []
 features: []
 contracts:
@@ -186,7 +203,7 @@ Required Markdown H2 sections (any order; additional sections are permitted):
 |---|---|
 | `Responsibility` | non-empty prose |
 | `Boundary` | non-empty prose |
-| `Structure` | a Markdown link whose target resolves to the declared `view` (non-leaf); a leaf with `view` null or absent records a non-empty rationale instead; further diagrams may be linked or embedded |
+| `Structure` | a Markdown link whose target resolves to at least one `architecture`-kind diagram beneath the module's `architecture/diagrams/` (required whenever the module has one; a non-leaf module always has one); a module without such a diagram records a non-empty rationale instead; further diagrams may be linked or embedded |
 | `Features` | a Markdown table inventorying current-level features, or the line `None.` |
 | `Contracts` | a Markdown table inventorying provided and required contracts, or `None.` |
 | `Submodules` | a Markdown table inventorying immediate children, or `None.` |
@@ -195,7 +212,8 @@ Required Markdown H2 sections (any order; additional sections are permitted):
 
 The summary body (excluding front matter, fenced code blocks, and HTML comments) is expected to
 stay within the reading budget of 4,000 words; exceeding it is reported as a warning. A non-leaf
-module must identify exactly one current-level view; a leaf may omit `view` or set it to null.
+module maintains at least one `architecture`-kind diagram beneath `architecture/diagrams/`; a leaf
+may maintain none.
 
 ### Module design reference
 
@@ -247,7 +265,6 @@ contracts:
   provided:
     - contract.example.workflow
   required: []
-architecture_view: specs/example/architecture.json
 diagrams:
   - source: specs/example/features/001-outcome/diagrams/component-interactions.json
     role: core
@@ -354,26 +371,40 @@ feature. Its machine-readable data includes a stable ID, owning module, particip
 interactions. Each interaction has `from`, `to`, `description`, and `contract` when it crosses a
 module boundary. A prose-only scenario sets `prose_only: true` and supplies a rationale.
 
-### Architecture view
+### Module-owned diagrams (`architecture/diagrams/`)
 
-The JSON document follows the Archify architecture schema supported by this project and must also
-satisfy Concorde visibility rules:
+Every `*.json` directly beneath a module's `architecture/diagrams/` is a maintained diagram of that
+level. Each is a JSON object whose `diagram_type` is one of `architecture`, `workflow`, `sequence`,
+`dataflow`, or `lifecycle` and whose `meta` object carries a non-empty `title` and, when the diagram
+is delivered, a safe `output` path (relative to the diagram) beneath `generated/`. Symlinks and
+files at any other depth are invalid. Each diagram must be referenced by a Markdown link from the
+level's `module.md`, its `design.md`, or the project reflection log; an unreferenced diagram is a
+validation finding, not a silently ignored file.
+
+The `architecture`-kind diagrams are the level views. Each follows the Archify architecture schema
+supported by this project and must also satisfy Concorde visibility rules:
 
 - participants are the current module boundary, its immediate child modules, and permitted externals;
 - child features, grandchild modules, and implementation details are absent;
-- every referenced scenario belongs to the current module level;
-- every connection endpoint resolves within the view; and
-- every boundary-crossing connection can be traced to a declared contract in maintained Markdown.
+- every scenario named in `meta.views` uses only participants visible in that diagram;
+- every connection endpoint resolves within the diagram;
+- every boundary-crossing connection can be traced to a declared contract in maintained Markdown;
+- every immediate child drawn carries an explicit `module_id`; and
+- across a non-leaf module's level views, every immediate child appears at least once.
 
-### Feature-owned or module-owned explanatory view
+A scenario a feature cites must be defined in `meta.views` of one of the providing module's diagrams
+(of any kind); bounded context, readiness, and validation read all of a level's diagrams together.
+
+### Explanatory views (feature-owned, or module-owned beyond the level views)
 
 The JSON document follows the matching Archify schema for `architecture`, `workflow`, `sequence`,
 `dataflow`, or `lifecycle`. It must identify the scenario or question it explains, use participants
 consistent with maintained module/contract prose, preserve ordered and directional interactions, and
-have a complete textual counterpart in the owning `design.md` or `module.md` (a abstract may link and
-summarize it but is not its counterpart). Boundary-crossing interactions name or trace to their
-governing contract. Validation and delivery are deterministic; visual-check automation records
-containment/captures but never substitutes for human perceptual review.
+have a complete textual counterpart in the owning feature `design.md` or, for a module-owned diagram,
+in the level's `module.md` or `design.md` (an abstract may link and summarize it but is not its
+counterpart). Boundary-crossing interactions name or trace to their governing contract. Validation
+and delivery are deterministic; visual-check automation records containment/captures but never
+substitutes for human perceptual review.
 
 ## Stable IDs
 
@@ -390,9 +421,13 @@ Every invalid source yields a `Validation Finding` with a stable rule ID, severi
 source and optional location, message, and concrete remediation. The validator is read-only and
 reports all independently detectable findings in deterministic order.
 
-Validation also checks the module summary shape (required sections, structure link or leaf
-rationale, inventory tables, reachability of the design reference) and reading budget (warning
-severity; it never changes the validation status), module design-reference presence, the feature
+Validation also checks the module package layout (a child module beneath its parent's
+`architecture/modules/`, no Profile 3 `architecture.json`, `contracts/`, or `modules/` entry at a
+module root, no `view` or `architecture_view` field), the module summary shape (required sections, a
+structure link to one of the level's architecture diagrams or a leaf rationale, inventory tables,
+reachability of the design reference) and reading budget (warning severity; it never changes the
+validation status), module design-reference presence, that every diagram beneath
+`architecture/diagrams/` is referenced from the level's documents, the feature
 abstract shape (exactly the five sections in order, a structure link or inline sketch, `Logic`
 requirement citations that resolve in the adjacent `design.md`) and reading budget (warning), the
 feature-root durable trio and legacy names (former `tldr.md`/`spec.md` files, a former
@@ -406,7 +441,7 @@ reimplementing them.
 
 ## Compatibility
 
-Readers of Profile 3 reject an unsupported `profile_version`, including Profiles 1 and 2; Concorde
+Readers of Profile 4 reject an unsupported `profile_version`, including Profiles 1 to 3; Concorde
 is currently the only adopter and migrates in one refactor, so no earlier reader is retained. Adding
 optional fields or sections is compatible; removing a required field, changing field meaning, or
 expanding accepted syntax incompatibly requires a new profile version and migration guidance.

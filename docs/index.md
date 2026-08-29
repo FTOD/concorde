@@ -23,7 +23,7 @@ different questions:
 
 | Area | Use it to answer | Maintained authority |
 |---|---|---|
-| **Architecture** | At which level is this behavior specified, and which modules realize it? What can cross a boundary? Which immediate components collaborate? Why is it built this way? | `module.md` summaries, their adjacent `design.md` design references, module contracts, and declared Archify sources under `specs/` |
+| **Architecture** | At which level is this behavior specified, and which modules realize it? What can cross a boundary? Which immediate components collaborate? Why is it built this way? | `module.md` summaries, their adjacent `design.md` design references, module contracts, and the module-owned Archify diagrams under `specs/**/architecture/` |
 | **Features** | What is this feature, exactly what must it do, and how does the accepted implementation realize it? | The feature's durable `abstract.md` (the page it opens on), `design.md`, and `implementation.md` under `specs/` |
 | **Documentation** | How do I understand, install, use, and contribute to Concorde? | Explanatory Markdown under `docs/` |
 

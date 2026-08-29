@@ -131,10 +131,10 @@ Project-owned, never component-owned:  .concorde/config.json · specs/** · .spe
 - **The contracts** — `contracts/bundle-distribution.md`,
   `contracts/installed-command-surfaces.md`, and
   `contracts/ecosystem-explanation.md`; the boundary promise is
-  [contract.concorde.spec-kit-installation](../../contracts/spec-kit-installation/contract.md).
+  [contract.concorde.spec-kit-installation](../../architecture/contracts/spec-kit-installation/contract.md).
 - **The level this feature belongs to** — [module.md](../../module.md) (the root summary) and the
-  modules that realize it: [Distribution](../../modules/distribution/module.md) and
-  [Spec Kit Integration](../../modules/spec-kit-integration/module.md).
+  modules that realize it: [Distribution](../../architecture/modules/distribution/module.md) and
+  [Spec Kit Integration](../../architecture/modules/spec-kit-integration/module.md).
 - **The two sub-features** — [publish-release](subfeatures/001-publish-release/design.md) and
   [one-command-install](subfeatures/002-one-command-install/design.md).
 - **After installation** — the workflow abstract: [Concorde Workflow](../001-concorde-workflow/abstract.md);

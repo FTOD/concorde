@@ -6,7 +6,9 @@ import matter from 'gray-matter';
 
 import type {DiagramDeclaration, DiagramKind, FeatureDiagram} from './types';
 
-const diagramKinds = new Set<DiagramKind>(['architecture', 'workflow', 'sequence', 'dataflow', 'lifecycle']);
+export const diagramKinds = new Set<DiagramKind>(['architecture', 'workflow', 'sequence', 'dataflow', 'lifecycle']);
+/** Module-owned diagrams live directly beneath `<module>/architecture/diagrams/`. */
+export const moduleDiagramsDirectory = 'architecture/diagrams';
 const posixPath = (value: string) => value.split(sep).join('/');
 
 function relativeWithin(root: string, candidate: string): string | undefined {
@@ -38,7 +40,8 @@ async function requireRegularSource(projectRoot: string, sourcePath: string, own
 interface PendingDeclaration {
   ownerPath: string;
   sourcePath: string;
-  declaredKind: DiagramKind;
+  /** Declared by the owner (feature diagrams); a module diagram takes its kind from its own `diagram_type`. */
+  declaredKind?: DiagramKind;
   declaredOutput?: string;
   role?: FeatureDiagram['role'];
   scenarios?: string[];
@@ -84,10 +87,23 @@ function featureDeclarations(ownerPath: string, raw: unknown): PendingDeclaratio
   });
 }
 
+/** Every `*.json` directly beneath the module's `architecture/diagrams/` directory, in stable name order. */
+export async function listModuleDiagramSources(projectRoot: string, moduleSourcePath: string): Promise<string[]> {
+  const directory = posix.join(posix.dirname(moduleSourcePath), moduleDiagramsDirectory);
+  const absoluteDirectory = resolve(projectRoot, directory);
+  try {
+    if (!(await lstat(absoluteDirectory)).isDirectory()) return [];
+  } catch {
+    return [];
+  }
+  const names = await fg(['*.json'], {cwd: absoluteDirectory, onlyFiles: true, unique: true, followSymbolicLinks: false});
+  return names.map((name) => posix.join(directory, posixPath(name))).sort();
+}
+
 export async function discoverDiagramDeclarations(projectRoot: string): Promise<DiagramDeclaration[]> {
   const root = resolve(projectRoot);
   const specsRoot = resolve(root, 'specs');
-  const ownerFiles = await fg(['**/module.md', '**/contracts/**/contract.md', '**/design.md'], {
+  const ownerFiles = await fg(['**/module.md', '**/design.md'], {
     cwd: specsRoot,
     onlyFiles: true,
     unique: true,
@@ -96,15 +112,13 @@ export async function discoverDiagramDeclarations(projectRoot: string): Promise<
   const pending: PendingDeclaration[] = [];
   for (const ownerFromSpecs of ownerFiles.sort()) {
     const ownerPath = posix.join('specs', ownerFromSpecs.replaceAll('\\', '/'));
-    const parsed = matter(await readFile(resolve(specsRoot, ownerFromSpecs), 'utf8'));
-    if ((ownerFromSpecs.endsWith('/design.md') || ownerFromSpecs === 'design.md') && !ownerFiles.includes(ownerFromSpecs.replace(/design\.md$/, 'module.md'))) {
-      pending.push(...featureDeclarations(ownerPath, parsed.data.diagrams));
+    if (ownerFromSpecs.endsWith('module.md')) {
+      for (const sourcePath of await listModuleDiagramSources(root, ownerPath)) pending.push({ownerPath, sourcePath});
       continue;
     }
-    const view = typeof parsed.data.view === 'string'
-      ? parsed.data.view.trim()
-      : typeof parsed.data.architecture_view === 'string' ? parsed.data.architecture_view.trim() : undefined;
-    if (view) pending.push({ownerPath, sourcePath: view, declaredKind: 'architecture'});
+    if (ownerFiles.includes(ownerFromSpecs.replace(/design\.md$/, 'module.md'))) continue; // module design reference
+    const parsed = matter(await readFile(resolve(specsRoot, ownerFromSpecs), 'utf8'));
+    pending.push(...featureDeclarations(ownerPath, parsed.data.diagrams));
   }
 
   const declarations: DiagramDeclaration[] = [];
@@ -124,8 +138,12 @@ export async function discoverDiagramDeclarations(projectRoot: string): Promise<
     } catch (error) {
       throw new Error(`${sourcePath}: invalid diagram JSON: ${error instanceof Error ? error.message : String(error)}`);
     }
-    if (document.diagram_type !== candidate.declaredKind) {
-      throw new Error(`${sourcePath}: diagram_type must match declared ${candidate.declaredKind} kind.`);
+    const kind = candidate.declaredKind ?? document.diagram_type;
+    if (typeof kind !== 'string' || !diagramKinds.has(kind as DiagramKind)) {
+      throw new Error(`${sourcePath}: diagram_type must be one of ${[...diagramKinds].join(', ')}.`);
+    }
+    if (document.diagram_type !== kind) {
+      throw new Error(`${sourcePath}: diagram_type must match declared ${kind} kind.`);
     }
     if (typeof document.meta?.title !== 'string' || !document.meta.title.trim()) {
       throw new Error(`${sourcePath}: meta.title is required.`);
@@ -160,7 +178,7 @@ export async function discoverDiagramDeclarations(projectRoot: string): Promise<
       outputPath,
       absoluteOutputPath,
       outputFromGenerated,
-      kind: candidate.declaredKind,
+      kind: kind as DiagramKind,
       title: document.meta.title.trim(),
       role: candidate.role,
       scenarios: candidate.scenarios,

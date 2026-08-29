@@ -14,7 +14,6 @@ contracts:
     - contract.concorde.spec-kit-installation
   required:
     - contract.concorde.spec-kit-platform
-architecture_view: specs/concorde/architecture.json
 diagrams:
   - source: specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json
     role: core
@@ -108,7 +107,7 @@ demonstrate the encouraged Concorde pattern: use feature-owned diagrams when com
 invocation order would be harder to understand from prose alone.
 
 These diagrams explain this feature and do not replace the canonical one-level root module view in
-`specs/concorde/architecture.json`.
+`specs/concorde/architecture/diagrams/level-view.json`.
 Their concise node context is the Archify 2.16 presentation of the same package roles and lifecycle;
 the textual requirements and contracts retain the complete semantics.
 
@@ -353,8 +352,8 @@ project-owned sources.
   distinguish release sources from installed files, template composition from command composition,
   normal command overrides from Concorde-specific commands, and self-hosting files from release
   inputs.
-- **FR-027**: Supplemental setup diagrams MUST remain separate from the canonical root module
-  `architecture.json`, identify their maintained sources and generated outputs, and pass deterministic
+- **FR-027**: Supplemental setup diagrams MUST remain separate from the root module's level views
+  under `architecture/diagrams/`, identify their maintained sources and generated outputs, and pass deterministic
   validation and freshness checks.
 - **FR-028**: Setup guidance MUST end by directing the maintainer to Feature 001's core Concorde
   workflow rather than describing installation as the workflow itself.

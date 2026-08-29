@@ -48,8 +48,8 @@ that a clean target actually receives from release archives.
 
 These are feature-owned Feature 003 explanations: the component model is the single `role: core`
 architecture view and the installation flow is `role: supplemental`. Both supplement rather than
-replace module-owned `architecture.json` views, do not participate in Architecture Core source
-Profile 3, and must not redefine the root module's one-level participants or contracts.
+replace the module-owned level views under `architecture/diagrams/`, do not participate in
+Architecture Core source Profile 4, and must not redefine the root module's one-level participants or contracts.
 
 ## Accessibility and Evidence
 

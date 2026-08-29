@@ -99,10 +99,14 @@ feature `design.md` owns behavior. Missing feature companions and legacy names a
   adjacency to `module.md`.
 - `module`: required owning module ID for feature and contract sources.
 - `parent`: optional parent module ID for non-root module sources.
-- `view` or `architecture_view`: optional project-relative path to maintained Archify JSON.
-- A declared view must contain a valid `meta.output` beneath `generated/`. Preview and production
-  publication discover the declaration and create its verified disposable HTML before the registry
-  admits the route. The page records the JSON source hash and embeds the HTML in a sandbox.
+- Module diagrams: every `*.json` directly beneath the module's `architecture/diagrams/` is a
+  maintained Archify diagram of that level; nothing is declared in front matter (`view` and
+  `architecture_view` are Profile 3 remnants and are not read).
+- Each module diagram must be valid Archify JSON with a supported `diagram_type`, a `meta.title`, and
+  a `meta.output` beneath `generated/`. Preview and production publication discover the folder and
+  create each verified disposable HTML before the registry admits the route. The module page records
+  every diagram's source hash and embeds each one in a sandbox; a Markdown link to a diagram's JSON
+  resolves to its delivered route.
 
 ## Obligations
 
@@ -112,10 +116,12 @@ feature `design.md` owns behavior. Missing feature companions and legacy names a
   `not-canonical-feature-artifact` in the build manifest.
 - Consumers MUST preserve authored prose, headings, code, tables, and supported links.
 - Consumers MUST expose content kind and project-relative provenance on every page; architecture pages
-  additionally expose stable ID, kind, hierarchy metadata, and view provenance when applicable.
-- Consumers MUST discover feature diagrams from `design.md`, deliver and verify their generated outputs before publication, include
-  their source hashes and routes in the manifest, and embed every declared view on the canonical
-  feature page with a standalone-view link.
+  additionally expose stable ID, kind, hierarchy metadata, and, for a module, the provenance of every
+  diagram beneath its `architecture/diagrams/`.
+- Consumers MUST discover feature diagrams from `design.md` and module diagrams from
+  `architecture/diagrams/`, deliver and verify their generated outputs before publication, include
+  their source hashes and routes in the manifest, and embed every feature diagram on the canonical
+  feature page and every module diagram on the module page, each with a standalone-view link.
 - Consumers MUST reject duplicate, escaping, mismatched, stale, failed, or incomplete diagram
   deliveries and MUST NOT require committed HTML or machine-local visual-check evidence.
 - Providers MUST keep stable feature IDs unique and internal Markdown targets resolvable.
@@ -131,7 +137,7 @@ feature `design.md` owns behavior. Missing feature companions and legacy names a
 Unreadable sources, invalid YAML or JSON, missing required identity, invalid feature-diagram
 placement/declarations, duplicate feature or architecture
 IDs, escaping paths, missing or ambiguous Markdown targets, excluded-source links, unpublishable
-declared views or feature diagrams, and route collisions are errors. Each
+module or feature diagrams (`architecture.diagram.unpublishable`), and route collisions are errors. Each
 diagnostic includes a rule ID, source path when applicable, reason, and remediation. Any error stops
 candidate publication.
 

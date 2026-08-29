@@ -9,7 +9,6 @@ contracts:
   provided:
     - contract.example.workflow
   required: []
-architecture_view: specs/example/architecture.json
 evidence_status: unknown
 canonical_design: specs/example/features/001-deliver/design.md
 ---

@@ -26,17 +26,22 @@ roots must all produce actionable containment or layout findings.
 Present the document-model rules by their stable IDs. Module summary shape
 (`CONCORDE-SUMMARY-001` through `CONCORDE-SUMMARY-004`): `module.md` has the required sections
 `Responsibility`, `Boundary`, `Structure`, `Features`, `Contracts`, `Submodules`,
-`Representative Scenario`, and `Design Rationale`; `Structure` links the level view or records a leaf
-rationale; each inventory section holds a Markdown table or `None.`; and the summary links its
-adjacent `design.md`. The reading budget is `CONCORDE-SUMMARY-005`, a WARNING that never changes the
-status. A missing, empty, or symlinked module `design.md` is `CONCORDE-MODULE-002`. Feature-root
+`Representative Scenario`, and `Design Rationale`; `Structure` links at least one of the level's
+architecture diagrams under `architecture/diagrams/` or records a leaf rationale; each inventory
+section holds a Markdown table or `None.`; and the summary links its adjacent `design.md`. The
+reading budget is `CONCORDE-SUMMARY-005`, a WARNING that never changes the status. A missing, empty,
+or symlinked module `design.md` is `CONCORDE-MODULE-002`. Module package layout: a diagram under
+`architecture/diagrams/` that no `module.md`, `design.md`, or reflection-log link references is
+`CONCORDE-VIEW-006`; a Profile 3 remnant (`architecture.json`, `contracts/`, or `modules/` directly
+at a module root, or a `view`/`architecture_view` front-matter field) is `CONCORDE-LAYOUT-010`; a
+child module not beneath its parent's `architecture/modules/` is `CONCORDE-LAYOUT-011`. Feature-root
 trio: a missing feature `implementation.md` is `CONCORDE-LAYOUT-005`, legacy feature-root
 `spec.md`/`tldr.md` names are `CONCORDE-LAYOUT-007`, a legacy `implementation/` attempt directory is
 `CONCORDE-LAYOUT-008`, and a
 missing `abstract.md` is `CONCORDE-LAYOUT-009`. Feature abstract shape (`CONCORDE-ABSTRACT-001` through
 `CONCORDE-ABSTRACT-003`): exactly the sections `Purpose`, `Functionality`, `Structure`, `Logic`, and
-`Read Next` in order; `Structure` links a maintained diagram, the level view, or a delivered
-architecture view, or contains a ```text sketch; and `Logic` cites only `FR-NNN` identifiers defined
+`Read Next` in order; `Structure` links a maintained diagram, a level view under the module's
+`architecture/diagrams/`, or a delivered architecture view, or contains a ```text sketch; and `Logic` cites only `FR-NNN` identifiers defined
 in the adjacent `design.md` (and at least one when the design defines any). The abstract reading budget
 (3,000 body words) is `CONCORDE-ABSTRACT-004`, a WARNING that never changes the status. Project
 reflection log (`reflections.md` directly inside the specification root; absent is not a breach):

@@ -44,9 +44,6 @@ def _structure_is_linked(structure: str, source_dir: str, feature: SourceDocumen
     for declaration in feature.metadata.get("diagrams", []) if isinstance(feature.metadata.get("diagrams"), list) else []:
         if isinstance(declaration, dict) and isinstance(declaration.get("source"), str):
             accepted.add(posixpath.normpath(declaration["source"]))
-    view = feature.metadata.get("architecture_view")
-    if isinstance(view, str) and view:
-        accepted.add(posixpath.normpath(view))
     accepted.update(posixpath.normpath(path) for path in package.views)
     accepted.update(posixpath.normpath(path) for path in package.diagrams)
     if accepted & _link_targets(structure, source_dir):

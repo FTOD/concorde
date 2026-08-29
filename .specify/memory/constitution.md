@@ -1,40 +1,32 @@
 <!--
 Sync Impact Report
-- Version change: 1.4.0 -> 2.0.0 (MAJOR: principle removed, principles restructured and redefined)
-- Structure change: Core Principles split into two parts:
-  - Part A "Workflow Principles" governs every project that adopts the Concorde workflow.
-  - Part B "Project Principles" governs the Concorde project that builds the workflow's tooling.
-- Removed principles:
-  - II. Spec Kit-Native and Composable (demoted to a Project Constraints bullet; integration
-    mechanism is a feature decision, not a constitutional principle)
-- Added principles:
-  - A.I Fast Human Comprehension at Every Level (new; states the human-spec interaction goal)
-  - A.II Complete Beneath the Surface (new; absorbs "One Authority per Fact")
-  - A.III Architecture-Driven, Not Only Feature-Driven (new; absorbs "Recursive, Bounded
-    Architecture" and "Explicit Ownership and Feature Alignment")
+- Version change: 2.0.0 -> 2.1.0 (MINOR: mandatory guidance materially expanded; no principle removed
+  or redefined)
 - Modified principles:
-  - V. Contracts Govern Every Boundary -> A.IV Contracts Are Human-Readable Promises
-  - VII. Deterministic Validation and Reviewed Evidence -> A.V Deterministic Validation,
-    Human-Reviewed Evidence
-  - I. Concorde Is the Workflow Product and Its Proving Ground -> split into B.I Concorde Ships a
-    Usable Workflow and B.II Concorde Develops Itself with Concorde
-- Removed sections: Product and Ecosystem Requirements (replaced by shorter Project Constraints);
-  Architecture Documentation Standards (reduced to Workflow Standards)
-- Detail relocated out of the constitution (now framework documentation / feature specs):
-  feature-diagram `core`/`supplemental` role mechanics, `diagrams/` directory layout, contract
-  field inventory, Spec Kit version fixture policy, adapter ownership boundaries.
-- Feature placement redefined (A.III): a feature is specified at one level of the hierarchy but
-  MAY be realized by several modules; "exactly one providing module" and "nearest common parent
-  ownership" are dropped. One-level visibility becomes the default practice (SHOULD), and a
-  level MAY show a submodule's features when that makes the level clearer.
-- Follow-up TODOs:
-  - Reconcile preset/extension guidance that cites old principle numerals (I-VII) with the new
+  - A.III Architecture-Driven, Not Only Feature-Driven: every level now MUST keep two distinguishable
+    parts of one package — the features specified at that level (what it can do) and its architecture
+    (how it is composed: the level's diagrams, boundary contracts, and immediate submodules); a level
+    MAY be described by more than one maintained diagram, and "a level's view" became "a level's
+    views" wherever the bounded view is described.
+- Modified sections:
+  - Workflow Standards: "one valid level view" became "at least one valid level view"; added that
+    every diagram a level maintains MUST be referenced from that level's documents.
+- Added sections: none. Removed sections: none.
+- Motivation: one fixed level-view file per module could not describe a level that needs several
+  diagrams, and features sat beside only some of what composes a level. Architecture Source Profile 4
+  (2026-08-29) gives every module package `features/` beside `architecture/` (`diagrams/`,
+  `contracts/`, `modules/`); this amendment states the principle behind that layout without fixing
+  the layout itself, which remains framework documentation.
+- Compatibility impact: additive for adopters that already maintain one level view; a level with
+  unreferenced diagrams or a package that mixes composition into the feature tree now breaches a
+  standard. Concorde's own hierarchy, tooling, guides, and templates were migrated in the same change.
+- Templates and guides reconciled in this change: docs/framework-overview.md (version citation);
+  docs/specification-model.md and docs/project-structure.md already describe the two-part package.
+- Follow-up TODOs (carried over, still open):
+  - Reconcile preset/extension guidance that cites old principle numerals (I-VII) with the
     A.I-A.V / B.I-B.II identifiers.
-  - `speckit.concorde.feature.create` and `feature.select` assumed one providing module per feature
-    and were removed on 2026-08-27; features are now created through the normal specify phase at
-    their canonical path and selected through standard Spec Kit selection. The feature path layout
-    and Protocol v3 `providing_module` field still reflect the old assumption and remain to be
-    aligned with A.III.
+  - The feature path layout and Protocol v6 `providing_module` field still reflect the former
+    one-providing-module assumption and remain to be aligned with A.III.
 -->
 # Concorde Constitution
 
@@ -84,16 +76,23 @@ architecturally meaningful. The purpose of every level is a good abstraction: th
 that level, their responsibilities, and their interactions MUST be chosen so that the level can be
 understood on its own terms and reasoned about without the levels below.
 
+Every level MUST keep two distinguishable parts of one package: the features specified at that level,
+which say what the level can do, and its architecture, which says how the level is composed — the
+diagrams that show its parts and their interactions, the contracts that govern its boundaries, and
+its immediate submodules. A level MAY be described by more than one maintained diagram; every diagram
+a level maintains MUST be reachable from that level's documents, and none may redefine what the
+level's prose and contracts own.
+
 Features are realized through modules. Every feature MUST have a stable ID, an observable outcome,
 and exactly one place in the hierarchy where it is specified: the level at which every module it
 uses is visible. A feature MAY be realized by a single module or by combining several modules and
 lower-level features; it need not be owned by any one module. Where a feature is refined by features
 at the next level down, the refinement links MUST connect adjacent levels and MUST be acyclic.
 
-A level's view shows the current module, its features and boundary contracts, its immediate
+A level's views show the current module, its features and boundary contracts, its immediate
 submodules with their features and boundary contracts, the relevant external actors, and the
-interactions among them. It SHOULD NOT descend further: grandchildren and implementation detail
-belong to the levels below, and selecting a submodule produces the same kind of view with that
+interactions among them. They SHOULD NOT descend further: grandchildren and implementation detail
+belong to the levels below, and selecting a submodule produces the same kind of views with that
 submodule as the current module. A level MAY show selected detail from below when that makes the
 level clearer, provided the detail remains authoritative at its own level. This bounded view is what
 makes A.I possible for humans and gives agents a bounded context for every task.
@@ -168,9 +167,10 @@ acceptance test that the workflow is practical rather than aspirational.
   deterministic path mapping. They MUST NOT require a document per class, function, or call edge;
   architecture documents responsibilities, boundaries, contracts, and representative behavior, not
   a duplicate inventory of the implementation.
-- Every non-leaf module MUST maintain one valid level view. A scenario SHOULD use only the current
-  module, its immediate submodules, and permitted external actors as participants; deeper
-  participants MUST be justified by clarity at that level.
+- Every non-leaf module MUST maintain at least one valid level view, and every diagram a level
+  maintains MUST be referenced from that level's documents; an unreferenced diagram is a defect, not
+  an extra. A scenario SHOULD use only the current module, its immediate submodules, and permitted
+  external actors as participants; deeper participants MUST be justified by clarity at that level.
 - Every feature MUST include a representative scenario unless it records why an example would not
   improve understanding. A feature MAY own additional explanatory diagrams; at most one is its core
   component-interaction view, every diagram MUST have a complete textual counterpart, and no diagram
@@ -223,4 +223,4 @@ of implementation agreement without evidence. Exceptions are temporary records, 
 Maintainers MUST review this constitution at least once per major release and whenever recurring
 exceptions indicate a rule no longer serves the project's goals.
 
-**Version**: 2.0.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-27
+**Version**: 2.1.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-29

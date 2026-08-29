@@ -159,10 +159,10 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
         message: 'Architecture feature and contract sources require an owning module.',
         remediation: 'Add a non-empty module field that resolves to the owning module ID.',
       });
-      if (document.architectureViewSource && (!document.architectureViewSha256 || !document.architectureViewRoute)) findings.push({
-        ruleId: 'architecture.view.unpublishable', severity: 'error', sourcePath: document.sourcePath,
-        message: `Declared architecture view "${document.architectureViewSource}" cannot be mapped to a generated site artifact.`,
-        remediation: 'Correct the view path, ensure its JSON is valid, set meta.output beneath generated/, and deliver the HTML artifact.',
+      for (const source of document.unpublishableDiagrams ?? []) findings.push({
+        ruleId: 'architecture.diagram.unpublishable', severity: 'error', sourcePath: document.sourcePath,
+        message: `Module diagram "${source}" cannot be mapped to a generated site artifact.`,
+        remediation: 'Ensure the JSON beneath architecture/diagrams/ is valid Archify JSON with a supported diagram_type, meta.title, and meta.output beneath generated/, and deliver the HTML artifact.',
       });
       if (document.architectureKind === 'module' && !document.designReferenceRoute) findings.push({
         ruleId: 'module.design.required', severity: 'error', sourcePath: document.sourcePath,

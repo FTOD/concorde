@@ -2,7 +2,8 @@
 
 This reference explains and justifies the root level of Concorde's specification hierarchy. It never
 redefines responsibility, boundary, organization, or contracts; those remain owned by `module.md`,
-`architecture.json`, and the contract documents.
+the level views under `architecture/diagrams/`, and the contract documents under
+`architecture/contracts/`.
 
 ## Implementation Notes
 
@@ -34,8 +35,11 @@ redefines responsibility, boundary, organization, or contracts; those remain own
 - `docsite/` is the TypeScript Docusaurus project that publishes the read model; `generated/` and
   `docsite/.generated/` are ignored delivery and projection trees.
 - `specs/concorde/` is this hierarchy: the root module, four child modules, and twenty-one feature
-  roots, each root owning `abstract.md`, `design.md`, and `implementation.md`; `.concorde/config.json` records
-  the Architecture Source Profile in force.
+  roots, each root owning `abstract.md`, `design.md`, and `implementation.md`. Every module package
+  keeps what composes it under `architecture/` — `diagrams/` for its level views and any explanatory
+  diagram (each linked from `module.md`, `design.md`, or the reflection log), `contracts/` for its
+  boundary contracts, and `modules/` for its children — beside its `features/`; `.concorde/config.json`
+  records the Architecture Source Profile in force (Profile 4).
 - `specs/concorde/reflections.md` is the project's one reflection log (Feature 005): a maintained
   source beside this level's summary, appended to by every phase after specification, read by
   validation, context, the workspace adapter, and hardening, never removed, and not published.
@@ -143,21 +147,23 @@ summaries name it as a code span.
   surfaces materialize from release-installed artifacts in clean skills and slash-command projects,
   the four runtime-backed operations execute there, the agent-only question procedure is reviewed,
   preset recomposition is verified, and the timed first-use and comprehension pilot is conducted.
-- The Concorde workflow has verified initialization (four-file root package on Profile 3), nested
+- The Concorde workflow has verified initialization (four-file root package on Profile 4: config,
+  summary, design reference, and `architecture/diagrams/level-view.json`), nested
   feature selection, public preset command composition, bounded active-feature context with
   navigation references, architecture readiness, contract example conformance, evidence
   disagreement, freshness normalization, deterministic validation including the summary, abstract,
   implementation, and feature-root trio rules, and atomic hardening (proposal v4) with an optional
-  module-reference amendment: 223 Python tests and 67 docsite tests pass, `speckit.concorde.validate`
+  module-reference amendment: 231 Python tests and 68 docsite tests pass, `speckit.concorde.validate`
   on this repository returns `success` with zero findings, the production build publishes Manifest
-  v7 with abstract, feature-design, feature-implementation, and module-design pages, and all eight
+  v8 with abstract, feature-design, feature-implementation, and module-design pages (module pages
+  carrying every diagram of their level), and all eight
   declared views deliver with 9/9 showcase checks (2026-08-29). Its human placement, mental-model,
   and final review evidence remains pending.
 - Self-host status is `current` under the codex integration records (receipt 2026-08-28, sources
   0.3.0); under the checkout's active `claude` integration the codex-only tooling reports `unknown`.
 - All five module summaries are within the reading budget (392–1,273 body words) and all twenty
   feature abstracts are within theirs (at most 1,358 body words).
-- Feature 005 (project reflection log) is implemented and verified: 223 Python tests pass
+- Feature 005 (project reflection log) is implemented and verified: 231 Python tests pass
   including the parser, rule, context, workspace, contract, hardening-gate, and composition cases;
   `speckit.concorde.validate` on this repository returns `success` with the log present; the root
   view shows five root features and passes 9/9 showcase checks; the docsite validates 99 pages
@@ -235,6 +241,27 @@ design reference is honest about open problems by citing their identifiers inste
 entries around. Recording rides on the existing phases and no new command, because a surface that
 must be invoked separately would not be used at the moment the problem is met.
 
+### Why a level owns a folder of diagrams rather than one file
+
+One `architecture.json` per module, named in front matter, forced every level into a single
+picture. A level is rarely described by one picture: the structural level view answers "what are the
+parts and how do they interact", while a release flow, a request sequence, or a lifecycle answers a
+narrower question about the same level. So a module owns `architecture/diagrams/`, holding any number
+of Archify diagrams of any supported kind, discovered from the folder rather than declared. What
+binds a diagram to the level is that the level's documents reference it: `module.md` links the level
+view(s) from `## Structure`, and `design.md` or the reflection log link the explanatory ones, so an
+unreferenced diagram is a finding rather than a stray file. The `architecture`-kind diagrams remain
+the level views and keep the one-level visibility rules; the other kinds explain and never govern.
+
+### Why `features/` and `architecture/` sit side by side
+
+A feature says what a level can do; the level's diagrams, boundary contracts, and submodules say how
+it is composed to do it. Grouping the latter three under `architecture/` gives every module package
+the same two-part shape — `features/` beside `architecture/` — and keeps a feature's own `contracts/`
+and `diagrams/` inside its workspace, distinct from the module's boundary contracts under
+`architecture/contracts/`. The published site drops the grouping segment from routes, so the
+reorganization changed no URL.
+
 ### Why the root view stops at one level
 
 Each level shows only its immediate modules, current-level features, boundary contracts, and
@@ -244,6 +271,15 @@ without expanding the canonical structure.
 
 ## Alternatives Considered
 
+- Declaring module diagrams in `module.md` front matter (a `diagrams:` list like a feature's) was
+  rejected on 2026-08-29 in favour of discovering `architecture/diagrams/` and requiring a Markdown
+  reference from the level's documents: the design reference and the reflection log have no front
+  matter, and a link is the reference a reader follows anyway.
+- Keeping `contracts/` and `modules/` directly under the module root while adding
+  `architecture/diagrams/` was rejected because the three answer the same question — how the level is
+  composed — and `features/` would otherwise sit beside two of them and not the third.
+- Publishing site routes that mirror the `architecture/` segment was rejected so that existing
+  `/architecture/concorde/modules/...` and `/architecture/concorde/contracts/...` URLs stay stable.
 - Concorde-owned feature creation and selection commands (`feature.create`, `feature.select`) were
   removed on 2026-08-27 in favour of the standard Spec Kit selection (`.specify/feature.json`
   written by specify or `SPECIFY_FEATURE_DIRECTORY`); a second store or lifecycle contradicted
@@ -309,6 +345,19 @@ without expanding the canonical structure.
 
 ## Decision Log
 
+- 2026-08-29 — Adopted Architecture Source Profile 4: every module package keeps its diagrams
+  (`architecture/diagrams/`, any number, discovered from the folder and referenced from `module.md`,
+  `design.md`, or the reflection log), its boundary contracts (`architecture/contracts/`), and its
+  submodules (`architecture/modules/`) under `architecture/`, beside `features/`; the single
+  front-matter-declared `architecture.json` and the feature `architecture_view` field were removed.
+  Runtime: `CONCORDE-VIEW-006` (unreferenced module diagram), `CONCORDE-LAYOUT-010` (Profile 3
+  remnants), `CONCORDE-LAYOUT-011` (module placement), level-view rules evaluated over all of a
+  level's architecture diagrams, `context` returning `current_module.diagrams`. Docsite: Build
+  Manifest v8 with `architectureDiagrams`, module pages embedding every module diagram, routes
+  unchanged. Concorde's own hierarchy, fixtures, guides, templates, command definitions, and installed
+  mirrors were migrated together; preset, extension, and bundle stay at the unpublished 0.3.0. The
+  feature 001 core diagram keeps its pre-migration evidence pin (Archify proves evidence paths at a
+  committed revision), so re-pinning it to a revision that contains this layout is follow-up work.
 - 2026-08-29 — Adopted the feature-root `abstract.md` / `design.md` / `implementation.md` trio and
   temporal `attempt/` directory. Protocol v6, proposal v4, `CONCORDE-ABSTRACT-*`, Build Manifest v7,
   runtime fields, templates, installed helpers, publication routes, fixtures, documentation, and all

@@ -11,7 +11,7 @@ from typing import Any
 
 from .diagnostics import digest_sources
 from .frontmatter import FrontMatterError, parse_document
-from .model import ArchitecturePackage, SourceDocument
+from .model import MODULE_DIAGRAMS_DIRECTORY, ArchitecturePackage, SourceDocument
 
 
 class RepositoryError(ValueError):
@@ -19,6 +19,29 @@ class RepositoryError(ValueError):
 
 
 FEATURE_DIRECTORY = re.compile(r"^\d{3,}-[a-z0-9]+(?:-[a-z0-9]+)*$")
+DIAGRAM_KINDS = frozenset({"architecture", "workflow", "sequence", "dataflow", "lifecycle"})
+PROFILE_VERSION = 4
+
+
+def _checked_module_diagram(relative: str, value: Any) -> dict[str, Any]:
+    """Validate the shape every module-owned diagram must have before it joins the package."""
+    if not isinstance(value, dict):
+        raise RepositoryError(f"{relative}: a module diagram must be a JSON object")
+    if value.get("diagram_type") not in DIAGRAM_KINDS:
+        raise RepositoryError(f"{relative}: diagram_type must be one of {', '.join(sorted(DIAGRAM_KINDS))}")
+    meta = value.get("meta")
+    if not isinstance(meta, dict):
+        raise RepositoryError(f"{relative}: diagram meta must be a JSON object")
+    title = meta.get("title")
+    if not isinstance(title, str) or not title.strip():
+        raise RepositoryError(f"{relative}: diagram meta.title is required")
+    output = meta.get("output")
+    if output is not None:
+        if not isinstance(output, str) or not output:
+            raise RepositoryError(f"{relative}: diagram meta.output must be a non-empty string when present")
+        resolved = posixpath.normpath((PurePosixPath(relative).parent / output).as_posix())
+        safe_relative_path(resolved)
+    return value
 
 
 def classify_feature_design_path(relative: str, specification_root: str) -> tuple[str, str | None]:
@@ -91,8 +114,8 @@ class ProjectRepository:
             value = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as error:
             raise RepositoryError(f"cannot read .concorde/config.json: {error}") from error
-        if value.get("profile_version") != 3:
-            raise RepositoryError("unsupported Concorde source profile; expected profile_version 3")
+        if value.get("profile_version") != PROFILE_VERSION:
+            raise RepositoryError(f"unsupported Concorde source profile; expected profile_version {PROFILE_VERSION}")
         specification_root = value.get("specification_root")
         if not specification_root and value.get("architecture_root"):
             specification_root = value["architecture_root"]
@@ -106,7 +129,7 @@ class ProjectRepository:
         if not root.is_dir():
             raise RepositoryError(f"specification root does not exist: {specification_root}")
         candidates = set(root.rglob("module.md"))
-        candidates.update(root.glob("**/contracts/**/contract.md"))
+        candidates.update(root.glob("**/architecture/contracts/**/contract.md"))
         for path in sorted(root.rglob("design.md")):
             relative = path.relative_to(self.project_root).as_posix()
             local_parts = path.relative_to(root).parts
@@ -125,7 +148,6 @@ class ProjectRepository:
         config = self.load_config()
         specification_root = config["specification_root"]
         sources: list[SourceDocument] = []
-        view_paths: set[str] = set()
         diagram_declarations: list[tuple[str, str, dict[str, Any]]] = []
         for path in self._markdown_paths(specification_root):
             relative = path.relative_to(self.project_root).as_posix()
@@ -140,10 +162,6 @@ class ProjectRepository:
             if not isinstance(identifier, str) or not identifier:
                 raise RepositoryError(f"{relative}: missing stable id")
             sources.append(SourceDocument(relative, kind, identifier, metadata, body))
-            for key in ("view", "architecture_view"):
-                value = metadata.get(key)
-                if isinstance(value, str) and value:
-                    view_paths.add(safe_relative_path(value))
             if kind == "feature":
                 diagrams = metadata.get("diagrams", [])
                 if not isinstance(diagrams, list) or not all(isinstance(item, dict) for item in diagrams):
@@ -169,12 +187,22 @@ class ProjectRepository:
                         )
                     diagram_declarations.append((relative, source, declaration))
         views: dict[str, Any] = {}
-        for relative in sorted(view_paths):
-            path = self.resolve(relative)
-            try:
-                views[relative] = json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError) as error:
-                raise RepositoryError(f"{relative}: invalid architecture JSON: {error}") from error
+        for module in (source for source in sources if source.kind == "module"):
+            module_dir = PurePosixPath(module.path).parent
+            diagrams_dir = self.resolve(str(module_dir / MODULE_DIAGRAMS_DIRECTORY))
+            if diagrams_dir.is_symlink():
+                raise RepositoryError(f"{module_dir}/{MODULE_DIAGRAMS_DIRECTORY}: the module diagram directory may not be a symlink")
+            if not diagrams_dir.is_dir():
+                continue
+            for path in sorted(diagrams_dir.glob("*.json")):
+                relative = path.relative_to(self.project_root).as_posix()
+                if path.is_symlink() or not path.is_file():
+                    raise RepositoryError(f"{relative}: a module diagram must be a real JSON file")
+                try:
+                    value = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError) as error:
+                    raise RepositoryError(f"{relative}: invalid architecture diagram JSON: {error}") from error
+                views[relative] = _checked_module_diagram(relative, value)
         diagrams: dict[str, Any] = {}
         for feature_path, relative, declaration in sorted(diagram_declarations, key=lambda item: item[1]):
             path = self.resolve(relative)
@@ -188,7 +216,7 @@ class ProjectRepository:
             role = declaration.get("role")
             output = declaration.get("output")
             scenarios = declaration.get("scenarios", [])
-            if kind not in {"architecture", "workflow", "sequence", "dataflow", "lifecycle"}:
+            if kind not in DIAGRAM_KINDS:
                 raise RepositoryError(f"{feature_path}: feature diagram kind is unsupported")
             if value.get("diagram_type") != kind:
                 raise RepositoryError(f"{relative}: diagram_type does not match the feature declaration")

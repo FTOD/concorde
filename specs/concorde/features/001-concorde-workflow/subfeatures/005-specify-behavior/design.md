@@ -12,7 +12,6 @@ contracts:
     - contract.concorde.workflow
   required:
     - contract.concorde.spec-kit-platform
-architecture_view: specs/concorde/architecture.json
 evidence_status: partial
 canonical_design: specs/concorde/features/001-concorde-workflow/subfeatures/005-specify-behavior/design.md
 ---

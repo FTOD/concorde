@@ -37,7 +37,7 @@ beforeAll(async () => {
 describe('production build', () => {
   it('publishes landing, three-part navigation, provenance, diagrams, local search, and all manifest routes', async () => {
     const manifest = JSON.parse(firstManifest);
-    expect(manifest.schemaVersion).toBe(7);
+    expect(manifest.schemaVersion).toBe(8);
     const schema = JSON.parse(await readFile(resolve(siteDir, '../specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json'), 'utf8'));
     expect(new Ajv2020().compile(schema)(manifest)).toBe(true);
     expect(await readFile(resolve(buildDir, 'index.html'), 'utf8')).toContain('One project, two source roots, three views');
@@ -101,6 +101,14 @@ describe('production build', () => {
     const rootModule = await readFile(resolve(buildDir, 'architecture/concorde/module.concorde.html'), 'utf8');
     expect(rootModule).toContain('Interactive architecture view for Concorde');
     expect(rootModule).toContain('/architecture/concorde-root.html');
+    expect(rootModule).toContain('specs/concorde/architecture/diagrams/level-view.json');
+    const rootPage = manifest.pages.find((page: {sourcePath: string}) => page.sourcePath === 'specs/concorde/module.md');
+    expect(rootPage.architectureDiagrams).toEqual([expect.objectContaining({
+      source: 'specs/concorde/architecture/diagrams/level-view.json', kind: 'architecture', route: '/architecture/concorde-root.html',
+    })]);
+    expect(rootPage.links).toEqual(expect.arrayContaining([
+      {targetSourcePath: 'specs/concorde/architecture/diagrams/level-view.json', targetRoute: '/architecture/concorde-root.html'},
+    ]));
     const documentationModule = await readFile(
       resolve(buildDir, 'architecture/concorde/modules/documentation/module.concorde.documentation.html'),
       'utf8',

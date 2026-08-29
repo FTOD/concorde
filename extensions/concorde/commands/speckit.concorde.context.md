@@ -12,7 +12,8 @@ Require one stable module or feature ID in `$ARGUMENTS`, then run:
 Present the returned current module, its current-level features and I/O, all immediate children and
 their concise I/O, externals, scenarios, adjacent refinements, feature-containment summaries, and
 deeper navigation references. The module context result also returns the module's `summary`
-(`module.md` path), `design_reference` (`design.md` path), and `view` path as navigation references,
+(`module.md` path), `design_reference` (`design.md` path), and `diagrams` (the paths of the module's
+diagrams under `architecture/diagrams/`) as navigation references,
 and each feature summary names its `abstract.md` and `design.md` paths the same way. Present them as
 paths to open deliberately; never expand the body of an `abstract.md`, feature `design.md`, or feature `implementation.md`.
 When the project reflection log exists, the result carries `reflections` (its path and the open

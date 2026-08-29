@@ -14,7 +14,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
             FEATURE_ROOT / "design.md",
             FEATURE_ROOT / "contracts/ecosystem-explanation.md",
             REPOSITORY_ROOT / "specs/concorde/module.md",
-            REPOSITORY_ROOT / "specs/concorde/contracts/spec-kit-installation/contract.md",
+            REPOSITORY_ROOT / "specs/concorde/architecture/contracts/spec-kit-installation/contract.md",
         ]
         required_terms = (
             "spec kit",
@@ -101,7 +101,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
 
     def test_supplemental_views_are_delivered_but_not_root_module_participants(self):
         root_view = json.loads(
-            (REPOSITORY_ROOT / "specs/concorde/architecture.json").read_text(encoding="utf-8")
+            (REPOSITORY_ROOT / "specs/concorde/architecture/diagrams/level-view.json").read_text(encoding="utf-8")
         )
         root_ids = {component["id"] for component in root_view["components"]}
         self.assertTrue({"distribution", "integration", "architectureCore"}.issubset(root_ids))

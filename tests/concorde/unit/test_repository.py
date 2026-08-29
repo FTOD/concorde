@@ -63,20 +63,20 @@ class RepositoryTests(unittest.TestCase):
                 ProjectRepository(root).resolve("link/file.md")
 
     def test_rejects_unsupported_profile_version(self):
-        for version in (99, 1, 2):
+        for version in (99, 1, 3):
             with tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 (root / ".concorde").mkdir()
                 (root / ".concorde/config.json").write_text(
                     '{"profile_version":%d,"specification_root":"specs/example","root_module_id":"module.example"}' % version
                 )
-                with self.assertRaisesRegex(RepositoryError, "expected profile_version 3"):
+                with self.assertRaisesRegex(RepositoryError, "expected profile_version 4"):
                     ProjectRepository(root).load_config()
 
     def test_discovers_module_and_feature_implementation_references_and_abstracts_as_durable_auxiliary(self):
         package = ProjectRepository(VALID_PROJECT).load()
         self.assertIn("specs/example/design.md", package.auxiliary)
-        self.assertIn("specs/example/modules/api/design.md", package.auxiliary)
+        self.assertIn("specs/example/architecture/modules/api/design.md", package.auxiliary)
         self.assertIn("specs/example/features/001-deliver/implementation.md", package.auxiliary)
         self.assertIn("specs/example/features/001-deliver/abstract.md", package.auxiliary)
         self.assertNotIn("specs/example/features/001-deliver/attempt/plan.md", package.auxiliary)

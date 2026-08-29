@@ -36,16 +36,20 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
             finding = Finding("CONCORDE-CONTEXT-003", "error", module.path, f"Child module '{child_id}' does not resolve exactly once.", "Correct the child reference before requesting bounded context.", subject_id=module.identifier)
             return OperationResult("context", requested_id, "invalid", findings=(finding,))
         children.append(child_matches[0])
-    view_path = module.metadata.get("view")
-    view = package.views.get(view_path, {}) if isinstance(view_path, str) else {}
+    diagrams = package.module_diagrams(module)
     externals = sorted(
         {
             component.get("stable_id", f"external.{component.get('id')}")
+            for view in package.module_views(module).values()
             for component in view.get("components", [])
-            if component.get("type") == "external" and component.get("id")
+            if isinstance(component, dict) and component.get("type") == "external" and component.get("id")
         }
     )
-    scenarios = scenario_projections(view)
+    scenarios_by_id: dict[str, dict[str, Any]] = {}
+    for view in diagrams.values():
+        for scenario in scenario_projections(view):
+            scenarios_by_id.setdefault(scenario["id"], scenario)
+    scenarios = [scenarios_by_id[identifier] for identifier in sorted(scenarios_by_id)]
     current_features = set(module.metadata.get("features", []))
     child_ids = {child.identifier for child in children}
     links: list[dict[str, str]] = []
@@ -54,8 +58,7 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
             if (feature.metadata.get("module") in child_ids and refined in current_features) or feature.identifier in current_features:
                 links.append({"from": feature.identifier, "to": refined})
     artifacts = {module.path}
-    if isinstance(view_path, str):
-        artifacts.add(view_path)
+    artifacts.update(diagrams)
     design_reference = f"{Path(module.path).parent.as_posix()}/design.md"
     if (package.project_root / design_reference).is_file():
         artifacts.add(design_reference)

@@ -35,7 +35,7 @@ skills or slash commands:
 
 | Surface | What it does |
 |---|---|
-| `speckit.concorde.init` | Proposes, and on approval creates, the root module package: `module.md`, `implementation.md`, the level view, initial contracts, `.concorde/config.json`. Idempotent. |
+| `speckit.concorde.init` | Proposes, and on approval creates, the root module package: `module.md`, `implementation.md`, a seed level view under `architecture/diagrams/`, initial contracts, `.concorde/config.json`. Idempotent. |
 | `speckit.concorde.context` | Returns exactly one level — a module with its immediate children, current-level features, contracts, and scenarios, or a feature with its parent and siblings — with any `implementation.md` as a link, never as content. |
 | `speckit.concorde.ask` | Answers a workflow question read-only from installed guidance, module summaries, and feature abstracts, citing anything deeper it opens. Agent-followed; no runtime. |
 | `speckit.concorde.validate` | Checks every maintained source deterministically and returns sorted findings with rule, severity, location, and remediation; byte-equivalent on repeat. |
@@ -58,7 +58,7 @@ The core view is <a href="/architecture/concorde-workflow-components.html">workf
 Maintainer ──invoke · review · approve──▶ Coding-agent integration (skills / slash commands)
                                             ├─ 9 Spec Kit phase surfaces ──▶ selected-workspace adapter ──▶ .specify/feature.json
                                             └─ 5 Concorde surfaces ─────────▶ launchers + Python runtime ──▶ architecture sources
-                                                 (init · context · validate · feature.harden · ask)        (module.md · implementation.md · views · contracts)
+                                                 (init · context · validate · feature.harden · ask)        (module.md · implementation.md · architecture/: diagrams · contracts · modules)
 
 Selected feature root:   abstract.md   design.md   implementation.md      +   attempt/  (one attempt, until hardened)
                          read      authority reference           plan · tasks · checklists · research · evidence
@@ -72,9 +72,10 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   installed projects never depend on the Concorde checkout.
 - **The selected-workspace adapter** turns the standard `.specify/feature.json` selection into the
   exact durable and temporal paths of one canonical top-level feature or immediate sub-feature.
-- **Architecture sources** are the module hierarchy under `specs/`: summaries, module references,
-  level views, contracts, and feature roots (two containment levels: a feature and its immediate
-  sub-features). Every mutating proposal is bound to a digest of them.
+- **Architecture sources** are the module hierarchy under `specs/`: at every level a summary, a
+  module reference, feature roots (two containment levels: a feature and its immediate
+  sub-features), and an `architecture/` directory holding the level's diagrams (its level views),
+  boundary contracts, and submodules. Every mutating proposal is bound to a digest of them.
 
 ## Logic
 
@@ -139,9 +140,9 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   (command surfaces), `contracts/architecture-sources.md` (the source
   profile), and `contracts/feature-workspace.schema.json` (the
   workspace protocol and hardening proposal); the boundary promise is
-  [contract.concorde.workflow](../../contracts/concorde-workflow/contract.md).
-- **The level this feature belongs to** — [module.md](../../module.md) (the root summary, with the
-  level view) and its [design reference](../../design.md).
+  [contract.concorde.workflow](../../architecture/contracts/concorde-workflow/contract.md).
+- **The level this feature belongs to** — [module.md](../../module.md) (the root summary, linking the root
+  level view under `../../architecture/diagrams/`) and its [design reference](../../design.md).
 - **The nine workflow steps** — one sub-feature each:
   [initialize](subfeatures/001-initialize-architecture/design.md),
   [context](subfeatures/002-retrieve-bounded-context/design.md),

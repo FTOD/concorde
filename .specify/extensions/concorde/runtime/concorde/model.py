@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
+
+
+MODULE_DIAGRAMS_DIRECTORY = "architecture/diagrams"
+MODULE_CONTRACTS_DIRECTORY = "architecture/contracts"
+MODULE_CHILDREN_DIRECTORY = "architecture/modules"
 
 
 @dataclass(frozen=True)
@@ -98,6 +103,15 @@ class ArchitecturePackage:
 
     def documents(self, kind: str) -> tuple[SourceDocument, ...]:
         return tuple(source for source in self.sources if source.kind == kind)
+
+    def module_diagrams(self, module: SourceDocument) -> dict[str, Mapping[str, Any]]:
+        """Every module-owned Archify diagram under `<module>/architecture/diagrams/`, keyed by path."""
+        directory = PurePosixPath(module.path).parent / MODULE_DIAGRAMS_DIRECTORY
+        return {path: value for path, value in sorted(self.views.items()) if PurePosixPath(path).parent == directory}
+
+    def module_views(self, module: SourceDocument) -> dict[str, Mapping[str, Any]]:
+        """The module's level views: its `architecture`-kind diagrams, keyed by path."""
+        return {path: value for path, value in self.module_diagrams(module).items() if value.get("diagram_type") == "architecture"}
 
 
 @dataclass(frozen=True)

@@ -34,10 +34,13 @@ class InitializationTests(unittest.TestCase):
                 ".concorde/config.json",
                 f"specs/{proposal['project_root_id'].split('.', 1)[1]}/module.md",
                 f"specs/{proposal['project_root_id'].split('.', 1)[1]}/design.md",
-                f"specs/{proposal['project_root_id'].split('.', 1)[1]}/architecture.json",
+                f"specs/{proposal['project_root_id'].split('.', 1)[1]}/architecture/diagrams/level-view.json",
             })
             config = next(item for item in proposal["files"] if item["path"] == ".concorde/config.json")
-            self.assertIn('"profile_version": 3', config["content"])
+            self.assertIn('"profile_version": 4', config["content"])
+            module = next(item for item in proposal["files"] if item["path"].endswith("/module.md"))
+            self.assertNotIn("view:", module["content"].split("---")[1])
+            self.assertIn("(architecture/diagrams/level-view.json)", module["content"])
             for item in proposal["files"]:
                 self.assertEqual(item["sha256"], "sha256:" + hashlib.sha256(item["content"].encode()).hexdigest())
             self.assertEqual(list(root.rglob("*")), before)

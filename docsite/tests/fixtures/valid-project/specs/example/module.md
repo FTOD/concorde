@@ -21,8 +21,9 @@ The fixture owns no child modules or boundary contracts.
 
 ## Structure
 
-The fixture is a leaf module without a declared level view; its structure is the two feature
-directories published beside it.
+The fixture is a leaf module whose one level view is
+[fixture-level-view.json](architecture/diagrams/fixture-level-view.json); its structure is otherwise
+the two feature directories published beside it.
 
 ## Features
 

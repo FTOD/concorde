@@ -58,8 +58,8 @@ Propose, review, and initialize a minimal root Concorde specification hierarchy.
 1. With no `--apply`, inspect existing project metadata and emit an `init` response with status
    `proposal` or `unchanged`. Include responsibility, boundary, explicit provided/required contract
    sets, immediate child summaries, every proposed path (configuration, `module.md` summary in the
-   Profile 3 shape linking its view and reference, seeded `design.md` reference, and
-   `architecture.json`), and conflicts. A target holding a summary without a reference, or the
+   Profile 4 shape linking its level view and reference, seeded `design.md` reference, and the
+   level view `architecture/diagrams/level-view.json`), and conflicts. A target holding a summary without a reference, or the
    reverse, is a conflict, not a partial success.
 2. The agent presents that proposal for maintainer review and does not translate silence into
    acceptance.
@@ -69,10 +69,10 @@ Propose, review, and initialize a minimal root Concorde specification hierarchy.
 
 ### Success artifacts
 
-- `.concorde/config.json` (`profile_version: 3`)
+- `.concorde/config.json` (`profile_version: 4`)
 - `specs/<root-slug>/module.md`
 - `specs/<root-slug>/design.md`
-- `specs/<root-slug>/architecture.json`
+- `specs/<root-slug>/architecture/diagrams/level-view.json`
 - any accepted initial contract documents named in the proposal
 
 ### Failures

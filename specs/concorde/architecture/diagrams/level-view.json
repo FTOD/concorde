@@ -1,0 +1,491 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Concorde — Root Features and Invocation",
+    "output": "../../../../generated/architecture/concorde-root.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1390,
+      880
+    ],
+    "views": [
+      {
+        "id": "scenario-concorde-establish-and-place-feature",
+        "label": "Establish and place a feature",
+        "focus": [
+          "maintainer",
+          "specKit",
+          "agentHost",
+          "concordeWorkflowFeature",
+          "integration",
+          "architectureCore"
+        ],
+        "note": "Normal Spec Kit phases and Concorde commands meet at the Concorde workflow, which selects a workspace and retrieves bounded architecture."
+      },
+      {
+        "id": "scenario-concorde-review-implement-and-reconcile",
+        "label": "Review, implement, and reconcile",
+        "focus": [
+          "maintainer",
+          "specKit",
+          "agentHost",
+          "concordeWorkflowFeature",
+          "integration",
+          "architectureCore",
+          "documentation"
+        ],
+        "note": "Plan and implement through Spec Kit; use agent commands for bounded context and validation; publish validated architecture for review."
+      },
+      {
+        "id": "inspect-install-and-verify-concorde",
+        "label": "Install and verify Concorde",
+        "focus": [
+          "maintainer",
+          "specKit",
+          "installFeature",
+          "distribution",
+          "integration",
+          "agentHost"
+        ],
+        "note": "Use Spec Kit's bundle lifecycle; Distribution packages Concorde and Integration registers its commands."
+      },
+      {
+        "id": "manage-concorde-installation",
+        "label": "Manage Concorde installation",
+        "focus": [
+          "maintainer",
+          "specKit",
+          "installFeature",
+          "distribution",
+          "integration"
+        ],
+        "note": "Spec Kit previews updates and removal while Distribution preserves provenance and Integration supplies independently packaged components."
+      },
+      {
+        "id": "publish-architecture",
+        "label": "Build and browse the project site",
+        "focus": [
+          "maintainer",
+          "publishFeature",
+          "documentation",
+          "architectureCore",
+          "specKit"
+        ],
+        "note": "Documentation projects validated architecture, feature specifications, and accepted realizations into one site."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "maintainer",
+      "type": "external",
+      "label": "Maintainer",
+      "sublabel": "Chooses a Concorde capability",
+      "pos": [
+        40,
+        330
+      ],
+      "size": [
+        170,
+        76
+      ]
+    },
+    {
+      "id": "specKit",
+      "type": "external",
+      "label": "Spec Kit",
+      "sublabel": "Bundle CLI + normal phases",
+      "pos": [
+        280,
+        230
+      ],
+      "size": [
+        180,
+        76
+      ]
+    },
+    {
+      "id": "agentHost",
+      "type": "external",
+      "label": "Coding Agent",
+      "sublabel": "7 surfaces · 6 runtime-backed",
+      "pos": [
+        280,
+        430
+      ],
+      "size": [
+        180,
+        76
+      ]
+    },
+    {
+      "id": "installFeature",
+      "tag": "feature.concorde.install-with-spec-kit",
+      "type": "cloud",
+      "label": "Install with Spec Kit",
+      "sublabel": "Root feature · setup lifecycle",
+      "pos": [
+        650,
+        60
+      ],
+      "size": [
+        230,
+        86
+      ]
+    },
+    {
+      "id": "concordeWorkflowFeature",
+      "tag": "feature.concorde.workflow",
+      "type": "backend",
+      "label": "Concorde Workflow",
+      "sublabel": "Root feature · direct development",
+      "pos": [
+        650,
+        320
+      ],
+      "size": [
+        230,
+        96
+      ]
+    },
+    {
+      "id": "reflectionsFeature",
+      "tag": "feature.concorde.record-workflow-reflections",
+      "type": "backend",
+      "label": "Record Workflow Reflections",
+      "sublabel": "Root feature · one project log",
+      "pos": [
+        650,
+        500
+      ],
+      "size": [
+        230,
+        86
+      ]
+    },
+    {
+      "id": "selfHostFeature",
+      "tag": "feature.concorde.self-host-framework",
+      "type": "security",
+      "label": "Self-Host Concorde",
+      "sublabel": "Root feature · development install",
+      "pos": [
+        650,
+        190
+      ],
+      "size": [
+        230,
+        86
+      ]
+    },
+    {
+      "id": "publishFeature",
+      "tag": "feature.concorde.publish-project-docsite",
+      "type": "frontend",
+      "label": "Publish Project Docsite",
+      "sublabel": "Root feature · generated read model",
+      "pos": [
+        650,
+        680
+      ],
+      "size": [
+        230,
+        86
+      ]
+    },
+    {
+      "id": "distribution",
+      "tag": "module.concorde.distribution",
+      "type": "cloud",
+      "label": "Distribution",
+      "sublabel": "Bundle and release lifecycle",
+      "pos": [
+        1070,
+        50
+      ],
+      "size": [
+        210,
+        78
+      ]
+    },
+    {
+      "id": "integration",
+      "tag": "module.concorde.spec-kit-integration",
+      "type": "backend",
+      "label": "Spec Kit Integration",
+      "sublabel": "Workspace + command composition",
+      "pos": [
+        1070,
+        220
+      ],
+      "size": [
+        210,
+        78
+      ]
+    },
+    {
+      "id": "architectureCore",
+      "tag": "module.concorde.architecture-core",
+      "type": "backend",
+      "label": "Architecture Core",
+      "sublabel": "Model, context, validation",
+      "pos": [
+        1070,
+        400
+      ],
+      "size": [
+        210,
+        78
+      ]
+    },
+    {
+      "id": "documentation",
+      "tag": "module.concorde.documentation",
+      "type": "frontend",
+      "label": "Documentation",
+      "sublabel": "Validate, build, and serve site",
+      "pos": [
+        1070,
+        680
+      ],
+      "size": [
+        210,
+        78
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Concorde root · current features + immediate modules",
+      "wraps": [
+        "installFeature",
+        "selfHostFeature",
+        "concordeWorkflowFeature",
+        "reflectionsFeature",
+        "publishFeature",
+        "distribution",
+        "integration",
+        "architectureCore",
+        "documentation"
+      ],
+      "pad": 34
+    }
+  ],
+  "connections": [
+    {
+      "id": "contract_concorde_spec-kit-platform__maintainer",
+      "from": "maintainer",
+      "to": "specKit",
+      "label": "Spec Kit CLI / phases",
+      "labelAt": [
+        245,
+        320
+      ],
+      "variant": "emphasis"
+    },
+    {
+      "id": "contract_concorde_spec-kit-installation__invoke",
+      "from": "specKit",
+      "to": "installFeature",
+      "label": "inspect / install / update"
+    },
+    {
+      "id": "contract_distribution_bundle-lifecycle",
+      "from": "installFeature",
+      "to": "distribution",
+      "label": "bundle lifecycle",
+      "variant": "emphasis"
+    },
+    {
+      "id": "contract_distribution_component-packages",
+      "from": "integration",
+      "to": "distribution",
+      "label": "preset + extension packages"
+    },
+    {
+      "id": "contract_concorde_spec-kit-installation__self-hosting",
+      "from": "specKit",
+      "to": "selfHostFeature",
+      "label": "local install / refresh",
+      "labelAt": [
+        660,
+        300
+      ]
+    },
+    {
+      "id": "contract_integration_agent-skills__self-hosting",
+      "from": "selfHostFeature",
+      "to": "integration",
+      "label": "materialize + verify",
+      "labelAt": [
+        1080,
+        315
+      ],
+      "variant": "security"
+    },
+    {
+      "id": "contract_integration_agent-skills",
+      "from": "installFeature",
+      "to": "integration",
+      "label": "compose overrides + commands",
+      "variant": "emphasis"
+    },
+    {
+      "id": "contract_concorde_workflow__spec-kit",
+      "from": "specKit",
+      "to": "concordeWorkflowFeature",
+      "label": "specify → converge",
+      "variant": "dashed"
+    },
+    {
+      "id": "contract_concorde_workflow__agent",
+      "from": "agentHost",
+      "to": "concordeWorkflowFeature",
+      "label": "6 operations + read-only ask",
+      "fromSide": "right",
+      "toSide": "left",
+      "via": [
+        [
+          555,
+          468
+        ],
+        [
+          555,
+          368
+        ]
+      ],
+      "labelAt": [
+        555,
+        520
+      ],
+      "variant": "emphasis"
+    },
+    {
+      "id": "contract_integration_feature-workspace",
+      "from": "concordeWorkflowFeature",
+      "to": "integration",
+      "label": "workspace + phase routing"
+    },
+    {
+      "id": "contract_core_architecture-services",
+      "from": "concordeWorkflowFeature",
+      "to": "architectureCore",
+      "label": "bounded architecture services",
+      "variant": "emphasis"
+    },
+    {
+      "id": "contract_concorde_workflow__reflections",
+      "from": "agentHost",
+      "to": "reflectionsFeature",
+      "label": "record problems during phases",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          370,
+          543
+        ]
+      ],
+      "labelAt": [
+        510,
+        565
+      ]
+    },
+    {
+      "id": "contract_core_architecture-services__reflections",
+      "from": "reflectionsFeature",
+      "to": "architectureCore",
+      "label": "shape rule · open count · citation gate",
+      "fromSide": "right",
+      "toSide": "bottom",
+      "via": [
+        [
+          1120,
+          543
+        ],
+        [
+          1175,
+          543
+        ]
+      ],
+      "labelAt": [
+        1000,
+        525
+      ]
+    },
+    {
+      "id": "contract_documentation_architecture-site__maintainer",
+      "from": "maintainer",
+      "to": "publishFeature",
+      "label": "build / browse site",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "via": [
+        [
+          125,
+          820
+        ],
+        [
+          765,
+          820
+        ]
+      ],
+      "labelAt": [
+        500,
+        810
+      ],
+      "variant": "dashed"
+    },
+    {
+      "id": "contract_documentation_build-interface",
+      "from": "publishFeature",
+      "to": "documentation",
+      "label": "validate / build / serve",
+      "variant": "emphasis"
+    },
+    {
+      "id": "contract_documentation_project-content__core",
+      "from": "architectureCore",
+      "to": "documentation",
+      "label": "validated architecture",
+      "labelAt": [
+        1230,
+        580
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Five root-level features",
+      "items": [
+        "Install with Spec Kit prepares user projects",
+        "Self-Host Concorde activates current sources here",
+        "Concorde Workflow directs feature delivery",
+        "Publish Project Docsite exposes the generated read model",
+        "Record Workflow Reflections keeps one project log of what went wrong"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "How Concorde is invoked",
+      "items": [
+        "Spec Kit owns bundle operations and the normal feature phases",
+        "The active integration presents nine composed lifecycle surfaces plus five Concorde surfaces",
+        "Four Concorde operations use the runtime; ask is cited and read-only",
+        "Documentation build and browse operations invoke the publication feature"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "One-level visibility",
+      "items": [
+        "This view shows root features and immediate modules",
+        "Each feature delegates through documented contracts",
+        "Zoom into a child module to see its own features and submodules"
+      ]
+    }
+  ]
+}

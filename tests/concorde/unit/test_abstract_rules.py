@@ -41,7 +41,7 @@ class AbstractRuleTests(unittest.TestCase):
             "# Feature Abstract: Deliver\n\n`feature.example.deliver` · specified at `module.example`.\n\n"
             "## Purpose\n\nDeliver the fixture outcome.\n\n"
             "## Functionality\n\nOne observable outcome through the workflow contract.\n\n"
-            "## Structure\n\nThe level view is [architecture.json](../../architecture.json).\n\n"
+            "## Structure\n\nThe level view is [level-view.json](../../architecture/diagrams/level-view.json).\n\n"
             "## Logic\n\n1. Invoke.\n2. Deliver.\n\n**Rules the implementation must keep**\n\n- Delivery is observable and read-only (FR-001, FR-002).\n\n"
             "## Read Next\n\n- [design.md](design.md) and [implementation.md](implementation.md).\n",
             encoding="utf-8",
@@ -87,13 +87,13 @@ class AbstractRuleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             project, _, abstract = self.fixture(temporary)
             good = abstract.read_text(encoding="utf-8")
-            abstract.write_text(good.replace("The level view is [architecture.json](../../architecture.json).", "Parts collaborate."), encoding="utf-8")
+            abstract.write_text(good.replace("The level view is [level-view.json](../../architecture/diagrams/level-view.json).", "Parts collaborate."), encoding="utf-8")
             self.assertEqual(abstract_rules(validate_project(project)), ["CONCORDE-ABSTRACT-002"])
-            abstract.write_text(good.replace("The level view is [architecture.json](../../architecture.json).", "```text\nmaintainer -> module\n```"), encoding="utf-8")
+            abstract.write_text(good.replace("The level view is [level-view.json](../../architecture/diagrams/level-view.json).", "```text\nmaintainer -> module\n```"), encoding="utf-8")
             self.assertEqual(abstract_rules(validate_project(project)), [])
-            abstract.write_text(good.replace("The level view is [architecture.json](../../architecture.json).", 'See <a href="/architecture/example.html">the view</a>.'), encoding="utf-8")
+            abstract.write_text(good.replace("The level view is [level-view.json](../../architecture/diagrams/level-view.json).", 'See <a href="/architecture/example.html">the view</a>.'), encoding="utf-8")
             self.assertEqual(abstract_rules(validate_project(project)), [])
-            abstract.write_text(good.replace("[architecture.json](../../architecture.json)", "[the view](specs/example/architecture.json)"), encoding="utf-8")
+            abstract.write_text(good.replace("[level-view.json](../../architecture/diagrams/level-view.json)", "[the view](specs/example/architecture/diagrams/level-view.json)"), encoding="utf-8")
             self.assertEqual(abstract_rules(validate_project(project)), [])
 
     def test_logic_citations_must_resolve_in_the_adjacent_design(self):

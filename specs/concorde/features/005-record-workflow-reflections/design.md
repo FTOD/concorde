@@ -9,7 +9,6 @@ contracts:
     - contract.concorde.workflow
   required:
     - contract.concorde.spec-kit-platform
-architecture_view: specs/concorde/architecture.json
 diagrams:
   - source: specs/concorde/features/005-record-workflow-reflections/diagrams/workflow-reflection-components.json
     role: core
@@ -108,7 +107,7 @@ citation rule are carried by the phases, templates, and operations the workflow 
 - **Generated view**: `generated/architecture/workflow-reflection-components.html`.
 
 The diagram supplements this specification. It does not replace the root one-level architecture in
-`specs/concorde/architecture.json`, does not redefine the modules that realize the workflow, and
+`specs/concorde/architecture/diagrams/level-view.json`, does not redefine the modules that realize the workflow, and
 does not add a scenario to the root view: the root view already uses its five guided scenario
 slots, so this feature's three journeys are drawn only in its own core view.
 
@@ -525,5 +524,6 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
 - **Supplemental diagrams**: none.
 - **Contracts**: provides `contract.concorde.workflow`; requires
   `contract.concorde.spec-kit-platform`.
-- **Architecture view**: `specs/concorde/architecture.json`.
+- **Level views**: the root module's diagrams under `specs/concorde/architecture/diagrams/`
+  (`level-view.json`).
 - **Evidence status**: `unknown`; no implementation exists yet.

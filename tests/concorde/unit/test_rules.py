@@ -63,11 +63,11 @@ class ValidationRuleTests(unittest.TestCase):
     def test_cycle_contract_view_and_evidence_rules(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary)
-            child = root / "specs/example/modules/api/module.md"
+            child = root / "specs/example/architecture/modules/api/module.md"
             child.write_text(child.read_text().replace("children: []", "children:\n  - module.example"))
             feature = root / "specs/example/features/001-deliver/design.md"
             feature.write_text(feature.read_text().replace("evidence_status: unknown", "evidence_status: magical"))
-            contract = root / "specs/example/contracts/workflow/contract.md"
+            contract = root / "specs/example/architecture/contracts/workflow/contract.md"
             contract.write_text(contract.read_text().replace("counterparties:\n  - external.maintainer", "counterparties: []"))
             result = validate_project(root)
             rules = [finding.rule_id for finding in result.findings]
@@ -79,7 +79,7 @@ class ValidationRuleTests(unittest.TestCase):
     def test_scenario_participant_connection_and_view_depth_rules(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary)
-            view_path = root / "specs/example/architecture.json"
+            view_path = root / "specs/example/architecture/diagrams/level-view.json"
             view = json.loads(view_path.read_text())
             view["meta"]["views"][0]["focus"].append("missing")
             view["components"].append({"id": "grandchild", "type": "backend", "module_id": "module.example.api.store"})
@@ -93,7 +93,7 @@ class ValidationRuleTests(unittest.TestCase):
             root = self.project_copy(temporary)
             module = root / "specs/example/module.md"
             module.write_text(module.read_text().replace("## Responsibility", "## Missing Responsibility"))
-            view_path = root / "specs/example/architecture.json"
+            view_path = root / "specs/example/architecture/diagrams/level-view.json"
             view = json.loads(view_path.read_text())
             child = next(item for item in view["components"] if item.get("module_id") == "module.example.api")
             child.pop("module_id")

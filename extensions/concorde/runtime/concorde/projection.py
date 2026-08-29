@@ -51,7 +51,7 @@ def module_projection(package: Any, module: SourceDocument, include_text: bool) 
         module_dir = PurePosixPath(module.path).parent.as_posix()
         result["summary"] = module.path
         result["design_reference"] = f"{module_dir}/design.md"
-        result["view"] = metadata.get("view") if isinstance(metadata.get("view"), str) else None
+        result["diagrams"] = sorted(package.module_diagrams(module))
         result["features"] = list(metadata.get("features", []))
         result["responsibility"] = markdown_section(module.body, "Responsibility")
         result["boundary"] = markdown_section(module.body, "Boundary")

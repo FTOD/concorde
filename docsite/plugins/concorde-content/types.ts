@@ -49,6 +49,8 @@ export interface SourceDocument {
   links: LinkReference[];
   state: SourceState;
   route: string;
+  /** For specs collections: the projected path the page is staged at (see `projectedSpecPath`). */
+  stagedPath?: string;
   sidebarLabel?: string;
   sidebarPosition?: number;
   slug?: string;
@@ -141,6 +143,15 @@ export interface FeatureDiagram {
 
 export type DiagramKind = FeatureDiagram['kind'];
 
+/** One module-owned Archify diagram discovered beneath `<module>/architecture/diagrams/`. */
+export interface ModuleDiagram {
+  source: string;
+  sourceSha256: string;
+  kind: DiagramKind;
+  title: string;
+  route: string;
+}
+
 export interface DiagramDeclaration {
   ownerPath: string;
   sourcePath: string;
@@ -184,9 +195,10 @@ export interface ArchitectureSource extends SourceDocument {
   architectureKind: ArchitectureKind;
   moduleId?: string;
   parentId?: string;
-  architectureViewSource?: string;
-  architectureViewSha256?: string;
-  architectureViewRoute?: string;
+  /** Module summaries: every diagram beneath the module's `architecture/diagrams/`, in source order. */
+  architectureDiagrams?: ModuleDiagram[];
+  /** Module diagram sources that could not be mapped to a generated site artifact. */
+  unpublishableDiagrams?: string[];
   /** Companion link on module summaries: the route of the sibling `design.md` reference page. */
   designReferenceRoute?: string;
 }
@@ -231,9 +243,7 @@ export interface ContentPage {
   architectureId?: string;
   architectureKind?: ArchitectureKind;
   parentId?: string;
-  architectureViewSource?: string;
-  architectureViewSha256?: string;
-  architectureViewRoute?: string;
+  architectureDiagrams?: ModuleDiagram[];
   designReferenceRoute?: string;
   moduleRoute?: string;
 }
@@ -253,7 +263,7 @@ export interface ValidationFinding {
 }
 
 export interface BuildManifest {
-  schemaVersion: 7;
+  schemaVersion: 8;
   generator: {
     name: 'concorde-docsite';
     version: string;

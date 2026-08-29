@@ -2,7 +2,6 @@
 id: module.example
 kind: module
 parent: null
-view: specs/example/architecture.json
 children:
   - module.example.api
 features:
@@ -24,7 +23,7 @@ Own root orchestration.
 
 ## Structure
 
-The level view is [architecture.json](architecture.json).
+The level view is [level-view.json](architecture/diagrams/level-view.json).
 
 ## Features
 

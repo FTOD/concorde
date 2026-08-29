@@ -91,7 +91,7 @@ preset stack. It does not force every entry inside that preset to use append com
 Concorde-only `abstract-template` (the feature abstract that `speckit.specify` authors at a new feature
 root) and `implementation-template` (the placeholder feature `design.md`) as `replace`, and declares each of
 the nine path-sensitive command entries as `replace`, as required below. The preset and extension
-that carry the six templates, Feature Workspace Protocol v6, and Architecture Source Profile 3 are
+that carry the six templates, Feature Workspace Protocol v6, and Architecture Source Profile 4 are
 their 0.3.0 releases, which the bundle pins; preset 0.2.0 carried an `implementation-template`
 instead, and preset 0.1.0 a `implementation-template` without a abstract.
 

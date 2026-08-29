@@ -31,8 +31,12 @@ Run `speckit.concorde.init` after Concorde has been installed in a Spec Kit proj
 does not attempt to decompose the whole future system. It proposes the minimum root package needed
 to reason safely: `.concorde/config.json`, a `module.md` summary in the required shape (stable
 module ID, responsibility and boundary, explicit provided and required contract sets, current-level
-features, immediate children, and a link to the one-level view), a seeded `design.md` design
-reference, and the `architecture.json` view.
+features, immediate children, and a link to at least one level view), a seeded `design.md` design
+reference, and a first level view at `architecture/diagrams/level-view.json`. Every module package
+has the same shape: `module.md` and `design.md` beside a `features/` directory, which says what the
+level can do, and an `architecture/` directory, which says how the level is composed through any
+number of module-owned `diagrams/` (discovered from the folder, never declared in front matter),
+boundary `contracts/<id>/contract.md`, and immediate `modules/<child>/` repeating the shape.
 
 The proposal is reviewable and no maintained architecture is written until it is explicitly
 approved. Re-running the accepted initialization is idempotent; conflicting existing content is not
@@ -52,15 +56,16 @@ children:
 
 `speckit.concorde.context` returns exactly one bounded level. It gives the agent the current module,
 its features and I/O, immediate children and their I/O, externals, current-level scenarios,
-refinement links, and navigation references: the module's `module.md`, `design.md`, and view paths,
-and each feature's abstract path. It never expands a module `design.md` or feature `implementation.md`, and it does not
+refinement links, and navigation references: the module's `module.md` and `design.md` paths, its
+`diagrams` list (every diagram beneath its `architecture/diagrams/`), and each feature's abstract
+path. It never expands a module `design.md` or feature `implementation.md`, and it does not
 select a feature or permanently load the entire hierarchy.
 
 ## 2. Create or select the feature workspace
 
 Concorde has no feature-creation command. For a new feature, set `SPECIFY_FEATURE_DIRECTORY` to the
 canonical feature root inside the hierarchy—`<module directory>/features/NNN-<short-name>`, for
-example `specs/example/modules/api/features/002-observe-health`—and run the normal
+example `specs/example/architecture/modules/api/features/002-observe-health`—and run the normal
 `speckit.specify` phase. The Concorde specify addendum authors root `abstract.md` and `design.md`, seeds
 placeholder `implementation.md` that explicitly states no realization has yet been hardened, and persists
 the root to `.specify/feature.json`. Record the feature's identity and placement in design front matter (`id`
@@ -112,8 +117,8 @@ behavior. Keep the abstract within its budget and faithful: `design.md` prevails
 
 Keep the distinction clear: the prose defines the feature; scenarios illustrate it. When multiple
 components collaborate, add one core Archify architecture diagram showing stable participants,
-responsibilities, interactions, and contracts, or state why the bounded module view plus prose is
-sufficient. Add sequence, workflow, data-flow, or lifecycle diagrams only as supplemental answers to
+responsibilities, interactions, and contracts, or state why the module's level views plus prose
+are sufficient. Add sequence, workflow, data-flow, or lifecycle diagrams only as supplemental answers to
 narrower dynamic questions.
 
 Requirements-quality checklists belong under `attempt/checklists/`. A checklist records the
@@ -128,7 +133,8 @@ Before accepting a plan, review the structure that the agent will be allowed to 
 - Which immediate submodules participate?
 - Does every boundary crossing name a provided or required contract?
 - Are contract direction, obligations, failures, representation, and compatibility explicit?
-- Does the current-level view show only permitted participants?
+- Do the current level's views show only permitted participants, and does every module diagram
+  stay referenced from the level's documents?
 - Does `module.md` still read as a summary, with new implementation detail and rationale bound for
   `design.md`?
 - Does `abstract.md` still read in minutes and state nothing that `design.md` does not?
@@ -208,8 +214,9 @@ installation is refreshed.
 
 Run `speckit.concorde.validate` after maintained structural changes, during implementation, and
 before hardening. It deterministically checks source parsing, unique identities, containment and
-refinement, feature ownership, contract completeness, scenario scope, view depth, references,
-evidence status, module summary and feature abstract shape and reading budgets (the budgets as warnings
+refinement, feature ownership, contract completeness, scenario scope, view depth and coverage,
+module diagram references (`CONCORDE-VIEW-006`), legacy module layout
+(`CONCORDE-LAYOUT-010`/`-011`), references, evidence status, module summary and feature abstract shape and reading budgets (the budgets as warnings
 only), the presence of a `design.md` beside every `module.md`, the feature-root trio and the legacy
 `implementation.md` name, the shape of the project reflection log when present
 (`CONCORDE-REFLECT-001` to `-004`), and generated freshness.
@@ -250,16 +257,16 @@ runtime to write feature `implementation.md`, amend module `design.md` when prop
 digest, changed path, symlink, incomplete task, unresolved checklist, amendment aimed at `abstract.md`,
 `design.md`, `module.md`, or another level, an uncited open reflection entry (`CONCORDE-HARDEN-012`),
 or failed apply leaves the previous state recoverable. Hardening never edits `abstract.md`, `design.md`,
-`module.md`, the reflection log, contracts, or views.
+`module.md`, the reflection log, contracts, or architecture diagrams.
 
 ## 9. Publish the read model
 
-The docsite publishes module summaries with their embedded level views and linked design references,
-boundary contracts, every feature opening on its abstract with design and implementation as
+The docsite publishes module summaries with their embedded architecture diagrams and linked design
+references, boundary contracts, every feature opening on its abstract with design and implementation as
 companion pages, and explanatory project guides. It excludes the active
 attempt from the Features view. Preview and production publication validate and deliver every
-declared Archify source before Docusaurus consumes it. Publication is deterministic and read-only;
-ignored generated pages and diagram deliveries never become a second source of project intent.
+module-owned and feature-declared Archify source before Docusaurus consumes it. Publication is
+deterministic and read-only; ignored generated pages and diagram deliveries never become a second source of project intent.
 
 The publication behavior is specified separately by
 [Feature 002](../specs/concorde/features/002-create-project-docsite/design.md).

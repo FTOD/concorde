@@ -25,15 +25,16 @@ def create_feature_root(
     config.parent.mkdir(parents=True, exist_ok=True)
     if not config.exists():
         config.write_text(
-            json.dumps({"profile_version": 3, "specification_root": "specs/example", "root_module_id": "module.example"}) + "\n",
+            json.dumps({"profile_version": 4, "specification_root": "specs/example", "root_module_id": "module.example"}) + "\n",
             encoding="utf-8",
         )
     specification_root = project_root / "specs" / "example"
     specification_root.mkdir(parents=True, exist_ok=True)
-    architecture = specification_root / "architecture.json"
+    architecture = specification_root / "architecture" / "diagrams" / "level-view.json"
+    architecture.parent.mkdir(parents=True, exist_ok=True)
     if not architecture.exists():
-        architecture.write_text('{"schema_version":1,"diagram_type":"architecture","meta":{"views":[]},"components":[],"connections":[]}\n', encoding="utf-8")
-    contract = specification_root / "contracts" / "workflow" / "contract.md"
+        architecture.write_text('{"schema_version":1,"diagram_type":"architecture","meta":{"title":"Example","views":[]},"components":[],"connections":[]}\n', encoding="utf-8")
+    contract = specification_root / "architecture" / "contracts" / "workflow" / "contract.md"
     contract.parent.mkdir(parents=True, exist_ok=True)
     if not contract.exists():
         contract.write_text(
@@ -85,7 +86,6 @@ contracts:
   provided:
     - contract.example.workflow
   required: []
-architecture_view: specs/example/architecture.json
 evidence_status: unknown
 canonical_design: {relative}/design.md
 ---
@@ -128,7 +128,6 @@ The fixture delivers its observable outcome.
 id: module.example
 kind: module
 parent: null
-view: specs/example/architecture.json
 children: []
 features:
 {feature_lines}
@@ -149,7 +148,7 @@ Fixture boundary.
 
 ## Structure
 
-The level view is [architecture.json](architecture.json).
+The level view is [level-view.json](architecture/diagrams/level-view.json).
 
 ## Features
 
@@ -224,7 +223,7 @@ The feature delivers one observable outcome through the workflow contract and do
 
 ## Structure
 
-The level view is [architecture.json](../../architecture.json).
+The level view is [level-view.json](../../architecture/diagrams/level-view.json).
 
 ```text
 maintainer ──▶ example module ──▶ workflow contract

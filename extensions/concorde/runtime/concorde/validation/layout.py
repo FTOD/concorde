@@ -6,15 +6,49 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ..model import Finding
+from ..model import MODULE_CHILDREN_DIRECTORY, Finding
 from ..repository import ProjectRepository, RepositoryError, classify_feature_root, safe_relative_path
 
 
 FORBIDDEN_ROOT_FILES = ("plan.md", "tasks.md", "research.md", "data-model.md", "quickstart.md", "validation.md")
+LEGACY_MODULE_ENTRIES = (
+    ("architecture.json", "the former single level view; place diagrams under architecture/diagrams/"),
+    ("contracts", "the former module contract directory; move it to architecture/contracts/"),
+    ("modules", "the former child-module directory; move it to architecture/modules/"),
+)
+
+
+def _validate_module_layout(package: Any) -> list[Finding]:
+    """Profile 4 placement: `<parent>/architecture/modules/<name>/` and no legacy entries at a module root."""
+    findings: list[Finding] = []
+    modules = {item.identifier: item for item in package.documents("module")}
+    for module in modules.values():
+        directory = Path(module.path).parent
+        for name, meaning in LEGACY_MODULE_ENTRIES:
+            candidate = package.project_root / directory / name
+            if candidate.exists():
+                findings.append(Finding("CONCORDE-LAYOUT-010", "error", (directory / name).as_posix(), f"The module root still holds '{name}', {meaning}.", "Move the entry beneath the module's architecture/ directory (diagrams/, contracts/, or modules/) and update every link.", subject_id=module.identifier))
+        if "view" in module.metadata:
+            findings.append(Finding("CONCORDE-LAYOUT-010", "error", module.path, "module.md still declares the legacy 'view' front-matter field.", "Remove 'view'; the level's diagrams are discovered under architecture/diagrams/ and linked from the summary.", subject_id=module.identifier))
+        parent_id = module.metadata.get("parent")
+        if not parent_id:
+            if directory.as_posix() != package.specification_root:
+                findings.append(Finding("CONCORDE-LAYOUT-011", "error", module.path, f"Root module is not at the configured specification root '{package.specification_root}'.", "Keep exactly one parentless module at the specification root.", subject_id=module.identifier))
+            continue
+        parent = modules.get(parent_id)
+        if parent is None:
+            continue  # CONCORDE-REF-001 reports the unresolved parent
+        expected_parent = Path(parent.path).parent / MODULE_CHILDREN_DIRECTORY
+        if directory.parent.as_posix() != expected_parent.as_posix():
+            findings.append(Finding("CONCORDE-LAYOUT-011", "error", module.path, f"Child module is not placed beneath its parent's {MODULE_CHILDREN_DIRECTORY}/ directory ({expected_parent.as_posix()}/).", f"Move the module package to {expected_parent.as_posix()}/{directory.name}/ or correct its parent.", subject_id=module.identifier))
+    for feature in package.documents("feature"):
+        if "architecture_view" in feature.metadata:
+            findings.append(Finding("CONCORDE-LAYOUT-010", "error", feature.path, "Feature design.md still declares the legacy 'architecture_view' front-matter field.", "Remove 'architecture_view'; the level's diagrams belong to the providing module's architecture/diagrams/ directory.", subject_id=feature.identifier))
+    return findings
 
 
 def validate_layout(package: Any) -> list[Finding]:
-    findings: list[Finding] = []
+    findings: list[Finding] = _validate_module_layout(package)
     for feature in package.documents("feature"):
         root = package.project_root / Path(feature.path).parent
         try:

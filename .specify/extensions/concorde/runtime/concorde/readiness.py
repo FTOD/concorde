@@ -28,18 +28,19 @@ def architecture_readiness(project_root: str | Path, feature_id: str) -> dict[st
     if module:
         scenario_findings = [item for item in scenario_findings if item.source in {module.path, feature.path}]
         findings.extend(finding_dict(item) for item in sorted(scenario_findings, key=finding_key))
-    view_path = module.metadata.get("view") if module else None
-    view = package.views.get(view_path, {}) if isinstance(view_path, str) else {}
+    diagrams = package.module_diagrams(module) if module else {}
     feature_scenarios = set(feature.metadata.get("scenarios", []))
-    scenario_focus = {
-        item.get("id"): list(item.get("focus", []))
-        for item in view.get("meta", {}).get("views", [])
-        if isinstance(item, dict) and item.get("id") in feature_scenarios
-    }
-    relevant_connections = [
-        item for item in view.get("connections", [])
-        if isinstance(item, dict) and any({item.get("from"), item.get("to")}.issubset(set(focus)) for focus in scenario_focus.values())
-    ]
+    relevant_connections: list[dict[str, Any]] = []
+    for view in diagrams.values():
+        scenario_focus = {
+            item.get("id"): list(item.get("focus", []))
+            for item in view.get("meta", {}).get("views", [])
+            if isinstance(item, dict) and item.get("id") in feature_scenarios
+        }
+        relevant_connections.extend(
+            item for item in view.get("connections", [])
+            if isinstance(item, dict) and any({item.get("from"), item.get("to")}.issubset(set(focus)) for focus in scenario_focus.values())
+        )
     return {
         "feature_id": feature.identifier,
         "workspace_kind": "subfeature" if feature.metadata.get("parent_feature") else "feature",
@@ -54,7 +55,7 @@ def architecture_readiness(project_root: str | Path, feature_id: str) -> dict[st
             for item in relevant_connections
         ],
         "dependency_direction": [{"from": item.get("from"), "to": item.get("to")} for item in relevant_connections],
-        "affected_views": [view_path] if isinstance(view_path, str) else [],
+        "affected_views": sorted(diagrams),
         "expected_evidence": [
             {"kind": kind, "status": "unknown"}
             for kind in ("implementation", "test", "validation", "generated")

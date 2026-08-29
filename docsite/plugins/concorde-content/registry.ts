@@ -6,17 +6,19 @@ import fg from 'fast-glob';
 import matter from 'gray-matter';
 
 import type {
-  ArchitectureKind, ArchitectureSource, CollectionId, ContentRegistry, ExcludedSource, FeatureImplementation, FeatureDiagram,
-  FeaturePageContext, FeatureDesign, FeatureAbstract, ModuleDesign, ProjectDocument, SourceCollection, SourceDocument,
+  ArchitectureKind, ArchitectureSource, CollectionId, ContentRegistry, DiagramKind, ExcludedSource, FeatureImplementation, FeatureDiagram,
+  FeaturePageContext, FeatureDesign, FeatureAbstract, ModuleDesign, ModuleDiagram, ProjectDocument, SourceCollection, SourceDocument,
   ValidationFinding,
 } from './types';
+import {diagramKinds, listModuleDiagramSources} from './diagrams';
 import {populateLinks} from './links';
+import {projectedSpecPath} from './routes';
 
 export const collections: SourceCollection[] = [
   {
     // `**/design.md` is admitted here only beside `module.md`; feature design.md belongs to `features`.
     id: 'architecture', sourceBase: 'specs', routeBase: '/architecture',
-    include: ['**/module.md', '**/design.md', '**/contracts/**/contract.md'], contentKind: 'architecture-source',
+    include: ['**/module.md', '**/design.md', '**/architecture/contracts/**/contract.md'], contentKind: 'architecture-source',
   },
   {id: 'docs', sourceBase: 'docs', routeBase: '/docs', include: ['**/*.md'], contentKind: 'project-document'},
   // The abstract takes the feature landing route; design and implementation are companion pages.
@@ -35,7 +37,6 @@ const featureCompanionLabels: Partial<Record<CollectionId, string>> = {features:
 
 const posixPath = (value: string) => value.split('\\').join('/');
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
-const diagramKinds = new Set(['architecture', 'workflow', 'sequence', 'dataflow', 'lifecycle']);
 
 function headingTitle(content: string): string {
   return content.match(/^#\s+(.+?)\s*$/m)?.[1]?.replace(/^(?:Feature Design|Feature Abstract):\s*/i, '').trim() ?? '';
@@ -90,7 +91,7 @@ async function parseFeatureDiagrams(
     const role = declaration.role;
     const kind = declaration.kind;
     const scenarios = declaration.scenarios;
-    if (typeof kind !== 'string' || !diagramKinds.has(kind) || diagram.diagram_type !== kind) {
+    if (typeof kind !== 'string' || !diagramKinds.has(kind as DiagramKind) || diagram.diagram_type !== kind) {
       throw new Error(`Feature diagram "${source}" has a missing or inconsistent diagram kind.`);
     }
     if (role !== 'core' && role !== 'supplemental') {
@@ -131,6 +132,42 @@ async function parseFeatureDiagrams(
     left.role.localeCompare(right.role) || left.source.localeCompare(right.source));
 }
 
+/** Map every diagram beneath the module's `architecture/diagrams/` to its delivered route; unmappable sources are reported. */
+async function discoverModuleDiagrams(
+  projectRoot: string,
+  moduleSourcePath: string,
+): Promise<{diagrams: ModuleDiagram[]; unpublishable: string[]}> {
+  const diagrams: ModuleDiagram[] = [];
+  const unpublishable: string[] = [];
+  for (const source of await listModuleDiagramSources(projectRoot, moduleSourcePath)) {
+    try {
+      const absoluteSource = resolve(projectRoot, source);
+      const text = await readFile(absoluteSource, 'utf8');
+      const document = JSON.parse(text) as {diagram_type?: unknown; meta?: {title?: unknown; output?: unknown}};
+      if (typeof document.diagram_type !== 'string' || !diagramKinds.has(document.diagram_type as DiagramKind)) {
+        throw new Error('unsupported diagram_type');
+      }
+      if (typeof document.meta?.title !== 'string' || !document.meta.title.trim() || typeof document.meta.output !== 'string') {
+        throw new Error('meta.title and meta.output are required');
+      }
+      const outputPath = resolve(dirname(absoluteSource), document.meta.output);
+      const generatedRelative = posixPath(relative(resolve(projectRoot, 'generated'), outputPath));
+      if (generatedRelative === '..' || generatedRelative.startsWith('../')) throw new Error('output must be beneath generated/');
+      diagrams.push({
+        source,
+        sourceSha256: sha256(text),
+        kind: document.diagram_type as DiagramKind,
+        title: document.meta.title.trim(),
+        route: `/${generatedRelative}`,
+      });
+    } catch {
+      // The deterministic validator emits the actionable finding after discovery.
+      unpublishable.push(source);
+    }
+  }
+  return {diagrams, unpublishable};
+}
+
 async function parseDocument(
   projectRoot: string,
   collection: SourceCollection,
@@ -141,7 +178,9 @@ async function parseDocument(
   const [source, resolvedPath] = await Promise.all([readFile(absolutePath, 'utf8'), realpath(absolutePath)]);
   const parsed = matter(source);
   const title = typeof parsed.data.title === 'string' ? parsed.data.title.trim() : headingTitle(parsed.content);
-  const route = routeFor(collection, posixPath(relativePath), parsed.data.slug, parsed.data.id);
+  // Routes and staging paths of specs sources drop the `architecture/` grouping segment.
+  const projectedPath = collection.sourceBase === 'specs' ? projectedSpecPath(posixPath(relativePath)) : posixPath(relativePath);
+  const route = routeFor(collection, projectedPath, parsed.data.slug, parsed.data.id);
   const base = {
     collectionId: collection.id,
     contentKind: collection.contentKind,
@@ -154,6 +193,7 @@ async function parseDocument(
     links: [],
     state: 'parsed' as const,
     route,
+    ...(collection.sourceBase === 'specs' ? {stagedPath: projectedPath} : {}),
     sidebarLabel: typeof parsed.data.sidebar_label === 'string' ? parsed.data.sidebar_label : featureCompanionLabels[collection.id] ?? title,
     sidebarPosition: typeof parsed.data.sidebar_position === 'number' ? parsed.data.sidebar_position : undefined,
     slug: typeof parsed.data.slug === 'string' ? parsed.data.slug : undefined,
@@ -161,10 +201,10 @@ async function parseDocument(
   if (collection.id === 'docs') return base as ProjectDocument;
   if (collection.id === 'feature-abstracts') {
     // The path-derived route stands in until the abstract is paired with design.md and takes the landing route.
-    return {...base, collectionId: 'feature-abstracts', route: routeFor(collection, posixPath(relativePath), parsed.data.slug)} as FeatureAbstract;
+    return {...base, collectionId: 'feature-abstracts', route: routeFor(collection, projectedPath, parsed.data.slug)} as FeatureAbstract;
   }
   if (collection.id === 'feature-implementations') {
-    return {...base, collectionId: 'feature-implementations', route: routeFor(collection, posixPath(relativePath), parsed.data.slug)} as FeatureImplementation;
+    return {...base, collectionId: 'feature-implementations', route: routeFor(collection, projectedPath, parsed.data.slug)} as FeatureImplementation;
   }
   if (collection.id === 'architecture') {
     if (posix.basename(relativePath) === 'design.md') {
@@ -172,54 +212,31 @@ async function parseDocument(
         ...base,
         collectionId: 'architecture',
         contentKind: 'module-design',
-        route: routeFor(collection, posixPath(relativePath), parsed.data.slug),
+        route: routeFor(collection, projectedPath, parsed.data.slug),
         moduleSourcePath: posix.join(posix.dirname(sourcePath), 'module.md'),
       } as ModuleDesign;
     }
     const architectureKind = parsed.data.kind as ArchitectureKind;
-    const view = typeof parsed.data.view === 'string'
-      ? parsed.data.view.trim()
-      : typeof parsed.data.architecture_view === 'string'
-        ? parsed.data.architecture_view.trim()
-        : undefined;
-    let architectureViewSource: string | undefined;
-    let architectureViewSha256: string | undefined;
-    let architectureViewRoute: string | undefined;
-    if (view) {
-      architectureViewSource = posix.normalize(posixPath(view));
-      const viewPath = resolve(projectRoot, architectureViewSource);
-      try {
-        const viewText = await readFile(viewPath, 'utf8');
-        const viewDocument = JSON.parse(viewText) as {meta?: {output?: unknown}};
-        architectureViewSha256 = sha256(viewText);
-        if (typeof viewDocument.meta?.output === 'string') {
-          const outputPath = resolve(dirname(viewPath), viewDocument.meta.output);
-          const generatedRelative = posixPath(relative(resolve(projectRoot, 'generated'), outputPath));
-          if (generatedRelative !== '..' && !generatedRelative.startsWith('../')) {
-            architectureViewRoute = `/${generatedRelative}`;
-          }
-        }
-      } catch (error) {
-        // The deterministic validator emits the actionable finding after discovery.
-      }
-    }
-    return {
+    const architecture = {
       ...base,
       collectionId: 'architecture',
       architectureId: typeof parsed.data.id === 'string' ? parsed.data.id.trim() : '',
       architectureKind,
       moduleId: typeof parsed.data.module === 'string' ? parsed.data.module.trim() : undefined,
       parentId: typeof parsed.data.parent === 'string' ? parsed.data.parent.trim() : undefined,
-      architectureViewSource,
-      architectureViewSha256,
-      architectureViewRoute,
     } as ArchitectureSource;
+    if (architectureKind === 'module') {
+      const {diagrams, unpublishable} = await discoverModuleDiagrams(projectRoot, sourcePath);
+      architecture.architectureDiagrams = diagrams;
+      if (unpublishable.length) architecture.unpublishableDiagrams = unpublishable;
+    }
+    return architecture;
   }
   return {
     ...base,
     collectionId: 'features',
     // The id-derived landing route belongs to abstract.md; design.md is published at `<root>/design`.
-    route: routeFor(collection, posixPath(relativePath)),
+    route: routeFor(collection, projectedPath),
     landingRoute: route,
     featureId: typeof parsed.data.id === 'string' ? parsed.data.id.trim() : '',
     kind: parsed.data.kind === 'feature' ? 'feature' : (parsed.data.kind as 'feature'),

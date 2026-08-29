@@ -27,8 +27,8 @@ npm run start
 
 Open the local address printed by Docusaurus. The site has three views over maintained sources:
 
-- **Architecture** publishes each module summary with its embedded level view, its linked `design.md`
-  design reference, boundary contracts, and declared Archify views.
+- **Architecture** publishes each module summary with its embedded architecture diagrams, its linked
+  `design.md` design reference, and boundary contracts.
 - **Documentation** publishes the explanatory guides under `docs/`.
 - **Features** opens each feature on its `abstract.md`, with `design.md` and `implementation.md`
   as companion pages, while excluding its temporary `attempt/` workspace.
@@ -182,9 +182,11 @@ $speckit-concorde-context module.<project>
 ```
 
 Review the initialization proposal (`.concorde/config.json`, a `module.md` summary, a seeded
-`design.md` design reference, and `architecture.json`) before allowing it to write maintained
-sources. Context retrieval is read-only and loads one bounded architecture level for the current
-agent interaction.
+`design.md` design reference, and a first level view at `architecture/diagrams/level-view.json`)
+before allowing it to write maintained sources. Every module package keeps that shape: `module.md`
+and `design.md` beside a `features/` directory for what the level can do and an `architecture/`
+directory (`diagrams/`, `contracts/`, and `modules/`) for how it is composed. Context retrieval is
+read-only and loads one bounded architecture level for the current agent interaction.
 
 After deciding at which level the feature is specified (the level at which every module it uses is
 visible), create it with the normal specify phase.

@@ -83,7 +83,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - **Required**: IMPL_PLAN (proposed tech stack, libraries, structure), FEATURE_DESIGN (user stories with priorities), FEATURE_IMPLEMENTATION (accepted realization baseline; the placeholder means no accepted baseline)
    - **Optional**: `ATTEMPT_DIR/data-model.md` (entities), `FEATURE_DIR/contracts/` (durable interface contracts), `ATTEMPT_DIR/research.md` (decisions), `ATTEMPT_DIR/quickstart.md` (test scenarios)
    - **IF REFERENCED**: Load feature-owned Archify JSON beside `FEATURE_DESIGN` as durable explanatory
-     sources; do not confuse them with module-level `architecture.json` or generated HTML.
+     sources; do not confuse them with the module's diagrams under `architecture/diagrams/` or generated HTML.
    - **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints
    - Note: Not all projects have all documents. Generate tasks based on what's available.
 

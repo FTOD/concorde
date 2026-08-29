@@ -276,7 +276,7 @@ class FeatureHardeningIntegrationTests(unittest.TestCase):
             for bad_path, fragment in (
                 ("specs/example/module.md", "module summary"),
                 ("specs/example/features/001-deliver/design.md", "not a path inside the feature root"),
-                ("specs/example/modules/api/design.md", "providing module"),
+                ("specs/example/architecture/modules/api/design.md", "providing module"),
             ):
                 proposal = self.write_proposal(root, eligibility, module_design=AMENDMENT, module_design_path=bad_path)
                 before = tree_hashes(root)

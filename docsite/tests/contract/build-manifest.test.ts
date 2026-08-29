@@ -21,10 +21,10 @@ describe('build manifest contract', () => {
     const validate = new Ajv2020({allErrors: true}).compile(schema);
 
     expect(validate(example), JSON.stringify(validate.errors, null, 2)).toBe(true);
-    expect(example.schemaVersion).toBe(7);
+    expect(example.schemaVersion).toBe(8);
   });
 
-  it('projects a fixture manifest that satisfies the v7 schema', async () => {
+  it('projects a fixture manifest that satisfies the v8 schema', async () => {
     const schema = JSON.parse(await readFile(resolve(
       process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json',
     ), 'utf8'));
@@ -44,13 +44,13 @@ describe('build manifest contract', () => {
     const root = resolve(__dirname, '../fixtures/valid-project');
     const first = createManifest(await buildRegistry(root));
     const second = createManifest(await buildRegistry(root));
-    expect(first.schemaVersion).toBe(7);
+    expect(first.schemaVersion).toBe(8);
     expect(first.generator).toEqual({name: 'concorde-docsite', version: '0.3.0', docusaurusVersion: '3.10.2'});
     expect(first.collections.map((collection) => collection.id)).toEqual([
       'architecture', 'docs', 'feature-abstracts', 'features', 'feature-implementations',
     ]);
     expect(first.collections.map((collection) => collection.include)).toEqual([
-      ['**/module.md', '**/design.md', '**/contracts/**/contract.md'], ['**/*.md'], ['**/abstract.md'], ['**/design.md'], ['**/implementation.md'],
+      ['**/module.md', '**/design.md', '**/architecture/contracts/**/contract.md'], ['**/*.md'], ['**/abstract.md'], ['**/design.md'], ['**/implementation.md'],
     ]);
     expect(second).toEqual(first);
     expect(first.pages.map((page) => page.sourcePath)).toEqual([...first.pages.map((page) => page.sourcePath)].sort());

@@ -31,7 +31,8 @@ Read the smallest relevant set in this order:
    `README.md`, command definitions, and templates governing the named lifecycle stage.
 3. For project-specific questions only, the project constitution and the smallest bounded set of
    maintained `specs/` sources needed to answer, starting from summaries: the current module's
-   `module.md`, one-level `architecture.json`, relevant contracts, and the named feature's durable
+   `module.md`, its level views under `architecture/diagrams/`, relevant contracts under
+   `architecture/contracts/`, and the named feature's durable
    `abstract.md`. Open the feature `design.md` only when a requirement's exact wording is needed, and a
    module `design.md` or feature `implementation.md` only when the question asks for implementation detail, rationale,
    or accepted realization; cite each opened file.

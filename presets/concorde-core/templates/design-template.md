@@ -29,12 +29,15 @@ been hardened yet.
 - **Supplemental diagrams**: optional workflow, sequence, data-flow, or lifecycle views for narrower
   invocation, state, or movement questions; never substitutes for the core component view
 - **Contracts**: at least one provided contract and every required boundary contract
-- **Architecture view**: current module's one-level Archify JSON view
+- **Level views**: the providing module's architecture diagrams under `architecture/diagrams/`,
+  linked from its `module.md`; a feature never redefines them
 - **Evidence status**: `unknown`, `partial`, `verified`, or `disagrees`
 
 Place feature-owned diagrams under the selected feature/sub-feature's `diagrams/` directory and name them for the question
 or scenario they explain; do not call them `architecture.json`. Declare each diagram's `core` or
 `supplemental` role in `design.md` so
 the project docsite embeds it automatically. They supplement `design.md` and the providing module's
-bounded view, and must not silently define behavior or contracts. Do not create a parallel Concorde
-feature specification or a top-level `architecture/` source tree.
+bounded level views, and must not silently define behavior or contracts. Do not create a parallel
+Concorde feature specification or an `architecture/` tree outside the module hierarchy; a module's
+own `architecture/` directory (its diagrams, boundary contracts, and submodules) belongs to its
+package, and a change there is an architecture change, never a feature-owned artifact.

@@ -98,5 +98,5 @@ install itself is the Distribution module's bundle lifecycle. No realization is 
   [publish-release](../001-publish-release/design.md) whose current-release pointer this installer
   reads (`../001-publish-release/contracts/release-publication.md`).
 - **The level this feature belongs to** — [module.md](../../../../module.md) (the root summary) and
-  [Distribution](../../../../modules/distribution/module.md).
+  [Distribution](../../../../architecture/modules/distribution/module.md).
 - **The documented install paths** — [docs/quick-start.md](../../../../../../docs/quick-start.md).

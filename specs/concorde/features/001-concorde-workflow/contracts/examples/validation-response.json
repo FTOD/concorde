@@ -4,7 +4,7 @@
   "target": "specs/example",
   "status": "invalid",
   "artifacts": [
-    "specs/example/architecture.json",
+    "specs/example/architecture/diagrams/level-view.json",
     "specs/example/module.md"
   ],
   "findings": [

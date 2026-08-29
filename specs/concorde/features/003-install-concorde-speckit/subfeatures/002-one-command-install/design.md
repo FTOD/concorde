@@ -13,7 +13,6 @@ contracts:
     - contract.concorde.spec-kit-installation
   required:
     - contract.concorde.spec-kit-platform
-architecture_view: specs/concorde/architecture.json
 evidence_status: unknown
 canonical_design: specs/concorde/features/003-install-concorde-speckit/subfeatures/002-one-command-install/design.md
 ---

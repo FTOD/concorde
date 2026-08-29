@@ -9,7 +9,6 @@ contracts:
     - contract.concorde.spec-kit-installation
   required:
     - contract.concorde.spec-kit-platform
-architecture_view: specs/concorde/architecture.json
 diagrams:
   - source: specs/concorde/features/004-self-host-concorde/diagrams/concorde-self-hosting-components.json
     role: core
@@ -74,7 +73,7 @@ The compact Archify 2.16 layout preserves those eight component roles and crossi
 all node context readable at the required desktop viewport.
 
 The diagram supplements this specification. It does not replace the root one-level architecture in
-`specs/concorde/architecture.json` or redefine the owning modules and their contracts.
+`specs/concorde/architecture/diagrams/level-view.json` or redefine the owning modules and their contracts.
 
 The three journeys below are prose-only at the root level. The root architecture already uses
 Archify's maximum five guided scenario views for Features 001–003; adding more would invalidate that

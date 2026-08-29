@@ -1,4 +1,4 @@
-"""Deterministic structural validation for Concorde Source Profile 3."""
+"""Deterministic structural validation for Concorde Source Profile 4."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from .validation.layout import validate_layout
 from .validation.evidence import validate_evidence
 from .validation.freshness import validate_freshness
 from .validation.summary import validate_summaries
+from .validation.diagrams import validate_module_diagrams
 from .validation.abstract import validate_abstracts
 from .validation.reflections import validate_reflections
 
@@ -26,6 +27,7 @@ REQUIRED_CONTRACT_SECTIONS = ("Purpose", "Information", "Obligations", "Failure 
 FOCUSED_VALIDATORS = (
     validate_hierarchy,
     validate_summaries,
+    validate_module_diagrams,
     validate_abstracts,
     validate_reflections,
     validate_layout,
@@ -90,8 +92,8 @@ def _target_artifacts(package: Any, target: str | None) -> tuple[str, ...]:
     module_id = source.identifier if source.kind == "module" else source.metadata.get("module")
     selected = [item.path for item in package.sources if item.identifier == target or item.metadata.get("module") == module_id]
     module = package.by_id.get(module_id, ())
-    if len(module) == 1 and isinstance(module[0].metadata.get("view"), str):
-        selected.append(module[0].metadata["view"])
+    if len(module) == 1 and module[0].kind == "module":
+        selected.extend(package.module_diagrams(module[0]))
     if source.kind == "feature":
         selected.extend(
             item.get("source")
@@ -244,31 +246,36 @@ def validate_project(project_root: str | Path, target: str | None = None) -> Ope
         if source.kind in {"feature", "contract"} and metadata.get("evidence_status") not in EVIDENCE_STATES:
             findings.append(_finding("CONCORDE-EVIDENCE-001", source, f"Evidence status '{metadata.get('evidence_status')}' is not explicit or supported.", "Use unknown, partial, verified, or disagrees and link evidence separately."))
 
-    # Current-level views.
+    # Current-level views: every architecture diagram under <module>/architecture/diagrams/.
     for module in modules.values():
         children = set(_as_list(module.metadata.get("children")))
-        view_path = module.metadata.get("view")
-        if children and (not isinstance(view_path, str) or view_path not in package.views):
-            findings.append(_finding("CONCORDE-VIEW-001", module, "Non-leaf module does not resolve one architecture view.", "Declare a valid project-relative current-level Archify JSON view."))
+        level_views = package.module_views(module)
+        if children and not level_views:
+            findings.append(_finding("CONCORDE-VIEW-001", module, "Non-leaf module has no architecture diagram under architecture/diagrams/.", "Add at least one Archify architecture diagram beneath the module's architecture/diagrams/ directory and link it from ## Structure."))
             continue
-        if isinstance(view_path, str) and view_path in package.views:
-            architecture = package.views[view_path]
-            components = {component.get("id") for component in architecture.get("components", []) if component.get("id")}
+        visible_modules: set[str] = set()
+        for view_path, architecture in level_views.items():
+            diagram = view_path.rsplit("/", 1)[-1]
+            components = {component.get("id") for component in architecture.get("components", []) if isinstance(component, dict) and component.get("id")}
             for view in architecture.get("meta", {}).get("views", []):
                 if not isinstance(view, dict):
                     continue
                 unknown_focus = set(_as_list(view.get("focus"))) - components
                 if unknown_focus:
-                    findings.append(_finding("CONCORDE-SCENARIO-002", module, f"View scenario '{view.get('id')}' has unknown participants: {', '.join(sorted(unknown_focus))}.", "Use only component IDs visible at the current module level."))
+                    findings.append(_finding("CONCORDE-SCENARIO-002", module, f"Scenario '{view.get('id')}' in '{diagram}' has unknown participants: {', '.join(sorted(unknown_focus))}.", "Use only component IDs visible at the current module level."))
             for connection in architecture.get("connections", []):
+                if not isinstance(connection, dict):
+                    continue
                 endpoints = {connection.get("from"), connection.get("to")}
                 if not endpoints.issubset(components):
-                    findings.append(_finding("CONCORDE-VIEW-004", module, f"Connection '{connection.get('id')}' has an endpoint outside the current view.", "Correct the connection endpoints to visible participant IDs."))
-            visible_modules: set[str] = set()
+                    findings.append(_finding("CONCORDE-VIEW-004", module, f"Connection '{connection.get('id')}' in '{diagram}' has an endpoint outside the diagram.", "Correct the connection endpoints to visible participant IDs."))
+            diagram_modules: set[str] = set()
             for component in architecture.get("components", []):
+                if not isinstance(component, dict):
+                    continue
                 declared = component.get("module_id")
                 if declared:
-                    visible_modules.add(declared)
+                    diagram_modules.add(declared)
                     continue
                 component_id = component.get("id")
                 component_names = {str(component_id), str(component.get("label", ""))}
@@ -279,13 +286,14 @@ def validate_project(project_root: str | Path, target: str | None = None) -> Ope
                     if re.sub(r"[^a-z0-9]", "", child.rsplit(".", 1)[-1].lower()) in normalized_components
                 ]
                 if len(matches) == 1:
-                    visible_modules.add(matches[0])
-            invalid = visible_modules - children
+                    diagram_modules.add(matches[0])
+            invalid = diagram_modules - children - {module.identifier}
             if invalid:
-                findings.append(_finding("CONCORDE-VIEW-002", module, f"View exposes non-immediate modules: {', '.join(sorted(invalid))}.", "Keep only immediate child modules in this level's view."))
-            missing = children - visible_modules
-            if missing:
-                findings.append(_finding("CONCORDE-VIEW-003", module, f"View omits immediate modules: {', '.join(sorted(missing))}.", "Add every immediate child module and its I/O to the current-level view."))
+                findings.append(_finding("CONCORDE-VIEW-002", module, f"Diagram '{diagram}' exposes non-immediate modules: {', '.join(sorted(invalid))}.", "Keep only the current module and its immediate children in a level's diagrams; deeper modules belong to the child's own level."))
+            visible_modules.update(diagram_modules)
+        missing = children - visible_modules
+        if children and missing:
+            findings.append(_finding("CONCORDE-VIEW-003", module, f"The module's architecture diagrams omit immediate modules: {', '.join(sorted(missing))}.", "Show every immediate child module and its I/O in at least one architecture diagram under architecture/diagrams/."))
 
     ordered = tuple(sorted(findings, key=finding_key))
     summary = Counter(item.severity for item in ordered)

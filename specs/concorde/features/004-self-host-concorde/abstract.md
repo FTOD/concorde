@@ -136,11 +136,11 @@ Preserved, never owned:  specs/** · docs/** · code · tests · project config 
   schema (`contracts/self-hosting.schema.json`) and examples
   (proposal (`contracts/examples/proposal.json`), applied result (`contracts/examples/applied-result.json`),
   current status (`contracts/examples/status-current.json`)); the crossed boundaries are
-  [contract.concorde.spec-kit-installation](../../contracts/spec-kit-installation/contract.md) and
-  [contract.concorde.spec-kit-platform](../../contracts/spec-kit-platform/contract.md).
+  [contract.concorde.spec-kit-installation](../../architecture/contracts/spec-kit-installation/contract.md) and
+  [contract.concorde.spec-kit-platform](../../architecture/contracts/spec-kit-platform/contract.md).
 - **The level this feature belongs to** — [module.md](../../module.md) (the root summary) and the
-  modules that contribute: [Distribution](../../modules/distribution/module.md) and
-  [Spec Kit Integration](../../modules/spec-kit-integration/module.md).
+  modules that contribute: [Distribution](../../architecture/modules/distribution/module.md) and
+  [Spec Kit Integration](../../architecture/modules/spec-kit-integration/module.md).
 - **The neighbours** — the released path this feature mirrors:
   [Install and Set Up Concorde with Spec Kit](../003-install-concorde-speckit/abstract.md); the workflow
   it activates: [Concorde Workflow](../001-concorde-workflow/abstract.md).

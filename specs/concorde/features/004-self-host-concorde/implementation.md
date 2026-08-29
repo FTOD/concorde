@@ -16,7 +16,7 @@ The durable JSON interface is defined by `contracts/self-hosting.md`, `contracts
 
 ## Module and Feature Collaboration
 
-`module.concorde` owns this cross-component feature. Its bounded organization, participants, and external contracts remain authoritative in `specs/concorde/module.md` and `specs/concorde/architecture.json`; this design records only how those maintained boundaries are used.
+`module.concorde` owns this cross-component feature. Its bounded organization, participants, and external contracts remain authoritative in `specs/concorde/module.md` and `specs/concorde/architecture/diagrams/level-view.json`; this design records only how those maintained boundaries are used.
 
 Distribution contributes `feature.distribution.package-concorde-bundle`, whose `concorde-bundle` recipe pins the local `concorde-core` preset and `concorde` extension to the same accepted version. The recipe constrains development self-hosting composition but is not executed as a self-hosting runtime and does not replace Feature 003's release lifecycle.
 

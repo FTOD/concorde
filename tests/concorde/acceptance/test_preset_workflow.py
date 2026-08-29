@@ -26,7 +26,7 @@ class PresetWorkflowAcceptance(unittest.TestCase):
             environment = os.environ.copy()
             environment.pop("VIRTUAL_ENV", None)
             environment["PATH"] = "/usr/local/bin:/usr/bin:/bin"
-            workspace = root / "specs/example/modules/api/features/001-add-endpoint"
+            workspace = root / "specs/example/architecture/modules/api/features/001-add-endpoint"
             implementation = workspace / "implementation"
             implementation.mkdir(parents=True)
             for artifact, template in (

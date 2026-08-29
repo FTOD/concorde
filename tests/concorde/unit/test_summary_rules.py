@@ -48,18 +48,18 @@ class SummaryRuleTests(unittest.TestCase):
     def test_structure_must_link_the_declared_view(self):
         with tempfile.TemporaryDirectory() as temporary:
             project, module = self.fixture(temporary)
-            module.write_text(module.read_text().replace("[architecture.json](architecture.json)", "the level view"), encoding="utf-8")
+            module.write_text(module.read_text().replace("[level-view.json](architecture/diagrams/level-view.json)", "the level view"), encoding="utf-8")
             self.assertIn("CONCORDE-SUMMARY-002", rules(validate_project(project)))
 
     def test_leaf_without_view_records_a_rationale_instead_of_a_link(self):
-        leaf = (VALID_PROJECT / "specs/example/modules/api/module.md").read_text(encoding="utf-8")
+        leaf = (VALID_PROJECT / "specs/example/architecture/modules/api/module.md").read_text(encoding="utf-8")
         self.assertNotIn("view:", leaf.split("---")[1])
         self.assertIn("## Structure", leaf)
         self.assertNotIn("CONCORDE-SUMMARY-002", rules(validate_project(VALID_PROJECT)))
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(VALID_PROJECT, root)
-            module = root / "specs/example/modules/api/module.md"
+            module = root / "specs/example/architecture/modules/api/module.md"
             module.write_text(re.sub(r"## Structure\n\n.*?\n\n## Features", "## Structure\n\n## Features", module.read_text(encoding="utf-8"), flags=re.S), encoding="utf-8")
             self.assertIn("CONCORDE-SUMMARY-001", rules(validate_project(root)))
 

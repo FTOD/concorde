@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "generator": {
     "name": "concorde-docsite",
     "version": "0.3.0",
@@ -10,7 +10,7 @@
       "id": "architecture",
       "sourceBase": "specs",
       "routeBase": "/architecture",
-      "include": ["**/module.md", "**/design.md", "**/contracts/**/contract.md"]
+      "include": ["**/module.md", "**/design.md", "**/architecture/contracts/**/contract.md"]
     },
     {
       "id": "docs",
@@ -177,15 +177,25 @@
       },
       "links": [
         {
+          "targetSourcePath": "specs/concorde/architecture/diagrams/level-view.json",
+          "targetRoute": "/architecture/concorde-root.html"
+        },
+        {
           "targetSourcePath": "specs/concorde/design.md",
           "targetRoute": "/architecture/concorde/design"
         }
       ],
       "architectureId": "module.concorde",
       "architectureKind": "module",
-      "architectureViewSource": "specs/concorde/architecture.json",
-      "architectureViewSha256": "3333333333333333333333333333333333333333333333333333333333333333",
-      "architectureViewRoute": "/architecture/concorde-root.html",
+      "architectureDiagrams": [
+        {
+          "source": "specs/concorde/architecture/diagrams/level-view.json",
+          "sourceSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+          "kind": "architecture",
+          "title": "Concorde — Root Features and Invocation",
+          "route": "/architecture/concorde-root.html"
+        }
+      ],
       "designReferenceRoute": "/architecture/concorde/design"
     }
   ],

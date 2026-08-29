@@ -2,7 +2,6 @@
 id: module.example
 kind: module
 parent: null
-view: specs/example/architecture.json
 children: []
 features:
   - feature.example.checkout
@@ -24,7 +23,7 @@ Own checkout intent and externally observable decisions.
 
 ## Structure
 
-The level view is [architecture.json](architecture.json).
+The level view is [level-view.json](architecture/diagrams/level-view.json).
 
 ## Features
 

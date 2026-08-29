@@ -26,18 +26,26 @@ Each module package repeats the same shape:
 
 ```text
 <module>/
-├── module.md          summary: read first and, usually, only
-├── design.md          module design reference: consulted for one specific question
-├── architecture.json  level view: the required structure diagram (non-leaf)
-├── diagrams/          optional supplemental module-owned Archify views
-├── contracts/
-├── features/
-└── modules/
+├── module.md                      summary: read first and, usually, only
+├── design.md                      module design reference: consulted for one specific question
+├── reflections.md                 root only: the project's one reflection log
+├── features/<number>-<feature>/   what this level can do (one workspace per feature)
+└── architecture/                  how this level is composed
+    ├── diagrams/<name>.json       the level's Archify diagrams: its level view(s) and any
+    │                              explanatory views, each linked from module.md or design.md
+    ├── contracts/<id>/contract.md the module's boundary contracts
+    └── modules/<child>/           immediate submodules, each repeating this shape
 ```
 
-`module.md`, the contract documents, and `architecture.json` are the only authorities for
-responsibility, boundary, boundary obligations, and current-level organization. `design.md`
-explains and justifies them; it never redefines them.
+`features/` and `architecture/` sit side by side at every level. A feature says what the level can
+do; `architecture/` says how the level is composed: the diagrams that show its parts and their
+interactions, the contracts that govern its boundaries, and the submodules that realize it. Each
+feature keeps its own `contracts/` and `diagrams/` inside its workspace.
+
+`module.md`, the contract documents under `architecture/contracts/`, and the level views under
+`architecture/diagrams/` are the only authorities for responsibility, boundary, boundary
+obligations, and current-level organization. `design.md` explains and justifies them; it never
+redefines them.
 
 ### `module.md`: the module summary
 
@@ -50,7 +58,7 @@ Its body has eight required H2 sections, in any order; further sections and diag
 | Section | Content |
 |---|---|
 | `Responsibility`, `Boundary` | Short prose |
-| `Structure` | A link to the level's `architecture.json`. A leaf module without a view records a one-line rationale instead. Further diagrams may be linked or embedded. |
+| `Structure` | A link to at least one of the level views under `architecture/diagrams/`. A leaf module without one records a one-line rationale instead. Further diagrams may be linked or embedded. |
 | `Features`, `Contracts`, `Submodules` | One inventory table each, or the line `None.` |
 | `Representative Scenario` | One current-level scenario in prose |
 | `Design Rationale` | The key rationale in a few sentences, plus a link to the adjacent `design.md` |
@@ -78,18 +86,39 @@ directly at any time as an ordinary maintained source; workflow operations write
 approved hardening proposal (see
 [Hardening](#hardening-changes-the-lifetime-not-the-behavior)).
 
-### `architecture.json`: the level view
+### `architecture/diagrams/`: the level views and explanatory views
 
-`architecture.json` owns the machine-readable organization visible at that level and is the
-summary's required structure diagram. For a non-leaf module, it contains only the current module,
-its immediate children, permitted externals, and connections among those participants. It must not
-expose grandchildren or internal code structures. A leaf may omit the view when there is no lower
-architectural level worth showing. Supplemental module-owned views under `diagrams/` answer
-narrower questions and never own behavior or boundaries.
+A level is rarely described by one picture, so a module owns a folder of Archify diagrams rather
+than one fixed file. Every `*.json` directly beneath `architecture/diagrams/` is a maintained
+diagram of that level; there is no fixed file name and nothing to declare in front matter. What
+makes a diagram part of the level is that the level's documents reference it: each file must be
+linked from `module.md`, from `design.md`, or from the project reflection log, and validation
+reports an unreferenced diagram (`CONCORDE-VIEW-006`).
+
+The `architecture`-kind diagrams are the **level views**. They own the machine-readable
+organization visible at that level: the current module, its immediate children (each with an
+explicit `module_id`), permitted externals, and the connections among those participants. Together
+they must show every immediate child, and none may expose grandchildren or internal code
+structures. A non-leaf module maintains at least one level view and links it from `## Structure`
+of `module.md`; a leaf may maintain none when there is no lower architectural level worth showing.
+Concorde names its own level views `level-view.json` by convention. Any further diagram, of any
+kind (`architecture`, `workflow`, `sequence`, `dataflow`, `lifecycle`), answers a narrower question
+about the level and is linked from wherever that question is discussed; explanatory views never own
+behavior or boundaries.
 
 This rule is what makes the hierarchy useful. A root-level reviewer can reason about major system
 parts; a maintainer can then zoom into one child and see its next level without loading the entire
 system at once.
+
+### `architecture/contracts/` and `architecture/modules/`
+
+`architecture/contracts/<id>/contract.md` holds the module's boundary contracts, and
+`architecture/modules/<child>/` holds its immediate submodules, each a complete module package of
+the same shape. A child module lives at exactly `<parent>/architecture/modules/<child>/`; the root
+module lives at the configured specification root. Validation reports a module that is placed
+elsewhere (`CONCORDE-LAYOUT-011`) and any remnant of the earlier layout — an `architecture.json`,
+`contracts/`, or `modules/` entry directly at a module root, or a `view` / `architecture_view`
+front-matter field (`CONCORDE-LAYOUT-010`).
 
 ## Features are specified at one level
 
@@ -174,7 +203,7 @@ ID. Its body has exactly five H2 sections, in this order:
 |---|---|
 | `Purpose` | The outcome and for whom |
 | `Functionality` | What the feature does and does not do: its operations, surfaces, parts, and boundaries |
-| `Structure` | The participating parts and how they collaborate, linking the feature's declared core diagram (or the parent's core view, the level view, or an inline fenced `text` sketch) |
+| `Structure` | The participating parts and how they collaborate, linking the feature's declared core diagram (or the parent's core view, one of the level views under the module's `architecture/diagrams/`, or an inline fenced `text` sketch) |
 | `Logic` | How it works—the main flows in order—and the rules an implementer must not break, each rule citing the `FR-NNN` requirement in `design.md` it summarizes |
 | `Read Next` | Links to `design.md`, `implementation.md`, the contracts, the module summary, and any sub-features or parent |
 
@@ -215,7 +244,7 @@ should explain:
 - useful code and evidence references; and
 - limitations or compatibility constraints that remain true after the delivery attempt ends.
 
-It is not a second `architecture.json` and not a second behavioral design. Module responsibilities,
+It is not a second level view and not a second behavioral design. Module responsibilities,
 boundaries, and organization remain owned by module architecture and required behavior by `design.md`;
 `implementation.md` references those authorities while explaining their use for this feature. Its
 six fixed sections are `Realization Overview`, `Module and Feature Collaboration`, `Scenario
@@ -279,9 +308,9 @@ behavior and feature `implementation.md` as the accepted realization baseline—
 | A reader wants to know… | Reads |
 |---|---|
 | what went wrong while building anything, and what was decided about it | `reflections.md` at the specification root |
-| what a level does, how its parts hang together, and where to go next | `module.md` |
+| what a level does, how its parts hang together, and where to go next | `module.md`, with the level views it links under `architecture/diagrams/` |
 | why the level is designed this way, how it is implemented, what was tried and rejected | the module `design.md` |
-| what a boundary promises and what crosses it | the contract document |
+| what a boundary promises and what crosses it | the contract document under the module's `architecture/contracts/` (or the feature's `contracts/`) |
 | what a feature does, how it is basically structured, and how it works | `abstract.md` |
 | exactly what a feature must make observable, and how that is accepted and measured | `design.md` |
 | how the accepted implementation realizes that feature, in full detail | feature `implementation.md` |
@@ -310,16 +339,18 @@ by that feature. References must make this split explicit.
 
 Concorde encourages maintained Archify diagrams when they materially improve understanding.
 
-A module's `architecture.json` is its required structure diagram, linked from the summary and
-embedded on the published module page. A cross-component feature normally declares at most one
+A module's level views under `architecture/diagrams/` are its structure diagrams, linked from the
+summary and embedded on the published module page together with every other diagram of the level.
+A cross-component feature normally declares at most one
 **core** diagram. It must be an architecture view that shows stable components, responsibilities,
 interactions, and governing contracts. A sequence, workflow, data-flow, or lifecycle diagram is
 **supplemental** and answers a narrower dynamic question such as call order or state change; it
 cannot serve as the core feature view.
 
 Feature diagrams live under the feature's `diagrams/`, are declared by feature `design.md`,
-and have an equivalent textual explanation; supplemental module-owned views live under the module's
-`diagrams/` and are explained by `module.md`. Their generated HTML is a reproducible projection.
+and have an equivalent textual explanation; module-owned views live under the module's
+`architecture/diagrams/`, are discovered from that folder, and are explained by the `module.md` or
+`design.md` that links them. Their generated HTML is a reproducible projection.
 Neither source JSON nor generated HTML may introduce requirements or boundaries absent from the
 owning text and contracts.
 

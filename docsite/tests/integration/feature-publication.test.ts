@@ -112,8 +112,16 @@ describe('canonical feature publication', () => {
     expect(module).toMatchObject({
       kind: 'architecture-source', architectureKind: 'module', architectureId: 'module.fixture',
       route: '/architecture/example/module.fixture', designReferenceRoute: '/architecture/example/design',
+      architectureDiagrams: [expect.objectContaining({
+        source: 'specs/example/architecture/diagrams/fixture-level-view.json', kind: 'architecture', title: 'Fixture Level View',
+        route: '/architecture/fixture-level-view.html',
+      })],
     });
+    expect(module?.architectureDiagrams?.[0].sourceSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(module?.links).toContainEqual({targetSourcePath: 'specs/example/design.md', targetRoute: '/architecture/example/design'});
+    expect(module?.links).toContainEqual({
+      targetSourcePath: 'specs/example/architecture/diagrams/fixture-level-view.json', targetRoute: '/architecture/fixture-level-view.html',
+    });
     expect(design).toMatchObject({
       kind: 'module-design', title: 'Design Reference: Example', route: '/architecture/example/design',
       moduleId: 'module.fixture', moduleRoute: '/architecture/example/module.fixture',

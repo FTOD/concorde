@@ -16,12 +16,13 @@ written; all source, page, exclusion, route, link, and check arrays are determin
 
 ## Semantics
 
-- `schemaVersion`: manifest compatibility version, currently `4`.
+- `schemaVersion`: manifest compatibility version, currently `8`.
 - `generator`: Concorde docsite and Docusaurus version identities; deliberately contains no timestamp.
 - `collections`: logical view definitions, canonical source roots, inclusion patterns, and route bases.
 - `pages`: one record per included source, including hash, route, title, navigation, provenance,
   optional feature identity/status and parent/sub-feature relationships, and architecture
-  identity/view metadata. Relationship summaries contain stable identity, title, source-owned
+  identity metadata and, for a module page, `architectureDiagrams` (source, source hash, kind,
+  title, and delivered route of every diagram beneath the module's `architecture/diagrams/`). Relationship summaries contain stable identity, title, source-owned
   outcome, status, and route without copying specification bodies.
 - `excludedSources`: Markdown artifacts considered during discovery but deliberately not published.
 - `routeInventory`: all verified public routes relevant to this contract.

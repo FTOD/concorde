@@ -31,7 +31,7 @@ class ReflectionRuleTests(unittest.TestCase):
             self.assertEqual(reflect_rules(validate_project(project)), [])
             log = project / "specs/example/reflections.md"
             log.write_text(EXAMPLE_LOG.read_text(encoding="utf-8").replace("feature.example.api.health-check", "feature.example.deliver").replace(
-                "specs/example/modules/api/features/002-add-health-check/design.md#functional-requirements", "specs/example/features/001-deliver/design.md#requirements"), encoding="utf-8")
+                "specs/example/architecture/modules/api/features/002-add-health-check/design.md#functional-requirements", "specs/example/features/001-deliver/design.md#requirements"), encoding="utf-8")
             result = validate_project(project)
             self.assertEqual(reflect_rules(result), [], [item.message for item in result.findings])
             self.assertEqual(result.status, "success")
@@ -57,7 +57,7 @@ class ReflectionRuleTests(unittest.TestCase):
 
     def test_feature_and_concerns_references(self):
         accepted = ["module.example.api", "feature.example.api.invoke", "contract.example.workflow", "scenario.example.deliver",
-                    "specs/example/module.md#structure", "specs/example/architecture.json:3", "specs/example/features/001-deliver/design.md"]
+                    "specs/example/module.md#structure", "specs/example/architecture/diagrams/level-view.json:3", "specs/example/features/001-deliver/design.md"]
         with tempfile.TemporaryDirectory() as temporary:
             project = self.project(temporary)
             write_reflection_log(project, [reflection_entry(f"R-{index:03d}", Concerns=value) for index, value in enumerate(accepted, start=1)])

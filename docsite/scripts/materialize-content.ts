@@ -38,7 +38,9 @@ export async function materializeContent(providedRegistry?: ContentRegistry): Pr
   for (const document of registry.documents) {
     const isFeaturePage = featureCollections.has(document.collectionId);
     if (document.collectionId !== 'architecture' && !isFeaturePage) continue;
-    const relativeSpecPath = relative(resolve(projectRoot, 'specs'), resolve(projectRoot, document.sourcePath));
+    // Pages are staged at their projected path (the `architecture/` grouping segment dropped), which is the
+    // path Docusaurus derives their sidebar position and, for architecture pages, their route from.
+    const relativeSpecPath = document.stagedPath ?? relative(resolve(projectRoot, 'specs'), resolve(projectRoot, document.sourcePath));
     // Abstracts, designs, and implementations are staged beside each other under the Features root; module
     // design references belong to the architecture collection and land beside their module.md.
     const destination = resolve(generatedContentRoot, isFeaturePage ? 'features' : document.collectionId, relativeSpecPath);

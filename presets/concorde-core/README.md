@@ -25,7 +25,7 @@ temporal work lives only in `attempt/`. The preset encourages
 descriptively named, text-backed feature-owned Archify diagrams when component interaction,
 invocation, boundary crossings, state, or data flow benefit from visual explanation. A
 cross-component feature requires one `role: core` Archify architecture view or a concise rationale
-that prose and the bounded module view are sufficient. Dynamic views are `role: supplemental`; a
+that prose and the module's level views are sufficient. Dynamic views are `role: supplemental`; a
 sequence diagram can never be the core view. Maintained JSON lives under the feature's `diagrams/`
 directory, is declared by feature `design.md`, and is embedded
 automatically by the project docsite; generated HTML never becomes specification authority.

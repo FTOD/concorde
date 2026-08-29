@@ -7,15 +7,33 @@ import {buildRegistry} from '../../plugins/concorde-content/registry';
 
 const fixture = resolve(__dirname, '../fixtures/valid-project');
 
-describe('module summary view links', () => {
-  it('resolves a summary link to its declared level view, spelled root-relative or summary-relative', async () => {
+describe('module diagram links', () => {
+  it('resolves a summary or design-reference link to a module diagram, spelled root-relative or document-relative', async () => {
     const registry = await buildRegistry(resolve(__dirname, '../../..'));
     const root = registry.documents.find((item) => item.sourcePath === 'specs/concorde/module.md')!;
-    expect(resolveContentLink('specs/concorde/architecture.json', root, registry).reference.targetRoute)
+    const design = registry.documents.find((item) => item.sourcePath === 'specs/concorde/design.md')!;
+    expect(resolveContentLink('specs/concorde/architecture/diagrams/level-view.json', root, registry).reference.targetRoute)
       .toBe('/architecture/concorde-root.html');
-    expect(resolveContentLink('architecture.json', root, registry).reference.targetRoute)
+    expect(resolveContentLink('architecture/diagrams/level-view.json', root, registry).reference.targetRoute)
       .toBe('/architecture/concorde-root.html');
-    expect(resolveContentLink('missing-view.json', root, registry).reference.kind).toBe('asset');
+    expect(resolveContentLink('architecture/diagrams/level-view.json', design, registry).reference.targetRoute)
+      .toBe('/architecture/concorde-root.html');
+    expect(resolveContentLink('architecture/diagrams/missing-view.json', root, registry).reference.kind).toBe('asset');
+  });
+
+  it('publishes module and contract pages at routes without the architecture/ grouping segment', async () => {
+    const registry = await buildRegistry(resolve(__dirname, '../../..'));
+    const byPath = (sourcePath: string) => registry.documents.find((item) => item.sourcePath === sourcePath)!;
+    expect(byPath('specs/concorde/architecture/modules/documentation/module.md').route)
+      .toBe('/architecture/concorde/modules/documentation/module.concorde.documentation');
+    expect(byPath('specs/concorde/architecture/contracts/concorde-workflow/contract.md').route)
+      .toBe('/architecture/concorde/contracts/concorde-workflow/contract.concorde.workflow');
+    expect(byPath('specs/concorde/architecture/modules/documentation/features/001-publish-project-docsite/abstract.md').route)
+      .toBe('/features/concorde/modules/documentation/features/001-publish-project-docsite/feature.documentation.publish-project-docsite');
+    expect(byPath('specs/concorde/architecture/modules/documentation/module.md').stagedPath)
+      .toBe('concorde/modules/documentation/module.md');
+    expect(resolveContentLink('architecture/modules/documentation/module.md', byPath('specs/concorde/module.md'), registry).reference.targetRoute)
+      .toBe('/architecture/concorde/modules/documentation/module.concorde.documentation');
   });
 });
 

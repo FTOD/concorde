@@ -96,7 +96,7 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Date**: 2026-08-28
 - **Feature**: feature.concorde.record-workflow-reflections
 - **Kind**: architecture
-- **Concerns**: specs/concorde/architecture.json
+- **Concerns**: specs/concorde/architecture/diagrams/level-view.json
 - **Expected**: Research D8 planned three governed crossings for the new root feature node: from
   the coding agent, into Spec Kit Integration (guidance and log path), and into Architecture Core.
 - **Observed**: With Architecture Core placed between the feature column and Spec Kit Integration,

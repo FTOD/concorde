@@ -88,19 +88,19 @@ def validate_summaries(package: Any) -> list[Finding]:
                     )
                 )
         structure = sections["Structure"]
-        view_path = module.metadata.get("view")
-        if structure:
-            if isinstance(view_path, str) and view_path:
-                if view_path not in _link_targets(structure, source_dir):
-                    findings.append(
-                        _finding(
-                            "CONCORDE-SUMMARY-002",
-                            module,
-                            f"The Structure section does not link the module's level view '{view_path}'.",
-                            "Link the declared architecture.json view from ## Structure so the published page embeds it.",
-                        )
+        level_views = package.module_views(module)
+        if structure and level_views:
+            linked = _link_targets(structure, source_dir)
+            if not any(posixpath.normpath(path) in linked for path in level_views):
+                findings.append(
+                    _finding(
+                        "CONCORDE-SUMMARY-002",
+                        module,
+                        "The Structure section links none of the module's architecture diagrams under architecture/diagrams/: " + ", ".join(sorted(level_views)) + ".",
+                        "Link at least one architecture diagram from ## Structure so the published page presents the level view.",
                     )
-            # A leaf without a view satisfies the rule with non-empty rationale prose (already non-empty).
+                )
+        # A module without architecture diagrams satisfies the rule with non-empty rationale prose (already non-empty).
         for heading in INVENTORY_SECTIONS:
             section = sections[heading]
             if section and not _has_table(section) and section.strip() != EMPTY_INVENTORY:

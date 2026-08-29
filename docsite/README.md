@@ -10,11 +10,13 @@ this package:
   companions and the former `tldr.md`, `spec.md`, and `implementation/` names are validation errors.
   Temporal `attempt/` workspaces are never published.
 - `../specs/**/module.md` (module summary), its sibling `design.md` (module design reference, published
-  as a separately linked Architecture page), and `../specs/**/contracts/**/contract.md` own
+  as a separately linked Architecture page), and `../specs/**/architecture/contracts/**/contract.md` own
   architecture intent. A `design.md` beside `module.md` is a module design reference; elsewhere a
   canonical feature `design.md` is the behavioral authority.
-- `../specs/**/architecture.json` owns structural views; the build creates their ignored,
-  disposable standalone Archify projections beneath `../generated/architecture/`.
+- `../specs/**/architecture/diagrams/*.json` owns module-level architecture diagrams: any number per
+  module, discovered from that folder rather than declared, each embedded on its module page. The
+  build creates their ignored, disposable standalone Archify projections beneath
+  `../generated/architecture/`.
 - `../specs/**/features/*/diagrams/*.json` owns feature scenario explanations declared by feature
   `design.md`; each fresh generated view is embedded automatically on the feature abstract.
 
@@ -44,7 +46,7 @@ Run all commands from `docsite/`:
 |---|---|
 | `npm run inspect` | Print sorted source-to-route mappings, exclusions, and finding counts. |
 | `npm run validate` | Validate sources, metadata, identities, routes, and links without rendering. |
-| `npm run render-diagrams` | Validate and atomically deliver every declared Archify view. |
+| `npm run render-diagrams` | Validate and atomically deliver every module-owned and feature-declared Archify diagram. |
 | `npm run start` | Deliver diagrams, validate, and start the local Docusaurus preview. |
 | `npm test` | Run unit, contract, fixture integration, atomicity, and production tests. |
 | `npm run build` | Deliver diagrams, render a clean candidate, verify it, and atomically promote `build/`. |
@@ -53,7 +55,8 @@ Run all commands from `docsite/`:
 
 Validation diagnostics use a stable rule ID, project-relative source, reason, and remediation. A
 failed candidate is removed and never replaces the last verified `build/`. Successful builds emit
-`build/build-manifest.json`, including actual routes and SHA-256 source provenance.
+`build/build-manifest.json` (Build Manifest v8), including actual routes, SHA-256 source provenance,
+and each module page's `architectureDiagrams`.
 
 Ordinary builds do not run Archify `visual-check`: it requires Chrome/Chromium and produces captures
 for human inspection. Run it explicitly when perceptual evidence is required, and never treat an

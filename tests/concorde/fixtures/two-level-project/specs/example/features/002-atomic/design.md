@@ -10,7 +10,6 @@ contracts:
   provided:
     - contract.example.checkout
   required: []
-architecture_view: specs/example/architecture.json
 evidence_status: unknown
 canonical_design: specs/example/features/002-atomic/design.md
 ---

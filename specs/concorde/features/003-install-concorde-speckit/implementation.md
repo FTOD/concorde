@@ -16,7 +16,7 @@ This root feature is realized by existing module-level refinements rather than r
 
 Feature 001's `feature.integration.manage-feature-workspace` remains authoritative for nested feature selection, durable and temporal paths, command intent, result envelopes, and hardening semantics. Feature 003 packages that handoff and proves it from installed artifacts; it does not redefine the workflow. Architecture Core performs initialization, bounded context, and validation after an installed command invokes it. Feature 002 publishes the declared Feature 003 diagrams and prose without becoming behavioral authority.
 
-The stable package interaction is explained by `diagrams/spec-kit-component-model.json`, while `diagrams/bundle-installation-flow.json` supplements it with release-to-use order. The canonical one-level project architecture remains `specs/concorde/architecture.json`, and module responsibilities and contracts remain in their respective module specifications.
+The stable package interaction is explained by `diagrams/spec-kit-component-model.json`, while `diagrams/bundle-installation-flow.json` supplements it with release-to-use order. The canonical one-level project architecture remains `specs/concorde/architecture/diagrams/level-view.json`, and module responsibilities and contracts remain in their respective module specifications.
 
 ## Scenario Realization
 

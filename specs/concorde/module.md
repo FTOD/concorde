@@ -2,7 +2,6 @@
 id: module.concorde
 kind: module
 parent: null
-view: specs/concorde/architecture.json
 children:
   - module.concorde.distribution
   - module.concorde.spec-kit-integration
@@ -39,16 +38,18 @@ Docusaurus itself.
 
 ## Structure
 
-The maintained root level view is [architecture.json](specs/concorde/architecture.json), delivered as
+This level is composed under `architecture/`: its diagrams (`architecture/diagrams/`), its boundary
+contracts (`architecture/contracts/`), and its four immediate modules (`architecture/modules/`),
+beside the root features under `features/`. The maintained root level view is
+[level-view.json](architecture/diagrams/level-view.json), delivered as
 `generated/architecture/concorde-root.html`. It shows three permitted external actors (Maintainer,
-Spec Kit, Coding Agent), the four root features (Install with Spec Kit, Self-Host Concorde, Concorde
-Workflow, Publish Project Docsite), and the four immediate modules (Distribution, Spec Kit
-Integration, Architecture Core, Documentation) joined by the boundary contracts inventoried below.
-The root view intentionally stops at one level; zooming into a module reveals that module's own
-features, contracts, and submodules.
-
-A fifth root feature, Record Workflow Reflections, is registered below but not yet drawn in the root
-view; adding its node to that view is planned work of the feature's implementation attempt.
+Spec Kit, Coding Agent), the five root features (Install with Spec Kit, Self-Host Concorde, Concorde
+Workflow, Record Workflow Reflections, Publish Project Docsite), and the four immediate modules
+(Distribution, Spec Kit Integration, Architecture Core, Documentation) joined by the boundary
+contracts inventoried below. The root view intentionally stops at one level; zooming into a module
+reveals that module's own features, contracts, and submodules. Any further diagram of this level
+lives beside the level view under `architecture/diagrams/` and is linked from this summary or the
+design reference; today the level view is the only module-owned diagram.
 
 Feature-owned explanatory views supplement the root view; they do not expand or replace it:
 
@@ -86,10 +87,10 @@ reached from user intent through the immediate modules that provide the behavior
 
 | Contract ID | Role | Flow | Counterparty | Definition |
 |---|---|---|---|---|
-| `contract.concorde.workflow` | provided | bidirectional | Maintainer and coding agent | [contract.md](contracts/concorde-workflow/contract.md) |
-| `contract.documentation.architecture-site` | provided through Documentation | output | Maintainer browser | [contract.md](modules/documentation/contracts/architecture-site/contract.md) |
-| `contract.concorde.spec-kit-installation` | provided | bidirectional | Maintainer and Spec Kit | [contract.md](contracts/spec-kit-installation/contract.md) |
-| `contract.concorde.spec-kit-platform` | required | bidirectional | Spec Kit | [contract.md](contracts/spec-kit-platform/contract.md) |
+| `contract.concorde.workflow` | provided | bidirectional | Maintainer and coding agent | [contract.md](architecture/contracts/concorde-workflow/contract.md) |
+| `contract.documentation.architecture-site` | provided through Documentation | output | Maintainer browser | [contract.md](architecture/modules/documentation/architecture/contracts/architecture-site/contract.md) |
+| `contract.concorde.spec-kit-installation` | provided | bidirectional | Maintainer and Spec Kit | [contract.md](architecture/contracts/spec-kit-installation/contract.md) |
+| `contract.concorde.spec-kit-platform` | required | bidirectional | Spec Kit | [contract.md](architecture/contracts/spec-kit-platform/contract.md) |
 
 ## Submodules
 
@@ -126,7 +127,7 @@ Concorde is installed through Spec Kit rather than alongside it as a second orch
 
 ## Representative Scenario
 
-`scenario-concorde-establish-and-place-feature` is maintained in `architecture.json` and involves the
+`scenario-concorde-establish-and-place-feature` is maintained in `architecture/diagrams/level-view.json` and involves the
 Maintainer, Spec Kit, the Coding Agent, the Concorde Workflow feature, Spec Kit Integration, and
 Architecture Core. A maintainer starts a feature through Spec Kit's normal specify phase, or the
 coding agent invokes one Concorde surface, and both paths meet at the Concorde Workflow feature across

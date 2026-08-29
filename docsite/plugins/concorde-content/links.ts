@@ -4,7 +4,7 @@ import {unified} from 'unified';
 import remarkParse from 'remark-parse';
 import {visit} from 'unist-util-visit';
 
-import type {ContentRegistry, LinkReference, SourceDocument, ValidationFinding} from './types';
+import type {ArchitectureSource, ContentRegistry, FeatureDesign, LinkReference, SourceDocument, ValidationFinding} from './types';
 
 interface MarkdownLinkNode {
   type: 'link';
@@ -31,8 +31,8 @@ export function resolveContentLink(
   if (externalPattern.test(rawTarget)) return {reference: {rawTarget, kind: 'external'}};
   const {path, suffix, fragment} = splitTarget(rawTarget);
   if (!/\.md$/i.test(path)) {
-    const viewReference = resolveArchitectureViewLink(rawTarget, path, suffix, fragment, source, registry);
-    return viewReference ?? {reference: {rawTarget, kind: 'asset', fragment}};
+    const diagramReference = resolveDiagramLink(rawTarget, path, suffix, fragment, source, registry);
+    return diagramReference ?? {reference: {rawTarget, kind: 'asset', fragment}};
   }
 
   const sourceRelativeTarget = path.startsWith('/')
@@ -72,11 +72,12 @@ export function resolveContentLink(
 }
 
 /**
- * A module summary links its declared level view (`architecture.json`) from `## Structure`, spelled
- * either relative to the summary or relative to the repository root. Both resolve to the delivered
- * view route the module page already embeds, so the published summary never carries a dead link.
+ * Maintained Markdown links Archify JSON by path: a module summary or design reference links a diagram beneath
+ * the module's `architecture/diagrams/`, an abstract may link a feature diagram beneath `diagrams/`. Spelled
+ * relative to the document or to the repository root, the link resolves to the delivered view route, so the
+ * published page never carries a dead link.
  */
-function resolveArchitectureViewLink(
+function resolveDiagramLink(
   rawTarget: string,
   path: string,
   suffix: string,
@@ -90,10 +91,13 @@ function resolveArchitectureViewLink(
     posix.normalize(posix.join(posix.dirname(source.sourcePath), path)),
   ]);
   for (const document of registry.documents) {
-    const viewSource = (document as {architectureViewSource?: string}).architectureViewSource;
-    const viewRoute = (document as {architectureViewRoute?: string}).architectureViewRoute;
-    if (!viewSource || !viewRoute || !candidates.has(viewSource)) continue;
-    return {reference: {rawTarget, kind: 'included-source', targetSourcePath: viewSource, targetRoute: `${viewRoute}${suffix}`, fragment}};
+    const diagrams = [
+      ...((document as ArchitectureSource).architectureDiagrams ?? []),
+      ...((document as FeatureDesign).diagrams ?? []),
+    ];
+    const diagram = diagrams.find((candidate) => candidates.has(candidate.source));
+    if (!diagram) continue;
+    return {reference: {rawTarget, kind: 'included-source', targetSourcePath: diagram.source, targetRoute: `${diagram.route}${suffix}`, fragment}};
   }
   return undefined;
 }
@@ -139,10 +143,13 @@ export function remarkConcordeLinks(options: {
     const registry = await promise;
     const filePath = resolve(file.path);
     const stagedRelative = options.stagedRoot ? relative(resolve(options.stagedRoot), filePath) : undefined;
-    const sourcePath = stagedRelative !== undefined && stagedRelative !== '..' && !stagedRelative.startsWith('../')
-      ? posix.join(options.canonicalSourceBase ?? '', posixPath(stagedRelative))
-      : posixPath(relative(projectRoot, filePath));
-    const source = registry.documents.find((document) => document.sourcePath === sourcePath);
+    const isStaged = stagedRelative !== undefined && stagedRelative !== '..' && !stagedRelative.startsWith('../');
+    // A staged specs page is found by the projected path it was staged at; everything else by its source path.
+    const source = isStaged
+      ? registry.documents.find((document) =>
+          document.stagedPath === posixPath(stagedRelative) &&
+          document.sourcePath.startsWith(`${options.canonicalSourceBase ?? 'specs'}/`))
+      : registry.documents.find((document) => document.sourcePath === posixPath(relative(projectRoot, filePath)));
     if (!source) return;
     visit(tree as Parameters<typeof visit>[0], 'link', (node: MarkdownLinkNode) => {
       const {reference} = resolveContentLink(node.url, source, registry);

@@ -1,5 +1,5 @@
 {
-  "profile_version": 3,
+  "profile_version": 4,
   "root_module_id": "module.concorde",
   "specification_root": "specs/concorde"
 }

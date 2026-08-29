@@ -23,7 +23,7 @@ specifications alone.
 
 | Family | Sources | What a visitor gets |
 |---|---|---|
-| Architecture | `specs/**/module.md` and `specs/**/contracts/**/contract.md` | The maintained hierarchy with stable ID, kind, owning module or parent, and provenance; when a source declares an Archify JSON view, its delivered HTML is embedded in a sandbox beside a standalone link. |
+| Architecture | `specs/**/module.md`, its sibling `design.md`, and `specs/**/architecture/contracts/**/contract.md` | The maintained hierarchy with stable ID, kind, owning module or parent, and provenance; every diagram beneath a module's `architecture/diagrams/` is delivered and embedded on the module page in a sandbox beside a standalone link. |
 | Documentation | every eligible Markdown file recursively under `docs/` | The authored hierarchy preserved, including the framework guides and a landing page with a recommended reading path. |
 | Features | the canonical `design.md` of every feature directory under `specs/` | Each feature by title, stable ID, and lifecycle status, grouped with its permanent design; drafts stay visible as drafts. |
 
@@ -52,7 +52,7 @@ presented as feature specifications.
 
 This feature declares no core diagram of its own: the root level view
 <a href="/architecture/concorde-root.html">Concorde root</a> (maintained source
-`specs/concorde/architecture.json`) already shows Documentation, Architecture Core, Spec Kit
+`specs/concorde/architecture/diagrams/level-view.json`) already shows Documentation, Architecture Core, Spec Kit
 Integration, the coding agent, and the maintainer at the level where the feature is owned. The
 supplemental <a href="/architecture/project-docsite-publication-flow.html">docsite publication
 flow</a> (maintained source `diagrams/project-docsite-publication-flow.json`) answers only the
@@ -145,8 +145,8 @@ specs/**      ─┴─▶ source registry ──▶ diagram delivery ──▶ 
   `contracts/build-manifest-contract.md` with its
   schema (`contracts/build-manifest.schema.json`), and `contracts/published-site.md`.
 - **The level this feature belongs to** — [module.md](../../module.md) (the root summary) and the
-  module that realizes it: [Documentation](../../modules/documentation/module.md) with its
-  refinement [publish-project-docsite](../../modules/documentation/features/001-publish-project-docsite/design.md).
+  module that realizes it: [Documentation](../../architecture/modules/documentation/module.md) with its
+  refinement [publish-project-docsite](../../architecture/modules/documentation/features/001-publish-project-docsite/design.md).
 - **Contributing to the site** — [docs/contributing/docsite.md](../../../../docs/contributing/docsite.md),
   and the guides the site publishes: [docs/index.md](../../../../docs/index.md) and
   [docs/project-structure.md](../../../../docs/project-structure.md).

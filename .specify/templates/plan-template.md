@@ -119,7 +119,7 @@ Then cover each promised `role: supplemental` diagram for narrower sequence, wor
 data-movement questions. For every diagram, identify governing contracts, maintained JSON path,
 complete textual counterpart, generated HTML path, deterministic Archify validation/delivery,
 visual-review evidence, and freshness check. If no core diagram is needed, preserve the spec's
-sufficiency rationale. Never overload module architecture.json
+sufficiency rationale. Never overload the module's level views under `architecture/diagrams/`
 or treat generated output as maintained intent.]
 
 ## Complexity Tracking

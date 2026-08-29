@@ -23,7 +23,7 @@ installed surfaces is defined by
 ## Concorde-specific operations
 
 Feature operations use Feature Workspace Protocol v6 (hardening proposal v4) over Architecture
-Source Profile 3. Features are created and selected through the
+Source Profile 4. Features are created and selected through the
 normal Spec Kit lifecycle (see [Creating and selecting a feature](#creating-and-selecting-a-feature)
 below); Concorde adds no creation or selection command. `feature.harden` accepts either valid level
 while operating on exactly one lifecycle root. `context` reports containment summaries separately
@@ -53,9 +53,10 @@ until you invoke it separately.
 ### `$speckit-concorde-init`
 
 Use once when a Spec Kit project has no Concorde root architecture. It proposes four files:
-`.concorde/config.json` (Architecture Source Profile 3), a `module.md` summary in the required
-shape, a seeded `design.md` design reference, and the `architecture.json` one-level view, plus any
-accepted initial contracts. Review the proposal before approval; it does not silently overwrite
+`.concorde/config.json` (Architecture Source Profile 4), a `module.md` summary in the required
+shape, a seeded `design.md` design reference, and a first level view at
+`<root>/architecture/diagrams/level-view.json`, plus any accepted initial contracts under
+`<root>/architecture/contracts/`. Review the proposal before approval; it does not silently overwrite
 existing maintained content.
 
 Do not use it to create every module in advance. Decompose only when another abstraction level has a
@@ -65,10 +66,13 @@ meaningful responsibility and boundary.
 
 Use before deciding feature ownership, reviewing a boundary, or giving an agent architectural
 context for implementation. A module target returns that module and its immediate level, with
-`summary`, `design_reference`, and `view` paths as navigation references; it never expands the body
-of a module `design.md` or feature `implementation.md`. A feature target resolves through the module at which it is
+`summary` and `design_reference` paths and the `diagrams` list (every diagram beneath the module's
+`architecture/diagrams/`) as navigation references; externals and current-level scenarios are drawn
+from all of those diagrams. It never expands the body of a module `design.md` or feature
+`implementation.md`. A feature target resolves through the module at which it is
 specified and additionally returns feature workspace paths (`abstract.md`, `design.md`, `implementation.md`, and
-the attempt), declared diagrams, relevant contract content, evidence, and architecture readiness.
+the attempt), declared feature diagrams, relevant contract content, evidence, and architecture
+readiness (whose `affected_views` list every diagram of the module).
 When the project reflection log exists, both targets return `reflections` (its path and the open
 entry count per feature) and feature summaries carry `reflections_open`.
 
@@ -95,7 +99,7 @@ hierarchy: `<module directory>/features/NNN-<short-name>` for a top-level featur
 
 ```bash
 # a top-level feature of the api module
-export SPECIFY_FEATURE_DIRECTORY=specs/example/modules/api/features/002-observe-health
+export SPECIFY_FEATURE_DIRECTORY=specs/example/architecture/modules/api/features/002-observe-health
 
 # an immediate sub-feature of feature 001-checkout
 export SPECIFY_FEATURE_DIRECTORY=specs/example/features/001-checkout/subfeatures/003-capture-payment
@@ -137,10 +141,15 @@ errors produce an invalid result. It reports unknown evidence rather than treati
 valid sources as proof of implementation agreement.
 
 Beyond identity, hierarchy, contract, scenario, view, and evidence rules, it checks the module
-summary shape (required sections, a structure link to the level view or a leaf rationale, inventory
+summary shape (required sections, a structure link to at least one level view or a leaf rationale, inventory
 tables, a reachable design reference), the reading budget (`CONCORDE-SUMMARY-005`, a warning that
 never changes the status), and the presence of a real `design.md` beside every `module.md`
-(`CONCORDE-MODULE-002`). At each feature root it checks the abstract shape—exactly the five sections
+(`CONCORDE-MODULE-002`). Among the view and layout rules, every diagram under a module's
+`architecture/diagrams/` must be referenced from that level's `module.md`, `design.md`, or the
+reflection log (`CONCORDE-VIEW-006`), and legacy layout is reported: an `architecture.json`,
+`contracts/`, or `modules/` directly at a module root or a `view`/`architecture_view` front-matter
+field (`CONCORDE-LAYOUT-010`), and a child module outside `<parent>/architecture/modules/<name>/`
+(`CONCORDE-LAYOUT-011`). At each feature root it checks the abstract shape—exactly the five sections
 in order (`CONCORDE-ABSTRACT-001`), a structure link or inline sketch (`CONCORDE-ABSTRACT-002`), and
 `Logic` rules citing requirement IDs that exist in `design.md` (`CONCORDE-ABSTRACT-003`)—its reading
 budget (`CONCORDE-ABSTRACT-004`, a warning), and the durable trio: a missing `implementation.md`

@@ -4,8 +4,9 @@
 
 **Realization status**: Accepted realization of the architecture-aware Spec Kit workflow under the
 feature-root `abstract.md` / `design.md` / `implementation.md` model, module `module.md` / `design.md`
-pair, Architecture Source Profile 3, Feature Workspace Protocol v6, hardening proposal v4, and Build
-Manifest v7. Revised 2026-08-29 for the canonical naming model and migrated across this repository.
+pair, Architecture Source Profile 4, Feature Workspace Protocol v6, hardening proposal v4, and Build
+Manifest v8. Revised 2026-08-29 for the canonical naming model and again for the module
+`architecture/` directory, and migrated across this repository.
 
 ## Realization Overview
 
@@ -13,7 +14,8 @@ Concorde preserves Spec Kit as the owner of specification, clarification, planni
 
 Every level separates what is read from what is consulted. A module owns `module.md` (the
 eight-section summary), `design.md` (implementation notes, rationale, alternatives, and decisions),
-and, for a non-leaf, `architecture.json`. A feature root owns durable `abstract.md` (read-first
+and, under `architecture/`, its diagrams (`diagrams/`, at least one level view for a non-leaf),
+boundary contracts (`contracts/`), and submodules (`modules/`). A feature root owns durable `abstract.md` (read-first
 orientation), `design.md` (self-contained required behavior), and `implementation.md` (accepted
 realization), optional `contracts/` and `diagrams/`, and at most one temporal `attempt/`. New feature
 implementations begin as the `implementation-template` placeholder and are replaced only by approved
@@ -30,10 +32,11 @@ Selection remains the standard Spec Kit `.specify/feature.json` pointer (or
 - `module.concorde.spec-kit-integration` provides Protocol v6, nine selected-workspace command
   overrides, six templates (`spec`, `abstract`, `implementation`, `reflections`, `plan`, `tasks`),
   and the extension's five command surfaces.
-- `module.concorde.architecture-core` owns Profile 3 discovery, classification of feature `design.md`
+- `module.concorde.architecture-core` owns Profile 4 discovery (including every module diagram
+  beneath `architecture/diagrams/`), classification of feature `design.md`
   versus module `design.md`, bounded context, readiness, validation, and auxiliary discovery of
   feature abstracts, implementations, and attempt evidence.
-- `module.concorde.documentation` publishes Build Manifest v7 collections `architecture`, `docs`,
+- `module.concorde.documentation` publishes Build Manifest v8 collections `architecture`, `docs`,
   `feature-abstracts`, `features`, and `feature-implementations`; routes are the abstract landing page,
   `/design`, and `/implementation`, and `attempt/**` is excluded.
 - `module.concorde.distribution` packages the six templates, nine normal-phase replacements, five
@@ -48,8 +51,9 @@ canonical tree.
 
 ### Establish and navigate bounded architecture
 
-`speckit.concorde.init` creates module `module.md`, module `design.md`, `architecture.json`, and config
-after approval. `context` builds one level from summaries, views, contracts, and feature summary paths;
+`speckit.concorde.init` creates module `module.md`, module `design.md`, the level view
+`architecture/diagrams/level-view.json`, and config after approval. `context` builds one level from
+summaries, every diagram of the level, contracts, and feature summary paths;
 parent and sibling feature bodies and attempts remain unexpanded.
 
 ### Place, decompose, select, and specify work
@@ -104,21 +108,21 @@ single `remove == [attempt_dir]`. Apply stages feature `implementation.md` and o
 ## Traceability and Evidence
 
 Behavior and acceptance criteria are in `design.md` and its nine sub-feature designs; the feature
-abstract is adjacent. Root ownership and interactions are in `specs/concorde/module.md` and
-`architecture.json`; module rationale is in `specs/concorde/design.md`. Command behavior is governed
+abstract is adjacent. Root ownership and interactions are in `specs/concorde/module.md` and the
+level view under `specs/concorde/architecture/diagrams/`; module rationale is in `specs/concorde/design.md`. Command behavior is governed
 by `contracts/agent-commands.md`; Protocol v6/proposal v4 by `feature-workspace.schema.json`; the
-documentation read model by the Documentation contracts and Build Manifest v7.
+documentation read model by the Documentation contracts and Build Manifest v8.
 
 Runtime realization is centered in `repository.py`, `feature_workspace.py`, `context.py`,
-`feature_hardening.py`, `diagnostics.py`, and `validation/{abstract,layout}.py`. Protocol and workspace
+`feature_hardening.py`, `diagnostics.py`, and `validation/{abstract,diagrams,layout}.py`. Protocol and workspace
 adapters emit schema version 6. Publication realization is in `docsite/plugins/concorde-content/`
 and its Abstract · Design · Implementation companion navigation.
 
-Executable evidence on 2026-08-29: 223 Python tests pass across unit, contract, integration, and
+Executable evidence on 2026-08-29: 231 Python tests pass across unit, contract, integration, and
 acceptance suites, including Protocol v6 routing, proposal v4 hardening, legacy-name findings,
-rollback, resume, installed surfaces, and all migrated fixtures. TypeScript compilation and all 67
+rollback, resume, installed surfaces, and all migrated fixtures. TypeScript compilation and all 68
 Vitest tests pass, including an optimized production build. Content validation publishes 99 pages
-with zero errors and 25 deliberate exclusions; Build Manifest v7 contains 21 feature abstracts, 21
+with zero errors and 25 deliberate exclusions; Build Manifest v8 contains 21 feature abstracts, 21
 feature designs, 21 feature implementations, 5 module designs, 21 architecture sources, and 10
 project documents. All eight declared views pass the build-owned Archify gate.
 `speckit.concorde.validate` returns `success` with zero findings.

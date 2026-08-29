@@ -12,7 +12,6 @@ contracts:
   provided:
     - contract.example.checkout
   required: []
-architecture_view: specs/example/architecture.json
 evidence_status: partial
 canonical_design: specs/example/features/001-checkout/design.md
 ---

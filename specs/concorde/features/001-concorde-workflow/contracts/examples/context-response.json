@@ -4,10 +4,10 @@
   "target": "module.example",
   "status": "success",
   "artifacts": [
-    "specs/example/architecture.json",
+    "specs/example/architecture/diagrams/level-view.json",
     "specs/example/design.md",
     "specs/example/module.md",
-    "specs/example/modules/api/module.md",
+    "specs/example/architecture/modules/api/module.md",
     "specs/example/reflections.md"
   ],
   "findings": [],
@@ -18,7 +18,9 @@
         "id": "module.example",
         "summary": "specs/example/module.md",
         "design_reference": "specs/example/design.md",
-        "view": "specs/example/architecture.json",
+        "diagrams": [
+          "specs/example/architecture/diagrams/level-view.json"
+        ],
         "features": [
           "feature.example.deliver-workflow"
         ],

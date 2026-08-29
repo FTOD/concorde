@@ -17,7 +17,7 @@ class ArchitectureReadinessTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(CONTEXT_PROJECT, root)
-            view_path = root / "specs/example/architecture.json"
+            view_path = root / "specs/example/architecture/diagrams/level-view.json"
             view = json.loads(view_path.read_text())
             contract = view["connections"][0].pop("contract")
             view_path.write_text(json.dumps(view))

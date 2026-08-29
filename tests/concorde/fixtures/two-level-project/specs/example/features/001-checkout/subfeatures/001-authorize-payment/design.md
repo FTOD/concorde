@@ -11,7 +11,6 @@ contracts:
   provided:
     - contract.example.checkout
   required: []
-architecture_view: specs/example/architecture.json
 evidence_status: verified
 canonical_design: specs/example/features/001-checkout/subfeatures/001-authorize-payment/design.md
 ---

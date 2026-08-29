@@ -19,7 +19,7 @@ Concorde therefore makes five things explicit and reviewable:
 5. the realization that was actually accepted after implementation.
 
 The principles behind this are the five workflow principles of the project constitution
-(`.specify/memory/constitution.md`, version 2.0.0): fast human comprehension at every level,
+(`.specify/memory/constitution.md`, version 2.1.0): fast human comprehension at every level,
 completeness beneath the surface, architecture-driven rather than only feature-driven development,
 contracts as human-readable promises, and deterministic validation with human-reviewed evidence. The
 normative definition of the workflow is
@@ -87,8 +87,8 @@ Large systems require abstraction. At one Concorde architecture level, a maintai
 - permitted external actors or systems;
 - the organization of those visible participants;
 - contract-governed interactions for current-level scenarios; and
-- navigation references to the level's summary, design reference, and view, and to each feature's
-  abstract, never their bodies.
+- navigation references to the level's summary, design reference, and architecture diagrams, and
+  to each feature's abstract, never their bodies.
 
 Child feature bodies, grandchildren, classes, and deeper implementation details remain hidden. When
 the maintainer deliberately zooms into a child, that child becomes the current module and the same
@@ -104,7 +104,7 @@ decision.
 | Question | Authority |
 |---|---|
 | What must the feature do, and why? | Feature `design.md` |
-| At which level is it specified, which modules realize it, what are their boundaries, and how are immediate children organized? | `module.md` (the module summary), module contracts, and `architecture.json` |
+| At which level is it specified, which modules realize it, what are their boundaries, and how are immediate children organized? | `module.md` (the module summary), module contracts, and the level views under the module's `architecture/diagrams/` |
 | Why is the level built this way, how is it implemented, and what was tried and rejected? | Module `design.md` (the design reference), consulted deliberately and never read implicitly |
 | How does the accepted implementation realize this feature across those boundaries? | Feature `implementation.md`, needed only when writing the code or fixing a bug |
 | What exists and has been demonstrated? | Code, tests, and explicit evidence references |

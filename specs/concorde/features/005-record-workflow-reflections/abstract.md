@@ -122,8 +122,8 @@ Selected feature root ─┬─ abstract.md + design.md          (read-only: cit
   placeholder until the first milestone is hardened).
 - **The log's grammar** — `contracts/reflection-log.md` and the conforming example
   `contracts/examples/reflections.md` (repository files, not published pages); the boundary promise is
-  [contract.concorde.workflow](../../contracts/concorde-workflow/contract.md); the host lifecycle
-  is [contract.concorde.spec-kit-platform](../../contracts/spec-kit-platform/contract.md).
+  [contract.concorde.workflow](../../architecture/contracts/concorde-workflow/contract.md); the host lifecycle
+  is [contract.concorde.spec-kit-platform](../../architecture/contracts/spec-kit-platform/contract.md).
 - **The project's actual log** — `specs/concorde/reflections.md` (a maintained repository file,
   not a published page).
 - **The level this feature belongs to** — [module.md](../../module.md) and its

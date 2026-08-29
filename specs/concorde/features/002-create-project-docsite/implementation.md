@@ -15,7 +15,7 @@ The Documentation collection reads `docs/**/*.md` directly. Architecture and Fea
 
 ## Module and Feature Collaboration
 
-The root feature `feature.concorde.publish-project-docsite` owns the project-wide publication outcome. Its Documentation-owned refinement, `feature.documentation.publish-project-docsite`, realizes that outcome behind the boundaries declared by `module.concorde.documentation`. The root and Documentation one-level structures remain authoritative in `specs/concorde/architecture.json` and `specs/concorde/modules/documentation/architecture.json`; this design references those views instead of redefining module responsibility or placement.
+The root feature `feature.concorde.publish-project-docsite` owns the project-wide publication outcome. Its Documentation-owned refinement, `feature.documentation.publish-project-docsite`, realizes that outcome behind the boundaries declared by `module.concorde.documentation`. The root and Documentation one-level structures remain authoritative in `specs/concorde/architecture/diagrams/level-view.json` and `specs/concorde/architecture/modules/documentation/architecture/diagrams/level-view.json`; this design references those views instead of redefining module responsibility or placement.
 
 Architecture Core, Spec Kit, and maintainers provide maintained inputs through `contract.documentation.project-content`. The Documentation module exposes preview/build behavior through `contract.documentation.build-interface`, invokes the external renderer through `contract.documentation.archify-renderer`, emits deterministic inventory through `contract.documentation.build-manifest`, and provides the finished site through `contract.documentation.architecture-site`. Archify retains ownership of schema validation and standalone HTML rendering; Docusaurus retains ownership of the generated site.
 
@@ -52,16 +52,16 @@ Ordinary documentation remains recursively discovered from `docs/`. Architecture
 
 ## Traceability and Evidence
 
-Behavior and outcomes remain in `design.md`. Detailed source, renderer, command, manifest, and published-output guarantees are governed by `contracts/content-sources.md`, `specs/concorde/modules/documentation/contracts/archify-renderer/contract.md`, `contracts/build-interface.md`, `contracts/build-manifest-contract.md`, `contracts/build-manifest.schema.json`, and `contracts/published-site.md`. Module ownership and boundaries remain under `specs/concorde/modules/documentation/`.
+Behavior and outcomes remain in `design.md`. Detailed source, renderer, command, manifest, and published-output guarantees are governed by `contracts/content-sources.md`, `specs/concorde/architecture/modules/documentation/architecture/contracts/archify-renderer/contract.md`, `contracts/build-interface.md`, `contracts/build-manifest-contract.md`, `contracts/build-manifest.schema.json`, and `contracts/published-site.md`. Module ownership and boundaries remain under `specs/concorde/architecture/modules/documentation/`.
 
 Implementation is centered in `docsite/plugins/concorde-content/diagrams.ts`, `registry.ts`, and `types.ts`; `docsite/scripts/render-diagrams.ts`, `prepare-publication.ts`, `start.ts`, and `build.ts`; Docusaurus configuration and presentation components; and the maintained contributor guides. `.gitignore` excludes complete generated delivery sets and temporary candidates. README links now point to maintained JSON/specification sources instead of committed HTML.
 
 Executable evidence covers declaration ordering and containment, role/kind/output agreement,
 project-local skill compatibility, receipt/digest gates, stale-orphan removal, atomicity, rollback,
 source immutability, clean production builds, all eight standalone diagram routes, automatic
-feature/module embedding, Manifest v7 repeatability, and failure preservation. The documentation
-gate passes 18 Vitest files with 67 tests and validates 99 pages with 25 deliberate exclusions and
-zero errors. The 223-test Python suite and deterministic Concorde validation also pass; all eight
+feature/module embedding, Manifest v8 repeatability, and failure preservation. The documentation
+gate passes 18 Vitest files with 68 tests and validates 99 pages with 25 deliberate exclusions and
+zero errors. The 231-test Python suite and deterministic Concorde validation also pass; all eight
 diagrams pass the build-owned Archify showcase gate.
 
 ## Known Limitations

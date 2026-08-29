@@ -1,4 +1,4 @@
-"""Module prose and explicit one-level view identity rules."""
+"""Module prose and explicit one-level diagram identity rules."""
 
 from __future__ import annotations
 
@@ -39,12 +39,12 @@ def validate_hierarchy(package: Any) -> list[Finding]:
                 )
             )
         children = set(module.metadata.get("children", []))
-        view_path = module.metadata.get("view")
-        view = package.views.get(view_path) if isinstance(view_path, str) else None
-        if not children or not isinstance(view, dict):
+        level_views = package.module_views(module)
+        if not children or not level_views:
             continue
         declared = {
             item.get("module_id") or (item.get("tag") if str(item.get("tag", "")).startswith("module.") else None)
+            for view in level_views.values()
             for item in view.get("components", [])
             if isinstance(item, dict) and (item.get("module_id") or str(item.get("tag", "")).startswith("module."))
         }
@@ -54,8 +54,8 @@ def validate_hierarchy(package: Any) -> list[Finding]:
                 _finding(
                     "CONCORDE-VIEW-005",
                     module,
-                    "Immediate child components lack explicit module_id values: " + ", ".join(sorted(missing)) + ".",
-                    "Set module_id on every immediate-child component; do not rely on label inference.",
+                    "Immediate child components lack explicit module_id values in the module's architecture diagrams: " + ", ".join(sorted(missing)) + ".",
+                    "Set module_id on every immediate-child component of a level view under architecture/diagrams/; do not rely on label inference.",
                 )
             )
     return findings

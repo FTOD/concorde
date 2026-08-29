@@ -3,7 +3,7 @@
   ".concorde/config.json": "{\"owner\":\"maintainer\"}\n",
   "docs/user.md": "# User documentation\n",
   "generated/user.html": "generated evidence\n",
-  "specs/example/contracts/io/contract.md": "# Boundary contract\n",
+  "specs/example/architecture/contracts/io/contract.md": "# Boundary contract\n",
   "specs/example/design.md": "# Durable design\n",
   "specs/example/diagrams/components.json": "{}\n",
   "specs/example/attempt/tasks.md": "- [ ] temporal\n",

@@ -9,8 +9,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .model import Finding, InitializationProposal, OperationResult, ProposalFile
-from .repository import ProjectRepository, RepositoryError, safe_relative_path
+from .model import MODULE_DIAGRAMS_DIRECTORY, Finding, InitializationProposal, OperationResult, ProposalFile
+from .repository import PROFILE_VERSION, ProjectRepository, RepositoryError, safe_relative_path
 
 
 def _slug(value: str) -> str:
@@ -39,15 +39,15 @@ def _create_proposal(project_root: Path, module_id: str | None, name: str | None
     module_slug = identifier.split(".", 1)[1].replace(".", "-")
     specification_root = f"specs/{module_slug}"
     config = json.dumps(
-        {"profile_version": 3, "root_module_id": identifier, "specification_root": specification_root},
+        {"profile_version": PROFILE_VERSION, "root_module_id": identifier, "specification_root": specification_root},
         indent=2,
         sort_keys=True,
     )
+    level_view = f"{specification_root}/{MODULE_DIAGRAMS_DIRECTORY}/level-view.json"
     module = f"""---
 id: {identifier}
 kind: module
 parent: null
-view: {specification_root}/architecture.json
 children: []
 features: []
 contracts:
@@ -67,8 +67,10 @@ Own the project-level outcome while excluding responsibilities delegated to futu
 
 ## Structure
 
-The level view is [architecture.json](architecture.json); it shows the root boundary and the
-maintainer. Add immediate submodules to the view before listing them below.
+The level view is [level-view.json]({MODULE_DIAGRAMS_DIRECTORY}/level-view.json); it shows the root
+boundary and the maintainer. Add immediate submodules to the view before listing them below. Further
+diagrams of this level live beside it under `{MODULE_DIAGRAMS_DIRECTORY}/` and are linked from this
+summary or from the [design reference](design.md).
 
 ## Features
 
@@ -116,6 +118,7 @@ None recorded yet.
             "diagram_type": "architecture",
             "meta": {
                 "title": f"{project_name} — Root Module",
+                "output": f"../../../../generated/architecture/{module_slug}-level-view.html",
                 "views": [
                     {
                         "id": f"scenario.{module_slug}.root-overview",
@@ -135,7 +138,7 @@ None recorded yet.
     )
     files = (
         _proposal_file(".concorde/config.json", config),
-        _proposal_file(f"{specification_root}/architecture.json", architecture),
+        _proposal_file(level_view, architecture),
         _proposal_file(f"{specification_root}/design.md", design),
         _proposal_file(f"{specification_root}/module.md", module),
     )
@@ -194,9 +197,9 @@ def _load_accepted(root: Path, proposal_path: str) -> InitializationProposal:
         not required.issubset(paths)
         or not any(path.endswith("/module.md") for path in paths)
         or not any(path.endswith("/design.md") for path in paths)
-        or not any(path.endswith("/architecture.json") for path in paths)
+        or not any(f"/{MODULE_DIAGRAMS_DIRECTORY}/" in path and path.endswith(".json") for path in paths)
     ):
-        raise ValueError("proposal must contain configuration, root module summary, module design reference, and architecture view")
+        raise ValueError("proposal must contain configuration, root module summary, module design reference, and a level view under architecture/diagrams/")
     return InitializationProposal(
         proposal_version=1,
         project_root_id=value["project_root_id"],

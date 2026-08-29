@@ -82,13 +82,13 @@ class FeatureWorkspaceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary) / "project"
             shutil.copytree(CONTEXT_PROJECT, project)
-            planned = "specs/example/modules/api/features/002-observe-health"
+            planned = "specs/example/architecture/modules/api/features/002-observe-health"
             paths = resolve_planned_phase_paths(project, planned)
             self.assertEqual(paths.feature_design, f"{planned}/design.md")
             self.assertEqual(paths.feature_abstract, f"{planned}/abstract.md")
             self.assertEqual(paths.feature_implementation, f"{planned}/implementation.md")
-            self.assertEqual(paths.module_summary, "specs/example/modules/api/module.md")
-            self.assertEqual(paths.module_design, "specs/example/modules/api/design.md")
+            self.assertEqual(paths.module_summary, "specs/example/architecture/modules/api/module.md")
+            self.assertEqual(paths.module_design, "specs/example/architecture/modules/api/design.md")
             self.assertEqual(paths.checklists_dir, f"{planned}/attempt/checklists")
             self.assertEqual(paths.attempt_state, "absent")
             self.assertFalse((project / planned).exists())

@@ -9,10 +9,13 @@ The extension registers five integration-neutral command surfaces:
   feature is specified), requires the candidate to cite every open reflection entry attributed to
   the feature (`CONCORDE-HARDEN-011`/`-012`), and only after explicit approval promotes it
   atomically and removes the temporal attempt; the reflection log is left byte-identical.
-- `speckit.concorde.context` returns one bounded architectural level, including the project
-  reflection log's path and the open entry count per feature when the log exists.
+- `speckit.concorde.context` returns one bounded architectural level, including the module's
+  `diagrams` list (every diagram beneath its `architecture/diagrams/`) and the project reflection
+  log's path and the open entry count per feature when the log exists.
 - `speckit.concorde.validate` deterministically validates the configured hierarchy, including the
-  shape of the project reflection log (`CONCORDE-REFLECT-001` to `-004`).
+  module `architecture/` layout (`CONCORDE-LAYOUT-010`/`-011`), module diagram references
+  (`CONCORDE-VIEW-006`), and the shape of the project reflection log (`CONCORDE-REFLECT-001` to
+  `-004`).
 - `speckit.concorde.ask` tells the coding agent how to answer a Concorde workflow or framework
   question from cited installed guidance and bounded project sources without changing the workspace.
 

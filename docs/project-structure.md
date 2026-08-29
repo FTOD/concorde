@@ -22,18 +22,13 @@ evidence, and generated read models. They must not be treated as interchangeable
 ├── specs/<root-module>/
 │   ├── module.md                         # root module summary: read first
 │   ├── design.md                         # root module design reference
-│   ├── architecture.json                 # root plus immediate children
-│   ├── diagrams/                         # optional supplemental module views
-│   ├── contracts/<contract>/
-│   │   ├── contract.md
-│   │   ├── schema.*
-│   │   └── example.*
-│   ├── features/<number>-<feature>/
+│   ├── reflections.md                    # the project's one reflection log (maintained; never removed)
+│   ├── features/<number>-<feature>/      # what this level can do
 │   │   ├── abstract.md                       # feature abstract: read first
 │   │   ├── design.md                       # feature behavioral authority
 │   │   ├── implementation.md               # accepted feature implementation
-│   │   ├── diagrams/
-│   │   ├── contracts/
+│   │   ├── diagrams/                       # feature-owned Archify JSON, declared in design.md
+│   │   ├── contracts/                      # feature-owned contracts
 │   │   ├── subfeatures/<number>-<sub-feature>/ # optional; one level only
 │   │   │   ├── abstract.md
 │   │   │   ├── design.md
@@ -42,8 +37,13 @@ evidence, and generated read models. They must not be treated as interchangeable
 │   │   │   ├── contracts/
 │   │   │   └── attempt/
 │   │   └── attempt/               # at most one temporal attempt
-│   └── modules/<child-module>/           # repeats the module package
-├── specs/<root>/reflections.md           # the project's one reflection log (maintained; never removed)
+│   └── architecture/                     # how this level is composed
+│       ├── diagrams/<name>.json          # level views and explanatory views, linked from the docs
+│       ├── contracts/<contract>/         # the module's boundary contracts
+│       │   ├── contract.md
+│       │   ├── schema.*
+│       │   └── example.*
+│       └── modules/<child-module>/       # immediate submodules; each repeats the module package
 ├── docs/                                 # explanatory project guides
 ├── <source directories>/                 # executable implementation
 ├── <test directories>/                   # executable evidence
@@ -61,7 +61,7 @@ feature `implementation.md` can point from that model to the concrete code that 
 |---|---|---|
 | Workflow control | `.concorde/config.json`, `.specify/feature.json` | Where sources and the active feature are located—not project behavior |
 | Installed tooling | `.specify/extensions/concorde/`, agent skill or slash-command directories | How the installed workflow is invoked—not project intent |
-| Maintained architecture | `module.md` (module summary), module contracts, `architecture.json` | Responsibility, boundaries, the features specified at the level, and current-level organization |
+| Maintained architecture | `module.md` (module summary), `architecture/contracts/`, the level views under `architecture/diagrams/` | Responsibility, boundaries, the features specified at the level, and current-level organization |
 | Module design reference | `design.md` beside each `module.md` | Implementation detail, rationale, alternatives, and decisions for one level; it explains module architecture and never redefines it |
 | Feature orientation | `abstract.md` beside each `design.md` | A self-contained quick understanding of one feature; it summarizes `design.md` and never defines beyond it |
 | Durable feature intent | `design.md`, feature contracts, declared diagrams | Required behavior, normative feature representations, and representative explanations |
@@ -81,14 +81,14 @@ it is committed under a project-specific policy.
 |---|---|
 | Required behavior, scope, failure handling, or success criteria | The owning feature's `design.md` through specification review, with its `abstract.md` updated wherever it summarized the change |
 | The level at which a feature is specified, or the modules that realize it | The feature's placement (its `module` and canonical root) and the affected module packages, with architecture review |
-| A module boundary or immediate-child organization | `module.md`, affected contracts, and `architecture.json` together |
+| A module boundary or immediate-child organization | `module.md`, the affected contracts under `architecture/contracts/`, and the level views under `architecture/diagrams/` together |
 | Why a level is built the way it is, or implementation detail beneath its summary | The module's `design.md`, edited directly or amended by an approved hardening proposal; keep `module.md` a summary |
 | Information crossing a boundary | The owning contract and any normative schema/example |
 | How an accepted implementation realizes a feature | Complete the attempt and use approved feature hardening to write feature `implementation.md`; do not directly promote a plan |
 | The current implementation approach or work order | Files under the selected feature's `attempt/` directory |
 | Runtime behavior or executable proof | Source code and tests, reconciled against the durable sources |
 | Adoption or contributor explanation | Markdown under `docs/` |
-| Diagram meaning | Maintained Archify JSON and its textual counterpart—not delivered HTML |
+| Diagram meaning | Maintained Archify JSON (a module's `architecture/diagrams/` or a feature's `diagrams/`) and its textual counterpart—not delivered HTML |
 | Site rendering or validation behavior | Code under `docsite/`—not copied canonical content |
 
 When two artifacts disagree, resolve the disagreement in the artifact that owns the fact. For
@@ -130,8 +130,10 @@ explained in [Commands and installed surfaces](commands.md).
 
 The documentation site reads architecture and feature sources from `specs/` and project guides from
 `docs/`. It stages disposable projections beneath `docsite/`, validates a candidate build, and only
-then promotes successful output. Each module page embeds its level view and links its `design.md`
-as a separate design-reference page; each feature opens on its abstract page (`/features/<root>`) with
+then promotes successful output. Each module page embeds every diagram beneath its
+`architecture/diagrams/` and links its `design.md` as a separate design-reference page; published
+routes drop the `architecture/` grouping segment (`/architecture/<root>/modules/<child>/…`,
+`/architecture/<root>/contracts/<id>/…`); each feature opens on its abstract page (`/features/<root>`) with
 the design (`…/design`) and implementation (`…/implementation`) as companion pages. Plans,
 tasks, checklists, and other attempt artifacts are excluded from the public Features collection.
 

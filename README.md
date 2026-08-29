@@ -28,7 +28,8 @@ fourth installed runtime component. See the maintained
 [component model](specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json),
 [installation flow](specs/concorde/features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json),
 and the full [Feature 003 setup specification](specs/concorde/features/003-install-concorde-speckit/design.md).
-The project docsite build turns declared diagram sources into interactive standalone views.
+The project docsite build turns module-owned and feature-declared diagram sources into interactive
+standalone views.
 
 ## Project status
 
@@ -182,8 +183,8 @@ $speckit-concorde-ask When should I use context instead of changing the selected
 ```
 
 - `init` proposes a root architecture package—`.concorde/config.json`, a `module.md` summary, a
-  seeded `design.md` design reference, and `architecture.json`—and writes it only after explicit
-  approval.
+  seeded `design.md` design reference, and a first level view at
+  `architecture/diagrams/level-view.json`—and writes it only after explicit approval.
 - Features are created with the normal `$speckit-specify` phase after exporting
   `SPECIFY_FEATURE_DIRECTORY` at their canonical path—`<module directory>/features/NNN-<short-name>`,
   or `<parent feature root>/subfeatures/NNN-<short-name>` for a sub-feature—and are selected
@@ -196,8 +197,8 @@ $speckit-concorde-ask When should I use context instead of changing the selected
   both atomically and removes that temporal `attempt/` directory.
 - `context` returns one bounded architectural level without expanding child internals or the body
   of any module `design.md` or feature `implementation.md`.
-- `validate` deterministically checks identities, hierarchy, references, contracts, views, evidence
-  status, module summary and feature abstract shape and reading budgets, and the feature-root document
+- `validate` deterministically checks identities, hierarchy, module layout, references, contracts,
+  views, evidence status, module summary and feature abstract shape and reading budgets, and the feature-root document
   trio.
 - `ask` answers questions about Concorde concepts, command timing, artifact authority, or this
   project's use of the workflow from cited installed guidance and bounded maintained sources. It is
@@ -221,7 +222,7 @@ two canonical source roots, presented through three reader-facing navigation fam
 
 | Source | Published content |
 |---|---|
-| `specs/**/module.md`, its adjacent `design.md`, `specs/**/contracts/**/contract.md` | Architecture module summaries, module design references, boundary contracts, and declared Archify views |
+| `specs/**/module.md`, its adjacent `design.md`, `specs/**/architecture/contracts/**/contract.md`, `specs/**/architecture/diagrams/*.json` | Architecture module summaries (each embedding its module-owned Archify diagrams), module design references, and boundary contracts |
 | `docs/**/*.md` | Project documentation |
 | Feature-root `abstract.md`, `design.md`, and `implementation.md` | Feature abstracts (the landing pages), behavioral designs, and accepted implementations |
 

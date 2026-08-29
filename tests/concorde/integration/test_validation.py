@@ -26,7 +26,7 @@ class ValidationIntegrationTests(unittest.TestCase):
             REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/agent-commands.md",
             REPOSITORY_ROOT / "specs/concorde/features/003-install-concorde-speckit/design.md",
             REPOSITORY_ROOT / "specs/concorde/features/003-install-concorde-speckit/contracts/installed-command-surfaces.md",
-            REPOSITORY_ROOT / "specs/concorde/contracts/spec-kit-installation/contract.md",
+            REPOSITORY_ROOT / "specs/concorde/architecture/contracts/spec-kit-installation/contract.md",
             REPOSITORY_ROOT / "README.md",
             REPOSITORY_ROOT / "docs/commands.md",
         )
@@ -61,8 +61,8 @@ class ValidationIntegrationTests(unittest.TestCase):
             shutil.copytree(VALID_PROJECT, root)
             feature = root / "specs/example/features/001-deliver"
             (feature / "spec.md").write_text("legacy feature name", encoding="utf-8")
-            (root / "specs/example/modules/api/design.md").unlink()
-            (root / "specs/example/modules/api/features/001-invoke/abstract.md").unlink()
+            (root / "specs/example/architecture/modules/api/design.md").unlink()
+            (root / "specs/example/architecture/modules/api/features/001-invoke/abstract.md").unlink()
             before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}
             result = validate_project(root)
             rules = {item.rule_id for item in result.findings}
@@ -104,7 +104,7 @@ class ValidationIntegrationTests(unittest.TestCase):
             receipt.parent.mkdir(parents=True)
             receipt.write_text(json.dumps({
                 "producer": "archify",
-                "source_paths": ["specs/example/architecture.json"],
+                "source_paths": ["specs/example/architecture/diagrams/level-view.json"],
                 "source_digest": "sha256:" + "0" * 64,
                 "output": "generated/architecture/example.html",
             }))

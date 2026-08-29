@@ -21,7 +21,6 @@ contracts:
     - contract.concorde.workflow
   required:
     - contract.concorde.spec-kit-platform
-architecture_view: specs/concorde/architecture.json
 diagrams:
   - source: specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json
     role: core
@@ -46,7 +45,9 @@ realization**: [implementation.md](implementation.md) — consulted when writing
 **Status**: Revised around the feature-root `abstract.md` / `design.md` / `implementation.md` trio
 and temporal `attempt/` directory. `abstract.md` is read first, `design.md` owns required behavior,
 and `implementation.md` records accepted realization. Modules retain `module.md` / `design.md`.
-Protocol v6, proposal v4, and Build Manifest v7 carry these names through every surface. The nine
+Protocol v6, proposal v4, and Build Manifest v8 carry these names through every surface, and
+Architecture Source Profile 4 places each module's diagrams, boundary contracts, and submodules under
+its `architecture/` directory beside `features/`. The nine
 workflow-step sub-features remain the decomposition.
 
 **Input**: User description (2026-08-29): rename the feature-root documents from `tldr.md`,
@@ -75,9 +76,10 @@ source ownership.
   → A: During work it is captured inside `attempt/`; only an approved hardening proposal
   writes attempt-derived content into `implementation.md`. Maintainers may edit `implementation.md` directly at any
   time as an ordinary maintained source; no workflow phase other than hardening writes it.
-- Q: What form must the required structure diagram in `module.md` take? → A: The maintained
-  level view (`architecture.json`), linked explicitly from the summary and embedded in the
-  published page; a leaf without a view records a one-line rationale. The summary may also
+- Q: What form must the required structure diagram in `module.md` take? → A: A maintained
+  level view (an `architecture`-kind diagram under the module's `architecture/diagrams/`), linked
+  explicitly from the summary and embedded in the published page; a leaf without one records a
+  one-line rationale. The summary may also
   include additional explanatory diagrams (module- or feature-owned maintained views, or inline
   text diagrams), each with a textual counterpart, none redefining the level view, and all within
   the reading budget.
@@ -118,17 +120,18 @@ design reference at every level.
 
 ### Module level
 
-Unchanged by this revision.
+Revised on 2026-08-29: the level's diagrams, boundary contracts, and submodules sit under
+`architecture/` beside `features/`.
 
 ```text
 <module>/
-├── module.md          summary: read first and, usually, only (under 20 minutes)
-├── implementation.md          module design reference: consulted for one specific question
-├── architecture.json  level view: the required structure diagram (non-leaf)
-├── diagrams/          optional supplemental module-owned views
-├── contracts/
-├── features/
-└── modules/
+├── module.md                      summary: read first and, usually, only (under 20 minutes)
+├── design.md                      module design reference: consulted for one specific question
+├── features/<number-name>/        features specified at this level
+└── architecture/                  how the level is composed
+    ├── diagrams/<name>.json       level view(s) and explanatory diagrams, linked from the documents
+    ├── contracts/<id>/contract.md boundary contracts
+    └── modules/<child>/           immediate submodules, each repeating this shape
 ```
 
 | Document | Purpose | Reader expectation | Shape |
@@ -456,13 +459,14 @@ durable root without root-level compatibility copies.
 **Module level**
 
 - **FR-001**: Every module MUST own a `module.md` summary and a `design.md` reference at its module
-  root, alongside its contracts, features, and (for a non-leaf module) its level view.
+  root, alongside its `features/` and its `architecture/` directory (diagrams, boundary contracts,
+  and submodules; a non-leaf module maintains at least one level view there).
 - **FR-002**: `module.md` MUST be readable in under 20 minutes and MUST combine short prose
   covering responsibility, boundary, one representative scenario, and the key design rationale;
   inventory tables for features, boundary contracts, and immediate submodules; and the level's
-  structure diagram, which is the maintained level view (`architecture.json`) linked explicitly
-  from the summary and embedded in the published page (a leaf module without a view records a
-  one-line rationale instead). The summary MAY include additional explanatory diagrams — module-
+  structure diagram, which is a maintained level view (an `architecture`-kind diagram under the
+  module's `architecture/diagrams/`) linked explicitly from the summary and embedded in the
+  published page (a leaf module without one records a one-line rationale instead). The summary MAY include additional explanatory diagrams — module-
   or feature-owned maintained views, or inline text diagrams — each with a textual counterpart and
   none redefining structure owned by the level view, provided the summary stays within its reading
   budget. Narrative that would breach the budget belongs in module `design.md`.
@@ -754,6 +758,7 @@ remains a separately tracked follow-up.
 - **Core feature diagram**: `diagrams/concorde-workflow-components.json` (`architecture`, `core`).
 - **Supplemental diagrams**: none.
 - **Contracts**: provides `contract.concorde.workflow`; requires `contract.concorde.spec-kit-platform`.
-- **Architecture view**: `specs/concorde/architecture.json`.
+- **Level views**: the root module's diagrams under `specs/concorde/architecture/diagrams/`
+  (`level-view.json`).
 - **Evidence status**: `partial` — existing evidence covers the previous two-document model; the
   abstract tier and the feature-root rename have no realization yet.
