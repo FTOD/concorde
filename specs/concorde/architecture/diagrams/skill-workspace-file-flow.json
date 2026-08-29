@@ -2,37 +2,37 @@
   "schema_version": 1,
   "diagram_type": "dataflow",
   "meta": {
-    "title": "Concorde Skills and Workspace Files",
+    "title": "Concorde Skills: Architecture and Feature Workspaces",
     "output": "../../../../generated/architecture/concorde-skill-workspace-file-flow.html",
     "quality_profile": "showcase",
     "viewBox": [1080, 900],
     "views": [
       {
-        "id": "author-intent",
-        "label": "Author durable intent",
-        "focus": ["setupSkills", "projectGuidance", "intentSkills", "featureSources"],
-        "note": "Bootstrap policy and architecture, then let clarify/specify create or update durable feature intent."
+        "id": "architecture-workspace",
+        "label": "Architecture workspace",
+        "focus": ["setupSkills", "architectureWorkspace", "architectureReaders"],
+        "note": "Architecture setup creates the configured module hierarchy; bounded readers inspect it without writing."
       },
       {
-        "id": "plan-deliver",
-        "label": "Plan and deliver",
-        "focus": ["featureSources", "planningSkills", "attemptMemory", "deliverySkills", "workspaceSnapshot"],
-        "note": "Planning skills create temporal memory; delivery skills consume it and update the selected workspace."
+        "id": "feature-workspace",
+        "label": "Feature workspace",
+        "focus": ["intentSkills", "featureWorkspace", "featureReaders", "planningSkills", "attemptMemory", "deliverySkills", "projectState"],
+        "note": "Feature intent stays durable while plan, tasks, checklists, and delivery evidence remain scoped to the selected attempt."
       },
       {
-        "id": "inspect-accept",
-        "label": "Inspect and accept",
-        "focus": ["workspaceSnapshot", "readSkills", "acceptSkill", "acceptedRealization"],
-        "note": "Read-only skills inspect bounded sources; explicit acceptance promotes reviewed evidence and removes attempt/."
+        "id": "accept-feature",
+        "label": "Accept feature realization",
+        "focus": ["featureWorkspace", "attemptMemory", "projectState", "acceptSkill", "acceptedRealization"],
+        "note": "Acceptance reviews feature sources, attempt evidence, code, tests, and reflections before durable promotion."
       }
     ]
   },
   "stages": [
-    {"label": "Bootstrap"},
-    {"label": "Specify"},
-    {"label": "Plan"},
-    {"label": "Deliver"},
-    {"label": "Inspect / Accept"}
+    {"label": "Architecture Workspace"},
+    {"label": "Feature Workspace"},
+    {"label": "Feature Attempt"},
+    {"label": "Project State"},
+    {"label": "Acceptance"}
   ],
   "nodes": [
     {
@@ -46,13 +46,23 @@
       "width": 135
     },
     {
-      "id": "projectGuidance",
+      "id": "architectureWorkspace",
       "type": "database",
-      "label": "Project Guidance",
-      "sublabel": "policy · config · architecture",
+      "label": "Architecture Files",
+      "sublabel": "config · module · contracts",
       "tag": "durable",
       "stage": 0,
       "row": 2,
+      "width": 135
+    },
+    {
+      "id": "architectureReaders",
+      "type": "backend",
+      "label": "Architecture Readers",
+      "sublabel": "context · validate · ask",
+      "tag": "read-only",
+      "stage": 0,
+      "row": 4,
       "width": 135
     },
     {
@@ -66,13 +76,23 @@
       "width": 180
     },
     {
-      "id": "featureSources",
+      "id": "featureWorkspace",
       "type": "database",
-      "label": "Durable Feature Sources",
-      "sublabel": "abstract · design · contracts",
-      "tag": "durable",
+      "label": "Durable Feature Files",
+      "sublabel": "abstract · design · implementation",
+      "tag": ".specify/feature.json",
       "stage": 1,
       "row": 2,
+      "width": 180
+    },
+    {
+      "id": "featureReaders",
+      "type": "backend",
+      "label": "Feature Readers",
+      "sublabel": "context · validate · ask",
+      "tag": "read-only",
+      "stage": 1,
+      "row": 4,
       "width": 180
     },
     {
@@ -106,23 +126,13 @@
       "width": 180
     },
     {
-      "id": "workspaceSnapshot",
+      "id": "projectState",
       "type": "database",
-      "label": "Selected Workspace",
-      "sublabel": "durable + attempt + code + reflections",
-      "tag": ".specify/feature.json",
+      "label": "Code and Reflections",
+      "sublabel": "product code · reflections.md",
+      "tag": "maintained project state",
       "stage": 3,
       "row": 2,
-      "width": 180
-    },
-    {
-      "id": "readSkills",
-      "type": "frontend",
-      "label": "Read-Only Concorde",
-      "sublabel": "context · validate · ask",
-      "tag": "no file writes",
-      "stage": 4,
-      "row": 0,
       "width": 180
     },
     {
@@ -132,144 +142,171 @@
       "sublabel": "concorde.impl.accept",
       "tag": "explicit approval",
       "stage": 4,
-      "row": 2,
+      "row": 0,
       "width": 180
     },
     {
       "id": "acceptedRealization",
       "type": "database",
-      "label": "Accepted Realization",
-      "sublabel": "implementation.md · module design.md",
+      "label": "Feature Workspace · Accepted",
+      "sublabel": "implementation.md · module design",
       "tag": "durable",
       "stage": 4,
-      "row": 4,
+      "row": 2,
       "width": 180
     }
   ],
   "flows": [
     {
-      "id": "setup-produces-guidance",
+      "id": "init-writes-architecture",
       "from": "setupSkills",
-      "to": "projectGuidance",
-      "label": "write project guidance",
+      "to": "architectureWorkspace",
+      "label": "init writes architecture",
       "classification": "produce durable",
       "variant": "emphasis",
-      "labelDy": -34
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelAt": [100, 271]
     },
     {
-      "id": "guidance-feeds-intent",
-      "from": "projectGuidance",
+      "id": "architecture-read-only",
+      "from": "architectureWorkspace",
+      "to": "architectureReaders",
+      "label": "inspect module hierarchy",
+      "classification": "consume read-only",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelAt": [100, 499]
+    },
+    {
+      "id": "architecture-guides-intent",
+      "from": "architectureWorkspace",
       "to": "intentSkills",
-      "label": "read project guidance",
+      "label": "bounded architecture context",
       "classification": "consume durable",
       "variant": "default",
-      "labelDy": 34
+      "labelDy": 54
     },
     {
-      "id": "intent-produces-feature-sources",
+      "id": "intent-writes-feature",
       "from": "intentSkills",
-      "to": "featureSources",
-      "label": "write feature intent",
+      "to": "featureWorkspace",
+      "label": "write abstract.md + design.md",
       "classification": "produce durable",
       "variant": "emphasis",
-      "labelDy": -34
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelAt": [315, 271]
     },
     {
-      "id": "feature-sources-feed-planning",
-      "from": "featureSources",
+      "id": "feature-read-only",
+      "from": "featureWorkspace",
+      "to": "featureReaders",
+      "label": "inspect selected feature",
+      "classification": "consume read-only",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelAt": [315, 499]
+    },
+    {
+      "id": "feature-feeds-planning",
+      "from": "featureWorkspace",
       "to": "planningSkills",
-      "label": "read intent + baseline",
+      "label": "read intent + accepted baseline",
       "classification": "consume durable",
       "variant": "default",
-      "labelDy": 34
+      "labelDy": 54
     },
     {
-      "id": "planning-produces-attempt",
+      "id": "planning-writes-attempt",
       "from": "planningSkills",
       "to": "attemptMemory",
       "label": "write attempt files",
       "classification": "produce temporal",
       "variant": "dashed",
-      "labelDy": -34
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelAt": [530, 271]
     },
     {
       "id": "attempt-feeds-delivery",
       "from": "attemptMemory",
       "to": "deliverySkills",
-      "label": "read attempt files",
+      "label": "read plan + tasks + evidence",
       "classification": "consume temporal",
       "variant": "default",
-      "labelDy": 34
+      "labelDy": 54
     },
     {
-      "id": "delivery-updates-workspace",
+      "id": "delivery-updates-project",
       "from": "deliverySkills",
-      "to": "workspaceSnapshot",
-      "label": "update code + state",
-      "classification": "working state",
+      "to": "projectState",
+      "label": "write code + append reflections",
+      "classification": "maintained state",
       "variant": "emphasis",
-      "labelDy": -34
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelAt": [745, 271]
     },
     {
-      "id": "workspace-feeds-read-ops",
-      "from": "workspaceSnapshot",
-      "to": "readSkills",
-      "label": "inspect workspace",
-      "classification": "read-only",
-      "variant": "dashed",
-      "labelDy": 34
-    },
-    {
-      "id": "workspace-feeds-acceptance",
-      "from": "workspaceSnapshot",
+      "id": "project-feeds-acceptance",
+      "from": "projectState",
       "to": "acceptSkill",
-      "label": "review durable + attempt + code",
+      "label": "review feature + attempt + code",
       "classification": "acceptance input",
       "variant": "security",
-      "fromSide": "right",
-      "toSide": "left",
-      "route": "straight",
-      "labelAt": [853, 440]
+      "labelDy": 54
     },
     {
-      "id": "acceptance-promotes-realization",
+      "id": "acceptance-promotes-feature",
       "from": "acceptSkill",
       "to": "acceptedRealization",
-      "label": "promote; remove attempt/",
+      "label": "write implementation; remove attempt/",
       "classification": "explicit promotion",
-      "variant": "emphasis"
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelAt": [960, 271]
     }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "Spec Kit file matrix",
+      "title": "Architecture-related workspace",
       "items": [
-        "constitution writes only .specify/memory/constitution.md",
-        "clarify/specify read guidance and update abstract.md + design.md; specify creates attempt/checklists/requirements.md",
-        "plan writes attempt planning files and durable feature contracts/**; tasks/checklist write tasks.md and checklists/**",
-        "implement reads design.md, implementation.md, plan/tasks/checklists and writes code plus task state",
-        "analyze only appends reflections; converge appends tasks + reflections; taskstoissues reads tasks and writes external issues"
+        "speckit.concorde.init writes .concorde/config.json, module.md, module design.md, architecture/contracts/**, and architecture/diagrams/** after approval",
+        "speckit.constitution separately writes .specify/memory/constitution.md as project policy",
+        "concorde.context, concorde.validate, and concorde.ask can inspect the configured module hierarchy without writing",
+        "Feature skills consume only the bounded architectural level needed by the selected feature"
       ]
     },
     {
       "dot": "emerald",
-      "title": "Concorde file matrix",
+      "title": "Feature-related workspace",
       "items": [
-        "concorde.init writes .concorde/config.json, module.md, design.md, architecture/contracts/**, and architecture/diagrams/** after approval",
-        "concorde.context, concorde.validate, and concorde.ask inspect configured or selected sources without file writes",
-        "concorde.impl.accept reads the feature trio, module sources, full attempt/, reflections, code, and tests",
-        "Acceptance writes implementation.md, may amend module design.md, then removes the selected attempt/"
+        "Durable feature files are abstract.md, design.md, implementation.md, feature contracts/**, and declared diagrams/**",
+        "clarify/specify update durable intent; specify also creates attempt/checklists/requirements.md",
+        "plan writes attempt planning files plus durable feature contracts/**; tasks/checklist write tasks.md and checklists/**",
+        "context, validate, and ask can inspect the selected feature without mutating it"
       ]
     },
     {
       "dot": "violet",
-      "title": "Workspace lifetimes",
+      "title": "Attempt, project state, and acceptance",
       "items": [
-        ".specify/feature.json selects the workspace used by file-based skills",
-        "Durable intent and accepted realization live outside attempt/",
-        "Planning and delivery memory lives inside attempt/",
-        "Product code and reflections.md remain maintained project state"
+        "implement consumes feature intent and attempt memory, then writes code and task state",
+        "analyze only appends reflections; converge appends tasks + reflections; taskstoissues writes external issues",
+        "impl.accept reads durable feature files, the full attempt, reflections, code, and tests",
+        "Acceptance writes feature implementation.md, may amend module design.md, and removes only the selected attempt/"
       ]
     }
   ]

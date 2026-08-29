@@ -75,11 +75,12 @@ digest-bound implementation acceptance.
 ### Skill and workspace-file data flow
 
 The maintained [skill-to-file data flow](architecture/diagrams/skill-workspace-file-flow.json)
-complements the matrix above with the related Spec Kit and Concorde skills, the file groups they
-consume or produce, and the transition from durable intent through temporal `attempt/` memory to an
-accepted realization. Its delivered
+separates the architecture-related workspace (`.concorde/config.json`, module sources, contracts,
+and level views) from the selected feature workspace (durable feature files, temporal `attempt/`
+memory, code, reflections, and accepted realization). It shows which related Spec Kit and Concorde
+skills consume or produce each side. Its delivered
 <a href="/architecture/concorde-skill-workspace-file-flow.html">interactive view</a> keeps the main
-lifecycle path sparse; the embedded matrices name the exact per-skill exceptions and write sets.
+lifecycle paths sparse; the embedded matrices name the exact per-skill exceptions and write sets.
 
 ### Supporting adapters
 

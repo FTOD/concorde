@@ -51,7 +51,7 @@ describe('production build', () => {
     expect(searchIndex).toContain('Scripts');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-interaction-architecture.html'), 'utf8')).toContain('Concorde Interaction Architecture');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-skill-workspace-file-flow.html'), 'utf8'))
-      .toContain('Concorde Skills and Workspace Files');
+      .toContain('Concorde Skills: Architecture and Feature Workspaces');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-spec-kit-component-model.html'), 'utf8'))
       .toContain('How Concorde Commands Reach a Clean Project');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-bundle-installation-flow.html'), 'utf8'))

@@ -26,9 +26,10 @@ evidence, so that a maintainer can understand any level of the project in minute
 
 ## Concorde commands
 
-Concorde adds five agent-facing commands. Normal feature work still uses Spec Kit's standard
-`$speckit-specify`, `$speckit-clarify`, `$speckit-plan`, `$speckit-tasks`,
-`$speckit-implement`, `$speckit-analyze`, and `$speckit-converge` phases.
+Concorde adds five agent-facing commands. Feature delivery still uses Spec Kit command names, but
+the `concorde-core` preset **replaces the installed agent instructions for nine of them** so every
+phase resolves the selected hierarchical feature workspace and respects durable versus temporal
+file boundaries. `speckit.constitution` remains the native Spec Kit command and is not replaced.
 
 | Command | Use it to |
 |---|---|
@@ -40,8 +41,38 @@ Concorde adds five agent-facing commands. Normal feature work still uses Spec Ki
 
 Features are created with the normal `$speckit-specify` phase at their canonical module path and
 selected through `.specify/feature.json`; Concorde deliberately adds no separate create or select
-command. See [Commands](docs/commands.md) for timing, inputs, outputs, and the installed execution
-layers.
+command.
+
+### Related Spec Kit commands under Concorde
+
+These are agent skills or slash commands, not shell commands. “Replaced” means the Concorde preset
+replaces Spec Kit's installed agent instruction for that command; Spec Kit still owns the phase and
+its public command name.
+
+| Command | Installed behavior with Concorde | Status |
+|---|---|---|
+| `$speckit-constitution` | Creates or updates only `.specify/memory/constitution.md`, the project policy read by later phases. It does not create Concorde architecture or feature files. | Native Spec Kit; not replaced |
+| `$speckit-specify` | Creates or revises the selected feature's durable `abstract.md` and `design.md`, seeds a new placeholder `implementation.md` while preserving an existing accepted one, persists `.specify/feature.json`, and creates the built-in requirements checklist under `attempt/checklists/`. | Replaced by `concorde-core` |
+| `$speckit-clarify` | Resolves behavioral ambiguity in the selected feature, updating `design.md` and every affected summary in `abstract.md`; it may re-evaluate the existing requirements checklist but never edits `implementation.md`. | Replaced by `concorde-core` |
+| `$speckit-checklist` | Reads durable feature intent plus available plan/task context and creates or appends a reviewer-owned requirements-quality checklist under `attempt/checklists/`; generated items remain unchecked until reviewed. | Replaced by `concorde-core` |
+| `$speckit-plan` | Reads the constitution, feature `design.md`, accepted `implementation.md` baseline, and bounded module architecture; writes `attempt/plan.md`, research/data-model/quickstart artifacts, and durable feature `contracts/**`, and may append problems to project `reflections.md`. | Replaced by `concorde-core` |
+| `$speckit-tasks` | Converts the selected plan and durable feature intent into dependency-ordered executable work at `attempt/tasks.md`, using accepted `implementation.md` as the prior baseline; it may append problems to project `reflections.md`. | Replaced by `concorde-core` |
+| `$speckit-analyze` | Checks consistency across `abstract.md`, `design.md`, accepted `implementation.md`, plan, tasks, and constitution. It returns a report without modifying them; its only permitted file write is appending a problem to the project `reflections.md`. | Replaced by `concorde-core` |
+| `$speckit-implement` | Reads durable intent, accepted realization, `attempt/plan.md`, `attempt/tasks.md`, and checklists; edits product code/tests, marks task state, and may append reflections. It never accepts `implementation.md` or removes `attempt/`. | Replaced by `concorde-core` |
+| `$speckit-converge` | Compares code with durable intent and the active attempt, then append-only adds remaining work to `attempt/tasks.md` and may append reflections. It does not edit code or durable feature/module files. | Replaced by `concorde-core` |
+| `$speckit-taskstoissues` | Reads the selected `attempt/tasks.md`, deduplicates task IDs against GitHub, and creates missing external issues. It does not move task authority out of the workspace or modify the task file. | Replaced by `concorde-core` |
+
+A typical combined workflow is:
+
+```text
+speckit.specify → speckit.clarify/checklist → speckit.plan → speckit.tasks
+                → speckit.analyze → speckit.implement → speckit.converge
+                → speckit.concorde.validate → speckit.concorde.impl.accept
+```
+
+Clarification, checklists, analysis, and convergence are used when needed; validation can run
+repeatedly, and acceptance is always a separate approval-gated Concorde operation. See
+[Commands](docs/commands.md) for complete timing, inputs, outputs, and installed execution layers.
 
 Explore the project through its three generated views:
 [Architecture](specs/concorde/module.md), [Documentation](docs/index.md), and
