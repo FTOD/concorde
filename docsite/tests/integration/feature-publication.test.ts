@@ -105,7 +105,7 @@ describe('canonical feature publication', () => {
     ]));
   });
 
-  it('publishes a deeply stored module-level feature as a top-level semantic feature', async () => {
+  it('keeps a deeply stored module feature on a stable route for module-grouped navigation', async () => {
     const manifest = createManifest(await buildRegistry(fixture));
     const sourceRoot = 'specs/example/architecture/modules/nested/features/002-beta';
     const abstract = manifest.pages.find((page) => page.sourcePath === `${sourceRoot}/abstract.md`);

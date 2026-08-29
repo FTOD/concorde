@@ -322,8 +322,8 @@ function resolveFeatureRelations(documents: SourceDocument[], findings: Validati
     }
   }
 
-  // Assign the public feature projection only after identity and containment have resolved. Canonical
-  // module/source paths remain provenance and never participate in Features hierarchy or route identity.
+  // Assign identity-derived routes only after feature containment resolves. Module containment is
+  // projected separately into the generated Features sidebar and never leaks storage wrappers into URLs.
   const semanticPaths = new Map<string, string>();
   for (const feature of features.filter((item) => item.featureLevel === 'feature')) {
     semanticPaths.set(feature.featureId, semanticFeaturePath(feature.featureId));

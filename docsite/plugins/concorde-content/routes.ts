@@ -27,8 +27,8 @@ function featureIdentitySegment(featureId: string): string {
 }
 
 /**
- * Public/staged feature hierarchy: top-level features live at the Features root and an immediate
- * sub-feature lives directly beneath its explicit parent. Module/source placement is deliberately absent.
+ * Public/staged feature routes: stable top-level feature identity and explicit subfeature containment
+ * determine URLs. The separately generated sidebar groups these routes by owning module hierarchy.
  */
 export function semanticFeaturePath(featureId: string, parentSemanticPath?: string): string {
   const segment = featureIdentitySegment(featureId);

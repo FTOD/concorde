@@ -3,7 +3,9 @@ id: module.fixture
 kind: module
 parent: null
 children: []
-features: []
+features:
+  - feature.fixture.alpha
+  - feature.fixture.beta
 contracts:
   provided: []
   required: []

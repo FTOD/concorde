@@ -87,7 +87,9 @@ second child sequence would duplicate those two complementary views.
   Architecture view without moving their authority or treating a renderer projection as maintained content.
 - **FR-DOC-002**: The module MUST classify `specs/**/abstract.md`, `specs/**/design.md`, and the feature-root `specs/**/implementation.md` beside a `design.md` as the Features
   view and exclude temporal implementation artifacts from that view.
-- **FR-DOC-003**: Both views MUST preserve the same module/feature hierarchy expressed by their source paths and IDs.
+- **FR-DOC-003**: Architecture MUST preserve declared module containment; Features MUST group
+  top-level features by that owning module hierarchy and preserve explicit parent/sub-feature
+  containment inside each module group, without deriving navigation from raw storage segments.
 - **FR-DOC-004**: The module MUST expose project documentation from `docs/` as a third view while maintaining only
   two canonical source roots: `specs/` and `docs/`.
 - **FR-DOC-005**: Any renderer-specific staging MUST be disposable, ignored, regenerated from the

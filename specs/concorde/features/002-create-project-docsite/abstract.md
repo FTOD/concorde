@@ -28,7 +28,7 @@ specifications alone.
 | Home | root `README.md` | The same introduction visible in the repository, leading with the project summary, key features, and all Concorde-specific commands before status and detailed setup material. |
 | Architecture | `specs/**/module.md`, its sibling `design.md`, and `specs/**/architecture/contracts/**/contract.md` | The maintained hierarchy with stable ID, kind, owning module or parent, and provenance; every diagram beneath a module's `architecture/diagrams/` is delivered and embedded on the module page in a sandbox beside a standalone link. |
 | Documentation | every eligible Markdown file recursively under `docs/` | The authored hierarchy preserved, including the framework guides and a landing page with a recommended reading path. |
-| Features | the canonical `abstract.md`, `design.md`, and `implementation.md` of every feature directory under `specs/` | A semantic feature hierarchy derived from stable feature identity and explicit parent/sub-feature containment; module placement and refinement remain metadata and links, never navigation parents; drafts stay visible as drafts. |
+| Features | the canonical `abstract.md`, `design.md`, and `implementation.md` of every feature directory under `specs/` | Navigation mirrors the declared module hierarchy, lists each module's registered features, and nests explicit sub-features beneath their parent; routes remain identity-derived and drafts stay visible. |
 
 **What a maintainer can do.**
 
@@ -93,9 +93,9 @@ specs/**      ─┘        │                  Archify skill (.agents/skills/a
    the disposable delivery tree.
 3. **Register** the sources: map `README.md` uniquely to `/`, classify every other file into its
    collection, derive routes, extract identity, and validate links and metadata.
-4. **Project independently**: derive Architecture navigation from module containment and Features
-   navigation and routes from stable feature identity plus explicit feature containment, regardless
-   of their shared physical placement under `specs/`.
+4. **Project independently**: derive Architecture pages and Features module groups from declared
+   module containment; derive feature routes from stable identity and explicit feature containment,
+   regardless of their shared physical placement under `specs/`.
 5. **Materialize** the independent Architecture and Features projections and build the site with
    Docusaurus, including search and the deterministic manifest.
 6. **Validate the candidate** and promote it atomically; any failure preserves the last successful
@@ -122,11 +122,11 @@ specs/**      ─┘        │                  Archify skill (.agents/skills/a
   generated routes without altering repository rendering; registry, validation, search, manifest,
   and provenance treat it as exactly one project document, while missing, invalid, or competing
   homepage sources fail before publication (FR-053, FR-054, FR-055).
-- The homepage offers distinct Architecture, Documentation, and Features entry points;
-  Architecture follows module containment, Features follows only feature identity and explicit
-  parent/sub-feature containment, and raw architecture/module storage segments never become feature
-  categories or route parents. Providing modules and refinement relationships remain visible as
-  metadata and links; titles, stable IDs, kinds, statuses, provenance, and drafts remain available
+- The homepage offers distinct Architecture, Documentation, and Features entry points. Features
+  navigation follows declared module containment and module feature registration, then explicit
+  parent/sub-feature containment; raw storage segments never become route parents. Providing modules
+  are visible navigation groups while refinement relationships remain metadata and cross-links;
+  titles, stable IDs, kinds, statuses, provenance, and drafts remain available
   (FR-009, FR-010, FR-011, FR-018, FR-028, FR-048, FR-049, FR-050).
 - Every page identifies its source path and kind, supported relative links resolve across the three
   families with a path back to the source, discovery spans the whole project, and one reading

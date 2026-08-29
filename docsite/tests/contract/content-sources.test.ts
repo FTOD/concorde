@@ -15,8 +15,8 @@ describe('content source diagnostics', () => {
     expect(contract).toContain('# Content Sources Contract v9');
     expect(contract).toContain('| Project homepage | project root | The regular file `README.md` | `/` |');
     expect(contract).toContain('Architecture navigation and routes follow declared module containment.');
-    expect(contract).toContain('Features navigation and routes follow globally unique feature IDs');
-    expect(contract).toContain('never create parent categories or route segments in Features');
+    expect(contract).toContain("Features navigation follows declared module containment and each module's ordered `features`");
+    expect(contract).toContain('Adjacent-level `refines` relationships remain metadata and cross-links rather than navigation');
   });
 
   it('requires the root README and rejects broken or competing homepage sources', async () => {
@@ -138,7 +138,7 @@ describe('content source diagnostics', () => {
     }));
   });
 
-  it('publishes a real module-level feature without module storage segments in its feature route', async () => {
+  it('publishes a module-level feature on a stable route independent of its module navigation group', async () => {
     const registry = await buildRegistry(resolve(__dirname, '../../..'));
     const page = registry.documents.find((document) =>
       document.sourcePath === 'specs/concorde/architecture/modules/auto-docs/features/001-publish-project-docsite/abstract.md');

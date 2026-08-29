@@ -22,8 +22,9 @@ treating a generated page as authority.
 | Features | `specs/**/design.md` and each feature's permanent design reference | Temporal implementation artifacts are excluded. |
 | Documentation | `docs/**/*.md` | A third view over the same two canonical roots. |
 
-Both hierarchical views preserve the module and feature hierarchy that their source paths and IDs
-express. A build is deterministic: unchanged inputs give an identical manifest and identical
+Architecture preserves declared module containment. Features uses the same module groups for
+top-level feature ownership and explicit parent/sub-feature containment within each group, while
+keeping identity-derived routes stable. A build is deterministic: unchanged inputs give an identical manifest and identical
 source-to-route mappings, and every eligible source appears exactly once in the manifest. Any
 renderer-specific staging is disposable, ignored, regenerated from the canonical registry, and
 invisible in published provenance.
@@ -72,7 +73,7 @@ fails, the last successful site is preserved.
   or treating a renderer projection as maintained content (FR-DOC-001).
 - Feature specifications and permanent designs form the Features view, and temporal implementation
   artifacts are excluded from it (FR-DOC-002).
-- Both views preserve the module and feature hierarchy expressed by source paths and IDs
+- Architecture preserves module containment; Features groups by owning module and explicit feature containment
   (FR-DOC-003).
 - `docs/` is a third view while only two canonical source roots exist: `specs/` and `docs/`
   (FR-DOC-004).

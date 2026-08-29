@@ -4,7 +4,9 @@ import {describe, expect, it} from 'vitest';
 
 import {buildRegistry} from '../../plugins/concorde-content/registry';
 import type {FeatureDesign, ProjectDocument} from '../../plugins/concorde-content/types';
-import {featureCategoryMetadata, featureCategoryPath, stageHomepageDocument} from '../../scripts/materialize-content';
+import {
+  featureCategoryMetadata, featureCategoryPath, featureSidebarItems, stageHomepageDocument,
+} from '../../scripts/materialize-content';
 
 describe('homepage materialization', () => {
   it('adds disposable root-route metadata without changing the maintained README body', async () => {
@@ -37,5 +39,18 @@ describe('feature content materialization', () => {
     expect(featureCategoryPath(nestedSource)).toBe('feature.fixture.beta/_category_.json');
     expect(features.map((item) => item.stagedPath).join('\n')).not.toMatch(/(?:^|\/)modules\//);
     expect(features.map((item) => item.stagedPath).join('\n')).not.toMatch(/(?:^|\/)architecture\//);
+  });
+
+  it('groups feature categories by module registration while retaining explicit subfeatures', async () => {
+    const registry = await buildRegistry(resolve(__dirname, '../fixtures/valid-project'));
+    const sidebar = featureSidebarItems(registry);
+    expect(sidebar).toHaveLength(1);
+    expect(sidebar[0]).toMatchObject({type: 'category', label: 'Fixture Architecture', collapsed: false});
+    expect(sidebar[0].items?.map((item) => item.label)).toEqual(['Alpha', 'Beta']);
+    const alpha = sidebar[0].items?.[0];
+    expect(alpha?.items?.map((item) => item.label)).toEqual([
+      'Design', 'Implementation', 'Prepare Alpha', 'Finish Alpha',
+    ]);
+    expect(alpha?.items?.[0]).toMatchObject({type: 'doc', id: 'feature.fixture.alpha/feature.fixture.alpha'});
   });
 });

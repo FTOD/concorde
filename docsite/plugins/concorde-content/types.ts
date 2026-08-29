@@ -50,8 +50,8 @@ export interface SourceDocument {
   state: SourceState;
   route: string;
   /**
-   * Disposable renderer path. Architecture mirrors projected module containment; Features use
-   * stable feature identity and explicit containment, independent of canonical module/source paths.
+   * Disposable renderer path. Feature routes use stable identity and explicit containment; their
+   * generated sidebar independently groups them by owning module hierarchy.
    */
   stagedPath?: string;
   sidebarLabel?: string;

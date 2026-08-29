@@ -77,6 +77,16 @@ describe('production build', () => {
     const stagedFeaturePaths = await readdir(resolve(siteDir, '.generated/content/features'), {recursive: true});
     expect(stagedFeaturePaths).toContain('feature.auto-docs.publish-project-docsite/_category_.json');
     expect(stagedFeaturePaths.every((path) => !/(?:^|\/)(?:architecture|modules|features)(?:\/|$)/.test(path))).toBe(true);
+    const featureSidebar = JSON.parse(await readFile(resolve(siteDir, '.generated/features-sidebar.json'), 'utf8'));
+    expect(featureSidebar).toHaveLength(1);
+    expect(featureSidebar[0]).toMatchObject({type: 'category', label: 'Concorde', collapsed: false});
+    expect(featureSidebar[0].items.slice(0, 5).map((item: {label: string}) => item.label)).toEqual([
+      'Concorde Workflow', 'Create Unified Project Docsite', 'Install and Set Up Concorde with Spec Kit',
+      'Self-Host the Concorde Framework', 'Record Workflow Reflections',
+    ]);
+    expect(featureSidebar[0].items.slice(5).map((item: {label: string}) => item.label)).toEqual([
+      'Skills', 'Scripts', 'Workspace Files', 'Distribution', 'Auto-Docs',
+    ]);
     expect(concordeFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
       source: 'specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json',
       role: 'core',

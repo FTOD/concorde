@@ -26,7 +26,7 @@ JavaScript, assets, a local search index, and `build-manifest.json`.
 | `/` | Root `README.md`, leading with project purpose, key features, and all Concorde-specific commands, with Architecture, Documentation, and Features entry points |
 | `/architecture/**` | Architecture module, module design reference, and contract Markdown plus declared embedded views |
 | `/docs/**` | Project documents sourced from `docs/**/*.md` |
-| `/features/<feature-id>` | Top-level feature abstract, derived from stable feature identity rather than its module storage path |
+| `/features/<feature-id>` | Top-level feature abstract on a stable identity-derived route; the Features sidebar groups it beneath its registered owning module |
 | `/features/<parent-feature-id>/<sub-feature-id>` | Immediate sub-feature abstract nested only by explicit feature containment |
 | `/features/**/design` | Canonical feature `design.md` companion page |
 | `/features/**/implementation` | Accepted `implementation.md` companion page for a feature |

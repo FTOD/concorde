@@ -44,12 +44,13 @@ Architecture and Features are independent semantic projections of the same recur
 packages:
 
 - Architecture navigation and routes follow declared module containment.
-- Features navigation and routes follow globally unique feature IDs and explicit
-  parent/sub-feature containment.
-- A feature's module placement and adjacent-level `refines` relationships remain metadata and
-  cross-links. They never create parent categories or route segments in Features.
-- Source-directory wrappers such as `architecture/`, `modules/`, and module-local `features/` remain
-  canonical storage facts and provenance, not public Features hierarchy nodes.
+- Features navigation follows declared module containment and each module's ordered `features`
+  registration; explicit sub-features remain beneath their parent feature.
+- Feature routes continue to follow globally unique feature IDs and explicit feature containment, so
+  module regrouping does not break inbound links.
+- Adjacent-level `refines` relationships remain metadata and cross-links rather than navigation
+  parents. Raw wrappers such as `architecture/`, `modules/`, and numeric source directories remain
+  storage facts; visible module groups come from module identity and registration.
 - The Project Homepage is a separate one-file projection: `README.md` owns `/` independently of the
   recursive Documentation hierarchy under `docs/`.
 
@@ -93,6 +94,9 @@ packages:
 - Public route: derived deterministically from the stable feature ID and, for a sub-feature, its
   explicit containment parent. The route does not depend on module storage paths or numeric directory
   prefixes.
+- Navigation owner: the module named by `module` and its registered containment path. A top-level
+  feature appears beneath that module; a sub-feature appears beneath its explicit parent inside the
+  same module group.
 - first level-one heading: required feature title.
 - `Status` metadata line: required lifecycle status and displayed without changing its meaning.
 - `diagrams`: optional list of feature-owned Archify declarations. Every source must be directly
@@ -160,9 +164,9 @@ packages:
 - Providers MUST keep parent registration and child back-references bidirectionally consistent.
   Consumers publish ordered child summaries on the parent and parent/sibling links on the child,
   without copying requirements or publishing any `attempt/` source.
-- Consumers MUST stage and navigate feature pages by stable identity and explicit feature
-  containment, MUST NOT expose architecture/module storage wrappers as Features categories, and MUST
-  retain module ownership and refinement as metadata and links.
+- Consumers MUST stage feature pages at stable identity-derived routes, generate module categories
+  from declared module containment and ordered feature registration, nest explicit sub-features
+  beneath their parent, and retain refinement as metadata and cross-links rather than containment.
 - The Concorde self-hosting provider MUST keep the eight-page framework guide baseline discoverable,
   keep the landing page linked to all six learning guides, and retain resolvable canonical-authority
   links from guides that summarize normative behavior.
@@ -195,8 +199,8 @@ migration decision.
 
 - Contract fixtures for valid documents and feature specifications.
 - Homepage fixtures for required-source, root-route, repository-link, provenance, and collision behavior.
-- Semantic projection fixtures covering project-level features, module-level features, and immediate
-  sub-features without architecture/module categories in Features.
+- Semantic projection fixtures covering project-level features, child-module features, and immediate
+  sub-features grouped by declared module and feature containment.
 - Negative fixtures for every failure class.
 - Source-immutability integration test around validation, preview setup, and production build.
 - Manifest completeness comparison against the discovered source inventory.
