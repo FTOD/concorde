@@ -17,7 +17,7 @@ of Feature 003; the published layout and pointer schema are defined by that sub-
 
 | Location | Content |
 |---|---|
-| `https://github.com/FTOD/concorde/releases/download/v<version>/<asset>` | Version-specific, immutable: `concorde-core-<v>.zip`, `concorde-<v>.zip`, `concorde-bundle-<v>.zip`, `extensions.json`, `presets.json`, `bundles.json`, `release.json` |
+| `https://github.com/FTOD/concorde/releases/download/v<version>/<asset>` | Version-specific, immutable: `concorde-preset-<v>.zip`, `concorde-extension-<v>.zip`, `concorde-bundle-<v>.zip`, `extensions.json`, `presets.json`, `bundles.json`, `release.json` |
 | `https://github.com/FTOD/concorde/releases/latest/download/release.json` | Current-release pointer: the newest published, non-pre-release version and its three catalog URLs |
 
 The catalogs advertise exactly these locations, so `specify … catalog add` works from any project
@@ -27,7 +27,7 @@ without a local server.
 
 The release version has a single authority: `bundle.version` in
 `bundles/concorde-bundle/bundle.yml`. The bundle's pinned component versions,
-`presets/concorde-core/preset.yml`, and `extensions/concorde/extension.yml` must declare the same
+`presets/concorde/preset.yml`, and `extensions/concorde/extension.yml` must declare the same
 version, and every manifest must name the repository `https://github.com/FTOD/concorde`. The
 builder refuses to build when they disagree:
 

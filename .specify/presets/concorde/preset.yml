@@ -1,8 +1,8 @@
 schema_version: "1.0"
 
 preset:
-  id: "concorde-core"
-  name: "Concorde Core"
+  id: "concorde"
+  name: "Concorde"
   version: "0.4.0"
   description: "Architecture templates and authoritative two-level feature-workspace routing for Spec Kit"
   author: "Concorde maintainers"

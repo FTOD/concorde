@@ -56,7 +56,7 @@ class ReleasePointerContractTests(unittest.TestCase):
         self.assertEqual(pointer["speckit_version"], identity.speckit_range)
         for name, (collection, identifier) in {
             "extensions.json": ("extensions", "concorde"),
-            "presets.json": ("presets", "concorde-core"),
+            "presets.json": ("presets", "concorde"),
             "bundles.json": ("bundles", "concorde-bundle"),
         }.items():
             catalog = json.loads((temporary / name).read_text(encoding="utf-8"))

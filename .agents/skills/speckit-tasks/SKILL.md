@@ -4,7 +4,7 @@ description: Generate dependency-ordered tasks in the selected attempt workspace
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: preset:concorde-core
+  source: preset:concorde
 ---
 
 # Speckit Tasks Skill

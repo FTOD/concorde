@@ -27,7 +27,7 @@ TARGET = "feature.concorde.self-host-framework"
 PROPOSAL_PATH = ".specify/self-hosting-proposal.json"
 RECEIPT_PATH = ".specify/self-hosting.json"
 SUPPORTED_SPECKIT = "0.16.4"
-PRESET_ID = "concorde-core"
+PRESET_ID = "concorde"
 EXTENSION_ID = "concorde"
 BUNDLE_ID = "concorde-bundle"
 PRIORITY = 10
@@ -241,6 +241,36 @@ def yaml_scalar(path: Path, section: str, key: str) -> str:
     )
 
 
+def yaml_list_item_version(path: Path, section: str, identifier: str) -> str | None:
+    """Return one list item's version from a top-level manifest section."""
+    in_section = False
+    section_indent = 0
+    matched_id = False
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(raw) - len(raw.lstrip())
+        if stripped == f"{section}:":
+            in_section = True
+            section_indent = indent
+            matched_id = False
+            continue
+        if in_section and indent <= section_indent:
+            return None
+        if not in_section:
+            continue
+        id_match = re.match(r"-\s+id:\s*[\"']?([^\"'#]+?)[\"']?\s*$", stripped)
+        if id_match:
+            matched_id = id_match.group(1).strip() == identifier
+            continue
+        if matched_id:
+            version_match = re.match(r"version:\s*[\"']?([^\"'#]+?)[\"']?\s*$", stripped)
+            if version_match:
+                return version_match.group(1).strip()
+    return None
+
+
 def integration_state(root: Path) -> tuple[str, str]:
     path = resolve_project_path(root, ".specify/integration.json")
     try:
@@ -277,7 +307,7 @@ def integration_state(root: Path) -> tuple[str, str]:
 def component_model(root: Path) -> tuple[list[dict[str, object]], str, str]:
     integration, _ = integration_state(root)
     manifests = {
-        "preset": resolve_project_path(root, "presets/concorde-core/preset.yml"),
+        "preset": resolve_project_path(root, "presets/concorde/preset.yml"),
         "extension": resolve_project_path(root, "extensions/concorde/extension.yml"),
         "bundle": resolve_project_path(root, "bundles/concorde-bundle/bundle.yml"),
     }
@@ -308,8 +338,10 @@ def component_model(root: Path) -> tuple[list[dict[str, object]], str, str]:
             item["priority"] = PRIORITY
         components.append(item)
     versions = {str(item["version"]) for item in components}
-    bundle_text = manifests["bundle"].read_text(encoding="utf-8")
-    if len(versions) != 1 or PRESET_ID not in bundle_text or EXTENSION_ID not in bundle_text:
+    expected_version = str(components[0]["version"])
+    preset_pin = yaml_list_item_version(manifests["bundle"], "presets", PRESET_ID)
+    extension_pin = yaml_list_item_version(manifests["bundle"], "extensions", EXTENSION_ID)
+    if len(versions) != 1 or preset_pin != expected_version or extension_pin != expected_version:
         raise SelfHostError(
             "CONCORDE-SELF-HOST-008",
             "source",
@@ -318,7 +350,7 @@ def component_model(root: Path) -> tuple[list[dict[str, object]], str, str]:
             "Align the bundle recipe with the maintained preset and extension manifests.",
         )
     groups = [
-        ("preset", source_files(root, "presets/concorde-core")),
+        ("preset", source_files(root, "presets/concorde")),
         ("extension", source_files(root, "extensions/concorde")),
         ("bundle", source_files(root, "bundles/concorde-bundle")),
     ]
@@ -332,7 +364,7 @@ def skill_path(command: str) -> str:
 def owned_paths() -> tuple[str, ...]:
     skill_directories = [str(Path(skill_path(command)).parent.as_posix()) for command in PRESET_COMMANDS + EXTENSION_COMMANDS]
     return tuple(sorted({
-        ".specify/presets/concorde-core",
+        ".specify/presets/concorde",
         ".specify/extensions/concorde",
         ".specify/presets/.registry",
         ".specify/extensions/.registry",
@@ -495,7 +527,7 @@ def preflight(root: Path, integration: str) -> None:
     with tempfile.TemporaryDirectory(prefix="concorde-self-host-") as temporary:
         target = Path(temporary)
         run_specify(target, ["init", "--here", "--force", "--ignore-agent-tools", "--integration", integration, "--integration-options=--skills", "--script", "sh"])
-        run_specify(target, ["preset", "add", "--dev", str(root / "presets/concorde-core"), "--priority", str(PRIORITY)])
+        run_specify(target, ["preset", "add", "--dev", str(root / "presets/concorde"), "--priority", str(PRIORITY)])
         run_specify(target, ["extension", "add", str(root / "extensions/concorde"), "--dev", "--priority", str(PRIORITY)])
         verify_materialization(target, expected_source=root)
 
@@ -505,10 +537,10 @@ def copy_source_digest(root: Path, expected_source: Path | None = None) -> str |
     installed = installed_component_digest(root)
     if installed is None:
         return None
-    source_files(base, "presets/concorde-core")
+    source_files(base, "presets/concorde")
     source_files(base, "extensions/concorde")
     source = component_content_digest(
-        base / "presets/concorde-core",
+        base / "presets/concorde",
         base / "extensions/concorde",
     )
     return installed if installed == source else None
@@ -516,7 +548,7 @@ def copy_source_digest(root: Path, expected_source: Path | None = None) -> str |
 
 def installed_component_digest(root: Path) -> str | None:
     return component_content_digest(
-        root / ".specify/presets/concorde-core",
+        root / ".specify/presets/concorde",
         root / ".specify/extensions/concorde",
     )
 
@@ -686,7 +718,7 @@ def refresh_components(root: Path) -> None:
     if entries is not None:
         run_specify(root, ["preset", "remove", PRESET_ID])
     inject("preset")
-    run_specify(root, ["preset", "add", "--dev", str(root / "presets/concorde-core"), "--priority", str(PRIORITY)])
+    run_specify(root, ["preset", "add", "--dev", str(root / "presets/concorde"), "--priority", str(PRIORITY)])
     inject("extension")
     arguments = ["extension", "add", str(root / "extensions/concorde"), "--dev", "--priority", str(PRIORITY), "--force"]
     run_specify(root, arguments)
@@ -736,7 +768,7 @@ def status(root: Path) -> dict[str, object]:
     surface_digest = digest_bytes(canonical_json(surfaces).encode())
     surface_ok = not missing and not extras and surface_digest == receipt.get("surface_digest")
     for ok, code, stage, path, message in (
-        (source_ok, "CONCORDE-SELF-HOST-014", "source", "presets/concorde-core", "Authoritative framework sources changed after the accepted receipt."),
+        (source_ok, "CONCORDE-SELF-HOST-014", "source", "presets/concorde", "Authoritative framework sources changed after the accepted receipt."),
         (installed_ok, "CONCORDE-SELF-HOST-015", "verify", ".specify", "Installed component copies differ from authoritative sources or receipt."),
         (registry_ok, "CONCORDE-SELF-HOST-016", "verify", ".specify", "Concorde component registrations differ from the accepted receipt."),
         (surface_ok, "CONCORDE-SELF-HOST-017", "verify", ".agents/skills", "Declared agent/template surfaces are missing, altered, or include unexpected Concorde-owned entries."),

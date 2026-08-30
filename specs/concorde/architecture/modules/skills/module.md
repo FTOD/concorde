@@ -30,7 +30,7 @@ workspace file formats, coding-agent behavior, or Spec Kit internals.
 
 ## Structure
 
-This leaf module is implemented by the command and template sources under `presets/concorde-core/`
+This leaf module is implemented by the command and template sources under `presets/concorde/`
 and `extensions/concorde/commands/`. Spec Kit materializes those sources into agent-native skills or
 slash commands. There is deliberately no second UI.
 

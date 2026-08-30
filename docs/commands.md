@@ -39,7 +39,7 @@ to use a command, where an artifact belongs, which source is authoritative, or h
 applies to a named module or feature in the current project.
 
 The agent reads the smallest relevant installed sources under `.specify/extensions/concorde/` and
-`.specify/presets/concorde-core/`. For project-specific questions it additionally reads only the
+`.specify/presets/concorde/`. For project-specific questions it additionally reads only the
 needed constitution, module summaries (`module.md`) and feature abstracts (`abstract.md`) first, then
 one-level architecture and contract sources; it opens a `design.md` only for a requirement's exact
 wording and a module `design.md` or feature `implementation.md` only when the question asks for implementation detail,
@@ -206,8 +206,8 @@ and explicitly confirms that no attempt or acceptance ran.
 
 ## Normal Spec Kit phases under Concorde
 
-The `concorde-core` preset replaces the agent instructions for these phases so selected-workspace
-resolution happens before any phase can choose a legacy flat path. It does not create a second
+The `concorde` preset modifies the installed agent instructions for these phases so
+selected-workspace resolution happens before any phase can choose a legacy flat path. It does not create a second
 planning or implementation engine. It also carries six templates: `spec-template`, `plan-template`,
 and `tasks-template` append Concorde guidance to Spec Kit's own templates, while `abstract-template`,
 `implementation-template`, and `reflections-template` are whole documents that a phase resolves with

@@ -29,7 +29,7 @@ Selection remains the standard Spec Kit `.specify/feature.json` pointer (or
 
 ## Module and Feature Collaboration
 
-- `module.concorde.skills` owns the nine normal-phase command overrides, six templates (`spec`,
+- `module.concorde.skills` owns the nine normal-phase command modifications, six templates (`spec`,
   `abstract`, `implementation`, `reflections`, `plan`, `tasks`), and the extension's five
   user-visible command surfaces.
 - `module.concorde.scripts` owns selected-workspace routing, Profile 4 discovery, bounded context,
@@ -40,7 +40,7 @@ Selection remains the standard Spec Kit `.specify/feature.json` pointer (or
 - `module.concorde.auto-docs` publishes Build Manifest v8 collections `architecture`, `docs`,
   `feature-abstracts`, `features`, and `feature-implementations`; routes are the abstract landing page,
   `/design`, and `/implementation`, and `attempt/**` is excluded.
-- `module.concorde.distribution` packages the six templates, nine normal-phase replacements, five
+- `module.concorde.distribution` packages the six templates, nine normal-phase modifications, five
   Concorde surfaces, and four portable scripts at version 0.4.0.
 
 Across `contract.concorde.spec-kit-platform`, `abstract-template` and `implementation-template` are
@@ -161,7 +161,7 @@ the active integration because the self-host status protocol currently validates
 ### Preset, extension, and helpers
 
 - `preset.yml` lists `spec-template`, `abstract-template`, `implementation-template`,
-  `reflections-template`, `plan-template`, `tasks-template`, and nine command replacements.
+  `reflections-template`, `plan-template`, `tasks-template`, and nine complete command modifications.
 - `speckit.specify.md` resolves the three templates, authors the abstract after the specification, seeds `implementation.md` when absent, and adds three abstract checklist items; `speckit.clarify.md` updates the abstract after each integrated answer; `speckit.checklist.md` names the abstract as in scope; `speckit.plan.md`, `speckit.tasks.md`, `speckit.implement.md`, `speckit.converge.md`, and `speckit.taskstoissues.md` read the feature `implementation.md` as baseline and never write the trio; `speckit.analyze.md` adds the "abstract Disagreement" detection pass.
 - Extension commands document proposal v6 and the `CONCORDE-ABSTRACT-*` / layout inventory.
 - Local helpers export `FEATURE_ABSTRACT`, `FEATURE_DESIGN`, `FEATURE_IMPLEMENTATION`, and

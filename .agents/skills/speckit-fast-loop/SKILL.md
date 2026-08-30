@@ -5,7 +5,7 @@ description: Directly complete one eligible small change across code, tests, and
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: preset:concorde-core
+  source: preset:concorde
 ---
 
 # Speckit Fast Loop Skill

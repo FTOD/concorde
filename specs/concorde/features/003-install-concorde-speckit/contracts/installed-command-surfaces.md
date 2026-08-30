@@ -20,7 +20,7 @@ specified.
 |---|---|
 | Selected feature, durable/temporal paths, command intent, results, and failures | Feature 001 Feature Workspace and agent-command contracts |
 | Normal phase responsibility and public composition/materialization behavior | Spec Kit 0.16.4 |
-| Template and command contribution strategy | `concorde-core` preset manifest |
+| Template and command contribution strategy | `concorde` preset manifest |
 | Five active command surfaces and four runtime/adapter scripts | `concorde` extension manifest |
 | Agent-specific filename and invocation syntax | Active coding-agent integration |
 | Installed winner, package version, source/materialized digests, and execution evidence | Spec Kit state plus generated Feature 003 acceptance receipts |
@@ -35,11 +35,11 @@ digest.
 
 | Phase root | Canonical command IDs | Required preset strategy |
 |---|---|---|
-| Durable feature intent plus temporal review state | `speckit.specify`, `speckit.clarify` | Complete `replace` layer for each command |
-| Temporal `attempt/` workspace | `speckit.checklist`, `speckit.plan`, `speckit.tasks`, `speckit.implement`, `speckit.analyze`, `speckit.converge`, `speckit.taskstoissues` | Complete `replace` layer for each command |
+| Durable feature intent plus temporal review state | `speckit.specify`, `speckit.clarify` | Complete layer using `strategy: replace` for each command |
+| Temporal `attempt/` workspace | `speckit.checklist`, `speckit.plan`, `speckit.tasks`, `speckit.implement`, `speckit.analyze`, `speckit.converge`, `speckit.taskstoissues` | Complete layer using `strategy: replace` for each command |
 
-Each replacement preserves the corresponding Spec Kit 0.16.4 phase responsibility. It must invoke
-the installed selected-workspace adapter before any setup, prerequisite check, inherited instruction,
+Each modification preserves the corresponding Spec Kit 0.16.4 phase responsibility. Its complete
+instruction layer must invoke the installed selected-workspace adapter before any setup, prerequisite check, inherited instruction,
 or artifact access that could choose a legacy root-level plan or task path.
 
 `append`, `prepend`, and `wrap` are non-conforming for these nine command entries while the lower
@@ -50,8 +50,8 @@ remain `append` layers because they add guidance and do not perform phase routin
 `implementation-template`) are `replace` contributions because Spec Kit core does not define those
 artifacts; both are reached through `specify preset resolve` and have no composed mirror.
 
-Preset script replacement and installer mutation of managed `.specify/scripts/` are outside the
-supported contract. If public command replacement cannot satisfy the bootstrap ordering, the release
+Preset script mutation and installer mutation of managed `.specify/scripts/` are outside the
+supported contract. If public command composition cannot satisfy the bootstrap ordering, the release
 must reject the host version and require an upstream-supported capability instead of patching it.
 
 ### Concorde-specific surfaces
@@ -129,7 +129,7 @@ interface.
 
 ## Registry State, Recomposition, and Removal
 
-With a known lower-priority command layer installed, disabling or reprioritizing `concorde-core`
+With a known lower-priority command layer installed, disabling or reprioritizing the `concorde` preset
 changes future resolution but leaves already registered commands active, matching Spec Kit 0.16.4's
 documented lifecycle. Updating must materialize the accepted updated layer. Removing must recompose
 and materialize the next surviving winner for all nine normal commands. No stale Concorde
@@ -138,7 +138,7 @@ commands, project configuration, `.concorde/`, `specs/`, or `docs/` content.
 
 ## Compatibility and Change Control
 
-This profile supports Spec Kit 0.16.4 only. A later version is supported only after every replacement
+This profile supports Spec Kit 0.16.4 only. A later version is supported only after every complete command layer
 is reviewed against that version's phase inputs, outputs, hooks, prerequisites, failures, and
 registration behavior, followed by the full isolated path and recomposition matrices.
 

@@ -4,7 +4,7 @@ description: Analyze durable design and temporal attempt artifacts non-destructi
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: preset:concorde-core
+  source: preset:concorde
 ---
 
 # Speckit Analyze Skill

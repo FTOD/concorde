@@ -1,4 +1,4 @@
 {
   "version": "0.3.0",
-  "expected_components": ["extension:concorde@0.3.0", "preset:concorde-core@0.3.0"]
+  "expected_components": ["extension:concorde@0.3.0", "preset:concorde@0.3.0"]
 }

@@ -17,7 +17,7 @@ distributed to user projects, without turning the bundle into a self-hosting run
 
 | Part | Job | Presented as |
 |---|---|---|
-| `concorde-bundle` recipe | Pins one `concorde-core` preset and one `concorde` extension at one accepted version and inherits the active integration. | An installation recipe, not a runtime. |
+| `concorde-bundle` recipe | Pins one `concorde` preset and one `concorde` extension at one accepted version and inherits the active integration. | An installation recipe, not a runtime. |
 | Release archives | Carry the exact preset template and command sources and the extension command and runtime sources a clean target needs; repository-local self-hosting files are excluded. | Independently versioned, inspectable components. |
 | Catalogs | Advertise location, compatibility, digest, and trust for each archive. | Discovery and trust metadata, never installed components. |
 

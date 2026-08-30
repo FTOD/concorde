@@ -8,11 +8,11 @@
   "components": [
     {"id": "concorde-bundle", "kind": "bundle", "version": "0.1.0", "source": "bundles/concorde-bundle/bundle.yml"},
     {"id": "concorde", "kind": "extension", "version": "0.1.0", "source": "extensions/concorde", "priority": 10},
-    {"id": "concorde-core", "kind": "preset", "version": "0.1.0", "source": "presets/concorde-core", "priority": 10}
+    {"id": "concorde", "kind": "preset", "version": "0.1.0", "source": "presets/concorde", "priority": 10}
   ],
   "changes": [
     {"path": ".specify/extensions/concorde", "action": "create", "meaning": "Materialize the local Concorde extension through Spec Kit."},
-    {"path": ".specify/presets/concorde-core", "action": "create", "meaning": "Materialize the local Concorde preset through Spec Kit."}
+    {"path": ".specify/presets/concorde", "action": "create", "meaning": "Materialize the local Concorde preset through Spec Kit."}
   ],
   "preserved": ["project sources", "unrelated agent assets"],
   "activation": "reload_required",

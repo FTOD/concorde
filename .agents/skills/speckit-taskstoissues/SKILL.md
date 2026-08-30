@@ -5,7 +5,7 @@ description: Convert the selected implementation task list into dependency-order
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: preset:concorde-core
+  source: preset:concorde
 ---
 
 # Speckit Taskstoissues Skill

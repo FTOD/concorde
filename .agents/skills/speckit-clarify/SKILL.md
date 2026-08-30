@@ -5,7 +5,7 @@ description: Identify underspecified areas in the current feature spec and encod
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: preset:concorde-core
+  source: preset:concorde
 ---
 
 # Speckit Clarify Skill

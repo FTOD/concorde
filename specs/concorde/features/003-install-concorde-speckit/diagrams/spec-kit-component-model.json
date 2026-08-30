@@ -18,7 +18,7 @@
       },
       {
         "id": "preset-path",
-        "label": "Normal command overrides",
+        "label": "Normal command modifications",
         "focus": ["preset", "featureLifecycle", "agentHost", "workspaceFiles"],
         "note": "The preset supplies four template layers and authoritative routing for nine existing lifecycle commands."
       },
@@ -74,7 +74,7 @@
     {
       "id": "preset",
       "type": "backend",
-      "label": "concorde-core",
+      "label": "concorde",
       "sublabel": "Preset: 4 templates + 9 overrides",
       "pos": [745, 95],
       "size": [190, 76]
@@ -90,7 +90,7 @@
     {
       "id": "featureLifecycle",
       "type": "backend",
-      "label": "Resolved Core Commands",
+      "label": "Resolved Spec Kit Commands",
       "sublabel": "Nine existing phase surfaces",
       "pos": [1010, 95],
       "size": [190, 76]

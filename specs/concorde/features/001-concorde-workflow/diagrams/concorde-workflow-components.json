@@ -10,7 +10,7 @@
     },
     "repository": {
       "url": "https://github.com/FTOD/concorde.git",
-      "revision": "9b49609cfd9e166fbfb85a9847fbb589ac454422"
+      "revision": "41e87dd3692d5909d92f50495df851ac5a9353ea"
     },
     "viewBox": [1395, 1000],
     "views": [
@@ -71,12 +71,12 @@
       "type": "backend",
       "label": "9 Spec Kit Phase Surfaces",
       "sublabel": "specify → taskstoissues",
-      "tag": "preset · replace",
+      "tag": "preset · modifies",
       "pos": [440, 180],
       "size": [210, 86],
       "sources": [
-        {"path": "presets/concorde-core/preset.yml", "label": "command inventory"},
-        {"path": "presets/concorde-core/commands/speckit.plan.md", "label": "representative surface"}
+        {"path": ".agents/skills/speckit-plan/SKILL.md", "label": "representative surface"},
+        {"path": "extensions/concorde/scripts/python/workspace.py", "label": "workspace gate"}
       ]
     },
     {
@@ -97,11 +97,11 @@
       "type": "backend",
       "label": "Fast-Loop Surface",
       "sublabel": "code + tests + durable docs",
-      "tag": "preset · replace",
+      "tag": "preset · modifies",
       "pos": [440, 420],
       "size": [200, 86],
       "sources": [
-        {"path": "presets/concorde-core/preset.yml", "label": "command inventory"}
+        {"path": ".agents/skills/speckit-fast-loop/SKILL.md", "label": "materialized surface"}
       ]
     },
     {

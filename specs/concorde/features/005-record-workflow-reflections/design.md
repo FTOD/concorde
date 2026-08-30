@@ -499,7 +499,7 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
 - `contract.concorde.workflow` for the phase and operation boundary the log crosses, and
   `contract.concorde.spec-kit-platform` for the host phase lifecycle that carries the recording
   obligation.
-- The installed template set of the `concorde-core` preset, which will carry the log template.
+- The installed template set of the `concorde` preset, which will carry the log template.
 
 ## Concorde Architecture Alignment
 

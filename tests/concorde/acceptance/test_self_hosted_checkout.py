@@ -27,12 +27,12 @@ class SelfHostedCheckoutAcceptanceTests(unittest.TestCase):
             self.assertEqual(before, hash_paths(root, tuple(sentinels)))
             _, current = run_cli(root, "status")
             self.assertEqual(current["status"], "current")
-            source = root / "presets/concorde-core/README.md"
+            source = root / "presets/concorde/README.md"
             source.write_text(source.read_text() + "\nacceptance refresh\n")
             run_cli(root, "propose")
             _, refreshed = run_cli(root, "apply", "--proposal", ".specify/self-hosting-proposal.json")
             self.assertEqual(refreshed["status"], "applied")
-            self.assertIn("acceptance refresh", (root / ".specify/presets/concorde-core/README.md").read_text())
+            self.assertIn("acceptance refresh", (root / ".specify/presets/concorde/README.md").read_text())
             self.assertEqual(before, hash_paths(root, tuple(sentinels)))
 
 

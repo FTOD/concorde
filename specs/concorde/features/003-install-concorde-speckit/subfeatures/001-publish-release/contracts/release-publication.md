@@ -16,8 +16,8 @@ For version `<v>` (tag `v<v>`) on repository `R = https://github.com/FTOD/concor
 
 | Location | Content | Mutability |
 |---|---|---|
-| `R/releases/download/v<v>/concorde-core-<v>.zip` | preset archive | immutable |
-| `R/releases/download/v<v>/concorde-<v>.zip` | extension archive | immutable |
+| `R/releases/download/v<v>/concorde-preset-<v>.zip` | preset archive | immutable |
+| `R/releases/download/v<v>/concorde-extension-<v>.zip` | extension archive | immutable |
 | `R/releases/download/v<v>/concorde-bundle-<v>.zip` | bundle archive | immutable |
 | `R/releases/download/v<v>/{extensions,presets,bundles}.json` | Spec Kit catalogs whose `catalog_url` and `download_url` values use exactly this base | immutable |
 | `R/releases/download/v<v>/release.json` | pointer document (schema below) | immutable |
@@ -108,8 +108,8 @@ Obligations:
     "bundles": "https://github.com/FTOD/concorde/releases/download/v0.1.0/bundles.json"
   },
   "archives": {
-    "concorde-core-0.1.0.zip": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-    "concorde-0.1.0.zip": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "concorde-preset-0.1.0.zip": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "concorde-extension-0.1.0.zip": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "concorde-bundle-0.1.0.zip": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
   }
 }

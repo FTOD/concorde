@@ -4,7 +4,7 @@
 
 ## Realization Overview
 
-The `concorde-core` preset supplies nine normal-phase command layers and the templates used by those
+The `concorde` preset supplies nine normal-phase command layers and the templates used by those
 phases. The `concorde` extension supplies five Concorde-specific command definitions. Spec Kit
 materializes the resolved sources as agent-native skills or slash commands.
 

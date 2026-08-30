@@ -11,7 +11,7 @@
     "viewBox": [1395, 850],
     "repository": {
       "url": "https://github.com/FTOD/concorde",
-      "revision": "7bce921138d3eac46627110aab7bb1f9a4879ab0"
+      "revision": "41e87dd3692d5909d92f50495df851ac5a9353ea"
     },
     "views": [
       {
@@ -50,7 +50,7 @@
       "sublabel": "Preset + extension + bundle",
       "tag": "Authoritative development inputs",
       "sources": [
-        {"path": "presets/concorde-core/preset.yml", "label": "preset manifest"},
+        {"path": ".agents/skills/speckit-plan/SKILL.md", "label": "preset surface"},
         {"path": "extensions/concorde/extension.yml", "label": "extension manifest"},
         {"path": "scripts/release/build-components.py", "label": "bundle packaging"}
       ],

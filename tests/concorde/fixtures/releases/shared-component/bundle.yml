@@ -5,7 +5,7 @@ bundle:
   name: "Concorde Shared Component Fixture"
   version: "0.3.0"
   role: "developer"
-  description: "Acceptance-only bundle sharing the Concorde Core preset"
+  description: "Acceptance-only bundle sharing the Concorde preset"
   author: "Concorde maintainers"
   license: "MIT"
 
@@ -17,7 +17,7 @@ requires:
 provides:
   extensions: []
   presets:
-    - id: "concorde-core"
+    - id: "concorde"
       version: "0.4.0"
       priority: 10
       strategy: "append"

@@ -155,14 +155,14 @@ def execute_workspace_surface(
     return CommandSurfaceReceipt(
         command_id=command_id,
         registered_path=registered,
-        component_id="concorde-core",
+        component_id="concorde",
         source_digest=sha256_bytes(
-            (project_root / ".specify/presets/concorde-core/commands" / f"{command_id}.md").read_bytes()
+            (project_root / ".specify/presets/concorde/commands" / f"{command_id}.md").read_bytes()
         ),
         materialized_digest=sha256_bytes(artifact.read_bytes()),
         handoff_digest=handoff_digest(
             project_root / ".specify/extensions/concorde",
-            project_root / ".specify/presets/concorde-core",
+            project_root / ".specify/presets/concorde",
         ),
         workspace=workspace,
         phase_root=str(payload.get("phase_root", "")),

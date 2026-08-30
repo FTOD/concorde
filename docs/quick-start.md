@@ -160,8 +160,8 @@ components:
 
 | Installed component | Responsibility |
 |---|---|
-| `concorde-core` preset | Adds six architecture-aware templates (including feature abstract, design-reference, and reflection-log templates), complete selected-workspace routing for nine normal Spec Kit phases, and one fast-loop command |
-| `concorde` extension | Adds five Concorde-specific surfaces: four runtime-backed operations, one read-only agent question procedure, portable adapters and launchers, and the deterministic Python runtime |
+| `preset:concorde` | Adds six architecture-aware templates (including feature abstract, design-reference, and reflection-log templates), modifies the installed instructions for nine normal Spec Kit phases with complete selected-workspace routing, and adds one fast-loop command |
+| `extension:concorde` | Adds five Concorde-specific surfaces: four runtime-backed operations, one read-only agent question procedure, portable adapters and launchers, and the deterministic Python runtime |
 
 Spec Kit resolves and installs those components and asks the active coding-agent integration to
 materialize skills or slash commands. The bundle itself does not execute the workflow.

@@ -57,7 +57,7 @@ None.
 ## Representative Scenario
 
 `scenario.distribution.install-bundle` shows a maintainer asking Spec Kit to preview `concorde-bundle`.
-Distribution expands the versioned recipe into its exact component plan, the pinned `concorde-core`
+Distribution expands the versioned recipe into its exact component plan, the pinned `concorde`
 preset and `concorde` extension resolved from permitted component catalogs and supplied by Skills
 across `contract.distribution.component-packages`, and reports versions, trust source,
 and diagnostics across `contract.distribution.bundle-lifecycle`. After the maintainer accepts,

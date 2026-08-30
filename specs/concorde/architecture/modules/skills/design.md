@@ -2,8 +2,8 @@
 
 ## Implementation Notes
 
-- `presets/concorde-core/commands/` owns the nine normal-phase instruction layers.
-- `presets/concorde-core/templates/` owns the composed file templates.
+- `presets/concorde/commands/` owns the nine normal-phase instruction layers.
+- `presets/concorde/templates/` owns the composed file templates.
 - `extensions/concorde/commands/` owns five Concorde-specific skills.
 - Active Spec Kit integrations materialize those sources into `.agents/skills/`, `.claude/`, or an
   equivalent agent-native directory.

@@ -50,7 +50,7 @@ def initialize_checkout(root: Path) -> None:
     )
     if completed.returncode:
         raise AssertionError(completed.stdout + completed.stderr)
-    for relative in ("presets/concorde-core", "extensions/concorde", "bundles/concorde-bundle"):
+    for relative in ("presets/concorde", "extensions/concorde", "bundles/concorde-bundle"):
         destination = root / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(REPOSITORY_ROOT / relative, destination, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))

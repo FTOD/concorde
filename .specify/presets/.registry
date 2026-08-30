@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0",
   "presets": {
-    "concorde-core": {
+    "concorde": {
       "version": "0.4.0",
       "source": "local",
-      "manifest_hash": "sha256:16d3017f42094c7f4c3d4a7b4d82a9361db89faa0627d94219fe0e7b7f7d59f4",
+      "manifest_hash": "sha256:86f371c5906089a855b75f5ec1ba13494d26036d9b0115877470fb6dbf424df0",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
@@ -35,7 +35,7 @@
           "speckit-fast-loop"
         ]
       },
-      "installed_at": "2026-08-29T18:02:20.794289+00:00"
+      "installed_at": "2026-08-30T06:08:54.049312+00:00"
     }
   }
 }

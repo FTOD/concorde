@@ -1,67 +1,197 @@
-# Feature Implementation: Install Concorde with Spec Kit
+# Feature Implementation: Install and Set Up Concorde with Spec Kit
 
-**Realization status**: Reviewed realization proposed for permanent acceptance.
+**Realization status**: Current verified realization proposed for durable acceptance.
 
 ## Realization Overview
 
-Concorde is delivered through Spec Kit's native component lifecycle as three independently identifiable release units. The passive `concorde-bundle@0.1.0` bundle pins the tested `concorde-core@0.1.0` preset and `concorde@0.1.0` extension; it contains no executable workflow or reusable steps. Spec Kit remains the host that resolves trust and compatibility, previews the expanded plan, installs the components, records provenance, and materializes commands through the target project's active coding-agent integration.
+Concorde is delivered through Spec Kit 0.16.4 as three independently versioned, type-qualified
+components: `bundle:concorde-bundle@0.4.0`, `preset:concorde@0.4.0`, and
+`extension:concorde@0.4.0`. The bundle is a passive recipe that pins exactly one preset and one
+extension. The preset and extension intentionally share the `concorde` ID because Spec Kit resolves
+them through separate component types, catalogs, registries, installed directories, and lifecycle
+verbs.
 
-The preset changes the existing Spec Kit feature lifecycle. It contributes three append-composed guidance templates, one replacement template for permanent `implementation.md`, and complete replacement layers for the nine path-sensitive normal commands. The extension contributes five Concorde-specific commands (four runtime-backed operations plus the agent-followed `ask` procedure) together with platform launchers, the selected-workspace adapter, and the deterministic Concorde runtime. Catalogs advertise these packages and their integrity metadata but are not installed runtime components.
+The preset contributes six templates, complete instruction modifications for the nine existing Spec
+Kit lifecycle commands, and the additive `speckit.fast-loop` command. User-facing guidance describes
+the normal commands as modified by Concorde: their names, lifecycle roles, and expected use remain
+Spec Kit's. The manifest entries use `strategy: replace` only so the selected-workspace gate runs
+before any inherited flat-path assumption. The extension contributes five Concorde-specific
+surfaces—four deterministic runtime-backed operations plus the agent-followed, read-only `ask`
+procedure—and includes their launchers, selected-workspace adapter, schemas, and Python runtime.
 
-Release archives are built from explicit allowlists with stable member ordering, permissions, timestamps, versions, URLs, and SHA-256 digests. The supplied base URL is serialized into catalog metadata and is not contacted during a build. A release is accepted only from built artifacts installed into checkout-isolated projects, so repository-local `.agents/` and `.specify/` content cannot masquerade as distributed functionality.
+Release construction emits three distinct transport assets:
+`concorde-preset-<version>.zip`, `concorde-extension-<version>.zip`, and
+`concorde-bundle-<version>.zip`. Each archive retains its manifest identity independently of its
+filename. Separate preset, extension, and bundle catalogs advertise the type-appropriate archive,
+digest, compatibility range, repository, and capabilities. No compatibility alias or duplicate
+preset identity is installed.
 
 ## Module and Feature Collaboration
 
-This project-level feature is realized by existing module-level refinements rather than redefining their architecture. `feature.distribution.package-concorde-bundle` supplies the reproducible archives, catalogs, exact component plan, provenance, and install/update/remove lifecycle governed by the Distribution module's bundle and component-package contracts. `feature.skills.compose-workflow` supplies the preset and extension composition governed by the Skills module's workflow-composition, agent-skills, and Spec Kit platform contracts.
+`module.concorde.distribution` owns the bundle recipe, type-specific catalogs, deterministic archives,
+release verification and publication helpers, one-command installer, provenance, and safe
+install/update/remove behavior. `module.concorde.skills` owns the preset command/template sources and
+the extension command definitions materialized by the active coding-agent integration.
+`module.concorde.scripts` owns the self-host bootstrap and the installed selected-workspace/runtime
+operations. `module.concorde.workspace-files` supplies the separate preset and extension registries,
+installed component directories, selected feature state, and durable/temporal paths.
+`module.concorde.auto-docs` publishes the maintained package explanation and declared diagrams as a
+generated read model.
 
-Feature 001's `feature.workspace-files.manage-feature-workspace` remains authoritative for nested feature selection, durable and temporal paths, command intent, result envelopes, and acceptance semantics. Feature 003 packages that handoff and proves it from installed artifacts; it does not redefine the workflow. Scripts performs initialization, bounded context, and validation after an installed command invokes it. Feature 002 publishes the declared Feature 003 diagrams and prose without becoming behavioral authority.
+Feature 001 remains authoritative for command intent, selected-workspace routing, durable versus
+temporal files, validation, and implementation acceptance. Feature 003 packages that handoff and
+proves it from installed artifacts; it does not define a second workflow. The `publish-release`
+sub-feature owns immutable public release publication, and `one-command-install` owns the optional
+accelerator that sequences public Spec Kit initialization, catalog registration, and bundle
+installation. Feature 004 reuses the same component lifecycle to materialize and verify the current
+checkout.
 
-The stable package interaction is explained by `diagrams/spec-kit-component-model.json`, while `diagrams/bundle-installation-flow.json` supplements it with release-to-use order. The canonical one-level project architecture remains `specs/concorde/architecture/diagrams/level-view.json`, and module responsibilities and contracts remain in their respective module specifications.
+The stable package interaction is explained by `diagrams/spec-kit-component-model.json`; the
+release-to-use order is explained by `diagrams/bundle-installation-flow.json`. The root and module
+level views remain the authority for module responsibility and dependency direction.
 
 ## Scenario Realization
 
-### Inspect the installation
+### Inspect the release
 
-The release builder produces separate preset, extension, and bundle archives plus matching catalogs. Spec Kit resolves an approved catalog, directory, manifest, or archive source into one expanded plan. The preview exposes the bundle recipe, exact preset and extension versions, compatibility range, source trust, preset priority and strategies, inherited integration, and planned mutations before the maintainer accepts installation.
+`scripts/release/build-components.py` reads the bundle version as the release authority, checks both
+same-ID component pins by collection, verifies manifest versions, compatibility, and repository
+metadata, and builds deterministic allowlisted ZIP archives. It writes three catalogs whose keys and
+IDs are `concorde` in their separate preset/extension collections and `concorde-bundle` in the bundle
+collection. `scripts/release/verify-release.py` checks archive safety, digest and URL agreement,
+capability metadata, version/repository compatibility, and byte-equivalent rebuilds.
+
+`scripts/release/publish-release.py` publishes the three archives, three catalogs, and deterministic
+`release.json` pointer through a reviewable draft-first decision table. A missing release can be
+created; a leftover draft can be repaired; an identical published release is a no-op; a divergent
+published release is refused rather than overwritten.
 
 ### Install into a project
 
-Spec Kit validates the accepted plan, installs the pinned components, and materializes their winning command layers through the active integration. The preset provides four templates and replaces `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues`. The extension registers `init`, `impl-accept`, `context`, `validate`, and the agent-only `ask`. Repeated installation converges on one bundle, preset, and extension record without changing project-authored `.concorde/`, `specs/`, or `docs/` sources.
+Spec Kit previews `concorde-bundle`, showing `preset:concorde` and `extension:concorde` independently
+with their versions, trust, priority/strategy, compatibility, provenance, and intended effects. It
+then installs each component through its native type-specific lifecycle and materializes the winning
+normal and Concorde-specific command surfaces through the target project's active integration.
 
-### Execute the installed workflow
+`scripts/install-concorde.py` supports a published release or local checkout while still using public
+Spec Kit operations. Its development catalogs are temporary, installation is idempotent, a
+conflicting requested integration stops before mutation, and terminal success is printed only after
+mandatory cleanup succeeds. Repeated installation preserves project-authored `.concorde/`, `specs/`,
+and `docs/` sources.
 
-Every normal command invokes the extension-installed workspace adapter before path-sensitive work. `specify` and `clarify` use root `design.md` and durable contracts while placing generated review state in `attempt/checklists/`; `checklist` uses that same temporal checklist directory. Planning, task generation, implementation, analysis, convergence, and issue conversion use the selected feature's single `attempt/` workspace and read root `implementation.md` as immutable accepted context. No root plan, task, checklist compatibility copy, alias, or symlink is created.
+### Verify the installed workflow
 
-The four runtime-backed extension commands resolve their launchers and runtime relative to the installed extension. Their canonical intent and results are presentation-neutral: Spec Kit may render Codex skills or Gemini slash commands, but the workspace paths, operations, failures, and Scripts handoff remain equivalent. Completed attempts may be accepted only by a digest-bound proposal after all tasks and checklist items are complete and the exact design replacement and implementation-directory deletion receive explicit approval.
+Clean-project acceptance builds and serves release artifacts, installs them outside the Concorde
+checkout, inventories both type-qualified component records, and executes the selected-workspace
+surface matrix. The installed preset routes durable specification work to the feature root and
+review/planning/delivery state under `attempt/`; no root-level compatibility copy or symlink is
+created. The installed extension resolves launchers and runtime only from its installed directory.
+Codex and Claude materializations carry `source: preset:concorde` for the preset commands and retain
+equivalent command intent.
 
-### Update, disable, or remove Concorde
+Development self-hosting models component identity as `(kind, id)`, validates the preset and
+extension pins separately inside the bundle, binds proposals to a deterministic source inventory,
+uses public Spec Kit add/remove operations, verifies installed bytes and registries, and restores
+scoped state on failure. The final Codex cycle reached `current`; the active Claude integration was
+then rematerialized through the public lifecycle.
 
-Spec Kit owns lifecycle state. On Spec Kit 0.16.4, disabling or reprioritizing the preset changes future resolution while preserving already registered command artifacts. Compatible update materializes the accepted new layer. Removing the bundle removes solely owned components, retains shared components and project sources, and restores the next surviving lower command layer for all nine normal surfaces. Failures do not create false success records; rollback retains the prior successful state when possible and reports residual state otherwise.
+### Update, disable, and remove
+
+Spec Kit 0.16.4 keeps already materialized commands when the preset is disabled or reprioritized but
+changes future resolution. Update installs the accepted new component layer. Bundle removal deletes
+only solely owned components, retains a preset shared with another bundle, preserves project sources,
+and restores the next surviving lower layer for the nine modified normal commands. The additive
+fast-loop surface is removed when solely owned. Failed update and injected self-host failures never
+record false success and preserve or report exact residual state.
 
 ## Durable Implementation Decisions
 
-- Concorde uses one native Spec Kit bundle as an inspectable recipe; it has no separate installer, dedicated workflow component, or reusable steps.
-- Bundle, preset, and extension versions are independent and pinned exactly in the tested bundle recipe. Initial compatibility is `>=0.16.4,<0.16.5`.
-- The preset contains three append template layers, one replacement `implementation-template`, and nine complete command replacements. Replacement is required because selected-workspace routing must precede every legacy path assumption.
-- The extension contains five Concorde commands (four runtime-backed plus `ask`), four platform/runtime entry scripts, and all declared runtime dependencies. Installed commands may not fall back to the Concorde source checkout.
-- Feature 001 owns command and workspace semantics. Feature 003 owns package composition, materialization, provenance, and lifecycle proof and binds installed surfaces to the packaged handoff digest.
-- Durable specification, accepted design, contracts, and diagrams remain at the feature root. Checklists and all other current-attempt artifacts remain under the single temporal `attempt/` directory until approved acceptance removes it.
-- Catalog entries and release archives are reproducible projections of maintained manifests and sources. Catalog capability counts must equal the actual component manifests, and catalog archive digests must match deterministic builds.
-- The target project's active coding-agent integration owns presentation syntax only. Canonical command identity, arguments, paths, results, and failures remain integration-independent.
-- Preview/install parity, trust and compatibility checks, idempotency, source preservation, rollback, shared-component retention, and lower-layer restoration are required lifecycle properties.
-- The feature's core diagram explains stable package and runtime interaction; its supplemental workflow explains release, installation, use, and recomposition. Neither replaces module architecture or textual contracts.
+- Component identity is the ordered pair `(kind, id)`. `preset:concorde` and
+  `extension:concorde` are intentionally distinct even though their IDs match.
+- Maintained sources live at `presets/concorde/`, `extensions/concorde/`, and
+  `bundles/concorde-bundle/`; installed copies live under the corresponding type-specific
+  `.specify/` directories.
+- Transport filenames include component type to prevent a same-directory collision, while catalog
+  and manifest IDs remain `concorde`.
+- The preset modifies existing Spec Kit commands; it does not deprecate them or introduce parallel
+  command IDs. Complete `strategy: replace` layers are an installation-order mechanism.
+- The rename is a pre-release cutover with no alias, dual registration, or in-place public migration.
+  Development installations are rematerialized from the renamed sources.
+- The repository-wide invariant covers live paths and content—including installed skills, catalogs,
+  fixtures, specifications, reflections, diagrams, and generated release evidence—while Git history
+  is intentionally not rewritten.
+- Release archives are deterministic projections of maintained sources. Catalog capability counts
+  agree with manifests, and catalog digests agree with the built archives.
+- Passing text-presence checks are insufficient: clean-project tests execute winning surfaces with
+  the source checkout unavailable.
+- The explicit maintainer directive authorized the terminology-only reconciliation of historical
+  reflection text and referential durable sources while preserving their behavior and meaning
+  (R-034, R-035).
 
 ## Traceability and Evidence
 
-The durable behavioral authority is `design.md` together with `contracts/bundle-distribution.md`, `contracts/installed-command-surfaces.md`, and `contracts/ecosystem-explanation.md`. Package identity and content are maintained in `bundles/concorde-bundle/bundle.yml`, `presets/concorde-core/preset.yml`, and `extensions/concorde/extension.yml`; deterministic release and catalog generation are implemented by `scripts/release/build-components.py` and checked by `scripts/release/verify-release.py`.
+Behavioral authority is `design.md`, with feature-local profiles in
+`contracts/bundle-distribution.md`, `contracts/installed-command-surfaces.md`, and
+`contracts/ecosystem-explanation.md`, plus root
+`contract.concorde.spec-kit-installation`. Package identity is maintained in
+`presets/concorde/preset.yml`, `extensions/concorde/extension.yml`, and
+`bundles/concorde-bundle/bundle.yml`. Release behavior is implemented by
+`scripts/release/{build-components,verify-release,publish-release}.py`; local installation and
+self-hosting are implemented by `scripts/install-concorde.py` and
+`scripts/development/self-host-concorde.py`.
 
-Manifest and archive contracts verify the exact two-component recipe, four preset templates, nine normal replacements, five extension commands, archive allowlists, catalog capability counts, reproducibility, and handoff content. Clean-install contract, integration, and acceptance tests install built archives through served catalogs into isolated Codex-skills and Gemini-slash projects, inventory all thirteen runtime-backed materialized surfaces, execute the selected-workspace bootstrap, compare repeated phase receipts, and reject checkout fallback. Lifecycle tests cover supported source forms, preview/install parity, idempotency, compatible update, failed update, shared ownership, project-source preservation, Spec Kit's persistent registration semantics, and restoration of all nine lower command layers.
+The final executable evidence is:
 
-The two maintained Archify sources pass all nine Archify 2.16 showcase checks with zero errors or warnings and their generated projections provide deterministic component and workflow evidence, while the documentation publication tests verify declaration-driven embedding. Generated catalogs, archives, diagrams, and receipts remain evidence and projections rather than maintained behavioral authority.
+- 261 Python tests passed across unit, contract, integration, and acceptance suites, including the
+  zero-token path/content contract and same-ID/type-qualified bundle-pin regression.
+- `speckit.concorde.validate` completed with source digest
+  `sha256:551326acb6043f4067e4650549013f7ab0c55d23ebeb55e07f3facddd6f791c5`
+  and zero findings.
+- Release build and byte-equivalent verification produced bundle digest
+  `sha256:85e594183e914ac06511e7eac0c5afc0d3be591ffd8946e095d54b43efcb3436`,
+  extension digest `sha256:db32fe78ceb6a675c2dc1596db676acdba87256f5ad4053f8ba2864f281682f4`,
+  and preset digest `sha256:e80ffe89e8f9aecf42e3f5f3d9a1dd040025eb47a6e72dda770f2ef4164f6af6`.
+- Documentation validation covered 108 pages with 32 excluded sources and zero errors; all 19
+  Vitest files and 81 tests passed; the optimized production build was promoted successfully.
+- Feature 003, parent workflow, and self-hosting component diagrams each passed 9/9 Archify showcase
+  validation and delivery with zero errors or warnings. Their generated HTML remains evidence, not
+  authority.
+- Codex self-host propose/apply/status reached `current` with matching source, installed, registry,
+  and surface dimensions before the active integration was restored to Claude and both integrations'
+  surfaces were refreshed.
 
 ## Known Limitations
 
-- The initial compatibility window is intentionally limited to Spec Kit 0.16.4. Every additional host version requires reviewing all nine replacement commands against the corresponding upstream command responsibilities and rerunning clean-install and recomposition acceptance.
-- Presentation equivalence is currently verified for Codex skills and Gemini slash commands. Other Spec Kit integrations require the same installed-surface and result-equivalence evidence before being claimed as supported.
-- The release builder produces archives and catalog metadata but does not operate a public catalog host or upload release assets; publication transport is a separate release operation.
-- Disable and priority changes retain already registered commands because that is Spec Kit 0.16.4 behavior; maintainers must use update or removal when they need command artifacts to be rematerialized immediately.
+- R-034 remains open: the global identity invariant required a maintainer-authorized terminology-only
+  rewrite of append-only reflection history. A general reviewed procedure for such migrations is not
+  yet defined.
+- R-035 remains open: one root-owned package identity migration required referential updates across
+  durable sources owned by several features. Concorde has no general coordinated cross-feature
+  migration operation.
+- R-036 remains open: the failed-update fixture originally duplicated a transport filename instead
+  of deriving it from the release inventory; the fixture is corrected, but the improvement remains
+  recorded.
+- R-037 remains open: the parent workflow diagram needed its repository-evidence revision and source
+  references refreshed after the path migration.
+- R-038 remains open: the self-hosting diagram exposed the same evidence-pin migration requirement
+  during the documentation build.
+- Self-host protocol v1 still reports `unknown` for the active Claude integration even after its
+  surfaces are rematerialized; the established limitation is recorded by R-001.
+- Browser-based containment and light/dark perceptual review remain pending because Chrome/Chromium
+  is unavailable; deterministic showcase delivery passed, but it does not establish visual polish
+  (R-026).
+- Compatibility remains limited to Spec Kit `>=0.16.4,<0.16.5`; every broader range needs the full
+  installed-surface and lifecycle matrices.
+- Public release hosting and the first-time installation timing proof remain owned by the
+  `publish-release` and `one-command-install` sub-features; this realization builds and verifies the
+  artifacts but does not claim those pending outcomes complete.
+
+## Implementation Detail
+
+`scripts/release/build-components.py` distinguishes archive allowlists by component kind so the
+same component ID cannot select the wrong content. `scripts/development/self-host-concorde.py`
+validates each same-ID bundle pin inside its collection and normalizes the two registries separately.
+`tests/concorde/contract/test_preset_identity.py` constructs the retired token at runtime so the test
+can enforce its absence without retaining it in tracked source. Installed Codex and Claude
+projections and `.specify/presets/.registry` identify the preset as `concorde`; the extension registry
+independently identifies the extension as `concorde`.

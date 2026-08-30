@@ -52,7 +52,7 @@ EXIT_DIVERGENT = 2
 
 _CATALOG_ENTRIES = {
     "extensions.json": ("extensions", "concorde"),
-    "presets.json": ("presets", "concorde-core"),
+    "presets.json": ("presets", "concorde"),
     "bundles.json": ("bundles", "concorde-bundle"),
 }
 
@@ -65,7 +65,11 @@ class PublicationError(Exception):
 
 
 def archive_names(version: str) -> list[str]:
-    return [f"concorde-core-{version}.zip", f"concorde-{version}.zip", f"concorde-bundle-{version}.zip"]
+    return [
+        f"concorde-preset-{version}.zip",
+        f"concorde-extension-{version}.zip",
+        f"concorde-bundle-{version}.zip",
+    ]
 
 
 def asset_names(version: str) -> list[str]:
@@ -119,8 +123,8 @@ def render_notes(version: str, speckit_range: str, base_url: str, archives: dict
         "| Component | Kind | Version |",
         "|---|---|---|",
         f"| `concorde-bundle` | bundle | `concorde-bundle@{version}` |",
-        f"| `concorde-core` | preset | `concorde-core@{version}` |",
-        f"| `concorde` | extension | `concorde@{version}` |",
+        f"| `concorde` | preset | `preset:concorde@{version}` |",
+        f"| `concorde` | extension | `extension:concorde@{version}` |",
         "",
         f"Supported Spec Kit range: `{speckit_range}`",
         "",

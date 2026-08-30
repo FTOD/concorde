@@ -32,7 +32,7 @@ class SlashCommandAcceptance(unittest.TestCase):
             for semantic in (
                 "smallest relevant set",
                 ".specify/extensions/concorde/",
-                ".specify/presets/concorde-core/",
+                ".specify/presets/concorde/",
                 "project-relative citation",
                 "focused clarification",
                 "strictly read-only",

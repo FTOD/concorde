@@ -1,4 +1,4 @@
-# Concorde Core preset
+# Concorde preset
 
 This preset keeps the normal Spec Kit specification, planning, and task workflow while adding
 Concorde's hierarchical architecture controls. It does not create another feature document.
@@ -6,8 +6,9 @@ Concorde's hierarchical architecture controls. It does not create another featur
 At priority 10, its three spec/plan/tasks template contributions use `append`, while its Concorde-only
 `abstract-template` and `implementation-template` feature documents and the project-wide `reflections-template`
 (the reflection log seeded at the specification root and appended to by every phase after
-specification) use `replace`. Its nine normal lifecycle command contributions and one fast-loop
-command use `replace`: each normal command preserves the corresponding Spec Kit
+specification) use `replace`. The preset modifies the installed instructions for nine normal
+lifecycle commands and adds one fast-loop command. The normal-command contributions use
+`strategy: replace` so each complete layer can preserve the corresponding Spec Kit
 0.16.4 phase while resolving Concorde's selected feature and durable/temporal paths before any
 path-sensitive work. Fast-loop resolves an existing selected root, rejects out-of-bound work before
 mutation, and directly reconciles an eligible small change without an attempt. The installed extension supplies that workspace adapter and five

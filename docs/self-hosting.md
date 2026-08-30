@@ -20,7 +20,7 @@ checks. Feature 003 remains the release-installation path for other projects.
 
 The source side consists of:
 
-- `presets/concorde-core/`, including normal-phase command replacements and template layers;
+- `presets/concorde/`, including normal-phase command modifications and template layers;
 - `extensions/concorde/`, including Concorde commands, launchers, and runtime;
 - `bundles/concorde-bundle/bundle.yml`, which pins the tested composition.
 

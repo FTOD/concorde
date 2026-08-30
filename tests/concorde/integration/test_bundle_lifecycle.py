@@ -59,7 +59,7 @@ class BundleLifecycleTests(unittest.TestCase):
         self.assertIsNone(preview["integration"])
         self.assertEqual(
             [(item["kind"], item["id"], item["version"]) for item in preview["components"]],
-            [("extensions", "concorde", "0.4.0"), ("presets", "concorde-core", "0.4.0")],
+            [("extensions", "concorde", "0.4.0"), ("presets", "concorde", "0.4.0")],
         )
         source_hashes = self.project.source_hashes()
         self.project.run("bundle", "install", "concorde-bundle")
@@ -82,9 +82,9 @@ class BundleLifecycleTests(unittest.TestCase):
         self.project.run("extension", "disable", "concorde")
         self.assertIn("disabled", self.project.run("extension", "list").stdout.lower())
         self.project.run("extension", "enable", "concorde")
-        self.project.run("preset", "disable", "concorde-core")
+        self.project.run("preset", "disable", "concorde")
         self.assertIn("disabled", self.project.run("preset", "list").stdout.lower())
-        self.project.run("preset", "enable", "concorde-core")
+        self.project.run("preset", "enable", "concorde")
 
     def test_directory_manifest_and_artifact_install_forms_are_equivalent(self):
         forms = [
@@ -140,7 +140,7 @@ class BundleLifecycleTests(unittest.TestCase):
         self.project.run("bundle", "install", "concorde-bundle")
         source_hashes = self.project.source_hashes()
         _builder.build_release(self.dist, self.server.base_url, "0.3.1")
-        extension = self.dist / "concorde-0.3.1.zip"
+        extension = self.dist / "concorde-extension-0.3.1.zip"
         extension.write_bytes(extension.read_bytes() + b"integrity failure")
         self.project.clear_catalog_caches()
         result = self.project.run("bundle", "update", "concorde-bundle", check=False)
@@ -175,7 +175,7 @@ class BundleLifecycleTests(unittest.TestCase):
         installed = self.project.json("bundle", "list", "--json")
         self.assertEqual({item["bundle_id"] for item in installed}, {"concorde-shared-fixture", "concorde-bundle"})
         self.project.run("bundle", "remove", "concorde-bundle")
-        self.assertTrue((self.root / ".specify/presets/concorde-core/preset.yml").is_file())
+        self.assertTrue((self.root / ".specify/presets/concorde/preset.yml").is_file())
         self.assertFalse((self.root / ".specify/extensions/concorde").exists())
         remaining = self.project.json("bundle", "list", "--json")
         self.assertEqual([item["bundle_id"] for item in remaining], ["concorde-shared-fixture"])

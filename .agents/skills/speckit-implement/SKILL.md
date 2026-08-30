@@ -4,7 +4,7 @@ description: Execute all tasks in the selected feature attempt workspace.
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: preset:concorde-core
+  source: preset:concorde
 ---
 
 # Speckit Implement Skill

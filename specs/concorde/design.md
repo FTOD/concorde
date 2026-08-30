@@ -13,7 +13,7 @@ skills and the coding agent follows its instructions.
 
 The skill sources come from two packages:
 
-- `presets/concorde-core/commands/` and `templates/` compose Concorde guidance into the normal Spec
+- `presets/concorde/commands/` and `templates/` compose Concorde guidance into the normal Spec
   Kit phases: clarify, specify, plan, tasks, implement, analyze, checklist, task-to-issues, and
   converge. The same preset adds `speckit.fast-loop` as a separate additive command for an eligible
   established small change; it is not a tenth normal Spec Kit phase.
@@ -91,12 +91,27 @@ lifecycle paths sparse; the embedded matrices name the exact per-skill exception
 ### Supporting adapters
 
 Distribution packages the maintained preset and extension, publishes their catalogs, and delegates
-materialization to Spec Kit. It treats the nine normal commands as replace-style layers and
-fast-loop as an additive surface: removal can reveal lower normal winners, while solely owned
-fast-loop disappears (R-030). Auto-Docs validates maintained sources, renders declared diagrams,
+materialization to Spec Kit. It treats the nine normal commands as complete instruction
+modifications and fast-loop as an additive surface: removal can reveal lower normal winners, while
+solely owned fast-loop disappears (R-030). Auto-Docs validates maintained sources, renders declared diagrams,
 and projects `specs/`, `docs/`, and the root README into a generated site. These adapters consume the
 three-part workflow architecture; they do not sit between a skill, script, and workspace file during
 normal feature work.
+
+### Type-qualified distribution identity
+
+The maintained preset and extension both use the ID `concorde` and remain distinct through the
+Spec Kit component key `(kind, id)`: `preset:concorde` and `extension:concorde`. Their source and
+installed trees, catalogs, registries, lifecycle verbs, and ownership records are type-specific.
+The bundle continues to pin one of each. Release transport uses
+`concorde-preset-<version>.zip` and `concorde-extension-<version>.zip` so two same-ID components
+cannot collide in one release directory; archive filenames do not redefine manifest identity.
+
+The identity cutover retains no alias or dual registration. This is safe because no supported
+public release requires in-place migration; development installations are rematerialized through
+the public Spec Kit lifecycle. User-facing documentation says Concorde modifies the existing Spec
+Kit commands. The manifest's `strategy: replace` remains only the complete-layer composition
+mechanism needed to run workspace routing before legacy path assumptions.
 
 ## Design Rationale
 
@@ -112,6 +127,13 @@ Fast-loop follows the direct Skills → Workspace Files path because arbitrary c
 authoring belongs to the coding agent. Scripts contribute only canonical selection facts. This keeps
 the risk decision semantic—feature ownership, architecture, contracts, compatibility, and worktree
 safety—instead of encoding an unreliable line-count threshold or a second mutation engine.
+
+Using one shared component ID keeps the public name aligned with the product while the component
+type carries the distinction Spec Kit already requires. Type-qualified archive filenames solve the
+separate transport collision without leaking packaging mechanics back into component identity.
+The repository-wide cutover required explicitly approved terminology-only reconciliation across
+historical and adjacent durable references; R-034 and R-035 preserve that migration lesson without
+changing the modules' responsibilities or dependency direction.
 
 This split also makes testing clearer: command-surface tests belong to Skills, runtime and launcher
 tests belong to Scripts, workspace-layout and acceptance tests belong to Workspace Files, release
@@ -134,6 +156,14 @@ tests belong to Distribution, and site tests belong to Auto-Docs.
 - **Define smallness by changed-line count** — rejected because ownership and architectural risk, not
   diff size, determine whether direct authoring is safe.
 
+- **Keep a suffix on the preset ID** — rejected because the suffix carried no behavioral,
+  ownership, or lifecycle distinction that Spec Kit's component type did not already express.
+- **Use `concorde` as both the component ID and both archive filenames** — rejected because two
+  different archives cannot occupy the same release path; transport filenames must include type.
+- **Retain the former preset as a compatibility alias** — rejected because no supported public
+  migration requires it, duplicate command layers would be ambiguous, and the maintainer required
+  a single project-wide identity.
+
 ## Decision Log
 
 - Replaced the host-centric module split with Skills, Scripts, and Workspace Files.
@@ -142,5 +172,13 @@ tests belong to Distribution, and site tests belong to Auto-Docs.
 - Made durable, temporal, selection, and generated file lifetimes explicit at the root.
 - Assigned deterministic operations and workspace routing to Scripts rather than to an abstract core.
 - 2026-08-30: Added `speckit.fast-loop` as an additive agent-followed preset surface with root-scoped workspace routing and no mutation runtime.
-- 2026-08-30: Kept additive fast-loop removal distinct from lower-layer restoration for the nine normal replacements (R-030).
+- 2026-08-30: Kept additive fast-loop removal distinct from lower-layer restoration for the nine normal command modifications (R-030).
 - 2026-08-30: Retained follow-up to clarify selected-sub-feature task-path wording (R-027) and to derive release capability counts from manifests rather than duplicated literals (R-032).
+- 2026-08-30: Unified the preset and extension IDs as type-qualified `preset:concorde` and
+  `extension:concorde`; retained `concorde-bundle` as the bundle identity.
+- 2026-08-30: Chose type-qualified preset/extension archive filenames to avoid a transport
+  collision while preserving the shared component ID.
+- 2026-08-30: Rejected a compatibility alias and recorded the explicitly approved coordinated
+  durable-reference migration (R-034, R-035).
+- 2026-08-30: Refreshed repository-evidence pins and type-stable diagram sources exposed by the
+  identity/path migration (R-037, R-038).

@@ -1,7 +1,7 @@
 # Interface Profile: Spec Kit Ecosystem Explanation
 
 This feature-local profile governs how Feature 003 explains the existing root
-`contract.concorde.spec-kit-installation`. It does not declare a second architecture contract or replace
+`contract.concorde.spec-kit-installation`. It does not declare a second architecture contract or supersede
 package manifests, module contracts, or the feature specification.
 
 ## Purpose
@@ -18,12 +18,12 @@ including install-time composition and the two distinct use-time paths.
 | Bundle | Is a passive, non-executable recipe pinning exactly one preset and one extension. |
 | Preset | Composes architecture guidance into templates (including the Concorde-only `abstract-template` for the feature-root `abstract.md` and `implementation-template` for the feature-root `design.md`) and authoritative selected-workspace routing into nine existing lifecycle commands. It introduces no new runtime command namespace. |
 | Extension | Actively contributes five Concorde-specific surfaces: four runtime-backed intents, one agent-followed read-only question procedure, a selected-workspace adapter, and the deterministic runtime used only by the operations. |
-| Active coding-agent integration | Materializes resolved core-command overrides and Concorde-specific commands in agent-native syntax without owning their behavior. |
+| Active coding-agent integration | Materializes Concorde-modified normal commands and Concorde-specific commands in agent-native syntax without owning their behavior. |
 | Skills | Are the installed user-facing command instructions materialized from the preset and extension sources. |
 | Scripts | Implement workspace routing and deterministic initialization, context, validation, and acceptance operations. |
 | Workspace Files | Preserve durable specification and accepted realization outside `attempt/`, and temporal delivery memory inside it. |
 
-The explanation must say that Concorde augments the standard Spec Kit lifecycle; it does not replace
+The explanation must say that Concorde augments the standard Spec Kit lifecycle; it does not supersede
 `specify`, `plan`, `tasks`, or the single canonical feature `design.md`. It must also distinguish the
 source checkout's self-hosting `.agents/` and `.specify/` files from the preset and extension files
 that a clean target actually receives from release archives.
@@ -49,8 +49,8 @@ that a clean target actually receives from release archives.
 | What happens during release/install and along each use-time path? | `diagrams/bundle-installation-flow.json` | `/architecture/concorde-bundle-installation-flow.html` |
 
 These are feature-owned Feature 003 explanations: the component model is the single `role: core`
-architecture view and the installation flow is `role: supplemental`. Both supplement rather than
-replace the module-owned level views under `architecture/diagrams/`, do not participate in
+architecture view and the installation flow is `role: supplemental`. Both supplement the
+module-owned level views under `architecture/diagrams/`, do not participate in
 Scripts source Profile 4, and must not redefine the root module's one-level participants or contracts.
 
 ## Accessibility and Evidence

@@ -24,7 +24,7 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Status**: open
 - **Occurrences**:
   - implement 2026-08-28 feature.concorde.record-workflow-reflections — refreshed the mirrors with
-    `specify preset remove concorde-core` + `specify preset add --dev … --priority 10` and
+    `specify preset remove concorde` + `specify preset add --dev … --priority 10` and
     `specify extension add … --dev --force` (plain `preset add` refuses an installed preset); byte
     equality proven by `diff -r` and `test_installed_command_surfaces`; a new agent session is
     still required before the refreshed skills are active.
@@ -35,6 +35,10 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
     successful self-host propose/apply/current cycle, restored Claude, refreshed its preset and
     extension through the public development install, restored the verified Codex skill backup, and
     confirmed both presentations include fast-loop; final Claude status remains `unknown`.
+  - implement 2026-08-30 feature.concorde.install-with-spec-kit — repeated the supported Codex
+    propose/apply/current proof after the preset identity rename, restored Claude, rematerialized its
+    preset and extension surfaces, restored the verified Codex skills, and confirmed final Claude
+    status remains `unknown` only because protocol v1 lacks that integration evidence.
 
 ### R-002 · Plan and tasks guidance disagree on whether an attempt may edit `module.md`
 
@@ -42,7 +46,7 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Date**: 2026-08-28
 - **Feature**: feature.concorde.record-workflow-reflections
 - **Kind**: guidance
-- **Concerns**: presets/concorde-core/templates/tasks-template.md
+- **Concerns**: presets/concorde/templates/tasks-template.md
 - **Expected**: One rule for module-summary edits during an attempt.
 - **Observed**: The tasks append layer says to include tasks that update "module registrations" and
   the "current-level Archify JSON", and also says not to generate a task that edits "any module
@@ -131,7 +135,7 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Observed**: Both cannot hold literally; the analysis instruction had to name one exception.
 - **Effect**: assumed
 - **Action**: Made appending to the project reflection log the single permitted write of the
-  analysis phase in `presets/concorde-core/commands/speckit.analyze.md`; nothing else changed.
+  analysis phase in `presets/concorde/commands/speckit.analyze.md`; nothing else changed.
 - **Improvement**: Reconcile FR-004 of `feature.concorde.workflow.execute-and-reconcile` (and its
   SC-002 "zero filesystem changes") with this exception through specification review of that root.
 - **Status**: open
@@ -342,7 +346,7 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Feature**: feature.concorde.workflow.accept-milestone
 - **Kind**: implementation
 - **Concerns**: tests/concorde/fixtures/releases/shared-component/bundle.yml
-- **Expected**: Bundle lifecycle fixtures that deliberately share the real `concorde-core` source
+- **Expected**: Bundle lifecycle fixtures that deliberately share the real `concorde` source
   resolve the current 0.4.0 preset during the terminology migration.
 - **Observed**: The shared-component fixture still pinned 0.3.0, so Spec Kit rejected installation
   when the source manifest resolved 0.4.0.
@@ -520,6 +524,16 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Improvement**: Provide Chrome/Chromium in the development validation environment used for
   architecture diagram delivery.
 - **Status**: open
+- **Occurrences**:
+  - implement 2026-08-30 feature.concorde.install-with-spec-kit — the renamed Feature 003 component
+    view again passed 9/9 showcase checks and delivery, while visual-check remained skipped/pending
+    because Chrome/Chromium is unavailable.
+  - implement 2026-08-30 feature.concorde.install-with-spec-kit — the terminology-aligned parent
+    workflow view also passed evidence-backed 9/9 showcase delivery, while its visual-check remained
+    skipped/pending for the same missing browser.
+  - implement 2026-08-30 feature.concorde.install-with-spec-kit — the self-hosting component view
+    passed evidence-backed 9/9 showcase delivery after its pin refresh, while visual-check remained
+    skipped/pending for the same missing browser.
 
 ### R-027 · Sub-feature task-path wording would prohibit product implementation
 
@@ -527,7 +541,7 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Date**: 2026-08-29
 - **Feature**: feature.concorde.workflow.fast-loop
 - **Kind**: guidance
-- **Concerns**: presets/concorde-core/templates/tasks-template.md
+- **Concerns**: presets/concorde/templates/tasks-template.md
 - **Expected**: A selected sub-feature's tasks may edit the repository code, tests, and public guides
   that realize it while keeping durable feature artifacts and attempts isolated to the child root.
 - **Observed**: The template literally says “every task path must remain beneath that child root,”
@@ -545,7 +559,7 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Date**: 2026-08-29
 - **Feature**: feature.concorde.workflow.fast-loop
 - **Kind**: implementation
-- **Concerns**: specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/attempt/tasks.md
+- **Concerns**: feature.concorde.workflow.fast-loop
 - **Expected**: T005 names the existing unit-test file that owns reflection-log parsing.
 - **Observed**: It named `tests/concorde/unit/test_reflections.py`; the repository uses
   `tests/concorde/unit/test_reflection_parser.py` and `test_reflection_rules.py`.
@@ -583,7 +597,7 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Feature**: feature.concorde.workflow.fast-loop
 - **Kind**: implementation
 - **Concerns**: tests/concorde/integration/test_command_recomposition.py
-- **Expected**: Removing `concorde-core` restores lower-layer winners for the nine overridden normal
+- **Expected**: Removing `concorde` restores lower-layer winners for the nine overridden normal
   commands and removes the solely owned fast-loop surface.
 - **Observed**: The first aggregate-inventory refactor asked the lower test preset for a fast-loop
   winner it never declared, so pre-install and post-removal assertions failed with zero artifacts.
@@ -599,7 +613,7 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Date**: 2026-08-29
 - **Feature**: feature.concorde.workflow.fast-loop
 - **Kind**: environment
-- **Concerns**: specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/attempt/quickstart.md
+- **Concerns**: feature.concorde.workflow.fast-loop
 - **Expected**: Full test discovery imports `tests.concorde.*` and the extension runtime's
   `concorde.*` package without namespace collision.
 - **Observed**: `unittest discover -s tests` imported `tests/concorde` as top-level `concorde`; later
@@ -645,4 +659,97 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
   to the existing two scenarios without changing its behavior, plan, contract, or implementation.
 - **Improvement**: Resolve proposed scenario IDs against the bounded level view during initial
   specification quality validation.
+- **Status**: open
+
+### R-034 · Global identity cleanup conflicts with append-only reflection history
+
+- **Phase**: plan
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.install-with-spec-kit
+- **Kind**: specification
+- **Concerns**: feature.concorde.record-workflow-reflections
+- **Expected**: The maintainer-requested preset rename leaves no tracked path or content using the
+  retired preset identifier.
+- **Observed**: The project reflection log contains historical occurrences while its normal agent
+  contract is append-only and prohibits rewriting existing entries.
+- **Effect**: worked-around
+- **Action**: Treat the maintainer's explicit project-wide rename as authorization for a
+  terminology-only rewrite that preserves every entry ID, field, status, note, occurrence, and
+  meaning.
+- **Improvement**: Define how an explicitly approved global terminology or identifier migration may
+  reconcile historical reflection text without weakening ordinary append-only agent behavior.
+- **Status**: open
+
+### R-035 · One package rename crosses several durable feature authorities
+
+- **Phase**: plan
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.install-with-spec-kit
+- **Kind**: architecture
+- **Concerns**: module.concorde
+- **Expected**: Feature 003 owns package identity and can keep every project reference synchronized
+  with its renamed preset.
+- **Observed**: The identity is repeated in accepted realizations and required sources owned by the
+  workflow, release, self-hosting, and reflection features, while normal selected-root guidance
+  prohibits editing another feature's durable body.
+- **Effect**: worked-around
+- **Action**: Use the root-level placement and the maintainer's explicit all-project instruction to
+  reconcile referential terminology across those sources without changing their independently owned
+  behavior; only Feature 003 receives a new accepted realization through this attempt.
+- **Improvement**: Add a reviewed coordinated-migration procedure for one authoritative identity
+  change that requires non-behavioral reference updates across several durable feature documents.
+- **Status**: open
+
+### R-036 · Failure injection retained the ambiguous extension archive name
+
+- **Phase**: implement
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.install-with-spec-kit
+- **Kind**: implementation
+- **Concerns**: tests/concorde/integration/test_bundle_lifecycle.py
+- **Expected**: The failed-update fixture corrupts the type-qualified extension archive emitted for
+  the simulated later release.
+- **Observed**: The first US2 checkpoint still opened the former unqualified extension filename, so
+  it failed before exercising digest rejection and rollback.
+- **Effect**: worked-around
+- **Action**: Updated the fixture to target `concorde-extension-0.3.1.zip` and reran the unchanged
+  lifecycle checkpoint.
+- **Improvement**: Derive fixture archive paths from the builder's returned artifact inventory rather
+  than duplicating transport filenames.
+- **Status**: open
+
+### R-037 · Workflow diagram evidence was pinned before fast-loop existed
+
+- **Phase**: implement
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.install-with-spec-kit
+- **Kind**: tooling
+- **Concerns**: specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json
+- **Expected**: The terminology-only diagram update validates its source evidence against the
+  repository revision recorded in the diagram.
+- **Observed**: Validation first required the omitted `--repo-root`, then showed that the pinned
+  revision predated the fast-loop source and the renamed preset path.
+- **Effect**: worked-around
+- **Action**: Supplied the repository root, advanced evidence to the current committed revision, and
+  cited committed materialized command surfaces whose paths remain valid through the preset rename;
+  showcase validation then passed 9/9 with no errors or warnings.
+- **Improvement**: Refresh repository evidence revisions whenever a maintained diagram gains a source
+  that did not exist at its previous pin, and include `--repo-root` in its validation task.
+- **Status**: open
+
+### R-038 · Self-hosting diagram pin predated the renamed preset path
+
+- **Phase**: implement
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.install-with-spec-kit
+- **Kind**: tooling
+- **Concerns**: specs/concorde/features/004-self-host-concorde/diagrams/concorde-self-hosting-components.json
+- **Expected**: Docsite diagram preparation validates every renamed repository-evidence reference.
+- **Observed**: Feature 004 still pinned a revision at which the new preset directory did not exist,
+  so Vitest and production build stopped during Archify validation.
+- **Effect**: worked-around
+- **Action**: Advanced the evidence revision to the current commit and used a committed materialized
+  preset surface as the type-stable source; standalone showcase validation passed 9/9 afterward.
+- **Improvement**: Include every repository-evidence diagram in identity/path migration tests before
+  running the full documentation build.
 - **Status**: open

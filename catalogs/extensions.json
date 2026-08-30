@@ -4,7 +4,7 @@
     "concorde": {
       "author": "Concorde maintainers",
       "description": "Initialize, retrieve, validate, accept, and explain bounded hierarchical feature work",
-      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0/concorde-0.4.0.zip",
+      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0/concorde-extension-0.4.0.zip",
       "effect": "read-write",
       "id": "concorde",
       "license": "MIT",
@@ -17,7 +17,7 @@
       "requires": {
         "speckit_version": ">=0.16.4,<0.16.5"
       },
-      "sha256": "sha256:3a5e134c65d67b505cda1739d4913fb2373e233eb860923db94220af5f7d7597",
+      "sha256": "sha256:db32fe78ceb6a675c2dc1596db676acdba87256f5ad4053f8ba2864f281682f4",
       "tags": [
         "architecture",
         "context",

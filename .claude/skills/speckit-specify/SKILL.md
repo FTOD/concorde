@@ -6,7 +6,7 @@ argument-hint: "Describe the feature you want to specify"
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: preset:concorde-core
+  source: preset:concorde
 user-invocable: true
 disable-model-invocation: false
 ---

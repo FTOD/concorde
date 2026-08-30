@@ -50,7 +50,7 @@ component lifecycle, the active project materialization, the coding agent, the p
 project sources, and the self-hosting drift gate. In one sketch:
 
 ```text
-presets/concorde-core · extensions/concorde · bundles/concorde-bundle   (authoritative source set)
+presets/concorde · extensions/concorde · bundles/concorde-bundle   (authoritative source set)
         │ propose ──▶ .specify/self-hosting-proposal.json ──▶ maintainer reviews, approves
         ▼ apply   ──▶ preflight in an isolated project ──▶ snapshot owned scope ──▶ Spec Kit local preset/extension install
                        ──▶ verify ──▶ .specify/self-hosting.json receipt ──▶ reload_required ──▶ coding agent (new session)
@@ -59,7 +59,7 @@ Preserved, never owned:  specs/** · docs/** · code · tests · project config 
 ```
 
 - **Distribution** identifies the authoritative local component set: the `concorde-bundle` recipe
-  pins the local `concorde-core` preset and `concorde` extension to one accepted version and
+  pins the local `concorde` preset and `concorde` extension to one accepted version and
   constrains the composition without becoming a self-hosting runtime.
 - **Skills** materializes that composition through Spec Kit's public development-mode
   preset and extension lifecycle, so the host owns registration, template composition, command

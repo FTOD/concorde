@@ -117,11 +117,11 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
             root = self.installed_project(temporary)
             installed = handoff_digest(
                 root / ".specify/extensions/concorde",
-                root / ".specify/presets/concorde-core",
+                root / ".specify/presets/concorde",
             )
             source = handoff_digest(
                 REPOSITORY_ROOT / "extensions/concorde",
-                REPOSITORY_ROOT / "presets/concorde-core",
+                REPOSITORY_ROOT / "presets/concorde",
             )
             self.assertEqual(installed, source)
 

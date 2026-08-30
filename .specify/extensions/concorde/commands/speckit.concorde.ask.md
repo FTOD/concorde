@@ -22,7 +22,7 @@ Read the smallest relevant set in this order:
 
 1. Installed extension sources under `.specify/extensions/concorde/`, especially `extension.yml`,
    `README.md`, and the matching command definitions under `commands/`.
-2. Installed preset sources under `.specify/presets/concorde-core/`, especially `preset.yml`,
+2. Installed preset sources under `.specify/presets/concorde/`, especially `preset.yml`,
    `README.md`, command definitions, and templates governing the named lifecycle stage.
 3. For project-specific questions only, the project constitution and the smallest bounded set of
    maintained `specs/` sources needed to answer, starting from summaries: the current module's

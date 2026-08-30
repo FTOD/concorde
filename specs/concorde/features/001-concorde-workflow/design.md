@@ -112,7 +112,7 @@ refactor of this repository.
 
 ## Workflow Boundary
 
-Concorde surrounds the normal Spec Kit lifecycle with architectural controls; it does not replace
+Concorde surrounds the normal Spec Kit lifecycle with architectural controls; it does not supersede
 Spec Kit's specification, clarification, planning, task, implementation, analysis, convergence, or
 issue-conversion procedures. The parent feature owns the end-to-end order, the document model, shared
 concepts, cross-step invariants, and command inventory. Each immediate sub-feature owns the
@@ -602,7 +602,7 @@ durable root without root-level compatibility copies.
 
 - **FR-022**: Concorde MUST preserve the ordered workflow and command ownership declared in the
   Decomposition and End-to-End Workflow sections, including fast-loop as a bounded alternate branch
-  rather than a replacement for the normal lifecycle.
+  rather than a second normal lifecycle.
 - **FR-023**: Every command MUST operate on one explicit or selected canonical target and MUST reject
   ambiguous, unsafe, or structurally invalid targets.
 - **FR-024**: All normal Spec Kit phases MUST use the selected Feature Workspace Protocol paths and

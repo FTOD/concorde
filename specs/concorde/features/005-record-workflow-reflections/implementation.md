@@ -11,7 +11,7 @@ The feature is realized without a new command surface. Three existing parts carr
 
 | Part | Owner | What it now does |
 |---|---|---|
-| Phase guidance and templates | Skills (`presets/concorde-core`) | A byte-identical **Reflection Recording** block in the five phase instructions after specification (`speckit.plan`, `tasks`, `implement`, `analyze`, `converge`) tells the agent when, where, and how to record; `reflections-template` seeds the log; the plan and tasks append layers name the log as the one maintained file a phase may append to; each completion report ends with `Reflections added: … · open for this feature: N`. |
+| Phase guidance and templates | Skills (`presets/concorde`) | A byte-identical **Reflection Recording** block in the five phase instructions after specification (`speckit.plan`, `tasks`, `implement`, `analyze`, `converge`) tells the agent when, where, and how to record; `reflections-template` seeds the log; the plan and tasks append layers name the log as the one maintained file a phase may append to; each completion report ends with `Reflections added: … · open for this feature: N`. |
 | Runtime | Scripts (`extensions/concorde/runtime/concorde`) | `reflections.py` is the single parser of the log; `validation/reflections.py` emits `CONCORDE-REFLECT-001..004`; `repository.py` loads `<specification_root>/reflections.md` into `package.auxiliary` (and the digest); `feature_workspace.py` adds `reflections` and `reflections_open` to every workspace result; `context.py` adds `reflections` (path + open count per feature) and `reflections_open` on feature summaries; `implementation_acceptance.py` adds `reflection_summary`, blocks on a malformed log (`CONCORDE-ACCEPT-011`), refuses an uncited open entry (`CONCORDE-ACCEPT-012`), and never writes the log. |
 | Protocol and documentation | Feature 001 contracts, guides, project interaction view | Reflection fields remain additive in Feature Workspace Protocol v8; the project view shows Skills, Scripts, and Workspace Files without treating the feature as a structural component; guides and READMEs describe the review loop. |
 
@@ -188,6 +188,6 @@ present the log; `validate.md` lists the rule IDs.
 
 ### Refresh procedure used by this attempt
 
-`uv run specify preset remove concorde-core && uv run specify preset add --dev presets/concorde-core --priority 10`,
+`uv run specify preset remove concorde && uv run specify preset add --dev presets/concorde --priority 10`,
 then `uv run specify extension add extensions/concorde --dev --priority 10 --force`; verify with
 `diff -r` against `.specify/` and `test_installed_command_surfaces`; start a new agent session.

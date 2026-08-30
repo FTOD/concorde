@@ -1,10 +1,11 @@
 # Concorde Bundle
 
-This integration-agnostic bundle pins `concorde-core@0.4.0` and `concorde@0.4.0` and inherits the
-project's active coding-agent integration. It declares no workflow or reusable step.
+This integration-agnostic bundle pins `preset:concorde@0.4.0` and
+`extension:concorde@0.4.0` and inherits the project's active coding-agent integration. It declares
+no workflow or reusable step.
 
-The preset contributes five architecture-aware templates and nine complete replacements for the
-normal Spec Kit 0.16.4 lifecycle commands. The extension contributes five Concorde-specific
+The preset contributes six architecture-aware templates, modifies nine normal Spec Kit 0.16.4
+lifecycle commands through complete instruction layers, and adds fast-loop. The extension contributes five Concorde-specific
 surfaces: four operations backed by the selected-workspace adapter and deterministic runtime
 (`init`, `context`, `validate`, `impl.accept`), plus one agent-followed `ask` procedure that
 reads cited guidance without mutation. Spec Kit resolves and materializes both sets through the

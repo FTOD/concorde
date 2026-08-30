@@ -11,7 +11,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, VALID_PROJECT
 
 class AgentCommandContractTests(unittest.TestCase):
     def test_fast_loop_direct_edit_surface_has_bounded_no_attempt_contract(self):
-        command = REPOSITORY_ROOT / "presets/concorde-core/commands/speckit.fast-loop.md"
+        command = REPOSITORY_ROOT / "presets/concorde/commands/speckit.fast-loop.md"
         contract = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/contracts/fast-loop-command.md"
         command_content = command.read_text(encoding="utf-8")
         contract_content = contract.read_text(encoding="utf-8")
@@ -45,7 +45,7 @@ class AgentCommandContractTests(unittest.TestCase):
 
     def test_fast_loop_rejects_every_ineligible_class_before_mutation(self):
         command = (
-            REPOSITORY_ROOT / "presets/concorde-core/commands/speckit.fast-loop.md"
+            REPOSITORY_ROOT / "presets/concorde/commands/speckit.fast-loop.md"
         ).read_text(encoding="utf-8")
         for invariant in (
             "| Condition | Eligible when | Redirect |",
@@ -86,7 +86,7 @@ class AgentCommandContractTests(unittest.TestCase):
         for invariant in (
             "$ARGUMENTS",
             ".specify/extensions/concorde/",
-            ".specify/presets/concorde-core/",
+            ".specify/presets/concorde/",
             "project-relative",
             "citation",
             "bounded",
@@ -157,7 +157,7 @@ class AgentCommandContractTests(unittest.TestCase):
 
     def test_checklist_surfaces_use_only_temporal_checklist_path(self):
         package_surfaces = [
-            REPOSITORY_ROOT / "presets/concorde-core/commands" / f"speckit.{name}.md"
+            REPOSITORY_ROOT / "presets/concorde/commands" / f"speckit.{name}.md"
             for name in ("specify", "clarify", "checklist", "implement")
         ]
         local_surfaces = [

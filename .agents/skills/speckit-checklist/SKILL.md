@@ -4,7 +4,7 @@ description: Generate a custom requirements-quality checklist for the selected f
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: preset:concorde-core
+  source: preset:concorde
 ---
 
 # Speckit Checklist Skill

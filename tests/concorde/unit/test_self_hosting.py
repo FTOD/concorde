@@ -21,7 +21,7 @@ class SelfHostingUnitTests(unittest.TestCase):
     def test_source_model_is_complete_ordered_and_deterministic(self):
         components, first, integration = self_host.component_model(self.root)
         self.assertEqual([item["kind"] for item in components], ["preset", "extension", "bundle"])
-        self.assertEqual([item["id"] for item in components], ["concorde-core", "concorde", "concorde-bundle"])
+        self.assertEqual([item["id"] for item in components], ["concorde", "concorde", "concorde-bundle"])
         self.assertEqual(integration, "codex")
         self.assertEqual(first, self_host.component_model(self.root)[1])
 
@@ -30,6 +30,16 @@ class SelfHostingUnitTests(unittest.TestCase):
         readme = self.root / "extensions/concorde/README.md"
         readme.write_text(readme.read_text() + "\nobservable change\n")
         self.assertNotEqual(before, self_host.component_model(self.root)[1])
+
+    def test_source_model_qualifies_same_id_bundle_pins_by_component_type(self):
+        bundle = self.root / "bundles/concorde-bundle/bundle.yml"
+        text = bundle.read_text(encoding="utf-8")
+        preset_section = '  presets:\n    - id: "concorde"'
+        self.assertIn(preset_section, text)
+        bundle.write_text(text.replace(preset_section, '  presets:\n    - id: "missing"', 1), encoding="utf-8")
+        with self.assertRaises(self_host.SelfHostError) as raised:
+            self_host.component_model(self.root)
+        self.assertEqual(raised.exception.finding["code"], "CONCORDE-SELF-HOST-008")
 
     def test_path_boundary_rejects_absolute_parent_backslash_and_symlink(self):
         for unsafe in ("/tmp/x", "../x", "a/../x", "a\\b", "a/"):
@@ -41,7 +51,7 @@ class SelfHostingUnitTests(unittest.TestCase):
             self_host.resolve_project_path(self.root, "linked/file")
 
     def test_source_inventory_rejects_symlinks(self):
-        (self.root / "presets/concorde-core/linked").symlink_to(self.root / "bundles/concorde-bundle")
+        (self.root / "presets/concorde/linked").symlink_to(self.root / "bundles/concorde-bundle")
         with self.assertRaises(self_host.SelfHostError) as raised:
             self_host.component_model(self.root)
         self.assertEqual(raised.exception.finding["code"], "CONCORDE-SELF-HOST-002")
@@ -66,4 +76,3 @@ class SelfHostingUnitTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

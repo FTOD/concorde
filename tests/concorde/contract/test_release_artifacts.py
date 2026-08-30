@@ -32,7 +32,7 @@ class ReleaseArtifactTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
             builder.build_release(Path(first), "http://127.0.0.1:8765")
             builder.build_release(Path(second), "http://127.0.0.1:8765")
-            names = ["concorde-core-0.4.0.zip", "concorde-0.4.0.zip", "concorde-bundle-0.4.0.zip"]
+            names = ["concorde-preset-0.4.0.zip", "concorde-extension-0.4.0.zip", "concorde-bundle-0.4.0.zip"]
             for name in names:
                 self.assertEqual((Path(first) / name).read_bytes(), (Path(second) / name).read_bytes())
             self.assertEqual((Path(first) / "presets.json").read_bytes(), (Path(second) / "presets.json").read_bytes())
@@ -46,7 +46,7 @@ class ReleaseArtifactTests(unittest.TestCase):
             builder.build_release(Path(temporary))
             for name, (collection, identifier) in {
                 "extensions.json": ("extensions", "concorde"),
-                "presets.json": ("presets", "concorde-core"),
+                "presets.json": ("presets", "concorde"),
                 "bundles.json": ("bundles", "concorde-bundle"),
             }.items():
                 text = (Path(temporary) / name).read_text(encoding="utf-8")
@@ -93,7 +93,7 @@ class ReleaseArtifactTests(unittest.TestCase):
             builder.build_release(Path(temporary))
             verified = verifier.verify_release(Path(temporary), expect_version=version, expect_base_url=base_url)
             self.assertEqual(set(verified), {
-                f"concorde-core-{version}.zip", f"concorde-{version}.zip", f"concorde-bundle-{version}.zip",
+                f"concorde-preset-{version}.zip", f"concorde-extension-{version}.zip", f"concorde-bundle-{version}.zip",
             })
             with self.assertRaisesRegex(ValueError, "expected release version 9.9.9"):
                 verifier.verify_release(Path(temporary), expect_version="9.9.9")
@@ -107,7 +107,7 @@ class ReleaseArtifactTests(unittest.TestCase):
             builder.build_release(output)
             preset_catalog = json.loads((output / "presets.json").read_text(encoding="utf-8"))
             extension_catalog = json.loads((output / "extensions.json").read_text(encoding="utf-8"))
-            preset_manifest = (REPOSITORY_ROOT / "presets/concorde-core/preset.yml").read_text(
+            preset_manifest = (REPOSITORY_ROOT / "presets/concorde/preset.yml").read_text(
                 encoding="utf-8"
             )
             extension_manifest = (REPOSITORY_ROOT / "extensions/concorde/extension.yml").read_text(
@@ -115,7 +115,7 @@ class ReleaseArtifactTests(unittest.TestCase):
             )
 
             self.assertEqual(
-                preset_catalog["presets"]["concorde-core"]["provides"],
+                preset_catalog["presets"]["concorde"]["provides"],
                 {
                     "templates": preset_manifest.count('type: "template"'),
                     "commands": preset_manifest.count('type: "command"'),
@@ -133,9 +133,9 @@ class ReleaseArtifactTests(unittest.TestCase):
     def test_archives_match_explicit_allowlists_and_installed_handoff(self):
         builder = load_builder()
         sources = {
-            "concorde-core-0.4.0.zip": ("concorde-core", REPOSITORY_ROOT / "presets/concorde-core"),
-            "concorde-0.4.0.zip": ("concorde", REPOSITORY_ROOT / "extensions/concorde"),
-            "concorde-bundle-0.4.0.zip": ("concorde-bundle", REPOSITORY_ROOT / "bundles/concorde-bundle"),
+            "concorde-preset-0.4.0.zip": ("preset", REPOSITORY_ROOT / "presets/concorde"),
+            "concorde-extension-0.4.0.zip": ("extension", REPOSITORY_ROOT / "extensions/concorde"),
+            "concorde-bundle-0.4.0.zip": ("bundle", REPOSITORY_ROOT / "bundles/concorde-bundle"),
         }
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
@@ -148,14 +148,14 @@ class ReleaseArtifactTests(unittest.TestCase):
                 with zipfile.ZipFile(output / archive_name) as archive:
                     self.assertEqual(set(archive.namelist()), expected)
 
-            with zipfile.ZipFile(output / "concorde-core-0.4.0.zip") as preset_archive:
+            with zipfile.ZipFile(output / "concorde-preset-0.4.0.zip") as preset_archive:
                 command_members = sorted(
                     name for name in preset_archive.namelist() if name.startswith("commands/")
                 )
                 self.assertEqual(len(command_members), 10)
                 self.assertTrue(all(b"Concorde Installed Workspace Gate" in preset_archive.read(name) for name in command_members))
 
-            with zipfile.ZipFile(output / "concorde-0.4.0.zip") as extension_archive:
+            with zipfile.ZipFile(output / "concorde-extension-0.4.0.zip") as extension_archive:
                 handoff_members = sorted(
                     name
                     for name in extension_archive.namelist()

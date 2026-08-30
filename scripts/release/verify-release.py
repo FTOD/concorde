@@ -49,8 +49,8 @@ def verify_release(
     if expect_version is not None and expect_version != version:
         raise ValueError(f"expected release version {expect_version} but the manifests declare {version}")
     expected = {
-        "extensions.json": ("extensions", "concorde", f"concorde-{version}.zip"),
-        "presets.json": ("presets", "concorde-core", f"concorde-core-{version}.zip"),
+        "extensions.json": ("extensions", "concorde", f"concorde-extension-{version}.zip"),
+        "presets.json": ("presets", "concorde", f"concorde-preset-{version}.zip"),
         "bundles.json": ("bundles", "concorde-bundle", f"concorde-bundle-{version}.zip"),
     }
     verified: dict[str, str] = {}

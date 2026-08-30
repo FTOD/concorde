@@ -6,7 +6,7 @@
 
 Concorde self-hosts through the repository bootstrap `scripts/development/self-host-concorde.py`. The bootstrap is deliberately outside the installed extension so a checkout with no active Concorde installation can still inspect and install the framework. It uses only Python 3.11 standard-library facilities and delegates component mutation to Spec Kit 0.16.4's public development-mode preset and extension lifecycle.
 
-The maintained `presets/concorde-core/`, `extensions/concorde/`, and `bundles/concorde-bundle/` trees form the authoritative framework source set. Installed copies under `.specify/`, composed templates, registries, and agent skills are replaceable materializations. They never flow back into maintained sources. The bootstrap exposes three JSON-producing operations:
+The maintained `presets/concorde/`, `extensions/concorde/`, and `bundles/concorde-bundle/` trees form the authoritative framework source set. Installed copies under `.specify/`, composed templates, registries, and agent skills are replaceable materializations. They never flow back into maintained sources. The bootstrap exposes three JSON-producing operations:
 
 - `propose` validates the source boundary and active integration, computes a deterministic source digest, inspects current ownership, and writes only the ignored `.specify/self-hosting-proposal.json`;
 - `apply` accepts only that canonical proposal, rejects stale or changed review state, preflights the same local components in an isolated Spec Kit project, snapshots the exact owned scope, materializes through Spec Kit, verifies the result, and atomically writes the ignored `.specify/self-hosting.json` receipt; and
@@ -18,7 +18,7 @@ The durable JSON interface is defined by `contracts/self-hosting.md`, `contracts
 
 `module.concorde` owns this cross-component feature. Its bounded organization, participants, and external contracts remain authoritative in `specs/concorde/module.md` and `specs/concorde/architecture/diagrams/level-view.json`; this design records only how those maintained boundaries are used.
 
-Distribution contributes `feature.distribution.package-concorde-bundle`, whose `concorde-bundle` recipe pins the local `concorde-core` preset and `concorde` extension to the same accepted version. The recipe constrains development self-hosting composition but is not executed as a self-hosting runtime and does not replace Feature 003's release lifecycle.
+Distribution contributes `feature.distribution.package-concorde-bundle`, whose `concorde-bundle` recipe pins the local `concorde` preset and `concorde` extension to the same accepted version. The recipe constrains development self-hosting composition but is not executed as a self-hosting runtime and does not replace Feature 003's release lifecycle.
 
 Skills contributes `feature.skills.compose-workflow`. The bootstrap invokes Spec Kit's public local preset and extension installation so the host owns registration, template composition, command layering, and Codex skill materialization. The accepted composition exposes nine preset-owned normal lifecycle skills, five extension-owned Concorde skills, and three top-level composed template surfaces; the installed component copies also retain the extension runtime, launchers, and complete preset template sources.
 

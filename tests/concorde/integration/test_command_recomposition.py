@@ -32,14 +32,14 @@ class CommandRecompositionTests(unittest.TestCase):
                 project.run("bundle", "install", "concorde-bundle")
                 self.assert_all_winners(root, "Concorde Installed Workspace Gate")
 
-                project.run("preset", "disable", "concorde-core")
+                project.run("preset", "disable", "concorde")
                 self.assert_all_winners(root, "Concorde Installed Workspace Gate")
-                project.run("preset", "enable", "concorde-core")
+                project.run("preset", "enable", "concorde")
                 self.assert_all_winners(root, "Concorde Installed Workspace Gate")
 
-                project.run("preset", "set-priority", "concorde-core", "30")
+                project.run("preset", "set-priority", "concorde", "30")
                 self.assert_all_winners(root, "Concorde Installed Workspace Gate")
-                project.run("preset", "set-priority", "concorde-core", "5")
+                project.run("preset", "set-priority", "concorde", "5")
                 self.assert_all_winners(root, "Concorde Installed Workspace Gate")
 
                 project.run("bundle", "remove", "concorde-bundle")

@@ -792,7 +792,7 @@ def local_release(checkout_value: str):
     verify_script = checkout / "scripts/release/verify-release.py"
     manifests = [
         checkout / "bundles/concorde-bundle/bundle.yml",
-        checkout / "presets/concorde-core/preset.yml",
+        checkout / "presets/concorde/preset.yml",
         checkout / "extensions/concorde/extension.yml",
     ]
     missing = [path for path in [build_script, verify_script, *manifests] if not path.is_file()]

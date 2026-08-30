@@ -43,7 +43,7 @@ class SelfHostingLifecycleTests(unittest.TestCase):
         self.assertTrue(fast_loop.is_file())
         self.assertIn("--phase fast-loop", fast_loop.read_text(encoding="utf-8"))
         registry = json.loads((self.root / ".specify/presets/.registry").read_text())
-        self.assertEqual(registry["presets"]["concorde-core"]["source"], "local")
+        self.assertEqual(registry["presets"]["concorde"]["source"], "local")
         self.assertNotIn("stale hand-maintained", adopted.read_text())
 
     def test_foreign_extension_command_collision_is_rejected_in_preview(self):
@@ -64,12 +64,12 @@ class SelfHostingLifecycleTests(unittest.TestCase):
 
     def test_stale_proposal_is_rejected_before_mutation(self):
         self.propose()
-        source = self.root / "presets/concorde-core/README.md"
+        source = self.root / "presets/concorde/README.md"
         source.write_text(source.read_text() + "\nstale\n")
         completed, result = run_cli(self.root, "apply", "--proposal", ".specify/self-hosting-proposal.json", check=False)
         self.assertNotEqual(completed.returncode, 0)
         self.assertEqual(result["status"], "invalid")
-        self.assertFalse((self.root / ".specify/presets/concorde-core").exists())
+        self.assertFalse((self.root / ".specify/presets/concorde").exists())
 
     def test_refresh_and_unchanged_apply_are_deterministic(self):
         self.propose()
@@ -91,7 +91,7 @@ class SelfHostingLifecycleTests(unittest.TestCase):
         self.assertEqual(current["status"], "current")
         self.assertEqual(current["dimensions"]["activation"]["status"], "reload_required")
         receipt_before = (self.root / ".specify/self-hosting.json").read_bytes()
-        (self.root / "presets/concorde-core/README.md").write_text("changed source\n")
+        (self.root / "presets/concorde/README.md").write_text("changed source\n")
         _, drift = run_cli(self.root, "status")
         self.assertEqual(drift["status"], "drift")
         self.assertEqual(drift["dimensions"]["source"]["status"], "changed")
@@ -211,7 +211,7 @@ class SelfHostingLifecycleTests(unittest.TestCase):
         )
         self.assertNotEqual(completed.returncode, 0)
         self.assertEqual(result["status"], "failed")
-        self.assertFalse((self.root / ".specify/presets/concorde-core").exists())
+        self.assertFalse((self.root / ".specify/presets/concorde").exists())
 
 
 if __name__ == "__main__":

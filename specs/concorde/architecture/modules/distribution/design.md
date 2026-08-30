@@ -8,7 +8,7 @@ lifecycle contracts remain owned by `module.md` and the contract documents under
 ### Bundle and catalog model
 
 A bundle is a versioned recipe, not a runtime. `concorde-bundle` names and pins the independently
-versioned `concorde-core` preset and `concorde` extension that have been tested together. Bundle
+versioned `concorde` preset and `concorde` extension that have been tested together. Bundle
 inspection expands that recipe before installation; installation delegates each component to Spec
 Kit's preset or extension machinery and records ownership for safe update and removal.
 
@@ -79,7 +79,7 @@ The maintained definitions are `contracts/bundle-lifecycle/contract.md` and
 - 2026-08-27 — Adopted the module summary / design reference split and renamed feature design.md to
   implementation.md (feature.concorde.workflow); this module's `module.md` was rewritten to the
   summary shape and the bundle/catalog model and contract narratives moved here. The same attempt
-  proposes bumping `concorde-core` and `concorde` to 0.2.0 with the bundle pin following, keeping
+  proposes bumping `concorde` and `concorde` to 0.2.0 with the bundle pin following, keeping
   the catalog counts at 4 templates / 9 commands; release publication itself stays with Feature 003.
 - 2026-08-27 — Concorde releases are published from version tags; v0.1.0 publication evidence
   recorded.

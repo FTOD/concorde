@@ -25,7 +25,7 @@ used by other Spec Kit ecosystem packages.
 | Unit | Stable ID | Initial version | Required content |
 |---|---|---:|---|
 | Bundle | `concorde-bundle` | `0.1.0` | One preset reference and one extension reference only. |
-| Preset | `concorde-core` | `0.1.0` | Four template contributions and authoritative layers for nine existing lifecycle commands. |
+| Preset | `concorde` | `0.1.0` | Four template contributions and authoritative layers modifying nine existing lifecycle commands. |
 | Extension | `concorde` | `0.1.0` | Five Concorde-specific surfaces: four runtime-backed operations, one agent-followed `ask` procedure, selected-workspace adapter, and project-local runtime. |
 
 Every version above is independently authoritative in its own manifest and matching catalog entry.
@@ -38,9 +38,9 @@ The bundle pins the exact preset and extension versions it has passed acceptance
 | Spec Kit | Resolves catalogs and components, composes templates, selects the active integration, mutates projects, and owns registry/provenance lifecycle. |
 | Catalog | Advertises identity, version, download location, compatibility, digest, and trust metadata; it does not contain behavior. |
 | Bundle | Pins the accepted preset and extension as a non-executable recipe; it does not embed or install them itself. |
-| Preset | Composes templates and overrides existing lifecycle command instructions. It introduces no new runtime command namespace and owns no runtime; Spec Kit registers the resolved command layer. |
+| Preset | Composes templates and modifies existing lifecycle command instructions. It introduces no new runtime command namespace and owns no runtime; Spec Kit registers the resolved command layer. |
 | Extension | Actively supplies five Concorde-specific command intents: four invoke the selected-workspace adapter or deterministic runtime, while `ask` is agent-followed, source-grounded, and read-only. |
-| Active integration | Materializes both resolved normal-command overrides and Concorde-specific commands using agent-native presentation and invocation syntax; it does not own behavior or path semantics. |
+| Active integration | Materializes both Concorde-modified normal commands and Concorde-specific commands using agent-native presentation and invocation syntax; it does not own behavior or path semantics. |
 | Scripts / workspace runtime | Own deterministic initialization, bounded context, validation, feature workspace, and acceptance behavior behind the extension commands. |
 
 The root platform and workflow-composition contracts own this cross-module meaning. This distribution
@@ -72,7 +72,7 @@ provides:
     - id: "concorde"
       version: "0.1.0"
   presets:
-    - id: "concorde-core"
+    - id: "concorde"
       version: "0.1.0"
       priority: 10
       strategy: "append"
@@ -87,7 +87,7 @@ integration.
 
 The bundle-level preset `strategy: append` describes how the preset participates in the target's
 preset stack. It does not force every entry inside that preset to use append composition. The
-`concorde-core` manifest keeps its three inherited template entries as `append`, adds the
+`concorde` preset manifest keeps its three inherited template entries as `append`, adds the
 Concorde-only `abstract-template` (the feature abstract that `speckit.specify` authors at a new feature
 root) and `implementation-template` (the placeholder feature `design.md`) as `replace`, and declares each of
 the nine path-sensitive command entries as `replace`, as required below. The preset and extension
@@ -110,14 +110,14 @@ The released extension owns these five new command intents: `speckit.concorde.in
 procedure with no launcher or runtime verb. Feature creation and selection are standard Spec Kit
 behavior (`speckit.specify` with `SPECIFY_FEATURE_DIRECTORY`, and `.specify/feature.json`) that the
 extension's workspace adapter resolves; they are not extension intents.
-Platform-safe registered spellings may replace dots inside the final
+Platform-safe registered spellings may substitute hyphens for dots inside the final
 operation name, but the canonical intent and behavior remain unchanged.
 
 For every path-sensitive normal command, the winning installed instructions MUST establish the
 selected workspace before invoking any inherited step that assumes a root-level plan or task path.
 Merely appending corrective text after such a step is non-conforming. Command composition MUST use
-Spec Kit's public preset command contract; the bundle MUST NOT depend on arbitrary replacement of
-installed Spec Kit core scripts.
+Spec Kit's public preset command contract; the bundle MUST NOT depend on arbitrary mutation of
+installed Spec Kit scripts.
 
 Repository-local `.agents/` and `.specify/` content is self-hosting state, not a release unit. Clean
 acceptance installs the built bundle and catalogs into an isolated target and denies access to the
@@ -181,4 +181,6 @@ source checkout.
 
 The initial contract is tested only with Spec Kit 0.16.4. Expanding the manifest range requires the
 full clean-project lifecycle and both agent-registration suites to pass against every added version.
-Changing stable component or command IDs is a breaking Concorde change.
+Changing stable component or command IDs is a breaking Concorde change. This pre-release rename is
+accepted without an alias; preset and extension share the `concorde` ID and remain distinct through
+their component types and type-specific registries, catalogs, paths, and archive names.

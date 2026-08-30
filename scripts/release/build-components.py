@@ -25,8 +25,10 @@ FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 CATALOG_UPDATED_AT = "2026-08-20T00:00:00Z"
 
 BUNDLE_MANIFEST = "bundles/concorde-bundle/bundle.yml"
-PRESET_MANIFEST = "presets/concorde-core/preset.yml"
+PRESET_MANIFEST = "presets/concorde/preset.yml"
 EXTENSION_MANIFEST = "extensions/concorde/extension.yml"
+PRESET_ID = "concorde"
+EXTENSION_ID = "concorde"
 
 
 class ReleaseIdentityError(ValueError):
@@ -62,8 +64,8 @@ def read_release_identity(root: Path = REPOSITORY_ROOT) -> ReleaseIdentity:
 
     version = str(bundle["bundle"]["version"])
     observed_versions = {
-        f"{BUNDLE_MANIFEST} provides.presets[concorde-core].version": _pinned(bundle, "presets", "concorde-core"),
-        f"{BUNDLE_MANIFEST} provides.extensions[concorde].version": _pinned(bundle, "extensions", "concorde"),
+        f"{BUNDLE_MANIFEST} provides.presets[{PRESET_ID}].version": _pinned(bundle, "presets", PRESET_ID),
+        f"{BUNDLE_MANIFEST} provides.extensions[{EXTENSION_ID}].version": _pinned(bundle, "extensions", EXTENSION_ID),
         f"{PRESET_MANIFEST} preset.version": str(preset["preset"]["version"]),
         f"{EXTENSION_MANIFEST} extension.version": str(extension["extension"]["version"]),
     }
@@ -110,13 +112,13 @@ def default_base_url(version: str, repository: str = REPOSITORY) -> str:
     return f"{repository}/releases/download/v{version}"
 
 
-def _allowed_member(component: str, relative: Path) -> bool:
+def _allowed_member(component_kind: str, relative: Path) -> bool:
     path = relative.as_posix()
-    if component == "concorde-core":
+    if component_kind == "preset":
         return path in {"README.md", "preset.yml"} or (
             (path.startswith("commands/") or path.startswith("templates/")) and path.endswith(".md")
         )
-    if component == "concorde":
+    if component_kind == "extension":
         return (
             path in {"README.md", "extension.yml"}
             or (path.startswith("commands/") and path.endswith(".md"))
@@ -126,27 +128,27 @@ def _allowed_member(component: str, relative: Path) -> bool:
             or (path.startswith("runtime/concorde/") and path.endswith(".py"))
             or (path.startswith("schemas/") and path.endswith(".json"))
         )
-    if component == "concorde-bundle":
+    if component_kind == "bundle":
         return path in {"README.md", "bundle.yml"}
     return False
 
 
-def _source_files(directory: Path, component: str) -> Iterable[Path]:
+def _source_files(directory: Path, component_kind: str) -> Iterable[Path]:
     for path in sorted(directory.rglob("*"), key=lambda item: item.relative_to(directory).as_posix()):
         if not path.is_file():
             continue
         relative = path.relative_to(directory)
         if "__pycache__" in relative.parts or path.suffix in {".pyc", ".pyo"}:
             continue
-        if not _allowed_member(component, relative):
-            raise ValueError(f"{component}: source file is outside the release allowlist: {relative.as_posix()}")
+        if not _allowed_member(component_kind, relative):
+            raise ValueError(f"{component_kind}: source file is outside the release allowlist: {relative.as_posix()}")
         yield path
 
 
 def deterministic_zip(
     source: Path,
     destination: Path,
-    component: str,
+    component_kind: str,
     version: str | None = None,
     manifest_version: str | None = None,
 ) -> str:
@@ -158,7 +160,7 @@ def deterministic_zip(
     """
     destination.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for path in _source_files(source, component):
+        for path in _source_files(source, component_kind):
             relative = path.relative_to(source).as_posix()
             info = zipfile.ZipInfo(relative, FIXED_TIMESTAMP)
             info.compress_type = zipfile.ZIP_DEFLATED
@@ -192,13 +194,13 @@ def build_release(output: Path, base_url: str | None = None, version: str | None
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     archives = {
-        f"concorde-core-{version}.zip": ("concorde-core", REPOSITORY_ROOT / "presets/concorde-core"),
-        f"concorde-{version}.zip": ("concorde", REPOSITORY_ROOT / "extensions/concorde"),
-        f"concorde-bundle-{version}.zip": ("concorde-bundle", REPOSITORY_ROOT / "bundles/concorde-bundle"),
+        f"concorde-preset-{version}.zip": ("preset", REPOSITORY_ROOT / "presets/concorde"),
+        f"concorde-extension-{version}.zip": ("extension", REPOSITORY_ROOT / "extensions/concorde"),
+        f"concorde-bundle-{version}.zip": ("bundle", REPOSITORY_ROOT / "bundles/concorde-bundle"),
     }
     digests = {
-        name: deterministic_zip(source, output / name, component, version, manifest_version)
-        for name, (component, source) in archives.items()
+        name: deterministic_zip(source, output / name, component_kind, version, manifest_version)
+        for name, (component_kind, source) in archives.items()
     }
     common = {
         "author": "Concorde maintainers",
@@ -221,8 +223,8 @@ def build_release(output: Path, base_url: str | None = None, version: str | None
                     "version": version,
                     "description": "Initialize, retrieve, validate, accept, and explain bounded hierarchical feature work",
                     "effect": "read-write",
-                    "download_url": f"{base_url}/concorde-{version}.zip",
-                    "sha256": f"sha256:{digests[f'concorde-{version}.zip']}",
+                    "download_url": f"{base_url}/concorde-extension-{version}.zip",
+                    "sha256": f"sha256:{digests[f'concorde-extension-{version}.zip']}",
                     "provides": {"commands": 5, "scripts": 4},
                     "tags": ["architecture", "context", "validation"],
                 }
@@ -236,14 +238,14 @@ def build_release(output: Path, base_url: str | None = None, version: str | None
             "updated_at": CATALOG_UPDATED_AT,
             "catalog_url": f"{base_url}/presets.json",
             "presets": {
-                "concorde-core": {
+                "concorde": {
                     **common,
-                    "id": "concorde-core",
-                    "name": "Concorde Core",
+                    "id": "concorde",
+                    "name": "Concorde",
                     "version": version,
                     "description": "Architecture guidance plus authoritative nested-workspace routing for the Spec Kit lifecycle",
-                    "download_url": f"{base_url}/concorde-core-{version}.zip",
-                    "sha256": f"sha256:{digests[f'concorde-core-{version}.zip']}",
+                    "download_url": f"{base_url}/concorde-preset-{version}.zip",
+                    "sha256": f"sha256:{digests[f'concorde-preset-{version}.zip']}",
                     "provides": {"templates": 6, "commands": 10},
                     "tags": ["architecture", "contracts", "spec-driven-development"],
                 }

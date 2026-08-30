@@ -67,7 +67,7 @@ def _installed_snapshot(root: Path) -> dict[str, object]:
         for item in bundles
     ]
     files: dict[str, str] = {}
-    for relative_root in (".agents/skills", ".specify/extensions/concorde", ".specify/presets/concorde-core"):
+    for relative_root in (".agents/skills", ".specify/extensions/concorde", ".specify/presets/concorde"):
         source = root / relative_root
         for path in sorted(source.rglob("*")):
             if path.is_file():
@@ -239,14 +239,14 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
                 self.assertEqual(result, installer.EXIT_OK)
                 self.assertEqual(_all_hashes(target), before)
                 self.assertIn('"id": "concorde"', preview.getvalue())
-                self.assertIn('"id": "concorde-core"', preview.getvalue())
+                self.assertGreaterEqual(preview.getvalue().count('"id": "concorde"'), 2)
 
                 with mock.patch.object(installer, "fetch_release", return_value=release):
                     self.assertEqual(installer.main(["--target", str(target)]), installer.EXIT_OK)
                 components = _installed_snapshot(target)["bundles"][0]["components"]
                 self.assertEqual(
                     components,
-                    [("extensions", "concorde", "0.4.0"), ("presets", "concorde-core", "0.4.0")],
+                    [("extensions", "concorde", "0.4.0"), ("presets", "concorde", "0.4.0")],
                 )
 
     def test_checkout_mode_builds_installs_repeats_and_releases_server(self):

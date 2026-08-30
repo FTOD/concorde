@@ -20,8 +20,8 @@ metadata, each with one job:
 | Part | Job | Explicitly not |
 |---|---|---|
 | Catalog | Advertises identity, version, compatibility, location, integrity, and trust of each unit. | An installed component. |
-| Bundle `concorde-bundle` | A non-executable recipe that pins exactly one tested `concorde-core` preset and one `concorde` extension. | Behavior, a template layer, or a replacement workflow. |
-| Preset `concorde-core` | Composes Concorde guidance into the normal templates (specification, abstract, design reference, plan, tasks) and replaces the nine path-sensitive Spec Kit commands so the selected workspace is resolved first. | A new command namespace or a second feature specification. |
+| Bundle `concorde-bundle` | A non-executable recipe that pins exactly one tested `concorde` preset and one `concorde` extension, distinguished by component type. | Behavior, a template layer, or a separate workflow. |
+| Preset `concorde` | Composes Concorde guidance into the normal templates (specification, abstract, design reference, plan, tasks) and modifies the installed instructions for the nine path-sensitive Spec Kit commands so the selected workspace is resolved first. | A new command namespace or a second feature specification. |
 | Extension `concorde` | Registers the five Concorde surfaces (`init`, `context`, `validate`, `impl.accept`, and the agent-only `ask`) with the selected-workspace adapter, launchers, and the deterministic runtime. | The owner of the normal phases or of agent presentation syntax. |
 | Coding-agent integration | Materializes the resolved commands as the active agent's skills or slash commands. | A change to command intent or paths. |
 
@@ -47,7 +47,7 @@ metadata, each with one job:
   native path.
 
 **Not part of this feature**: the workflow itself (`feature.concorde.workflow`), the documentation
-site (`feature.concorde.publish-project-docsite`), a replacement Spec Kit lifecycle, and any
+site (`feature.concorde.publish-project-docsite`), a separate Spec Kit lifecycle, and any
 installer that copies files or bypasses the bundle recipe.
 
 ## Structure
@@ -61,7 +61,7 @@ flow</a> (`diagrams/bundle-installation-flow.json`) shows the release-to-use ord
 Concorde source ──build + verify──▶ release: preset · extension · bundle archives + catalogs
                                           │  register catalogs (public location, or localhost in development)
 Spec Kit 0.16.4 ◀── preview · install ────┘
-   ├─ concorde-core preset  ──▶ .specify/templates + 9 resolved Spec Kit phase commands
+   ├─ concorde preset       ──▶ .specify/templates + 9 resolved Spec Kit phase commands
    ├─ concorde extension    ──▶ 5 Concorde surfaces + selected-workspace adapter + launchers + runtime
    └─ active coding-agent integration ──▶ skills or slash commands the maintainer actually invokes
 Project-owned, never component-owned:  .concorde/config.json · specs/** · .specify/feature.json
@@ -70,9 +70,10 @@ Project-owned, never component-owned:  .concorde/config.json · specs/** · .spe
 - **Spec Kit** is the host: it resolves trust and compatibility, expands the plan, installs each
   unit through its native lifecycle, records provenance, and rematerializes commands on update or
   removal.
-- **The preset** contributes templates and complete replacement layers for `specify`, `clarify`,
-  `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues`;
-  replacement, not append, because workspace routing must precede every inherited path assumption.
+- **The preset** modifies the installed instructions for `specify`, `clarify`, `checklist`, `plan`,
+  `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues` by contributing complete layers;
+  the manifest uses `strategy: replace` rather than append because workspace routing must precede
+  every inherited path assumption, but the Spec Kit command names and lifecycle roles remain in use.
 - **The extension** contributes the four runtime operations, the `ask` procedure, and everything
   they need to run from the installed location alone.
 - **Scripts** performs initialization, bounded context, and validation once an installed
@@ -121,11 +122,17 @@ Project-owned, never component-owned:  .concorde/config.json · specs/** · .spe
   state instead of recording success (FR-021 to FR-024).
 - A published release lives at the location its catalogs advertise, and any one-command path
   converges on the native path's installed state (FR-032, FR-033).
+- The preset and extension both use the `concorde` ID in their separate component namespaces; all
+  sources, releases, installations, tests, and guidance use the type-qualified identities and retain
+  no compatibility alias or superseded token (FR-034, FR-035, FR-037).
+- User-facing guidance says Concorde modifies the existing Spec Kit commands; technical discussion
+  may still name the manifest's `replace` strategy without implying that those commands disappeared
+  or should no longer be invoked (FR-036).
 
 ## Read Next
 
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): the delivery model
-  table, the four user stories, FR-001 to FR-033, and the measurable outcomes.
+  table, the four user stories, FR-001 to FR-037, and the measurable outcomes.
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (accepted realization and
   implementation detail, written by acceptance).
 - **The contracts** — `contracts/bundle-distribution.md`,

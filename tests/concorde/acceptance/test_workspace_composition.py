@@ -26,7 +26,7 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                     capture_output=True,
                 )
                 subprocess.run(
-                    ["specify", "preset", "add", "--dev", str(REPOSITORY_ROOT / "presets/concorde-core")],
+                    ["specify", "preset", "add", "--dev", str(REPOSITORY_ROOT / "presets/concorde")],
                     cwd=root,
                     check=True,
                     capture_output=True,

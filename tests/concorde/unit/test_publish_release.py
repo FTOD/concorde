@@ -88,8 +88,8 @@ class PublishReleaseTests(unittest.TestCase):
         self.assertIn("release.json", self.assets)
         self.assertEqual(host.calls[-1], ("publish", self.tag))
         self.assertTrue((self.dist / "release.json").is_file())
-        self.assertIn(f"concorde-core@{self.version}", host.notes)
-        self.assertIn(f"concorde@{self.version}", host.notes)
+        self.assertIn(f"preset:concorde@{self.version}", host.notes)
+        self.assertIn(f"extension:concorde@{self.version}", host.notes)
         self.assertIn(">=0.16.4,<0.16.5", host.notes)
 
     def test_dry_run_prints_plan_and_touches_no_host(self):
@@ -102,7 +102,7 @@ class PublishReleaseTests(unittest.TestCase):
         self.assertEqual(record["plan"][-1], f"gh release edit {self.tag} --draft=false")
         self.assertEqual(len(record["plan"]), 9)
         self.assertEqual(record["base_url"], f"https://github.com/FTOD/concorde/releases/download/{self.tag}")
-        self.assertIn(f"concorde-core@{self.version}", record["notes"])
+        self.assertIn(f"preset:concorde@{self.version}", record["notes"])
 
     def test_tag_that_disagrees_with_manifest_version_is_rejected(self):
         host = FakeHost()
@@ -140,12 +140,12 @@ class PublishReleaseTests(unittest.TestCase):
         self.assertTrue(json.loads((self.dist / "release.json").read_text(encoding="utf-8"))["prerelease"])
 
     def test_leftover_draft_is_repaired_and_published(self):
-        host = FakeHost(existing={"isDraft": True, "assets": [{"name": "presets.json"}, {"name": "concorde-0.1.0.zip"}]})
+        host = FakeHost(existing={"isDraft": True, "assets": [{"name": "presets.json"}, {"name": "concorde-extension-0.1.0.zip"}]})
         record, code = publisher.publish(self.dist, self.tag, host)
         self.assertEqual(code, 0, record)
         self.assertEqual(record["outcome"], "published")
         self.assertNotIn("create", [call[0] for call in host.calls])
-        self.assertEqual(host.calls[1:3], [("delete", self.tag, "presets.json"), ("delete", self.tag, "concorde-0.1.0.zip")])
+        self.assertEqual(host.calls[1:3], [("delete", self.tag, "presets.json"), ("delete", self.tag, "concorde-extension-0.1.0.zip")])
         self.assertEqual([call[2] for call in host.calls[3:-1]], self.assets)
         self.assertEqual(host.calls[-1], ("publish", self.tag))
 
@@ -205,7 +205,7 @@ class PublishReleaseTests(unittest.TestCase):
         self.assertNotIn("updated_at", pointer)
         for name, (collection, identifier) in {
             "extensions.json": ("extensions", "concorde"),
-            "presets.json": ("presets", "concorde-core"),
+            "presets.json": ("presets", "concorde"),
             "bundles.json": ("bundles", "concorde-bundle"),
         }.items():
             catalog = json.loads((self.dist / name).read_text(encoding="utf-8"))
@@ -214,8 +214,8 @@ class PublishReleaseTests(unittest.TestCase):
             self.assertEqual(pointer["catalogs"][collection], catalog["catalog_url"])
 
     def test_render_notes_names_components_range_and_registration_commands(self):
-        notes = publisher.render_notes("0.1.0", ">=0.16.4,<0.16.5", "https://github.com/FTOD/concorde/releases/download/v0.1.0", {"concorde-0.1.0.zip": "sha256:ab"})
-        for needle in ("concorde-core@0.1.0", "concorde@0.1.0", "concorde-bundle@0.1.0", ">=0.16.4,<0.16.5", "specify bundle install concorde-bundle", "releases/latest/download/release.json"):
+        notes = publisher.render_notes("0.1.0", ">=0.16.4,<0.16.5", "https://github.com/FTOD/concorde/releases/download/v0.1.0", {"concorde-extension-0.1.0.zip": "sha256:ab"})
+        for needle in ("preset:concorde@0.1.0", "extension:concorde@0.1.0", "concorde-bundle@0.1.0", ">=0.16.4,<0.16.5", "specify bundle install concorde-bundle", "releases/latest/download/release.json"):
             self.assertIn(needle, notes)
 
     def test_cli_dry_run_prints_record_and_exit_code(self):

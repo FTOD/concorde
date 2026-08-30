@@ -30,7 +30,7 @@ hierarchy when `SPECIFY_FEATURE_DIRECTORY` names `<module directory>/features/NN
 registration, canonical paths, and two-level containment afterwards.
 
 The extension also provides the Protocol v8 selected-workspace adapter used by the preset's nine
-normal command replacements. It resolves and validates the selected root before every
+normal command modifications. It resolves and validates the selected root before every
 phase-sensitive step and reports its kind, durable and temporal paths, parent context, sibling
 summaries, the `module.md` and `design.md` of the module at which the feature is specified
 (`providing_module`) as navigation references, and `attempt_state`. The four operational

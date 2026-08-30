@@ -9,18 +9,18 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 class PresetCompositionTests(unittest.TestCase):
     def test_templates_append_and_commands_replace_while_preserving_one_spec(self):
-        manifest = (REPOSITORY_ROOT / "presets/concorde-core/preset.yml").read_text()
+        manifest = (REPOSITORY_ROOT / "presets/concorde/preset.yml").read_text()
         self.assertEqual(manifest.count('type: "template"'), 6)
         self.assertEqual(manifest.count('type: "command"'), 10)
         self.assertEqual(manifest.count('strategy: "append"'), 3)
         self.assertEqual(manifest.count('strategy: "replace"'), 13)
-        fragments = REPOSITORY_ROOT / "presets/concorde-core/templates"
+        fragments = REPOSITORY_ROOT / "presets/concorde/templates"
         combined = "\n".join(path.read_text() for path in fragments.glob("*.md"))
         self.assertIn("single canonical", combined)
         self.assertIn("representative", combined.lower())
         self.assertIn("contracts", combined.lower())
         self.assertNotIn("# Feature Specification:", combined)
-        command_fragments = REPOSITORY_ROOT / "presets/concorde-core/commands"
+        command_fragments = REPOSITORY_ROOT / "presets/concorde/commands"
         self.assertEqual(len(tuple(command_fragments.glob("*.md"))), 10)
         for command in command_fragments.glob("*.md"):
             content = command.read_text(encoding="utf-8")
@@ -42,7 +42,7 @@ class PresetCompositionTests(unittest.TestCase):
                 capture_output=True,
             )
             subprocess.run(
-                ["specify", "preset", "add", "--dev", str(REPOSITORY_ROOT / "presets/concorde-core")],
+                ["specify", "preset", "add", "--dev", str(REPOSITORY_ROOT / "presets/concorde")],
                 cwd=root,
                 check=True,
                 capture_output=True,

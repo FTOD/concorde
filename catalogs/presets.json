@@ -1,22 +1,22 @@
 {
   "catalog_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0/presets.json",
   "presets": {
-    "concorde-core": {
+    "concorde": {
       "author": "Concorde maintainers",
       "description": "Architecture guidance plus authoritative nested-workspace routing for the Spec Kit lifecycle",
-      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0/concorde-core-0.4.0.zip",
-      "id": "concorde-core",
+      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0/concorde-preset-0.4.0.zip",
+      "id": "concorde",
       "license": "MIT",
-      "name": "Concorde Core",
+      "name": "Concorde",
       "provides": {
-        "commands": 9,
+        "commands": 10,
         "templates": 6
       },
       "repository": "https://github.com/FTOD/concorde",
       "requires": {
         "speckit_version": ">=0.16.4,<0.16.5"
       },
-      "sha256": "sha256:093c3280a477495d63aae01241086551fa77b81d5c68c986423e31498419c20a",
+      "sha256": "sha256:e80ffe89e8f9aecf42e3f5f3d9a1dd040025eb47a6e72dda770f2ef4164f6af6",
       "tags": [
         "architecture",
         "contracts",
