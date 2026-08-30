@@ -84,7 +84,7 @@ describe('production build', () => {
     expect(featureSidebar[0]).toMatchObject({type: 'category', label: 'Concorde', collapsed: false});
     expect(featureSidebar[0].items.slice(0, 5).map((item: {label: string}) => item.label)).toEqual([
       'Concorde Workflow', 'Create Unified Project Docsite', 'Install and Set Up Concorde with Spec Kit',
-      'Self-Host the Concorde Framework', 'Record Workflow Reflections',
+      'Self-Host the Concorde Framework', 'Record and Triage Workflow Reflections',
     ]);
     expect(featureSidebar[0].items.slice(5).map((item: {label: string}) => item.label)).toEqual([
       'Skills', 'Scripts', 'Workspace Files', 'Distribution', 'Auto-Docs',

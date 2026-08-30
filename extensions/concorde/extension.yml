@@ -3,7 +3,7 @@ schema_version: "1.0"
 extension:
   id: "concorde"
   name: "Concorde Architecture Workflow"
-  version: "0.4.0"
+  version: "0.5.0"
   description: "Initialize, retrieve, validate, accept, and explain bounded modules plus two-level feature work"
   author: "Concorde maintainers"
   repository: "https://github.com/FTOD/concorde"
@@ -46,6 +46,10 @@ provides:
       file: "scripts/python/workspace.py"
       runtime: "python"
       description: "Portable selected feature/sub-feature phase-path and parent-context adapter"
+    - name: "concorde-reflections-queue-python"
+      file: "scripts/python/reflections_queue.py"
+      runtime: "python"
+      description: "Deterministic shared reflection-triage queue and plan-state helper"
 
 effect: "read-write"
 

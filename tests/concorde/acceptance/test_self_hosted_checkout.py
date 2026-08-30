@@ -2,7 +2,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.self_hosting_support import hash_paths, initialize_checkout, preserved_sentinels, run_cli, skill_file, skill_root
+from tests.concorde.self_hosting_support import hash_paths, initialize_checkout, load_self_hosting, preserved_sentinels, run_cli, skill_file, skill_root
+
+
+self_host = load_self_hosting()
 
 
 class SelfHostedCheckoutAcceptanceTests(unittest.TestCase):
@@ -13,7 +16,12 @@ class SelfHostedCheckoutAcceptanceTests(unittest.TestCase):
                 initialize_checkout(root, integration)
                 inactive = "claude" if integration == "codex" else "codex"
                 inactive_surface = skill_file(root, inactive, "speckit.concorde.ask").relative_to(root).as_posix()
-                sentinels = {**preserved_sentinels(), inactive_surface: f"inactive {inactive} surface\n"}
+                inactive_agent = str(self_host.integration_profile(inactive)["agent_surfaces"][0])
+                sentinels = {
+                    **preserved_sentinels(),
+                    inactive_surface: f"inactive {inactive} surface\n",
+                    inactive_agent: f"inactive {inactive} reflection agent\n",
+                }
                 for relative, content in sentinels.items():
                     path = root / relative
                     path.parent.mkdir(parents=True, exist_ok=True)
@@ -23,6 +31,8 @@ class SelfHostedCheckoutAcceptanceTests(unittest.TestCase):
                 _, applied = run_cli(root, "apply", "--proposal", ".specify/self-hosting-proposal.json")
                 self.assertEqual(applied["status"], "applied")
                 self.assertEqual(len(list(skill_root(root, integration).glob("speckit-*/SKILL.md"))), 16)
+                for relative in self_host.integration_profile(integration)["agent_surfaces"]:
+                    self.assertTrue((root / str(relative)).is_file(), relative)
                 fast_loop = skill_file(root, integration, "speckit.fast-loop")
                 self.assertTrue(fast_loop.is_file())
                 fast_loop_content = fast_loop.read_text(encoding="utf-8")

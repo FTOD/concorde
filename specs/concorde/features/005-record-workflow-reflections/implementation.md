@@ -1,193 +1,186 @@
-# Feature Implementation: Record Workflow Reflections
+# Feature Implementation: Record and Triage Workflow Reflections
 
-**Realization status**: First milestone accepted for acceptance on 2026-08-28 (attempt of the same
-day; project-wide log model).
+**Realization status**: Candidate second milestone, prepared for explicit acceptance on 2026-08-30.
 
 **Selected level**: Top-level feature of `module.concorde`; it has no parent feature.
 
 ## Realization Overview
 
-The feature is realized without a new command surface. Three existing parts carry it:
+The accepted project-wide reflection log remains the durable source for problems encountered during
+planning, task generation, implementation, analysis, convergence, and fast-loop work. This milestone
+closes the improvement loop by adding an explicit `reflections-triage` skill, specialized
+investigator and implementer roles, a deterministic queue/plan helper, shared project state, and
+Claude/Codex-native projections installed from the Concorde extension.
 
-| Part | Owner | What it now does |
-|---|---|---|
-| Phase guidance and templates | Skills (`presets/concorde`) | A byte-identical **Reflection Recording** block in the five phase instructions after specification (`speckit.plan`, `tasks`, `implement`, `analyze`, `converge`) tells the agent when, where, and how to record; `reflections-template` seeds the log; the plan and tasks append layers name the log as the one maintained file a phase may append to; each completion report ends with `Reflections added: … · open for this feature: N`. |
-| Runtime | Scripts (`extensions/concorde/runtime/concorde`) | `reflections.py` is the single parser of the log; `validation/reflections.py` emits `CONCORDE-REFLECT-001..004`; `repository.py` loads `<specification_root>/reflections.md` into `package.auxiliary` (and the digest); `feature_workspace.py` adds `reflections` and `reflections_open` to every workspace result; `context.py` adds `reflections` (path + open count per feature) and `reflections_open` on feature summaries; `implementation_acceptance.py` adds `reflection_summary`, blocks on a malformed log (`CONCORDE-ACCEPT-011`), refuses an uncited open entry (`CONCORDE-ACCEPT-012`), and never writes the log. |
-| Protocol and documentation | Feature 001 contracts, guides, project interaction view | Reflection fields remain additive in Feature Workspace Protocol v8; the project view shows Skills, Scripts, and Workspace Files without treating the feature as a structural component; guides and READMEs describe the review loop. |
+Canonical behavior lives once under `extensions/concorde/agent-assets/reflections/`. Thin wrappers
+render one triage skill and two roles for each supported platform. Investigators are read-only and
+return a complete plan to the parent; implementers receive complete plans and an assigned Git
+worktree. The parent alone persists plan state, authorizes merge, and suggests—but never applies—
+reflection status or note changes.
 
-The log itself, `specs/concorde/reflections.md` for this project, is a maintained source beside the
-root `module.md`: created from the template by the first phase that records, appended to by every
-phase, never removed, not published (the docsite excludes it as a non-canonical artifact).
+Feature 003 packages these assets in `extension:concorde@0.5.0`. The one-command installer previews
+the component and agent plan, installs or updates the Spec Kit bundle, invokes only the projector
+from the installed extension, verifies path/digest ownership, and reports success afterwards.
+Self-hosting uses the same projector and preserves inactive integrations and maintainer state.
 
 ## Module and Feature Collaboration
 
-- **Skills** composes the preset: `reflections-template` (`strategy: replace`, six
-  templates in total) resolves through `specify preset resolve`; the nine normal command
-  replacements keep `workspace.py --phase` as the path authority, so `workspace.reflections` is the
-  only way a phase locates the log (FR-003, FR-013). The recording block lives in the five phase
-  files at the point where each already says what it may write; `analyze` names the log as its
-  single permitted write (see R-006).
-- **Scripts** owns every deterministic behavior: parsing, the four shape rules, the
-  per-feature open count used by context and the adapter, and the acceptance summary and gate.
-  All of them read the log through `package.auxiliary`, so a symlinked log is a source error and
-  the log is part of `source_digest` and of the acceptance digest (a log edited after a proposal is
-  `CONCORDE-ACCEPT-004`).
-- **Feature 001 (Concorde Workflow)** carries the protocol: the additions are optional in the
-  schemas and always emitted by the runtime, examples updated, `acceptanceProposal` untouched.
-- **Documentation** needs no change: `registry.ts` already excludes non-canonical Markdown under
-  `specs/`; the abstract therefore names the contract, example, and log as code spans (R-007).
-- **Distribution** packages the changed preset and extension unchanged in shape; the release
-  builder's catalog count moved from five to six templates; versions stay `0.3.0` (unpublished).
-- **Feature 004 (Self-Host Concorde)** refreshes this checkout's mirrors only for the Codex
-  integration; under the active `claude` integration the refresh is `specify preset remove` +
-  `preset add --dev` and `extension add --dev --force` with byte equality proven by
-  `test_installed_command_surfaces` (R-001).
+| Part | Contribution |
+|---|---|
+| Skills | Existing phase instructions record problems automatically. The canonical triage orchestrator defines `status`, `investigate`, `implement`, and `merge`; Claude and Codex wrappers expose it natively. |
+| Scripts | `concorde.reflections` remains the log parser. `scripts/python/reflections_queue.py` deterministically orders entries, resolves ownership, validates plan metadata, and performs bounded plan-state updates. `concorde.agent_assets` renders/reconciles projections and receipts. |
+| Workspace Files | `reflections.md` remains project-wide durable memory. `.concorde/reflections/config.json` is shared maintainer configuration; nested `.gitignore` keeps plans/worktrees temporal; `.specify/concorde-agent-assets.json` owns generated path digests only. |
+| Distribution | Feature 003 releases the canonical assets and helper, installs native Claude/Codex projections after the bundle lifecycle, verifies them, and preserves modified, unrelated, inactive, and shared state. |
 
-Contracts crossed: `contract.concorde.workflow` (phases and operations into maintained sources),
-`contract.concorde.spec-kit-platform` (host phases), and internally
-`contract.workspace-files.feature-workspace` (Protocol v8 fields) and
-`contract.scripts.operations` (validation findings, context results).
+`contract.concorde.workflow` governs phase and triage writes; `contract.concorde.spec-kit-platform`
+governs host phases and command materialization; `contracts/reflection-log.md` remains Reflection Log
+v1; `contracts/reflection-triage.md` governs actions, roles, plans, concurrency, worktrees, merge, and
+projection ownership. Speckit Fast Loop remains the eligibility and bounded-change authority.
+
+No module responsibility, boundary, dependency direction, level view, or module contract changed.
 
 ## Scenario Realization
 
-- **Record while planning and implementing** (US1, US2; core view
-  `record-during-planning-and-implementation`): the phase instruction's block triggers on FR-002
-  conditions; the agent appends `### R-NNN · title` with `Feature = workspace.feature_id` and a
-  free `Concerns`; `implement` records `Effect: blocked` before any halt; re-encounters append
-  `Occurrences`. Unit evidence: `test_reflection_parser.py` (grammar, selection by feature,
-  occurrences), composition acceptance (block present byte-identical on all five surfaces).
-- **Review and improve** (US3, US5; `review-and-improve`): `speckit.concorde.context module.<root>`
-  returns `reflections.path` and `reflections.open` per feature; `speckit.concorde.validate` reports
-  `CONCORDE-REFLECT-001..004` read-only and byte-equivalently; the maintainer edits `Status`/`Note`
-  in place. Evidence: `test_context.py`, `test_reflection_rules.py`, `test_validation.py` (malformed
-  fixture overlay: one finding per rule, fixture unchanged).
-- **Carry lessons through acceptance** (US4; `carry-lessons-through-acceptance`): `propose` returns
-  `reflection_summary` for the target's entries; `apply` computes the target's open identifiers from
-  the log and refuses with `CONCORDE-ACCEPT-012` naming those absent from `design.content`; the
-  log is retained and byte-identical. Evidence: six `ReflectionAcceptanceTests` cases.
+### Record during delivery (US1 and US2)
+
+The accepted shared Reflection Recording block remains byte-identical across plan, tasks,
+implement, analyze, and converge guidance. Workspace Protocol v8 returns the project log path and
+open count. The parser, validator, context operation, and acceptance citation gate continue to use
+one grammar and one project-level file. Existing parser, workspace, context, validation, composition,
+and implementation-acceptance tests all remain green.
+
+### Investigate and route (US3)
+
+The installed triage skill calls `.specify/extensions/concorde/scripts/python/reflections_queue.py`.
+`status` is byte-preserving. `investigate` assigns one entry per read-only child in bounded waves.
+The child returns a plan with exactly one route—`fast-loop`, `specify`, `dismiss`, or `blocked`—and
+complete problem, change, validation, ownership, file, effort, and risk sections. The parent validates
+and serializes plans under `.concorde/reflections/plans/`, preventing concurrent identifier races.
+
+### Implement and merge (US3)
+
+Ready fast-loop plans are grouped by `implement_in`. The parent checks maintainer changes, creates
+one Git worktree and branch per group, and supplies full plan text because plans are intentionally
+ignored and absent from worktree checkouts. Implementers verify the assigned Git root, invoke
+Speckit Fast Loop, run plan and repository validation, revert only a failed plan, and commit each
+success separately. Merge requires a clean checkout, proceeds branch-by-branch, aborts on conflict,
+reruns applicable validation, and cleans only merged worktrees. Reflection status and note remain
+maintainer-owned.
+
+### Install supported projections (US3)
+
+`agent_assets.py` renders three outputs per integration from canonical bodies:
+
+- Claude: `.claude/skills/reflections-triage/SKILL.md` and two `.claude/agents/*.md` roles.
+- Codex: `.agents/skills/reflections-triage/SKILL.md` and two `.codex/agents/*.toml` roles.
+
+The Codex TOML uses the official project custom-agent schema (`name`, `description`, and
+`developer_instructions`) with read-only/workspace-write sandbox defaults and no mandatory model.
+Claude retains native background/worktree metadata where available. The portable contract is an
+explicit Git worktree; live parent permissions continue to bound children.
+
+Projection preview classifies every path without mutation. Sync creates, adopts byte-identical,
+updates matching-owned, or removes matching-superseded outputs; modified/unowned files are preserved
+as conflicts. Verify compares desired, materialized, and receipt digests. Config, plans, worktrees,
+logs, unrelated skills, permission settings, and inactive integration receipts are never projection-owned.
+
+### Review, acceptance, and validation (US4–US6)
+
+Maintainers may still edit log status/note directly. Acceptance continues to present attributed
+entries and refuse an uncited open entry. Deterministic validation still checks Reflection Log v1
+without rewriting it. The updated core diagram shows automatic recording, explicit triage, isolated
+implementation, validation/merge, and installed projections while leaving behavior authoritative in
+the feature prose and contracts.
 
 ## Durable Implementation Decisions
 
-- **One project-wide log at the specification root** (R-004, resolved): problems concern existing
-  implementations, often other features'; per-attempt files scatter and delete them. `Feature`
-  attributes, `Concerns` targets anything.
-- **Markdown grammar with bold-labelled fields**, identifiers `R-` + three or more digits, an
-  optional `## Archive` section, continuation lines indented by two spaces; the parser never raises
-  and reports `shape`, `duplicate`, and `vocabulary` problems that map to `REFLECT-001/002/003`;
-  reference resolution (`Feature`, `Concerns`) is `REFLECT-004` and accepts stable IDs, level-view
-  scenario IDs, and existing project-relative paths with an ignored `#fragment` or `:line` suffix.
-- **Seeding by the first phase that records**, not by `init`: no runtime write path was added; the
-  adapter stays read-only.
-- **Citation gate instead of dispositions**: because the log persists, acceptance only has to prove
-  that the design reference is honest about open problems — the entry identifier in
-  `implementation.content` is that proof; proposal v6 gained no reflection field.
-- **Additive protocol fields**, never a version bump: `reflections`/`reflections_open` optional in
-  the schema and always emitted.
-- **Analysis may append to the log and nothing else** (R-006, open) — the one exception to its
-  read-only contract, stated in the instruction.
-- **Root view shows two crossings** (R-005, open): agent → feature and feature → Scripts;
-  the Skills crossing is not drawable without corridor conflicts; the feature's core
-  diagram shows every part.
-- **Alignment prose describes the end state** (R-003, resolved): the specification says the root
-  view shows the feature; pending work is recorded in the log, not in durable prose.
+- **One canonical protocol, generated platform wrappers**: full duplicate Claude/Codex workflows
+  were rejected because their route, path, and permission semantics would drift.
+- **Parent-only plan persistence**: this makes the investigator truly read-only on Codex and removes
+  concurrent plan-write races on every platform.
+- **Explicit Git worktrees as the portable isolation contract**: Claude may add native isolation;
+  Codex project agents receive an exact worktree and verify their Git root.
+- **Shared state under `.concorde/reflections/`**: agent platforms consume one queue and plan
+  lifecycle instead of maintaining platform-specific backlogs.
+- **Digest receipt owns only generated files**: update/removal cannot overwrite customized roles or
+  delete maintainer state merely because a filename matches.
+- **Installed extension is the projection source**: the installer and self-host flow cannot fall
+  back to checkout-local agent files.
+- **Deterministic structural evidence rather than live models**: Markdown frontmatter, TOML, shared
+  semantics, paths, state transitions, ownership, and installation are release gates; live agent
+  execution remains experiential evidence.
+- **Specification and storage corrections retained**: the project-wide log and end-state alignment
+  decisions from R-003 and R-004 remain the basis of this realization.
 
 ## Traceability and Evidence
 
-- Tests (223 pass, 2026-08-28): `tests/concorde/unit/test_reflection_parser.py`,
-  `unit/test_reflection_rules.py`, `unit/test_feature_workspace.py` (path and per-root count),
-  `contract/test_feature_workspace_contract.py` (schema additive, examples validate),
-  `integration/test_context.py` (path and counts), `integration/test_implementation_acceptance.py`
-  (`ReflectionAcceptanceTests`), `integration/test_implementation_workspace.py` (adapter),
-  `integration/test_validation.py` (malformed fixture; this repository `success`),
-  `acceptance/test_workspace_composition.py` (block byte-identical on five surfaces;
-  `reflections-template` resolves in a fresh project), `contract/test_installed_command_surfaces.py`
-  (mirrors equal sources).
-- Fixtures: `tests/concorde/fixtures/invalid-projects/reflections-malformed/` (one breach per
-  rule); `tests/concorde/support/feature_workspace.py::write_reflection_log` / `reflection_entry`.
-- Deterministic checks on this repository: `speckit.concorde.validate` → `success`, 0 findings
-  with `specs/concorde/reflections.md` present; project interaction view and feature core view pass all 9 Archify
-  showcase checks and are delivered; docsite `Validated 99 pages (33 excluded sources); 0 errors`,
-  production build promoted.
-- Success criteria: SC-002, SC-004, SC-006, SC-007 met by automated evidence; SC-001, SC-003,
-  SC-005, SC-008, SC-009 are met in guidance text and unit fixtures, with the manual phase-run
-  acceptance (quickstart §8) pending a new agent session.
-- The contract of the log: `contracts/reflection-log.md` with `contracts/examples/reflections.md`;
-  the live log: `specs/concorde/reflections.md`.
+Primary implementation sources:
+
+- `extensions/concorde/agent-assets/reflections/**`
+- `extensions/concorde/runtime/concorde/agent_assets.py`
+- `extensions/concorde/scripts/python/reflections_queue.py`
+- `scripts/install-concorde.py`
+- `scripts/development/self-host-concorde.py`
+- `scripts/release/build-components.py`
+
+Feature 005 evidence includes `test_reflections_queue.py`, `test_agent_assets.py`,
+`test_reflection_triage_distribution.py`, the retained reflection parser/rules/context/acceptance
+suites, and installed-workspace composition. Feature 003 evidence covers manifests, deterministic
+archives, one-command fresh/preview/update/conflict/remove behavior, installed command surfaces,
+Codex skills, and Claude/Codex self-hosting.
+
+Final evidence on 2026-08-30:
+
+- 294 Concorde Python tests passed; the final focused post-adjustment regression passed 16 tests.
+- Concorde validation returned zero findings with source digest
+  `sha256:8c0842bd38da77720f3e6cb2b0ce130e984f170010f404a6b79260ec2a06ae4f`.
+- The 0.5.0 release rebuilt and verified byte-equivalently: bundle
+  `sha256:9a81094801d52fd1c2511400b4ec3b2854a9fde69b6a724583476641c5d243c9`,
+  extension `sha256:900044f0d275caa38c8a4bae18a1a85666e0e4aee6356b774004f80c8ea4c307`,
+  preset `sha256:997050c07587028f0e5e45fd7eb3fb249bda58f96cb81c5a9f0de54fe5c04fe4`.
+- Docsite gates passed: 19 test files, 81 tests, 108 validated pages, zero errors, and successful
+  production promotion.
+- The Feature 005 core diagram passed 9/9 showcase checks with no errors or warnings; delivered
+  source digest `6170494d039be8f8633c124506beb0af17e7adf4b18602d70c0480055dc0abc4`.
 
 ## Known Limitations
 
-- **R-001** (open, tooling): the self-hosting tool has no evidence for the `claude` integration this
-  checkout uses; mirrors are refreshed through Spec Kit's development-mode commands instead, and a
-  new agent session is required before refreshed skills are active.
-- **R-002** (open, guidance): the plan and tasks append layers disagree on whether an attempt may
-  edit `module.md`; this attempt presented its `module.md` reconciliation as a maintainer-approved
-  diff rather than applying it.
-- **R-005** (superseded, architecture): the project interaction view now shows module flows rather
-  than feature nodes, so the former requirement to draw three feature-specific crossings no longer
-  applies.
-- **R-006** (open, specification): `feature.concorde.workflow.execute-and-reconcile` FR-004/SC-002
-  still describe analysis as strictly read-only; this feature makes the log its one permitted write.
-- **R-007** (open, tooling): the docsite rejects abstract links to non-canonical artifacts; the
-  `abstract.md` names the contract, example, and log as code spans, and no specify-guidance rule about
-  link targets is delivered yet.
-- Visual (browser) review of both diagrams is pending: Chrome/Chromium is unavailable in the
-  validation environment; structural showcase checks are not perceptual evidence.
-- The sub-feature specifications 002/006/007/008/009 of Feature 001 are not yet reconciled with
-  FR-003, FR-009, FR-011, FR-012 of this feature (a specification action on those roots).
-- Manual acceptance of the live phases (quickstart §8) has not been run; the guidance is proven by
-  composition tests, not by an observed phase run.
+- **R-001**: the historical Claude self-host refresh limitation remains open in the maintainer log;
+  the new projector is implemented and tested, but the entry's final disposition is maintainer-owned.
+- **R-002**: plan/tasks guidance still contains the recorded module-edit authority disagreement.
+- **R-005**: the root level view intentionally remains module-oriented and does not draw every
+  Feature 005-specific crossing; the feature core view carries the explanatory detail.
+- **R-006**: the execute-and-reconcile specification still describes analysis as strictly read-only
+  despite the reflection log being its one permitted write.
+- **R-007**: the docsite still rejects canonical links to non-published reflection artifacts; the
+  abstract uses code spans for those paths.
+- **R-044**: native Spec Kit 0.16.4 lacks arbitrary custom-agent projection. Feature 003's installed
+  bounded projector is implemented, but the reflection remains open until maintainer disposition.
+- **R-045**: the sandboxed docsite runner could not bind its local IPC socket; the exact approved
+  rerun passed and no test was weakened.
+- Browser-based containment and light/dark perceptual review remains pending because Chrome/Chromium
+  was unavailable; deterministic showcase checks are not claimed as visual review.
 
 ## Implementation Detail
 
-### Grammar and parser
+### Queue and plan validation
 
-`extensions/concorde/runtime/concorde/reflections.py`: `parse_reflection_log(text) -> ParsedLog`
-walks lines, ignores fenced blocks, opens an entry at `### R-\d{3,} · title` (any other `###`
-heading is a `shape` problem), collects `- **Label**: value` fields with two-space continuation
-lines, and `- **Occurrences**:` followed by `  - …` items. On entry end it checks required fields
-(`Phase`, `Date`, `Feature`, `Kind`, `Concerns`, `Expected`, `Observed`, `Effect`, `Action`,
-`Improvement`, `Status`), the `YYYY-MM-DD` date, the vocabularies (`PHASES`, `KINDS`, `EFFECTS`,
-`STATUSES`), a `Note` on non-open status, and duplicate identifiers. `ParsedLog.entries_for`,
-`open_count`, and `summary` select by `Feature`. `log_path(specification_root)` and
-`strip_reference_suffix` are shared helpers.
+The queue helper imports the canonical Reflection Log v1 parser, derives the specification root from
+`.concorde/config.json`, maps stable feature/contract IDs, validates shared config and safe relative
+paths, excludes closed/skipped/planned entries correctly, and permits only named plan fields and
+legal status transitions. Read actions are byte-preserving and repeatable.
 
-### Validation rule
+### Projection and ownership
 
-`validation/reflections.py::validate_reflections(package)` returns nothing when
-`package.auxiliary` has no log; maps parser problems to `REFLECT-001/002/003` with line numbers and
-`subject_id`; resolves `Feature` (must be one `feature` document) and `Concerns` (any `by_id` entry,
-any level-view scenario ID, or an existing safe project-relative path) for `REFLECT-004`. Wired
-after `validate_tldrs` in `validate.FOCUSED_VALIDATORS`.
+The canonical projection manifest maps one body and wrapper to each native target. Rendering rejects
+unsafe paths, symlinks, missing sources, duplicate targets, unresolved body tokens, and TOML triple
+quote conflicts. Receipts keep independent integration records so refreshing one platform preserves
+the other. A nested `.concorde/reflections/.gitignore` keeps `plans/` and `worktrees/` temporal without
+editing a project's root ignore policy.
 
-### Workspace, context, acceptance
+### Installer transaction
 
-- `WorkspacePaths.reflections`/`reflections_open` (defaults keep positional construction stable);
-  `resolve_phase_paths` uses `reflections_open_count(package, feature_id)`; `_planned_paths`
-  receives `specification_root` so a planned root reports the same path with `0`.
-- `_summary(feature, package)` adds `reflections_open` only when the log exists, so sibling and
-  parent summaries stay schema-valid without a log.
-- `context.bounded_context` adds `context["reflections"] = {"path", "open": {feature_id: n}}`
-  (features with at least one entry) and the path to `artifacts`.
-- `propose_acceptance` adds `reflection_summary`, includes the log in `_acceptance_digest`, and emits
-  `CONCORDE-ACCEPT-011` on parser problems; `apply_acceptance` calls `_uncited_open_reflections`
-  after `_validate_design` and returns `invalid` with `CONCORDE-ACCEPT-012` before any staging;
-  the accepted result carries `reflection_summary` and lists the log among `retained_artifacts`;
-  `diagnostics.operation_envelope` forwards `reflection_summary`.
-
-### Guidance placement
-
-The shared block is authored once (`speckit.plan.md`) and copied verbatim into the other four
-files immediately before their hooks section (`## Mandatory Post-Execution Hooks` or
-`### 9. Check for extension hooks`), so the composition test can assert byte identity. Phase
-specifics: plan lists unresolved problems in its architecture gate; implement records before
-failing or halting a task; analyze reads the log as an artifact, reports a "Reflections" table with
-stale flags (`git log -1 --format=%cs -- <path>` later than `Date`, or an unresolvable ID), and
-never repairs it; converge makes candidate work only from genuine `deferred` entries of the
-feature. `speckit.concorde.impl.accept.md` states the citation rule; `context.md` and `ask.md`
-present the log; `validate.md` lists the rule IDs.
-
-### Refresh procedure used by this attempt
-
-`uv run specify preset remove concorde && uv run specify preset add --dev presets/concorde --priority 10`,
-then `uv run specify extension add extensions/concorde --dev --priority 10 --force`; verify with
-`diff -r` against `.specify/` and `test_installed_command_surfaces`; start a new agent session.
+Preview installs the candidate bundle only in a disposable project and invokes that copy's projector
+against the real target. Apply installs/updates components first, then runs projector preview, sync,
+and verify. Projection conflict or failure returns exit class 4 with residual component/projection
+state and no terminal success. Development cleanup still completes before success output.

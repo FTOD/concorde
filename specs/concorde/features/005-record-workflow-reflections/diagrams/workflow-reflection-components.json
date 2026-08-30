@@ -2,161 +2,109 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Workflow Reflection Components",
+    "title": "Workflow Reflection and Triage Components",
     "quality_profile": "showcase",
     "output": "../../../../../generated/architecture/workflow-reflection-components.html",
     "legend": {
       "mode": "hidden"
     },
     "viewBox": [
-      1390,
-      980
+      1380,
+      1040
     ],
-    "repository": {
-      "url": "https://github.com/FTOD/concorde",
-      "revision": "323458b21c393662b4a533d61377faff4794f365"
-    },
     "views": [
       {
         "id": "record-during-planning-and-implementation",
-        "label": "Record while planning and implementing",
+        "label": "Record during delivery",
         "focus": [
           "codingAgent",
-          "phaseSurfaces",
-          "reflectionFeature",
-          "reflectionLog",
-          "featureDesign"
+          "installedSurfaces",
+          "reflectionLog"
         ],
-        "note": "A phase meets a problem; the agent appends or updates an entry in the project log and continues, citing durable documents unchanged."
+        "note": "Installed phase guidance records a problem in the project log without changing the durable source it concerns."
       },
       {
-        "id": "review-and-improve",
-        "label": "Review and improve",
+        "id": "investigate-and-route",
+        "label": "Investigate and route",
         "focus": [
           "maintainer",
+          "triageOrchestrator",
           "reflectionLog",
-          "validation",
-          "featureDesign",
-          "reflectionFeature"
+          "investigators",
+          "reflectionPlans"
         ],
-        "note": "The maintainer resolves or dismisses entries in the one project log and fixes the owning document through its normal path."
+        "note": "The orchestrator assigns one open entry to each investigator and persists a concrete route and plan."
       },
       {
-        "id": "carry-lessons-through-acceptance",
-        "label": "Carry lessons through acceptance",
+        "id": "implement-and-merge",
+        "label": "Implement and merge",
         "focus": [
-          "maintainer",
-          "reflectionLog",
-          "acceptance",
-          "featureImplementation",
-          "moduleDesign"
+          "triageOrchestrator",
+          "reflectionPlans",
+          "implementerWorktrees",
+          "fastLoop",
+          "checks",
+          "acceptedRealization"
         ],
-        "note": "Acceptance presents the feature's entries by status and cites the open ones as known limitations; the log itself stays intact."
+        "note": "Ready plans run in isolated worktrees, validate, commit, and merge only from a clean maintainer checkout."
+      },
+      {
+        "id": "install-supported-projections",
+        "label": "Install supported projections",
+        "focus": [
+          "concordeInstallation",
+          "installedSurfaces",
+          "triageOrchestrator",
+          "investigators",
+          "implementerWorktrees"
+        ],
+        "note": "Concorde installation materializes the shared workflow as platform-appropriate skills, agent roles, and configuration."
       }
     ]
   },
   "components": [
     {
-      "id": "maintainer",
-      "type": "external",
-      "label": "Maintainer",
-      "sublabel": "Reviews and approves",
+      "id": "concordeInstallation",
+      "type": "cloud",
+      "label": "Concorde Installation",
+      "sublabel": "preset + extension bundle",
+      "tag": "feature.concorde.install-with-spec-kit",
       "pos": [
-        1210,
-        340
+        300,
+        80
       ],
       "size": [
-        160,
-        76
+        190,
+        88
       ]
     },
     {
       "id": "codingAgent",
       "type": "external",
       "label": "Coding Agent",
-      "sublabel": "Runs the phases",
+      "sublabel": "runs delivery phases",
       "pos": [
-        20,
+        40,
         340
       ],
       "size": [
-        160,
-        76
+        190,
+        82
       ]
     },
     {
-      "id": "phaseSurfaces",
+      "id": "installedSurfaces",
       "type": "backend",
-      "label": "Spec Kit Phases",
-      "sublabel": "plan → converge",
+      "label": "Installed Workflow Surfaces",
+      "sublabel": "phase guidance + triage entry point",
       "tag": "contract.concorde.spec-kit-platform",
       "pos": [
-        280,
+        300,
         330
       ],
       "size": [
-        200,
-        96
-      ]
-    },
-    {
-      "id": "validation",
-      "type": "security",
-      "label": "Deterministic Validation",
-      "sublabel": "concorde validate",
-      "tag": "Shape findings, never rewrites",
-      "pos": [
-        1210,
-        70
-      ],
-      "size": [
-        160,
-        92
-      ]
-    },
-    {
-      "id": "reflectionFeature",
-      "type": "backend",
-      "label": "Record Workflow Reflections",
-      "sublabel": "obligation in guidance",
-      "tag": "feature.concorde.record-workflow-reflections",
-      "pos": [
-        590,
-        330
-      ],
-      "size": [
-        200,
-        96
-      ]
-    },
-    {
-      "id": "acceptance",
-      "type": "backend",
-      "label": "Implementation Acceptance",
-      "sublabel": "concorde impl.accept",
-      "tag": "Cites the feature’s entries",
-      "pos": [
-        900,
-        590
-      ],
-      "size": [
-        200,
-        92
-      ]
-    },
-    {
-      "id": "featureDesign",
-      "type": "frontend",
-      "label": "Feature Design",
-      "sublabel": "abstract + design",
-      "tag": "Cited, never edited",
-      "pos": [
-        590,
-        70
-      ],
-      "size": [
-        200,
-        92
+        220,
+        102
       ]
     },
     {
@@ -164,49 +112,132 @@
       "type": "database",
       "label": "Project Reflection Log",
       "sublabel": "<spec root>/reflections.md",
-      "tag": "Maintained · project-wide · never removed",
+      "tag": "maintained · project-wide",
       "pos": [
-        900,
+        590,
         330
       ],
       "size": [
-        200,
-        96
+        210,
+        102
       ]
     },
     {
-      "id": "featureImplementation",
-      "type": "database",
-      "label": "Feature Implementation",
-      "sublabel": "implementation.md",
-      "tag": "Decisions + known limitations",
+      "id": "maintainer",
+      "type": "external",
+      "label": "Maintainer",
+      "sublabel": "reviews and authorizes",
       "pos": [
-        900,
-        840
+        40,
+        650
       ],
       "size": [
-        200,
+        190,
+        82
+      ]
+    },
+    {
+      "id": "triageOrchestrator",
+      "type": "backend",
+      "label": "Reflection Triage Skill",
+      "sublabel": "four triage actions",
+      "tag": "shared orchestration contract",
+      "pos": [
+        300,
+        640
+      ],
+      "size": [
+        220,
+        102
+      ]
+    },
+    {
+      "id": "investigators",
+      "type": "backend",
+      "label": "Investigator Agents",
+      "sublabel": "one open entry each",
+      "tag": "read-heavy · evidence first",
+      "pos": [
+        590,
+        570
+      ],
+      "size": [
+        210,
         92
       ]
     },
     {
-      "id": "moduleDesign",
+      "id": "reflectionPlans",
       "type": "database",
-      "label": "Module Design Reference",
-      "sublabel": "level design.md",
-      "tag": "Level lessons + planned work",
-      "sources": [
-        {
-          "path": "specs/concorde/design.md",
-          "label": "root design reference"
-        }
-      ],
+      "label": "Reflection Plans",
+      "sublabel": "route + owner + validation",
+      "tag": "proposed → merged",
       "pos": [
-        590,
-        590
+        850,
+        570
       ],
       "size": [
-        200,
+        210,
+        92
+      ]
+    },
+    {
+      "id": "implementerWorktrees",
+      "type": "cloud",
+      "label": "Implementer Worktrees",
+      "sublabel": "one feature group per branch",
+      "tag": "isolated parallel writes",
+      "pos": [
+        850,
+        770
+      ],
+      "size": [
+        210,
+        92
+      ]
+    },
+    {
+      "id": "fastLoop",
+      "type": "backend",
+      "label": "Speckit Fast Loop",
+      "sublabel": "bounded implementation",
+      "tag": "eligibility gate",
+      "pos": [
+        1100,
+        770
+      ],
+      "size": [
+        190,
+        92
+      ]
+    },
+    {
+      "id": "checks",
+      "type": "security",
+      "label": "Validation and Merge Gate",
+      "sublabel": "clean tree + deterministic checks",
+      "tag": "contract.concorde.workflow",
+      "pos": [
+        1100,
+        500
+      ],
+      "size": [
+        190,
+        96
+      ]
+    },
+    {
+      "id": "acceptedRealization",
+      "type": "database",
+      "label": "Accepted Realization",
+      "sublabel": "implementation.md",
+      "tag": "open entries remain cited",
+      "pos": [
+        1100,
+        260
+      ],
+      "size": [
+        190,
         92
       ]
     }
@@ -214,139 +245,158 @@
   "boundaries": [],
   "connections": [
     {
+      "id": "installationProjectsSurfaces",
+      "from": "concordeInstallation",
+      "to": "installedSurfaces",
+      "label": "materializes projections",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
       "id": "agentRunsPhases",
       "from": "codingAgent",
-      "to": "phaseSurfaces",
-      "label": "plan → converge",
+      "to": "installedSurfaces",
+      "label": "run phases",
+      "variant": "emphasis"
+    },
+    {
+      "id": "surfacesRecordProblems",
+      "from": "installedSurfaces",
+      "to": "reflectionLog",
+      "label": "append or update entry",
       "variant": "emphasis",
       "labelAt": [
-        230,
-        312
+        650,
+        446
       ]
     },
     {
-      "id": "phaseMeetsProblem",
-      "from": "phaseSurfaces",
-      "to": "reflectionFeature",
-      "label": "difficulty or problem",
-      "labelAt": [
-        535,
-        312
-      ]
+      "id": "maintainerStartsTriage",
+      "from": "maintainer",
+      "to": "triageOrchestrator",
+      "label": "invoke triage",
+      "variant": "emphasis"
     },
     {
-      "id": "featureWritesLog",
-      "from": "reflectionFeature",
+      "id": "triageSelectsEntries",
+      "from": "triageOrchestrator",
       "to": "reflectionLog",
-      "label": "append / update entry",
+      "label": "selects open entries"
+    },
+    {
+      "id": "triageDispatchesInvestigators",
+      "from": "triageOrchestrator",
+      "to": "investigators",
+      "label": "dispatch entry",
+      "labelAt": [
+        555,
+        756
+      ]
+    },
+    {
+      "id": "investigatorsWritePlans",
+      "from": "investigators",
+      "to": "reflectionPlans",
+      "label": "propose route",
       "variant": "emphasis",
       "labelAt": [
-        845,
-        312
+        825,
+        676
       ]
     },
     {
-      "id": "featureCitesSpec",
-      "from": "reflectionFeature",
-      "to": "featureDesign",
-      "label": "cites, never edits",
-      "fromSide": "top",
-      "toSide": "bottom"
+      "id": "triageDispatchesImplementers",
+      "from": "triageOrchestrator",
+      "to": "implementerWorktrees",
+      "label": "group ready plans"
     },
     {
-      "id": "validationChecksLog",
-      "from": "validation",
-      "to": "reflectionLog",
-      "label": "shape findings",
-      "variant": "security",
-      "fromSide": "left",
-      "toSide": "top"
+      "id": "plansFeedWorktrees",
+      "from": "reflectionPlans",
+      "to": "implementerWorktrees",
+      "label": "approved plan",
+      "labelAt": [
+        955,
+        676
+      ]
+    },
+    {
+      "id": "worktreesInvokeFastLoop",
+      "from": "implementerWorktrees",
+      "to": "fastLoop",
+      "label": "execute and commit",
+      "variant": "emphasis",
+      "labelAt": [
+        1080,
+        876
+      ]
+    },
+    {
+      "id": "fastLoopProvidesEvidence",
+      "from": "fastLoop",
+      "to": "checks",
+      "label": "tests + branch result"
+    },
+    {
+      "id": "triageRequestsMerge",
+      "from": "triageOrchestrator",
+      "to": "checks",
+      "label": "merge from clean checkout",
+      "fromSide": "bottom",
+      "toSide": "right",
+      "via": [
+        [
+          410,
+          930
+        ],
+        [
+          1340,
+          930
+        ],
+        [
+          1340,
+          548
+        ]
+      ]
     },
     {
       "id": "logFeedsAcceptance",
       "from": "reflectionLog",
-      "to": "acceptance",
-      "label": "feature’s entries by status",
-      "fromSide": "bottom",
-      "toSide": "top",
-      "labelAt": [
-        1000,
-        508
-      ]
+      "to": "acceptedRealization",
+      "label": "open entries remain known limitations"
     },
     {
-      "id": "acceptanceWritesDesign",
-      "from": "acceptance",
-      "to": "featureImplementation",
-      "label": "accepted realization",
-      "variant": "emphasis",
-      "fromSide": "bottom",
-      "toSide": "top",
-      "labelAt": [
-        1000,
-        761
-      ]
-    },
-    {
-      "id": "acceptanceAmendsModule",
-      "from": "acceptance",
-      "to": "moduleDesign",
-      "label": "level lessons",
-      "fromSide": "left",
-      "toSide": "right"
-    },
-    {
-      "id": "maintainerValidates",
-      "from": "maintainer",
-      "to": "validation",
-      "label": "validate",
-      "fromSide": "top",
-      "toSide": "bottom"
-    },
-    {
-      "id": "maintainerReviews",
-      "from": "maintainer",
-      "to": "reflectionLog",
-      "label": "review · resolve · dismiss",
-      "fromSide": "left",
-      "toSide": "right",
-      "labelAt": [
-        1155,
-        312
-      ]
-    },
-    {
-      "id": "maintainerApproves",
-      "from": "maintainer",
-      "to": "acceptance",
-      "label": "approve proposal",
-      "fromSide": "bottom",
-      "toSide": "right"
+      "id": "checksProtectRealization",
+      "from": "checks",
+      "to": "acceptedRealization",
+      "label": "validated implementation evidence",
+      "variant": "security"
     }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "No new command",
+      "title": "Automatic recording, explicit triage",
       "items": [
-        "Recording rides on the existing phases",
-        "Installed guidance and the template carry the obligation"
+        "Delivery phases record problems without a new phase command",
+        "Maintainers invoke one triage skill to investigate, implement, and merge"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Specialized agent tiers",
+      "items": [
+        "Investigators establish root cause and an honest route",
+        "Implementers execute only eligible plans in isolated worktrees"
       ]
     },
     {
       "dot": "emerald",
-      "title": "One log for the whole project",
+      "title": "Installed and portable",
       "items": [
-        "An entry names the feature worked on and the source it concerns — any feature, module, guidance, or tool",
-        "Entries survive acceptance; statuses record what the maintainer decided"
-      ]
-    },
-    {
-      "dot": "rose",
-      "title": "Durable documents stay untouched",
-      "items": [
-        "An entry replaces the temptation to fix spec, design, guidance, or another feature’s code in place",
-        "Maintainer decisions in the log are never reversed by an agent"
+        "One shared workflow is projected into each supported agent platform",
+        "Queue state and plan semantics remain platform-neutral"
       ]
     }
   ]

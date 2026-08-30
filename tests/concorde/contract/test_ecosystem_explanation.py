@@ -107,8 +107,8 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         edges = {(edge["from"], edge["to"], edge.get("label")) for edge in diagram["connections"]}
         self.assertIn(("bundle", "preset", "pins preset@0.1.0"), edges)
         self.assertIn(("bundle", "extension", "pins extension@0.1.0"), edges)
-        self.assertIn(("preset", "featureLifecycle", "4 templates + 9 overrides"), edges)
-        self.assertIn(("extension", "agentHost", "7 surfaces · 6 runtime-backed"), edges)
+        self.assertIn(("preset", "featureLifecycle", "6 templates + 10 commands"), edges)
+        self.assertIn(("extension", "agentHost", "5 commands + triage projection"), edges)
         self.assertIn(("selfHosting", "bundle", "excluded from release"), edges)
         self.assertIn(("featureLifecycle", "agentHost", "materialize winning layer"), edges)
         self.assertIn(("agentHost", "scripts", "run deterministic operation"), edges)
@@ -135,8 +135,9 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         self.assertIn(("componentsActive", "normalLifecycle"), edges)
         self.assertIn(("componentsActive", "concordeCommands"), edges)
         labels = {edge.get("label") for edge in diagram["edges"]}
-        self.assertIn("9 winning surfaces", labels)
-        self.assertIn("7 surfaces · 6 runtime-backed", labels)
+        self.assertIn("verify installed workflow", labels)
+        self.assertIn("5 commands + triage roles", labels)
+        self.assertIn("install + project agents", labels)
 
     def test_supplemental_views_are_delivered_but_not_root_module_participants(self):
         root_view = json.loads(

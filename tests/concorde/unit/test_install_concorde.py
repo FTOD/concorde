@@ -34,16 +34,16 @@ class InstallerDecisionTests(unittest.TestCase):
     def pointer(self, **overrides):
         value = {
             "schema_version": "1.0",
-            "version": "0.4.0",
-            "tag": "v0.4.0",
+            "version": "0.5.0",
+            "tag": "v0.5.0",
             "repository": "https://github.com/FTOD/concorde",
-            "base_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0",
+            "base_url": "https://github.com/FTOD/concorde/releases/download/v0.5.0",
             "speckit_version": ">=0.16.4,<0.16.5",
             "bundle_id": "concorde-bundle",
             "catalogs": {
-                "extensions": "https://github.com/FTOD/concorde/releases/download/v0.4.0/extensions.json",
-                "presets": "https://github.com/FTOD/concorde/releases/download/v0.4.0/presets.json",
-                "bundles": "https://github.com/FTOD/concorde/releases/download/v0.4.0/bundles.json",
+                "extensions": "https://github.com/FTOD/concorde/releases/download/v0.5.0/extensions.json",
+                "presets": "https://github.com/FTOD/concorde/releases/download/v0.5.0/presets.json",
+                "bundles": "https://github.com/FTOD/concorde/releases/download/v0.5.0/bundles.json",
             },
             "archives": {},
         }
@@ -52,11 +52,11 @@ class InstallerDecisionTests(unittest.TestCase):
 
     def test_version_and_checkout_are_mutually_exclusive(self):
         with self.assertRaises(SystemExit):
-            installer.parser().parse_args(["--version", "0.4.0", "--checkout", "."])
+            installer.parser().parse_args(["--version", "0.5.0", "--checkout", "."])
 
     def test_release_pointer_accepts_supported_public_release(self):
-        release = installer.validate_release_pointer(self.pointer(), expected_version="0.4.0")
-        self.assertEqual(release.version, "0.4.0")
+        release = installer.validate_release_pointer(self.pointer(), expected_version="0.5.0")
+        self.assertEqual(release.version, "0.5.0")
         self.assertEqual(release.catalogs["bundles"], self.pointer()["catalogs"]["bundles"])
 
     def test_release_pointer_rejects_schema_version_bundle_and_urls(self):
@@ -75,7 +75,7 @@ class InstallerDecisionTests(unittest.TestCase):
         ]
         for value in bad_values:
             with self.subTest(value=value), self.assertRaises(installer.InstallationError) as raised:
-                installer.validate_release_pointer(value, expected_version="0.4.0")
+                installer.validate_release_pointer(value, expected_version="0.5.0")
             self.assertEqual(raised.exception.exit_code, installer.EXIT_RELEASE)
 
     def test_target_classification(self):
@@ -114,9 +114,9 @@ class InstallerDecisionTests(unittest.TestCase):
         self.assertEqual(installer.catalog_state("bundle", bundle, desired), "current")
 
     def test_action_selection(self):
-        self.assertEqual(installer.select_action(None, "0.4.0"), "install")
-        self.assertEqual(installer.select_action("0.4.0", "0.4.0"), "already-current")
-        self.assertEqual(installer.select_action("0.3.0", "0.4.0"), "update")
+        self.assertEqual(installer.select_action(None, "0.5.0"), "install")
+        self.assertEqual(installer.select_action("0.5.0", "0.5.0"), "already-current")
+        self.assertEqual(installer.select_action("0.3.0", "0.5.0"), "update")
 
     def test_staged_failure_never_claims_success(self):
         error = installer.InstallationError(
@@ -135,10 +135,39 @@ class InstallerDecisionTests(unittest.TestCase):
 
     def test_bundle_version_reads_native_list_shape(self):
         self.assertIsNone(installer.installed_bundle_version([]))
-        value = [{"bundle_id": "concorde-bundle", "version": "0.4.0"}]
-        self.assertEqual(installer.installed_bundle_version(value), "0.4.0")
+        value = [{"bundle_id": "concorde-bundle", "version": "0.5.0"}]
+        self.assertEqual(installer.installed_bundle_version(value), "0.5.0")
         with self.assertRaises(installer.InstallationError):
             installer.installed_bundle_version(json.loads('{"unexpected": true}'))
+
+    def test_agent_asset_operation_parses_success_and_rejects_conflict(self):
+        success = {
+            "schema_version": 1,
+            "operation": "agent-assets.verify",
+            "target": "codex",
+            "status": "success",
+            "artifacts": [".codex/agents/reflection_investigator.toml"],
+            "findings": [],
+            "result": {"integration": "codex", "outputs": [".codex/agents/reflection_investigator.toml"]},
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            launcher = root / ".specify/extensions/concorde/scripts/python/concorde.py"
+            launcher.parent.mkdir(parents=True)
+            launcher.write_text("# fixture\n")
+            completed = mock.Mock(returncode=0, stdout=json.dumps(success), stderr="")
+            with mock.patch.object(installer.subprocess, "run", return_value=completed) as called:
+                payload = installer.run_agent_assets(root, "codex", "verify", "0.5.0")
+            self.assertEqual(payload["status"], "success")
+            self.assertIn("agent-assets", called.call_args.args[0])
+
+            conflict = {**success, "operation": "agent-assets.sync", "status": "conflict", "findings": [{"message": "modified role"}]}
+            completed = mock.Mock(returncode=2, stdout=json.dumps(conflict), stderr="")
+            with mock.patch.object(installer.subprocess, "run", return_value=completed):
+                with self.assertRaises(installer.InstallationError) as raised:
+                    installer.run_agent_assets(root, "codex", "sync", "0.5.0")
+            self.assertEqual(raised.exception.stage, "agent-projection-sync")
+            self.assertIn("modified role", str(raised.exception))
 
     def test_development_cleanup_failure_precedes_success_report(self):
         arguments = argparse.Namespace(
@@ -148,9 +177,10 @@ class InstallerDecisionTests(unittest.TestCase):
         )
         result = installer.InstallResult(
             "installed",
-            {"bundle_id": "concorde-bundle", "version": "0.4.0", "contributed_components": []},
+            {"bundle_id": "concorde-bundle", "version": "0.5.0", "contributed_components": []},
             "codex",
             True,
+            {"status": "success", "result": {"outputs": []}},
         )
         cleanup_error = installer.InstallationError(
             installer.EXIT_SPECIFY,

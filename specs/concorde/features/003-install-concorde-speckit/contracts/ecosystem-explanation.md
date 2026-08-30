@@ -17,16 +17,18 @@ including install-time composition and the two distinct use-time paths.
 | Catalog | Carries discovery and trust metadata for independently packaged bundle, preset, and extension archives. |
 | Bundle | Is a passive, non-executable recipe pinning exactly one preset and one extension. |
 | Preset | Composes architecture guidance into templates (including the Concorde-only `abstract-template` for the feature-root `abstract.md` and `implementation-template` for the feature-root `design.md`) and authoritative selected-workspace routing into nine existing lifecycle commands. It introduces no new runtime command namespace. |
-| Extension | Actively contributes five Concorde-specific surfaces: four runtime-backed intents, one agent-followed read-only question procedure, a selected-workspace adapter, and the deterministic runtime used only by the operations. |
-| Active coding-agent integration | Materializes Concorde-modified normal commands and Concorde-specific commands in agent-native syntax without owning their behavior. |
+| Extension | Contributes five Concorde commands—four runtime-backed plus agent-followed read-only `ask`—and canonical reflection-triage bodies/wrappers, queue helper, and deterministic projector. |
+| Active coding-agent integration | Materializes commands and selects native triage skill/role destinations without owning their behavior. |
+| Projection receipt | Proves which generated agent paths Concorde may update/remove by digest; it owns no maintainer state. |
 | Skills | Are the installed user-facing command instructions materialized from the preset and extension sources. |
 | Scripts | Implement workspace routing and deterministic initialization, context, validation, and acceptance operations. |
 | Workspace Files | Preserve durable specification and accepted realization outside `attempt/`, and temporal delivery memory inside it. |
 
-The explanation must say that Concorde augments the standard Spec Kit lifecycle; it does not supersede
-`specify`, `plan`, `tasks`, or the single canonical feature `design.md`. It must also distinguish the
-source checkout's self-hosting `.agents/` and `.specify/` files from the preset and extension files
-that a clean target actually receives from release archives.
+The explanation must say that Concorde augments the standard Spec Kit lifecycle; the bounded
+post-bundle agent projection fills one missing host primitive but does not supersede `specify`,
+`plan`, `tasks`, or the single canonical feature `design.md`. It must distinguish the source
+checkout's self-hosting `.agents/`, `.codex/`, `.claude/`, and `.specify/` files from the canonical
+extension bytes and generated target files a clean project receives.
 
 ## Authority Split
 
@@ -38,7 +40,7 @@ that a clean target actually receives from release archives.
 | Boundary obligations and failure semantics | Canonical module contracts and feature-local interface contracts |
 | Supplemental visual composition | The two Feature 003 Archify JSON sources |
 | Existing lifecycle-command routing instructions | Preset command sources and their resolved installed surfaces |
-| Concorde-specific command/runtime behavior | Extension implementation |
+| Concorde-specific command/runtime and projection behavior | Extension implementation; Feature 005 owns triage semantics |
 | Published visual projection | Generated HTML, which is reproducible and non-authoritative |
 
 ## Required Views

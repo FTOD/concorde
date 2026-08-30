@@ -26,6 +26,8 @@ from typing import Any, Iterable, Sequence
 TARGET = "feature.concorde.self-host-framework"
 PROPOSAL_PATH = ".specify/self-hosting-proposal.json"
 RECEIPT_PATH = ".specify/self-hosting.json"
+AGENT_ASSET_RECEIPT_PATH = ".specify/concorde-agent-assets.json"
+TRIAGE_CONFIG_PATH = ".concorde/reflections/config.json"
 SUPPORTED_SPECKIT = "0.16.4"
 PRESET_ID = "concorde"
 EXTENSION_ID = "concorde"
@@ -69,11 +71,21 @@ INTEGRATION_PROFILES: dict[str, dict[str, object]] = {
         "skill_root": ".agents/skills",
         "init_options": ("--integration-options=--skills",),
         "allow_extension_links": False,
+        "agent_surfaces": (
+            ".agents/skills/reflections-triage/SKILL.md",
+            ".codex/agents/reflection_investigator.toml",
+            ".codex/agents/reflection_implementer.toml",
+        ),
     },
     "claude": {
         "skill_root": ".claude/skills",
         "init_options": (),
         "allow_extension_links": True,
+        "agent_surfaces": (
+            ".claude/skills/reflections-triage/SKILL.md",
+            ".claude/agents/reflection-investigator.md",
+            ".claude/agents/reflection-implementer.md",
+        ),
     },
 }
 
@@ -448,6 +460,9 @@ def owned_paths(integration: str = "codex") -> tuple[str, ...]:
         ".specify/extensions.yml",
         *TEMPLATE_SURFACES,
         *skill_directories,
+        *tuple(str(item) for item in integration_profile(integration)["agent_surfaces"]),
+        AGENT_ASSET_RECEIPT_PATH,
+        TRIAGE_CONFIG_PATH,
         RECEIPT_PATH,
     }))
 
@@ -606,6 +621,7 @@ def preflight(root: Path, integration: str) -> None:
         run_specify(target, integration_init_arguments(integration))
         run_specify(target, ["preset", "add", "--dev", str(root / "presets/concorde"), "--priority", str(PRIORITY)])
         run_specify(target, ["extension", "add", str(root / "extensions/concorde"), "--dev", "--priority", str(PRIORITY)])
+        refresh_agent_assets(target, integration, yaml_scalar(root / "extensions/concorde/extension.yml", "extension", "version"))
         verify_materialization(target, expected_source=root)
 
 
@@ -685,6 +701,7 @@ def surface_inventory(root: Path, integration: str = "codex") -> tuple[list[dict
         *((relative, None) for relative in TEMPLATE_SURFACES),
         *((skill_path(command, integration), None) for command in PRESET_COMMANDS),
         *((skill_path(command, integration), command) for command in EXTENSION_COMMANDS),
+        *((str(relative), None) for relative in integration_profile(integration)["agent_surfaces"]),
     ]
     for relative, extension_command in sorted(declared):
         evidence = surface_evidence(root, relative, integration, extension_command=extension_command)
@@ -804,6 +821,53 @@ def refresh_components(root: Path) -> None:
     inject("extension")
     arguments = ["extension", "add", str(root / "extensions/concorde"), "--dev", "--priority", str(PRIORITY), "--force"]
     run_specify(root, arguments)
+
+
+def refresh_agent_assets(root: Path, integration: str, version: str) -> None:
+    launcher = root / ".specify/extensions/concorde/scripts/python/concorde.py"
+    for operation in ("sync", "verify"):
+        environment = os.environ.copy()
+        environment.pop("PYTHONPATH", None)
+        environment.pop("SPECIFY_FEATURE_DIRECTORY", None)
+        environment["PYTHONNOUSERSITE"] = "1"
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(launcher),
+                "--project-root",
+                str(root),
+                "agent-assets",
+                operation,
+                "--integration",
+                integration,
+                "--concorde-version",
+                version,
+            ],
+            cwd=root,
+            text=True,
+            capture_output=True,
+            env=environment,
+        )
+        try:
+            payload = json.loads(completed.stdout)
+        except json.JSONDecodeError as error:
+            raise SelfHostError(
+                "CONCORDE-SELF-HOST-023",
+                "verify",
+                AGENT_ASSET_RECEIPT_PATH,
+                f"Installed agent projector returned invalid JSON: {error}",
+                "Repair the installed extension and retry from a fresh proposal.",
+            ) from error
+        if completed.returncode or payload.get("status") not in {"success", "unchanged"}:
+            findings = payload.get("findings", []) if isinstance(payload, dict) else []
+            messages = [str(item.get("message")) for item in findings if isinstance(item, dict)]
+            raise SelfHostError(
+                "CONCORDE-SELF-HOST-023",
+                "verify",
+                AGENT_ASSET_RECEIPT_PATH,
+                "; ".join(messages) or f"Agent projection {operation} failed.",
+                "Resolve the projection ownership conflict and generate a fresh proposal.",
+            )
 
 
 def status(root: Path) -> dict[str, object]:
@@ -962,6 +1026,11 @@ def apply(root: Path, proposal_argument: str) -> dict[str, object]:
         state = snapshot(root, paths, backup)
         try:
             refresh_components(root)
+            refresh_agent_assets(
+                root,
+                str(fresh["integration"]),
+                str(next(item["version"] for item in fresh["components"] if item["kind"] == "extension")),
+            )
             inject("verify")
             installed_digest, registry_digest, surface_digest, surfaces = verify_materialization(root)
             receipt = {

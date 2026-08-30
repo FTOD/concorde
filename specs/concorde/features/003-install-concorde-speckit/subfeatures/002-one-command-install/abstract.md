@@ -9,29 +9,29 @@ you when you want more.
 
 A maintainer with nothing but a shell and network access turns a new or existing directory into a
 Concorde-enabled Spec Kit project with one command, and the result is byte-for-byte the component
-set the parent's native step-by-step Spec Kit path produces. It serves the first-time
-maintainer who should not need a checkout, a build, a local server, and eight commands, and the
-Concorde developer who wants the identical sequence against a local checkout.
+and native agent state produced by the parent's manual bundle-plus-projector path. It serves the
+first-time maintainer who should not need a checkout, build, local server, or manual agent copying,
+and the Concorde developer who wants the identical sequence against a local checkout.
 
 ## Functionality
 
-The installer is an optional accelerator: every step it performs remains a documented public Spec
-Kit command, so the parent's "no separate installer is required" rule holds.
+The installer uses public Spec Kit commands for project/components, then invokes only the
+deterministic agent projector supplied by the installed extension. The equivalent manual path is
+documented; Spec Kit 0.16.4 simply lacks this native custom-agent primitive.
 
 | Mode | What happens |
 |---|---|
-| Install | Obtains the pinned Spec Kit CLI if absent, initializes the target as a Spec Kit project only when it is not one already, registers the release's three catalogs, and installs the bundle through the native bundle lifecycle. |
-| Re-run | Preserves the existing integration, components, and authored sources; an already current installation changes no bytes; an older version is previewed and updated through the native update path; a different integration stops with a named conflict. |
-| Preview | Prints the ordered public operations, release version, and pinned component versions, and writes nothing. |
-| Development | Takes a local Concorde checkout, builds and verifies its release, serves its catalogs only for the run, installs through the same bundle path, and cleans up. |
+| Install | Obtains Spec Kit if absent, initializes when needed, registers catalogs, installs/updates the bundle, then previews, synchronizes, and verifies native Claude or Codex triage skill/roles from the installed extension. |
+| Re-run | Preserves integration, components, shared triage state, inactive/modified/unrelated agent files, and authored sources; current components/projections change no bytes; conflicts stop before false success. |
+| Preview | Prints public operations, release/component versions, native agent targets/digests/actions/conflicts, and writes nothing. |
+| Development | Builds/verifies a checkout, serves catalogs only for the run, installs through the same bundle path, projects from the installed copy, and cleans up. |
 
-The final report names the installed versions, whether the coding agent must be reloaded, and the
-Concorde workflow as the next step. The installer is plain, readable text a maintainer can inspect
-before running.
+The final report names versions, projection/receipt verification, reload need, and the Concorde
+workflow as the next step. The installer remains plain, inspectable text.
 
 **Not part of this feature**: what gets installed, Spec Kit's authority over the component lifecycle,
-the inspect-before-install rule, the clean-project verification matrix, and installing the preset
-or extension individually.
+the inspect-before-install rule, Feature 005's triage behavior, the clean-project verification
+matrix, user permission policy, and installing the preset or extension individually.
 
 ## Structure
 
@@ -44,7 +44,8 @@ the components it installs.
 ```text
 one command (target dir, integration) ──▶ obtain pinned Spec Kit CLI ──▶ init project (if needed)
      ──▶ register 3 catalogs (published release, or a checkout served for this run only)
-     ──▶ install concorde-bundle through Spec Kit ──▶ run report: versions · reload? · next: the workflow
+     ──▶ install concorde-bundle through Spec Kit ──▶ preview/sync/verify installed agent assets
+     ──▶ run report: versions · projection receipt · reload? · next: the workflow
 ```
 
 The default version resolves through the sibling publication feature's stable locations; the
@@ -59,37 +60,45 @@ install itself is the Distribution module's bundle lifecycle. No realization is 
 2. Obtain the pinned Spec Kit CLI when it is missing.
 3. Initialize the target only if it is not already a Spec Kit project.
 4. Register the three catalogs and install the bundle natively; in preview mode, print this plan and
-   stop.
-5. Report versions, the reload requirement, and the next step; any failure stops before claiming
+   include the agent-projection plan and stop.
+5. Invoke the installed projector for the active integration: preview conflicts, synchronize only
+   owned targets, and verify output/receipt digests.
+6. Report versions, projection status, reload requirement, and next step; any failure stops before claiming
    success and names stage, remediation, and residual state.
 
 **Rules the implementation must keep**
 
 - One command from a public location, with at most the target directory and integration as required
   inputs (FR-001).
-- Only public Spec Kit operations; the installer never copies, edits, or generates component files,
-  and the native path stays documented and sufficient (FR-002).
+- Public Spec Kit operations own project/components; only the installed extension projector may
+  generate native agent files, and the manual bundle-plus-projector path stays documented (FR-002,
+  FR-014).
 - The pinned Spec Kit CLI is obtained without the checkout, a project-specific virtual environment,
   or changes to other projects (FR-003).
 - Initialization happens only for a non-project target; existing integration, components, and
   authored sources are preserved (FR-004).
 - The three catalogs are registered and the bundle installed through the native lifecycle, never the
   preset or extension individually (FR-005).
-- Repeated runs are idempotent: no byte changes when current, no duplicated registrations (FR-006).
+- Repeated runs are idempotent across registries, commands, projections, receipt, and shared state
+  (FR-006, FR-016).
 - The default is the current published release; an explicit version is accepted; both resolve
   through the publication feature's stable locations (FR-007).
-- Preview prints the complete ordered plan with versions and writes nothing (FR-008).
+- Preview prints component and agent projection paths/digests/actions/conflicts and writes nothing
+  (FR-008).
 - Development mode builds, verifies, serves for the run only, installs through the same bundle path,
   and cleans up (FR-009).
 - Failures stop before success and name the stage, remediation, and partial state; the report names
   versions, reload need, and the workflow; the installer is inspectable text; integration conflicts,
   unsupported versions, and unreachable releases give the native diagnostics (FR-010, FR-011,
   FR-012, FR-013).
+- Projection creates exactly three model-neutral native outputs, uses digest ownership for
+  update/removal, and preserves legacy/modified/inactive/user state unless explicitly adopted
+  (FR-015 to FR-019).
 
 ## Read Next
 
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): four user stories,
-  FR-001 to FR-013, and SC-001 to SC-006.
+  FR-001 to FR-019, and SC-001 to SC-008.
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (a
   placeholder until a realization is accepted).
 - **The parent** — [abstract](../../abstract.md) and [design.md](../../design.md) of

@@ -41,7 +41,11 @@ class AcceptanceTerminologyContractTests(unittest.TestCase):
             if not path.is_file() or path.is_symlink():
                 continue
             relative = path.relative_to(REPOSITORY_ROOT)
-            if relative == HISTORICAL_LOG or any(part in EXCLUDED_PARTS for part in relative.parts):
+            if (
+                relative == HISTORICAL_LOG
+                or relative.parts[:2] == (".claude", "worktrees")
+                or any(part in EXCLUDED_PARTS for part in relative.parts)
+            ):
                 continue
             if relative == SELECTED_IMPLEMENTATION and (REPOSITORY_ROOT / SELECTED_ROOT / "attempt").is_dir():
                 # The lifecycle preserves the old placeholder byte-for-byte until this attempt is
@@ -79,7 +83,11 @@ class AcceptanceTerminologyContractTests(unittest.TestCase):
             if not path.is_file() or path.is_symlink():
                 continue
             relative = path.relative_to(REPOSITORY_ROOT)
-            if relative == HISTORICAL_LOG or any(part in EXCLUDED_PARTS for part in relative.parts):
+            if (
+                relative == HISTORICAL_LOG
+                or relative.parts[:2] == (".claude", "worktrees")
+                or any(part in EXCLUDED_PARTS for part in relative.parts)
+            ):
                 continue
             try:
                 text = path.read_text(encoding="utf-8").lower()

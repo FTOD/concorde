@@ -67,6 +67,7 @@ class InstallResult(NamedTuple):
     record: Mapping[str, Any]
     integration: str
     reload_required: bool
+    agent_assets: Mapping[str, Any] | None = None
 
 
 def normalize_version(value: str) -> str:
@@ -78,7 +79,7 @@ def normalize_version(value: str) -> str:
             EXIT_REQUEST,
             "request-validation",
             f"Invalid Concorde version: {value!r}.",
-            "Pass a release version such as 0.4.0.",
+            "Pass a release version such as 0.5.0.",
         )
     return normalized
 
@@ -550,6 +551,7 @@ def _print_plan(
     catalog_plan: Mapping[str, str],
     bundle_info: object,
     action: str,
+    agent_plan: Mapping[str, Any] | None = None,
 ) -> None:
     print("\nConcorde installation plan")
     print(f"  release: {release.version} ({release.source})")
@@ -560,6 +562,9 @@ def _print_plan(
     print(f"  action: {action}")
     print("\nNative expanded bundle information:")
     print(json.dumps(bundle_info, indent=2, sort_keys=True))
+    if agent_plan is not None:
+        print("\nNative reflection-agent projection plan:")
+        print(json.dumps(agent_plan, indent=2, sort_keys=True))
 
 
 def _bundle_record(payload: object) -> Mapping[str, Any]:
@@ -588,6 +593,7 @@ def _print_success(
     record: Mapping[str, Any],
     integration: str,
     reload_required: bool,
+    agent_assets: Mapping[str, Any] | None = None,
 ) -> None:
     components = record.get("contributed_components", [])
     print("\nCONCORDE INSTALL SUCCESS")
@@ -598,8 +604,95 @@ def _print_success(
             if isinstance(component, Mapping):
                 print(f"  {component.get('kind')}: {component.get('id')}@{component.get('version')}")
     print(f"  integration: {integration}")
+    if agent_assets:
+        verify = agent_assets.get("verify", {})
+        result = verify.get("result", {}) if isinstance(verify, Mapping) else {}
+        outputs = result.get("outputs", []) if isinstance(result, Mapping) else []
+        print(f"  agent projection: {verify.get('status', 'unknown') if isinstance(verify, Mapping) else 'unknown'}")
+        print(f"  agent outputs: {len(outputs) if isinstance(outputs, list) else 0}")
+        print("  agent receipt: .specify/concorde-agent-assets.json")
     print(f"  agent reload required: {'yes' if reload_required else 'no'}")
     print("  next: start a new agent session if required, then run speckit-concorde-init")
+
+
+def run_agent_assets(
+    project_root: Path,
+    integration: str,
+    operation: str,
+    concorde_version: str,
+    *,
+    source_project: Path | None = None,
+    allow_conflict: bool = False,
+) -> Mapping[str, Any]:
+    """Invoke only the projector shipped in an installed Concorde extension."""
+    source = source_project or project_root
+    launcher = source / ".specify/extensions/concorde/scripts/python/concorde.py"
+    if not launcher.is_file():
+        raise InstallationError(
+            EXIT_SPECIFY,
+            f"agent-projection-{operation}",
+            f"Installed Concorde agent projector is missing: {launcher}",
+            "Repair or reinstall extension:concorde, then retry.",
+            "component state may be installed; agent projections were not verified",
+        )
+    arguments = [
+        sys.executable,
+        str(launcher),
+        "--project-root",
+        str(project_root),
+        "agent-assets",
+        operation,
+        "--integration",
+        integration,
+        "--concorde-version",
+        concorde_version,
+    ]
+    if source_project is not None and source_project != project_root:
+        arguments.extend(
+            [
+                "--source-root",
+                str(source / ".specify/extensions/concorde/agent-assets/reflections"),
+            ]
+        )
+    environment = os.environ.copy()
+    environment.pop("SPECIFY_FEATURE_DIRECTORY", None)
+    environment.pop("PYTHONPATH", None)
+    environment["PYTHONNOUSERSITE"] = "1"
+    completed = subprocess.run(
+        arguments,
+        cwd=source,
+        env=environment,
+        text=True,
+        capture_output=True,
+    )
+    if completed.stderr:
+        print(completed.stderr, end="", file=sys.stderr)
+    try:
+        payload = json.loads(completed.stdout)
+    except json.JSONDecodeError as error:
+        raise InstallationError(
+            EXIT_SPECIFY,
+            f"agent-projection-{operation}",
+            f"Installed agent projector returned invalid JSON: {error}",
+            "Run the installed concorde.py agent-assets command directly and inspect its diagnostic.",
+            "component state may be installed; agent projection state is unknown",
+        ) from error
+    status = payload.get("status") if isinstance(payload, Mapping) else None
+    allowed = {"proposal", "success", "unchanged"}
+    if allow_conflict:
+        allowed.add("conflict")
+    acceptable_nonzero = allow_conflict and status == "conflict"
+    if (completed.returncode and not acceptable_nonzero) or status not in allowed:
+        findings = payload.get("findings", []) if isinstance(payload, Mapping) else []
+        messages = [str(item.get("message")) for item in findings if isinstance(item, Mapping)]
+        raise InstallationError(
+            EXIT_SPECIFY,
+            f"agent-projection-{operation}",
+            "; ".join(messages) or f"Agent projection {operation} failed with status {status!r}.",
+            "Resolve the named ownership or installed-asset problem, then retry.",
+            "component state may be installed; conflicting or failed agent projections were preserved",
+        )
+    return payload
 
 
 def execute_install(
@@ -646,11 +739,20 @@ def execute_install(
             "Review `specify bundle list --json` and the registered Concorde catalogs.",
             "project is initialized; installed component state disagrees with the plan",
         )
+    agent_preview = run_agent_assets(target, integration, "preview", release.version)
+    agent_sync = run_agent_assets(target, integration, "sync", release.version)
+    agent_verify = run_agent_assets(target, integration, "verify", release.version)
+    agent_assets = {"preview": agent_preview, "sync": agent_sync, "verify": agent_verify}
     result = InstallResult(
         outcome=outcome,
         record=record,
         integration=integration,
-        reload_required=initialized or action in {"install", "update"},
+        reload_required=(
+            initialized
+            or action in {"install", "update"}
+            or agent_sync.get("status") == "success"
+        ),
+        agent_assets=agent_assets,
     )
     if announce:
         _print_success(*result)
@@ -722,8 +824,17 @@ def execute_preview(
             cwd=preview_root,
             stage="bundle-preview",
         )
+        runner.run("bundle", "install", release.bundle_id, cwd=preview_root, stage="preview-bundle-install")
+        agent_plan = run_agent_assets(
+            target,
+            integration,
+            "preview",
+            release.version,
+            source_project=preview_root,
+            allow_conflict=True,
+        )
     action = select_action(installed_version, release.version)
-    _print_plan(release, integration, target_catalogs, bundle_info, action)
+    _print_plan(release, integration, target_catalogs, bundle_info, action, agent_plan)
     print("\nCONCORDE INSTALL PREVIEW COMPLETE")
     print("  outcome: preview")
     print(f"  planned action: {action}")
@@ -909,7 +1020,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--integration", help="Coding-agent integration; required for a fresh target")
     result.add_argument("--integration-options", help="Options forwarded to `specify init`")
     source = result.add_mutually_exclusive_group()
-    source.add_argument("--version", help="Published Concorde version (for example 0.4.0)")
+    source.add_argument("--version", help="Published Concorde version (for example 0.5.0)")
     source.add_argument("--checkout", help="Local Concorde checkout to build, verify, and install")
     result.add_argument("--preview", action="store_true", help="Print the exact plan without changing the target")
     return result

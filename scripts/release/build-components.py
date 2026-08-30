@@ -122,6 +122,10 @@ def _allowed_member(component_kind: str, relative: Path) -> bool:
         return (
             path in {"README.md", "extension.yml"}
             or (path.startswith("commands/") and path.endswith(".md"))
+            or (
+                path.startswith("agent-assets/reflections/")
+                and Path(path).suffix in {".json", ".md", ".tmpl"}
+            )
             or (path.startswith("scripts/bash/") and path.endswith(".sh"))
             or (path.startswith("scripts/powershell/") and path.endswith(".ps1"))
             or (path.startswith("scripts/python/") and path.endswith(".py"))
@@ -225,7 +229,7 @@ def build_release(output: Path, base_url: str | None = None, version: str | None
                     "effect": "read-write",
                     "download_url": f"{base_url}/concorde-extension-{version}.zip",
                     "sha256": f"sha256:{digests[f'concorde-extension-{version}.zip']}",
-                    "provides": {"commands": 5, "scripts": 4},
+                    "provides": {"commands": 5, "scripts": 5},
                     "tags": ["architecture", "context", "validation"],
                 }
             },

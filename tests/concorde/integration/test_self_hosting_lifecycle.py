@@ -36,7 +36,7 @@ class _SelfHostingLifecycleMixin:
         adopted.write_text("stale hand-maintained copy\n")
         proposal = self.propose()
         self.assertEqual(len(proposal["components"]), 3)
-        self.assertEqual(len(proposal["changes"]), 24)
+        self.assertEqual(len(proposal["changes"]), 29)
         self.assertEqual(proposal["activation"], "reload_required")
         adopted_relative = adopted.parent.relative_to(self.root).as_posix()
         adopted_change = next(item for item in proposal["changes"] if item["path"] == adopted_relative)
@@ -52,6 +52,11 @@ class _SelfHostingLifecycleMixin:
         self.assertEqual(registry["presets"]["concorde"]["source"], "local")
         self.assertNotIn("stale hand-maintained", adopted.read_text())
         self.assertEqual(adopted.is_symlink(), self.integration == "claude")
+        for relative in self_host.integration_profile(self.integration)["agent_surfaces"]:
+            self.assertTrue((self.root / str(relative)).is_file(), relative)
+        agent_receipt = json.loads((self.root / ".specify/concorde-agent-assets.json").read_text())
+        self.assertIn(self.integration, agent_receipt["integrations"])
+        self.assertTrue((self.root / ".concorde/reflections/config.json").is_file())
 
     def test_foreign_extension_command_collision_is_rejected_in_preview(self):
         registry = self.root / ".specify/extensions/.registry"

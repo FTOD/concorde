@@ -21,8 +21,8 @@ specified.
 | Selected feature, durable/temporal paths, command intent, results, and failures | Feature 001 Feature Workspace and agent-command contracts |
 | Normal phase responsibility and public composition/materialization behavior | Spec Kit 0.16.4 |
 | Template and command contribution strategy | `concorde` preset manifest |
-| Five active command surfaces and four runtime/adapter scripts | `concorde` extension manifest |
-| Agent-specific filename and invocation syntax | Active coding-agent integration |
+| Five active command surfaces, canonical triage assets, queue/projector support | `concorde` extension manifest and Feature 005 contract |
+| Agent-specific command and custom-agent syntax | Active coding-agent integration plus Concorde projection manifest |
 | Installed winner, package version, source/materialized digests, and execution evidence | Spec Kit state plus generated Feature 003 acceptance receipts |
 
 Feature 003 may package and render the Feature 001 handoff but must not reinterpret it. Every
@@ -77,6 +77,21 @@ non-mutation without a launcher or runtime verb. Every launcher, adapter, schema
 referenced by an operational command must be present in the extension archive and resolved relative
 to the installed extension, never the Concorde checkout.
 
+### Reflection-triage agent surfaces
+
+The extension additionally ships canonical support assets, not a sixth command. Installation renders
+exactly three native outputs for the selected integration: the `reflections-triage` skill,
+`reflection-investigator`, and `reflection-implementer`. Claude uses `.claude/skills` and
+`.claude/agents`; Codex uses `.agents/skills` and `.codex/agents` TOML. Both projections expose the
+same four actions, route/plan vocabulary, shared `.concorde/reflections/` state, installed queue
+helper, read-only investigator, assigned-worktree implementer, and maintainer-owned merge/log status.
+They pin no mandatory model and contain no Concorde checkout path.
+
+The projector records path/digest ownership in `.specify/concorde-agent-assets.json`. Update/removal
+may alter a projected path only while its digest matches that receipt. Shared config, plans,
+worktrees, logs, inactive integration surfaces, unrelated files, modified projections, and user
+permission settings are preserved.
+
 ## Resolution and Materialization
 
 For every target project, Spec Kit must:
@@ -102,11 +117,12 @@ unregistered package member is not an installed command surface.
 | Init / context / validate | Feature 001 contract paths and result envelopes | Checkout-relative runtime or agent-specific semantic drift |
 | Implementation accept | Root trio, module summary/design, completed tasks/checklists, returned proposal metadata, digest-bound proposal v6 (candidate feature `implementation.md`, optional module `design.md` amendment), exact `attempt/` removal | Derived paths, wrong targets, unchecked work, implicit approval, stale apply, or broader deletion |
 | Ask | Installed extension/preset guidance plus the smallest relevant bounded maintained project sources | Launcher/runtime invocation, checkout dependency, uncited facts, unrelated deeper context, mutation, or implicit lifecycle work |
+| Reflection triage | Installed canonical agent bodies/wrappers, shared config/queue/plans, and explicit implementer worktrees | Checkout dependency, duplicate platform queue, model pin, permission overwrite, main-checkout parallel writes, or automatic log status changes |
 
 ## Acceptance Evidence
 
 Acceptance must run from built release artifacts in a target outside the Concorde checkout. For each
-of the fourteen surfaces it must:
+of the fifteen command surfaces and the selected integration's three triage outputs it must:
 
 1. identify the active registered artifact and winning source package;
 2. record source, materialized, package, and Feature 001 handoff digests;
@@ -115,7 +131,8 @@ of the fourteen surfaces it must:
    agent-only question procedure;
 5. record selected feature root, implementation root, accessed/output paths, exit status, and
    checkout access;
-6. compare behavior across one skills-based and one slash-command-based integration.
+6. compare command behavior and triage semantics across Claude and Codex;
+7. parse native agent metadata and verify receipt/source/materialized digests.
 
 For an eligible installed acceptance proposal, acceptance also records the runtime-returned
 `proposal_path`, `task_summary`, and `checklist_summary`. The proposal path must be exactly
@@ -134,7 +151,8 @@ changes future resolution but leaves already registered commands active, matchin
 documented lifecycle. Updating must materialize the accepted updated layer. Removing must recompose
 and materialize the next surviving winner for all nine normal commands. No stale Concorde
 instructions may remain, and removal must not delete shared components, unrelated registered
-commands, project configuration, `.concorde/`, `specs/`, or `docs/` content.
+commands, project configuration, shared triage state, inactive/customized agent files, `.concorde/`,
+`specs/`, or `docs/` content.
 
 ## Compatibility and Change Control
 
@@ -142,6 +160,6 @@ This profile supports Spec Kit 0.16.4 only. A later version is supported only af
 is reviewed against that version's phase inputs, outputs, hooks, prerequisites, failures, and
 registration behavior, followed by the full isolated path and recomposition matrices.
 
-A change to the nine/five inventory, bootstrap order, durable/temporal path split, or stable command
-intent is a contract change and requires synchronized Feature 001 handoff, package manifests,
-catalogs, diagrams, tests, and evidence.
+A change to the nine-plus-fast-loop/five-command/three-triage inventory, bootstrap order,
+durable/temporal path split, projection ownership, or stable intent is a contract change and requires
+synchronized Feature 001/005 handoff, manifests, catalogs, diagrams, tests, and evidence.

@@ -42,6 +42,15 @@ def create_parser() -> argparse.ArgumentParser:
     accept_mode.add_argument("--apply", action="store_true")
     accept.add_argument("--proposal")
     accept.add_argument("--format", choices=["json"], default="json")
+
+    agent_assets = subparsers.add_parser("agent-assets")
+    asset_commands = agent_assets.add_subparsers(dest="agent_asset_operation", required=True)
+    for name in ("preview", "sync", "verify", "remove"):
+        command = asset_commands.add_parser(name)
+        command.add_argument("--integration", choices=["claude", "codex"], required=True)
+        command.add_argument("--source-root")
+        command.add_argument("--concorde-version", default="source")
+        command.add_argument("--format", choices=["json"], default="json")
     return parser
 
 
@@ -77,6 +86,26 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
                 )
             return apply_acceptance(root, arguments.proposal)
         return propose_acceptance(root, arguments.target)
+    if arguments.operation == "agent-assets":
+        from .agent_assets import (
+            preview_agent_assets,
+            remove_agent_assets,
+            sync_agent_assets,
+            verify_agent_assets,
+        )
+
+        source = (
+            Path(arguments.source_root)
+            if arguments.source_root
+            else root / ".specify/extensions/concorde/agent-assets/reflections"
+        )
+        if arguments.agent_asset_operation == "preview":
+            return preview_agent_assets(root, source, arguments.integration, arguments.concorde_version)
+        if arguments.agent_asset_operation == "sync":
+            return sync_agent_assets(root, source, arguments.integration, arguments.concorde_version)
+        if arguments.agent_asset_operation == "verify":
+            return verify_agent_assets(root, source, arguments.integration)
+        return remove_agent_assets(root, arguments.integration)
     from .validate import validate_project
 
     return validate_project(root, arguments.target)
@@ -90,7 +119,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     except Exception as error:  # command boundary: always return the normative envelope
         operation = argv[0] if argv else "validate"
         payload = envelope(
-            "impl.accept" if operation == "impl" else operation if operation in {"init", "context", "validate"} else "validate",
+            "impl.accept"
+            if operation == "impl"
+            else operation
+            if operation in {"init", "context", "validate", "agent-assets"}
+            else "validate",
             ".",
             "failed",
             [],

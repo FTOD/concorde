@@ -8,17 +8,27 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 class ManifestContractTests(unittest.TestCase):
-    def test_extension_declares_five_commands_and_four_scripts(self):
+    def test_extension_declares_five_commands_five_scripts_and_agent_assets(self):
         manifest = (REPOSITORY_ROOT / "extensions/concorde/extension.yml").read_text(encoding="utf-8")
         self.assertEqual(manifest.count('- name: "speckit.concorde.'), 5)
-        self.assertEqual(manifest.count('runtime: "'), 4)
+        self.assertEqual(manifest.count('runtime: "'), 5)
         self.assertIn('name: "speckit.concorde.ask"', manifest)
         self.assertIn('file: "commands/speckit.concorde.ask.md"', manifest)
+        self.assertIn('file: "scripts/python/reflections_queue.py"', manifest)
+        for relative in (
+            "agent-assets/reflections/manifest.json",
+            "agent-assets/reflections/orchestrator.md",
+            "agent-assets/reflections/roles/investigator.md",
+            "agent-assets/reflections/roles/implementer.md",
+            "agent-assets/reflections/projections/claude/SKILL.md.tmpl",
+            "agent-assets/reflections/projections/codex/SKILL.md.tmpl",
+        ):
+            self.assertTrue((REPOSITORY_ROOT / "extensions/concorde" / relative).is_file(), relative)
 
     def test_bundle_is_native_and_exactly_two_components(self):
         manifest = (REPOSITORY_ROOT / "bundles/concorde-bundle/bundle.yml").read_text()
         self.assertIn('id: "concorde-bundle"', manifest)
-        self.assertIn('version: "0.4.0"', manifest)
+        self.assertIn('version: "0.5.0"', manifest)
         self.assertEqual(len(re.findall(r'^    - id:', manifest, re.MULTILINE)), 2)
         self.assertRegex(manifest, r"steps: \[\]")
         self.assertRegex(manifest, r"workflows: \[\]")

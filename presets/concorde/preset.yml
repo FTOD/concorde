@@ -3,7 +3,7 @@ schema_version: "1.0"
 preset:
   id: "concorde"
   name: "Concorde"
-  version: "0.4.0"
+  version: "0.5.0"
   description: "Architecture templates and authoritative two-level feature-workspace routing for Spec Kit"
   author: "Concorde maintainers"
   repository: "https://github.com/FTOD/concorde"

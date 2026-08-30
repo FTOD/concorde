@@ -2,6 +2,8 @@ import json
 import shutil
 import tempfile
 import unittest
+import subprocess
+import sys
 from pathlib import Path
 
 from tests.concorde.support.catalog_server import CatalogServer
@@ -48,6 +50,24 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
         project.initialize()
         project.register_catalogs(self.server.base_url)
         project.run("bundle", "install", "concorde-bundle")
+        subprocess.run(
+            [
+                sys.executable,
+                str(root / ".specify/extensions/concorde/scripts/python/concorde.py"),
+                "--project-root",
+                str(root),
+                "agent-assets",
+                "sync",
+                "--integration",
+                integration,
+                "--concorde-version",
+                "0.5.0",
+            ],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
         shutil.copytree(CONTEXT_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
         shutil.copytree(CONTEXT_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
         (root / ".specify/feature.json").write_text(
@@ -56,7 +76,7 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
         )
         return root
 
-    def test_release_materializes_nine_normal_one_fast_loop_and_five_concorde_surfaces(self):
+    def test_release_materializes_commands_and_native_reflection_agents(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.installed_project(temporary)
             normal = {registered_artifact(root, "codex", command) for command in NORMAL_PHASES}
@@ -66,6 +86,10 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
             self.assertEqual(len(fast_loop), 1)
             self.assertEqual(len(concorde), 5)
             self.assertTrue(all(path.is_file() for path in normal | fast_loop | concorde))
+            self.assertTrue((root / ".agents/skills/reflections-triage/SKILL.md").is_file())
+            self.assertTrue((root / ".codex/agents/reflection_investigator.toml").is_file())
+            self.assertTrue((root / ".codex/agents/reflection_implementer.toml").is_file())
+            self.assertTrue((root / ".specify/concorde-agent-assets.json").is_file())
             fast_content = next(iter(fast_loop)).read_text(encoding="utf-8")
             for requirement in (
                 "$ARGUMENTS",
@@ -91,6 +115,9 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
             for executable in ("concorde.sh", "concorde.ps1", "concorde.py", "workspace.py"):
                 self.assertNotIn(executable, content)
             self.assertNotIn(str(REPOSITORY_ROOT), content)
+            triage = (root / ".agents/skills/reflections-triage/SKILL.md").read_text(encoding="utf-8")
+            self.assertIn("reflection-triage/v1", triage)
+            self.assertNotIn(str(REPOSITORY_ROOT), triage)
 
     def test_every_preset_winner_executes_the_installed_workspace_bootstrap(self):
         with tempfile.TemporaryDirectory() as temporary:

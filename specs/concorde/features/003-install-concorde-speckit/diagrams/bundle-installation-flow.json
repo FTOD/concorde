@@ -20,19 +20,19 @@
         "id": "install",
         "label": "Inspect and install",
         "focus": ["catalogs", "inspectPlan", "installBundle", "componentsActive"],
-        "note": "The maintainer reviews the plan before Spec Kit installs packages and materializes their winning command layers."
+        "note": "The maintainer reviews the component and agent-projection plan before setup writes either owned surface."
       },
       {
         "id": "use",
         "label": "Use Concorde",
         "focus": ["componentsActive", "normalLifecycle", "concordeCommands"],
-        "note": "A clean target exercises nine lifecycle overrides, six runtime-backed Concorde operations, and read-only ask without the source checkout."
+        "note": "A clean target verifies modified phases, five Concorde commands, and native triage roles without reading the checkout."
       },
       {
         "id": "maintain",
         "label": "Maintain or remove",
         "focus": ["installBundle", "componentsActive", "normalLifecycle"],
-        "note": "Disable and priority changes keep registered commands; removal restores the surviving lower layer."
+        "note": "Update and removal reconcile only receipt-owned agent files while component removal restores the surviving lower command layer."
       }
     ]
   },
@@ -135,7 +135,7 @@
       "col": 4,
       "type": "frontend",
       "label": "Integration",
-      "sublabel": "16 command surfaces"
+      "sublabel": "commands + agents"
     },
     {
       "id": "normalLifecycle",
@@ -150,8 +150,8 @@
       "lane": "maintainer",
       "col": 5,
       "type": "frontend",
-      "label": "Concorde Check",
-      "sublabel": "7 · ask + 6 ops"
+      "label": "Surface Check",
+      "sublabel": "5 cmds + triage"
     }
   ],
   "edges": [
@@ -184,22 +184,22 @@
       "id": "activateComponents",
       "from": "installBundle",
       "to": "componentsActive",
-      "label": "install + compose",
+      "label": "install + project agents",
       "variant": "emphasis"
     },
     {
       "id": "materializeLifecycle",
       "from": "componentsActive",
       "to": "normalLifecycle",
-      "label": "9 winning surfaces",
+      "label": "verify installed workflow",
       "variant": "emphasis",
-      "labelAt": [563, 531]
+      "labelAt": [630, 531]
     },
     {
       "id": "materializeConcordeCommands",
       "from": "componentsActive",
       "to": "concordeCommands",
-      "label": "7 surfaces · 6 runtime-backed",
+      "label": "5 commands + triage roles",
       "variant": "emphasis",
       "fromSide": "bottom",
       "toSide": "right",
@@ -223,7 +223,7 @@
       "items": [
         "Spec Kit expands the recipe, then applies each native installer",
         "The target project's active agent integration is inherited",
-        "Preset layers and extension commands materialize into winning surfaces"
+        "Spec Kit materializes commands; Concorde projects owned custom-agent surfaces"
       ]
     },
     {
@@ -231,7 +231,8 @@
       "title": "Use-time",
       "items": [
         "Nine normal commands route before legacy root-path assumptions",
-        "Six Concorde operations invoke installed runtime; ask reads cited sources",
+        "Five Concorde commands remain integration-neutral; ask reads cited sources",
+        "Reflection triage uses one skill and two specialized native roles",
         "Disable and priority changes retain registered command artifacts",
         "Removal restores the next surviving layer with no stale instructions"
       ]

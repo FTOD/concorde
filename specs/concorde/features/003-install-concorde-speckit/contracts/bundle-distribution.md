@@ -17,16 +17,16 @@
 
 ## Purpose
 
-Install, inspect, update, and remove Concorde through the same native component and bundle lifecycle
-used by other Spec Kit ecosystem packages.
+Install, inspect, update, and remove Concorde through Spec Kit's native component/bundle lifecycle
+plus the installed extension's deterministic custom-agent projection lifecycle.
 
 ## Release Units
 
 | Unit | Stable ID | Initial version | Required content |
 |---|---|---:|---|
 | Bundle | `concorde-bundle` | `0.1.0` | One preset reference and one extension reference only. |
-| Preset | `concorde` | `0.1.0` | Four template contributions and authoritative layers modifying nine existing lifecycle commands. |
-| Extension | `concorde` | `0.1.0` | Five Concorde-specific surfaces: four runtime-backed operations, one agent-followed `ask` procedure, selected-workspace adapter, and project-local runtime. |
+| Preset | `concorde` | `0.1.0` | Six template contributions and complete layers for nine lifecycle commands plus fast-loop. |
+| Extension | `concorde` | `0.1.0` | Five Concorde commands, selected-workspace adapter, runtime, canonical triage assets, queue helper, wrappers, and projector. |
 
 Every version above is independently authoritative in its own manifest and matching catalog entry.
 The bundle pins the exact preset and extension versions it has passed acceptance with.
@@ -39,9 +39,10 @@ The bundle pins the exact preset and extension versions it has passed acceptance
 | Catalog | Advertises identity, version, download location, compatibility, digest, and trust metadata; it does not contain behavior. |
 | Bundle | Pins the accepted preset and extension as a non-executable recipe; it does not embed or install them itself. |
 | Preset | Composes templates and modifies existing lifecycle command instructions. It introduces no new runtime command namespace and owns no runtime; Spec Kit registers the resolved command layer. |
-| Extension | Actively supplies five Concorde-specific command intents: four invoke the selected-workspace adapter or deterministic runtime, while `ask` is agent-followed, source-grounded, and read-only. |
-| Active integration | Materializes both Concorde-modified normal commands and Concorde-specific commands using agent-native presentation and invocation syntax; it does not own behavior or path semantics. |
-| Scripts / workspace runtime | Own deterministic initialization, bounded context, validation, feature workspace, and acceptance behavior behind the extension commands. |
+| Extension | Supplies five command intents plus integrity-covered Feature 005 agent bodies/wrappers and deterministic queue/projection operations. |
+| Active integration | Materializes commands and selects native Claude or Codex triage targets; it owns no command, role, queue, or path semantics. |
+| Scripts / workspace runtime | Own deterministic initialization, context, validation, feature workspace, acceptance, queue, and projection behavior. |
+| Concorde installer | Sequences public Spec Kit component operations, then previews/synchronizes/verifies only the installed extension's agent assets. |
 
 The root platform and workflow-composition contracts own this cross-module meaning. This distribution
 contract specializes it for packaging, catalog resolution, and lifecycle behavior.
@@ -119,9 +120,21 @@ Merely appending corrective text after such a step is non-conforming. Command co
 Spec Kit's public preset command contract; the bundle MUST NOT depend on arbitrary mutation of
 installed Spec Kit scripts.
 
-Repository-local `.agents/` and `.specify/` content is self-hosting state, not a release unit. Clean
-acceptance installs the built bundle and catalogs into an isolated target and denies access to the
-source checkout.
+Repository-local `.agents/`, `.codex/`, `.claude/`, and `.specify/` content is self-hosting or
+migration state, not a release unit. Clean acceptance installs canonical assets from the extension
+archive, projects native files in the isolated target, and denies access to the source checkout.
+
+### Reflection-triage projection profile
+
+The extension archive contains the canonical `reflection-triage/v1` orchestrator, investigator and
+implementer roles, default config, Claude/Codex wrappers, shared queue helper, and deterministic
+projector. The complete setup path is bundle install followed by the installed `agent-assets
+preview/sync/verify` operation. It projects exactly one triage skill and two roles for Claude or
+Codex, seeds `.concorde/reflections/config.json` only when absent, and writes the installer-owned
+`.specify/concorde-agent-assets.json` receipt.
+
+The receipt owns generated projection paths/digests only. It never owns config after creation,
+plans, worktrees, reflection logs, permission settings, unrelated files, or modified outputs.
 
 ## Catalog and Trust Requirements
 
@@ -147,8 +160,9 @@ source checkout.
 | Install | Bundle ID, directory, manifest, or artifact | Apply exactly the resolved plan and record only attributable components after full success. |
 | List/status | Initialized project | Bundle version and contributed component provenance; primitive registries expose component active/disabled state. |
 | Verify command surfaces | Installed bundle and active integration | Execute the nine composed normal commands and four runtime-backed Concorde intents, inspect and semantically review `ask`, and prove the durable/temporal path matrix and cross-integration equivalence. |
+| Preview/sync/verify agents | Installed extension and active integration | Report target actions/conflicts, render native triage skill/roles, record/verify digest ownership, and preserve shared state. |
 | Update | Installed bundle ID | Preview/resolve new plan, reapply owned components, preserve configuration and architecture sources. |
-| Remove | Installed bundle ID | Remove only solely owned components and the bundle record; retain shared components and project sources. |
+| Remove | Installed bundle ID | Remove solely owned components plus digest-matching projections; retain shared/modified files and project sources. |
 
 ## Guarantees
 
@@ -166,12 +180,15 @@ source checkout.
    or next surviving layer without stale Concorde instructions.
 10. Presence of expected text in a registered command is not sufficient evidence; the installed
     winning artifact must execute with the required selected-workspace behavior.
+11. Repeating projection sync changes no bytes after the first successful run.
+12. Updating or removing one integration preserves the other integration and every unowned or
+    modified target.
 
 ## Failure Semantics
 
-- Invalid manifests, incompatible Spec Kit versions, missing components, catalog trust refusal, pin
-  mismatch, command composition/materialization failure, integration registration failure, or unsafe
-  paths stop with non-zero status.
+- Invalid manifests/assets/receipts, incompatible Spec Kit versions, missing components, catalog
+  trust refusal, pin mismatch, command/projection materialization failure, ownership conflict,
+  integration registration failure, or unsafe paths stop with non-zero status.
 - Installation rolls back components newly installed in that attempt in reverse order.
 - Previously installed or shared components are not rolled back as if they were newly owned.
 - Update retains the prior successful record unless the complete new plan succeeds; any incomplete
@@ -184,3 +201,5 @@ full clean-project lifecycle and both agent-registration suites to pass against 
 Changing stable component or command IDs is a breaking Concorde change. This pre-release rename is
 accepted without an alias; preset and extension share the `concorde` ID and remain distinct through
 their component types and type-specific registries, catalogs, paths, and archive names.
+Changing projection targets, ownership rules, or triage action/role semantics requires synchronized
+Feature 005 migration guidance and clean Claude/Codex lifecycle evidence.

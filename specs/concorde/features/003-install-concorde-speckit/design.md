@@ -40,7 +40,7 @@ realization**: [implementation.md](implementation.md) — consulted when writing
 
 **Created**: 2026-08-22
 
-**Revised**: 2026-08-30
+**Revised**: 2026-08-30 — install native reflection-triage agents after the bundle lifecycle
 
 **Status**: Native Spec Kit installation implemented and verified; decomposed into two immediate
 sub-features (published release, one-command installation) whose evidence is pending; reconciled on
@@ -62,6 +62,10 @@ project, remove the former suffixed preset identity completely, and describe the
 commands as modified by Concorde rather than replaced by it. The suffix has no intended semantic
 distinction."
 
+**Revision input**: User description: "Make Feature 005's reflection subagents part of Concorde
+installation, including native Claude and Codex roles, and implement every required installation,
+upgrade, removal, release, and self-hosting change."
+
 ## How Concorde Is Delivered through Spec Kit
 
 Spec Kit is the host platform. It resolves packages, records provenance, installs commands through
@@ -73,8 +77,8 @@ delivered as independently versioned ecosystem parts with different responsibili
 | **Catalog** | Advertises package identity, version, compatibility, download location, integrity, and trust metadata. | It is discovery metadata, not installed product behavior. |
 | **Bundle** | Provides an inspectable recipe that pins the compatible Concorde preset and extension versions. | It is not executable behavior, a template layer, or a second workflow. |
 | **Preset** | Composes Concorde guidance into normal templates and authoritative routing into the existing Spec Kit lifecycle commands. | It introduces no new runtime command namespace and creates no second canonical feature specification. It does not register commands by itself; Spec Kit materializes its resolved command layers. |
-| **Extension** | Provides five Concorde-specific command definitions: four runtime-backed operations plus the agent-followed, read-only `ask` procedure, together with the selected-workspace adapter and deterministic runtime. | It does not own the normal Spec Kit phases or agent-specific presentation syntax, and `ask` is not a runtime operation. |
-| **Coding-agent integration** | Materializes both resolved Concorde-modified Spec Kit commands and Concorde-specific commands using the active agent's supported skill or slash-command form. | It adapts invocation syntax without changing command intent or path semantics. |
+| **Extension** | Provides five Concorde-specific command definitions, the selected-workspace adapter and deterministic runtime, and Feature 005's canonical reflection-triage bodies, platform wrappers, queue helper, and projection operation. | It does not own normal Spec Kit phases, user permission policy, mutable triage state, or installer lifecycle decisions. |
+| **Coding-agent integration** | Materializes resolved command sources, and selects the platform-specific reflection-triage projection that Concorde reconciles after bundle installation. | It adapts presentation without changing command, role, queue, plan, or permission semantics. |
 | **Skills** | Are the installed user-facing instructions materialized from preset and extension command sources. | They guide the agent but do not own deterministic operation semantics. |
 | **Scripts** | Perform workspace routing and deterministic initialization, context, validation, and acceptance after setup. | Their behavior belongs to the Concorde workflow, not to installation. |
 | **Workspace Files** | Preserve durable specifications and accepted realization outside `attempt/` and temporal delivery memory inside it. | They are project-owned workflow state, never package content. |
@@ -98,8 +102,12 @@ while requirements-quality checklists, planning, and delivery artifacts stay und
 template. The extension supplies `speckit.concorde.impl.accept`, which proposes and, only after
 explicit approval, atomically promotes a completed attempt into that design reference and removes
 `attempt/`.
-Repository-local `.agents/` skills and `.specify/` scripts are self-hosting evidence only: a released
-Concorde installation must work when those checkout files are unavailable.
+Repository-local `.agents/`, `.codex/`, and `.claude/` files are self-hosting or migration evidence
+only. A released installation must obtain canonical agent assets from the installed extension,
+materialize its active integration's native triage skill and two roles, and work when the checkout is
+unavailable. Because Spec Kit 0.16.4 has no arbitrary custom-agent projection primitive, the
+Concorde installer owns one bounded post-bundle projection stage backed by an installed deterministic
+operation and a digest receipt; it does not bypass or replace the bundle lifecycle.
 
 Two supplemental, text-backed views explain this boundary:
 
@@ -109,9 +117,10 @@ Two supplemental, text-backed views explain this boundary:
   preview, installation, command materialization, clean-project verification, update, and removal.
 
 The component model supports User Stories 1 and 3 by distinguishing discovery, template guidance,
-normal-command modification, Concorde-specific commands, agent presentation, and runtime ownership. The
-installation flow supports all four stories by showing preview and approval before installation,
-then materialization and an actual clean-project lifecycle before setup is accepted. Together they
+normal-command modification, Concorde-specific commands, canonical agent assets, project-native
+agent presentation, and runtime ownership. The installation flow supports all four stories by
+showing preview and approval before installation, then component materialization, owned agent
+projection, and an actual clean-project lifecycle before setup is accepted. Together they
 demonstrate the encouraged Concorde pattern: use feature-owned diagrams when component roles or
 invocation order would be harder to understand from prose alone.
 
@@ -122,21 +131,24 @@ the textual requirements and contracts retain the complete semantics.
 
 ## Decomposition
 
-The native step-by-step path above is complete and verified, but it currently asks every consumer to
-be a release builder: no release has been published, so the documented install requires the Concorde
-checkout, a local build, a local catalog server, three catalog registrations, and a bundle install.
-Two immediate sub-features remove that burden without changing what is installed or who owns it:
+The component step-by-step path is complete and verified, but Spec Kit 0.16.4 cannot project
+arbitrary native custom-agent files. The full documented manual path is therefore bundle install
+followed by the installed `agent-assets` operation. It still asks every consumer to be a release
+builder: no release has been published, so setup also requires the Concorde checkout, a local build,
+a local catalog server, and three catalog registrations. Two immediate sub-features remove that
+burden without changing package or projection authority:
 
 | Order | Sub-feature | Owned outcome |
 |---:|---|---|
 | 1 | `feature.concorde.install-with-spec-kit.publish-release` | A marked version is built, verified, and published to a stable public location that Spec Kit catalogs can read, with a current-release pointer. |
-| 2 | `feature.concorde.install-with-spec-kit.one-command-install` | One command sequences project initialization, catalog registration, and bundle installation idempotently against a published release or a local checkout. |
+| 2 | `feature.concorde.install-with-spec-kit.one-command-install` | One command sequences project initialization, catalog registration, bundle installation, and the installed agent projector idempotently against a published release or local checkout. |
 
 The parent keeps the package model, Spec Kit's lifecycle authority, the inspect-before-install rule,
 the clean-project verification matrix, and update/removal behavior. The children inherit
 `module.concorde`, cannot own children, and reference these aggregate facts rather than restating
-them. The one-command installer is an optional accelerator over public Spec Kit operations, so FR-001
-still holds: the native path stays sufficient, and no installer may bypass the bundle recipe.
+them. The one-command installer is an accelerator over public Spec Kit operations plus the installed
+extension's projector. The manual bundle-plus-projector path remains sufficient, and no installer
+may bypass the bundle recipe or render from checkout-local assets.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -170,16 +182,18 @@ project-facing changes.
 
 ### User Story 2 - Install Concorde into a New or Existing Project (Priority: P1)
 
-As a maintainer, I can install Concorde through the native Spec Kit component lifecycle into a new or
-existing supported project so that the architecture-aware guidance and Concorde commands become
-available without a separate installer.
+As a maintainer, I can install Concorde through its Spec Kit bundle lifecycle plus one bounded,
+previewed Concorde agent-projection stage into a new or existing supported project, so that the
+architecture-aware guidance, commands, and native reflection-triage subagents become available
+without copying repository-local files.
 
 **Why this priority**: Installation is the sole outcome of this feature and the prerequisite for
 using the separately specified Concorde workflow.
 
-**Independent Test**: Approve the expanded plan, install the Concorde bundle into both a clean
-initialized project and a supported uninitialized directory, then verify that the installed preset,
-extension, provenance, and command presentation match the accepted plan.
+**Independent Test**: Approve the expanded component and agent plan, install into clean Claude and
+Codex projects plus a supported existing project, then verify that the installed preset, extension,
+command presentation, native triage skill/roles, shared default config, and projection receipt match
+the accepted plan while project-owned state is preserved.
 
 **Acceptance Scenarios**:
 
@@ -190,10 +204,14 @@ extension, provenance, and command presentation match the accepted plan.
    used, **Then** the directory becomes a supported project with the same Concorde setup as an
    existing project.
 3. **Given** the same installed release, **When** installation is repeated, **Then** it succeeds
-   without duplicate component state or changes to project-authored specifications.
+   without duplicate component state, projection churn, or changes to project-authored
+   specifications, triage config, plans, reflection log, or unrelated agent files.
 4. **Given** an unsupported Spec Kit version, untrusted source, incompatible component, or command
    collision, **When** installation is attempted, **Then** setup stops before claiming success and
    names the incompatibility and remediation.
+5. **Given** legacy or modified native reflection-agent files, **When** projection is previewed,
+   **Then** setup reports create/adopt/update/remove/preserve/conflict actions and makes no change
+   until every conflict is resolved or explicitly adopted.
 
 ---
 
@@ -205,17 +223,18 @@ Concorde itself, so I can begin work without copying or editing command skills b
 **Why this priority**: Registered files or matching snippets are not evidence that the resulting
 commands execute the correct phase in the correct nested workspace.
 
-**Independent Test**: Build the release, install its bundle into a pristine supported project that
-cannot read the Concorde source checkout, and execute the normal lifecycle through one skills-based
-and one slash-command-based presentation. Verify every durable and temporal output path, all five
-Concorde-specific surfaces (including four runtime-backed operations), and restoration after the
-preset is disabled or removed.
+**Independent Test**: Build the release, install it into pristine Claude and Codex projects that
+cannot read the Concorde source checkout, and execute the normal lifecycle through both presentation
+styles. Verify every durable and temporal output path, all five Concorde-specific commands, both
+native reflection-agent projections with shared semantics/state, and restoration after update or
+removal.
 
 **Acceptance Scenarios**:
 
 1. **Given** a pristine supported Spec Kit project, **When** the released bundle is installed,
    **Then** the active integration contains resolved Concorde-aware forms of all nine normal lifecycle
-   commands and all five Concorde-specific surfaces declared by the installed manifests.
+   commands, the additive fast-loop surface, all five Concorde-specific commands, and the native
+   reflection-triage skill plus investigator and implementer roles selected by the installed assets.
 2. **Given** a selected nested feature, **When** `specify`, `clarify`, or `checklist` runs, **Then**
    the canonical `design.md` and contracts remain at the feature root, every generated checklist is
    placed under `attempt/checklists/`, and no duplicate specification or root checklist is
@@ -238,15 +257,17 @@ preset is disabled or removed.
    `attempt/` directory, including its resolved checklists, is removed; incomplete tasks,
    unresolved checklist items, or stale proposals make no change.
 8. **Given** the Concorde source checkout is unavailable, **When** clean-project verification runs,
-   **Then** every command resolves only files installed from the released preset and extension archives.
+   **Then** every command and custom-agent projection resolves only files installed from the released
+   preset and extension archives.
 9. **Given** the preset is disabled or reprioritized, **When** Spec Kit updates its preset registry,
    **Then** existing materialized commands remain active as defined by Spec Kit 0.16.4 while future
    template resolution reflects the new state or priority.
 10. **Given** Concorde is updated or removed, **When** Spec Kit rematerializes registered commands,
-   **Then** it installs the accepted updated layer or restores the next surviving lower-priority layer
-   without leaving stale Concorde instructions.
+   **Then** it installs the accepted updated layer or restores the next surviving lower-priority
+   command layer, and Concorde updates or removes only digest-matching projection files without
+   leaving stale owned roles.
 11. **Given** verified setup, **When** the maintainer starts Feature 001's Concorde workflow, **Then** no
-   manual skill edit, extra installer, duplicate feature store, or second lifecycle is required.
+   manual skill/agent edit, duplicate feature store, or second component lifecycle is required.
 
 ---
 
@@ -264,11 +285,12 @@ project-owned sources.
 **Acceptance Scenarios**:
 
 1. **Given** an installed older release, **When** the maintainer previews and accepts an update,
-   **Then** only the approved component versions change and project configuration and sources remain
-   unchanged.
+   **Then** only the approved component versions and matching owned projections change while project
+   configuration, shared triage state, inactive integration surfaces, and sources remain unchanged.
 2. **Given** installed Concorde components, **When** the bundle is removed, **Then** only components
-   owned solely by that bundle are removed while shared dependencies and project-authored `.concorde/`
-   and `specs/` sources remain.
+   and agent projections owned solely by that installation are removed while shared dependencies,
+   modified projections, unrelated agent files, and project-authored `.concorde/` and `specs/`
+   sources remain.
 3. **Given** an installation or update failure, **When** recovery completes, **Then** success is not
    recorded and any residual partial state is reported explicitly.
 
@@ -289,6 +311,13 @@ project-owned sources.
 - A built release uses a future public base address that is not reachable from the build environment.
 - Installation loses access to its source or fails after only part of the component plan is applied.
 - A locally modified installed component would be overwritten by update or removed.
+- A generated reflection role was edited after installation and its digest no longer matches the
+  projection receipt.
+- A manual pre-install Claude workflow uses the same target paths but has no Concorde ownership
+  receipt.
+- Claude and Codex projections are both present and refreshing the active integration must preserve
+  the inactive one.
+- Bundle installation succeeds but agent projection conflicts or fails before terminal success.
 - A component is shared with another bundle or installed independently.
 - Project-owned `.concorde/` or `specs/` sources are malformed; installation must not treat them as
   component-owned files.
@@ -298,14 +327,18 @@ project-owned sources.
 ### Functional Requirements
 
 - **FR-001**: Concorde MUST provide one native, schema-versioned Spec Kit bundle as the primary
-  installation unit and MUST NOT require a separate Concorde installer.
+  component installation unit. A complete setup MAY require the Concorde installer only for the
+  bounded agent-projection lifecycle that Spec Kit 0.16.4 cannot express; that stage MUST consume
+  the already installed extension and MUST NOT replace or bypass the bundle.
 - **FR-002**: The Concorde bundle MUST be a non-executable recipe that pins exactly one independently
   versioned `concorde` preset and one independently versioned `concorde` extension, distinguished by
   their Spec Kit component types.
 - **FR-003**: Before installation or update, maintainers MUST be able to inspect the fully expanded
   component identities, versions, dependencies, compatibility constraints, preset strategy and
-  priority, trust sources, integration inheritance, and intended changes.
-- **FR-004**: The installed component set and versions MUST match the plan accepted by the maintainer.
+  priority, trust sources, integration inheritance, intended component changes, native agent target
+  paths, ownership actions, and conflicts.
+- **FR-004**: The installed component set, versions, and agent projections MUST match the plan
+  accepted by the maintainer.
 - **FR-005**: The preset MUST compose Concorde architecture guidance into normal feature, plan, and
   task templates, supply the feature abstract template and the permanent feature `implementation.md`
   template, and avoid creating a second canonical feature specification.
@@ -317,9 +350,13 @@ project-owned sources.
   legacy root-level artifact.
 - **FR-008**: The extension MUST register five Concorde-specific surfaces through the target
   project's active coding-agent integration: four operations with the portable selected-workspace or
-  runtime support they require and one agent-followed, read-only `ask` procedure with no runtime verb.
+  runtime support they require and one agent-followed, read-only `ask` procedure with no runtime
+  verb. It MUST additionally carry Feature 005's canonical triage bodies, wrappers, queue helper,
+  default config, and deterministic projection operation as support assets rather than a sixth
+  command surface.
 - **FR-009**: Setup MUST preserve Spec Kit's authority for its normal lifecycle and MUST NOT install a
-  dedicated Concorde workflow component or reusable steps in the initial bundle.
+  dedicated Concorde workflow component or reusable bundle steps. The post-bundle agent projection
+  MUST remain a deterministic Concorde installation operation, not a parallel component lifecycle.
 - **FR-010**: Catalogs MUST remain discovery and trust metadata for independent bundle, preset, and
   extension packages and MUST NOT be presented as installed runtime components.
 - **FR-011**: Release building MUST treat the supplied base address as metadata for future catalog and
@@ -327,43 +364,53 @@ project-owned sources.
 - **FR-012**: The initial release MUST state its supported Spec Kit range and reject an unsupported
   version before making installation changes.
 - **FR-013**: Installation MUST inherit the target project's active coding-agent integration rather
-  than hard-code one agent presentation.
+  than hard-code one agent presentation, and MUST select only that integration's native triage
+  projection unless the maintainer explicitly requests another supported projection.
 - **FR-014**: Canonical command intent, arguments, results, selected-workspace semantics, phase paths,
-  and failures MUST remain equivalent across every supported skill or slash-command presentation.
+  failures, triage actions, route/plan vocabulary, and role write boundaries MUST remain equivalent
+  across every supported presentation.
 - **FR-015**: Installation MUST support approved local source, manifest, built-artifact, and trusted
   catalog inputs while applying the active source-trust policy.
 - **FR-016**: Repeated installation of the same release MUST be idempotent and MUST NOT duplicate
-  registry state or modify project-authored sources.
+  registry or receipt state, rewrite unchanged projections, or modify project-authored sources and
+  shared triage state.
 - **FR-017**: Setup verification MUST identify the installed bundle, type-qualified preset and
   extension identities, versions,
   source, active/disabled state, resolved template contributions, resolved command layers, and the
-  command artifacts materialized for the active integration.
+  command artifacts materialized for the active integration, plus every native triage projection,
+  its canonical source digest, and its ownership receipt.
 - **FR-018**: Setup verification MUST execute every normal command whose artifact path is changed by
   Concorde and MUST prove the durable-root/temporal-`attempt/` path matrix without root-level
   checklist, plan, task, or other temporal compatibility copies or symlinks.
 - **FR-019**: Setup verification MUST exercise all four installed runtime-backed Concorde command
   intents and inspect the installed `ask` procedure's grounding, citation, uncertainty, bounded
   context, checkout independence, and non-mutation rules through each supported presentation style
-  without making installation responsible for their core workflow semantics.
+  without making installation responsible for their core workflow semantics. It MUST structurally
+  parse and compare Claude/Codex triage skill and role projections without requiring a live model.
 - **FR-020**: Clean-project acceptance MUST install from the built bundle and generated catalogs with
   the Concorde checkout unavailable; project-local `.agents/`, `.specify/`, templates, or scripts in
-  this repository MUST NOT count as distributed product behavior.
+  this repository MUST NOT count as distributed product behavior, and projected agents MUST derive
+  only from the extension archive installed in the clean target.
 - **FR-021**: Preset disable and priority change MUST preserve already materialized commands according
   to Spec Kit 0.16.4 while changing future resolution; update and removal MUST rematerialize the
-  accepted or next surviving command layer without stale Concorde instructions.
+  accepted or next surviving command layer without stale Concorde instructions and MUST reconcile
+  owned agent projections without deleting inactive integration surfaces.
 - **FR-022**: Compatible update MUST preserve project configuration and project-authored
-  specifications while applying only the maintainer-approved component plan.
+  specifications, `.concorde/reflections/config.json`, reflection plans/worktrees/log, unrelated
+  agent files, and modified unowned projections while applying only the maintainer-approved plan.
 - **FR-023**: Removal MUST delete only components owned solely by the Concorde bundle and MUST preserve
-  shared components and all project-authored `.concorde/` and `specs/` sources.
+  shared components and all project-authored `.concorde/` and `specs/` sources. It MAY delete a
+  projected agent file only when the projection receipt owns its path and its current digest still
+  matches the receipt.
 - **FR-024**: Failed installation, command materialization, or update MUST NOT record success and MUST
-  report any residual state that could not be restored automatically.
+  report any residual component or agent-projection state that could not be restored automatically.
 - **FR-025**: Setup documentation MUST explain Spec Kit, catalog, bundle, preset, extension,
   coding-agent integration, and Scripts responsibilities without treating them as
   interchangeable.
 - **FR-026**: This feature MUST provide text-backed component and installation/use-flow diagrams that
   distinguish release sources from installed files, template composition from command composition,
-  normal commands modified by Concorde from Concorde-specific commands, and self-hosting files from release
-  inputs.
+  normal commands modified by Concorde from Concorde-specific commands, component installation from
+  native agent projection, and self-hosting files from release inputs.
 - **FR-027**: Supplemental setup diagrams MUST remain separate from the root module's level views
   under `architecture/diagrams/`, identify their maintained sources and generated outputs, and pass deterministic
   validation and freshness checks.
@@ -382,10 +429,11 @@ project-owned sources.
   registrable from a clean project without the Concorde checkout or a local server; the published
   locations MUST equal the locations the catalogs advertise. Detail belongs to
   `feature.concorde.install-with-spec-kit.publish-release`.
-- **FR-033**: Any convenience installation surface MUST sequence only public Spec Kit operations,
-  MUST install through the bundle recipe, and MUST converge on the same installed component set,
-  registry state, and materialized commands as the native path. Detail belongs to
-  `feature.concorde.install-with-spec-kit.one-command-install`.
+- **FR-033**: Any convenience installation surface MUST sequence public Spec Kit operations for
+  project/component lifecycle, MUST install through the bundle recipe, and MAY then invoke only the
+  installed extension's deterministic agent-projector operation. It MUST converge on the same
+  component, registry, command, projection, and receipt state as the documented bundle-plus-projector
+  path. Detail belongs to `feature.concorde.install-with-spec-kit.one-command-install`.
 - **FR-034**: The preset package ID and maintained source directory MUST be `concorde`; the extension
   MUST retain its `concorde` ID, and every bundle, catalog, registry, diagnostic, test, and guide MUST
   distinguish the two using their component type rather than a suffix on either ID.
@@ -400,6 +448,24 @@ project-owned sources.
   removal MUST converge on the type-qualified `preset:concorde`, `extension:concorde`, and
   `bundle:concorde-bundle` identities without a stale preset directory, registry entry, command layer,
   archive, or catalog entry.
+- **FR-038**: Release archives and catalogs MUST include every canonical Feature 005 agent asset,
+  wrapper, queue helper, and projection runtime file in the extension's allowlisted inventory and
+  integrity digest, with capability metadata that exactly matches the manifest.
+- **FR-039**: Agent projection preview MUST be read-only and classify every desired, superseded, or
+  legacy target as `create`, `unchanged`, `adopt`, `update`, `remove`, `preserve`, or `conflict`,
+  including exact target paths and remediation.
+- **FR-040**: Projection apply MUST occur only after successful bundle install/update, MUST use the
+  installed extension bytes, MUST write a versioned digest receipt, and MUST verify every output
+  before terminal installation success is reported.
+- **FR-041**: Existing manual agent files MAY be adopted only when they are byte-identical to the
+  desired projection or when the maintainer explicitly authorizes a reviewed migration. Otherwise
+  setup MUST preserve them and stop with a conflict.
+- **FR-042**: Agent projection removal and superseded-path cleanup MUST use the same digest ownership
+  rule as update; a missing or modified owned path MUST be preserved/reported and MUST NOT cause
+  unrelated owned outputs or shared state to be deleted.
+- **FR-043**: Development self-hosting and clean-install acceptance MUST exercise Claude and Codex
+  projection cycles, including switching integrations, and prove that inactive surfaces survive,
+  customized shared config/plans survive, and no checkout path appears in rendered files.
 
 ### Scope
 
@@ -410,6 +476,8 @@ project-owned sources.
   removal.
 - One preset and one extension installed together through one bundle recipe.
 - Command discovery and cross-integration equivalence checks for the installed Concorde operations.
+- Canonical reflection-triage agent assets in the extension; deterministic preview, projection,
+  receipt verification, migration conflict handling, update, and removal for Claude and Codex.
 - Authoritative composition of all affected normal Spec Kit commands and clean-project execution of
   their durable/temporal path matrix.
 - The preset identity and maintained directory rename, including every release, installation,
@@ -420,10 +488,10 @@ project-owned sources.
 - Defining the module/feature hierarchy, feature authoring lifecycle, architecture review gates,
   contract rules, or bounded implementation workflow; those belong to Feature 001.
 - Publishing the project documentation site; that belongs to Feature 002.
-- A second Spec Kit lifecycle, a dedicated workflow component, or reusable workflow steps. A
-  convenience installer that only sequences public Spec Kit operations is permitted and owned by the
-  `one-command-install` sub-feature; an installer that copies component files or bypasses the bundle
-  lifecycle remains excluded.
+- A second Spec Kit lifecycle, a dedicated workflow component, or reusable bundle steps. The
+  `one-command-install` sub-feature may invoke the installed deterministic agent projector after
+  public Spec Kit operations; arbitrary copying outside the manifest/receipt contract and bypassing
+  the bundle lifecycle remain excluded.
 - Treating generated catalogs or release archives as maintained project intent.
 
 ### Key Entities
@@ -445,6 +513,10 @@ project-owned sources.
   Concorde source checkout and therefore exposes missing distribution content.
 - **Installation Record**: Provenance and ownership state used for verification, update, and safe
   removal.
+- **Agent Projection Plan**: The previewed integration, desired native skill/role targets, canonical
+  source digest, action classification, conflicts, and remediation applied after component install.
+- **Agent Projection Receipt**: Installer-owned path/digest records proving which generated native
+  files Concorde may later update or remove; it never owns shared config, plans, worktrees, or logs.
 - **Supplemental Explanatory View**: A maintained, text-backed setup diagram with a reproducible
   generated output, provenance, and validation evidence.
 
@@ -454,16 +526,18 @@ project-owned sources.
 
 - **SC-002**: Preview and installation identify the same component IDs and versions in 100% of local,
   manifest, artifact, and trusted-catalog acceptance paths.
-- **SC-003**: Three consecutive installations of the same release produce one unchanged installed
-  component set and no modifications to project-authored sources.
-- **SC-004**: In 100% of supported coding-agent presentations, the nine affected normal commands and
-  five Concorde-specific surfaces are materialized from the installed release; the four operations
-  expose equivalent runtime behavior and `ask` preserves equivalent read-only explanatory semantics.
+- **SC-003**: Three consecutive installations of the same release produce one unchanged component,
+  command, projection, and receipt state and no modifications to project-authored sources or shared
+  triage state.
+- **SC-004**: In 100% of supported coding-agent presentations, the nine affected normal commands,
+  fast-loop, five Concorde-specific commands, and three native triage surfaces are materialized from
+  the installed release; commands and roles preserve equivalent semantics.
 - **SC-005**: Every seeded unsupported-version, untrusted-source, missing-component, digest,
   collision, and partial-failure case stops without a false success record and provides actionable
   recovery information.
-- **SC-006**: Compatible update and bundle removal preserve 100% of project-authored `.concorde/` and
-  `specs/` source hashes and retain every shared component.
+- **SC-006**: Compatible update and bundle removal preserve 100% of project-authored `.concorde/`
+  and `specs/` source hashes, shared triage state, modified/unowned agent files, inactive integration
+  surfaces, and every shared component.
 - **SC-008**: Both supplemental views pass all deterministic diagram, containment, theme, provenance,
   and freshness checks with zero errors or warnings.
 - **SC-009**: Every command in the phase-path acceptance matrix reads or writes only its specified
@@ -471,19 +545,30 @@ project-owned sources.
   runs, with every checklist below `attempt/checklists/` and zero root compatibility copies or
   symlinks.
 - **SC-010**: Clean-project verification succeeds with zero reads from the Concorde checkout and
-  fails when any required preset command layer, extension command, adapter, or runtime file is
-  removed from the release archive.
+  fails when any required preset layer, extension command, adapter, runtime, queue helper, canonical
+  agent body, or platform wrapper is removed from the release archive.
 - **SC-011**: Disable and reprioritize preserve all nine already materialized winners, while update
   and removal materialize the expected accepted or next surviving layer for all nine commands, with
   zero stale Concorde instructions.
 - **SC-012**: A first-time maintainer on a machine without the Concorde checkout installs the
   current published release into a project with one command in under 5 minutes.
-- **SC-013**: The one-command path and the native path produce identical installed component sets,
-  registry state, and materialized commands in 100% of acceptance runs for the same release and
-  integration.
+- **SC-013**: The one-command path and documented manual bundle-plus-projector path produce identical
+  components, registries, commands, projections, receipts, and shared default config in 100% of
+  acceptance runs for the same release and integration.
 - **SC-014**: A repository-wide tracked-path and tracked-content scan, followed by release build,
   self-host refresh, and clean-project install, finds zero uses of the superseded preset token and
   reports exactly `preset:concorde`, `extension:concorde`, and `bundle:concorde-bundle`.
+- **SC-015**: Fresh Claude and Codex installations contain 100% of the three expected native triage
+  outputs, and parsed projections agree on all four actions, four routes, plan statuses, shared paths,
+  and role write boundaries with zero mandatory model pins or checkout paths.
+- **SC-016**: Three repeated installs of one release change zero bytes after the first across
+  components, registries, commands, agent projections, receipts, and shared triage state.
+- **SC-017**: In update/remove fixtures, 100% of digest-matching owned projections are reconciled,
+  0% of modified/unowned/inactive-integration files are lost, and every conflict prevents a false
+  success report.
+- **SC-018**: Release build/verification and self-hosting inventory 100% of canonical agent assets
+  and the shared queue helper; removing any required member makes the applicable clean-project gate
+  fail with an actionable finding.
 
 ## Assumptions
 
@@ -492,6 +577,9 @@ project-owned sources.
 - Spec Kit's public preset command-composition and install-time registration contracts are the
   supported integration boundary. Arbitrary mutation of Spec Kit's installed scripts is not
   assumed to be distributable by the Concorde bundle.
+- Spec Kit 0.16.4 has no native manifest field for arbitrary custom-agent projections; the Concorde
+  installer therefore invokes only an integrity-covered operation from the installed extension and
+  documents the equivalent manual bundle-plus-projector path.
 - `concorde-bundle` remains integration-agnostic and lets Spec Kit inherit the target project's
   active coding-agent integration.
 - Project-authored architecture sources are user data, not installed component files.
@@ -514,7 +602,8 @@ project-owned sources.
 - A supported Spec Kit distribution with bundle, preset, extension, catalog, provenance, and active
   integration capabilities.
 - A supported coding-agent integration capable of presenting installed extension commands.
+- Feature 005's Reflection Triage Contract v1 and canonical extension agent assets.
 - The Concorde distribution and Skills modules and their boundary contracts.
 - Feature 001 for the Concorde workflow used after setup.
 - The `publish-release` sub-feature for a publicly reachable release, and the `one-command-install`
-  sub-feature for the accelerated path over it; the native path does not depend on either.
+  sub-feature for the accelerated component-plus-projection path over it.

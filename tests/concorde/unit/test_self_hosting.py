@@ -31,6 +31,8 @@ class SelfHostingUnitTests(unittest.TestCase):
         claude = self_host.integration_profile("claude")
         self.assertEqual(codex["skill_root"], ".agents/skills")
         self.assertEqual(claude["skill_root"], ".claude/skills")
+        self.assertIn(".codex/agents/reflection_investigator.toml", codex["agent_surfaces"])
+        self.assertIn(".claude/agents/reflection-investigator.md", claude["agent_surfaces"])
         self.assertIn("--integration-options=--skills", self_host.integration_init_arguments("codex"))
         self.assertNotIn("--integration-options=--skills", self_host.integration_init_arguments("claude"))
         self.assertEqual(self_host.skill_path("speckit.plan", "codex"), ".agents/skills/speckit-plan/SKILL.md")

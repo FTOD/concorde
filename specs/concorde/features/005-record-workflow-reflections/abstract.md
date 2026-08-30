@@ -1,137 +1,128 @@
-# Feature Abstract: Record Workflow Reflections
+# Feature Abstract: Record and Triage Workflow Reflections
 
-`feature.concorde.record-workflow-reflections` · specified at `module.concorde` · about five
-minutes. This page is enough to understand what the feature does, how it is built, and how it
-works; the links at the end only redirect you when you want more.
+`feature.concorde.record-workflow-reflections` · specified at `module.concorde` · about seven
+minutes. This page is enough to understand what the feature does, how it is structured, and how its
+improvement loop works; the links at the end only redirect you when you want more.
 
 ## Purpose
 
-When a coding agent plans or implements a feature and something does not work as the
-specification, the accepted design, an existing implementation, the installed guidance, or the plan
-says — a requirement reads two ways, another feature's code disagrees with its design reference, a
-tool fails, an instruction cannot be followed, a dependency is missing, a workaround has to be taken
-— it writes that problem down, in the phase where it happened, in the project's one reflection log.
-The maintainer reads that log to improve the specification, the architecture, the guidance, or the
-tooling across all features; acceptance cites the attempt's entries in the design reference; and the
-log outlives every attempt.
+When a coding agent plans or implements a feature and something does not work as the specification,
+accepted realization, existing implementation, installed guidance, architecture, or plan says, it
+records the problem in the phase where it happened. The project's one reflection log preserves that
+evidence across every feature and attempt.
 
-The log is project-wide on purpose: a problem met while implementing one feature is usually about
-something that already exists — another feature, a module boundary, a contract, a tool. One file
-at the specification root, with each entry saying which feature was being worked on and which
-source the problem concerns, keeps the same problem from being scattered across roots or deleted
-with an attempt. The feature exists for the maintainer who no longer writes the code but still owns
-the project, and for the Concorde project itself, which develops with its own workflow and needs a
-cumulative list of what the framework got wrong.
+Recording alone is not self-improvement, so the feature also provides an explicit installed triage
+workflow. Specialized investigators establish root cause and a safe route for one entry at a time;
+specialized implementers execute only eligible plans in isolated worktrees; and the maintainer
+controls merge and every final status or note in the log. Concorde installation projects this shared
+workflow into supported agent platforms so a fresh project receives the improvement loop without
+copying Concorde's repository-local Claude or Codex setup by hand.
 
 ## Functionality
 
 | What | How it shows up |
 |---|---|
-| Recording | During plan, tasks, implement, analyze, and converge, the agent appends an entry to the project log the moment it meets a problem, then continues if it can. No new command. |
-| The log | `reflections.md` directly inside the specification root, beside the root `module.md` (for this project: `specs/concorde/reflections.md`). Created from the installed template by the first phase that records; reached through the path the workspace result returns. |
-| An entry | Identifier, phase, date, the feature being worked on (`Feature`), one kind, the source it concerns (`Concerns` — any feature, module, contract, guidance, tool, or file in the project), expected versus observed, the effect on the work (`assumed`, `worked-around`, `deferred`, `blocked`) with what the agent did, a suggested improvement, a status (`open`, `resolved`, `dismissed`) with a note. |
-| Kinds | `specification`, `architecture`, `guidance`, `tooling`, `environment`, `implementation` — which authority the problem is about. |
-| Surfacing | Every recording phase lists the entries it added and the feature's open count in its completion report; analysis lists the feature's open entries and flags entries whose referenced source has since changed; the root level's bounded context exposes the log and open counts. |
-| Review | The maintainer resolves or dismisses entries by editing the log; the real fix goes through the phase that owns the document (specification review, an architecture change, a guidance or runtime change). |
-| Acceptance | The proposal presents the feature's entries by status; the candidate `implementation.md` cites every open one among its known limitations (and resolved, realization-shaping ones among its decisions); apply refuses while an open entry is uncited and never touches the log. |
-| Validation | A present log is checked deterministically for unique identifiers, required fields, permitted values, a resolvable feature, and resolvable references; an absent log is not a breach. |
+| Automatic recording | During plan, tasks, implement, analyze, and converge, an agent appends or updates an entry when it meets a problem, then continues if it can. No new phase command or approval. |
+| Project log | `reflections.md` directly inside the specification root, beside the root `module.md`; created from the installed template by the first recording phase and never removed. |
+| Entry contract | Identifier, phase, date, selected feature, kind, concerned source, expected versus observed, effect, action, improvement, status, note when closed, and occurrence history. |
+| Triage entry point | One installed skill with `status`, `investigate`, `implement`, and `merge` actions. `status` is read-only; all other actions preserve normal Concorde phase and maintainer authority. |
+| Investigation | One specialized investigator per open entry establishes evidence, owning feature, route (`fast-loop`, `specify`, `dismiss`, or `blocked`), file set, change, validation, and risks in one plan. |
+| Implementation | Ready fast-loop plans are grouped by owning feature and executed by specialized implementers in separate Git worktrees and branches, through Speckit Fast Loop, with one commit per successful plan. |
+| Merge | A clean maintainer checkout is required; branches merge one at a time, applicable deterministic checks rerun, conflicts stop safely, and only successful worktrees and plan states are cleaned up. |
+| Installation | Concorde distributes the shared skill, roles, deterministic queue helper, and default configuration as platform-appropriate Claude and Codex projections with common semantics and state. |
+| Maintainer authority | Triage suggests resolution notes and commits but never edits reflection `Status` or `Note`; `specify`, `dismiss`, and `blocked` routes remain human decisions. |
+| Acceptance and validation | Acceptance presents the feature's entries and requires every open one to remain cited; deterministic validation checks a present log read-only and reports nothing for an absent log. |
 
-**Not part of this feature**: any new command, skill, or slash command; the agent fixing a
-durable document or another feature's code in response to an entry; per-feature or per-module
-reflection files, a database, a dashboard, or a published page; automatic archiving; judging
-whether an entry is truthful; sending entries anywhere outside the repository.
+**Not part of this feature**: automatically changing reflection status, auto-implementing
+`specify`/`dismiss`/`blocked` routes, per-feature logs, an external service, a dashboard, automatic
+archiving, or identical model names and native isolation mechanisms across agent platforms.
 
 ## Structure
 
 The core view is <a href="/architecture/workflow-reflection-components.html">workflow reflection
-components</a> (maintained source `diagrams/workflow-reflection-components.json`). In one sketch:
+and triage components</a> (maintained source
+`diagrams/workflow-reflection-components.json`). In one sketch:
 
 ```text
-Coding agent ──plan · tasks · implement · analyze · converge──▶ phase meets a problem
-                                                                    │ append / update entry
-                                                                    ▼
-Specification root ── reflections.md  (one log for the whole project; maintained; never removed)
-        ▲ validate: shape findings          ▲ maintainer: review · resolve · dismiss
-        │                                   │
-Selected feature root ─┬─ abstract.md + design.md          (read-only: cited, never edited)
-                       └─ implementation.md  ◀── impl.accept cites the feature's entries
-                                          (open → known limitations; resolved → decisions)
-                                          ──▶ module implementation.md amendment (level lessons)
+Concorde installation ──▶ installed phase guidance + triage skill + specialized roles
+                                  │
+Coding agent ── plan · tasks · implement · analyze · converge
+                                  │ append/update
+                                  ▼
+                     <specification root>/reflections.md
+                                  │ open entries
+Maintainer ──▶ triage orchestrator ─┬─▶ investigator agents ─▶ reflection plans
+                                    └─▶ implementer worktrees ─▶ Speckit Fast Loop
+                                                                  │ commits + tests
+                                                                  ▼
+                                                       validation and merge gate
+                                                                  │
+                                                                  ▼
+                                                      accepted implementation.md
 ```
 
-- **Phase surfaces** are the five Spec Kit phases after specification; the installed guidance and
-  the log template carry the recording obligation, so an installed project needs no Concorde
-  checkout for it.
-- **The reflection log** is the only maintained document an agent may extend in response to a
-  problem with a durable document or an existing implementation; every entry names the feature
-  being worked on and the source it concerns.
-- **Acceptance and validation** are the existing Concorde operations; they gain the citation rule
-  and the shape check respectively.
+- **Installed workflow surfaces** carry automatic recording and the explicit triage entry point.
+- **The project log and reflection plans** are shared across agent projections; platform-specific
+  files do not create separate backlogs.
+- **Investigators** are read-heavy and handle exactly one entry; **implementers** receive complete
+  plans for one owning feature and write only in assigned worktrees.
+- **Speckit Fast Loop** remains the eligibility and bounded-change authority. Feature 003 owns the
+  generic installation mechanism; Feature 005 owns what reflection assets mean and how they behave.
+- **Validation, merge, and acceptance** keep durable intent and maintainer decisions outside child
+  agents' authority.
 
 ## Logic
 
-**How one problem moves through the workflow**
-
-1. A phase meets a problem: it cannot follow the specification, the design baseline, an existing
-   implementation, the guidance, the architecture, or the plan, or must assume, work around, defer,
-   or stop.
-2. The agent records an entry in the project log in that same phase — creating the log from the
-   template if the project has none — attributed to the selected feature and naming the concerned
-   source, and continues when it can; if blocked, it records the stop reason and then halts under
-   the phase's existing rules.
-3. Meeting the same problem again, from any feature, updates the existing entry; agents never
-   delete or renumber entries or reverse a maintainer's note.
-4. The phase's completion report lists what it added and how many of the feature's entries are
-   open; analysis repeats the open list and flags entries whose sources changed.
-5. The maintainer resolves or dismisses entries in the log and makes the improvement through the
-   owning path; in the Concorde project a guidance or tooling fix counts as used only once the
-   self-hosted installation is refreshed.
-6. At acceptance the proposal presents the feature's entries by status; the accepted `implementation.md`
-   cites the open ones as known limitations; the log stays byte-identical.
+1. A delivery phase meets a problem, records it in the project log, and continues or stops under its
+   existing rules.
+2. The maintainer invokes triage. `status` reports the ordered queue and plan lifecycle without
+   mutation.
+3. `investigate` dispatches bounded waves. Each investigator receives one entry, establishes root
+   cause, and produces one plan routed to `fast-loop`, `specify`, `dismiss`, or `blocked`.
+4. `implement` selects only ready fast-loop plans, rejects overlap with maintainer edits, groups
+   plans by owning feature, creates one worktree and branch per group, and has implementers run
+   Speckit Fast Loop, exact validation, and one commit per successful plan.
+5. `merge` requires a clean checkout, merges branches serially, stops on conflict or validation
+   failure, cleans only successful worktrees, and reports suggested reflection notes without
+   applying them.
+6. At acceptance, every open entry attributed to the feature stays cited in the accepted
+   realization and the project log remains intact.
 
 **Rules the implementation must keep**
 
-- Recording happens through the existing phases only: no new command, no new approval, no
-  checkout dependency, and the installed guidance and template carry the obligation (FR-001,
-  FR-015).
-- A problem is recorded in the phase in which it is met, before that phase reports completion,
-  and recording never halts a phase that can continue (FR-002, FR-006).
-- One project-wide log at `reflections.md` inside the specification root; the first recording phase
-  creates it; it is maintained, never removed, and not published by this feature (FR-003, FR-016).
-- Every entry has the full field set including the attributed feature and the concerned source,
-  exactly one of the six kinds, one of the four effects, and one of the three statuses (FR-004,
-  FR-005).
-- Recording never edits `abstract.md`, `design.md`, any `implementation.md`, any `module.md`, a contract, a
-  view, a diagram, or another feature's code, and never reads another root's attempt (FR-007,
-  FR-013).
-- Repeats update the existing entry; agents never delete, renumber, or reverse maintainer decisions
-  (FR-008).
-- Phases report what they added and what is open for the feature; analysis flags stale
-  references; convergence makes work only from genuine deferred entries (FR-009).
-- Maintainers resolve or dismiss directly in the log with a note and a reference (FR-010, FR-017).
-- Acceptance presents the feature's entries, the design reference cites every open one, apply
-  refuses otherwise, and the log is left byte-identical (FR-011).
-- Validation checks a present log read-only and reports nothing for an absent one (FR-012).
-- Entries cite evidence instead of pasting secrets or bulk output and stay short (FR-014).
+- Automatic recording remains part of existing delivery phases and introduces no phase command,
+  approval, or checkout dependency; triage is an explicit maintainer action (FR-001, FR-002,
+  FR-006, FR-018).
+- One project-wide maintained log carries the fixed entry vocabulary and survives every attempt;
+  repeated problems update occurrences without reversing maintainer decisions (FR-003, FR-004,
+  FR-005, FR-008, FR-014, FR-016).
+- Recording never edits durable sources or reads another root's attempt, and phase reports,
+  analysis, convergence, acceptance, and validation surface the entries within their existing
+  authority (FR-007, FR-009, FR-010, FR-011, FR-012, FR-013, FR-015, FR-017).
+- Investigation handles one entry per specialized agent and produces the complete plan contract in
+  bounded waves with explicit failure reporting (FR-019, FR-020, FR-021).
+- Implementation selects only ready fast-loop routes, protects maintainer edits, groups by owning
+  feature, isolates each group in a worktree, validates, and commits one successful plan at a time
+  (FR-022, FR-023, FR-027).
+- Merge is serial, clean-checkout gated, deterministic, conflict-safe, and never changes reflection
+  status or notes (FR-024).
+- Installation deterministically and idempotently projects one shared queue, plan lifecycle, skill,
+  roles, helper, and configuration into every supported subagent platform (FR-025, FR-026).
 
 ## Read Next
 
-- **Exact requirements, scenarios, and success criteria** — [design.md](design.md): the Reflection
-  Boundary, five user stories, FR-001 to FR-017, and SC-001 to SC-009.
-- **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (a
-  placeholder until the first milestone is accepted).
-- **The log's grammar** — `contracts/reflection-log.md` and the conforming example
-  `contracts/examples/reflections.md` (repository files, not published pages); the boundary promise is
-  [contract.concorde.workflow](../../architecture/contracts/concorde-workflow/contract.md); the host lifecycle
-  is [contract.concorde.spec-kit-platform](../../architecture/contracts/spec-kit-platform/contract.md).
-- **The project's actual log** — `specs/concorde/reflections.md` (a maintained repository file,
-  not a published page).
+- **Exact requirements, scenarios, and success criteria** — [design.md](design.md): six user
+  stories, FR-001 to FR-027, and SC-001 to SC-014.
+- **The accepted recording realization and the baseline for this new attempt** —
+  [implementation.md](implementation.md).
+- **The log's grammar** — `contracts/reflection-log.md` and
+  `contracts/examples/reflections.md`; the boundary promise is
+  [contract.concorde.workflow](../../architecture/contracts/concorde-workflow/contract.md), and the
+  host lifecycle is
+  [contract.concorde.spec-kit-platform](../../architecture/contracts/spec-kit-platform/contract.md).
+- **The project log** — `specs/concorde/reflections.md`.
 - **The level this feature belongs to** — [module.md](../../module.md) and its
   [design reference](../../design.md).
-- **The workflow this feature extends** — [Concorde Workflow](../001-concorde-workflow/abstract.md),
-  especially its sub-features [context](../001-concorde-workflow/subfeatures/002-retrieve-bounded-context/design.md),
-  [plan](../001-concorde-workflow/subfeatures/006-plan-delivery/design.md),
-  [execute](../001-concorde-workflow/subfeatures/007-execute-and-reconcile/design.md),
-  [validate](../001-concorde-workflow/subfeatures/008-validate-architecture/design.md), and
-  [accept](../001-concorde-workflow/subfeatures/009-accept-milestone/design.md); framework fixes reach
-  this checkout through [Self-Host Concorde](../004-self-host-concorde/abstract.md).
+- **Related feature authorities** — [Concorde Workflow](../001-concorde-workflow/abstract.md),
+  [Install Concorde for Spec Kit](../003-install-concorde-speckit/abstract.md), and
+  [Self-Host Concorde](../004-self-host-concorde/abstract.md).

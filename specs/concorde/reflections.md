@@ -872,3 +872,79 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Improvement**: Let the generic validator accept integration-owned extension metadata or provide a
   schema profile for Spec Kit materializations.
 - **Status**: open
+
+### R-044 · Native bundle installation cannot project custom subagents
+
+- **Phase**: plan
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.record-workflow-reflections
+- **Kind**: architecture
+- **Concerns**: feature.concorde.install-with-spec-kit
+- **Expected**: Concorde installation can materialize Feature 005's Claude and Codex custom-agent
+  files while preserving Feature 003's native Spec Kit bundle lifecycle and install parity.
+- **Observed**: Spec Kit 0.16.4 installs declared commands as integration skills but has no manifest
+  primitive for arbitrary `.claude/agents` or `.codex/agents` projections; the existing Feature 003
+  contract also prohibits a separate installer-owned copy stage.
+- **Effect**: deferred
+- **Action**: Kept canonical assets inside the integrity-covered extension and split the required
+  deterministic projection/provenance stage into a separately selected Feature 003 lifecycle before
+  completing installation integration.
+- **Improvement**: Revise Feature 003 to preview, reconcile, verify, update, and remove only
+  Concorde-owned agent projections while preserving shared maintainer state and native bundle bytes.
+- **Status**: open
+- **Occurrences**:
+  - plan 2026-08-30 feature.concorde.install-with-spec-kit — selected the owning installer feature,
+    revised the parent and one-command child contracts, and planned the bounded installed projector.
+
+### R-045 · Docsite test runner cannot open its sandbox IPC socket
+
+- **Phase**: implement
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.record-workflow-reflections
+- **Kind**: environment
+- **Concerns**: docsite/package.json
+- **Expected**: `npm run check --prefix docsite` can start its local `tsx` test processes inside the
+  implementation sandbox.
+- **Observed**: Node failed with `listen EPERM` while creating `/tmp/tsx-1000/*.pipe`, causing an
+  otherwise unrelated contract test and production-build setup to fail.
+- **Effect**: worked-around
+- **Action**: Re-ran the same deterministic check with the approved docsite-check permission prefix;
+  no source or test expectation was weakened.
+- **Improvement**: Give the standard docsite check its required local IPC permission by default, or
+  configure the test runner to use a sandbox-compatible transport.
+- **Status**: open
+
+### R-046 · Installer acceptance cannot bind its loopback catalog in the sandbox
+
+- **Phase**: implement
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.install-with-spec-kit
+- **Kind**: environment
+- **Concerns**: tests/concorde/support/catalog_server.py
+- **Expected**: Installer acceptance can bind a loopback HTTP catalog server while keeping all
+  release and target files inside temporary directories.
+- **Observed**: The sandbox denied `socket()` with `PermissionError: [Errno 1] Operation not
+  permitted` before every catalog-backed acceptance case could start.
+- **Effect**: worked-around
+- **Action**: Kept the test design unchanged and reran the focused acceptance suite with the exact
+  approved unittest prefix after implementing the failing-first behavior.
+- **Improvement**: Grant the standard local-catalog acceptance suite loopback permission by default
+  while retaining filesystem and external-network isolation.
+- **Status**: open
+
+### R-047 · Docsite feature-title fixture retained Feature 005's former outcome
+
+- **Phase**: implement
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.install-with-spec-kit
+- **Kind**: implementation
+- **Concerns**: docsite/tests/integration/production-build.test.ts
+- **Expected**: The generated feature sidebar reflects each durable feature design's current title.
+- **Observed**: The fixture still expected `Record Workflow Reflections` after Feature 005 was
+  revised to `Record and Triage Workflow Reflections`, so the production-build test rejected the
+  correct generated page.
+- **Effect**: worked-around
+- **Action**: Updated only the stale expected title and kept all route, ordering, and build checks.
+- **Improvement**: Derive expected top-level feature labels from the maintained manifest fixture or
+  assert stable IDs plus current manifest labels instead of duplicating title literals.
+- **Status**: open

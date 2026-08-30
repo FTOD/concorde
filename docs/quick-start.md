@@ -64,7 +64,11 @@ directory or `--version 0.1.0` for an immutable release.
 The installer obtains the pinned Spec Kit CLI in an ephemeral uv tool environment, validates the
 release pointer, initializes only a fresh empty target, reconciles three installer-owned catalogs,
 prints native `bundle info`, and chooses native install, update, or a byte-identical current no-op.
-It ends with exact component versions, reload status, and the next Concorde command.
+It then previews, synchronizes, and verifies Feature 005's native reflection-triage skill plus two
+specialized roles from the installed extension, recording only generated path digests in
+`.specify/concorde-agent-assets.json`. It ends with exact component/projection status, reload status,
+and the next Concorde command. Shared `.concorde/reflections/` state, modified roles, inactive
+integration surfaces, and unrelated agent files are never receipt-owned.
 
 Preview performs the same native bundle resolution in a disposable project and changes zero target
 bytes:
@@ -86,13 +90,13 @@ uvx --from specify-cli==0.16.4 python install-concorde.py --integration codex
 The [one-command installation design](../specs/concorde/features/003-install-concorde-speckit/subfeatures/002-one-command-install/design.md)
 defines the required behavior, inputs, reports, and failure handling; its repository-owned
 `contracts/installer-cli.md` supplies the exact interface profile. The command is only an accelerator:
-it invokes the public Spec Kit operations in the manual path below and never copies component files
-itself.
+it invokes public Spec Kit operations, then only the deterministic projector delivered by the
+installed extension; the manual equivalent below uses that same operation.
 
 The newest published version is currently `v0.1.0`, which predates the module design reference, the
 feature abstract, and the removal of the `feature.create`/`feature.select` commands. These guides
-describe the `0.4.0` sources in this checkout; to work under the document model they describe, use
-the development path in part 3 until `0.4.0` is published. Otherwise continue with part 4.
+describe the `0.5.0` sources in this checkout; to work under the document model they describe, use
+the development path in part 3 until `0.5.0` is published. Otherwise continue with part 4.
 
 ## 3. Build the current local release (development path)
 
@@ -108,7 +112,8 @@ uvx --from specify-cli==0.16.4 python scripts/install-concorde.py \
 The command binds an ephemeral loopback port, builds and reproducibly verifies the checkout before
 target mutation, serves its catalogs for this run, follows the same catalog and bundle lifecycle,
 removes its transient `concorde-dev` registrations, and always stops the server. Run it again to
-verify the `already-current` byte-level no-op.
+verify the `already-current` byte-level no-op across components, projections, receipt, and shared
+state.
 
 ### Manual native fallback
 
@@ -154,6 +159,22 @@ specify bundle validate --offline \
 specify bundle info concorde-bundle --json
 specify bundle install concorde-bundle
 ```
+
+Project and verify the active integration's native reflection agents from the extension that was
+just installed:
+
+```bash
+python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
+  agent-assets preview --integration codex --concorde-version 0.5.0
+python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
+  agent-assets sync --integration codex --concorde-version 0.5.0
+python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
+  agent-assets verify --integration codex --concorde-version 0.5.0
+```
+
+Use `--integration claude` for Claude. Preview reports conflicts without mutation. Sync refuses to
+overwrite legacy, modified, or unowned targets; resolve or explicitly review those files before
+adoption.
 
 The `concorde-bundle` bundle is an installation recipe. It pins exactly two independently versioned
 components:

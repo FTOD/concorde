@@ -20,13 +20,13 @@
         "id": "preset-path",
         "label": "Normal command modifications",
         "focus": ["preset", "featureLifecycle", "agentHost", "workspaceFiles"],
-        "note": "The preset supplies four template layers and authoritative routing for nine existing lifecycle commands."
+        "note": "The preset supplies six templates and authoritative routing for nine existing lifecycle commands plus fast-loop."
       },
       {
         "id": "extension-path",
         "label": "Extension contribution",
         "focus": ["extension", "agentHost", "scripts", "workspaceFiles"],
-        "note": "The extension supplies seven Concorde-specific surfaces: six runtime-backed operations plus read-only ask."
+        "note": "The extension supplies five Concorde commands plus canonical triage assets and the deterministic projection operation."
       }
     ]
   },
@@ -75,7 +75,7 @@
       "id": "preset",
       "type": "backend",
       "label": "concorde",
-      "sublabel": "Preset: 4 templates + 9 overrides",
+      "sublabel": "Preset: 6 templates + 10 commands",
       "pos": [745, 95],
       "size": [190, 76]
     },
@@ -83,7 +83,7 @@
       "id": "extension",
       "type": "backend",
       "label": "concorde",
-      "sublabel": "7 surfaces · 6 runtime-backed",
+      "sublabel": "5 commands + triage assets",
       "pos": [745, 455],
       "size": [190, 76]
     },
@@ -99,7 +99,7 @@
       "id": "scripts",
       "type": "backend",
       "label": "Scripts",
-      "sublabel": "routing + safe operations",
+      "sublabel": "routing + projection ops",
       "pos": [1010, 275],
       "size": [190, 76]
     },
@@ -107,7 +107,7 @@
       "id": "agentHost",
       "type": "external",
       "label": "Active Integration",
-      "sublabel": "Skills or slash commands",
+      "sublabel": "commands + custom agents",
       "pos": [1010, 455],
       "size": [190, 76]
     },
@@ -115,7 +115,7 @@
       "id": "workspaceFiles",
       "type": "database",
       "label": "Workspace Files",
-      "sublabel": "durable / attempt",
+      "sublabel": "project state",
       "pos": [1240, 275],
       "size": [120, 76]
     }
@@ -188,7 +188,7 @@
       "id": "presetGuidesLifecycle",
       "from": "preset",
       "to": "featureLifecycle",
-      "label": "4 templates + 9 overrides",
+      "label": "6 templates + 10 commands",
       "variant": "emphasis",
       "labelAt": [860, 190]
     },
@@ -207,7 +207,7 @@
       "id": "extensionRegistersCommands",
       "from": "extension",
       "to": "agentHost",
-      "label": "7 surfaces · 6 runtime-backed",
+      "label": "5 commands + triage projection",
       "variant": "emphasis",
       "labelAt": [973, 545]
     },
@@ -256,8 +256,8 @@
       "dot": "emerald",
       "title": "Preset",
       "items": [
-        "Composes four template layers without owning runtime",
-        "Overrides nine existing lifecycle command surfaces",
+        "Composes six templates without owning runtime",
+        "Modifies nine lifecycle commands and adds fast-loop",
         "Routes before inherited root-path assumptions can run"
       ]
     },
@@ -265,9 +265,9 @@
       "dot": "violet",
       "title": "Extension",
       "items": [
-        "Adds seven Concorde-specific surfaces, including read-only ask",
-        "Registers through the active coding-agent integration",
-        "Ships the adapter/runtime used only by six operations"
+        "Adds five Concorde commands, including read-only ask",
+        "Ships canonical triage roles and platform wrappers",
+        "Projects only digest-owned custom-agent files"
       ]
     },
     {

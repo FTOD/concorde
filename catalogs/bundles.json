@@ -3,7 +3,7 @@
     "concorde-bundle": {
       "author": "Concorde maintainers",
       "description": "Pinned Concorde preset and extension installation recipe for Spec Kit",
-      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0/concorde-bundle-0.4.0.zip",
+      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.5.0/concorde-bundle-0.5.0.zip",
       "id": "concorde-bundle",
       "license": "MIT",
       "name": "Concorde Bundle",
@@ -18,7 +18,7 @@
         "speckit_version": ">=0.16.4,<0.16.5"
       },
       "role": "developer",
-      "sha256": "sha256:85e594183e914ac06511e7eac0c5afc0d3be591ffd8946e095d54b43efcb3436",
+      "sha256": "sha256:9a81094801d52fd1c2511400b4ec3b2854a9fde69b6a724583476641c5d243c9",
       "tags": [
         "architecture",
         "context",
@@ -26,10 +26,10 @@
         "spec-driven-development"
       ],
       "verified": false,
-      "version": "0.4.0"
+      "version": "0.5.0"
     }
   },
-  "catalog_url": "https://github.com/FTOD/concorde/releases/download/v0.4.0/bundles.json",
+  "catalog_url": "https://github.com/FTOD/concorde/releases/download/v0.5.0/bundles.json",
   "schema_version": "1.0",
   "updated_at": "2026-08-20T00:00:00Z"
 }

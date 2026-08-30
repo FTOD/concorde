@@ -32,7 +32,7 @@ builder = importlib.util.module_from_spec(BUILDER_SPEC)
 BUILDER_SPEC.loader.exec_module(builder)
 
 
-def _release(server: CatalogServer, version: str = "0.4.0") -> installer.ReleaseDescriptor:
+def _release(server: CatalogServer, version: str = "0.5.0") -> installer.ReleaseDescriptor:
     return installer.validate_release_pointer(
         {
             "schema_version": "1.0",
@@ -67,11 +67,26 @@ def _installed_snapshot(root: Path) -> dict[str, object]:
         for item in bundles
     ]
     files: dict[str, str] = {}
-    for relative_root in (".agents/skills", ".specify/extensions/concorde", ".specify/presets/concorde"):
+    for relative_root in (
+        ".agents/skills",
+        ".claude/skills/reflections-triage",
+        ".claude/agents",
+        ".codex/agents",
+        ".specify/extensions/concorde",
+        ".specify/presets/concorde",
+    ):
         source = root / relative_root
         for path in sorted(source.rglob("*")):
-            if path.is_file():
+            if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc":
                 files[path.relative_to(root).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    for relative in (
+        ".concorde/reflections/config.json",
+        ".concorde/reflections/.gitignore",
+        ".specify/concorde-agent-assets.json",
+    ):
+        path = root / relative
+        if path.is_file():
+            files[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
     return {"bundles": normalized, "files": files}
 
 
@@ -93,7 +108,7 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
                 release = _release(server)
 
                 manual_root = base / "manual"
-                manual = SpecifyProject(manual_root)
+                manual = SpecifyProject(manual_root, integration="codex", skills=True)
                 manual.initialize()
                 manual.run(
                     "extension", "catalog", "add", release.catalogs["extensions"],
@@ -109,6 +124,8 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
                 )
                 manual.run("bundle", "info", "concorde-bundle", "--json")
                 manual.run("bundle", "install", "concorde-bundle")
+                installer.run_agent_assets(manual_root, "codex", "sync", release.version)
+                installer.run_agent_assets(manual_root, "codex", "verify", release.version)
 
                 installer_root = base / "installer"
                 installer_root.mkdir()
@@ -119,6 +136,40 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
                 self.assertEqual(result, installer.EXIT_OK)
                 self.assertEqual(_installed_snapshot(installer_root), _installed_snapshot(manual_root))
                 self.assertTrue((installer_root / ".agents/skills/speckit-concorde-init/SKILL.md").is_file())
+                self.assertTrue((installer_root / ".agents/skills/reflections-triage/SKILL.md").is_file())
+                self.assertTrue((installer_root / ".codex/agents/reflection_investigator.toml").is_file())
+                self.assertTrue((installer_root / ".codex/agents/reflection_implementer.toml").is_file())
+
+    def test_fresh_install_materializes_reflection_triage_for_claude_and_codex(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            dist = base / "dist"
+            with CatalogServer(dist) as server:
+                builder.build_release(dist, server.base_url)
+                release = _release(server)
+                expected = {
+                    "codex": (
+                        ".agents/skills/reflections-triage/SKILL.md",
+                        ".codex/agents/reflection_investigator.toml",
+                        ".codex/agents/reflection_implementer.toml",
+                    ),
+                    "claude": (
+                        ".claude/skills/reflections-triage/SKILL.md",
+                        ".claude/agents/reflection-investigator.md",
+                        ".claude/agents/reflection-implementer.md",
+                    ),
+                }
+                for integration, paths in expected.items():
+                    with self.subTest(integration=integration):
+                        target = base / integration
+                        target.mkdir()
+                        with mock.patch.object(installer, "fetch_release", return_value=release):
+                            result = installer.main(["--target", str(target), "--integration", integration])
+                        self.assertEqual(result, installer.EXIT_OK)
+                        self.assertTrue(all((target / path).is_file() for path in paths))
+                        receipt = json.loads((target / ".specify/concorde-agent-assets.json").read_text())
+                        self.assertIn(integration, receipt["integrations"])
+                        self.assertTrue((target / ".concorde/reflections/config.json").is_file())
 
     def test_three_current_repeats_change_no_target_bytes(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -182,6 +233,17 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
                 authored.parent.mkdir(parents=True)
                 authored.write_text("maintainer-owned\n", encoding="utf-8")
                 authored_digest = hashlib.sha256(authored.read_bytes()).hexdigest()
+                config = target / ".concorde/reflections/config.json"
+                config.write_text(config.read_text().replace('"investigators": 1', '"investigators": 3'))
+                config_digest = hashlib.sha256(config.read_bytes()).hexdigest()
+                plan = target / ".concorde/reflections/plans/R-001.md"
+                plan.parent.mkdir(parents=True)
+                plan.write_text("maintainer plan\n")
+                plan_digest = hashlib.sha256(plan.read_bytes()).hexdigest()
+                unrelated = target / ".agents/skills/user-skill/SKILL.md"
+                unrelated.parent.mkdir(parents=True)
+                unrelated.write_text("user skill\n")
+                unrelated_digest = hashlib.sha256(unrelated.read_bytes()).hexdigest()
 
                 with mock.patch.object(installer, "fetch_release", return_value=new_release):
                     self.assertEqual(
@@ -189,8 +251,56 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
                         installer.EXIT_OK,
                     )
                 snapshot = _installed_snapshot(target)
-                self.assertEqual(snapshot["bundles"][0]["version"], "0.4.0")
+                self.assertEqual(snapshot["bundles"][0]["version"], "0.5.0")
                 self.assertEqual(hashlib.sha256(authored.read_bytes()).hexdigest(), authored_digest)
+                self.assertEqual(hashlib.sha256(config.read_bytes()).hexdigest(), config_digest)
+                self.assertEqual(hashlib.sha256(plan.read_bytes()).hexdigest(), plan_digest)
+                self.assertEqual(hashlib.sha256(unrelated.read_bytes()).hexdigest(), unrelated_digest)
+
+    def test_modified_projection_blocks_rerun_without_overwrite_or_false_success(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            dist = base / "dist"
+            with CatalogServer(dist) as server:
+                builder.build_release(dist, server.base_url)
+                release = _release(server)
+                target = base / "target"
+                target.mkdir()
+                with mock.patch.object(installer, "fetch_release", return_value=release):
+                    self.assertEqual(installer.main(["--target", str(target), "--integration", "codex"]), installer.EXIT_OK)
+                role = target / ".codex/agents/reflection_investigator.toml"
+                role.write_text(role.read_text() + "\n# maintainer edit\n")
+                before = role.read_bytes()
+                output = io.StringIO()
+                with mock.patch.object(installer, "fetch_release", return_value=release):
+                    with redirect_stdout(output), redirect_stderr(output):
+                        result = installer.main(["--target", str(target), "--integration", "codex"])
+                self.assertEqual(result, installer.EXIT_SPECIFY)
+                self.assertEqual(role.read_bytes(), before)
+                self.assertIn("agent-projection-preview", output.getvalue())
+                self.assertNotIn("CONCORDE INSTALL SUCCESS", output.getvalue())
+
+    def test_projection_remove_deletes_only_matching_owned_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            dist = base / "dist"
+            with CatalogServer(dist) as server:
+                builder.build_release(dist, server.base_url)
+                release = _release(server)
+                target = base / "target"
+                target.mkdir()
+                with mock.patch.object(installer, "fetch_release", return_value=release):
+                    self.assertEqual(installer.main(["--target", str(target), "--integration", "codex"]), installer.EXIT_OK)
+                config = target / ".concorde/reflections/config.json"
+                plan = target / ".concorde/reflections/plans/R-001.md"
+                plan.parent.mkdir(parents=True)
+                plan.write_text("plan\n")
+                result = installer.run_agent_assets(target, "codex", "remove", release.version)
+                self.assertEqual(result["status"], "success")
+                self.assertTrue(config.is_file())
+                self.assertTrue(plan.is_file())
+                self.assertFalse((target / ".codex/agents/reflection_investigator.toml").exists())
+                self.assertFalse((target / ".agents/skills/reflections-triage/SKILL.md").exists())
 
     def test_preview_leaves_empty_and_absent_targets_unchanged(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -215,7 +325,9 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
                             )
                     self.assertEqual(result, installer.EXIT_OK)
                     self.assertIn('"id": "concorde-bundle"', output.getvalue())
-                    self.assertIn('"version": "0.4.0"', output.getvalue())
+                    self.assertIn('"version": "0.5.0"', output.getvalue())
+                    self.assertIn('"operation": "agent-assets.preview"', output.getvalue())
+                    self.assertIn("reflection_investigator.toml", output.getvalue())
                     if target == empty:
                         self.assertEqual(list(target.iterdir()), [])
                     else:
@@ -246,7 +358,7 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
                 components = _installed_snapshot(target)["bundles"][0]["components"]
                 self.assertEqual(
                     components,
-                    [("extensions", "concorde", "0.4.0"), ("presets", "concorde", "0.4.0")],
+                    [("extensions", "concorde", "0.5.0"), ("presets", "concorde", "0.5.0")],
                 )
 
     def test_checkout_mode_builds_installs_repeats_and_releases_server(self):
@@ -263,7 +375,7 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
                     ]
                 )
             self.assertEqual(result, installer.EXIT_OK, output.getvalue())
-            self.assertEqual(_installed_snapshot(target)["bundles"][0]["version"], "0.4.0")
+            self.assertEqual(_installed_snapshot(target)["bundles"][0]["version"], "0.5.0")
             match = re.search(r"http://127\.0\.0\.1:(\d+)", output.getvalue())
             self.assertIsNotNone(match, output.getvalue())
             port = int(match.group(1))
