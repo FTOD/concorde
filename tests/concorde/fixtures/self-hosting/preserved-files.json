@@ -4,11 +4,11 @@
   "docs/user.md": "# User documentation\n",
   "generated/user.html": "generated evidence\n",
   "specs/example/architecture/contracts/io/contract.md": "# Boundary contract\n",
-  "specs/example/design.md": "# Durable design\n",
+  "specs/example/abstract.md": "# Feature abstract\n",
   "specs/example/diagrams/components.json": "{}\n",
   "specs/example/attempt/tasks.md": "- [ ] temporal\n",
-  "specs/example/design.md": "# Durable specification\n",
+  "specs/example/design.md": "# Durable design\n",
   "src/user.py": "VALUE = 1\n",
   "tests/user.txt": "test evidence\n",
-  "specs/example/design.md": "# Accepted realization\n"
+  "specs/example/implementation.md": "# Accepted realization\n"
 }

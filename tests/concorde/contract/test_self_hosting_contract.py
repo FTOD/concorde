@@ -38,10 +38,14 @@ class SelfHostingContractTests(unittest.TestCase):
         patterns = [re.compile(item["pattern"]) for item in self.schema["$defs"]["safePath"]["not"]["anyOf"]]
         for unsafe in ("/tmp/x", "C:\\temp\\x", "../x", "a/../x", "a\\b", "a/"):
             self.assertTrue(any(pattern.search(unsafe) for pattern in patterns), unsafe)
-        for safe in (".specify/self-hosting.json", ".agents/skills/speckit-plan/SKILL.md"):
+        for safe in (".specify/self-hosting.json", ".agents/skills/speckit-plan/SKILL.md", ".claude/skills/speckit-plan/SKILL.md"):
             self.assertFalse(any(pattern.search(safe) for pattern in patterns), safe)
+
+    def test_integration_field_remains_shape_generic_for_codex_and_claude(self):
+        for branch in ("proposal", "result", "status"):
+            integration = self.schema["$defs"][branch]["properties"]["integration"]
+            self.assertEqual(integration, {"type": "string", "minLength": 1})
 
 
 if __name__ == "__main__":
     unittest.main()
-

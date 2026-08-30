@@ -23,7 +23,9 @@ and tests, and deterministic after key/path ordering. Examples are maintained un
 
 - `status` is read-only; `propose` writes only its canonical machine-local proposal.
 - Paths are project-relative, slash-normalized, non-parent, and resolve inside the checkout without
-  symlink traversal.
+  symlink traversal, except that a declared Claude extension skill may use Spec Kit's canonical
+  relative development link into the installed Concorde extension cache. That link must resolve to
+  the exact expected regular file inside the checkout; other links remain invalid.
 - Proposal arrays and inventories are sorted and duplicate-free.
 - Apply accepts only the canonical proposal, rechecks every digest, and rejects stale review.
 - Apply preflights the same components and integration before real mutation.
@@ -43,13 +45,12 @@ rather than mutating or guessing.
 
 ## Compatibility
 
-Version 1 supports Spec Kit `>=0.16.4,<0.16.5` and the integration in `.specify/integration.json`.
-Another host range or integration requires isolated lifecycle, rollback, surface, and activation
-evidence before support is claimed.
+Version 1 supports Spec Kit `>=0.16.4,<0.16.5` with either the Codex or Claude skills integration
+selected in `.specify/integration.json`. Another host range or integration requires isolated
+lifecycle, rollback, surface, and activation evidence before support is claimed.
 
 ## Evidence
 
 Examples validate against the schema. Unit tests cover deterministic safety; integration tests cover
 public development installation and rollback; acceptance tests cover checkout self-application and
 preservation. Diagram/docsite checks prove the explanation is fresh, not runtime correctness.
-

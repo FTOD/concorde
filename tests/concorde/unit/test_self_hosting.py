@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -24,6 +25,59 @@ class SelfHostingUnitTests(unittest.TestCase):
         self.assertEqual([item["id"] for item in components], ["concorde", "concorde", "concorde-bundle"])
         self.assertEqual(integration, "codex")
         self.assertEqual(first, self_host.component_model(self.root)[1])
+
+    def test_supported_integration_profiles_define_root_and_init_behavior(self):
+        codex = self_host.integration_profile("codex")
+        claude = self_host.integration_profile("claude")
+        self.assertEqual(codex["skill_root"], ".agents/skills")
+        self.assertEqual(claude["skill_root"], ".claude/skills")
+        self.assertIn("--integration-options=--skills", self_host.integration_init_arguments("codex"))
+        self.assertNotIn("--integration-options=--skills", self_host.integration_init_arguments("claude"))
+        self.assertEqual(self_host.skill_path("speckit.plan", "codex"), ".agents/skills/speckit-plan/SKILL.md")
+        self.assertEqual(self_host.skill_path("speckit.plan", "claude"), ".claude/skills/speckit-plan/SKILL.md")
+
+    def test_claude_extension_surface_accepts_canonical_link_or_regular_fallback(self):
+        command = "speckit.concorde.ask"
+        relative = self_host.skill_path(command, "claude")
+        surface = self.root / relative
+        target = self.root / self_host.claude_extension_target(command)
+        target.parent.mkdir(parents=True)
+        target.write_text("canonical extension skill\n")
+        surface.parent.mkdir(parents=True)
+        surface.symlink_to(os.path.relpath(target, surface.parent))
+
+        evidence = self_host.surface_evidence(self.root, relative, "claude", extension_command=command)
+        self.assertEqual(evidence["representation"], "symlink")
+        self.assertEqual(evidence["target"], target.relative_to(self.root).as_posix())
+
+        surface.unlink()
+        surface.write_text("regular fallback\n")
+        evidence = self_host.surface_evidence(self.root, relative, "claude", extension_command=command)
+        self.assertEqual(evidence["representation"], "file")
+        self.assertNotIn("target", evidence)
+
+    def test_surface_evidence_rejects_unsafe_or_undeclared_links(self):
+        command = "speckit.concorde.ask"
+        relative = self_host.skill_path(command, "claude")
+        surface = self.root / relative
+        surface.parent.mkdir(parents=True)
+        outside = self.root / "unrelated.md"
+        outside.write_text("unrelated\n")
+
+        surface.symlink_to(os.path.relpath(outside, surface.parent))
+        self.assertIsNone(self_host.surface_evidence(self.root, relative, "claude", extension_command=command))
+        surface.unlink()
+        surface.symlink_to(outside)
+        self.assertIsNone(self_host.surface_evidence(self.root, relative, "claude", extension_command=command))
+        surface.unlink()
+        surface.symlink_to("missing.md")
+        self.assertIsNone(self_host.surface_evidence(self.root, relative, "claude", extension_command=command))
+
+        preset_relative = self_host.skill_path("speckit.plan", "claude")
+        preset_surface = self.root / preset_relative
+        preset_surface.parent.mkdir(parents=True)
+        preset_surface.symlink_to(os.path.relpath(outside, preset_surface.parent))
+        self.assertIsNone(self_host.surface_evidence(self.root, preset_relative, "claude"))
 
     def test_source_change_changes_digest(self):
         before = self_host.component_model(self.root)[1]
@@ -64,6 +118,21 @@ class SelfHostingUnitTests(unittest.TestCase):
         with self.assertRaises(self_host.SelfHostError) as raised:
             self_host.integration_state(self.root)
         self.assertEqual(raised.exception.finding["code"], "CONCORDE-SELF-HOST-006")
+
+        data["version"] = "0.16.4"
+        data["integration"] = "gemini"
+        path.write_text(json.dumps(data))
+        with self.assertRaises(self_host.SelfHostError) as raised:
+            self_host.integration_state(self.root)
+        self.assertEqual(raised.exception.finding["code"], "CONCORDE-SELF-HOST-005")
+
+    def test_claude_is_a_supported_source_model(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            initialize_checkout(root, "claude")
+            components, _, integration = self_host.component_model(root)
+        self.assertEqual(integration, "claude")
+        self.assertEqual([item["kind"] for item in components], ["preset", "extension", "bundle"])
 
     def test_absent_status_is_read_only_and_activation_unknown(self):
         before = {p.relative_to(self.root).as_posix(): p.read_bytes() for p in self.root.rglob("*") if p.is_file()}

@@ -64,12 +64,45 @@ PRESERVED = (
     "authoritative preset, extension, and bundle sources",
 )
 FAILURE_ENV = "CONCORDE_SELF_HOST_FAIL_STAGE"
+INTEGRATION_PROFILES: dict[str, dict[str, object]] = {
+    "codex": {
+        "skill_root": ".agents/skills",
+        "init_options": ("--integration-options=--skills",),
+        "allow_extension_links": False,
+    },
+    "claude": {
+        "skill_root": ".claude/skills",
+        "init_options": (),
+        "allow_extension_links": True,
+    },
+}
 
 
 class SelfHostError(RuntimeError):
     def __init__(self, code: str, stage: str, path: str, message: str, remediation: str):
         super().__init__(message)
         self.finding = finding(code, "error", stage, path, message, remediation)
+
+
+def integration_profile(integration: str) -> dict[str, object]:
+    try:
+        return INTEGRATION_PROFILES[integration]
+    except KeyError as error:
+        raise SelfHostError(
+            "CONCORDE-SELF-HOST-005",
+            "source",
+            ".specify/integration.json",
+            f"Integration {integration!r} has no self-hosting surface evidence in protocol v1.",
+            "Use the validated Codex or Claude integration, or add isolated evidence before extending support.",
+        ) from error
+
+
+def integration_init_arguments(integration: str) -> list[str]:
+    profile = integration_profile(integration)
+    arguments = ["init", "--here", "--force", "--ignore-agent-tools", "--integration", integration]
+    arguments.extend(str(value) for value in profile["init_options"])
+    arguments.extend(["--script", "sh"])
+    return arguments
 
 
 def canonical_json(value: object) -> str:
@@ -285,14 +318,7 @@ def integration_state(root: Path) -> tuple[str, str]:
             f"Active Spec Kit integration metadata is invalid: {error}",
             "Initialize the checkout with a supported Spec Kit integration.",
         ) from error
-    if integration != "codex":
-        raise SelfHostError(
-            "CONCORDE-SELF-HOST-005",
-            "source",
-            ".specify/integration.json",
-            f"Integration {integration!r} has no self-hosting surface evidence in protocol v1.",
-            "Use the validated Codex integration or add isolated evidence before extending support.",
-        )
+    integration_profile(integration)
     if version != SUPPORTED_SPECKIT:
         raise SelfHostError(
             "CONCORDE-SELF-HOST-006",
@@ -357,12 +383,63 @@ def component_model(root: Path) -> tuple[list[dict[str, object]], str, str]:
     return components, inventory_digest(root, groups), integration
 
 
-def skill_path(command: str) -> str:
-    return f".agents/skills/{command.replace('.', '-')}/SKILL.md"
+def skill_path(command: str, integration: str = "codex") -> str:
+    root = str(integration_profile(integration)["skill_root"])
+    return f"{root}/{command.replace('.', '-')}/SKILL.md"
 
 
-def owned_paths() -> tuple[str, ...]:
-    skill_directories = [str(Path(skill_path(command)).parent.as_posix()) for command in PRESET_COMMANDS + EXTENSION_COMMANDS]
+def claude_extension_target(command: str) -> str:
+    skill = command.replace(".", "-")
+    return f".specify/extensions/{EXTENSION_ID}/.specify-dev/agent-commands/claude/{skill}/SKILL.md"
+
+
+def surface_evidence(
+    root: Path,
+    relative: str,
+    integration: str,
+    *,
+    extension_command: str | None = None,
+) -> dict[str, str] | None:
+    """Return deterministic evidence for one supported materialized surface."""
+    try:
+        relative_path = safe_relative(relative)
+        parent = resolve_project_path(root, relative_path.parent.as_posix())
+    except ValueError:
+        return None
+    path = parent / relative_path.name
+    if path.is_symlink():
+        profile = integration_profile(integration)
+        if not extension_command or not bool(profile["allow_extension_links"]):
+            return None
+        link_value = os.readlink(path)
+        if Path(link_value).is_absolute():
+            return None
+        expected_relative = claude_extension_target(extension_command)
+        try:
+            expected = resolve_project_path(root, expected_relative)
+            resolved = path.resolve(strict=True)
+            expected_resolved = expected.resolve(strict=True)
+        except (OSError, RuntimeError, ValueError):
+            return None
+        if resolved != expected_resolved or not expected.is_file() or expected.is_symlink():
+            return None
+        return {
+            "path": relative,
+            "digest": digest_bytes(expected.read_bytes()),
+            "representation": "symlink",
+            "target": expected_relative,
+        }
+    if not path.is_file():
+        return None
+    return {
+        "path": relative,
+        "digest": digest_bytes(path.read_bytes()),
+        "representation": "file",
+    }
+
+
+def owned_paths(integration: str = "codex") -> tuple[str, ...]:
+    skill_directories = [str(Path(skill_path(command, integration)).parent.as_posix()) for command in PRESET_COMMANDS + EXTENSION_COMMANDS]
     return tuple(sorted({
         ".specify/presets/concorde",
         ".specify/extensions/concorde",
@@ -395,7 +472,7 @@ def registry_entries(root: Path) -> dict[str, object] | None:
     return {"preset": preset_entry, "extension": extension_entry}
 
 
-def extension_command_collisions(root: Path) -> list[tuple[str, str]]:
+def extension_command_collisions(root: Path, integration: str = "codex") -> list[tuple[str, str]]:
     registry = read_json(root / ".specify/extensions/.registry")
     if registry is None or not isinstance(registry.get("extensions"), dict):
         return []
@@ -407,7 +484,7 @@ def extension_command_collisions(root: Path) -> list[tuple[str, str]]:
         commands = entry.get("registered_commands", {})
         if not isinstance(commands, dict):
             continue
-        for command in commands.get("codex", []):
+        for command in commands.get(integration, []):
             if command in expected:
                 collisions.append((str(component_id), str(command)))
     return sorted(collisions)
@@ -422,7 +499,7 @@ def change_action(root: Path, relative: str, registered: bool) -> str:
 
 def build_proposal(root: Path) -> dict[str, object]:
     components, source_digest, integration = component_model(root)
-    collisions = extension_command_collisions(root)
+    collisions = extension_command_collisions(root, integration)
     if collisions:
         owner, command = collisions[0]
         raise SelfHostError(
@@ -439,7 +516,7 @@ def build_proposal(root: Path) -> dict[str, object]:
             "action": change_action(root, relative, registered),
             "meaning": "Concorde-owned Spec Kit development materialization or provenance evidence",
         }
-        for relative in owned_paths()
+        for relative in owned_paths(integration)
     ]
     return {
         "proposal_version": 1,
@@ -526,7 +603,7 @@ def preflight(root: Path, integration: str) -> None:
         )
     with tempfile.TemporaryDirectory(prefix="concorde-self-host-") as temporary:
         target = Path(temporary)
-        run_specify(target, ["init", "--here", "--force", "--ignore-agent-tools", "--integration", integration, "--integration-options=--skills", "--script", "sh"])
+        run_specify(target, integration_init_arguments(integration))
         run_specify(target, ["preset", "add", "--dev", str(root / "presets/concorde"), "--priority", str(PRIORITY)])
         run_specify(target, ["extension", "add", str(root / "extensions/concorde"), "--dev", "--priority", str(PRIORITY)])
         verify_materialization(target, expected_source=root)
@@ -553,7 +630,7 @@ def installed_component_digest(root: Path) -> str | None:
     )
 
 
-def normalized_registry(root: Path) -> dict[str, object] | None:
+def normalized_registry(root: Path, integration: str = "codex") -> dict[str, object] | None:
     entries = registry_entries(root)
     if entries is None:
         return None
@@ -566,15 +643,15 @@ def normalized_registry(root: Path) -> dict[str, object] | None:
             "source": preset.get("source"),
             "enabled": preset.get("enabled"),
             "priority": preset.get("priority"),
-            "commands": preset.get("registered_commands", {}).get("codex", []),
-            "skills": preset.get("registered_skills", {}).get("codex", []),
+            "commands": preset.get("registered_commands", {}).get(integration, []),
+            "skills": preset.get("registered_skills", {}).get(integration, []),
         },
         "extension": {
             "version": extension.get("version"),
             "source": extension.get("source"),
             "enabled": extension.get("enabled"),
             "priority": extension.get("priority"),
-            "commands": extension.get("registered_commands", {}).get("codex", []),
+            "commands": extension.get("registered_commands", {}).get(integration, []),
         },
     }
     return normalized
@@ -601,21 +678,26 @@ def expected_registry(components: list[dict[str, object]]) -> dict[str, object]:
     }
 
 
-def surface_inventory(root: Path) -> tuple[list[dict[str, str]], list[str]]:
+def surface_inventory(root: Path, integration: str = "codex") -> tuple[list[dict[str, str]], list[str]]:
     surfaces: list[dict[str, str]] = []
     missing: list[str] = []
-    for relative in sorted((*TEMPLATE_SURFACES, *(skill_path(command) for command in PRESET_COMMANDS + EXTENSION_COMMANDS))):
-        path = resolve_project_path(root, relative, reject_symlink=False)
-        if not path.is_file() or path.is_symlink():
+    declared = [
+        *((relative, None) for relative in TEMPLATE_SURFACES),
+        *((skill_path(command, integration), None) for command in PRESET_COMMANDS),
+        *((skill_path(command, integration), command) for command in EXTENSION_COMMANDS),
+    ]
+    for relative, extension_command in sorted(declared):
+        evidence = surface_evidence(root, relative, integration, extension_command=extension_command)
+        if evidence is None:
             missing.append(relative)
         else:
-            surfaces.append({"path": relative, "digest": digest_bytes(path.read_bytes())})
+            surfaces.append(evidence)
     return surfaces, missing
 
 
-def extra_owned_surfaces(root: Path) -> list[str]:
-    directory = root / ".agents/skills"
-    expected = {Path(skill_path(command)).parent.name for command in PRESET_COMMANDS + EXTENSION_COMMANDS}
+def extra_owned_surfaces(root: Path, integration: str = "codex") -> list[str]:
+    directory = root / str(integration_profile(integration)["skill_root"])
+    expected = {Path(skill_path(command, integration)).parent.name for command in PRESET_COMMANDS + EXTENSION_COMMANDS}
     if not directory.is_dir():
         return []
     return sorted(
@@ -626,7 +708,7 @@ def extra_owned_surfaces(root: Path) -> list[str]:
 
 
 def verify_materialization(root: Path, expected_source: Path | None = None) -> tuple[str, str, str, list[dict[str, str]]]:
-    components, _, _ = component_model(expected_source or root)
+    components, _, integration = component_model(expected_source or root)
     installed = copy_source_digest(root, expected_source)
     if installed is None:
         raise SelfHostError(
@@ -636,7 +718,7 @@ def verify_materialization(root: Path, expected_source: Path | None = None) -> t
             "Installed preset or extension bytes do not match authoritative sources.",
             "Restore the prior scoped state and retry from a fresh proposal.",
         )
-    registry = normalized_registry(root)
+    registry = normalized_registry(root, integration)
     expected = expected_registry(components)
     if registry != expected:
         raise SelfHostError(
@@ -646,7 +728,7 @@ def verify_materialization(root: Path, expected_source: Path | None = None) -> t
             "Spec Kit registry entries do not match the accepted local composition.",
             "Inspect component ownership and retry after resolving collisions.",
         )
-    surfaces, missing = surface_inventory(root)
+    surfaces, missing = surface_inventory(root, integration)
     if missing:
         raise SelfHostError(
             "CONCORDE-SELF-HOST-013",
@@ -760,18 +842,19 @@ def status(root: Path) -> dict[str, object]:
     source_ok = receipt.get("source_digest") == source_digest
     installed_digest = installed_component_digest(root)
     installed_ok = copy_source_digest(root) is not None and installed_digest == receipt.get("installed_digest")
-    registry = normalized_registry(root)
+    registry = normalized_registry(root, integration)
     registry_digest = digest_bytes(canonical_json(registry).encode()) if registry is not None else None
     registry_ok = registry == expected_registry(components) and registry_digest == receipt.get("registry_digest")
-    surfaces, missing = surface_inventory(root)
-    extras = extra_owned_surfaces(root)
+    surfaces, missing = surface_inventory(root, integration)
+    extras = extra_owned_surfaces(root, integration)
     surface_digest = digest_bytes(canonical_json(surfaces).encode())
-    surface_ok = not missing and not extras and surface_digest == receipt.get("surface_digest")
+    integration_ok = receipt.get("integration") == integration
+    surface_ok = integration_ok and not missing and not extras and surface_digest == receipt.get("surface_digest")
     for ok, code, stage, path, message in (
         (source_ok, "CONCORDE-SELF-HOST-014", "source", "presets/concorde", "Authoritative framework sources changed after the accepted receipt."),
         (installed_ok, "CONCORDE-SELF-HOST-015", "verify", ".specify", "Installed component copies differ from authoritative sources or receipt."),
         (registry_ok, "CONCORDE-SELF-HOST-016", "verify", ".specify", "Concorde component registrations differ from the accepted receipt."),
-        (surface_ok, "CONCORDE-SELF-HOST-017", "verify", ".agents/skills", "Declared agent/template surfaces are missing, altered, or include unexpected Concorde-owned entries."),
+        (surface_ok, "CONCORDE-SELF-HOST-017", "verify", str(integration_profile(integration)["skill_root"]), "Declared agent/template surfaces are missing, altered, or include unexpected Concorde-owned entries."),
     ):
         if not ok:
             findings.append(finding(code, "error", stage, path, message, "Generate and review a fresh proposal, then refresh the self-hosted installation."))
@@ -873,7 +956,7 @@ def apply(root: Path, proposal_argument: str) -> dict[str, object]:
             return failed_result(error)
         return invalid_result(root, error)
 
-    paths = owned_paths()
+    paths = owned_paths(str(fresh["integration"]))
     with tempfile.TemporaryDirectory(prefix="concorde-self-host-backup-") as temporary:
         backup = Path(temporary)
         state = snapshot(root, paths, backup)

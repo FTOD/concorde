@@ -15,6 +15,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 SCRIPT = REPOSITORY_ROOT / "scripts/development/self-host-concorde.py"
 PRESERVED_FIXTURE = REPOSITORY_ROOT / "tests/concorde/fixtures/self-hosting/preserved-files.json"
+SKILL_ROOTS = {"codex": ".agents/skills", "claude": ".claude/skills"}
 
 
 def load_self_hosting():
@@ -25,24 +26,36 @@ def load_self_hosting():
     return module
 
 
-def initialize_checkout(root: Path) -> None:
+def integration_init_arguments(integration: str) -> list[str]:
+    arguments = [
+        "init",
+        "--here",
+        "--force",
+        "--ignore-agent-tools",
+        "--integration",
+        integration,
+    ]
+    if integration == "codex":
+        arguments.append("--integration-options=--skills")
+    arguments.extend(["--script", "sh"])
+    return arguments
+
+
+def skill_root(root: Path, integration: str) -> Path:
+    return root / SKILL_ROOTS[integration]
+
+
+def skill_file(root: Path, integration: str, command: str) -> Path:
+    return skill_root(root, integration) / command.replace(".", "-") / "SKILL.md"
+
+
+def initialize_checkout(root: Path, integration: str = "codex") -> None:
     root.mkdir(parents=True, exist_ok=True)
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)
     environment.pop("SPECIFY_FEATURE_DIRECTORY", None)
     completed = subprocess.run(
-        [
-            "specify",
-            "init",
-            "--here",
-            "--force",
-            "--ignore-agent-tools",
-            "--integration",
-            "codex",
-            "--integration-options=--skills",
-            "--script",
-            "sh",
-        ],
+        ["specify", *integration_init_arguments(integration)],
         cwd=root,
         text=True,
         capture_output=True,
@@ -90,7 +103,15 @@ def hash_paths(root: Path, relatives: tuple[str, ...]) -> dict[str, str]:
 
 
 def preserved_sentinels() -> dict[str, str]:
-    value = json.loads(PRESERVED_FIXTURE.read_text(encoding="utf-8"))
+    def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        value: dict[str, object] = {}
+        for key, item in pairs:
+            if key in value:
+                raise AssertionError(f"Self-hosting preserved-files fixture repeats {key!r}.")
+            value[key] = item
+        return value
+
+    value = json.loads(PRESERVED_FIXTURE.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_keys)
     if not isinstance(value, dict) or not all(isinstance(key, str) and isinstance(item, str) for key, item in value.items()):
         raise AssertionError("Self-hosting preserved-files fixture must be a string-to-string object.")
     return value

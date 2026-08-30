@@ -19,6 +19,10 @@ the expected state, and project-local commands, skills, templates, and runtime c
 materializations. Feature 003 keeps its checkout-isolated release proof; this feature adds a
 development self-hosting mode and does not weaken that proof.
 
+Protocol v1 supports both the Codex and Claude skills integrations. The active integration selects
+the registry and agent-surface representation that self-hosting owns and verifies; surfaces belonging
+only to an inactive integration remain preserved project assets.
+
 ## Functionality
 
 **The lifecycle** — three explicit, reviewed journeys plus a safety property:
@@ -34,6 +38,10 @@ Bootstrap works before any Concorde command exists, because setup cannot depend 
 only successful setup creates. Self-hosting is a synchronization lifecycle, not a hot reload: when
 the active integration needs a new session or an explicit reload, the result says so and never claims
 the running session already uses the refreshed version.
+
+The same reviewed lifecycle applies when either Codex or Claude is active. Integration-specific
+registry fields, surface locations, and supported surface representations are evidence inputs, not
+separate workflows.
 
 **Not part of this feature**: replacing Feature 003's released installation, catalog, update, or
 removal lifecycle for user projects; mutating the installation on every source-file save;
@@ -104,6 +112,9 @@ Preserved, never owned:  specs/** · docs/** · code · tests · project config 
   second command registry or parallel workflow; a success materializes all and only the declared
   surfaces and records provenance binding them to the accepted source state and host compatibility
   (FR-006, FR-007, FR-008).
+- Protocol v1 supports both Codex and Claude through the active integration's declared registry and
+  surface model; collision checks, ownership, verification, drift, rollback, and receipt evidence
+  follow that model while inactive-integration assets remain preserved (FR-023).
 - Refresh is available after any source change, and repeating setup or refresh against unchanged
   sources is idempotent with no duplicated ownership, registration, command, skill, or template
   (FR-009, FR-010).
@@ -129,7 +140,7 @@ Preserved, never owned:  specs/** · docs/** · code · tests · project config 
 ## Read Next
 
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): the self-hosting
-  boundary, four user stories, FR-001 to FR-022, and SC-001 to SC-008.
+  boundary, four user stories, FR-001 to FR-023, and SC-001 to SC-009.
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (the
   bootstrap script, the proposal and receipt, the five evidence dimensions).
 - **The contract** — `contracts/self-hosting.md` with its

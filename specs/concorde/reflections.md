@@ -39,6 +39,9 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
     propose/apply/current proof after the preset identity rename, restored Claude, rematerialized its
     preset and extension surfaces, restored the verified Codex skills, and confirmed final Claude
     status remains `unknown` only because protocol v1 lacks that integration evidence.
+  - implement 2026-08-30 feature.concorde.self-host-framework — added profile-specific Claude
+    preflight, registry, ownership, surface-link, receipt, drift, and rollback evidence; a reviewed
+    live Claude apply now ends `current` while preserving the inactive Codex tree byte-for-byte.
 
 ### R-002 · Plan and tasks guidance disagree on whether an attempt may edit `module.md`
 
@@ -408,6 +411,10 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Improvement**: Include the global-option ordering in generated quickstart examples for Concorde
   validation.
 - **Status**: open
+- **Occurrences**:
+  - implement 2026-08-30 feature.concorde.self-host-framework — the temporal quickstart named a
+    nonexistent standalone `validate.py`; corrected it to use the installed `concorde.py` launcher
+    with `--project-root` before the `validate` verb.
 
 ### R-021 · Immediate port rebinding observed TCP cleanup state
 
@@ -752,4 +759,40 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
   preset surface as the type-stable source; standalone showcase validation passed 9/9 afterward.
 - **Improvement**: Include every repository-evidence diagram in identity/path migration tests before
   running the full documentation build.
+- **Status**: open
+
+### R-039 · Preservation fixture repeated one JSON path
+
+- **Phase**: implement
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.self-host-framework
+- **Kind**: implementation
+- **Concerns**: tests/concorde/fixtures/self-hosting/preserved-files.json
+- **Expected**: The acceptance fixture seeds distinct abstract, design, and implementation paths so
+  every promised durable artifact class participates in byte-preservation evidence.
+- **Observed**: The JSON object repeated `specs/example/design.md` three times, and ordinary parsing
+  silently retained only the last value.
+- **Effect**: worked-around
+- **Action**: Assigned unique durable paths, added duplicate-key rejection in the fixture loader, and
+  retained the same acceptance hashing boundary.
+- **Improvement**: Keep duplicate-key rejection on maintained JSON fixtures whose keys define test
+  coverage rather than incidental data.
+- **Status**: open
+
+### R-040 · Docsite manifest schema emits AJV strict-type warnings
+
+- **Phase**: implement
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.self-host-framework
+- **Kind**: implementation
+- **Concerns**: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json
+- **Expected**: The required documentation check validates and builds maintained sources without
+  schema diagnostics.
+- **Observed**: `npm run check` passed all tests, validation, and production build but AJV reported
+  missing parent `type` declarations for conditional `diagrams.items` and `diagrams.properties`.
+- **Effect**: worked-around
+- **Action**: Preserved the successful Feature 004 evidence, recorded the non-fatal warnings, and did
+  not edit the Feature 002 contract from this attempt.
+- **Improvement**: Add explicit array/object types to the owning manifest schema's conditional
+  `diagrams` branches and require a warning-free docsite gate.
 - **Status**: open

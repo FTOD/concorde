@@ -4,14 +4,19 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.self_hosting_support import initialize_checkout, run_cli
+from tests.concorde.self_hosting_support import initialize_checkout, load_self_hosting, run_cli, skill_file, skill_root
 
 
-class SelfHostingLifecycleTests(unittest.TestCase):
+self_host = load_self_hosting()
+
+
+class _SelfHostingLifecycleMixin:
+    integration = "codex"
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
-        initialize_checkout(self.root)
+        initialize_checkout(self.root, self.integration)
 
     def tearDown(self):
         self.temporary.cleanup()
@@ -26,25 +31,27 @@ class SelfHostingLifecycleTests(unittest.TestCase):
         return value
 
     def test_initial_proposal_and_apply_use_public_local_lifecycle(self):
-        adopted = self.root / ".agents/skills/speckit-concorde-ask/SKILL.md"
+        adopted = skill_file(self.root, self.integration, "speckit.concorde.ask")
         adopted.parent.mkdir(parents=True)
         adopted.write_text("stale hand-maintained copy\n")
         proposal = self.propose()
         self.assertEqual(len(proposal["components"]), 3)
         self.assertEqual(len(proposal["changes"]), 24)
         self.assertEqual(proposal["activation"], "reload_required")
-        adopted_change = next(item for item in proposal["changes"] if item["path"] == ".agents/skills/speckit-concorde-ask")
+        adopted_relative = adopted.parent.relative_to(self.root).as_posix()
+        adopted_change = next(item for item in proposal["changes"] if item["path"] == adopted_relative)
         self.assertEqual(adopted_change["action"], "adopt")
         result = self.apply()
         self.assertEqual(result["status"], "applied")
         self.assertEqual(result["activation"], "reload_required")
         self.assertTrue((self.root / ".specify/self-hosting.json").is_file())
-        fast_loop = self.root / ".agents/skills/speckit-fast-loop/SKILL.md"
+        fast_loop = skill_file(self.root, self.integration, "speckit.fast-loop")
         self.assertTrue(fast_loop.is_file())
         self.assertIn("--phase fast-loop", fast_loop.read_text(encoding="utf-8"))
         registry = json.loads((self.root / ".specify/presets/.registry").read_text())
         self.assertEqual(registry["presets"]["concorde"]["source"], "local")
         self.assertNotIn("stale hand-maintained", adopted.read_text())
+        self.assertEqual(adopted.is_symlink(), self.integration == "claude")
 
     def test_foreign_extension_command_collision_is_rejected_in_preview(self):
         registry = self.root / ".specify/extensions/.registry"
@@ -53,7 +60,7 @@ class SelfHostingLifecycleTests(unittest.TestCase):
             "schema_version": "1.0",
             "extensions": {
                 "other": {
-                    "registered_commands": {"codex": ["speckit.concorde.ask"]}
+                    "registered_commands": {self.integration: ["speckit.concorde.ask"]}
                 }
             },
         }))
@@ -83,6 +90,17 @@ class SelfHostingLifecycleTests(unittest.TestCase):
         self.assertIn("refresh marker", (self.root / ".specify/extensions/concorde/README.md").read_text())
         registry = json.loads((self.root / ".specify/extensions/.registry").read_text())
         self.assertEqual(list(registry["extensions"]), ["concorde"])
+
+    def test_status_rejects_receipt_for_different_integration(self):
+        self.propose()
+        self.apply()
+        receipt_path = self.root / ".specify/self-hosting.json"
+        receipt = json.loads(receipt_path.read_text())
+        receipt["integration"] = "claude" if self.integration == "codex" else "codex"
+        receipt_path.write_text(json.dumps(receipt))
+        _, result = run_cli(self.root, "status")
+        self.assertEqual(result["status"], "drift")
+        self.assertEqual(result["dimensions"]["surfaces"]["status"], "drift")
 
     def test_status_detects_source_installed_registry_and_surface_drift_without_writes(self):
         self.propose()
@@ -117,14 +135,14 @@ class SelfHostingLifecycleTests(unittest.TestCase):
         self.assertEqual(result["dimensions"]["registry"]["status"], "drift")
         registry_path.write_bytes(registry_before)
 
-        missing = self.root / ".agents/skills/speckit-concorde-ask/SKILL.md"
+        missing = skill_file(self.root, self.integration, "speckit.concorde.ask")
         missing_before = missing.read_bytes()
         missing.unlink()
         _, result = run_cli(self.root, "status")
         self.assertEqual(result["dimensions"]["surfaces"]["status"], "missing")
         missing.write_bytes(missing_before)
 
-        extra = self.root / ".agents/skills/speckit-concorde-unexpected/SKILL.md"
+        extra = skill_root(self.root, self.integration) / "speckit-concorde-unexpected/SKILL.md"
         extra.parent.mkdir(parents=True)
         extra.write_text("unexpected\n")
         _, result = run_cli(self.root, "status")
@@ -212,6 +230,55 @@ class SelfHostingLifecycleTests(unittest.TestCase):
         self.assertNotEqual(completed.returncode, 0)
         self.assertEqual(result["status"], "failed")
         self.assertFalse((self.root / ".specify/presets/concorde").exists())
+
+
+class CodexSelfHostingLifecycleTests(_SelfHostingLifecycleMixin, unittest.TestCase):
+    integration = "codex"
+
+
+class ClaudeSelfHostingLifecycleTests(_SelfHostingLifecycleMixin, unittest.TestCase):
+    integration = "claude"
+
+    def test_regular_file_extension_surface_fallback_verifies(self):
+        self.propose()
+        self.apply()
+        for command in self_host.EXTENSION_COMMANDS:
+            path = skill_file(self.root, self.integration, command)
+            content = path.read_bytes()
+            path.unlink()
+            path.write_bytes(content)
+        _, _, _, surfaces = self_host.verify_materialization(self.root)
+        extension_paths = {skill_file(self.root, self.integration, command).relative_to(self.root).as_posix() for command in self_host.EXTENSION_COMMANDS}
+        representations = {item["path"]: item["representation"] for item in surfaces if item["path"] in extension_paths}
+        self.assertEqual(representations, {path: "file" for path in extension_paths})
+
+    def test_status_rejects_retargeted_dangling_absolute_and_representation_drift(self):
+        self.propose()
+        self.apply()
+        path = skill_file(self.root, self.integration, "speckit.concorde.ask")
+        canonical_content = path.read_bytes()
+        unrelated = self.root / "unrelated.md"
+        unrelated.write_text("unrelated\n")
+
+        path.unlink()
+        path.symlink_to(os.path.relpath(unrelated, path.parent))
+        _, result = run_cli(self.root, "status")
+        self.assertEqual(result["dimensions"]["surfaces"]["status"], "missing")
+
+        path.unlink()
+        path.symlink_to("missing.md")
+        _, result = run_cli(self.root, "status")
+        self.assertEqual(result["dimensions"]["surfaces"]["status"], "missing")
+
+        path.unlink()
+        path.symlink_to(unrelated)
+        _, result = run_cli(self.root, "status")
+        self.assertEqual(result["dimensions"]["surfaces"]["status"], "missing")
+
+        path.unlink()
+        path.write_bytes(canonical_content)
+        _, result = run_cli(self.root, "status")
+        self.assertEqual(result["dimensions"]["surfaces"]["status"], "drift")
 
 
 if __name__ == "__main__":

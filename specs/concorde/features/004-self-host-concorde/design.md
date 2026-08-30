@@ -28,12 +28,14 @@ canonical_design: specs/concorde/features/004-self-host-concorde/design.md
 
 **Created**: 2026-08-25
 
-**Revised**: 2026-08-27
+**Revised**: 2026-08-30
 
 **Status**: Draft
 
 **Input**: User description: "Install the Concorde framework into the Concorde project itself so
 that every improvement to the framework or workflow is used while developing Concorde."
+
+**Revision Input**: "Support self-hosting through both the Codex and Claude skills integrations."
 
 ## Self-Hosting Boundary
 
@@ -49,6 +51,11 @@ self-hosting mode whose authority flows in the opposite direction: the current c
 preset, extension, and bundle sources are the expected framework state, while project-local command,
 skill, template, and runtime copies are replaceable materializations used by this checkout.
 
+Protocol v1 supports the Codex and Claude skills integrations under the same supported Spec Kit
+compatibility line. The active integration determines which registry entries and agent surfaces are
+owned, reviewed, refreshed, and verified; materializations belonging only to an inactive integration
+remain unrelated agent assets and are preserved.
+
 Self-hosting is an explicit synchronization lifecycle, not an assumption that every open coding-agent
 session hot-reloads changed instructions. If the active integration requires a new session or an
 explicit reload before refreshed surfaces become effective, the self-hosting result must say so and
@@ -63,7 +70,9 @@ must not claim that the current session is already using them.
   Feature 004, the required Spec Kit component lifecycle, active project materialization, the coding
   agent, preserved Concorde project sources, and the self-hosting drift gate. The installation
   boundary is governed by `contract.concorde.spec-kit-installation` and the required host behavior by
-  `contract.concorde.spec-kit-platform`.
+  `contract.concorde.spec-kit-platform`. Codex and Claude are alternative presentations of the
+  existing active-project-materialization role, so supporting both does not add a component or
+  boundary crossing to the core view.
 - **Supplemental decisions**: No dynamic diagram is needed yet. Installation order, refresh, and
   freshness outcomes are fully described by the scenarios below; a workflow or lifecycle view may
   be added later if state or recovery behavior becomes difficult to understand from the text.
@@ -112,6 +121,9 @@ current local source state.
 4. **Given** the integration cannot make refreshed instructions effective in the current agent
    session, **When** installation succeeds, **Then** the result clearly requires the necessary reload
    or new session and distinguishes materialized state from active-session state.
+5. **Given** either Codex or Claude is the active supported integration, **When** an approved
+   self-installation completes, **Then** its declared registry and agent surfaces are verified using
+   that integration's materialization model before success is recorded.
 
 ---
 
@@ -207,6 +219,9 @@ ownership, recovery of the prior active framework, and actionable residual-state
 - A source file is untracked, ignored, unreadable, or outside the trusted checkout boundary.
 - The selected feature has temporal work in progress while framework commands are refreshed.
 - Another preset or extension owns a colliding command surface.
+- Codex and Claude are both installed, but only one is active when self-hosting is proposed.
+- The active integration represents some development-mode skill surfaces as safe links into an
+  installed component rather than as regular copied files.
 - Self-hosting is invoked from a worktree, detached revision, or checkout with unrelated changes.
 - Verification can compare files but cannot prove which instruction version the running agent loaded.
 
@@ -267,6 +282,10 @@ ownership, recovery of the prior active framework, and actionable residual-state
   framework or workflow improvement claims self-application evidence.
 - **FR-022**: Self-hosting diagnostics MUST identify the affected authority, expected state, observed
   state, lifecycle stage, and safe remediation without exposing unrelated file contents.
+- **FR-023**: Protocol v1 self-hosting MUST support both the Codex and Claude skills integrations on
+  the supported Spec Kit compatibility line; proposal, collision detection, ownership, verification,
+  drift reporting, rollback, and receipt evidence MUST follow the active integration's declared
+  registry and surface model while preserving inactive-integration assets.
 
 ### Key Entities
 
@@ -306,6 +325,9 @@ ownership, recovery of the prior active framework, and actionable residual-state
 - **SC-008**: In a maintainer review, the authoritative framework source, active materialization,
   provenance, drift status, and any required activation step can each be identified within three
   minutes from the self-hosting result and documentation.
+- **SC-009**: The complete proposal, apply, unchanged refresh, drift, rollback, and preservation
+  acceptance matrix passes for both Codex and Claude, including each integration's declared surface
+  representation.
 
 ## Scope
 
@@ -330,6 +352,8 @@ ownership, recovery of the prior active framework, and actionable residual-state
 ## Assumptions
 
 - The checkout is trusted by the maintainer and uses the explicitly supported Spec Kit version.
+- Spec Kit 0.16.4's Codex and Claude skills integrations are the supported protocol v1 targets;
+  other integrations and later Spec Kit versions remain unsupported until equivalent evidence exists.
 - An explicit preview-and-refresh action is acceptable; continuous file-watcher mutation is not
   required.
 - The active coding-agent integration can identify whether it supports immediate instruction reload

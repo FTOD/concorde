@@ -24,10 +24,23 @@ The source side consists of:
 - `extensions/concorde/`, including Concorde commands, launchers, and runtime;
 - `bundles/concorde-bundle/bundle.yml`, which pins the tested composition.
 
-Copies beneath `.specify/presets/`, `.specify/extensions/`, `.agents/skills/`, and the composed
-`.specify/templates/` files are active project materializations. They are replaceable evidence, not
-sources to edit. Changes made only to a materialized file are reported as drift and never flow back
-into the maintained framework.
+Copies beneath `.specify/presets/`, `.specify/extensions/`, the active integration's skill root, and
+the composed `.specify/templates/` files are project materializations. Codex uses `.agents/skills/`;
+Claude uses `.claude/skills/`. They are replaceable evidence, not sources to edit. Changes made only
+to a materialized file are reported as drift and never flow back into the maintained framework.
+
+## Supported integrations
+
+Self-hosting protocol v1 supports the Codex and Claude skills integrations with Spec Kit 0.16.4.
+The active value in `.specify/integration.json` selects the registry keys, owned skill root, surface
+inventory, snapshot, rollback, and receipt evidence for one reviewed operation. An inactive
+integration's assets remain outside that operation and are preserved.
+
+Codex materializes Concorde skills as regular files. Claude materializes preset skills as regular
+files and may materialize development-mode extension skills as relative links into
+`.specify/extensions/concorde/.specify-dev/agent-commands/claude/`. The bootstrap accepts only that
+exact link target and Spec Kit's regular-file fallback; absolute, dangling, retargeted, escaping, or
+otherwise undeclared links are drift and cannot pass verification.
 
 ## Why refresh is explicit
 
@@ -72,12 +85,12 @@ uv run python scripts/development/self-host-concorde.py \
   --format json
 ```
 
-Apply first initializes an isolated Spec Kit project with the same Codex integration and installs
-both components there through public `specify preset add --dev` and
+Apply first initializes an isolated Spec Kit project with the same active supported integration and
+installs both components there through public `specify preset add --dev` and
 `specify extension add --dev` operations. The real checkout is untouched if preflight fails.
 
 After preflight, the bootstrap snapshots only the declared Concorde component copies, registry
-entries/files, composed templates, declared Concorde/Spec Kit skill directories, and prior receipt.
+entries/files, composed templates, active-integration Concorde/Spec Kit skill directories, and prior receipt.
 It delegates installation to Spec Kit, verifies installed bytes, normalized registrations, and all
 declared surfaces, then atomically writes `.specify/self-hosting.json`. A failure restores that
 scope; if restoration itself is incomplete, every residual path is named and success is not
@@ -110,7 +123,7 @@ Status compares five independent dimensions:
 | Source | Do maintained preset, extension, and bundle inputs match the accepted receipt? |
 | Installed | Do copied preset and extension bytes match maintained sources and the receipt? |
 | Registry | Do Spec Kit identities, versions, local provenance, priority, ownership, and command lists match? |
-| Surfaces | Are all declared templates and Codex skills present and unaltered, with no extra Concorde-owned skill? |
+| Surfaces | Are all declared templates and active-integration skills present in their supported representation and unaltered, with no extra Concorde-owned skill? |
 | Activation | Is a reload still required, externally evidenced, or unknown? |
 
 The first four deterministic dimensions must match for overall `current`. Activation remains
