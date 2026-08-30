@@ -2,67 +2,169 @@
 
 **Feature**: `feature.concorde.workflow.fast-loop`
 
-**Realization status**: Accepted initial realization of the installed direct small-change workflow on 2026-08-30.
+**Realization status**: Accepted realization of the relaxed direct small-change workflow, revised
+2026-08-30 for bounded multi-feature and inter-module contract/format reconciliation.
 
-**Selected level**: Immediate sub-feature of `feature.concorde.workflow`; the parent durable trio remains aggregate authority and is not restated here.
+**Selected level**: Immediate sub-feature of `feature.concorde.workflow`; the parent durable trio
+remains aggregate authority and is not restated here.
 
 ## Realization Overview
 
-Concorde ships `speckit.fast-loop` as an additive tenth command in the `concorde` preset, beside nine normal Spec Kit phase modifications and five Concorde extension surfaces. The command is followed by the coding agent rather than implemented as a new mutation runtime. Its first action invokes the installed, project-relative workspace adapter with `--phase fast-loop`; Protocol v8 resolves one existing selected feature root and returns its durable paths, bounded parent/sibling context, attempt state, and project reflection log.
+Concorde ships `speckit.fast-loop` as an additive tenth command in the `concorde` preset, beside nine
+normal Spec Kit phase modifications and five Concorde extension surfaces. The coding agent follows
+the command Markdown directly; no new mutation runtime or launcher verb exists. Its first action
+invokes the installed project-relative workspace adapter with `--phase fast-loop`. Protocol v8
+resolves the standard selected root, which fast-loop treats as an anchor rather than proof of
+single-feature ownership.
 
-The command requires a concrete request, a non-placeholder accepted realization, no active `attempt/`, one-feature ownership, a safely separable worktree, and no architecture, boundary-contract, compatibility, migration, dependency-direction, or cross-feature behavioral effect. Eligible work directly reconciles code, proportional tests, affected selected-feature documents, and related non-architectural user guidance. Ineligible work makes zero fast-loop edits and reports the earliest normal lifecycle stage. No plan, task list, implementation phase, convergence pass, or acceptance proposal is hidden inside a fast-loop invocation.
+The agent discovers the complete affected feature set from bounded module summaries, contracts,
+code, tests, accepted implementation references, and maintained/user documentation. It then invokes
+the same adapter with `--feature-directory <affected-root> --phase fast-loop` for every affected
+existing feature. Each receipt remains single-root path authority, and `.specify/feature.json`
+remains the one standard selection pointer.
+
+Eligibility requires a non-placeholder accepted `implementation.md` and absent `attempt/` for every
+affected feature, a safely separable worktree, and a materially clear bounded outcome. The loop may
+reconcile cross-feature behavior plus related inter-module contract/data-format, maintained-diagram,
+module-reference, and user-guide sources. It rejects feature/module creation or restructuring,
+changed module responsibility or dependency direction, and changes to project-level compatibility or
+migration promises made to users of the whole project. No plan, task list, implementation phase,
+convergence pass, or acceptance proposal is hidden inside an actual fast-loop invocation.
 
 ## Module and Feature Collaboration
 
-- `module.concorde.skills` owns `presets/concorde/commands/speckit.fast-loop.md`, its preset registration, eligibility/direct-edit guidance, hooks, reflection rules, and completion report. Codex and slash-command materializations preserve the same intent.
-- `module.concorde.scripts` extends selected-workspace routing only: `feature_workspace.py` classifies `fast-loop` as root-scoped, so its `phase_root` is the selected feature directory rather than `attempt/`. No new deterministic mutation operation or launcher verb was added.
-- `module.concorde.workspace-files` supplies the existing Protocol v8 durable trio, parent/sibling bounds, selection, attempt state, and project reflection path. `reflections.py` accepts `fast-loop` as a recording phase for genuine workflow problems; expected ineligibility is not a reflection.
-- `module.concorde.distribution` packages ten preset commands, materializes the additive surface, includes it in self-host inventories and release capability counts, and removes it when Concorde is removed. The nine normal command modifications may reveal lower-layer winners; fast-loop has no fictional lower winner.
-- `module.concorde.auto-docs` publishes the child documents and the updated parent workflow view as generated read models while excluding `attempt/`.
+- `module.concorde.skills` owns `presets/concorde/commands/speckit.fast-loop.md`, eligibility and
+  direct-authoring guidance, hooks, reflection rules, architecture-review state, and completion
+  reporting. Codex, Claude, and slash-command materializations preserve the same intent.
+- `module.concorde.scripts` supplies only canonical workspace facts. `feature_workspace.py` keeps
+  `fast-loop` root-scoped, and `workspace.py` already accepts one explicit `--feature-directory` per
+  call. Repeated calls validate affected roots without a protocol or schema change; semantic impact
+  discovery remains with the coding agent.
+- `module.concorde.workspace-files` supplies Protocol v8 durable trio paths, providing-module and
+  parent/sibling bounds, attempt state, and project reflection path for each resolved root. Normal
+  phases remain single-selected-root operations.
+- `module.concorde.distribution` packages ten preset commands and materializes the additive surface.
+  The nine normal modifications may reveal lower-layer winners on removal; fast-loop has no fictional
+  lower winner.
+- `module.concorde.auto-docs` publishes child/parent workflow authorities and the project workflow
+  contracts/views as generated read models while excluding `attempt/`.
 
-The human-readable procedure is `contracts/fast-loop-command.md` under the existing `contract.concorde.workflow` boundary and relies on `contract.concorde.spec-kit-platform` for preset composition and active-integration materialization. No module responsibility, dependency direction, protocol payload, or boundary contract changed.
+The external procedure is `contracts/fast-loop-command.md` under
+`contract.concorde.workflow`. Parent `contracts/architecture-sources.md` and
+`contracts/agent-commands.md` define durable-write and distribution obligations; the project
+`architecture/contracts/concorde-workflow/contract.md` defines single-root lookup plus the bounded
+fast-loop exception. The implementation changes no module responsibility, dependency direction,
+Protocol v8 payload, runtime operation, or project compatibility policy.
 
 ## Scenario Realization
 
-### Eligible direct change
+### Discover and reconcile a bounded affected set
 
-The `direct-authoring` scenario begins with a concrete maintainer request and one selected feature. The adapter discloses the canonical root; the agent reads the selected abstract, behavioral design, accepted implementation, bounded module summary, relevant code/tests/docs, and worktree diff. After all eligibility conditions pass, tests and code change inside the bounded loop. Behavior changes reconcile selected `design.md` and `abstract.md`; realization changes reconcile selected `implementation.md`; related non-architectural guides change only when needed. Proportional tests and deterministic validation must pass before the report claims completion.
+The `direct-authoring` scenario begins with a concrete maintainer request and one selected anchor.
+The agent records the pre-existing worktree plus anchor durable-document hashes, discovers affected
+roots from directly relevant evidence, resolves each root canonically, and records every affected
+durable trio/hash and attempt state. A placeholder realization or active attempt in any affected root
+returns that root to the normal lifecycle before mutation.
 
-### Normal workflow contrast and escalation
+After all gates pass, proportional tests and implementation change in the same bounded loop. Every
+affected `design.md` and `abstract.md` changes only when that feature's required behavior changes;
+every affected `implementation.md` records its verified realization delta. Related contract,
+diagram, module-reference, and user-guide sources change only when required for truthfulness.
+Unrelated feature, architecture, integration, and worktree sources remain untouched.
 
-The `feature-work` scenario remains the default for a new feature, first realization, active attempt, architecture or contract change, compatibility/migration work, multi-feature behavior, ambiguous outcome, or unsafe overlap. Fast-loop rejects these cases before mutation and points to specification, planning, tasks, implementation, or acceptance as appropriate.
+### Distinguish architecture detail from module boundaries
 
-### Failure reporting
+An inter-module format, schema, example, or maintained view is not independently disqualifying.
+Fast-loop may author the complete coordinated change when module responsibilities and dependency
+direction remain stable. If an internal contract is also the project's public user interface, its
+compatibility/migration promise is project-level and returns to the full workflow.
 
-A failed mandatory hook, unavailable required evidence, or unresolved test/validation failure prevents success. The command preserves unrelated user work, reports the exact remaining state, and never labels an unverified realization accepted.
+AI-authored contract, maintained-diagram, or other architecture-authority edits are validated first,
+then reported as `review_pending` with exact paths, hashes, and diff. The command cannot claim final
+success until the maintainer confirms that unchanged validated diff, at which point it reports
+`reviewed`; a run without architecture changes reports `not_required`. This review creates no
+attempt or implementation-acceptance artifact.
+
+### Escalation, hooks, and failure reporting
+
+New or restructured features/modules, changed module responsibilities/dependencies, project-level
+user compatibility/migration policy changes, ambiguous scope, unsafe overlapping ownership,
+unavailable required evidence, failing mandatory hooks, and unrepaired test/validation failures
+prevent success. Expected ineligibility makes zero fast-loop edits and is not itself a reflection.
+The report identifies the failed gate and earliest normal stage. Genuine workflow/tooling problems
+are recorded in the project reflection log.
 
 ## Durable Implementation Decisions
 
-- Fast-loop is an additive preset command, not a normal Spec Kit phase and not an extension runtime operation.
-- The dedicated `fast-loop` workspace phase exists only to resolve an existing selected root accurately; `allow_missing_design` remains exclusive to specification.
-- Smallness is decided by ownership and risk, never by line count. Architecture, contracts, compatibility, migration, dependency direction, and cross-feature behavior always leave the fast path.
-- A non-placeholder accepted implementation is mandatory. Fast-loop may reconcile an established realization but cannot create the first accepted milestone.
-- Behavioral documents remain byte-identical for realization-only corrections; when behavior changes, `design.md` remains authority and `abstract.md` is kept faithful in the same loop.
-- Expected ineligibility is a normal zero-mutation result. Only genuine specification, architecture, guidance, tooling, environment, or implementation problems enter the project reflection log.
-- Installed-surface evidence distinguishes nine complete-layer normal-command modifications from one additive fast-loop command, including uninstall/recomposition behavior.
-- Self-hosting refreshes both maintained command sources and active integration projections; a running agent still requires reload before discovering newly materialized skills.
+- Fast-loop remains an additive preset command, not a normal Spec Kit phase and not a deterministic
+  runtime operation.
+- `.specify/feature.json` remains a single canonical pointer. Fast-loop treats it as an anchor and
+  independently resolves each affected existing root through unchanged Protocol v8.
+- Semantic impact discovery belongs to the coding agent; a deterministic path-only impact engine and
+  an all-project feature payload were rejected as unreliable or unbounded.
+- Every affected feature requires a non-placeholder accepted implementation and no active attempt.
+  Fast-loop cannot create a first accepted milestone.
+- Smallness is determined by bounded affected-authority completeness and architectural risk, not by
+  changed-line count or number of feature roots.
+- Significant architecture means changed module responsibility or dependency direction. Related
+  contract/format, maintained-view, and module-reference detail may be reconciled directly but
+  requires exact maintainer review under constitution A.V (R-041).
+- Compatibility and migration gating applies only to durable project-level promises made to users of
+  the whole project; feature/module sources do not invent separate policy.
+- Behavioral documents remain byte-identical for unaffected or realization-only features; every
+  changed authority is validated in proportion to its role.
+- Completion reports the anchor, complete affected set, per-feature document impact, changed files,
+  checks, architecture review state, preserved unrelated work, and explicit no-attempt/no-acceptance
+  confirmation.
+- Installed-surface generation continues through self-hosting. A dual active-integration refresh
+  currently needs a generated Codex backup/restore to survive the second Claude apply (R-042); this
+  does not change the canonical command or either final projection.
 
 ## Traceability and Evidence
 
-Required behavior and acceptance scenarios are in `design.md`; the external procedure is in `contracts/fast-loop-command.md`; stable component interaction is shown by the parent `diagrams/concorde-workflow-components.json`.
+Required behavior and acceptance scenarios are in `design.md`; the external procedure is
+`contracts/fast-loop-command.md`; aggregate behavior is in the parent `design.md`; project/module
+authority is in `specs/concorde/design.md`, the workflow contracts, and the two maintained workflow
+views.
 
-The maintained realization centers on `presets/concorde/commands/speckit.fast-loop.md`, `presets/concorde/preset.yml`, `extensions/concorde/runtime/concorde/feature_workspace.py`, `extensions/concorde/runtime/concorde/reflections.py`, `scripts/development/self-host-concorde.py`, and `scripts/release/build-components.py`. Public guidance is reconciled in `README.md`, `docs/commands.md`, `docs/quick-start.md`, `docs/concorde-workflow.md`, and the preset README. Installed Codex and Claude projections both contain the surface.
+The maintained realization centers on `presets/concorde/commands/speckit.fast-loop.md`, installed
+`.agents`/`.claude` and `.specify/presets` projections, existing
+`extensions/concorde/scripts/python/workspace.py` and `feature_workspace.py`, plus command/workspace/
+installed/self-host tests. Public guidance is reconciled in `README.md`, `docs/commands.md`,
+`docs/concorde-workflow.md`, and `docs/quick-start.md`.
 
-Executable evidence covers workspace routing, reflection vocabulary, command/manifest contracts, clean Codex and Gemini installation, checkout isolation, recomposition and removal, release archives and capability counts, and self-host materialization. The final Python suite passed 258 tests. Deterministic Concorde validation returned `success` with zero findings. The parent Archify source passed 9/9 showcase checks with zero composition errors or warnings and its delivered artifact remained fresh. The docsite validated 108 pages with zero errors and completed an optimized production build while excluding the attempt.
+Executable evidence on 2026-08-30:
+
+- 21 focused command, workspace, installed Codex/Gemini, and self-hosted Codex/Claude tests passed;
+- the full Concorde Python suite passed 281 tests in 162.472 seconds;
+- repeated explicit-root resolution leaves standard selection unchanged;
+- release build and verification produced matching bundle, extension, and preset digests;
+- deterministic Concorde validation returned `success` with zero findings/errors/warnings/infos;
+- both workflow views passed 9/9 Archify showcase validation/delivery with zero composition errors or
+  warnings; the parent verified 16 repository references;
+- the docsite passed TypeScript, 19 files / 81 tests, 108-page validation with zero errors, and
+  optimized production build; and
+- active Claude self-host status is `current` with source/installed/registry/surfaces matching, while
+  both Codex and Claude projections contain the relaxed policy.
 
 ## Known Limitations
 
-- Browser-based containment and light/dark perceptual review of the parent workflow diagram remains pending because Chrome/Chromium was unavailable; deterministic showcase validation and delivery passed but do not substitute for visual inspection (R-026).
-- The installed tasks template still has wording that can be read as prohibiting realizing code/test paths for a selected sub-feature; implementation used the feature-artifact interpretation, and the guidance should be clarified (R-027).
-- Generated task paths are not yet checked automatically against repository files; two nonexistent test paths required correction during the attempt (R-028).
-- Installed receipt parsing was widened for the hyphenated phase, but the test harness still derives accepted token shape from a regex rather than the runtime phase vocabulary (R-029).
-- Recomposition now distinguishes additive fast-loop ownership from normal-command fallback, but that distinction remains an open recorded implementation lesson (R-030).
-- Full-suite discovery requires `-s tests/concorde -t .` to avoid shadowing the runtime `concorde` package; the quickstart is corrected but the namespace hazard remains relevant to ad hoc commands (R-031).
-- Release capability counts remain duplicated as literals in the builder and tests; they now agree at ten commands, but deriving them from the manifest remains planned improvement (R-032).
-- Scenario identifiers were corrected through specification review to the existing `feature-work` and `direct-authoring` level-view scenarios; initial specification validation did not catch the invented IDs early (R-033).
-- The checkout's self-host status protocol still cannot assess the active Claude integration even though Codex reached `current` and both installed presentations were refreshed; this cross-feature limitation is tracked by R-001.
+- Browser containment and light/dark perceptual review remains pending because Chrome/Chromium is
+  unavailable; deterministic delivery is not visual inspection (R-026).
+- The tasks template's literal selected-child path wording still conflicts with realizing source,
+  test, and coordinated authority paths outside the child root (R-027).
+- Generated task paths are not checked automatically against repository files (R-028).
+- Installed receipt parsing still derives accepted phase-token shape from a regex rather than the
+  runtime vocabulary (R-029).
+- Additive fast-loop recomposition remains a special ownership case without a lower winner (R-030).
+- Ad hoc full-suite discovery can shadow the runtime package unless the discovery root is chosen
+  correctly (R-031).
+- Release capability counts remain duplicated literals instead of manifest-derived values (R-032).
+- Specification validation does not yet catch invented level-view scenario identifiers early
+  (R-033).
+- Architecture-source fast loops now require a two-turn exact review; future guidance should keep
+  that timing explicit whenever direct architecture authoring is widened (R-041).
+- Switching active integration twice during self-host refresh can delete inactive generated
+  Concorde surfaces; the final dual projection currently requires backup/restore (R-042).
+- The generic skill-creator validator rejects Spec Kit/Claude-owned front-matter keys, so Concorde's
+  repository-native manifest/surface/release gates remain authoritative (R-043).
