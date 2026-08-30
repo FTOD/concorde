@@ -17,14 +17,14 @@
       {
         "id": "installed-surfaces",
         "label": "Skills and commands",
-        "focus": ["maintainer", "agent", "phaseCommands", "concordeCommands"],
-        "note": "Package-neutral command Markdown is presented by the active integration as Codex skills or slash commands."
+        "focus": ["maintainer", "agent", "phaseCommands", "fastLoop", "concordeCommands"],
+        "note": "Command Markdown becomes Codex skills or slash commands, including the direct fast-loop surface."
       },
       {
         "id": "normal-lifecycle",
         "label": "Normal Spec Kit phases",
         "focus": ["agent", "phaseCommands", "workspaceAdapter", "controlState", "featureSpec", "featureDesign", "implementation"],
-        "note": "Nine phase surfaces resolve one feature/sub-feature root; a child also receives read-only parent durable context."
+        "note": "Nine normal phase surfaces resolve one feature/sub-feature root; a child also receives read-only parent durable context."
       },
       {
         "id": "concorde-operations",
@@ -36,13 +36,13 @@
         "id": "workspace-map",
         "label": "Project workspace",
         "focus": ["controlState", "architectureSources", "featureSpec", "featureDesign", "implementation"],
-        "note": "Separate control, architecture, selected intent, read-only parent context, feature design reference, and root-local temporal work."
+        "note": "Separate control, architecture, selected intent, accepted realization, and root-local temporal work."
       },
       {
         "id": "accept-milestone",
-        "label": "Accept a milestone",
-        "focus": ["maintainer", "agent", "concordeCommands", "runtime", "featureSpec", "featureDesign", "implementation"],
-        "note": "A reviewed complete attempt is compacted into feature implementation.md, with any module-design amendment, and removed only on approval."
+        "label": "Reconcile realization",
+        "focus": ["maintainer", "agent", "fastLoop", "concordeCommands", "runtime", "featureSpec", "featureDesign", "implementation"],
+        "note": "Acceptance compacts a reviewed attempt; fast-loop directly reconciles one eligible established small change."
       }
     ]
   },
@@ -90,6 +90,18 @@
       "sources": [
         {"path": "extensions/concorde/extension.yml", "label": "command inventory"},
         {"path": "extensions/concorde/commands/speckit.concorde.context.md", "label": "representative surface"}
+      ]
+    },
+    {
+      "id": "fastLoop",
+      "type": "backend",
+      "label": "Fast-Loop Surface",
+      "sublabel": "code + tests + durable docs",
+      "tag": "preset · replace",
+      "pos": [440, 420],
+      "size": [200, 86],
+      "sources": [
+        {"path": "presets/concorde-core/preset.yml", "label": "command inventory"}
       ]
     },
     {
@@ -152,8 +164,8 @@
     {
       "id": "featureDesign",
       "type": "database",
-      "label": "Feature Design Reference",
-      "sublabel": "design.md",
+      "label": "Accepted Realization",
+      "sublabel": "implementation.md",
       "pos": [1170, 680],
       "size": [190, 86]
     },
@@ -173,7 +185,7 @@
     {
       "kind": "region",
       "label": "Installed Concorde tooling",
-      "wraps": ["phaseCommands", "concordeCommands", "workspaceAdapter", "runtime"]
+      "wraps": ["phaseCommands", "fastLoop", "concordeCommands", "workspaceAdapter", "runtime"]
     },
     {
       "kind": "region",
@@ -184,9 +196,11 @@
   "connections": [
     {"id": "direct-agent", "from": "maintainer", "to": "agent", "label": "invoke + review", "labelAt": [185, 540], "variant": "emphasis"},
     {"id": "run-phase", "from": "agent", "to": "phaseCommands", "label": "skill / slash command"},
+    {"id": "run-fast-loop", "from": "agent", "to": "fastLoop", "route": "orthogonal-h", "variant": "emphasis"},
     {"id": "run-concorde", "from": "agent", "to": "concordeCommands", "label": "skill / slash command"},
-    {"id": "resolve-phase", "from": "phaseCommands", "to": "workspaceAdapter", "label": "resolve before phase", "labelAt": [675, 280], "variant": "security"},
+    {"id": "resolve-phase", "from": "phaseCommands", "to": "workspaceAdapter", "label": "resolve before phase", "labelAt": [675, 150], "variant": "security"},
     {"id": "read-selection", "from": "workspaceAdapter", "to": "controlState", "label": "selection + phase root", "labelAt": [820, 280]},
+    {"id": "resolve-fast-loop", "from": "fastLoop", "to": "workspaceAdapter", "label": "resolve + preflight", "variant": "security"},
     {"id": "invoke-runtime", "from": "concordeCommands", "to": "runtime", "label": "portable launcher · 4 operations", "labelAt": [790, 800], "variant": "security"},
     {"id": "runtime-state", "from": "runtime", "to": "controlState", "label": "read / update state"},
     {"id": "route-durable", "from": "controlState", "to": "featureSpec", "label": "selected lifecycle root", "labelAt": [1165, 280]},
@@ -212,6 +226,7 @@
       "items": [
         "The coding agent follows the installed command instructions",
         "Normal phases call workspace.py before Spec Kit work",
+        "Fast-loop calls workspace.py, checks eligibility, then edits directly",
         "Four Concorde operations call portable launchers and Python runtime",
         "The ask surface answers from cited sources without changing the workspace"
       ]
@@ -222,7 +237,7 @@
       "items": [
         "module.md summary + design.md reference: level architecture",
         "parent spec owns aggregate facts; child spec owns focused behavior",
-        "design.md and attempt/ remain isolated to one selected root"
+        "design.md, implementation.md, code/tests, and attempt/ remain isolated to one selected root"
       ]
     }
   ]

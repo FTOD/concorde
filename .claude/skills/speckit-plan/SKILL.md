@@ -106,7 +106,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
      `role: supplemental` workflow, sequence, data-flow, or lifecycle views needed for narrower
      dynamic questions. A sequence diagram cannot be the core view. For every maintained JSON, name
      its textual counterpart, generated delivery, showcase validation, truthful visual-review
-     evidence, and freshness check.
+     evidence, freshness check, and explicit `meta.legend.mode: hidden` presentation policy.
    - Re-evaluate Constitution Check post-design
    - Record every specification, architecture, cross-feature, or guidance problem planning cannot
      resolve as an entry in the project reflection log (see Reflection Recording below) and list

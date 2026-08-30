@@ -26,10 +26,12 @@ evidence, so that a maintainer can understand any level of the project in minute
 
 ## Concorde commands
 
-Concorde adds five agent-facing commands. Feature delivery still uses Spec Kit command names, but
+The Concorde extension adds five agent-facing commands. Feature delivery still uses Spec Kit command names, but
 the `concorde-core` preset **replaces the installed agent instructions for nine of them** so every
 phase resolves the selected hierarchical feature workspace and respects durable versus temporal
 file boundaries. `speckit.constitution` remains the native Spec Kit command and is not replaced.
+The preset also adds `$speckit-fast-loop`, an alternate direct-edit surface for an established small
+change inside one selected feature.
 
 | Command | Use it to |
 |---|---|
@@ -61,6 +63,7 @@ its public command name.
 | `$speckit-implement` | Reads durable intent, accepted realization, `attempt/plan.md`, `attempt/tasks.md`, and checklists; edits product code/tests, marks task state, and may append reflections. It never accepts `implementation.md` or removes `attempt/`. | Replaced by `concorde-core` |
 | `$speckit-converge` | Compares code with durable intent and the active attempt, then append-only adds remaining work to `attempt/tasks.md` and may append reflections. It does not edit code or durable feature/module files. | Replaced by `concorde-core` |
 | `$speckit-taskstoissues` | Reads the selected `attempt/tasks.md`, deduplicates task IDs against GitHub, and creates missing external issues. It does not move task authority out of the workspace or modify the task file. | Replaced by `concorde-core` |
+| `$speckit-fast-loop <small-change description>` | For one existing accepted feature with no active attempt, checks eligibility before mutation, then directly reconciles code, proportional tests, and affected feature/user docs. Architecture, contract, compatibility, cross-feature, ambiguous, and overlapping-worktree changes redirect to the full workflow. | Added by `concorde-core` |
 
 A typical combined workflow is:
 
@@ -73,6 +76,8 @@ speckit.specify → speckit.clarify/checklist → speckit.plan → speckit.tasks
 Clarification, checklists, analysis, and convergence are used when needed; validation can run
 repeatedly, and acceptance is always a separate approval-gated Concorde operation. See
 [Commands](docs/commands.md) for complete timing, inputs, outputs, and installed execution layers.
+For an eligible established small change, select the feature and invoke `speckit.fast-loop` instead;
+it creates no attempt and performs no acceptance operation.
 
 Explore the project through its three generated views:
 [Architecture](specs/concorde/module.md), [Documentation](docs/index.md), and
@@ -83,8 +88,8 @@ Explore the project through its three generated views:
 Concorde is designed to be installed as a native Spec Kit bundle containing:
 
 - the `concorde-core` preset, which appends architecture guidance to Spec Kit's templates, supplies
-  the feature abstract and design-reference templates, and replaces nine normal command instructions
-  with Concorde-aware workspace routing;
+  the feature abstract, design-reference, and reflection-log templates, replaces nine normal command
+  instructions with Concorde-aware workspace routing, and adds one fast-loop command;
 - the `concorde` extension, which supplies five Concorde surfaces—four runtime-backed operations plus
   the read-only `ask` procedure—the workspace adapter, and runtime; and
 - no replacement workflow: Spec Kit continues to own specification, planning, tasks, and
@@ -95,7 +100,7 @@ The three Spec Kit package concepts have different jobs:
 | Concept | Concorde package | Role |
 |---|---|---|
 | Bundle | `concorde-bundle` | An installation recipe that pins the tested preset and extension versions. |
-| Preset | `concorde-core` | Five templates (three append layers plus the `abstract-template` and `implementation-template` feature documents) and nine complete normal-command replacements for nested workspace routing. |
+| Preset | `concorde-core` | Six templates (three append layers plus the `abstract-template`, `implementation-template`, and `reflections-template` documents), nine complete normal-command replacements, and one fast-loop command. |
 | Extension | `concorde` | Five Concorde-specific surfaces: four deterministic operations and one agent-followed, read-only question procedure. |
 
 Catalogs are trusted discovery metadata for these independently versioned packages; they are not a

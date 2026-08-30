@@ -7,7 +7,7 @@ from pathlib import Path
 from tests.concorde.contract.test_installed_command_surfaces import _builder
 from tests.concorde.support.catalog_server import CatalogServer
 from tests.concorde.support.installed_command_surface import (
-    NORMAL_PHASES,
+    PRESET_COMMANDS,
     execute_workspace_surface,
     registered_artifact,
 )
@@ -38,7 +38,7 @@ class CleanPhaseMatrixTests(unittest.TestCase):
                 runs = []
                 for _ in range(3):
                     receipts = []
-                    for command, phase in NORMAL_PHASES.items():
+                    for command, phase in PRESET_COMMANDS.items():
                         receipt = execute_workspace_surface(
                             root,
                             registered_artifact(root, "codex", command),

@@ -187,7 +187,9 @@ Given that feature description, do this:
        the feature's core diagram. Use descriptive filenames other than `architecture.json` and
        declare every diagram in `design.md` so Documentation can embed it automatically. Diagrams
        supplement the textual feature and contracts; they do not define new behavior or low-level
-       class/function inventories.
+       class/function inventories. Every maintained Concorde Archify source MUST set
+       `meta.legend.mode` to `hidden`; domain labels and the textual counterpart explain the view,
+       not Archify's renderer-owned generic legend categories.
     5. Generate Functional Requirements
        Each requirement must be testable
        Use reasonable defaults for unspecified details (document assumptions in Assumptions section)
@@ -246,6 +248,7 @@ Given that feature description, do this:
       - [ ] Every rule in the abstract's Logic section cites FR-NNN identifiers that design.md defines
       - [ ] The abstract is self-contained and states no requirement, scope boundary, or success criterion that design.md does not state
       - [ ] Dynamic scenario views are supplemental and no sequence diagram is designated as core
+      - [ ] Every maintained Archify source explicitly sets `meta.legend.mode` to `hidden`
       - [ ] Feature meets measurable outcomes defined in Success Criteria
       - [ ] No implementation details leak into specification
 

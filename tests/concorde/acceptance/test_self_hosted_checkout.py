@@ -19,7 +19,11 @@ class SelfHostedCheckoutAcceptanceTests(unittest.TestCase):
             run_cli(root, "propose")
             _, applied = run_cli(root, "apply", "--proposal", ".specify/self-hosting-proposal.json")
             self.assertEqual(applied["status"], "applied")
-            self.assertEqual(len(list((root / ".agents/skills").glob("speckit-*/SKILL.md"))), 15)
+            self.assertEqual(len(list((root / ".agents/skills").glob("speckit-*/SKILL.md"))), 16)
+            fast_loop = root / ".agents/skills/speckit-fast-loop/SKILL.md"
+            self.assertTrue(fast_loop.is_file())
+            self.assertIn("--phase fast-loop", fast_loop.read_text(encoding="utf-8"))
+            self.assertIn("No attempt: yes", fast_loop.read_text(encoding="utf-8"))
             self.assertEqual(before, hash_paths(root, tuple(sentinels)))
             _, current = run_cli(root, "status")
             self.assertEqual(current["status"], "current")

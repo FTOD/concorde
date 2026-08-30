@@ -15,19 +15,22 @@ The skill sources come from two packages:
 
 - `presets/concorde-core/commands/` and `templates/` compose Concorde guidance into the normal Spec
   Kit phases: clarify, specify, plan, tasks, implement, analyze, checklist, task-to-issues, and
-  converge.
+  converge. The same preset adds `speckit.fast-loop` as a separate additive command for an eligible
+  established small change; it is not a tenth normal Spec Kit phase.
 - `extensions/concorde/commands/` defines the Concorde-specific init, context, validate,
   implementation-acceptance, and read-only ask skills.
 
 Installed copies under `.agents/skills/`, `.claude/`, or another integration directory are
-materializations. The preset and extension directories are the maintained package sources.
+materializations. The preset and extension directories are the maintained package sources. Fast-loop
+is distributed and self-hosted through those same public component mechanisms.
 
 ### Script boundary
 
 Only four Concorde-specific skills cross into the deterministic runtime: `init`, `context`,
-`validate`, and `impl.accept`. The read-only `ask` skill is followed by the coding agent and has no
-runtime subcommand. Normal phase skills call `workspace.py` only to resolve the selected nested
-workspace and derive phase paths.
+`validate`, and `impl.accept`. The read-only `ask` skill and the mutating `fast-loop` skill are
+followed by the coding agent and have no runtime subcommand. Normal phase skills call `workspace.py`
+only to resolve the selected nested workspace and derive phase paths; fast-loop calls the same adapter
+with a root-scoped phase to resolve an existing durable feature before semantic eligibility review.
 
 The script boundary is implemented by:
 
@@ -56,9 +59,11 @@ The workflow uses files as durable documentation or scoped memory:
 | Generated projection | `generated/**`, docsite build output | Disposable read model; never source authority |
 
 An agent may read durable files for bounded context and write the files explicitly assigned to the
-current phase. Attempt files may be replaced during convergence. Durable intent changes only through
-the relevant specification workflow, and accepted realization changes only through explicit,
-digest-bound implementation acceptance.
+current phase. Attempt files may be replaced during convergence. Durable intent changes through the
+relevant specification workflow. The first accepted realization is written through explicit,
+digest-bound implementation acceptance; an explicitly requested eligible fast-loop may later
+reconcile the selected feature's established durable intent and realization directly after
+proportional evidence passes.
 
 ### Interaction matrix
 
@@ -67,6 +72,7 @@ digest-bound implementation acceptance.
 | Clarify / specify | Existing durable architecture and feature intent | Durable feature intent | Selected-workspace routing as needed |
 | Plan / tasks | Durable intent and bounded architecture | `attempt/` planning and task files | Workspace routing; context/validation when instructed |
 | Implement / analyze / converge | Durable intent plus current `attempt/` | Product code, task state, attempt evidence, reflections | Workspace routing; context/validation when instructed |
+| `fast-loop` | One selected established feature, bounded architecture, relevant code/tests/docs, worktree state | Eligible code/tests, affected selected feature documents, related non-architectural guides, genuine reflections | Root-scoped workspace routing only |
 | `concorde.context` / `validate` | Maintained architecture and feature files | None | Deterministic runtime operation |
 | `concorde.init` | Project/config state | Proposal only, then approved root files | Deterministic runtime operation |
 | `concorde.impl.accept` | Completed attempt and durable targets | Approved durable realization and attempt cleanup | Atomic deterministic operation |
@@ -85,7 +91,9 @@ lifecycle paths sparse; the embedded matrices name the exact per-skill exception
 ### Supporting adapters
 
 Distribution packages the maintained preset and extension, publishes their catalogs, and delegates
-materialization to Spec Kit. Auto-Docs validates maintained sources, renders declared diagrams,
+materialization to Spec Kit. It treats the nine normal commands as replace-style layers and
+fast-loop as an additive surface: removal can reveal lower normal winners, while solely owned
+fast-loop disappears (R-030). Auto-Docs validates maintained sources, renders declared diagrams,
 and projects `specs/`, `docs/`, and the root README into a generated site. These adapters consume the
 three-part workflow architecture; they do not sit between a skill, script, and workspace file during
 normal feature work.
@@ -99,6 +107,11 @@ keeps each dependency directional:
 
 `Maintainer → Skills → Scripts → Workspace Files`, with a direct `Skills → Workspace Files` path for
 agent-authored phases. Distribution feeds Skills and Scripts; Auto-Docs consumes Workspace Files.
+
+Fast-loop follows the direct Skills → Workspace Files path because arbitrary code and documentation
+authoring belongs to the coding agent. Scripts contribute only canonical selection facts. This keeps
+the risk decision semantic—feature ownership, architecture, contracts, compatibility, and worktree
+safety—instead of encoding an unreliable line-count threshold or a second mutation engine.
 
 This split also makes testing clearer: command-surface tests belong to Skills, runtime and launcher
 tests belong to Scripts, workspace-layout and acceptance tests belong to Workspace Files, release
@@ -114,6 +127,12 @@ tests belong to Distribution, and site tests belong to Auto-Docs.
   is the workflow's central state model and must be reviewable as architecture.
 - **Fold Distribution and Auto-Docs into the three-part spine** — rejected because installation
   and publication cross project boundaries and have distinct failure and ownership rules.
+- **Implement fast-loop as a runtime operation** — rejected because deterministic scripts cannot
+  author arbitrary project code and documentation without duplicating the coding agent.
+- **Alias fast-loop to `speckit.implement`** — rejected because implementation requires an active
+  attempt and would silently reintroduce the planning, tasks, and acceptance ceremony this path omits.
+- **Define smallness by changed-line count** — rejected because ownership and architectural risk, not
+  diff size, determine whether direct authoring is safe.
 
 ## Decision Log
 
@@ -122,3 +141,6 @@ tests belong to Distribution, and site tests belong to Auto-Docs.
 - Defined installed skills as the only feature-work interaction surface.
 - Made durable, temporal, selection, and generated file lifetimes explicit at the root.
 - Assigned deterministic operations and workspace routing to Scripts rather than to an abstract core.
+- 2026-08-30: Added `speckit.fast-loop` as an additive agent-followed preset surface with root-scoped workspace routing and no mutation runtime.
+- 2026-08-30: Kept additive fast-loop removal distinct from lower-layer restoration for the nine normal replacements (R-030).
+- 2026-08-30: Retained follow-up to clarify selected-sub-feature task-path wording (R-027) and to derive release capability counts from manifests rather than duplicated literals (R-032).

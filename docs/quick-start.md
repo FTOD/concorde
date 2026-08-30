@@ -160,7 +160,7 @@ components:
 
 | Installed component | Responsibility |
 |---|---|
-| `concorde-core` preset | Adds five architecture-aware templates (including the feature abstract and design-reference templates) and complete selected-workspace routing for nine normal Spec Kit phases |
+| `concorde-core` preset | Adds six architecture-aware templates (including feature abstract, design-reference, and reflection-log templates), complete selected-workspace routing for nine normal Spec Kit phases, and one fast-loop command |
 | `concorde` extension | Adds five Concorde-specific surfaces: four runtime-backed operations, one read-only agent question procedure, portable adapters and launchers, and the deterministic Python runtime |
 
 Spec Kit resolves and installs those components and asks the active coding-agent integration to
@@ -236,6 +236,18 @@ $speckit-implement
 $speckit-converge
 $speckit-concorde-validate
 ```
+
+For a small change to an existing selected feature that already has an accepted implementation and
+no active `attempt/`, use the alternate direct path:
+
+```text
+$speckit-fast-loop <small-change description>
+```
+
+Fast-loop checks eligibility before mutation, then directly reconciles code, proportional tests,
+and affected feature/user documentation. It redirects architecture, boundary-contract,
+compatibility, cross-feature, ambiguous, or overlapping-worktree work to the normal lifecycle and
+creates no attempt or acceptance proposal.
 
 The abstract (`abstract.md`), behavioral design (`design.md`), and accepted implementation
 (`implementation.md`) stay at

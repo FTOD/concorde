@@ -60,6 +60,7 @@ class FeatureWorkspaceTests(unittest.TestCase):
             self.assertEqual(paths.attempt_state, "absent")
             self.assertEqual(phase_target(paths, "specify"), paths.feature_directory)
             self.assertEqual(phase_target(paths, "checklist"), paths.feature_directory)
+            self.assertEqual(phase_target(paths, "fast-loop"), paths.feature_directory)
             self.assertEqual(phase_target(paths, "plan"), paths.attempt_dir)
             self.assertEqual(phase_target(paths, "converge"), paths.attempt_dir)
             self.assertFalse((root / "plan.md").exists())

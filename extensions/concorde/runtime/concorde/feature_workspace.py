@@ -58,7 +58,7 @@ class WorkspacePaths:
         return asdict(self)
 
 
-ROOT_PHASES = frozenset({"specify", "clarify", "checklist", "contracts"})
+ROOT_PHASES = frozenset({"specify", "clarify", "checklist", "contracts", "fast-loop"})
 ATTEMPT_PHASES = frozenset(
     {"plan", "tasks", "implement", "analyze", "converge", "taskstoissues", "validation"}
 )

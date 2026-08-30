@@ -51,12 +51,12 @@ class ManifestContractTests(unittest.TestCase):
             self.assertTrue((root / ".specify/extensions/concorde/extension.yml").is_file())
             self.assertTrue((root / ".specify/presets/concorde-core/preset.yml").is_file())
 
-    def test_preset_has_three_append_templates_three_replace_templates_and_nine_replace_commands(self):
+    def test_preset_has_three_append_templates_three_replace_templates_nine_normal_and_fast_loop_commands(self):
         manifest = (REPOSITORY_ROOT / "presets/concorde-core/preset.yml").read_text(encoding="utf-8")
         self.assertEqual(manifest.count('type: "template"'), 6)
-        self.assertEqual(manifest.count('type: "command"'), 9)
+        self.assertEqual(manifest.count('type: "command"'), 10)
         self.assertEqual(manifest.count('strategy: "append"'), 3)
-        self.assertEqual(manifest.count('strategy: "replace"'), 12)
+        self.assertEqual(manifest.count('strategy: "replace"'), 13)
         self.assertIn('name: "abstract-template"', manifest)
         self.assertIn('name: "implementation-template"', manifest)
         for template in ("abstract-template", "implementation-template"):
@@ -80,8 +80,10 @@ class ManifestContractTests(unittest.TestCase):
             "analyze",
             "converge",
             "taskstoissues",
+            "fast-loop",
         ):
             self.assertIn(f'name: "speckit.{command}"', manifest)
+        self.assertTrue((REPOSITORY_ROOT / "presets/concorde-core/commands/speckit.fast-loop.md").is_file())
         self.assertIn("temporal attempt/checklists/", manifest)
         self.assertNotIn("checklists at the durable feature root", manifest)
 

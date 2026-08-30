@@ -42,6 +42,7 @@ PRESET_COMMANDS = (
     "speckit.analyze",
     "speckit.converge",
     "speckit.taskstoissues",
+    "speckit.fast-loop",
 )
 EXTENSION_COMMANDS = (
     "speckit.concorde.init",

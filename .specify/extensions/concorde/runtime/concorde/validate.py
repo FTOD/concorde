@@ -17,7 +17,7 @@ from .validation.layout import validate_layout
 from .validation.evidence import validate_evidence
 from .validation.freshness import validate_freshness
 from .validation.summary import validate_summaries
-from .validation.diagrams import validate_module_diagrams
+from .validation.diagrams import validate_diagrams
 from .validation.abstract import validate_abstracts
 from .validation.reflections import validate_reflections
 
@@ -27,7 +27,7 @@ REQUIRED_CONTRACT_SECTIONS = ("Purpose", "Information", "Obligations", "Failure 
 FOCUSED_VALIDATORS = (
     validate_hierarchy,
     validate_summaries,
-    validate_module_diagrams,
+    validate_diagrams,
     validate_abstracts,
     validate_reflections,
     validate_layout,

@@ -27,7 +27,7 @@ REQUIRED_FIELDS = (
     "Improvement",
     "Status",
 )
-PHASES = frozenset({"plan", "tasks", "implement", "analyze", "converge"})
+PHASES = frozenset({"plan", "tasks", "implement", "analyze", "converge", "fast-loop"})
 KINDS = frozenset({"specification", "architecture", "guidance", "tooling", "environment", "implementation"})
 EFFECTS = frozenset({"assumed", "worked-around", "deferred", "blocked"})
 STATUSES = frozenset({"open", "resolved", "dismissed"})

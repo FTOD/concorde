@@ -25,6 +25,9 @@ NORMAL_PHASES = {
     "speckit.taskstoissues": "taskstoissues",
 }
 
+FAST_LOOP_PHASES = {"speckit.fast-loop": "fast-loop"}
+PRESET_COMMANDS = {**NORMAL_PHASES, **FAST_LOOP_PHASES}
+
 CONCORDE_RUNTIME_COMMANDS = (
     "speckit.concorde.init",
     "speckit.concorde.impl-accept",
@@ -73,7 +76,7 @@ def _files(root: Path, relative_roots: Iterable[str]) -> Iterable[Path]:
 
 
 def handoff_digest(extension_root: Path, preset_root: Path) -> str:
-    """Digest installed Feature 001 behavior plus the nine routing surfaces."""
+    """Digest installed Feature 001 behavior plus normal and fast-loop preset surfaces."""
     digest = hashlib.sha256()
     for component, root, members in (
         ("extension", extension_root, ("commands", "runtime", "scripts", "schemas")),
@@ -119,7 +122,7 @@ def execute_workspace_surface(
 ) -> CommandSurfaceReceipt:
     content = artifact.read_text(encoding="utf-8")
     match = re.search(
-        r"(?:python3|python)\s+\.specify/extensions/concorde/scripts/python/workspace\.py\s+--phase\s+([a-z]+)",
+        r"(?:python3|python)\s+\.specify/extensions/concorde/scripts/python/workspace\.py\s+--phase\s+([a-z-]+)",
         content,
     )
     if match is None or match.group(1) != phase:

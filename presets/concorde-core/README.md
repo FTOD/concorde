@@ -6,10 +6,11 @@ Concorde's hierarchical architecture controls. It does not create another featur
 At priority 10, its three spec/plan/tasks template contributions use `append`, while its Concorde-only
 `abstract-template` and `implementation-template` feature documents and the project-wide `reflections-template`
 (the reflection log seeded at the specification root and appended to by every phase after
-specification) use `replace`. Its nine normal lifecycle
-command contributions use `replace`: each complete command preserves the corresponding Spec Kit
+specification) use `replace`. Its nine normal lifecycle command contributions and one fast-loop
+command use `replace`: each normal command preserves the corresponding Spec Kit
 0.16.4 phase while resolving Concorde's selected feature and durable/temporal paths before any
-path-sensitive work. The installed extension supplies that workspace adapter and five
+path-sensitive work. Fast-loop resolves an existing selected root, rejects out-of-bound work before
+mutation, and directly reconciles an eligible small change without an attempt. The installed extension supplies that workspace adapter and five
 Concorde-specific surfaces: four runtime-backed operations, including task-complete feature
 acceptance, plus the agent-only, read-only `ask` procedure.
 
@@ -33,4 +34,5 @@ automatically by the project docsite. Every maintained Concorde Archify source e
 
 Parent specifications own aggregate outcomes and shared constraints; sub-feature specifications own
 focused behavior and inherit the parent module. Protocol v8 routes normal phases to exactly one
-selected root and exposes parent durable context read-only without sibling bodies or attempts.
+selected root, routes fast-loop to that root rather than `attempt/`, and exposes parent durable
+context read-only without sibling bodies or attempts.

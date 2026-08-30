@@ -22,6 +22,9 @@ selected feature's `attempt/`, and generated projections never become source aut
 workflow roles; do not invent product modules named Skills, Scripts, or Workspace Files unless the
 project itself provides those product responsibilities.
 
+The proposed seed level view explicitly sets `meta.legend.mode` to `hidden`, matching the Concorde
+policy for every maintained Archify diagram. Treat a proposal that omits that setting as invalid.
+
 If the status is `unchanged`, report the existing `architecture` paths, children, features, and
 contracts. Do not present a new starter proposal or overwrite the configured hierarchy. If the status
 is `proposal`, present the complete JSON proposal, exact files, hashes, and conflicts. Do not

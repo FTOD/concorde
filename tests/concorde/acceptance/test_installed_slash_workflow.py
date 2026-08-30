@@ -10,7 +10,7 @@ from tests.concorde.contract.test_installed_command_surfaces import _builder
 from tests.concorde.support.catalog_server import CatalogServer
 from tests.concorde.support.installed_command_surface import (
     CONCORDE_COMMANDS,
-    NORMAL_PHASES,
+    PRESET_COMMANDS,
     execute_workspace_surface,
     registered_artifact,
 )
@@ -46,7 +46,7 @@ class InstalledSlashWorkflowTests(unittest.TestCase):
                     self.assertIn(requirement, ask)
                 for executable in ("concorde.sh", "concorde.ps1", "concorde.py", "workspace.py"):
                     self.assertNotIn(executable, ask)
-                for command, phase in NORMAL_PHASES.items():
+                for command, phase in PRESET_COMMANDS.items():
                     receipt = execute_workspace_surface(
                         root,
                         registered_artifact(root, "gemini", command),

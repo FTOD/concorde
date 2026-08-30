@@ -14,8 +14,9 @@ longer writes most of the code but still has to own the project, and for the age
 bounded, trustworthy context for every task.
 
 The idea underneath everything: at every level there is a document that is **read** (absorbable in
-minutes) and a document that is **consulted** (opened for one question), and only an explicit,
-approved milestone turns work in progress into accepted realization.
+minutes) and a document that is **consulted** (opened for one question). The normal lifecycle turns
+work in progress into accepted realization only through an explicitly approved milestone; fast-loop
+is a separate, explicitly invoked direct-authoring path limited to an established small change.
 
 ## Functionality
 
@@ -27,10 +28,10 @@ approved milestone turns work in progress into accepted realization.
 | module root | `design.md` | the module design reference: implementation notes, rationale, alternatives, decision log; consulted, never required |
 | feature root | `abstract.md` | this kind of page: purpose, functionality, structure, logic; under 15 minutes |
 | feature root | `design.md` | the complete behavioral authority: scenarios, requirements, success criteria |
-| feature root | `implementation.md` | the feature design reference: how the accepted implementation realizes the feature, in full detail; written only by acceptance |
+| feature root | `implementation.md` | the feature design reference: how the accepted implementation realizes the feature, in full detail; normally written by acceptance and directly reconciled only by an eligible fast-loop |
 | feature root | `attempt/` | the one attempt in progress: plan, tasks, checklists, research, evidence; removed when accepted |
 
-**The command surfaces** — 14 in total, all reached through the active coding-agent integration as
+**The command surfaces** — 15 in total, all reached through the active coding-agent integration as
 skills or slash commands:
 
 | Surface | What it does |
@@ -40,6 +41,7 @@ skills or slash commands:
 | `speckit.concorde.ask` | Answers a workflow question read-only from installed guidance, module summaries, and feature abstracts, citing anything deeper it opens. Agent-followed; no runtime. |
 | `speckit.concorde.validate` | Checks every maintained source deterministically and returns sorted findings with rule, severity, location, and remediation; byte-equivalent on repeat. |
 | `speckit.concorde.impl.accept` | Turns a completed attempt into accepted realization: proposal, exact review, explicit approval, atomic apply. |
+| `speckit.fast-loop` | Directly reconciles an eligible small change across code, tests, and related selected-feature/user documentation; creates no attempt and redirects ineligible work before mutation. |
 | `speckit.specify` · `clarify` · `checklist` | Author `abstract.md` and `design.md` for the selected root, seed a placeholder `implementation.md` for a new root, and write review checklists under `attempt/checklists/`. |
 | `speckit.plan` · `tasks` · `taskstoissues` | Plan one attempt from `design.md`, the accepted `implementation.md`, and the level's `module.md`; write only under `attempt/`. |
 | `speckit.implement` · `analyze` · `converge` | Execute the task list inside the attempt, report inconsistencies read-only, and append only genuine remaining work. |
@@ -57,7 +59,8 @@ The core view is <a href="/architecture/concorde-workflow-components.html">workf
 ```text
 Maintainer ──invoke · review · approve──▶ Coding-agent integration (skills / slash commands)
                                             ├─ 9 Spec Kit phase surfaces ──▶ selected-workspace adapter ──▶ .specify/feature.json
-                                            └─ 5 Concorde surfaces ─────────▶ launchers + Python runtime ──▶ architecture sources
+                                            ├─ fast-loop direct surface ───▶ code + tests + selected feature docs
+                                            └─ 5 Concorde surfaces ────────▶ launchers + Python runtime ──▶ architecture sources
                                                  (init · context · validate · impl.accept · ask)        (module.md · design.md · architecture/: diagrams · contracts · modules)
 
 Selected feature root:   abstract.md   design.md   implementation.md      +   attempt/  (one attempt, until accepted)
@@ -67,6 +70,9 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
 - **Spec Kit phase surfaces** are Spec Kit's own nine commands with a Concorde preset override
   that resolves the selected root *before* the phase runs, so no inherited helper can fall back to
   a root-level plan or task path.
+- **Fast-loop** is the explicitly invoked alternate for an already-realized, single-feature,
+  non-architectural small change with no active attempt. It edits the bounded change and related
+  documentation directly or redirects to the normal lifecycle before mutation.
 - **Concorde surfaces** come from the `concorde` extension: four runtime operations plus the
   agent-only `ask`. The runtime is portable standard-library Python reached through launchers;
   installed projects never depend on the Concorde checkout.
@@ -89,6 +95,9 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
    selection in `.specify/feature.json`; selecting an existing root is the same pointer.
 4. **Specify**: the abstract and the specification are written together; clarification updates both;
    checklists gate the next phases without granting approval.
+   For an already-realized small change that stays within one selected feature, the maintainer may
+   instead invoke **fast-loop**: eligibility is checked before mutation, then code, tests, and
+   affected feature/user docs are reconciled directly with no attempt or acceptance operation.
 5. **Plan**: one attempt under `attempt/`, derived from the specification and the accepted
    design reference; the abstract only orients.
 6. **Execute and reconcile**: tasks run inside the attempt; analysis reports disagreement — including
@@ -113,8 +122,9 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   `design.md` prevails when they disagree (FR-006, FR-007).
 - Module `design.md` and feature `implementation.md` are never implicit inputs; context, questions,
   and planning reach them deliberately and cite them (FR-004, FR-011, FR-012, FR-015).
-- The feature `implementation.md` is written only by acceptance: a placeholder until the first accepted
-  milestone, written in full then, completed later (FR-008, FR-017).
+- The feature `implementation.md` gets its first accepted realization only through acceptance;
+  an eligible fast-loop may directly reconcile an established realization with a verified small
+  change and never creates the first one (FR-008, FR-017, FR-035).
 - Acceptance never edits `abstract.md`, `design.md`, or any `module.md`; a module `design.md` amendment
   rides only on the same reviewed, digest-bound proposal and applies atomically with the
   compaction (FR-017, FR-028).
@@ -128,12 +138,16 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   go stale (FR-027, FR-028).
 - Generated diagrams, pages, manifests, and reports are reproducible projections that exclude
   temporal attempts; missing evidence is reported as unknown, never inferred (FR-029, FR-031).
+- Fast-loop is confined to one already-realized selected feature with no active attempt; it preserves
+  unrelated work, rejects architecture/contract/compatibility/cross-feature work before mutation,
+  creates no attempt artifacts, and succeeds only with aligned docs and passing proportional checks
+  (FR-035).
 
 ## Read Next
 
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): the Document Model
   and "Where a fact lives" table, the Decomposition table, the End-to-End Workflow table, FR-001 to
-  FR-034, and SC-001 to SC-013.
+  FR-035, and SC-001 to SC-014.
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (accepted realization and
   implementation detail, written by acceptance).
 - **The contracts this feature crosses** — `contracts/agent-commands.md`
@@ -143,7 +157,7 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   [contract.concorde.workflow](../../architecture/contracts/concorde-workflow/contract.md).
 - **The level this feature belongs to** — [module.md](../../module.md) (the root summary, linking the root
   level view under `../../architecture/diagrams/`) and its [design reference](../../design.md).
-- **The nine workflow steps** — one sub-feature each:
+- **The ten workflow steps and alternate** — one sub-feature each:
   [initialize](subfeatures/001-initialize-architecture/design.md),
   [context](subfeatures/002-retrieve-bounded-context/design.md),
   [ask](subfeatures/003-answer-workflow-questions/design.md),
@@ -152,6 +166,7 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   [plan](subfeatures/006-plan-delivery/design.md),
   [execute](subfeatures/007-execute-and-reconcile/design.md),
   [validate](subfeatures/008-validate-architecture/design.md),
-  [accept](subfeatures/009-accept-milestone/design.md).
+  [accept](subfeatures/009-accept-milestone/design.md),
+  [fast-loop](subfeatures/010-fast-loop/design.md).
 - **Framework-level explanation** — [docs/concorde-workflow.md](../../../../docs/concorde-workflow.md)
   and [docs/specification-model.md](../../../../docs/specification-model.md).

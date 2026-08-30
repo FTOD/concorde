@@ -11,6 +11,7 @@ sys.path.insert(0, str(RUNTIME_ROOT))
 from concorde.reflections import (  # noqa: E402
     EFFECTS,
     KINDS,
+    PHASES,
     REQUIRED_FIELDS,
     STATUSES,
     log_path,
@@ -36,6 +37,7 @@ class ReflectionParserTests(unittest.TestCase):
         self.assertEqual(KINDS, {"specification", "architecture", "guidance", "tooling", "environment", "implementation"})
         self.assertEqual(EFFECTS, {"assumed", "worked-around", "deferred", "blocked"})
         self.assertEqual(STATUSES, {"open", "resolved", "dismissed"})
+        self.assertIn("fast-loop", PHASES)
         self.assertEqual(log_path("specs/example/"), "specs/example/reflections.md")
         self.assertEqual(strip_reference_suffix("specs/x/design.md#functional-requirements"), "specs/x/design.md")
         self.assertEqual(strip_reference_suffix("src/api/invoke.py:42"), "src/api/invoke.py")

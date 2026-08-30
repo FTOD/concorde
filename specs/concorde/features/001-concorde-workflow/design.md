@@ -13,6 +13,7 @@ subfeatures:
   - feature.concorde.workflow.execute-and-reconcile
   - feature.concorde.workflow.validate-architecture
   - feature.concorde.workflow.accept-milestone
+  - feature.concorde.workflow.fast-loop
 scenarios:
   - feature-work
   - direct-authoring
@@ -47,8 +48,8 @@ and temporal `attempt/` directory. `abstract.md` is read first, `design.md` owns
 and `implementation.md` records accepted realization. Modules retain `module.md` / `design.md`.
 Protocol v8, proposal v6, and Build Manifest v8 carry these names through every surface, and
 Architecture Source Profile 4 places each module's diagrams, boundary contracts, and submodules under
-its `architecture/` directory beside `features/`. The nine
-workflow-step sub-features remain the decomposition.
+its `architecture/` directory beside `features/`. A tenth immediate child now owns the explicitly
+invoked fast path for small, non-architectural changes.
 
 **Input**: User description (2026-08-29): rename the feature-root documents from `tldr.md`,
 `spec.md`, and `design.md` to `abstract.md`, `design.md`, and `implementation.md`; rename temporal
@@ -75,7 +76,8 @@ source ownership.
 - Q: When and by whom is implementation detail and rationale written into a module's `implementation.md`?
   → A: During work it is captured inside `attempt/`; only an approved acceptance proposal
   writes attempt-derived content into `implementation.md`. Maintainers may edit `implementation.md` directly at any
-  time as an ordinary maintained source; no workflow phase other than acceptance writes it.
+  time as an ordinary maintained source; at that revision no workflow phase other than acceptance
+  wrote it. The later fast-loop clarification below adds one bounded direct-authoring exception.
 - Q: What form must the required structure diagram in `module.md` take? → A: A maintained
   level view (an `architecture`-kind diagram under the module's `architecture/diagrams/`), linked
   explicitly from the summary and embedded in the published page; a leaf without one records a
@@ -96,6 +98,17 @@ with temporal work under `attempt/`. The placeholder is seeded at specification 
 a module `design.md` is written only by acceptance or directly by a maintainer, the level view is
 the required module diagram, reading-budget overruns are warnings, and adoption is a one-time
 refactor of this repository.
+
+### Session 2026-08-29 — fast-loop
+
+- Q: What qualifies for the direct fast path? → A: Only a concrete, explicitly invoked change inside
+  one existing selected feature with accepted realization, no active attempt, no architecture,
+  boundary-contract, compatibility, or cross-feature behavioral impact, and safely separable
+  worktree edits. Everything else returns to the normal workflow before mutation.
+- Q: Which maintained documents may fast-loop write? → A: The selected feature's `design.md` and
+  `abstract.md` when required behavior changes, its `implementation.md` when verified realization
+  changes, and directly related non-architectural user guidance. It cannot create the first accepted
+  realization or write module, contract, diagram, parent, sibling, or unrelated feature sources.
 
 ## Workflow Boundary
 
@@ -210,6 +223,7 @@ names. No compatibility alias or symlink may stand in for the canonical paths.
 | 7 | `feature.concorde.workflow.execute-and-reconcile` | `speckit.implement`, `speckit.analyze`, `speckit.converge` | Implementation reads the feature `implementation.md` as its baseline; analysis reports abstract/specification disagreement. |
 | 8 | `feature.concorde.workflow.validate-architecture` | `speckit.concorde.validate` | Rules cover abstract shape, durable trio, and legacy names. |
 | 9 | `feature.concorde.workflow.accept-milestone` | `speckit.concorde.impl.accept` | Compaction targets feature `implementation.md`; the proposal may amend module `design.md`. |
+| 10 | `feature.concorde.workflow.fast-loop` | `speckit.fast-loop` | An explicitly invoked small-change path directly reconciles code, tests, and related feature/user documentation without an attempt or acceptance; ineligible work is redirected before mutation. |
 
 The decomposition follows maintainer outcomes rather than implementation packages. Commands are
 grouped only when they operate on the same selected artifacts as one recognizable workflow step.
@@ -253,6 +267,7 @@ children, and remain distinct from adjacent-module feature refinement.
 | Any | Ask a source-grounded, read-only workflow question. | `speckit.concorde.ask` | Installed guidance, module summaries, feature abstracts; a specification or design reference only when the question requires it | — |
 | 3 | Create the feature root at its canonical path, or select an existing root through the standard Spec Kit selection (`.specify/feature.json` / `SPECIFY_FEATURE_DIRECTORY`). | `speckit.specify` / Spec Kit selection | — | New `abstract.md` + `design.md` + placeholder `implementation.md`; selection pointer |
 | 4 | Define behavior, resolve material uncertainty, keep the abstract faithful, and review requirements quality. | `speckit.specify` / `speckit.clarify` / `speckit.checklist` | `abstract.md`, `design.md`; existing feature `implementation.md` read-only; level summary | `abstract.md`, `design.md`; `attempt/checklists/` |
+| Fast | Complete an eligible small change against an existing accepted feature without attempt ceremony. | `speckit.fast-loop` | Selected durable trio, bounded level context, relevant code/tests/docs, worktree state | Code, tests, affected selected feature documents, related non-architectural user docs; no `attempt/` |
 | 5 | Plan one implementation attempt, order its work, and optionally project tasks into issues. | `speckit.plan` / `speckit.tasks` / `speckit.taskstoissues` | `design.md`, feature `implementation.md`, level summary; the module reference on demand | `attempt/` |
 | 6 | Execute tasks, analyze artifact consistency, and append only genuine remaining work. | `speckit.implement` / `speckit.analyze` / `speckit.converge` | The attempt and the durable trio | `attempt/`, code, tests |
 | 7 | Deterministically validate maintained architecture and evidence references. | `speckit.concorde.validate` | All maintained sources | — |
@@ -266,19 +281,23 @@ the question surface may be used whenever a maintainer needs to navigate or unde
 Initialization must precede operations that depend on an existing Concorde hierarchy and is the
 first writer of a module summary and reference. Workspace management establishes the selected root
 consumed by all normal Spec Kit phases. Specification is the durable behavioral input to planning
-and is the only writer of the abstract; planning creates the temporal artifacts consumed by execution;
+and normally owns the abstract; planning creates the temporal artifacts consumed by execution;
 validation may challenge any maintained structural claim; acceptance is eligible only after execution
-work and review state are complete, is the only writer of the feature implementation, and is the
-only workflow step that carries rationale developed during an attempt into a module design
-reference. A later attempt begins again from the durable specification and the last accepted
-realization.
+work and review state are complete, normally writes the feature implementation, and is the only
+workflow step that carries rationale developed during an attempt into a module design reference.
+An eligible fast-loop is the bounded exception that may reconcile the selected feature's abstract,
+design, and established implementation directly. A later attempt begins again from the durable specification and the last accepted
+realization. Fast-loop is an alternate branch after selection only for an already-realized,
+single-feature, non-architectural change with no active attempt; it directly reconciles the affected
+durable feature documents and implementation evidence or redirects to the ordinary stages before
+mutation.
 
 ## Core Component Diagram and Supplemental Scenario Views
 
 - **Core decision**: The maintained parent diagram `diagrams/concorde-workflow-components.json` is
   the one core `architecture` view because it shows the shared invocation layers and artifact
-  authorities used across all nine children: the maintainer, the coding-agent integration, the nine
-  Spec Kit phase surfaces, the five Concorde surfaces, the selected-workspace adapter, the launchers
+  authorities used across all ten children: the maintainer, the coding-agent integration, the nine
+  Spec Kit phase surfaces, the fast-loop surface, the five Concorde surfaces, the selected-workspace adapter, the launchers
   and runtime, project control state, architecture sources (module summaries, design references,
   contracts, views), the selected feature intent (abstract and specification), the feature design
   reference, and the temporal attempt. Its textual counterpart is the Document Model, End-to-End
@@ -356,6 +375,10 @@ that every phase uses only the selected root's authoritative paths and the three
    `implementation.md` changed.
 4. **Given** an immediate sub-feature is selected, **When** normal phases run, **Then** the parent's
    durable trio is read-only context and sibling bodies and attempts are not implicitly loaded.
+5. **Given** an existing selected feature with accepted realization and no active attempt, **When**
+   the maintainer explicitly invokes fast-loop for a small non-architectural change, **Then** code,
+   proportional tests, and affected feature/user documentation are reconciled directly without
+   planning, tasks, implementation, convergence, or acceptance artifacts.
 
 ---
 
@@ -448,6 +471,8 @@ durable root without root-level compatibility copies.
 - A command receives an unknown, ambiguous, unsafe, or stale module/feature target.
 - A sub-feature specification names a child as its parent or attempts a third containment level.
 - A phase finds an existing non-empty attempt and must report it as active rather than replace it.
+- Fast-loop is requested for a placeholder implementation, an active attempt, an architecture or
+  contract change, a cross-feature behavior change, or work overlapping user edits.
 - A contract, refinement, scenario, diagram, or parent registration is missing or contradictory.
 - The maintained source digest changes between proposal review and approved application.
 - Generated evidence disagrees with maintained intent or cannot be reproduced.
@@ -498,7 +523,8 @@ durable root without root-level compatibility copies.
   of detail). Its links redirect; they are never required to understand it. It MUST NOT state a
   requirement, scope boundary, or success criterion absent from `design.md`; where they disagree,
   `design.md` prevails. It is authored by specification, kept current by specification and
-  clarification, and never written by any other workflow step.
+  clarification, and MAY be directly reconciled by an explicitly invoked eligible fast-loop when
+  that small change alters behavior it summarizes; no other workflow step writes it.
 - **FR-007**: `design.md` MUST remain the complete, self-contained authority for required behavior —
   user scenarios, functional requirements, success criteria, scope, key entities, clarifications,
   assumptions, dependencies, and architecture alignment — MUST be understandable without the
@@ -510,7 +536,9 @@ durable root without root-level compatibility copies.
   Evidence`, `Known Limitations`), followed by any further headings the full implementation detail
   needs; before the first accepted milestone it MUST hold only the explicit "no realization
   accepted" state. The first accepted acceptance MUST overwrite the placeholder in full and each later
-  acceptance MUST complete it; no other workflow step writes its substantive content.
+  acceptance MUST complete it. An explicitly invoked eligible fast-loop MAY directly reconcile an
+  already-accepted implementation with a verified small change; it MUST NOT create the first accepted
+  realization.
 - **FR-009**: Module `design.md`, feature `design.md`, and feature `implementation.md` MUST retain
   their distinct meanings. Legacy `tldr.md`/`spec.md` files and `implementation/` attempt directories
   MUST be rejected, with no compatibility alias or symlink.
@@ -533,7 +561,8 @@ durable root without root-level compatibility copies.
   `implementation.md` holding only the not-yet-accepted state; for an existing root it MUST preserve
   `implementation.md` byte-for-byte. Clarification MUST encode accepted answers into `design.md` and update
   the abstract wherever it summarized the changed behavior. Requirements-quality review MUST cover the
-  abstract's shape, budget, and faithfulness to `design.md`.
+  abstract's shape, budget, and faithfulness to `design.md`. An eligible fast-loop MAY directly update
+  both behavioral documents for a verified small change within the selected feature's existing scope.
 - **FR-015**: Planning MUST read `design.md` and the feature `implementation.md` as the durable inputs and the
   level's `module.md` as bounded context, MAY use the abstract for orientation only, and MUST NOT
   update any durable document, module summary, or design reference.
@@ -572,7 +601,8 @@ durable root without root-level compatibility copies.
 **Shared invariants**
 
 - **FR-022**: Concorde MUST preserve the ordered workflow and command ownership declared in the
-  Decomposition and End-to-End Workflow sections.
+  Decomposition and End-to-End Workflow sections, including fast-loop as a bounded alternate branch
+  rather than a replacement for the normal lifecycle.
 - **FR-023**: Every command MUST operate on one explicit or selected canonical target and MUST reject
   ambiguous, unsafe, or structurally invalid targets.
 - **FR-024**: All normal Spec Kit phases MUST use the selected Feature Workspace Protocol paths and
@@ -584,9 +614,10 @@ durable root without root-level compatibility copies.
 - **FR-026**: Bounded operations MUST disclose their target, source basis, status, and complete
   findings without silently expanding unrelated deeper content.
 - **FR-027**: Proposal-only, question, context, analysis, and validation operations MUST be read-only.
-- **FR-028**: Mutations of maintained architectural intent, accepted realization, or a design
-  reference MUST require explicit approval of the presented proposal and MUST fail safely if
-  reviewed inputs become stale.
+- **FR-028**: Mutations of maintained architectural intent or a module design reference MUST require
+  explicit approval of the presented proposal and MUST fail safely if reviewed inputs become stale.
+  The maintainer's concrete invocation of an eligible fast-loop is explicit authorization for only
+  its bounded selected-feature edits; it never authorizes architecture or contract mutation.
 - **FR-029**: Missing or conflicting implementation evidence MUST be represented as unknown or
   disagreement, never as inferred agreement.
 - **FR-030**: Installed Codex and slash-command presentations MUST preserve equivalent command intent,
@@ -600,6 +631,13 @@ durable root without root-level compatibility copies.
   repository's source-tree paths.
 - **FR-034**: Deterministic operations MUST return stable structured statuses and actionable findings
   suitable for both human review and automated tests.
+- **FR-035**: `speckit.fast-loop` MUST directly reconcile an eligible small change across code,
+  proportional tests, the selected feature's affected durable documents, and related
+  non-architectural user documentation without creating or invoking planning, task, implementation,
+  convergence, or acceptance artifacts. It MUST require one existing selected feature with an
+  accepted baseline and no active attempt; preserve unrelated worktree changes; reject architecture,
+  boundary-contract, compatibility, cross-feature, unsafe, or materially ambiguous work before
+  mutation; run proportional checks; and report target, files, evidence, and skipped ceremony.
 
 ### Scope
 
@@ -609,6 +647,7 @@ two-document module model; the reading budgets; the one-time feature-root rename
 `implementation/` to `attempt/`; root initialization; bounded context; workflow questions; Feature Workspace Protocol
 resolution of the standard Spec Kit selection; selected-root routing for all nine normal Spec Kit
 phases; architecture validation; implementation acceptance including reviewed module-reference amendments;
+the explicitly invoked fast-loop alternate for an already-realized small non-architectural change;
 migration of installed guidance and of Concorde's own hierarchy; the shared authority and
 containment model connecting those operations.
 
@@ -637,6 +676,8 @@ remains a separately tracked follow-up.
 - **Feature design reference** (`implementation.md`, the accepted realization): The durable account of how
   the currently accepted implementation realizes a feature, with the full implementation detail;
   needed only when writing the code or fixing a bug.
+- **Fast-loop change**: A directly authored, verified code/test/document change contained by one
+  existing accepted feature, with no temporal attempt or acceptance proposal.
 - **Implementation attempt** (`attempt/`): Temporary plan, tasks, checklists, research,
   models, guidance, and evidence for one delivery cycle.
 - **Reading budget**: The maximum first-time reading effort a module summary (20 minutes) or a
@@ -654,7 +695,7 @@ remains a separately tracked follow-up.
 - **SC-001**: Every module summary in a validated project — including all five in Concorde's own
   hierarchy — is within the reading budget and links its level view (or records a leaf
   rationale), contains the three inventory tables, and includes one representative scenario.
-- **SC-002**: Every feature abstract in a validated project — including all 20 in Concorde's own
+- **SC-002**: Every feature abstract in a validated project — including all 22 in Concorde's own
   hierarchy — is within the 15-minute reading budget, has exactly the five required sections in
   order, links its structure diagram or sketch, and cites `design.md` requirement IDs for the rules
   in its `Logic` section.
@@ -667,7 +708,7 @@ remains a separately tracked follow-up.
   the "Where a fact lives" table and the command for each workflow stage after no more than five
   minutes with one module summary and one feature abstract, and can describe that feature's
   functionality, basic structure, and logic from the abstract alone.
-- **SC-006**: All 14 installed command surfaces map to exactly one sub-feature and appear once in the
+- **SC-006**: All 15 installed command surfaces map to exactly one sub-feature and appear once in the
   aggregate workflow inventory.
 - **SC-007**: In all lifecycle routing tests, every phase reads or writes only the selected top-level
   feature or immediate sub-feature paths returned by the workspace result, and no phase other than
@@ -690,6 +731,9 @@ remains a separately tracked follow-up.
   `abstract.md`, `design.md`, parent, sibling, child, and summary authority not named by the proposal.
 - **SC-013**: In every analysis fixture with a seeded abstract/specification disagreement, the report
   names the disagreeing statement and the prevailing `design.md` requirement.
+- **SC-014**: Every eligible fast-loop fixture finishes with aligned code, proportional tests, and
+  related documentation and creates no attempt artifact; every ineligible fixture makes zero
+  mutations and identifies the normal workflow stage to use.
 
 ## Assumptions
 
@@ -721,8 +765,8 @@ remains a separately tracked follow-up.
   the affected protocol, profile, proposal, and manifest versions follow their own compatibility
   rules, which the implementation plan decides.
 - Concorde is currently the only adopter of its workflow, so adopting the model is a one-time
-  refactor of this repository (constitution B.II) rather than a supported migration path; its 5
-  modules and 20 feature roots are the acceptance fixture, and the legacy-name validation rules
+  refactor of this repository (constitution B.II) rather than a supported migration path; after this
+  addition its 5 modules and 22 feature roots are the acceptance fixture, and the legacy-name validation rules
   remain only as validity checks.
 - Spec Kit remains authoritative for its nine normal lifecycle procedures; Concorde is already
   installed and the project has a supported Spec Kit version.
@@ -745,8 +789,8 @@ remains a separately tracked follow-up.
 
 - **Stable feature ID**: `feature.concorde.workflow`
 - **Providing module**: `module.concorde`
-- **Decomposition decision**: nine ordered immediate sub-features, one per cohesive workflow step;
-  IDs unchanged by this revision.
+- **Decomposition decision**: ten ordered immediate sub-features: nine own the established lifecycle
+  steps and the tenth owns the bounded fast-loop alternate.
 - **Feature containment**: this parent registers its `subfeatures` in authored order; each child
   declares `parent_feature`, inherits `module.concorde`, owns one `## Outcome`, and cannot contain a
   child.

@@ -31,6 +31,10 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
   - plan 2026-08-29 feature.concorde.workflow.accept-milestone — status again returned
     `CONCORDE-SELF-HOST-005` for the active `claude` integration, so the terminology migration must
     refresh canonical sources and installed mirrors through the supported public Spec Kit path.
+  - implement 2026-08-29 feature.concorde.workflow.fast-loop — temporarily selected Codex for a
+    successful self-host propose/apply/current cycle, restored Claude, refreshed its preset and
+    extension through the public development install, restored the verified Codex skill backup, and
+    confirmed both presentations include fast-loop; final Claude status remains `unknown`.
 
 ### R-002 · Plan and tasks guidance disagree on whether an attempt may edit `module.md`
 
@@ -156,6 +160,9 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
   - implement 2026-08-29 feature.concorde.install-with-spec-kit.one-command-install — README and the
     quick start initially linked the child `contracts/installer-cli.md`; changed the public links to
     the published child `design.md` and retained the contract as a backtick path.
+  - implement 2026-08-29 feature.concorde.workflow.fast-loop — the new child abstract linked the
+    parent contracts directory; production build rejected the excluded route, so specification must
+    retain it as a backticked path instead.
 
 ### R-008 · The Documentation refinement still couples both published hierarchies
 
@@ -255,6 +262,10 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Improvement**: Run cross-package validation commands from the repository root when their evidence
   spans `docsite/`, `generated/`, and `specs/`.
 - **Status**: open
+- **Occurrences**:
+  - implement 2026-08-29 feature.concorde.workflow.fast-loop — a combined final gate was launched
+    from `docsite/` with repository-root-relative `.venv` and `.specify` paths; it failed before any
+    validation, then was rerun from the repository root with `npm --prefix docsite`.
 
 ### R-013 · Refinement links observed routes before route assignment completed
 
@@ -490,4 +501,148 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
   succeed; seeded verification failure also asserts that no success text is emitted.
 - **Improvement**: Treat cleanup as part of the success transaction and place terminal reporting only
   after every mandatory finalizer.
+- **Status**: open
+
+### R-026 · Browser review is unavailable for the fast-loop diagram update
+
+- **Phase**: plan
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.workflow.fast-loop
+- **Kind**: environment
+- **Concerns**: specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json
+- **Expected**: The updated parent core view receives desktop containment and light/dark perceptual
+  review after showcase validation and delivery.
+- **Observed**: Archify delivery passed 9/9 checks with zero composition errors or warnings, but
+  `visual-check` returned `skipped` because Chrome/Chromium is unavailable.
+- **Effect**: deferred
+- **Action**: Kept visual review `pending`, retained the deterministic delivery receipt and generated
+  artifact, and required freshness validation without claiming perceptual inspection.
+- **Improvement**: Provide Chrome/Chromium in the development validation environment used for
+  architecture diagram delivery.
+- **Status**: open
+
+### R-027 · Sub-feature task-path wording would prohibit product implementation
+
+- **Phase**: tasks
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.workflow.fast-loop
+- **Kind**: guidance
+- **Concerns**: presets/concorde-core/templates/tasks-template.md
+- **Expected**: A selected sub-feature's tasks may edit the repository code, tests, and public guides
+  that realize it while keeping durable feature artifacts and attempts isolated to the child root.
+- **Observed**: The template literally says “every task path must remain beneath that child root,”
+  which would prohibit any realizing source or test path outside `specs/.../subfeatures/010-fast-loop/`.
+- **Effect**: assumed
+- **Action**: Applied the restriction to feature-workspace artifacts and parent/sibling sources, while
+  allowing the plan's explicit realizing code, test, generated projection, and public-guide paths.
+- **Improvement**: Clarify that selected-child containment constrains feature/attempt artifacts and
+  parent/sibling mutation, not implementation code and test paths named by the approved plan.
+- **Status**: open
+
+### R-028 · The generated task named a nonexistent reflection test module
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.workflow.fast-loop
+- **Kind**: implementation
+- **Concerns**: specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/attempt/tasks.md
+- **Expected**: T005 names the existing unit-test file that owns reflection-log parsing.
+- **Observed**: It named `tests/concorde/unit/test_reflections.py`; the repository uses
+  `tests/concorde/unit/test_reflection_parser.py` and `test_reflection_rules.py`.
+- **Effect**: worked-around
+- **Action**: Corrected T005 to target `test_reflection_parser.py` before authoring the test.
+- **Improvement**: Resolve every generated task path against `rg --files` before finalizing tasks.
+- **Status**: open
+- **Occurrences**:
+  - implement 2026-08-29 feature.concorde.workflow.fast-loop — T016 likewise named a nonexistent
+    acceptance-level self-hosting lifecycle test; corrected it to
+    `tests/concorde/integration/test_self_hosting_lifecycle.py` before editing.
+
+### R-029 · Installed receipt parsing rejected the hyphenated phase name
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.workflow.fast-loop
+- **Kind**: implementation
+- **Concerns**: tests/concorde/support/installed_command_surface.py
+- **Expected**: The installed-surface harness extracts the `fast-loop` phase from the same workspace
+  bootstrap syntax used by every preset command.
+- **Observed**: Its phase regex accepted only `[a-z]+`, so the correctly materialized
+  `--phase fast-loop` command was reported as lacking a bootstrap.
+- **Effect**: worked-around
+- **Action**: Extended the test-support phase token to `[a-z-]+` and retained exact expected-phase
+  comparison.
+- **Improvement**: Derive command/phase token validation from the supported phase vocabulary instead
+  of a narrower incidental regex.
+- **Status**: open
+
+### R-030 · Recomposition expected a lower winner for a newly added command
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.workflow.fast-loop
+- **Kind**: implementation
+- **Concerns**: tests/concorde/integration/test_command_recomposition.py
+- **Expected**: Removing `concorde-core` restores lower-layer winners for the nine overridden normal
+  commands and removes the solely owned fast-loop surface.
+- **Observed**: The first aggregate-inventory refactor asked the lower test preset for a fast-loop
+  winner it never declared, so pre-install and post-removal assertions failed with zero artifacts.
+- **Effect**: worked-around
+- **Action**: Parameterized winner checks, retained lower-layer assertions for `NORMAL_PHASES`, used
+  the ten-command aggregate only while Concorde is installed, and asserted fast-loop removal.
+- **Improvement**: Keep override restoration tests distinct from additive surface ownership tests.
+- **Status**: open
+
+### R-031 · The quickstart discovery root shadowed the Concorde runtime package
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.workflow.fast-loop
+- **Kind**: environment
+- **Concerns**: specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/attempt/quickstart.md
+- **Expected**: Full test discovery imports `tests.concorde.*` and the extension runtime's
+  `concorde.*` package without namespace collision.
+- **Observed**: `unittest discover -s tests` imported `tests/concorde` as top-level `concorde`; later
+  runtime imports failed after test ordering polluted `sys.modules`.
+- **Effect**: worked-around
+- **Action**: Changed the full-suite command to `discover -s tests/concorde -t .`, preserving the
+  repository root as the import top level before rerunning.
+- **Improvement**: Keep `-t .` explicit in project quickstarts whenever test packages share a name
+  with runtime packages.
+- **Status**: open
+
+### R-032 · Release evidence hard-coded the previous preset command count
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.workflow.fast-loop
+- **Kind**: implementation
+- **Concerns**: scripts/release/build-components.py
+- **Expected**: Generated release catalog capabilities and archive/composition tests reflect all ten
+  command sources declared by the preset manifest.
+- **Observed**: The builder and two tests still asserted nine commands, so dynamic release evidence
+  disagreed with the manifest after fast-loop was added.
+- **Effect**: worked-around
+- **Action**: Updated builder capability metadata and exact archive/composition assertions to ten
+  while retaining nine-normal-plus-one-fast-loop terminology in user guidance.
+- **Improvement**: Derive release capability counts from parsed manifests rather than duplicating
+  integer literals in the builder and tests.
+- **Status**: open
+
+### R-033 · The child specification invented unresolved scenario identifiers
+
+- **Phase**: implement
+- **Date**: 2026-08-29
+- **Feature**: feature.concorde.workflow.fast-loop
+- **Kind**: specification
+- **Concerns**: specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/design.md
+- **Expected**: Every feature `scenarios` reference resolves in the providing module's current-level
+  view.
+- **Observed**: The new child declared `fast-loop-small-change` and `fast-loop-escalation`, while the
+  root level view owns only `feature-work` and `direct-authoring`; deterministic validation failed.
+- **Effect**: worked-around
+- **Action**: Paused implementation and returned to the owning specification phase to map the child
+  to the existing two scenarios without changing its behavior, plan, contract, or implementation.
+- **Improvement**: Resolve proposed scenario IDs against the bounded level view during initial
+  specification quality validation.
 - **Status**: open

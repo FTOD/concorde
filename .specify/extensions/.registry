@@ -14,17 +14,10 @@
           "speckit.concorde.context",
           "speckit.concorde.validate",
           "speckit.concorde.ask"
-        ],
-        "codex": [
-          "speckit.concorde.init",
-          "speckit.concorde.impl-accept",
-          "speckit.concorde.context",
-          "speckit.concorde.validate",
-          "speckit.concorde.ask"
         ]
       },
       "registered_skills": [],
-      "installed_at": "2026-08-29T10:09:49.478115+00:00"
+      "installed_at": "2026-08-29T18:02:21.233662+00:00"
     }
   }
 }

@@ -200,7 +200,8 @@ For `checklist`, resolve `checklist-template` separately through the same public
      `role: supplemental`. When a task changes one, update the maintained JSON and textual
      counterpart together; run Archify showcase validation after each candidate edit and delivery at
      completion; run visual checks when the environment supports them, inspect captures before
-     claiming perceptual review, and record skipped/pending truthfully. Keep the source under
+     claiming perceptual review, and record skipped/pending truthfully. Keep
+     `meta.legend.mode: hidden` in every maintained Concorde diagram. Keep the source under
      `diagrams/`, declare it in `design.md`, and verify provenance, generated freshness, and automatic
      feature-page embedding.
 

@@ -152,7 +152,7 @@ class ReleaseArtifactTests(unittest.TestCase):
                 command_members = sorted(
                     name for name in preset_archive.namelist() if name.startswith("commands/")
                 )
-                self.assertEqual(len(command_members), 9)
+                self.assertEqual(len(command_members), 10)
                 self.assertTrue(all(b"Concorde Installed Workspace Gate" in preset_archive.read(name) for name in command_members))
 
             with zipfile.ZipFile(output / "concorde-0.4.0.zip") as extension_archive:

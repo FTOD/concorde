@@ -31,7 +31,7 @@ class SelfHostingLifecycleTests(unittest.TestCase):
         adopted.write_text("stale hand-maintained copy\n")
         proposal = self.propose()
         self.assertEqual(len(proposal["components"]), 3)
-        self.assertEqual(len(proposal["changes"]), 23)
+        self.assertEqual(len(proposal["changes"]), 24)
         self.assertEqual(proposal["activation"], "reload_required")
         adopted_change = next(item for item in proposal["changes"] if item["path"] == ".agents/skills/speckit-concorde-ask")
         self.assertEqual(adopted_change["action"], "adopt")
@@ -39,6 +39,9 @@ class SelfHostingLifecycleTests(unittest.TestCase):
         self.assertEqual(result["status"], "applied")
         self.assertEqual(result["activation"], "reload_required")
         self.assertTrue((self.root / ".specify/self-hosting.json").is_file())
+        fast_loop = self.root / ".agents/skills/speckit-fast-loop/SKILL.md"
+        self.assertTrue(fast_loop.is_file())
+        self.assertIn("--phase fast-loop", fast_loop.read_text(encoding="utf-8"))
         registry = json.loads((self.root / ".specify/presets/.registry").read_text())
         self.assertEqual(registry["presets"]["concorde-core"]["source"], "local")
         self.assertNotIn("stale hand-maintained", adopted.read_text())

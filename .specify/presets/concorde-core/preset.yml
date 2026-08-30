@@ -89,6 +89,11 @@ provides:
       file: "commands/speckit.taskstoissues.md"
       description: "Convert tasks from the selected attempt workspace"
       strategy: "replace"
+    - type: "command"
+      name: "speckit.fast-loop"
+      file: "commands/speckit.fast-loop.md"
+      description: "Directly reconcile one eligible small change without an attempt"
+      strategy: "replace"
 
 tags:
   - "architecture"

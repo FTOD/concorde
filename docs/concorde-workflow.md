@@ -13,8 +13,9 @@ diagrams:
 # Concorde Workflow
 
 Concorde surrounds the normal Spec Kit lifecycle with architectural ownership, bounded context,
-deterministic validation, and approval-gated acceptance. It does not replace specification, planning,
-tasks, or implementation.
+deterministic validation, and approval-gated acceptance. It keeps specification, planning, tasks,
+and implementation as the normal path, with one explicitly invoked fast-loop alternate for an
+established small change.
 
 Contributors changing the Concorde framework itself must also use the explicit local synchronization
 described in [Developing Concorde with Concorde](self-hosting.md). Updating checked-in preset or
@@ -27,10 +28,10 @@ explain how to apply it in a project.
 ## Commands and workspace files
 
 The interactive [command and workspace file flow](diagrams/concorde-command-workspace-file-flow.json)
-names every Concorde command and closely related Spec Kit command, the concrete files each reads or
-writes, the read-only results that remain in the conversation, and the external effects that do not
-become workspace authority. Use its guided views to isolate architecture, specification, planning,
-delivery, or reporting paths.
+maps the normal lifecycle and Concorde operations, the concrete files they read or write, the
+read-only results that remain in the conversation, and external effects that do not become workspace
+authority. The direct fast-loop alternate is described below and in the command guide. Use the
+diagram's guided views to isolate architecture, specification, planning, delivery, or reporting.
 
 At any stage, invoke `speckit.concorde.ask <question>` when the uncertainty is about the workflow
 itself rather than the product being implemented. The agent grounds its read-only answer in the
@@ -98,6 +99,20 @@ non-empty `attempt/` attempt appears as `attempt_state: active`; there is no sep
 resume step—decide whether to continue that attempt or accept or archive it.
 
 Selection is what routes later Spec Kit phases. Context retrieval is only a read operation.
+
+### Fast path for an established small change
+
+After selecting an existing feature with a non-placeholder accepted `implementation.md` and no
+active `attempt/`, invoke `speckit.fast-loop <small-change description>` when the result stays wholly
+inside that feature's existing ownership. The command checks selection, baseline, attempt state,
+scope, current worktree edits, and relevant code/tests/docs before mutation.
+
+Eligible work directly updates code and proportional tests, then reconciles affected selected
+`design.md`, `abstract.md`, `implementation.md`, and related non-architectural user guidance. It
+creates no plan, tasks, implementation attempt, convergence pass, or acceptance proposal. New or
+restructured features/modules, architecture or boundary-contract changes, compatibility or migration
+work, cross-feature behavior, material ambiguity, and overlapping edits of uncertain ownership stop
+before mutation and return to the earliest applicable normal stage.
 
 If the behavior is too broad for one clear specification, keep one aggregate parent and create one
 level of immediate sub-features beneath it. Point `SPECIFY_FEATURE_DIRECTORY` at

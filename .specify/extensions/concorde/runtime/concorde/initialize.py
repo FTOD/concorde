@@ -220,6 +220,7 @@ observable product responsibilities rather than after framework or tooling inter
                 "title": f"{project_name} — Root Module",
                 "output": f"../../../../generated/architecture/{module_slug}-level-view.html",
                 "quality_profile": "showcase",
+                "legend": {"mode": "hidden"},
                 "viewBox": [720, 520],
                 "views": [
                     {

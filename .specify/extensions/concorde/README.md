@@ -2,8 +2,10 @@
 
 The extension registers five integration-neutral command surfaces:
 
-- `speckit.concorde.init` proposes a root specification hierarchy and writes only after explicit
-  acceptance of an exact proposal.
+- `speckit.concorde.init` exposes the Skills → Scripts → Workspace Files interaction model, proposes
+  a minimal product-specific root without guessing product modules, writes only after explicit
+  acceptance of an exact proposal, and reports an existing configured hierarchy as unchanged rather
+  than comparing it with starter text.
 - `speckit.concorde.impl.accept` verifies task completion, presents a digest-bound proposal for
   durable feature `implementation.md` (optionally amending the `design.md` of the module at which the
   feature is specified), requires the candidate to cite every open reflection entry attributed to
@@ -14,7 +16,8 @@ The extension registers five integration-neutral command surfaces:
   log's path and the open entry count per feature when the log exists.
 - `speckit.concorde.validate` deterministically validates the configured hierarchy, including the
   module `architecture/` layout (`CONCORDE-LAYOUT-010`/`-011`), module diagram references
-  (`CONCORDE-VIEW-006`), and the shape of the project reflection log (`CONCORDE-REFLECT-001` to
+  (`CONCORDE-VIEW-006`), hidden legends on maintained module and feature diagrams
+  (`CONCORDE-VIEW-007`), and the shape of the project reflection log (`CONCORDE-REFLECT-001` to
   `-004`).
 - `speckit.concorde.ask` tells the coding agent how to answer a Concorde workflow or framework
   question from cited installed guidance and bounded project sources without changing the workspace.

@@ -7,7 +7,9 @@ from pathlib import Path
 from tests.concorde.support.catalog_server import CatalogServer
 from tests.concorde.support.installed_command_surface import (
     CONCORDE_COMMANDS,
+    FAST_LOOP_PHASES,
     NORMAL_PHASES,
+    PRESET_COMMANDS,
     execute_workspace_surface,
     handoff_digest,
     registered_artifact,
@@ -54,14 +56,26 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
         )
         return root
 
-    def test_release_materializes_nine_normal_and_five_concorde_surfaces(self):
+    def test_release_materializes_nine_normal_one_fast_loop_and_five_concorde_surfaces(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.installed_project(temporary)
             normal = {registered_artifact(root, "codex", command) for command in NORMAL_PHASES}
+            fast_loop = {registered_artifact(root, "codex", command) for command in FAST_LOOP_PHASES}
             concorde = {registered_artifact(root, "codex", command) for command in CONCORDE_COMMANDS}
             self.assertEqual(len(normal), 9)
+            self.assertEqual(len(fast_loop), 1)
             self.assertEqual(len(concorde), 5)
-            self.assertTrue(all(path.is_file() for path in normal | concorde))
+            self.assertTrue(all(path.is_file() for path in normal | fast_loop | concorde))
+            fast_content = next(iter(fast_loop)).read_text(encoding="utf-8")
+            for requirement in (
+                "$ARGUMENTS",
+                "--phase fast-loop",
+                "Eligibility Preflight",
+                "No attempt: yes",
+                "No acceptance: yes",
+            ):
+                self.assertIn(requirement, fast_content)
+            self.assertNotIn(str(REPOSITORY_ROOT), fast_content)
             ask = registered_artifact(root, "codex", "speckit.concorde.ask")
             content = ask.read_text(encoding="utf-8")
             for requirement in ("$ARGUMENTS", "citation", "uncertainty", "read-only"):
@@ -70,11 +84,11 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
                 self.assertNotIn(executable, content)
             self.assertNotIn(str(REPOSITORY_ROOT), content)
 
-    def test_every_normal_winner_executes_the_installed_workspace_bootstrap(self):
+    def test_every_preset_winner_executes_the_installed_workspace_bootstrap(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.installed_project(temporary)
             receipts = []
-            for command, phase in NORMAL_PHASES.items():
+            for command, phase in PRESET_COMMANDS.items():
                 artifact = registered_artifact(root, "codex", command)
                 receipt = execute_workspace_surface(
                     root,
@@ -85,7 +99,7 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
                 )
                 receipts.append(receipt)
                 self.assertEqual(receipt.exit_status, 0)
-                expected = receipt.workspace["feature_directory"] if phase in {"specify", "clarify", "checklist"} else receipt.workspace["attempt_dir"]
+                expected = receipt.workspace["feature_directory"] if phase in {"specify", "clarify", "checklist", "fast-loop"} else receipt.workspace["attempt_dir"]
                 self.assertEqual(receipt.phase_root, expected)
                 self.assertEqual(
                     receipt.workspace["checklists_dir"],

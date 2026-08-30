@@ -4,14 +4,14 @@ from pathlib import Path
 
 from tests.concorde.contract.test_installed_command_surfaces import _builder
 from tests.concorde.support.catalog_server import CatalogServer
-from tests.concorde.support.installed_command_surface import NORMAL_PHASES, registered_artifact
+from tests.concorde.support.installed_command_surface import NORMAL_PHASES, PRESET_COMMANDS, registered_artifact
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.specify_project import SpecifyProject
 
 
 class CommandRecompositionTests(unittest.TestCase):
-    def assert_all_winners(self, root: Path, marker: str) -> None:
-        for command in NORMAL_PHASES:
+    def assert_all_winners(self, root: Path, marker: str, commands=PRESET_COMMANDS) -> None:
+        for command in commands:
             content = registered_artifact(root, "codex", command).read_text(encoding="utf-8")
             self.assertIn(marker, content, command)
 
@@ -27,7 +27,7 @@ class CommandRecompositionTests(unittest.TestCase):
                 project.initialize()
                 lower = REPOSITORY_ROOT / "tests/concorde/fixtures/presets/lower-core"
                 project.run("preset", "add", "--dev", str(lower), "--priority", "20")
-                self.assert_all_winners(root, "LOWER_LAYER_MARKER")
+                self.assert_all_winners(root, "LOWER_LAYER_MARKER", NORMAL_PHASES)
                 project.register_catalogs(server.base_url)
                 project.run("bundle", "install", "concorde-bundle")
                 self.assert_all_winners(root, "Concorde Installed Workspace Gate")
@@ -43,7 +43,8 @@ class CommandRecompositionTests(unittest.TestCase):
                 self.assert_all_winners(root, "Concorde Installed Workspace Gate")
 
                 project.run("bundle", "remove", "concorde-bundle")
-                self.assert_all_winners(root, "LOWER_LAYER_MARKER")
+                self.assert_all_winners(root, "LOWER_LAYER_MARKER", NORMAL_PHASES)
+                self.assertFalse((root / ".agents/skills/speckit-fast-loop/SKILL.md").exists())
 
 
 if __name__ == "__main__":

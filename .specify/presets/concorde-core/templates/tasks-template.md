@@ -11,8 +11,9 @@ First verify that the feature has at most one `role: core` diagram and that it u
 `architecture` to show stable components and interactions; dynamic diagram kinds must be
 `role: supplemental`. For each required feature-owned diagram, include tasks for the explanatory prose, descriptive Archify
 JSON source under `diagrams/`, declaration in `design.md`, contract/scenario traceability, showcase
-validation, generated HTML delivery, automatic feature-page embedding, visual evidence when
-available, and freshness checks. Do not treat generated HTML or screenshots as maintained intent.
+validation, explicit `meta.legend.mode: hidden`, generated HTML delivery, automatic feature-page
+embedding, visual evidence when available, and freshness checks. Do not treat generated HTML or
+screenshots as maintained intent.
 
 Execution records the problems it meets in the project reflection log (`workspace.reflections`), not
 in task text; a problem concerning another feature is recorded there and never fixed in that

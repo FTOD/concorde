@@ -1,8 +1,10 @@
-"""Module-owned diagram reference rules.
+"""Maintained diagram presentation and module-reference rules.
 
 Every Archify diagram beneath `<module>/architecture/diagrams/` is a maintained explanation of that
 level. A diagram nobody links is unreachable from the hierarchy, so each one must be referenced from
-the level's `module.md`, its `design.md`, or the project reflection log.
+the level's `module.md`, its `design.md`, or the project reflection log. Module- and feature-owned
+diagrams hide Archify's renderer-owned legends because Concorde diagrams use domain-specific labels
+and textual counterparts instead of the renderer's generic kind names.
 """
 
 from __future__ import annotations
@@ -16,8 +18,22 @@ from ..reflections import log_path
 from .summary import _link_targets
 
 
-def validate_module_diagrams(package: Any) -> list[Finding]:
+def validate_diagrams(package: Any) -> list[Finding]:
     findings: list[Finding] = []
+    for path, diagram in sorted({**package.views, **package.diagrams}.items()):
+        meta = diagram.get("meta") if isinstance(diagram, dict) else None
+        legend = meta.get("legend") if isinstance(meta, dict) else None
+        if not isinstance(legend, dict) or legend.get("mode") != "hidden":
+            findings.append(
+                Finding(
+                    "CONCORDE-VIEW-007",
+                    "error",
+                    path,
+                    "Maintained Archify diagrams must explicitly hide the renderer-owned legend.",
+                    'Set meta.legend to {"mode": "hidden"}; rely on domain labels and the '
+                    "diagram's textual counterpart.",
+                )
+            )
     reflections_path = log_path(package.specification_root)
     reflections_body = package.auxiliary.get(reflections_path)
     reflections_links = (

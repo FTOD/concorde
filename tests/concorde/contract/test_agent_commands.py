@@ -10,6 +10,61 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, VALID_PROJECT
 
 
 class AgentCommandContractTests(unittest.TestCase):
+    def test_fast_loop_direct_edit_surface_has_bounded_no_attempt_contract(self):
+        command = REPOSITORY_ROOT / "presets/concorde-core/commands/speckit.fast-loop.md"
+        contract = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/contracts/fast-loop-command.md"
+        command_content = command.read_text(encoding="utf-8")
+        contract_content = contract.read_text(encoding="utf-8")
+        for invariant in (
+            "$ARGUMENTS",
+            "--phase fast-loop",
+            "workspace.feature_directory",
+            "workspace.feature_design",
+            "workspace.feature_implementation",
+            "attempt_state",
+            "directly",
+            "proportional tests",
+            "related",
+            "No attempt",
+            "No acceptance",
+            "changed files",
+            "Reflections added:",
+        ):
+            self.assertIn(invariant, command_content, invariant)
+        for forbidden in (
+            "speckit.plan`",
+            "speckit.tasks`",
+            "speckit.implement`",
+            "speckit.converge`",
+            "speckit.concorde.impl.accept`",
+        ):
+            self.assertNotIn(f"invoke `{forbidden}", command_content)
+        self.assertIn("Presentation Parity", contract_content)
+        self.assertIn("No presentation embeds an absolute Concorde checkout path", contract_content)
+        self.assertNotIn(str(REPOSITORY_ROOT), command_content)
+
+    def test_fast_loop_rejects_every_ineligible_class_before_mutation(self):
+        command = (
+            REPOSITORY_ROOT / "presets/concorde-core/commands/speckit.fast-loop.md"
+        ).read_text(encoding="utf-8")
+        for invariant in (
+            "| Condition | Eligible when | Redirect |",
+            "placeholder",
+            "attempt_state",
+            "architecture",
+            "boundary contract",
+            "compatibility",
+            "cross-feature",
+            "materially ambiguous",
+            "overlap",
+            "zero fast-loop edits",
+            "Expected ineligibility",
+            "not itself a reflection-log problem",
+            "preserve unrelated pre-existing changes",
+        ):
+            self.assertIn(invariant, command, invariant)
+
+
     def test_four_operations_have_launchers_and_ask_is_agent_only(self):
         commands = REPOSITORY_ROOT / "extensions/concorde/commands"
         expected = {

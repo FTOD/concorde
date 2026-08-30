@@ -5,10 +5,11 @@ sidebar_position: 7
 
 # Commands and Installed Surfaces
 
-Concorde has two command families. Nine familiar Spec Kit phases continue to own feature delivery;
-five Concorde-specific surfaces manage architecture, selected-workspace validation, acceptance, and
-workflow questions. Four are deterministic runtime-backed operations. `ask` is a read-only procedure
-followed directly by the coding agent.
+Concorde has three command groups. Nine familiar Spec Kit phases continue to own normal feature
+delivery; one preset-provided `fast-loop` surface directly handles eligible established small
+changes; five Concorde-specific surfaces manage architecture, selected-workspace validation,
+acceptance, and workflow questions. Four are deterministic runtime-backed operations. `ask` and
+`fast-loop` are procedures followed directly by the coding agent.
 
 In an agent integration, names such as `$speckit-plan` or `$speckit-concorde-context` are **skills or
 slash commands invoked in the agent conversation**. They are not commands to paste into Bash. The
@@ -182,6 +183,27 @@ the project reflection log are never edited. Eligibility summarizes the feature'
 by status; the candidate must cite every open one among its known limitations or apply refuses with
 `CONCORDE-ACCEPT-012`.
 
+## `$speckit-fast-loop <small-change description>`
+
+Use fast-loop only for one concrete modification inside an existing selected feature that already
+has an accepted realization and no active `attempt/`. The command resolves the selected root through
+Feature Workspace Protocol v8, inspects bounded intent, realization, code/tests/docs, and current
+worktree state, then decides eligibility before mutation.
+
+Eligible work directly updates code and proportional tests, followed by the selected feature's
+affected durable documents and directly related non-architectural user guidance. Behavior changes
+update `design.md` and keep `abstract.md` faithful; realization-only corrections leave both
+byte-identical. Verified realization changes reconcile `implementation.md` directly. The command
+creates no attempt, plan, task list, implementation phase, convergence pass, or acceptance proposal.
+
+Fast-loop rejects before mutation when the feature has only a placeholder realization, an attempt is
+active, edits overlap work of uncertain ownership, or the request changes feature/module structure,
+architecture, boundary contracts, compatibility, migration policy, dependency direction, or
+cross-feature behavior. It reports the failed condition and the earliest normal stage to use.
+Expected ineligibility is not itself a reflection. A successful report names the selected target,
+every changed file, behavioral-document impact, checks and outcomes, preserved unrelated changes,
+and explicitly confirms that no attempt or acceptance ran.
+
 ## Normal Spec Kit phases under Concorde
 
 The `concorde-core` preset replaces the agent instructions for these phases so selected-workspace
@@ -217,6 +239,12 @@ The order is not a blind pipeline. `clarify` and custom checklists are used when
 may run repeatedly; convergence can add tasks that require another implementation pass. Acceptance is
 never automatic.
 
+For an eligible established small change, the alternate branch is:
+
+```text
+select existing feature → fast-loop → proportional validation
+```
+
 ## What actually runs
 
 The installed workflow has four distinct layers:
@@ -234,7 +262,8 @@ For a normal Spec Kit phase, the agent invokes the workspace adapter, obtains th
 and temporary paths, and continues the normal phase. For one of the four Concorde-specific
 operations, the agent invokes a portable launcher, which calls the Python runtime and returns
 canonical JSON. For `ask`, the agent follows the installed Markdown directly and returns cited prose
-without execution.
+without execution. For `fast-loop`, the agent uses the adapter's root-scoped phase for canonical
+selection, then follows the installed Markdown to classify and directly complete the bounded change.
 
 Repository-local `.agents/` skills are useful while Concorde develops itself, but users receive the
 supported command surfaces from the installed preset and extension. Editing only a checkout-local
@@ -250,6 +279,7 @@ skill does not change the distributed framework.
 | Placement is known and the feature is new | `specify` with `SPECIFY_FEATURE_DIRECTORY` at the canonical feature root |
 | The feature exists but normal phases target something else | Set `SPECIFY_FEATURE_DIRECTORY` or edit `.specify/feature.json`, then rerun the phase |
 | Behavior is unclear | `specify` or `clarify` |
+| One existing accepted feature needs a small, non-architectural change and has no active attempt | `fast-loop` |
 | Behavior is clear but no delivery approach exists | `plan` |
 | The plan exists but is not executable | `tasks` |
 | Tasks may not cover the durable intent | `analyze` |
