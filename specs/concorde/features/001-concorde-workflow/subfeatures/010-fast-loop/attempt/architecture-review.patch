@@ -1,0 +1,1073 @@
+diff --git a/specs/concorde/architecture/contracts/concorde-workflow/contract.md b/specs/concorde/architecture/contracts/concorde-workflow/contract.md
+index 40e7d3e..3494ffa 100644
+--- a/specs/concorde/architecture/contracts/concorde-workflow/contract.md
++++ b/specs/concorde/architecture/contracts/concorde-workflow/contract.md
+@@ -27,9 +27,11 @@ evidence_status: partial
+ 
+ ## Purpose
+ 
+-Let a maintainer and coding agent direct one feature through a recursive specification hierarchy,
++Let a maintainer and coding agent direct feature work through a recursive specification hierarchy,
+ architecture review, bounded implementation context, and deterministic reconciliation while the
+-normal Spec Kit lifecycle remains authoritative for behavioral delivery.
++normal Spec Kit lifecycle remains authoritative for behavioral delivery. Normal phases target one
++selected root; the additive fast-loop may begin from that anchor and reconcile a bounded set of
++related existing feature roots.
+ 
+ ## Information
+ 
+@@ -53,7 +55,9 @@ presentation never changes either contract.
+ ## Obligations
+ 
+ - Initialization MUST separate a reviewable proposal from explicit accepted application.
+-- Feature work MUST resolve one nested canonical Spec Kit workspace under its providing module.
++- Each feature-workspace lookup MUST resolve one nested canonical Spec Kit root under its providing
++  module. Normal phases consume the selected lookup; fast-loop MAY repeat explicit read-only lookups
++  for every semantically affected existing root without creating a second selection registry.
+ - That workspace MUST keep the durable trio (`abstract.md`, `design.md`, and `implementation.md`) and `contracts/` at
+   its feature root and one active delivery attempt (`checklists/`, `plan.md`, `tasks.md`, research,
+   data model, validation/run guides, and implementation evidence) under `attempt/`.
+@@ -63,6 +67,11 @@ presentation never changes either contract.
+ - Context MUST expose exactly the requested module level and stable navigation references, not deeper
+   hidden detail.
+ - Architecture readiness MUST be reviewed before implementation structure is approved.
++- Fast-loop MAY directly reconcile bounded cross-feature behavior, inter-module contract/data-format
++  detail, maintained views, and module design-reference detail when every affected feature has an
++  accepted realization and no active attempt and module responsibilities/dependency direction remain
++  stable. Architecture-source edits MUST remain pending exact maintainer review, and project-level
++  compatibility/migration promises to users of the whole project MUST return to the full workflow.
+ - Validation MUST be deterministic, read-only, and explicit about unknown or conflicting evidence.
+ - Generated read models MUST preserve provenance and MUST NOT become maintained intent.
+ 
+diff --git a/specs/concorde/architecture/diagrams/skill-workspace-file-flow.json b/specs/concorde/architecture/diagrams/skill-workspace-file-flow.json
+index 4b26a7c..b9890c9 100644
+--- a/specs/concorde/architecture/diagrams/skill-workspace-file-flow.json
++++ b/specs/concorde/architecture/diagrams/skill-workspace-file-flow.json
+@@ -289,7 +289,8 @@
+         "speckit.concorde.init writes .concorde/config.json, module.md, module design.md, architecture/contracts/**, and architecture/diagrams/** after approval",
+         "speckit.constitution separately writes .specify/memory/constitution.md as project policy",
+         "concorde.context, concorde.validate, and concorde.ask can inspect the configured module hierarchy without writing",
+-        "Feature skills consume only the bounded architectural level needed by the selected feature"
++        "Normal feature phases consume the selected feature's bounded level; fast-loop may resolve related affected levels explicitly",
++        "Fast-loop may reconcile related contracts and diagrams without changing module responsibilities or dependencies, pending exact review"
+       ]
+     },
+     {
+@@ -299,7 +300,8 @@
+         "Durable feature files are abstract.md, design.md, implementation.md, feature contracts/**, and declared diagrams/**",
+         "clarify/specify update durable intent; specify also creates attempt/checklists/requirements.md",
+         "plan writes attempt planning files plus durable feature contracts/**; tasks/checklist write tasks.md and checklists/**",
+-        "context, validate, and ask can inspect the selected feature without mutating it"
++        "context, validate, and ask can inspect the selected feature without mutating it",
++        "fast-loop starts from one selected anchor, resolves each affected existing root, and reconciles every affected durable trio without an attempt"
+       ]
+     },
+     {
+@@ -309,7 +311,8 @@
+         "implement consumes feature intent and attempt memory, then writes code and task state",
+         "analyze only appends reflections; converge appends tasks + reflections; taskstoissues writes external issues",
+         "impl.accept reads durable feature files, the full attempt, reflections, code, and tests",
+-        "Acceptance writes feature implementation.md, may amend module design.md, and removes only the selected attempt/"
++        "Acceptance writes feature implementation.md, may amend module design.md, and removes only the selected attempt/",
++        "Fast-loop directly updates bounded affected code and authorities; architecture edits stay review-pending and no attempt is created"
+       ]
+     }
+   ]
+diff --git a/specs/concorde/features/001-concorde-workflow/abstract.md b/specs/concorde/features/001-concorde-workflow/abstract.md
+index 2604b99..f07a477 100644
+--- a/specs/concorde/features/001-concorde-workflow/abstract.md
++++ b/specs/concorde/features/001-concorde-workflow/abstract.md
+@@ -41,7 +41,7 @@ skills or slash commands:
+ | `speckit.concorde.ask` | Answers a workflow question read-only from installed guidance, module summaries, and feature abstracts, citing anything deeper it opens. Agent-followed; no runtime. |
+ | `speckit.concorde.validate` | Checks every maintained source deterministically and returns sorted findings with rule, severity, location, and remediation; byte-equivalent on repeat. |
+ | `speckit.concorde.impl.accept` | Turns a completed attempt into accepted realization: proposal, exact review, explicit approval, atomic apply. |
+-| `speckit.fast-loop` | Directly reconciles an eligible small change across code, tests, and related selected-feature/user documentation; creates no attempt and redirects ineligible work before mutation. |
++| `speckit.fast-loop` | Directly reconciles an eligible small change across code, tests, every affected existing feature, and related contract/architecture/user documentation; creates no attempt, requires exact review of architecture edits, and redirects boundary/project-policy work before mutation. |
+ | `speckit.specify` · `clarify` · `checklist` | Author `abstract.md` and `design.md` for the selected root, seed a placeholder `implementation.md` for a new root, and write review checklists under `attempt/checklists/`. |
+ | `speckit.plan` · `tasks` · `taskstoissues` | Plan one attempt from `design.md`, the accepted `implementation.md`, and the level's `module.md`; write only under `attempt/`. |
+ | `speckit.implement` · `analyze` · `converge` | Execute the task list inside the attempt, report inconsistencies read-only, and append only genuine remaining work. |
+@@ -59,7 +59,7 @@ The core view is <a href="/architecture/concorde-workflow-components.html">workf
+ ```text
+ Maintainer ──invoke · review · approve──▶ Coding-agent integration (skills / slash commands)
+                                             ├─ 9 Spec Kit phase surfaces ──▶ selected-workspace adapter ──▶ .specify/feature.json
+-                                            ├─ fast-loop direct surface ───▶ code + tests + selected feature docs
++                                            ├─ fast-loop direct surface ───▶ code + tests + all affected authorities
+                                             └─ 5 Concorde surfaces ────────▶ launchers + Python runtime ──▶ architecture sources
+                                                  (init · context · validate · impl.accept · ask)        (module.md · design.md · architecture/: diagrams · contracts · modules)
+ 
+@@ -70,9 +70,10 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
+ - **Spec Kit phase surfaces** are Spec Kit's own nine commands with a Concorde preset override
+   that resolves the selected root *before* the phase runs, so no inherited helper can fall back to
+   a root-level plan or task path.
+-- **Fast-loop** is the explicitly invoked alternate for an already-realized, single-feature,
+-  non-architectural small change with no active attempt. It edits the bounded change and related
+-  documentation directly or redirects to the normal lifecycle before mutation.
++- **Fast-loop** is the explicitly invoked alternate for a bounded small change beginning from one
++  selected anchor and affecting one or more related already-realized features with no active
++  attempts. It may reconcile contract/architecture detail while module responsibilities,
++  dependencies, and project-level user policy stay stable; architecture edits require exact review.
+ - **Concorde surfaces** come from the `concorde` extension: four runtime operations plus the
+   agent-only `ask`. The runtime is portable standard-library Python reached through launchers;
+   installed projects never depend on the Concorde checkout.
+@@ -95,9 +96,10 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
+    selection in `.specify/feature.json`; selecting an existing root is the same pointer.
+ 4. **Specify**: the abstract and the specification are written together; clarification updates both;
+    checklists gate the next phases without granting approval.
+-   For an already-realized small change that stays within one selected feature, the maintainer may
+-   instead invoke **fast-loop**: eligibility is checked before mutation, then code, tests, and
+-   affected feature/user docs are reconciled directly with no attempt or acceptance operation.
++   For an already-realized bounded small change, the maintainer may instead invoke **fast-loop**:
++   the selected root anchors affected-feature discovery, every affected baseline is checked before
++   mutation, then code, tests, and all related authorities are reconciled directly with no attempt or
++   acceptance operation; maintained architecture edits require exact review.
+ 5. **Plan**: one attempt under `attempt/`, derived from the specification and the accepted
+    design reference; the abstract only orients.
+ 6. **Execute and reconcile**: tasks run inside the attempt; analysis reports disagreement — including
+@@ -128,9 +130,10 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
+ - Acceptance never edits `abstract.md`, `design.md`, or any `module.md`; a module `design.md` amendment
+   rides only on the same reviewed, digest-bound proposal and applies atomically with the
+   compaction (FR-017, FR-028).
+-- Every phase operates on the one selected canonical root through the Feature Workspace Protocol
+-  paths and never derives competing root-level plan, task, or checklist paths (FR-013, FR-023,
+-  FR-024).
++- Every normal phase operates on the one selected canonical root through Feature Workspace Protocol
++  paths and never derives competing root-level plan, task, or checklist paths; fast-loop may repeat
++  explicit resolution for its bounded affected roots without creating another selection registry
++  (FR-013, FR-023, FR-024, FR-035).
+ - Exactly two containment levels exist; a sub-feature reads its parent's trio as read-only context
+   and never loads sibling bodies or attempts (FR-025, FR-026).
+ - Proposal, question, context, analysis, and validation are read-only; mutations of maintained
+@@ -138,10 +141,10 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
+   go stale (FR-027, FR-028).
+ - Generated diagrams, pages, manifests, and reports are reproducible projections that exclude
+   temporal attempts; missing evidence is reported as unknown, never inferred (FR-029, FR-031).
+-- Fast-loop is confined to one already-realized selected feature with no active attempt; it preserves
+-  unrelated work, rejects architecture/contract/compatibility/cross-feature work before mutation,
+-  creates no attempt artifacts, and succeeds only with aligned docs and passing proportional checks
+-  (FR-035).
++- Fast-loop starts from one selected anchor, requires every affected feature to be already realized
++  with no active attempt, preserves unrelated work, rejects module-boundary and project-level user
++  compatibility/migration changes, creates no attempt artifacts, and succeeds only with aligned
++  authorities, passing checks, and exact review of architecture edits (FR-028, FR-035).
+ 
+ ## Read Next
+ 
+diff --git a/specs/concorde/features/001-concorde-workflow/contracts/agent-commands.md b/specs/concorde/features/001-concorde-workflow/contracts/agent-commands.md
+index 0ef110e..d8a9649 100644
+--- a/specs/concorde/features/001-concorde-workflow/contracts/agent-commands.md
++++ b/specs/concorde/features/001-concorde-workflow/contracts/agent-commands.md
+@@ -315,6 +315,7 @@ handoff consists of:
+ |---|---|
+ | Workspace protocol | `feature-workspace.schema.json`, Protocol/schema version 8 (acceptance proposal v6), all examples, and their combined source digest |
+ | Normal phase obligations | `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues` write only the selected feature/sub-feature root; `specify` authors `abstract.md` and `design.md` and seeds placeholder `implementation.md`; only `specify` and `clarify` write `abstract.md` or feature `design.md`, and no normal phase writes feature `implementation.md` or module `design.md`; a selected sub-feature additionally reads its parent durable trio as aggregate context and never reads/writes parent/sibling attempts implicitly |
++| Additive fast-loop obligation | `speckit.fast-loop` treats the selected root as an anchor, explicitly resolves every affected existing root through Protocol v8, requires accepted/no-attempt baselines for all, reconciles bounded cross-feature and contract/architecture detail while preserving module responsibilities and dependency direction, rejects changes to project-level compatibility/migration promises for users of the whole project, and keeps architecture edits review-pending until exact maintainer confirmation; it creates no attempt or acceptance artifact |
+ | Concorde command intents | The five canonical IDs and behavior sections in this contract; four are runtime-backed and `ask` is agent-followed/read-only |
+ | Installed support | Extension-relative workspace adapter, launchers, schemas, runtime sources, preset templates, and complete phase commands needed by those intents |
+ | Acceptance binding | Spec Kit host version, package versions/digests, handoff digest, actual registered winner, selected paths, outputs, and checkout-access result |
+diff --git a/specs/concorde/features/001-concorde-workflow/contracts/architecture-sources.md b/specs/concorde/features/001-concorde-workflow/contracts/architecture-sources.md
+index 15ee02b..df1006a 100644
+--- a/specs/concorde/features/001-concorde-workflow/contracts/architecture-sources.md
++++ b/specs/concorde/features/001-concorde-workflow/contracts/architecture-sources.md
+@@ -121,6 +121,14 @@ remains temporal until this operation succeeds. An existing non-empty attempt is
+ `attempt_state: active` and must never be replaced, archived as a second authority, or
+ removed silently. Acceptance never writes `abstract.md` or `design.md`.
+ 
++An explicitly invoked eligible fast-loop is the direct-authoring exception for established
++realizations. The selected root is its anchor; bounded evidence may identify other affected existing
++features, each of which is resolved explicitly through the same Feature Workspace Protocol and must
++have a non-placeholder `implementation.md` plus `attempt_state: absent`. Fast-loop may reconcile each
++affected durable trio and directly related contracts, diagrams, module design-reference detail, and
++user guidance when module responsibilities and dependency direction remain stable. Any AI-authored
++architecture source remains review-pending until the maintainer confirms its exact validated diff.
++
+ ## Phase Path Mapping
+ 
+ The selected feature pointer identifies the feature root. Operations resolve from it as follows:
+@@ -131,6 +139,7 @@ The selected feature pointer identifies the feature root. Operations resolve fro
+ | custom requirements checklists | read durable root plus available attempt context (the abstract is in scope); write only `attempt/checklists/` |
+ | plan, research, technical model, quickstart | read root `design.md` + `implementation.md` and the module summary (the abstract orients only); consult the module `design.md` only deliberately and cite it; write `attempt/` |
+ | tasks, implement, analyze, converge, task-to-issue conversion, delivery validation | `attempt/`; analysis also reads `abstract.md` to report disagreement with `design.md` |
++| fast-loop | resolve the selected root as an anchor, then explicitly resolve every affected existing root; read each affected durable trio and bounded related module/contract/code/test/doc evidence; write verified code/tests plus every affected feature, contract, diagram, module-reference, and user-guide source needed for truthfulness; create no attempt; reject module responsibility/dependency and project-level user compatibility/migration policy changes; require exact review of architecture edits |
+ | implementation acceptance | read root `abstract.md` + `design.md` + `implementation.md`, the module summary and `design.md`, and all attempt inputs; approved apply writes feature `implementation.md`, optionally module `design.md`, and removes `attempt/` |
+ 
+ `.specify/feature.json` is the standard project-scoped selection record and may point to a valid
+@@ -140,7 +149,9 @@ second active-feature registry. When the selected root is a sub-feature, workspa
+ returns the parent feature's stable ID and durable `abstract.md`/`design.md`/`implementation.md` paths as
+ read-only context plus bounded sibling summaries; it never exposes sibling bodies or parent/sibling
+ attempt paths. Every workspace result also names the providing module's `module.md` and `design.md`
+-as navigation references.
++as navigation references. Normal phases consume only the selected result. Fast-loop may issue
++additional explicit, read-only resolutions for affected roots; each receipt remains single-root and
++does not rewrite the standard selection.
+ 
+ ## Package Discovery
+ 
+diff --git a/specs/concorde/features/001-concorde-workflow/design.md b/specs/concorde/features/001-concorde-workflow/design.md
+index 4ae65c3..592eb5e 100644
+--- a/specs/concorde/features/001-concorde-workflow/design.md
++++ b/specs/concorde/features/001-concorde-workflow/design.md
+@@ -95,20 +95,22 @@ source ownership.
+ 
+ Revision note (2026-08-29): feature roots use `abstract.md`, `design.md`, and `implementation.md`,
+ with temporal work under `attempt/`. The placeholder is seeded at specification and written in full by the first acceptance,
+-a module `design.md` is written only by acceptance or directly by a maintainer, the level view is
++  a module `design.md` is written by acceptance, directly by a maintainer, or by an eligible
++  fast-loop whose exact architecture diff receives maintainer review; the level view is
+ the required module diagram, reading-budget overruns are warnings, and adoption is a one-time
+ refactor of this repository.
+ 
+ ### Session 2026-08-29 — fast-loop
+ 
+-- Q: What qualifies for the direct fast path? → A: Only a concrete, explicitly invoked change inside
+-  one existing selected feature with accepted realization, no active attempt, no architecture,
+-  boundary-contract, compatibility, or cross-feature behavioral impact, and safely separable
+-  worktree edits. Everything else returns to the normal workflow before mutation.
+-- Q: Which maintained documents may fast-loop write? → A: The selected feature's `design.md` and
+-  `abstract.md` when required behavior changes, its `implementation.md` when verified realization
+-  changes, and directly related non-architectural user guidance. It cannot create the first accepted
+-  realization or write module, contract, diagram, parent, sibling, or unrelated feature sources.
++- Q: What qualifies for the direct fast path? → A: A concrete, explicitly invoked, bounded change
++  beginning from one selected anchor and affecting one or more related existing features, each with
++  accepted realization and no active attempt. It may reconcile inter-module contract/format and
++  architecture detail, but cannot change module responsibilities, dependency direction, or durable
++  compatibility/migration promises to users of the whole project.
++- Q: Which maintained documents may fast-loop write? → A: Every affected feature's durable trio
++  according to its behavior/realization delta, plus directly related contracts, maintained diagrams,
++  module references, and user guidance. It cannot create a first accepted realization or write
++  unrelated sources; AI-authored architecture edits remain pending exact maintainer review.
+ 
+ ## Workflow Boundary
+ 
+@@ -241,8 +243,9 @@ children, and remain distinct from adjacent-module feature refinement.
+   at most one temporal `attempt/` attempt.
+ - A **module design reference** is module `design.md`; a **feature's accepted implementation** is
+   feature `implementation.md`. Both are consulted deliberately and cited when used.
+-- A **selection** identifies exactly one canonical feature root. All lifecycle phases use the paths
+-  returned for that selected root.
++- A **selection** identifies exactly one canonical feature root. Normal lifecycle phases use the
++  paths returned for that selected root. Fast-loop treats it as an anchor and may resolve additional
++  affected roots explicitly through the same protocol without creating a second selection registry.
+ - **Bounded context** exposes one architectural level built from module summaries, level views,
+   contracts, and feature summary fields (ID, title, outcome, evidence status, canonical root, abstract
+   path). Parent and sibling feature relationships are concise navigation context, not permission to
+@@ -267,7 +270,7 @@ children, and remain distinct from adjacent-module feature refinement.
+ | Any | Ask a source-grounded, read-only workflow question. | `speckit.concorde.ask` | Installed guidance, module summaries, feature abstracts; a specification or design reference only when the question requires it | — |
+ | 3 | Create the feature root at its canonical path, or select an existing root through the standard Spec Kit selection (`.specify/feature.json` / `SPECIFY_FEATURE_DIRECTORY`). | `speckit.specify` / Spec Kit selection | — | New `abstract.md` + `design.md` + placeholder `implementation.md`; selection pointer |
+ | 4 | Define behavior, resolve material uncertainty, keep the abstract faithful, and review requirements quality. | `speckit.specify` / `speckit.clarify` / `speckit.checklist` | `abstract.md`, `design.md`; existing feature `implementation.md` read-only; level summary | `abstract.md`, `design.md`; `attempt/checklists/` |
+-| Fast | Complete an eligible small change against an existing accepted feature without attempt ceremony. | `speckit.fast-loop` | Selected durable trio, bounded level context, relevant code/tests/docs, worktree state | Code, tests, affected selected feature documents, related non-architectural user docs; no `attempt/` |
++| Fast | Complete an eligible small change across a bounded set of related existing accepted features without attempt ceremony. | `speckit.fast-loop` | Anchor and each affected durable trio, bounded module/contract context, relevant code/tests/docs, worktree state | Code, tests, all affected feature documents, related contract/architecture detail and user docs; no `attempt/`; architecture edits require exact review |
+ | 5 | Plan one implementation attempt, order its work, and optionally project tasks into issues. | `speckit.plan` / `speckit.tasks` / `speckit.taskstoissues` | `design.md`, feature `implementation.md`, level summary; the module reference on demand | `attempt/` |
+ | 6 | Execute tasks, analyze artifact consistency, and append only genuine remaining work. | `speckit.implement` / `speckit.analyze` / `speckit.converge` | The attempt and the durable trio | `attempt/`, code, tests |
+ | 7 | Deterministically validate maintained architecture and evidence references. | `speckit.concorde.validate` | All maintained sources | — |
+@@ -285,12 +288,13 @@ and normally owns the abstract; planning creates the temporal artifacts consumed
+ validation may challenge any maintained structural claim; acceptance is eligible only after execution
+ work and review state are complete, normally writes the feature implementation, and is the only
+ workflow step that carries rationale developed during an attempt into a module design reference.
+-An eligible fast-loop is the bounded exception that may reconcile the selected feature's abstract,
+-design, and established implementation directly. A later attempt begins again from the durable specification and the last accepted
+-realization. Fast-loop is an alternate branch after selection only for an already-realized,
+-single-feature, non-architectural change with no active attempt; it directly reconciles the affected
+-durable feature documents and implementation evidence or redirects to the ordinary stages before
+-mutation.
++An eligible fast-loop is the bounded exception that may reconcile the anchor and every affected
++feature's abstract, design, and established implementation directly. A later attempt begins again
++from the durable specification and last accepted realization. Fast-loop is an alternate branch after
++selection only when every affected feature is already realized and has no active attempt; it may
++reconcile bounded cross-feature and contract/architecture detail while module responsibilities,
++dependency direction, and project-level user compatibility/migration policy stay stable. Maintained
++architecture edits require exact maintainer review before final success.
+ 
+ ## Core Component Diagram and Supplemental Scenario Views
+ 
+@@ -375,10 +379,12 @@ that every phase uses only the selected root's authoritative paths and the three
+    `implementation.md` changed.
+ 4. **Given** an immediate sub-feature is selected, **When** normal phases run, **Then** the parent's
+    durable trio is read-only context and sibling bodies and attempts are not implicitly loaded.
+-5. **Given** an existing selected feature with accepted realization and no active attempt, **When**
+-   the maintainer explicitly invokes fast-loop for a small non-architectural change, **Then** code,
+-   proportional tests, and affected feature/user documentation are reconciled directly without
+-   planning, tasks, implementation, convergence, or acceptance artifacts.
++5. **Given** an existing anchor and a bounded affected set whose features have accepted realizations
++   and no active attempts, **When** the maintainer explicitly invokes fast-loop for a small change
++   that preserves module responsibilities, dependency direction, and project-level user policy,
++   **Then** code, proportional tests, and every affected feature/contract/architecture/user document
++   are reconciled directly without planning, tasks, implementation, convergence, or acceptance
++   artifacts; maintained architecture edits remain pending exact maintainer review.
+ 
+ ---
+ 
+@@ -471,8 +477,9 @@ durable root without root-level compatibility copies.
+ - A command receives an unknown, ambiguous, unsafe, or stale module/feature target.
+ - A sub-feature specification names a child as its parent or attempts a third containment level.
+ - A phase finds an existing non-empty attempt and must report it as active rather than replace it.
+-- Fast-loop is requested for a placeholder implementation, an active attempt, an architecture or
+-  contract change, a cross-feature behavior change, or work overlapping user edits.
++- Fast-loop finds a placeholder implementation or active attempt in any affected root, a changed
++  module responsibility or dependency direction, changed project-level user compatibility/migration
++  policy, material ambiguity, or work overlapping user edits.
+ - A contract, refinement, scenario, diagram, or parent registration is missing or contradictory.
+ - The maintained source digest changes between proposal review and approved application.
+ - Generated evidence disagrees with maintained intent or cannot be reproduced.
+@@ -603,8 +610,9 @@ durable root without root-level compatibility copies.
+ - **FR-022**: Concorde MUST preserve the ordered workflow and command ownership declared in the
+   Decomposition and End-to-End Workflow sections, including fast-loop as a bounded alternate branch
+   rather than a second normal lifecycle.
+-- **FR-023**: Every command MUST operate on one explicit or selected canonical target and MUST reject
+-  ambiguous, unsafe, or structurally invalid targets.
++- **FR-023**: Every workspace resolution MUST operate on one explicit or selected canonical target
++  and reject ambiguous, unsafe, or structurally invalid targets. Normal phases use one selected
++  result; fast-loop MAY repeat explicit read-only resolution for each discovered affected root.
+ - **FR-024**: All normal Spec Kit phases MUST use the selected Feature Workspace Protocol paths and
+   MUST NOT derive competing root-level plan, task, or checklist paths.
+ - **FR-025**: The workflow MUST support exactly two feature-containment levels while keeping
+@@ -614,10 +622,12 @@ durable root without root-level compatibility copies.
+ - **FR-026**: Bounded operations MUST disclose their target, source basis, status, and complete
+   findings without silently expanding unrelated deeper content.
+ - **FR-027**: Proposal-only, question, context, analysis, and validation operations MUST be read-only.
+-- **FR-028**: Mutations of maintained architectural intent or a module design reference MUST require
+-  explicit approval of the presented proposal and MUST fail safely if reviewed inputs become stale.
+-  The maintainer's concrete invocation of an eligible fast-loop is explicit authorization for only
+-  its bounded selected-feature edits; it never authorizes architecture or contract mutation.
++- **FR-028**: Mutations of maintained architectural intent or a module design reference MUST receive
++  exact maintainer review and MUST fail safely if reviewed inputs become stale. Normal architecture
++  creation and acceptance use a presented proposal. A concrete fast-loop invocation authorizes its
++  bounded affected-source edits, but any resulting contract, maintained-diagram, or other
++  architecture-authority change stays review-pending until the maintainer confirms the exact
++  validated diff.
+ - **FR-029**: Missing or conflicting implementation evidence MUST be represented as unknown or
+   disagreement, never as inferred agreement.
+ - **FR-030**: Installed Codex and slash-command presentations MUST preserve equivalent command intent,
+@@ -632,12 +642,14 @@ durable root without root-level compatibility copies.
+ - **FR-034**: Deterministic operations MUST return stable structured statuses and actionable findings
+   suitable for both human review and automated tests.
+ - **FR-035**: `speckit.fast-loop` MUST directly reconcile an eligible small change across code,
+-  proportional tests, the selected feature's affected durable documents, and related
+-  non-architectural user documentation without creating or invoking planning, task, implementation,
+-  convergence, or acceptance artifacts. It MUST require one existing selected feature with an
+-  accepted baseline and no active attempt; preserve unrelated worktree changes; reject architecture,
+-  boundary-contract, compatibility, cross-feature, unsafe, or materially ambiguous work before
+-  mutation; run proportional checks; and report target, files, evidence, and skipped ceremony.
++  proportional tests, every affected existing feature's durable documents, and directly related
++  contracts, architecture detail, module references, and user documentation without creating or
++  invoking planning, task, implementation, convergence, or acceptance artifacts. It MUST use one
++  selected root as an anchor, explicitly resolve every affected root, require an accepted baseline
++  and no active attempt for each, preserve unrelated worktree changes, reject module responsibility,
++  dependency-direction, project-level user compatibility/migration, unsafe, or materially ambiguous
++  work before mutation, run proportional checks, require exact review of architecture edits, and
++  report the anchor, affected set, files, evidence, review state, and skipped ceremony.
+ 
+ ### Scope
+ 
+@@ -647,7 +659,8 @@ two-document module model; the reading budgets; the one-time feature-root rename
+ `implementation/` to `attempt/`; root initialization; bounded context; workflow questions; Feature Workspace Protocol
+ resolution of the standard Spec Kit selection; selected-root routing for all nine normal Spec Kit
+ phases; architecture validation; implementation acceptance including reviewed module-reference amendments;
+-the explicitly invoked fast-loop alternate for an already-realized small non-architectural change;
++the explicitly invoked fast-loop alternate for a bounded small change across already-realized
++related features while module boundaries and project-level user policy remain stable;
+ migration of installed guidance and of Concorde's own hierarchy; the shared authority and
+ containment model connecting those operations.
+ 
+@@ -676,8 +689,9 @@ remains a separately tracked follow-up.
+ - **Feature design reference** (`implementation.md`, the accepted realization): The durable account of how
+   the currently accepted implementation realizes a feature, with the full implementation detail;
+   needed only when writing the code or fixing a bug.
+-- **Fast-loop change**: A directly authored, verified code/test/document change contained by one
+-  existing accepted feature, with no temporal attempt or acceptance proposal.
++- **Fast-loop change**: A directly authored, verified code/test/document change beginning from one
++  selected anchor and spanning a bounded affected set of existing accepted features, with no
++  temporal attempt or acceptance proposal and exact review for maintained architecture edits.
+ - **Implementation attempt** (`attempt/`): Temporary plan, tasks, checklists, research,
+   models, guidance, and evidence for one delivery cycle.
+ - **Reading budget**: The maximum first-time reading effort a module summary (20 minutes) or a
+@@ -731,9 +745,11 @@ remains a separately tracked follow-up.
+   `abstract.md`, `design.md`, parent, sibling, child, and summary authority not named by the proposal.
+ - **SC-013**: In every analysis fixture with a seeded abstract/specification disagreement, the report
+   names the disagreeing statement and the prevailing `design.md` requirement.
+-- **SC-014**: Every eligible fast-loop fixture finishes with aligned code, proportional tests, and
+-  related documentation and creates no attempt artifact; every ineligible fixture makes zero
+-  mutations and identifies the normal workflow stage to use.
++- **SC-014**: Every eligible fast-loop fixture, including multi-feature and inter-module-format
++  cases, finishes with aligned code, proportional tests, every affected authority, and no attempt
++  artifact; architecture-source cases remain review-pending until exact maintainer review. Every
++  module-boundary, project-policy, or otherwise ineligible fixture makes zero mutations and
++  identifies the normal workflow stage to use.
+ 
+ ## Assumptions
+ 
+diff --git a/specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json b/specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json
+index 2ddd2af..919b275 100644
+--- a/specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json
++++ b/specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json
+@@ -42,7 +42,7 @@
+         "id": "accept-milestone",
+         "label": "Reconcile realization",
+         "focus": ["maintainer", "agent", "fastLoop", "concordeCommands", "runtime", "featureSpec", "featureDesign", "implementation"],
+-        "note": "Acceptance compacts a reviewed attempt; fast-loop directly reconciles one eligible established small change."
++        "note": "Acceptance compacts one reviewed attempt; fast-loop reconciles one bounded change across an anchor and all affected accepted features."
+       }
+     ]
+   },
+@@ -96,7 +96,7 @@
+       "id": "fastLoop",
+       "type": "backend",
+       "label": "Fast-Loop Surface",
+-      "sublabel": "code + tests + durable docs",
++      "sublabel": "affected code + tests + authorities",
+       "tag": "preset · modifies",
+       "pos": [440, 420],
+       "size": [200, 86],
+@@ -107,8 +107,8 @@
+     {
+       "id": "workspaceAdapter",
+       "type": "security",
+-      "label": "Selected-Workspace Adapter",
+-      "sublabel": "workspace.py --phase",
++      "label": "Feature-Workspace Adapter",
++      "sublabel": "selected or explicit root",
+       "pos": [700, 180],
+       "size": [200, 86],
+       "sources": [
+@@ -200,7 +200,7 @@
+     {"id": "run-concorde", "from": "agent", "to": "concordeCommands", "label": "skill / slash command"},
+     {"id": "resolve-phase", "from": "phaseCommands", "to": "workspaceAdapter", "label": "resolve before phase", "labelAt": [675, 150], "variant": "security"},
+     {"id": "read-selection", "from": "workspaceAdapter", "to": "controlState", "label": "selection + phase root", "labelAt": [820, 280]},
+-    {"id": "resolve-fast-loop", "from": "fastLoop", "to": "workspaceAdapter", "label": "resolve + preflight", "variant": "security"},
++    {"id": "resolve-fast-loop", "from": "fastLoop", "to": "workspaceAdapter", "label": "resolve anchor + affected roots", "variant": "security"},
+     {"id": "invoke-runtime", "from": "concordeCommands", "to": "runtime", "label": "portable launcher · 4 operations", "labelAt": [790, 800], "variant": "security"},
+     {"id": "runtime-state", "from": "runtime", "to": "controlState", "label": "read / update state"},
+     {"id": "route-durable", "from": "controlState", "to": "featureSpec", "label": "selected lifecycle root", "labelAt": [1165, 280]},
+@@ -226,7 +226,7 @@
+       "items": [
+         "The coding agent follows the installed command instructions",
+         "Normal phases call workspace.py before Spec Kit work",
+-        "Fast-loop calls workspace.py, checks eligibility, then edits directly",
++        "Fast-loop resolves an anchor and each affected root, checks boundaries, then edits directly",
+         "Four Concorde operations call portable launchers and Python runtime",
+         "The ask surface answers from cited sources without changing the workspace"
+       ]
+@@ -237,7 +237,8 @@
+       "items": [
+         "module.md summary + design.md reference: level architecture",
+         "parent spec owns aggregate facts; child spec owns focused behavior",
+-        "design.md, implementation.md, code/tests, and attempt/ remain isolated to one selected root"
++        "normal phases remain isolated to one selected root; fast-loop explicitly resolves each bounded affected root",
++        "contract/diagram edits preserve module boundaries and remain pending exact maintainer review"
+       ]
+     }
+   ]
+diff --git a/specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/abstract.md b/specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/abstract.md
+index 7327632..a8252ae 100644
+--- a/specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/abstract.md
++++ b/specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/abstract.md
+@@ -5,29 +5,30 @@ page is enough to understand the fast path; the links at the end only redirect t
+ 
+ ## Purpose
+ 
+-Fast Loop lets a maintainer complete a small, well-bounded modification to one existing feature in a
+-single command. It directly reconciles code, tests, and related maintained documentation without an
+-implementation attempt, while redirecting larger or riskier work to the normal workflow before any
+-mutation.
++Fast Loop lets a maintainer complete a small, well-bounded modification that begins from one existing
++anchor feature and may affect other related existing features. It directly reconciles code, tests,
++and all related maintained documentation without an implementation attempt, while redirecting
++module-boundary, project-policy, larger, or riskier work to the normal workflow before mutation.
+ 
+ ## Functionality
+ 
+ | Part | What it does |
+ |---|---|
+-| `speckit.fast-loop` | Accepts a concrete small-change description and resolves one selected feature. |
+-| Eligibility preflight | Confirms an accepted baseline, no active attempt, one-feature ownership, no architecture or contract impact, and safe worktree ownership. |
+-| Direct change | Updates code, proportional tests, the selected feature's affected durable documents, and related non-architectural user guidance. |
+-| Verification | Runs proportional tests and deterministic validation, then reports scope, files, evidence, and preserved unrelated work. |
++| `speckit.fast-loop` | Accepts a concrete small-change description and resolves a selected anchor feature. |
++| Eligibility preflight | Discovers every affected existing feature; confirms accepted baselines, no active attempts, stable module responsibilities and dependencies, stable project-level user compatibility/migration policy, and safe worktree ownership. |
++| Direct change | Updates code, proportional tests, every affected feature's durable documents, and related contract, architecture-detail, and user guidance sources. |
++| Verification | Runs proportional tests and deterministic validation, presents any architecture-source diff for required maintainer review, then reports the anchor, affected set, files, evidence, and preserved unrelated work. |
+ | Escalation | Rejects ineligible work before mutation and points to the earliest applicable stage of the full workflow. |
+ 
+ The command updates `design.md` and keeps `abstract.md` faithful only when required behavior changes;
+ it updates `implementation.md` whenever verified realization changes. It never creates or uses an
+ `attempt/`, plan, task list, or acceptance proposal.
+ 
+-**Not part of this feature**: first-time realization, active attempts, new or restructured features
+-or modules, architecture or boundary-contract changes, cross-feature behavior, compatibility or
+-migration work, and hidden execution of the ordinary planning, task, implementation, convergence,
+-or acceptance phases.
++**Not part of this feature**: first-time realization, active attempts in any affected feature, new or
++restructured features or modules, changed module responsibilities or dependencies, changes to the
++project's compatibility or migration policy for users of the whole project, unrelated source edits,
++and hidden execution of the ordinary planning, task, implementation, convergence, or acceptance
++phases.
+ 
+ ## Structure
+ 
+@@ -38,45 +39,53 @@ The parent <a href="/architecture/concorde-workflow-components.html">workflow co
+ Maintainer request
+       │
+       ▼
+-selected feature + accepted realization + worktree ──▶ eligibility decision
+-                                                         ├─ ineligible ──▶ no edits + full-flow guidance
+-                                                         └─ eligible ───▶ code + tests + related docs
+-                                                                               │
+-                                                                               ▼
+-                                                                     checks + truthful report
++anchor feature + bounded impact discovery + worktree ──▶ eligibility decision
++                                                            ├─ ineligible ──▶ no edits + full-flow guidance
++                                                            └─ eligible ───▶ code + tests + all related docs
++                                                                                  │
++                                                                                  ▼
++                                                                        checks + truthful report
+ ```
+ 
+-The selected feature remains the only behavioral authority in scope. Sibling bodies, module design
+-sources, architecture views, boundary contracts, and unrelated worktree changes stay outside the
+-direct change set.
++The selected feature is an anchor, not the only behavioral authority in scope. The command opens an
++additional feature body only when bounded evidence makes it part of the affected set, never reads an
++affected feature's attempt, and keeps unrelated feature, architecture, and worktree sources outside
++the direct change set.
+ 
+ ## Logic
+ 
+-1. Resolve one canonical selected feature and inspect its accepted realization, attempt state,
+-   bounded context, relevant implementation evidence, and current worktree changes.
+-2. Decide eligibility before mutation. Reject and redirect anything outside one already-realized
+-   feature's existing ownership or anything whose edits cannot be separated safely.
+-3. Apply the bounded code and test change, reconcile affected feature and user-facing documentation,
+-   and create no attempt artifacts.
++1. Resolve a canonical selected anchor, use bounded module, contract, implementation, test, and
++   documentation evidence to discover every affected feature, and inspect each affected feature's
++   durable trio and attempt state deliberately.
++2. Decide eligibility before mutation. Reject new feature/module structure, changed module
++   responsibility or dependency direction, changed whole-project user compatibility/migration
++   policy, unaccepted or active affected roots, material ambiguity, and edits that cannot be
++   separated safely.
++3. Apply the bounded code and test change, reconcile every affected feature plus related contract,
++   architecture-detail, and user-facing documentation, and create no attempt artifacts.
+ 4. Run proportional tests and deterministic validation. Repair within the same loop or report the
+-   remaining failure without claiming success.
+-5. Report the selected target, eligibility, files, documentation impact, checks, preserved unrelated
+-   work, and confirmation that no attempt or acceptance operation ran.
++   remaining failure without claiming success. When architecture sources changed, present their
++   exact diff and keep the result review-pending until the maintainer confirms it.
++5. Report the anchor, affected feature set, eligibility, files, documentation impact, checks,
++   architecture-review state, preserved unrelated work, and confirmation that no attempt or
++   acceptance operation ran.
+ 
+ **Rules the implementation must keep**
+ 
+-- Resolve exactly one existing selected feature and require a concrete request before changing
+-  anything. (FR-001, FR-002)
+-- Fast-loop requires an accepted baseline, no active attempt, and scope wholly inside the selected
+-  feature's existing outcome; architecture, contracts, compatibility, and cross-feature behavior
+-  always escalate before mutation. (FR-003, FR-004, FR-014)
+-- Direct edits keep code, proportional tests, affected durable feature documents, and related user
+-  guidance truthful without creating or invoking attempt lifecycle artifacts. (FR-006, FR-007,
+-  FR-008, FR-009)
++- Resolve an existing anchor and identify every affected existing feature before changing anything;
++  each affected root requires an accepted baseline and no active attempt. (FR-001, FR-002, FR-003)
++- Cross-feature and contract-format changes remain eligible when bounded, but module responsibility,
++  dependency direction, and project-level user compatibility/migration policy changes always
++  escalate before mutation. (FR-004, FR-014, FR-015)
++- Direct edits keep code, proportional tests, every affected durable feature document, related
++  contract and architecture detail, and user guidance truthful without creating or invoking attempt
++  lifecycle artifacts. (FR-006, FR-007, FR-008, FR-009)
+ - Preserve unrelated worktree changes and stop before writing when overlapping ownership is unsafe.
+   (FR-005, FR-010)
+-- Claim completion only after proportional checks pass, and report target, changes, evidence,
+-  failures, and the skipped ceremony explicitly. (FR-011, FR-012, FR-013)
++- Claim completion only after proportional checks pass, and report the anchor, affected set, changes,
++  evidence, failures, and skipped ceremony explicitly. (FR-011, FR-012, FR-013)
++- Treat validated contract or maintained-diagram edits as review-pending until the maintainer reviews
++  their exact diff; this review creates no attempt or acceptance proposal. (FR-016)
+ 
+ ## Read Next
+ 
+diff --git a/specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/contracts/fast-loop-command.md b/specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/contracts/fast-loop-command.md
+index 8e365d0..3352177 100644
+--- a/specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/contracts/fast-loop-command.md
++++ b/specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/contracts/fast-loop-command.md
+@@ -8,16 +8,17 @@
+ 
+ ## Intent
+ 
+-Complete one explicitly requested, small modification inside an existing selected feature by
+-directly reconciling code, proportional tests, and related maintained documentation. Do not create
+-or invoke a planning, task, implementation, convergence, or acceptance workflow.
++Complete one explicitly requested, small modification beginning from an existing selected anchor
++feature by directly reconciling code, proportional tests, every affected existing feature, and
++related maintained documentation. Do not create or invoke a planning, task, implementation,
++convergence, or acceptance workflow.
+ 
+ ## Input
+ 
+ | Field | Required | Meaning |
+ |---|---:|---|
+ | change description | yes | The concrete modification the maintainer authorizes the coding agent to make. |
+-| selected feature | yes | The existing canonical feature or immediate sub-feature resolved from `.specify/feature.json` or `SPECIFY_FEATURE_DIRECTORY`. |
++| anchor feature | yes | The existing canonical feature or immediate sub-feature resolved from `.specify/feature.json` or `SPECIFY_FEATURE_DIRECTORY`; it starts impact discovery but is not necessarily the only affected feature. |
+ 
+ An empty change description is rejected without reading or writing project artifacts.
+ 
+@@ -25,24 +26,33 @@ An empty change description is rejected without reading or writing project artif
+ 
+ Before hooks, preflight, or artifact access, the installed command invokes the extension-relative
+ workspace adapter with `--phase fast-loop`. A successful Protocol v8 response returns the selected
+-feature root as `phase_root` and includes the durable trio, providing module references, bounded
+-parent/sibling summaries, attempt path/state, and project reflection log. Any other status stops the
+-command without mutation.
++anchor root as `phase_root` and includes the durable trio, providing module references, bounded
++parent/sibling summaries, attempt path/state, and project reflection log. After bounded impact
++discovery, the command reruns the same adapter with `--feature-directory <affected-root> --phase
++fast-loop` for every affected feature and uses each returned receipt as that root's path authority.
++Any non-success status stops the command without mutation.
+ 
+-The `fast-loop` phase is root-scoped: it resolves an existing feature and never creates an attempt.
++The `fast-loop` phase is root-scoped: each call resolves one existing feature and never creates an
++attempt. Repeated explicit resolution does not persist a multi-feature selection record.
+ 
+ ## Eligibility
+ 
+ The command decides eligibility before mutation. All conditions must hold:
+ 
+-1. Exactly one canonical feature root is selected.
+-2. `implementation.md` is an accepted realization, not the placeholder.
+-3. `attempt_state` is `absent`.
+-4. The requested outcome remains inside the selected feature's existing ownership.
+-5. The change creates no feature/module, architecture-view, boundary-contract, compatibility,
+-   migration, dependency-direction, or cross-feature behavioral change.
+-6. Relevant current worktree edits can be distinguished safely from the command's proposed edits.
+-7. Bounded inspection leaves no material ambiguity about the required result.
++1. At least one existing canonical feature root resolves as the anchor.
++2. Bounded inspection identifies every existing feature whose behavior or accepted realization is
++   affected.
++3. Every affected `implementation.md` is an accepted realization, not the placeholder, and every
++   affected `attempt_state` is `absent`.
++4. The change creates or restructures no feature or module and changes no module responsibility or
++   dependency direction.
++5. The change does not alter project-level compatibility or migration policy promised to users of
++   the whole project. Internal inter-module contracts and data formats are not independently
++   disqualifying.
++6. Every affected feature, contract, architecture detail, and user document can be reconciled in the
++   same bounded loop.
++7. Relevant current worktree edits can be distinguished safely from the command's proposed edits.
++8. Bounded inspection leaves no material ambiguity about the required result.
+ 
+ Expected ineligibility is a normal result, not a reflection-log problem. The command names the
+ failed rule and recommends the earliest applicable full-workflow stage without changing any file.
+@@ -51,41 +61,53 @@ failed rule and recommends the earliest applicable full-workflow stage without c
+ 
+ The coding agent:
+ 
+-1. records the pre-existing worktree state and the exact selected target;
+-2. reads the selected `design.md` and `implementation.md`, the feature abstract for orientation, the
+-   providing `module.md` as bounded context, parent aggregate documents only for a sub-feature, and
+-   only the relevant code, tests, and user-facing docs;
++1. records the pre-existing worktree state, selected anchor, and durable-document hashes for every
++   affected feature;
++2. reads the anchor's durable trio and providing `module.md`, discovers the affected set from bounded
++   module, contract, implementation, test, and documentation evidence, then deliberately reads each
++   affected feature's durable trio without reading any attempt;
+ 3. edits the implementation and proportional tests while preserving unrelated work;
+-4. after executable evidence passes, updates selected `design.md` and `abstract.md` only if required
+-   behavior changed, updates selected `implementation.md` for the verified realization delta, and
+-   updates directly related non-architectural user guidance;
++4. after executable evidence passes, reconciles each affected feature's `design.md`, `abstract.md`,
++   and `implementation.md` according to its behavior and realization delta, plus every directly
++   related inter-module contract, maintained diagram or module reference, and user guide needed to
++   keep the repository truthful without changing module responsibilities or dependencies;
+ 5. runs targeted tests plus deterministic source/document validation; and
+-6. returns the completion report below.
++6. when maintained architecture sources changed, presents their exact diff and remains
++   `review_pending` until the maintainer confirms review; and
++7. returns the completion report below.
+ 
+-The command does not create or read a sibling attempt, does not write any `attempt/` artifact, and
+-does not edit parent/sibling feature bodies, module sources, boundary contracts, maintained diagrams,
+-or unrelated feature sources.
++The command does not create or read any affected feature's attempt and does not write any `attempt/`
++artifact. It edits a parent, sibling, module, contract, or maintained diagram source only when that
++source is directly related to the bounded eligible change, and never changes module responsibility
++or dependency direction through that edit.
+ 
+ ## Completion Report
+ 
+ A successful report includes:
+ 
+-- selected feature ID and root;
++- anchor feature ID/root and every affected feature ID/root;
+ - the eligibility basis;
+ - every changed file;
+-- whether the behavioral documents changed or remained byte-identical;
++- whether each affected feature's behavioral documents changed or remained byte-identical;
+ - every test and validation command with its result;
+ - unrelated pre-existing changes preserved;
+ - reflections appended, if a genuine workflow problem was encountered; and
++- architecture review state (`not_required`, `review_pending`, or `reviewed`) with the affected
++  source paths; and
+ - explicit confirmation that no attempt, planning, task, implementation, convergence, or acceptance
+   operation was used.
+ 
++An architecture-source change cannot produce a successful final report while its review state is
++`review_pending`. Maintainer review is an explicit confirmation of the validated diff, not an
++implementation-acceptance proposal, and creates no attempt artifact.
++
+ ## Failures
+ 
+-Unsafe or invalid selection, placeholder realization, active attempt, ineligible scope, overlapping
+-user edits, unavailable required evidence, and failing checks never produce a success claim. The
+-command either repairs an eligible failure within the same bounded loop or reports the exact
+-remaining state and safe next action. It never discards pre-existing user work.
++Unsafe or invalid anchor resolution, a placeholder realization or active attempt in any affected
++feature, ineligible module-boundary or project-policy scope, overlapping user edits, unavailable
++required evidence, and failing checks never produce a success claim. The command either repairs an
++eligible failure within the same bounded loop or reports the exact remaining state and safe next
++action. It never discards pre-existing user work.
+ 
+ ## Presentation Parity
+ 
+diff --git a/specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/design.md b/specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/design.md
+index fa26fb3..cfdfb81 100644
+--- a/specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/design.md
++++ b/specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/design.md
+@@ -43,8 +43,9 @@ to the full workflow.
+ 
+ The parent [Concorde Workflow](../../design.md) owns the aggregate lifecycle, durable document model,
+ selection rules, shared safety invariants, and command inventory. This child owns only the alternate
+-direct-edit path for an existing selected feature. It does not redefine ordinary specification,
+-planning, execution, validation, or acceptance behavior.
++direct-edit path that begins from an existing selected anchor feature and may reconcile other related
++existing features. It does not redefine ordinary specification, planning, execution, validation, or
++acceptance behavior.
+ 
+ ## Core Component Diagram and Supplemental Scenario Views
+ 
+@@ -61,30 +62,39 @@ planning, execution, validation, or acceptance behavior.
+ 
+ ### User Story 1 - Complete a small change directly (Priority: P1)
+ 
+-A maintainer describes a small modification against one selected, already-realized feature and asks
+-the fast-loop command to make it. The command updates the code, proportional tests, and every related
+-maintained feature or user-facing document needed to keep the repository truthful, runs the relevant
+-checks, and reports the resulting diff and evidence without creating an attempt.
++A maintainer describes a small modification from an existing, already-realized anchor feature and
++asks the fast-loop command to make it. The command identifies every related existing feature whose
++behavior or accepted realization is affected, updates the code, proportional tests, and all related
++maintained feature, contract, architecture-detail, or user-facing documents needed to keep the
++repository truthful, runs the relevant checks, and reports the resulting diff and evidence without
++creating an attempt.
+ 
+ **Why this priority**: Removing ceremony only has value if the complete small change is still coherent
+ and verifiable when the command returns.
+ 
+-**Independent Test**: Select a feature with an accepted realization, request a local behavior
+-correction covered by that feature, run the command, and verify the code, tests, affected durable
+-feature documents, and user-facing documentation agree while no `attempt/` or lifecycle artifact was
+-created.
++**Independent Test**: Select an anchor feature with an accepted realization, request a small behavior
++correction that also affects a related existing feature and an inter-module contract format, run the
++command, and verify the code, tests, every affected feature's durable documents, the contract source,
++and user-facing documentation agree while no `attempt/` or lifecycle artifact was created and module
++responsibilities and dependencies remain unchanged.
+ 
+ **Acceptance Scenarios**:
+ 
+-1. **Given** one valid selected feature with an accepted implementation and no active attempt,
+-   **When** the maintainer requests an eligible local correction, **Then** the command directly
+-   applies the code, test, and related documentation edits and reports passing targeted evidence.
+-2. **Given** an eligible change that alters observable feature behavior, **When** the loop completes,
+-   **Then** the selected feature's `design.md`, `abstract.md`, and `implementation.md` describe the
+-   resulting behavior and realization consistently without a planning or acceptance artifact.
++1. **Given** a valid selected anchor and an affected set of one or more existing features, each with
++   an accepted implementation and no active attempt, **When** the maintainer requests an eligible
++   small correction, **Then** the command directly applies the code, test, and related documentation
++   edits and reports passing targeted evidence.
++2. **Given** an eligible change that alters observable behavior in multiple related features,
++   **When** the loop completes, **Then** every affected feature's `design.md`, `abstract.md`, and
++   `implementation.md` describe the resulting behavior and realization consistently without a
++   planning or acceptance artifact.
+ 3. **Given** an eligible implementation-only correction that leaves required behavior unchanged,
+    **When** the loop completes, **Then** behavioral authority remains unchanged while the accepted
+    implementation reference, tests, and affected user-facing documentation are reconciled.
++4. **Given** an otherwise eligible change that edits an inter-module contract or maintained
++   architecture view, **When** code, documentation, and deterministic checks are complete, **Then**
++   the command presents the exact architecture-source diff for maintainer review and does not report
++   those edits as final project intent until that review is confirmed.
+ 
+ ---
+ 
+@@ -93,23 +103,25 @@ created.
+ A maintainer receives a clear, non-mutating explanation when the requested work would cross the fast
+ boundary, together with the full workflow stage from which to continue.
+ 
+-**Why this priority**: A faster path must not silently become a way around architectural ownership,
+-contract review, active-attempt state, or the first accepted realization.
++**Why this priority**: A faster path must not silently become a way around module-boundary review,
++active-attempt state, the first accepted realization, or project-level user compatibility policy.
+ 
+-**Independent Test**: Exercise the command with an unselected target, placeholder implementation,
+-active attempt, architecture change, contract change, new feature, multi-feature behavior change,
+-and ambiguous scope; verify each is rejected before any file changes and the response recommends the
+-normal workflow.
++**Independent Test**: Exercise the command with no valid anchor, a placeholder implementation or
++active attempt in any affected feature, a new feature, changed module responsibility, changed module
++dependency direction, changed whole-project user compatibility or migration policy, and ambiguous
++scope; verify each is rejected before any file changes and the response recommends the normal
++workflow. Separately verify that a bounded cross-feature change and inter-module contract-format
++change remain eligible when all affected authorities are reconciled.
+ 
+ **Acceptance Scenarios**:
+ 
+-1. **Given** no single valid selected feature, a placeholder accepted implementation, or an active
+-   attempt, **When** fast-loop is invoked, **Then** it makes no mutation and identifies the blocking
+-   condition.
+-2. **Given** a request that creates or restructures a feature or module, changes a boundary contract
+-   or architecture view, changes compatibility, or needs coordinated behavior across feature roots,
+-   **When** eligibility is evaluated, **Then** it is rejected before mutation and redirected to
+-   specify → plan → tasks → implement → accept.
++1. **Given** no valid existing anchor, a placeholder accepted implementation, or an active attempt in
++   any affected feature, **When** fast-loop is invoked, **Then** it makes no mutation and identifies
++   the blocking condition.
++2. **Given** a request that creates or restructures a feature or module, changes a module's
++   responsibility or dependency direction, or changes the project's compatibility or migration
++   policy for users of the whole project, **When** eligibility is evaluated, **Then** it is rejected
++   before mutation and redirected to specify → plan → tasks → implement → accept.
+ 3. **Given** pre-existing worktree changes overlap files the command would edit and safe ownership of
+    the edits cannot be established, **When** preflight runs, **Then** the command preserves those
+    changes and stops with an actionable explanation.
+@@ -125,29 +137,31 @@ report of scope, files, checks, and remaining concerns.
+ implementation, and executable evidence agree.
+ 
+ **Independent Test**: Run one passing and one deliberately failing eligible change and verify the
+-passing report names the selected feature, changed files, and checks, while the failing run never
+-claims completion or accepted evidence.
++passing report names the anchor, affected feature set, changed files, and checks, while the failing
++run never claims completion or accepted evidence.
+ 
+ **Acceptance Scenarios**:
+ 
+ 1. **Given** all required edits and checks pass, **When** the command finishes, **Then** it reports
+-   the selected feature, changed files, behavioral and documentation impact, tests and validations
+-   run, and any unrelated pre-existing changes left untouched.
++   the anchor and every affected feature, changed files, behavioral and documentation impact, tests
++   and validations run, and any unrelated pre-existing changes left untouched.
+ 2. **Given** a required check fails, **When** the command cannot repair the failure within the same
+    bounded loop, **Then** it does not claim success, does not describe unverified realization as
+    accepted, and reports the exact remaining failure and safe next action.
+ 
+ ### Edge Cases
+ 
+-- The selected feature exists but its `implementation.md` is still the no-accepted-realization
+-  placeholder.
++- The anchor has an accepted realization, but a related affected feature still has the
++  no-accepted-realization placeholder or an active attempt.
+ - A stale or malformed selection resolves outside the canonical hierarchy.
+ - An `attempt/` contains only checklists from specification versus substantive planning or execution
+   artifacts; both count as active workflow state for fast-loop safety.
+-- The change initially looks local but a failing test reveals a cross-feature or contract impact.
++- The change initially looks local but a failing test reveals another affected feature or contract;
++  the agent expands the affected set and reconciles it before continuing.
+ - Related prose exists in both feature documents and general user-facing guides.
+ - The worktree contains unrelated edits, untracked files, or an overlapping edit made by the user.
+-- The requested change is documentation-only but changes normative behavior or a boundary promise.
++- The requested change is documentation-only but changes module responsibility, dependency
++  direction, or a whole-project user compatibility promise.
+ - Validation cannot run because a required local tool or dependency is unavailable.
+ 
+ ## Requirements
+@@ -156,68 +170,86 @@ claims completion or accepted evidence.
+ 
+ - **FR-001**: Concorde MUST expose one user-visible `speckit.fast-loop` command with equivalent intent,
+   arguments, target disclosure, and failure behavior in every supported coding-agent integration.
+-- **FR-002**: The command MUST require a concrete change description and resolve exactly one existing
+-  canonical selected feature through the Feature Workspace Protocol before reading or writing
+-  feature-scoped artifacts.
+-- **FR-003**: A request is eligible only when the selected feature already has a non-placeholder
+-  accepted implementation, has no active `attempt/`, and the requested result remains within that
+-  feature's existing outcome and ownership.
++- **FR-002**: The command MUST require a concrete change description and resolve at least one existing
++  canonical feature as its anchor through the Feature Workspace Protocol before reading or writing
++  feature-scoped artifacts. The selected anchor is a navigation entry, not an assertion that exactly
++  one feature owns the change.
++- **FR-003**: Before mutation, the command MUST identify every existing feature whose behavior or
++  accepted realization the request can affect. A request is eligible only when every affected
++  feature has a non-placeholder accepted implementation and no active `attempt/`.
+ - **FR-004**: The command MUST reject before mutation any request that creates or restructures a
+-  feature or module, changes module responsibility or dependency direction, changes a boundary
+-  contract or maintained architecture diagram, changes compatibility or migration policy, spans
+-  behavioral authority across feature roots, or remains materially ambiguous after bounded
+-  inspection.
+-- **FR-005**: Eligibility preflight MUST inspect current selection and attempt state, the selected
+-  feature's behavioral authority and accepted realization, bounded module context, relevant code and
+-  tests, and the existing worktree diff without loading sibling bodies or attempts implicitly.
++  feature or module, changes a module responsibility or dependency direction, changes the project's
++  compatibility or migration policy for users of the whole project, or remains materially ambiguous
++  after bounded inspection. A cross-feature behavioral effect, inter-module contract change, or
++  maintained diagram update is not independently disqualifying when the change is otherwise small,
++  every related authority is reconciled, and module responsibilities and dependencies stay stable.
++- **FR-005**: Eligibility preflight MUST inspect the anchor's selection and attempt state, discover the
++  affected feature set from bounded module, contract, implementation, test, and documentation
++  evidence, deliberately read each affected feature's durable authority and accepted realization,
++  verify every affected attempt state, and inspect the existing worktree diff. It MUST NOT load an
++  unrelated feature body or any feature's attempt implicitly.
+ - **FR-006**: An eligible invocation MUST directly edit the implementation and proportional tests,
+   plus every related maintained document necessary to keep the completed repository truthful, in
+   one command execution.
+-- **FR-007**: When required behavior changes within the existing feature boundary, the command MUST
+-  update the selected feature's `design.md` and keep `abstract.md` faithful; when realization changes,
+-  it MUST update `implementation.md` to describe the verified current realization. It MUST leave a
+-  durable behavioral document byte-for-byte unchanged when that behavior did not change.
+-- **FR-008**: The command MAY update non-architectural user-facing guides that directly describe the
+-  changed behavior, but MUST NOT edit a module summary, module design reference, boundary contract,
+-  maintained architecture diagram, parent or sibling feature body, or unrelated feature source.
++- **FR-007**: For every affected feature whose required behavior changes, the command MUST update its
++  `design.md` and keep `abstract.md` faithful; when its realization changes, it MUST update its
++  `implementation.md` to describe the verified current realization. It MUST leave a durable
++  behavioral document byte-for-byte unchanged when that feature's behavior did not change.
++- **FR-008**: The command MUST update every directly related feature source, inter-module contract,
++  maintained diagram, module reference, and user-facing guide necessary to describe an eligible
++  completed change truthfully. Such edits MUST preserve module responsibilities and dependency
++  direction and MUST exclude unrelated feature and architecture sources.
+ - **FR-009**: The command MUST NOT create or use `attempt/`, `plan.md`, `tasks.md`, acceptance
+   proposals, or task checklists, and MUST NOT invoke the plan, tasks, implement, converge, or
+   implementation-acceptance workflows as hidden substeps.
+ - **FR-010**: The command MUST preserve unrelated pre-existing worktree changes and MUST stop before
+   writing when overlapping ownership cannot be established safely.
+ - **FR-011**: The command MUST run tests and deterministic validation in proportion to every changed
+-  source, including selected feature and documentation checks when durable documentation changed.
++  source, including every affected feature, contract, architecture source, and user document.
+ - **FR-012**: The command MUST claim completion only when code, tests, and maintained documentation
+   agree and all required checks pass. If repair cannot finish inside the same bounded loop, it MUST
+   report failure and MUST NOT present unverified realization as accepted.
+-- **FR-013**: The completion report MUST name the selected feature, summarize eligibility, list
+-  changed files, distinguish behavioral from realization-only documentation changes, identify every
+-  check run and its result, disclose unrelated pre-existing changes preserved, and state that no
+-  attempt or acceptance operation was used.
++- **FR-013**: The completion report MUST name the anchor and every affected feature, summarize
++  eligibility, list changed files, distinguish each feature's behavioral from realization-only
++  documentation changes, identify every check run and its result, disclose unrelated pre-existing
++  changes preserved, and state that no attempt or acceptance operation was used.
++- **FR-015**: Compatibility and migration eligibility MUST be evaluated only against durable
++  project-level promises made to users of the whole project. Internal module contracts, data formats,
++  and coordinated feature behavior MAY change in fast-loop when FR-003 through FR-012 remain
++  satisfied; feature or module sources MUST NOT invent a separate compatibility or migration policy.
++- **FR-016**: When an eligible invocation edits an inter-module contract, maintained architecture
++  diagram, or other architecture authority, the command MUST present those exact edits for maintainer
++  review after deterministic validation and MUST NOT report them as final project intent until the
++  maintainer confirms review. This review is not an implementation-acceptance proposal and creates
++  no attempt artifact.
+ - **FR-014**: An ineligible or blocked response MUST be actionable: it MUST identify the failed
+   eligibility rule, make no fast-loop mutation, and direct the maintainer to the normal workflow at
+   the earliest applicable stage.
+ 
+ ### Scope
+ 
+-**In scope**: direct corrections and small enhancements wholly contained by one existing selected
+-feature; proportional code and test changes; direct reconciliation of that feature's durable trio
+-when affected; related non-architectural user documentation; preflight eligibility, worktree safety,
+-targeted validation, and a truthful completion report.
++**In scope**: direct corrections and small enhancements beginning from one existing anchor and
++affecting one or more related existing features; proportional code and test changes; direct
++reconciliation of every affected feature's durable trio; bounded inter-module contract-format and
++architecture-detail updates that preserve module responsibilities and dependencies; related user
++documentation; preflight eligibility, worktree safety, targeted validation, and a truthful report.
+ 
+-**Out of scope**: new feature roots; a first accepted realization; active attempts; module or feature
+-restructuring; module summaries or design references; architecture views; boundary contracts;
+-cross-feature behavioral changes; compatibility or migration changes; dependency or distribution
+-changes; and any hidden use of planning, tasks, implementation, convergence, or acceptance.
++**Out of scope**: new feature roots; a first accepted realization; active attempts in any affected
++feature; module or feature restructuring; changed module responsibility or dependency direction;
++changes to project-level user compatibility or migration policy; unrelated feature or architecture
++sources; and any hidden use of planning, tasks, implementation, convergence, or acceptance.
+ 
+ ### Key Entities
+ 
+-- **Fast-loop request**: The maintainer's concrete small-change description plus the selected feature
+-  against which eligibility is evaluated.
++- **Fast-loop request**: The maintainer's concrete small-change description plus an existing selected
++  anchor from which bounded impact discovery begins.
++- **Affected feature set**: Every existing canonical feature whose required behavior or accepted
++  realization changes, each with an accepted baseline and no active attempt.
+ - **Eligibility decision**: The pre-mutation result that records whether the request stays inside the
+   fast boundary and, when it does not, the earliest normal workflow stage to use.
+-- **Direct change set**: The code, tests, selected feature documents, and related user-facing docs
+-  edited by one eligible invocation, excluding unrelated worktree changes.
++- **Direct change set**: The code, tests, affected feature documents, related contract and
++  architecture detail, and user-facing docs edited by one eligible invocation, excluding unrelated
++  worktree changes.
+ - **Evidence report**: The command's final account of target, scope, files, checks, outcomes, and
+   preserved pre-existing work.
+ 
+@@ -230,25 +262,37 @@ changes; and any hidden use of planning, tasks, implementation, convergence, or
+   proposal created.
+ - **SC-002**: In 100% of ineligible fixtures, the command changes zero files and names both the failed
+   eligibility rule and the earliest normal workflow stage to use.
+-- **SC-003**: In all eligible behavior-change fixtures, the selected feature's abstract,
+-  specification, accepted realization, code, and executable evidence agree after the command; in
+-  realization-only fixtures, the behavioral documents remain byte-identical.
++- **SC-003**: In all eligible behavior-change fixtures, every affected feature's abstract,
++  specification, accepted realization, code, contract/architecture detail, and executable evidence
++  agree after the command; in realization-only fixtures, unaffected behavioral documents remain
++  byte-identical.
+ - **SC-004**: In all dirty-worktree fixtures, unrelated pre-existing edits are byte-identical after
+   the command, and ambiguous overlapping edits cause a pre-mutation stop.
+-- **SC-005**: Every successful invocation reports one selected feature, every changed file, every
+-  required check and result, and explicit confirmation that no attempt or acceptance operation ran.
++- **SC-005**: Every successful invocation reports the selected anchor and complete affected feature
++  set, every changed file, every required check and result, and explicit confirmation that no attempt
++  or acceptance operation ran.
++- **SC-007**: Eligible fixtures that span two existing features or change an inter-module contract
++  format complete directly with all related authorities reconciled; fixtures that change module
++  responsibility, dependency direction, or whole-project user compatibility/migration policy make
++  zero fast-loop edits and redirect to the full workflow.
++- **SC-008**: Every eligible fixture that edits maintained architecture sources ends in an explicit
++  review-pending state until the maintainer reviews the exact validated diff; no attempt or
++  implementation-acceptance artifact is created for that review.
+ - **SC-006**: The installed Codex and slash-command surfaces pass equivalent contract scenarios for
+   eligible completion, ineligible escalation, target disclosure, and failure reporting.
+ 
+ ## Assumptions
+ 
+-- “Small” is determined by ownership and risk, not solely by line count: a change is fast-loop
+-  eligible only when it remains inside one existing feature's current behavior and architecture.
++- “Small” is determined by ownership and architectural risk, not solely by line count or the number
++  of affected feature roots. A coordinated change remains eligible when its affected set is bounded,
++  all related authorities can be reconciled in one loop, and module responsibilities, dependencies,
++  and project-level user compatibility/migration policy remain stable.
+ - Invoking `speckit.fast-loop` with a concrete change description is the maintainer's explicit
+-  authorization for the bounded direct edits described here; it is not approval for an architecture
+-  or contract change.
+-- Fast-loop operates only on a feature that already has an accepted realization. Creating the first
+-  accepted implementation remains part of the full workflow.
++  authorization for the bounded direct edits described here, including related feature and
++  inter-module contract sources; it is not approval to change a module responsibility, dependency,
++  or whole-project user compatibility/migration policy.
++- Fast-loop operates only when every affected feature already has an accepted realization. Creating
++  a first accepted implementation remains part of the full workflow.
+ - Existing targeted test and validation commands are available from the repository; unavailable
+   required tooling makes the run incomplete rather than silently successful.
+ - Direct documentation reconciliation is ordinary maintained-source authoring, not acceptance
+@@ -272,8 +316,9 @@ changes; and any hidden use of planning, tasks, implementation, convergence, or
+   module and shared workflow/document invariants.
+ - **Authority split**: the parent owns aggregate lifecycle order and safety; this child owns fast-loop
+   eligibility, direct reconciliation, escalation, and evidence reporting.
+-- **Observable textual outcome**: one safe small change can be completed directly without attempt
+-  ceremony, while ineligible work is redirected before mutation.
++- **Observable textual outcome**: one safe small change across a bounded set of existing related
++  features can be completed directly without attempt ceremony, while module-boundary and
++  project-policy changes are redirected before mutation.
+ - **Parent refinement**: internal child of the project-level workflow feature.
+ - **Representative scenarios**: the existing current-level `feature-work` scenario covers the
+   normal/full-flow contrast and `direct-authoring` covers an eligible small direct change; the
+@@ -282,6 +327,6 @@ changes; and any hidden use of planning, tasks, implementation, convergence, or
+ - **Supplemental diagrams**: none.
+ - **Contracts**: provides `contract.concorde.workflow`; requires
+   `contract.concorde.spec-kit-platform`.
+-- **Level views**: the project module's level view remains authoritative; fast-loop does not change
+-  architecture.
++- **Level views**: the project module's level view remains authoritative; fast-loop may reconcile
++  contract or architecture detail but cannot change module responsibilities or dependencies.
+ - **Evidence status**: `unknown` until command-surface, fixture, and end-to-end evidence exists.

@@ -31,7 +31,7 @@ the `concorde` preset **modifies the installed agent instructions for nine of th
 phase resolves the selected hierarchical feature workspace and respects durable versus temporal
 file boundaries. `speckit.constitution` keeps its native Spec Kit instructions.
 The preset also adds `$speckit-fast-loop`, an alternate direct-edit surface for an established small
-change inside one selected feature.
+change beginning from one selected anchor and spanning a bounded set of related existing features.
 
 | Command | Use it to |
 |---|---|
@@ -63,7 +63,7 @@ public command name; the commands continue to exist and should still be used.
 | `$speckit-implement` | Reads durable intent, accepted realization, `attempt/plan.md`, `attempt/tasks.md`, and checklists; edits product code/tests, marks task state, and may append reflections. It never accepts `implementation.md` or removes `attempt/`. | Modified by Concorde |
 | `$speckit-converge` | Compares code with durable intent and the active attempt, then append-only adds remaining work to `attempt/tasks.md` and may append reflections. It does not edit code or durable feature/module files. | Modified by Concorde |
 | `$speckit-taskstoissues` | Reads the selected `attempt/tasks.md`, deduplicates task IDs against GitHub, and creates missing external issues. It does not move task authority out of the workspace or modify the task file. | Modified by Concorde |
-| `$speckit-fast-loop <small-change description>` | For one existing accepted feature with no active attempt, checks eligibility before mutation, then directly reconciles code, proportional tests, and affected feature/user docs. Architecture, contract, compatibility, cross-feature, ambiguous, and overlapping-worktree changes redirect to the full workflow. | Added by Concorde |
+| `$speckit-fast-loop <small-change description>` | Starts from one selected anchor, discovers every affected existing feature, requires accepted/no-attempt baselines for all, then directly reconciles code, tests, feature specs, and related contract/architecture/user docs. Module responsibility/dependency changes, project-level user compatibility/migration policy changes, ambiguity, and unsafe worktree overlap redirect to the full workflow; architecture edits require exact maintainer review. | Added by Concorde |
 
 A typical combined workflow is:
 
@@ -76,8 +76,9 @@ speckit.specify → speckit.clarify/checklist → speckit.plan → speckit.tasks
 Clarification, checklists, analysis, and convergence are used when needed; validation can run
 repeatedly, and acceptance is always a separate approval-gated Concorde operation. See
 [Commands](docs/commands.md) for complete timing, inputs, outputs, and installed execution layers.
-For an eligible established small change, select the feature and invoke `speckit.fast-loop` instead;
-it creates no attempt and performs no acceptance operation.
+For an eligible established small change, select an anchor feature and invoke `speckit.fast-loop`;
+it resolves every affected feature explicitly, creates no attempt, and performs no acceptance
+operation.
 
 Explore the project through its three generated views:
 [Architecture](specs/concorde/module.md), [Documentation](docs/index.md), and

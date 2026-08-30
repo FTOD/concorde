@@ -19,18 +19,24 @@ small-change description and stop without reading or writing project artifacts.
 
 Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIPT}` from the target
 project root and parse its canonical JSON. Stop without mutation on any status other than `resolved`
-or `selected`.
+or `selected`. Treat this first resolved root as the **anchor feature**: it starts bounded impact
+discovery but does not assert that exactly one feature owns the change.
 
 Require Protocol v8 `workspace.workspace_kind`, `workspace.feature_id`,
 `workspace.providing_module`, `workspace.parent_context`, bounded `workspace.siblings`,
 `workspace.feature_directory`, `workspace.feature_abstract`, `workspace.feature_design`,
 `workspace.feature_implementation`, `workspace.module_summary`, `workspace.module_design`,
 `workspace.attempt_dir`, `workspace.attempt_state`, and `workspace.reflections`. Require
-`phase_root == workspace.feature_directory`. These returned paths are the sole path authority.
+`phase_root == workspace.feature_directory`. These returned paths are the sole path authority for
+the anchor.
 
 Treat the module `design.md` and sibling paths as navigation references, never implicit inputs. For a
 sub-feature, read the parent durable trio only as aggregate context. Never load a sibling body or any
-parent/sibling `attempt/` implicitly.
+parent/sibling `attempt/` implicitly. A related feature body becomes an input only after bounded
+evidence identifies it as affected; resolve that root by rerunning the same adapter with
+`--feature-directory <affected-root> --phase fast-loop`. Require a successful canonical receipt for
+every affected root and use only that receipt's paths. Do not persist or invent a multi-feature
+selection record.
 
 ## Pre-Execution Hooks
 
@@ -45,32 +51,41 @@ Decide eligibility before changing any file:
 
 | Condition | Eligible when | Redirect |
 |---|---|---|
-| Selection | Exactly one existing canonical feature root resolves | Specification/selection repair |
-| Baseline | `implementation.md` is not the placeholder | Implementation acceptance |
-| Attempt | `workspace.attempt_state == "absent"` | Resume implementation or acceptance |
-| Feature scope | Result stays inside the selected feature's existing outcome | Specification |
-| Architecture and boundary contract | No module responsibility, dependency, maintained diagram, or contract changes | Specification, then the full workflow |
-| Compatibility | No compatibility or migration policy changes | Specification, then the full workflow |
-| cross-feature behavior | No behavioral authority in another feature must change | Specification for every affected root |
+| Anchor | At least one existing canonical anchor feature resolves | Specification/selection repair |
+| Affected feature set | Every feature whose behavior or accepted realization can change is identified and resolves canonically | Clarification or specification |
+| Baseline | Every affected feature's `implementation.md` is not the placeholder | Implementation acceptance for that root |
+| Attempt | Every affected feature has `workspace.attempt_state == "absent"` | Resume implementation or acceptance for that root |
+| Module boundary | The change creates/restructures no feature or module and changes no module responsibility or dependency direction | Specification, then the full workflow |
+| Related authority | Every affected feature, inter-module contract, maintained diagram, module reference, and user guide can be reconciled in this bounded loop | Planning or specification |
+| Project compatibility | No project-level compatibility or migration policy promised to users of the whole project changes | Specification, then the full workflow |
 | Worktree | Proposed edits do not overlap changes of uncertain ownership | Stop for maintainer coordination |
 | Clarity | Bounded inspection leaves no materially ambiguous result | Clarification or specification |
 
 Always preserve unrelated pre-existing changes; never use destructive reset or checkout to make a
 request appear eligible.
 
-1. Read the selected `abstract.md` for orientation, selected `design.md` as behavioral authority,
-   and selected `implementation.md` deliberately as the accepted realization. Read the providing
-   `module.md` only as bounded context. Cite each durable source used.
-2. Reject the no-realization placeholder. Fast-loop never creates the first accepted realization.
-3. Require `workspace.attempt_state == "absent"`. Any `attempt/`, including checklist-only state,
-   redirects to the active normal lifecycle.
-4. Inspect `git status --short`, the relevant diff, and only the code, tests, and user-facing docs
-   needed to classify the request. Preserve unrelated pre-existing changes. Stop before writing when
-   proposed edits overlap work whose ownership cannot be established safely.
-5. Confirm the requested result stays within the selected feature's existing outcome and ownership.
-   It must not create or restructure a feature/module, change a module responsibility or dependency
-   direction, change a boundary contract or maintained diagram, change compatibility or migration
-   policy, require behavioral edits in another feature root, or remain materially ambiguous.
+1. Read the anchor `abstract.md` for orientation, `design.md` as behavioral authority, and
+   `implementation.md` deliberately as the accepted realization. Read its providing `module.md` only
+   as bounded context. Cite each durable source used.
+2. Build the affected feature set by inspecting only the relevant module summaries, contracts, code,
+   tests, accepted implementation references, and maintained/user documentation. Do not equate
+   sibling or same-module proximity with impact.
+3. For every affected root, run the installed adapter explicitly with `--feature-directory` and
+   `--phase fast-loop`; require canonical paths, read its durable trio deliberately, reject the
+   no-realization placeholder, and require `workspace.attempt_state == "absent"`. Any affected
+   `attempt/`, including checklist-only state, redirects to that root's active normal lifecycle.
+4. Inspect `git status --short`, the relevant diff, and only the code, tests, contracts, architecture
+   detail, and user-facing docs needed to classify the request. Preserve unrelated pre-existing
+   changes. Stop before writing when proposed edits overlap work whose ownership cannot be
+   established safely.
+5. Reject a new or restructured feature/module, a changed module responsibility, or a changed
+   dependency direction. Cross-feature behavior, an inter-module contract/data-format change, a
+   maintained diagram update, or a related module-reference edit is not independently disqualifying
+   when bounded and all affected authorities can be reconciled.
+6. Evaluate compatibility and migration only against durable project-level promises to users of the
+   whole project. Internal coordination is not independently disqualifying, but an internal contract
+   that is also the project's public user interface remains project-level. Feature or module sources
+   must not invent their own compatibility or migration policy.
 
 When any condition fails, make zero fast-loop edits. Name the failed condition and recommend the
 earliest applicable full-workflow stage: specification for new/changed behavior or ownership,
@@ -82,19 +97,28 @@ is a normal response and is not itself a reflection-log problem.
 
 For an eligible request, directly complete the bounded modification in this command execution:
 
-1. Record the pre-existing worktree paths and selected durable-document hashes.
+1. Record the pre-existing worktree paths plus the anchor and every affected feature ID, root,
+   durable-document hash, and attempt state.
 2. Add or update proportional tests before or with the implementation change; run the focused tests
    and repair failures inside the same bounded loop.
-3. Update product code and directly related non-architectural user documentation. Do not edit module
-   sources, boundary contracts, maintained diagrams, parent/sibling feature bodies, or unrelated
-   feature sources.
-4. After executable evidence passes, update selected `design.md` and keep `abstract.md` faithful only
-   when required behavior changed. Leave both byte-identical for a realization-only correction.
-5. Reconcile selected `implementation.md` with the verified realization delta. This is direct
+3. Update product code and every directly related affected feature source, inter-module contract,
+   maintained diagram, module reference, and user guide required to keep the repository truthful.
+   Never use such edits to change a module responsibility or dependency direction, and never edit an
+   unrelated feature or architecture source.
+4. After executable evidence passes, update each affected `design.md` and keep its `abstract.md`
+   faithful only when that feature's required behavior changed. Leave both byte-identical for an
+   unaffected or realization-only feature.
+5. Reconcile every affected `implementation.md` with its verified realization delta. This is direct
    maintained-source authoring authorized by the explicit fast-loop request, not acceptance
    compaction.
-6. Run every targeted test and deterministic validation required by the changed source and docs.
-   Claim completion only when code, tests, and maintained documentation agree.
+6. Run every targeted test and deterministic validation required by the changed code, feature,
+   contract, architecture, and user documentation. Claim completion only when all agree.
+7. If an inter-module contract, maintained architecture diagram, or other architecture authority
+   changed, set architecture review state to `review_pending`, present the exact validated diff and
+   source hashes, and stop without a success claim. After the maintainer confirms that exact diff,
+   recompute the hashes; claim completion only if unchanged and report state `reviewed`. If no
+   architecture authority changed, report `not_required`. This review is not an implementation-
+   acceptance proposal and creates no attempt artifact.
 
 No attempt is created or used. Do not create `plan.md`, `tasks.md`, a task checklist, or an acceptance
 proposal. Do not delegate to the planning, task-generation, implementation, convergence, or
@@ -127,13 +151,16 @@ complete.
 
 Return a concise report containing:
 
-- selected feature ID and `workspace.feature_directory`;
+- anchor feature ID/root and every affected feature ID/root;
 - eligibility basis;
 - all changed files;
-- behavioral documents: changed or byte-identical;
+- per-feature behavioral and realization documents: changed or byte-identical;
 - tests and validations run, with results;
+- architecture review state (`not_required`, `review_pending`, or `reviewed`) and affected source
+  paths/hashes;
 - unrelated pre-existing changes preserved;
 - `No attempt: yes` and `No acceptance: yes`; and
 - `Reflections added: <identifiers or none> · open for this feature: <count>`.
 
-Do not claim success when a required test, validation, or mandatory hook failed.
+Do not claim success when a required test, validation, or mandatory hook failed, or while architecture
+review state is `review_pending`.

@@ -36,3 +36,7 @@ Thumbs.db
 .idea/
 *.pyc
 .specify/extensions/*/.specify-dev/
+
+# Claude Code: subagent worktrees and reflection-triage plans (machine-local)
+.claude/worktrees/
+.claude/reflection-plans/

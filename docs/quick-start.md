@@ -237,17 +237,21 @@ $speckit-converge
 $speckit-concorde-validate
 ```
 
-For a small change to an existing selected feature that already has an accepted implementation and
-no active `attempt/`, use the alternate direct path:
+For a bounded small change, select one existing accepted feature as the anchor and use the alternate
+direct path. Every related affected feature must also have an accepted implementation and no active
+`attempt/`:
 
 ```text
 $speckit-fast-loop <small-change description>
 ```
 
-Fast-loop checks eligibility before mutation, then directly reconciles code, proportional tests,
-and affected feature/user documentation. It redirects architecture, boundary-contract,
-compatibility, cross-feature, ambiguous, or overlapping-worktree work to the normal lifecycle and
-creates no attempt or acceptance proposal.
+Fast-loop discovers and explicitly resolves every affected feature before mutation, then directly
+reconciles code, proportional tests, each affected durable trio, and related contract/architecture/
+user documentation. Cross-feature and internal contract/data-format changes can remain on the fast
+path when module responsibilities and dependencies stay stable. Changes to those module boundaries,
+to project-level compatibility/migration promises for users of the whole project, ambiguous work, or
+unsafe worktree overlap return to the normal lifecycle. Architecture-source edits require exact
+maintainer review. Fast-loop creates no attempt or acceptance proposal.
 
 The abstract (`abstract.md`), behavioral design (`design.md`), and accepted implementation
 (`implementation.md`) stay at

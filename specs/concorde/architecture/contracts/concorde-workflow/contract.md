@@ -27,9 +27,11 @@ evidence_status: partial
 
 ## Purpose
 
-Let a maintainer and coding agent direct one feature through a recursive specification hierarchy,
+Let a maintainer and coding agent direct feature work through a recursive specification hierarchy,
 architecture review, bounded implementation context, and deterministic reconciliation while the
-normal Spec Kit lifecycle remains authoritative for behavioral delivery.
+normal Spec Kit lifecycle remains authoritative for behavioral delivery. Normal phases target one
+selected root; the additive fast-loop may begin from that anchor and reconcile a bounded set of
+related existing feature roots.
 
 ## Information
 
@@ -53,7 +55,9 @@ presentation never changes either contract.
 ## Obligations
 
 - Initialization MUST separate a reviewable proposal from explicit accepted application.
-- Feature work MUST resolve one nested canonical Spec Kit workspace under its providing module.
+- Each feature-workspace lookup MUST resolve one nested canonical Spec Kit root under its providing
+  module. Normal phases consume the selected lookup; fast-loop MAY repeat explicit read-only lookups
+  for every semantically affected existing root without creating a second selection registry.
 - That workspace MUST keep the durable trio (`abstract.md`, `design.md`, and `implementation.md`) and `contracts/` at
   its feature root and one active delivery attempt (`checklists/`, `plan.md`, `tasks.md`, research,
   data model, validation/run guides, and implementation evidence) under `attempt/`.
@@ -63,6 +67,11 @@ presentation never changes either contract.
 - Context MUST expose exactly the requested module level and stable navigation references, not deeper
   hidden detail.
 - Architecture readiness MUST be reviewed before implementation structure is approved.
+- Fast-loop MAY directly reconcile bounded cross-feature behavior, inter-module contract/data-format
+  detail, maintained views, and module design-reference detail when every affected feature has an
+  accepted realization and no active attempt and module responsibilities/dependency direction remain
+  stable. Architecture-source edits MUST remain pending exact maintainer review, and project-level
+  compatibility/migration promises to users of the whole project MUST return to the full workflow.
 - Validation MUST be deterministic, read-only, and explicit about unknown or conflicting evidence.
 - Generated read models MUST preserve provenance and MUST NOT become maintained intent.
 

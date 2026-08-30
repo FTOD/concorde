@@ -79,6 +79,26 @@ class FeatureWorkspaceTests(unittest.TestCase):
             self.assertEqual(tree_hashes(project), before)
             self.assertEqual(json.loads(state.read_text())["feature_directory"], first.relative_to(project).as_posix())
 
+    def test_multiple_explicit_fast_loop_roots_resolve_independently_without_reselection(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary)
+            first = create_feature_root(project)
+            second = create_feature_root(project, "specs/example/features/002-observe", "feature.example.observe")
+            first_relative = first.relative_to(project).as_posix()
+            second_relative = second.relative_to(project).as_posix()
+            state = write_selection(project, first_relative)
+            before = tree_hashes(project)
+
+            anchor = resolve_selected_workspace(project)
+            affected = resolve_selected_workspace(project, second_relative)
+
+            self.assertEqual(phase_target(anchor, "fast-loop"), first_relative)
+            self.assertEqual(phase_target(affected, "fast-loop"), second_relative)
+            self.assertEqual(anchor.attempt_state, "absent")
+            self.assertEqual(affected.attempt_state, "absent")
+            self.assertEqual(tree_hashes(project), before)
+            self.assertEqual(json.loads(state.read_text())["feature_directory"], first_relative)
+
     def test_specify_can_resolve_an_approved_missing_feature_root(self):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary) / "project"

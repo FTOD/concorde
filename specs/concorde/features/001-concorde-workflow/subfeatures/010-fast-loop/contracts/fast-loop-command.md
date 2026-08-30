@@ -8,16 +8,17 @@
 
 ## Intent
 
-Complete one explicitly requested, small modification inside an existing selected feature by
-directly reconciling code, proportional tests, and related maintained documentation. Do not create
-or invoke a planning, task, implementation, convergence, or acceptance workflow.
+Complete one explicitly requested, small modification beginning from an existing selected anchor
+feature by directly reconciling code, proportional tests, every affected existing feature, and
+related maintained documentation. Do not create or invoke a planning, task, implementation,
+convergence, or acceptance workflow.
 
 ## Input
 
 | Field | Required | Meaning |
 |---|---:|---|
 | change description | yes | The concrete modification the maintainer authorizes the coding agent to make. |
-| selected feature | yes | The existing canonical feature or immediate sub-feature resolved from `.specify/feature.json` or `SPECIFY_FEATURE_DIRECTORY`. |
+| anchor feature | yes | The existing canonical feature or immediate sub-feature resolved from `.specify/feature.json` or `SPECIFY_FEATURE_DIRECTORY`; it starts impact discovery but is not necessarily the only affected feature. |
 
 An empty change description is rejected without reading or writing project artifacts.
 
@@ -25,24 +26,33 @@ An empty change description is rejected without reading or writing project artif
 
 Before hooks, preflight, or artifact access, the installed command invokes the extension-relative
 workspace adapter with `--phase fast-loop`. A successful Protocol v8 response returns the selected
-feature root as `phase_root` and includes the durable trio, providing module references, bounded
-parent/sibling summaries, attempt path/state, and project reflection log. Any other status stops the
-command without mutation.
+anchor root as `phase_root` and includes the durable trio, providing module references, bounded
+parent/sibling summaries, attempt path/state, and project reflection log. After bounded impact
+discovery, the command reruns the same adapter with `--feature-directory <affected-root> --phase
+fast-loop` for every affected feature and uses each returned receipt as that root's path authority.
+Any non-success status stops the command without mutation.
 
-The `fast-loop` phase is root-scoped: it resolves an existing feature and never creates an attempt.
+The `fast-loop` phase is root-scoped: each call resolves one existing feature and never creates an
+attempt. Repeated explicit resolution does not persist a multi-feature selection record.
 
 ## Eligibility
 
 The command decides eligibility before mutation. All conditions must hold:
 
-1. Exactly one canonical feature root is selected.
-2. `implementation.md` is an accepted realization, not the placeholder.
-3. `attempt_state` is `absent`.
-4. The requested outcome remains inside the selected feature's existing ownership.
-5. The change creates no feature/module, architecture-view, boundary-contract, compatibility,
-   migration, dependency-direction, or cross-feature behavioral change.
-6. Relevant current worktree edits can be distinguished safely from the command's proposed edits.
-7. Bounded inspection leaves no material ambiguity about the required result.
+1. At least one existing canonical feature root resolves as the anchor.
+2. Bounded inspection identifies every existing feature whose behavior or accepted realization is
+   affected.
+3. Every affected `implementation.md` is an accepted realization, not the placeholder, and every
+   affected `attempt_state` is `absent`.
+4. The change creates or restructures no feature or module and changes no module responsibility or
+   dependency direction.
+5. The change does not alter project-level compatibility or migration policy promised to users of
+   the whole project. Internal inter-module contracts and data formats are not independently
+   disqualifying.
+6. Every affected feature, contract, architecture detail, and user document can be reconciled in the
+   same bounded loop.
+7. Relevant current worktree edits can be distinguished safely from the command's proposed edits.
+8. Bounded inspection leaves no material ambiguity about the required result.
 
 Expected ineligibility is a normal result, not a reflection-log problem. The command names the
 failed rule and recommends the earliest applicable full-workflow stage without changing any file.
@@ -51,41 +61,53 @@ failed rule and recommends the earliest applicable full-workflow stage without c
 
 The coding agent:
 
-1. records the pre-existing worktree state and the exact selected target;
-2. reads the selected `design.md` and `implementation.md`, the feature abstract for orientation, the
-   providing `module.md` as bounded context, parent aggregate documents only for a sub-feature, and
-   only the relevant code, tests, and user-facing docs;
+1. records the pre-existing worktree state, selected anchor, and durable-document hashes for every
+   affected feature;
+2. reads the anchor's durable trio and providing `module.md`, discovers the affected set from bounded
+   module, contract, implementation, test, and documentation evidence, then deliberately reads each
+   affected feature's durable trio without reading any attempt;
 3. edits the implementation and proportional tests while preserving unrelated work;
-4. after executable evidence passes, updates selected `design.md` and `abstract.md` only if required
-   behavior changed, updates selected `implementation.md` for the verified realization delta, and
-   updates directly related non-architectural user guidance;
+4. after executable evidence passes, reconciles each affected feature's `design.md`, `abstract.md`,
+   and `implementation.md` according to its behavior and realization delta, plus every directly
+   related inter-module contract, maintained diagram or module reference, and user guide needed to
+   keep the repository truthful without changing module responsibilities or dependencies;
 5. runs targeted tests plus deterministic source/document validation; and
-6. returns the completion report below.
+6. when maintained architecture sources changed, presents their exact diff and remains
+   `review_pending` until the maintainer confirms review; and
+7. returns the completion report below.
 
-The command does not create or read a sibling attempt, does not write any `attempt/` artifact, and
-does not edit parent/sibling feature bodies, module sources, boundary contracts, maintained diagrams,
-or unrelated feature sources.
+The command does not create or read any affected feature's attempt and does not write any `attempt/`
+artifact. It edits a parent, sibling, module, contract, or maintained diagram source only when that
+source is directly related to the bounded eligible change, and never changes module responsibility
+or dependency direction through that edit.
 
 ## Completion Report
 
 A successful report includes:
 
-- selected feature ID and root;
+- anchor feature ID/root and every affected feature ID/root;
 - the eligibility basis;
 - every changed file;
-- whether the behavioral documents changed or remained byte-identical;
+- whether each affected feature's behavioral documents changed or remained byte-identical;
 - every test and validation command with its result;
 - unrelated pre-existing changes preserved;
 - reflections appended, if a genuine workflow problem was encountered; and
+- architecture review state (`not_required`, `review_pending`, or `reviewed`) with the affected
+  source paths; and
 - explicit confirmation that no attempt, planning, task, implementation, convergence, or acceptance
   operation was used.
 
+An architecture-source change cannot produce a successful final report while its review state is
+`review_pending`. Maintainer review is an explicit confirmation of the validated diff, not an
+implementation-acceptance proposal, and creates no attempt artifact.
+
 ## Failures
 
-Unsafe or invalid selection, placeholder realization, active attempt, ineligible scope, overlapping
-user edits, unavailable required evidence, and failing checks never produce a success claim. The
-command either repairs an eligible failure within the same bounded loop or reports the exact
-remaining state and safe next action. It never discards pre-existing user work.
+Unsafe or invalid anchor resolution, a placeholder realization or active attempt in any affected
+feature, ineligible module-boundary or project-policy scope, overlapping user edits, unavailable
+required evidence, and failing checks never produce a success claim. The command either repairs an
+eligible failure within the same bounded loop or reports the exact remaining state and safe next
+action. It never discards pre-existing user work.
 
 ## Presentation Parity
 

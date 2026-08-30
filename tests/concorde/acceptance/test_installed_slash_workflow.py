@@ -46,6 +46,18 @@ class InstalledSlashWorkflowTests(unittest.TestCase):
                     self.assertIn(requirement, ask)
                 for executable in ("concorde.sh", "concorde.ps1", "concorde.py", "workspace.py"):
                     self.assertNotIn(executable, ask)
+                fast_loop = registered_artifact(root, "gemini", "speckit.fast-loop").read_text(encoding="utf-8")
+                for requirement in (
+                    "anchor feature",
+                    "affected feature set",
+                    "Every affected feature",
+                    "inter-module contract",
+                    "module responsibility",
+                    "dependency direction",
+                    "users of the whole project",
+                    "review_pending",
+                ):
+                    self.assertIn(requirement, fast_loop)
                 for command, phase in PRESET_COMMANDS.items():
                     receipt = execute_workspace_surface(
                         root,

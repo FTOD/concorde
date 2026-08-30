@@ -1,0 +1,11 @@
+{
+  "_doc": "Configuration for the reflections-triage pipeline (.claude/skills/reflections-triage). Models are set in the agent files: .claude/agents/reflection-investigator.md (Fable 5) and .claude/agents/reflection-implementer.md (Sonnet).",
+  "log": "specs/concorde/reflections.md",
+  "features_root": "specs/concorde/features",
+  "plans_dir": ".claude/reflection-plans",
+  "order": "newest-first",
+  "investigators": 1,
+  "implementers": 2,
+  "require_approval": false,
+  "skip": []
+}

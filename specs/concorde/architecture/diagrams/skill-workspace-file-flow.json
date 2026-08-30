@@ -289,7 +289,8 @@
         "speckit.concorde.init writes .concorde/config.json, module.md, module design.md, architecture/contracts/**, and architecture/diagrams/** after approval",
         "speckit.constitution separately writes .specify/memory/constitution.md as project policy",
         "concorde.context, concorde.validate, and concorde.ask can inspect the configured module hierarchy without writing",
-        "Feature skills consume only the bounded architectural level needed by the selected feature"
+        "Normal feature phases consume the selected feature's bounded level; fast-loop may resolve related affected levels explicitly",
+        "Fast-loop may reconcile related contracts and diagrams without changing module responsibilities or dependencies, pending exact review"
       ]
     },
     {
@@ -299,7 +300,8 @@
         "Durable feature files are abstract.md, design.md, implementation.md, feature contracts/**, and declared diagrams/**",
         "clarify/specify update durable intent; specify also creates attempt/checklists/requirements.md",
         "plan writes attempt planning files plus durable feature contracts/**; tasks/checklist write tasks.md and checklists/**",
-        "context, validate, and ask can inspect the selected feature without mutating it"
+        "context, validate, and ask can inspect the selected feature without mutating it",
+        "fast-loop starts from one selected anchor, resolves each affected existing root, and reconciles every affected durable trio without an attempt"
       ]
     },
     {
@@ -309,7 +311,8 @@
         "implement consumes feature intent and attempt memory, then writes code and task state",
         "analyze only appends reflections; converge appends tasks + reflections; taskstoissues writes external issues",
         "impl.accept reads durable feature files, the full attempt, reflections, code, and tests",
-        "Acceptance writes feature implementation.md, may amend module design.md, and removes only the selected attempt/"
+        "Acceptance writes feature implementation.md, may amend module design.md, and removes only the selected attempt/",
+        "Fast-loop directly updates bounded affected code and authorities; architecture edits stay review-pending and no attempt is created"
       ]
     }
   ]

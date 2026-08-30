@@ -102,17 +102,25 @@ Selection is what routes later Spec Kit phases. Context retrieval is only a read
 
 ### Fast path for an established small change
 
-After selecting an existing feature with a non-placeholder accepted `implementation.md` and no
-active `attempt/`, invoke `speckit.fast-loop <small-change description>` when the result stays wholly
-inside that feature's existing ownership. The command checks selection, baseline, attempt state,
-scope, current worktree edits, and relevant code/tests/docs before mutation.
+After selecting an existing anchor feature, invoke `speckit.fast-loop <small-change description>` for
+one bounded small modification. The command discovers every related existing feature whose behavior
+or realization can change, resolves each root explicitly through the workspace adapter, and requires
+a non-placeholder accepted `implementation.md` plus no active `attempt/` for every affected feature.
+It also checks module boundaries, project-level user policy, current worktree edits, and relevant
+code/tests/contracts/docs before mutation.
 
-Eligible work directly updates code and proportional tests, then reconciles affected selected
-`design.md`, `abstract.md`, `implementation.md`, and related non-architectural user guidance. It
-creates no plan, tasks, implementation attempt, convergence pass, or acceptance proposal. New or
-restructured features/modules, architecture or boundary-contract changes, compatibility or migration
-work, cross-feature behavior, material ambiguity, and overlapping edits of uncertain ownership stop
-before mutation and return to the earliest applicable normal stage.
+Eligible work directly updates code and proportional tests, then reconciles every affected feature's
+`design.md`, `abstract.md`, and `implementation.md` plus directly related contracts, maintained
+diagrams, module references, and user guidance. Cross-feature behavior and internal contract/data-
+format changes are allowed when bounded and complete. It creates no plan, tasks, implementation
+attempt, convergence pass, or acceptance proposal.
+
+New or restructured features/modules, changed module responsibilities or dependency direction,
+changes to durable compatibility/migration promises for users of the whole project, material
+ambiguity, and overlapping edits of uncertain ownership stop before mutation and return to the
+earliest applicable normal stage. Any AI-authored contract, maintained diagram, or other architecture
+authority is validated and shown as an exact diff; the run remains `review_pending` until the
+maintainer confirms that diff.
 
 If the behavior is too broad for one clear specification, keep one aggregate parent and create one
 level of immediate sub-features beneath it. Point `SPECIFY_FEATURE_DIRECTORY` at

@@ -25,8 +25,20 @@ class SelfHostedCheckoutAcceptanceTests(unittest.TestCase):
                 self.assertEqual(len(list(skill_root(root, integration).glob("speckit-*/SKILL.md"))), 16)
                 fast_loop = skill_file(root, integration, "speckit.fast-loop")
                 self.assertTrue(fast_loop.is_file())
-                self.assertIn("--phase fast-loop", fast_loop.read_text(encoding="utf-8"))
-                self.assertIn("No attempt: yes", fast_loop.read_text(encoding="utf-8"))
+                fast_loop_content = fast_loop.read_text(encoding="utf-8")
+                for requirement in (
+                    "--phase fast-loop",
+                    "anchor feature",
+                    "affected feature set",
+                    "Every affected feature",
+                    "inter-module contract",
+                    "module responsibility",
+                    "dependency direction",
+                    "users of the whole project",
+                    "review_pending",
+                    "No attempt: yes",
+                ):
+                    self.assertIn(requirement, fast_loop_content)
                 self.assertEqual(before, hash_paths(root, tuple(sentinels)))
                 _, current = run_cli(root, "status")
                 self.assertEqual(current["status"], "current")

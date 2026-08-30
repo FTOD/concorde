@@ -47,14 +47,26 @@ class AgentCommandContractTests(unittest.TestCase):
         command = (
             REPOSITORY_ROOT / "presets/concorde/commands/speckit.fast-loop.md"
         ).read_text(encoding="utf-8")
+        contract = (
+            REPOSITORY_ROOT
+            / "specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/contracts/fast-loop-command.md"
+        ).read_text(encoding="utf-8")
+        normalized_command = " ".join(command.split())
+        normalized_contract = " ".join(contract.split())
         for invariant in (
             "| Condition | Eligible when | Redirect |",
+            "anchor feature",
+            "affected feature set",
+            "--feature-directory",
+            "Every affected feature",
             "placeholder",
             "attempt_state",
-            "architecture",
-            "boundary contract",
-            "compatibility",
-            "cross-feature",
+            "module responsibility",
+            "dependency direction",
+            "users of the whole project",
+            "inter-module contract",
+            "maintained diagram",
+            "review_pending",
             "materially ambiguous",
             "overlap",
             "zero fast-loop edits",
@@ -62,7 +74,24 @@ class AgentCommandContractTests(unittest.TestCase):
             "not itself a reflection-log problem",
             "preserve unrelated pre-existing changes",
         ):
-            self.assertIn(invariant, command, invariant)
+            self.assertIn(invariant, normalized_command, invariant)
+        for invariant in (
+            "anchor feature",
+            "affected feature",
+            "module responsibility",
+            "dependency direction",
+            "users of the whole project",
+            "inter-module contracts",
+            "review_pending",
+        ):
+            self.assertIn(invariant, normalized_contract, invariant)
+        for obsolete in (
+            "Exactly one existing canonical feature root",
+            "No module responsibility, dependency, maintained diagram, or contract changes",
+            "No behavioral authority in another feature must change",
+            "No compatibility or migration policy changes",
+        ):
+            self.assertNotIn(obsolete, command, obsolete)
 
 
     def test_four_operations_have_launchers_and_ask_is_agent_only(self):

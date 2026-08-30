@@ -185,24 +185,32 @@ by status; the candidate must cite every open one among its known limitations or
 
 ## `$speckit-fast-loop <small-change description>`
 
-Use fast-loop only for one concrete modification inside an existing selected feature that already
-has an accepted realization and no active `attempt/`. The command resolves the selected root through
-Feature Workspace Protocol v8, inspects bounded intent, realization, code/tests/docs, and current
-worktree state, then decides eligibility before mutation.
+Use fast-loop only for one concrete, bounded modification beginning from an existing selected anchor.
+The command resolves that root through Feature Workspace Protocol v8, discovers every related
+existing feature whose behavior or realization can change, and resolves each affected root
+explicitly through the same adapter. Every affected feature must already have an accepted realization
+and no active `attempt/` before mutation.
 
-Eligible work directly updates code and proportional tests, followed by the selected feature's
-affected durable documents and directly related non-architectural user guidance. Behavior changes
-update `design.md` and keep `abstract.md` faithful; realization-only corrections leave both
-byte-identical. Verified realization changes reconcile `implementation.md` directly. The command
+Eligible work directly updates code and proportional tests, followed by every affected feature's
+durable documents and directly related inter-module contracts, maintained diagrams, module
+references, and user guidance. Behavior changes update each affected `design.md` and keep its
+`abstract.md` faithful; realization-only corrections leave behavioral documents byte-identical.
+Verified realization changes reconcile each affected `implementation.md` directly. The command
 creates no attempt, plan, task list, implementation phase, convergence pass, or acceptance proposal.
 
-Fast-loop rejects before mutation when the feature has only a placeholder realization, an attempt is
-active, edits overlap work of uncertain ownership, or the request changes feature/module structure,
-architecture, boundary contracts, compatibility, migration policy, dependency direction, or
-cross-feature behavior. It reports the failed condition and the earliest normal stage to use.
-Expected ineligibility is not itself a reflection. A successful report names the selected target,
-every changed file, behavioral-document impact, checks and outcomes, preserved unrelated changes,
-and explicitly confirms that no attempt or acceptance ran.
+Fast-loop rejects before mutation when any affected feature has only a placeholder realization or an
+active attempt, edits overlap work of uncertain ownership, the request creates/restructures a feature
+or module, changes a module responsibility or dependency direction, changes compatibility/migration
+policy promised to users of the whole project, or remains materially ambiguous. Cross-feature
+coordination and internal contract/data-format changes are not independently disqualifying when
+bounded and fully reconciled. An internal contract that is also the project's public user interface
+still falls under project-level policy.
+
+Expected ineligibility is not itself a reflection. A successful report names the anchor and every
+affected target, every changed file, per-feature behavioral/realization impact, checks and outcomes,
+preserved unrelated changes, architecture review state, and explicit confirmation that no attempt or
+acceptance ran. If maintained architecture sources changed, the validated exact diff remains
+`review_pending` until the maintainer confirms it; success is not claimed while review is pending.
 
 ## Normal Spec Kit phases under Concorde
 
@@ -242,7 +250,7 @@ never automatic.
 For an eligible established small change, the alternate branch is:
 
 ```text
-select existing feature → fast-loop → proportional validation
+select anchor → discover + resolve affected features → fast-loop → validation + architecture review when needed
 ```
 
 ## What actually runs
@@ -279,7 +287,7 @@ skill does not change the distributed framework.
 | Placement is known and the feature is new | `specify` with `SPECIFY_FEATURE_DIRECTORY` at the canonical feature root |
 | The feature exists but normal phases target something else | Set `SPECIFY_FEATURE_DIRECTORY` or edit `.specify/feature.json`, then rerun the phase |
 | Behavior is unclear | `specify` or `clarify` |
-| One existing accepted feature needs a small, non-architectural change and has no active attempt | `fast-loop` |
+| A bounded set of related existing accepted features needs one small change, no affected attempt is active, module boundaries and project-level user policy stay stable | `fast-loop` |
 | Behavior is clear but no delivery approach exists | `plan` |
 | The plan exists but is not executable | `tasks` |
 | Tasks may not cover the durable intent | `analyze` |

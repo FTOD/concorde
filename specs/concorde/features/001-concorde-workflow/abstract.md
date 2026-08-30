@@ -41,7 +41,7 @@ skills or slash commands:
 | `speckit.concorde.ask` | Answers a workflow question read-only from installed guidance, module summaries, and feature abstracts, citing anything deeper it opens. Agent-followed; no runtime. |
 | `speckit.concorde.validate` | Checks every maintained source deterministically and returns sorted findings with rule, severity, location, and remediation; byte-equivalent on repeat. |
 | `speckit.concorde.impl.accept` | Turns a completed attempt into accepted realization: proposal, exact review, explicit approval, atomic apply. |
-| `speckit.fast-loop` | Directly reconciles an eligible small change across code, tests, and related selected-feature/user documentation; creates no attempt and redirects ineligible work before mutation. |
+| `speckit.fast-loop` | Directly reconciles an eligible small change across code, tests, every affected existing feature, and related contract/architecture/user documentation; creates no attempt, requires exact review of architecture edits, and redirects boundary/project-policy work before mutation. |
 | `speckit.specify` · `clarify` · `checklist` | Author `abstract.md` and `design.md` for the selected root, seed a placeholder `implementation.md` for a new root, and write review checklists under `attempt/checklists/`. |
 | `speckit.plan` · `tasks` · `taskstoissues` | Plan one attempt from `design.md`, the accepted `implementation.md`, and the level's `module.md`; write only under `attempt/`. |
 | `speckit.implement` · `analyze` · `converge` | Execute the task list inside the attempt, report inconsistencies read-only, and append only genuine remaining work. |
@@ -59,7 +59,7 @@ The core view is <a href="/architecture/concorde-workflow-components.html">workf
 ```text
 Maintainer ──invoke · review · approve──▶ Coding-agent integration (skills / slash commands)
                                             ├─ 9 Spec Kit phase surfaces ──▶ selected-workspace adapter ──▶ .specify/feature.json
-                                            ├─ fast-loop direct surface ───▶ code + tests + selected feature docs
+                                            ├─ fast-loop direct surface ───▶ code + tests + all affected authorities
                                             └─ 5 Concorde surfaces ────────▶ launchers + Python runtime ──▶ architecture sources
                                                  (init · context · validate · impl.accept · ask)        (module.md · design.md · architecture/: diagrams · contracts · modules)
 
@@ -70,9 +70,10 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
 - **Spec Kit phase surfaces** are Spec Kit's own nine commands with a Concorde preset override
   that resolves the selected root *before* the phase runs, so no inherited helper can fall back to
   a root-level plan or task path.
-- **Fast-loop** is the explicitly invoked alternate for an already-realized, single-feature,
-  non-architectural small change with no active attempt. It edits the bounded change and related
-  documentation directly or redirects to the normal lifecycle before mutation.
+- **Fast-loop** is the explicitly invoked alternate for a bounded small change beginning from one
+  selected anchor and affecting one or more related already-realized features with no active
+  attempts. It may reconcile contract/architecture detail while module responsibilities,
+  dependencies, and project-level user policy stay stable; architecture edits require exact review.
 - **Concorde surfaces** come from the `concorde` extension: four runtime operations plus the
   agent-only `ask`. The runtime is portable standard-library Python reached through launchers;
   installed projects never depend on the Concorde checkout.
@@ -95,9 +96,10 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
    selection in `.specify/feature.json`; selecting an existing root is the same pointer.
 4. **Specify**: the abstract and the specification are written together; clarification updates both;
    checklists gate the next phases without granting approval.
-   For an already-realized small change that stays within one selected feature, the maintainer may
-   instead invoke **fast-loop**: eligibility is checked before mutation, then code, tests, and
-   affected feature/user docs are reconciled directly with no attempt or acceptance operation.
+   For an already-realized bounded small change, the maintainer may instead invoke **fast-loop**:
+   the selected root anchors affected-feature discovery, every affected baseline is checked before
+   mutation, then code, tests, and all related authorities are reconciled directly with no attempt or
+   acceptance operation; maintained architecture edits require exact review.
 5. **Plan**: one attempt under `attempt/`, derived from the specification and the accepted
    design reference; the abstract only orients.
 6. **Execute and reconcile**: tasks run inside the attempt; analysis reports disagreement — including
@@ -128,9 +130,10 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
 - Acceptance never edits `abstract.md`, `design.md`, or any `module.md`; a module `design.md` amendment
   rides only on the same reviewed, digest-bound proposal and applies atomically with the
   compaction (FR-017, FR-028).
-- Every phase operates on the one selected canonical root through the Feature Workspace Protocol
-  paths and never derives competing root-level plan, task, or checklist paths (FR-013, FR-023,
-  FR-024).
+- Every normal phase operates on the one selected canonical root through Feature Workspace Protocol
+  paths and never derives competing root-level plan, task, or checklist paths; fast-loop may repeat
+  explicit resolution for its bounded affected roots without creating another selection registry
+  (FR-013, FR-023, FR-024, FR-035).
 - Exactly two containment levels exist; a sub-feature reads its parent's trio as read-only context
   and never loads sibling bodies or attempts (FR-025, FR-026).
 - Proposal, question, context, analysis, and validation are read-only; mutations of maintained
@@ -138,10 +141,10 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   go stale (FR-027, FR-028).
 - Generated diagrams, pages, manifests, and reports are reproducible projections that exclude
   temporal attempts; missing evidence is reported as unknown, never inferred (FR-029, FR-031).
-- Fast-loop is confined to one already-realized selected feature with no active attempt; it preserves
-  unrelated work, rejects architecture/contract/compatibility/cross-feature work before mutation,
-  creates no attempt artifacts, and succeeds only with aligned docs and passing proportional checks
-  (FR-035).
+- Fast-loop starts from one selected anchor, requires every affected feature to be already realized
+  with no active attempt, preserves unrelated work, rejects module-boundary and project-level user
+  compatibility/migration changes, creates no attempt artifacts, and succeeds only with aligned
+  authorities, passing checks, and exact review of architecture edits (FR-028, FR-035).
 
 ## Read Next
 

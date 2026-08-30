@@ -121,6 +121,14 @@ remains temporal until this operation succeeds. An existing non-empty attempt is
 `attempt_state: active` and must never be replaced, archived as a second authority, or
 removed silently. Acceptance never writes `abstract.md` or `design.md`.
 
+An explicitly invoked eligible fast-loop is the direct-authoring exception for established
+realizations. The selected root is its anchor; bounded evidence may identify other affected existing
+features, each of which is resolved explicitly through the same Feature Workspace Protocol and must
+have a non-placeholder `implementation.md` plus `attempt_state: absent`. Fast-loop may reconcile each
+affected durable trio and directly related contracts, diagrams, module design-reference detail, and
+user guidance when module responsibilities and dependency direction remain stable. Any AI-authored
+architecture source remains review-pending until the maintainer confirms its exact validated diff.
+
 ## Phase Path Mapping
 
 The selected feature pointer identifies the feature root. Operations resolve from it as follows:
@@ -131,6 +139,7 @@ The selected feature pointer identifies the feature root. Operations resolve fro
 | custom requirements checklists | read durable root plus available attempt context (the abstract is in scope); write only `attempt/checklists/` |
 | plan, research, technical model, quickstart | read root `design.md` + `implementation.md` and the module summary (the abstract orients only); consult the module `design.md` only deliberately and cite it; write `attempt/` |
 | tasks, implement, analyze, converge, task-to-issue conversion, delivery validation | `attempt/`; analysis also reads `abstract.md` to report disagreement with `design.md` |
+| fast-loop | resolve the selected root as an anchor, then explicitly resolve every affected existing root; read each affected durable trio and bounded related module/contract/code/test/doc evidence; write verified code/tests plus every affected feature, contract, diagram, module-reference, and user-guide source needed for truthfulness; create no attempt; reject module responsibility/dependency and project-level user compatibility/migration policy changes; require exact review of architecture edits |
 | implementation acceptance | read root `abstract.md` + `design.md` + `implementation.md`, the module summary and `design.md`, and all attempt inputs; approved apply writes feature `implementation.md`, optionally module `design.md`, and removes `attempt/` |
 
 `.specify/feature.json` is the standard project-scoped selection record and may point to a valid
@@ -140,7 +149,9 @@ second active-feature registry. When the selected root is a sub-feature, workspa
 returns the parent feature's stable ID and durable `abstract.md`/`design.md`/`implementation.md` paths as
 read-only context plus bounded sibling summaries; it never exposes sibling bodies or parent/sibling
 attempt paths. Every workspace result also names the providing module's `module.md` and `design.md`
-as navigation references.
+as navigation references. Normal phases consume only the selected result. Fast-loop may issue
+additional explicit, read-only resolutions for affected roots; each receipt remains single-root and
+does not rewrite the standard selection.
 
 ## Package Discovery
 

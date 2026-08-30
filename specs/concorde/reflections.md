@@ -541,6 +541,9 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
   - implement 2026-08-30 feature.concorde.install-with-spec-kit — the self-hosting component view
     passed evidence-backed 9/9 showcase delivery after its pin refresh, while visual-check remained
     skipped/pending for the same missing browser.
+  - implement 2026-08-30 feature.concorde.workflow.fast-loop — both relaxed-policy workflow views
+    passed 9/9 showcase validation and delivery with zero errors or warnings, while visual-check
+    remained skipped/pending because Chrome/Chromium is still unavailable.
 
 ### R-027 · Sub-feature task-path wording would prohibit product implementation
 
@@ -559,6 +562,11 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Improvement**: Clarify that selected-child containment constrains feature/attempt artifacts and
   parent/sibling mutation, not implementation code and test paths named by the approved plan.
 - **Status**: open
+- **Occurrences**:
+  - tasks 2026-08-30 feature.concorde.workflow.fast-loop — the maintainer explicitly required every
+    related specification, contract, diagram, skill, script projection, and guide to agree, so the
+    task list names coordinated parent/project authority edits that the literal child-only wording
+    would otherwise prohibit.
 
 ### R-028 · The generated task named a nonexistent reflection test module
 
@@ -706,6 +714,11 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Improvement**: Add a reviewed coordinated-migration procedure for one authoritative identity
   change that requires non-behavioral reference updates across several durable feature documents.
 - **Status**: open
+- **Occurrences**:
+  - plan 2026-08-30 feature.concorde.workflow.fast-loop — the relaxed policy changes the selected
+    child and parent aggregate workflow authorities plus project contracts and views; used the
+    maintainer's explicit all-related-sources instruction for one coordinated attempt while keeping
+    every independently owned behavior change explicit and reviewable.
 
 ### R-036 · Failure injection retained the ambiguous extension archive name
 
@@ -743,6 +756,10 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
 - **Improvement**: Refresh repository evidence revisions whenever a maintained diagram gains a source
   that did not exist at its previous pin, and include `--repo-root` in its validation task.
 - **Status**: open
+- **Occurrences**:
+  - implement 2026-08-30 feature.concorde.workflow.fast-loop — the first validation again omitted
+    `--repo-root`; rerunning with the repository root verified all 16 pinned references and passed
+    9/9 showcase checks with zero errors or warnings.
 
 ### R-038 · Self-hosting diagram pin predated the renamed preset path
 
@@ -795,4 +812,63 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
   not edit the Feature 002 contract from this attempt.
 - **Improvement**: Add explicit array/object types to the owning manifest schema's conditional
   `diagrams` branches and require a warning-free docsite gate.
+- **Status**: open
+- **Occurrences**:
+  - implement 2026-08-30 feature.concorde.workflow.fast-loop — the complete docsite gate again
+    passed 81 tests, 108-page validation, and production build while emitting the same two non-fatal
+    AJV strict-type warnings.
+
+### R-041 · Relaxed contract eligibility still requires architecture review
+
+- **Phase**: plan
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.workflow.fast-loop
+- **Kind**: specification
+- **Concerns**: feature.concorde.workflow.fast-loop
+- **Expected**: Inter-module contract and maintained-diagram changes may use fast-loop when module
+  responsibilities and dependency direction remain stable, while all constitutional architecture
+  review obligations remain explicit.
+- **Observed**: The first relaxed specification made contract and diagram changes eligible but did
+  not state that AI-authored architecture edits still require exact maintainer review before they
+  become project intent under constitution A.V.
+- **Effect**: worked-around
+- **Action**: Returned to specification and added a review-pending outcome and completion-report
+  requirement for fast loops that edit maintained architecture sources.
+- **Improvement**: Make policy relaxations that widen direct architecture authoring explicitly check
+  constitutional review timing before planning begins.
+- **Status**: open
+
+### R-042 · Cross-integration refresh removes inactive generated surfaces
+
+- **Phase**: implement
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.workflow.fast-loop
+- **Kind**: tooling
+- **Concerns**: feature.concorde.self-host-framework
+- **Expected**: Refreshing Codex and Claude projections through self-hosting preserves the inactive
+  integration tree while materializing the active one.
+- **Observed**: After a Codex apply followed by restoring Claude and applying again, several tracked
+  `.agents/skills` surfaces were deleted even though unrelated Claude assets remained preserved.
+- **Effect**: worked-around
+- **Action**: Regenerated Codex, saved its complete generated skill tree, restored and verified the
+  active Claude projection, then restored the Codex generated tree byte-for-byte from that backup.
+- **Improvement**: Add an acceptance scenario that switches active integration twice and verifies
+  every inactive Concorde surface, including extension skills, survives the second apply.
+- **Status**: open
+
+### R-043 · Generic skill validation rejects Spec Kit metadata
+
+- **Phase**: implement
+- **Date**: 2026-08-30
+- **Feature**: feature.concorde.workflow.fast-loop
+- **Kind**: tooling
+- **Concerns**: .agents/skills/speckit-fast-loop/SKILL.md
+- **Expected**: The generic skill-creator validator accepts the installed fast-loop skill metadata.
+- **Observed**: It rejects Spec Kit's maintained `compatibility` field and Claude's generated
+  `disable-model-invocation` and `user-invocable` fields as unknown front-matter keys.
+- **Effect**: worked-around
+- **Action**: Preserved Spec Kit's generated metadata and used Concorde manifest, installed-surface,
+  release, and self-host contract tests as the authoritative validation gates.
+- **Improvement**: Let the generic validator accept integration-owned extension metadata or provide a
+  schema profile for Spec Kit materializations.
 - **Status**: open
