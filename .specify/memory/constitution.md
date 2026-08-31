@@ -1,28 +1,33 @@
 <!--
 Sync Impact Report
-- Version change: 2.0.0 -> 2.1.0 (MINOR: mandatory guidance materially expanded; no principle removed
-  or redefined)
+- Version change: 2.1.0 -> 3.0.0 (MAJOR: the universal human-review requirement for AI-authored
+  architecture is replaced by a risk-proportional rule with a narrow fast-loop exception)
 - Modified principles:
-  - A.III Architecture-Driven, Not Only Feature-Driven: every level now MUST keep two distinguishable
-    parts of one package — the features specified at that level (what it can do) and its architecture
-    (how it is composed: the level's diagrams, boundary contracts, and immediate submodules); a level
-    MAY be described by more than one maintained diagram, and "a level's view" became "a level's
-    views" wherever the bounded view is described.
-- Modified sections:
-  - Workflow Standards: "one valid level view" became "at least one valid level view"; added that
-    every diagram a level maintains MUST be referenced from that level's documents.
+  - A.IV Contracts Are Human-Readable Promises: contract changes MUST still be evaluated for feature
+    and compatibility impact, but a separate human review is no longer universal when the change
+    satisfies the A.V fast-loop exception.
+  - A.V Deterministic Validation, Human-Reviewed Evidence -> A.V Deterministic Validation,
+    Risk-Proportional Review: eligible, explicitly invoked small fast-loop architecture changes MAY
+    become project intent without a separate post-edit human review; all other AI-authored
+    architecture changes retain the review requirement.
 - Added sections: none. Removed sections: none.
-- Motivation: one fixed level-view file per module could not describe a level that needs several
-  diagrams, and features sat beside only some of what composes a level. Architecture Source Profile 4
-  (2026-08-29) gives every module package `features/` beside `architecture/` (`diagrams/`,
-  `contracts/`, `modules/`); this amendment states the principle behind that layout without fixing
-  the layout itself, which remains framework documentation.
-- Compatibility impact: additive for adopters that already maintain one level view; a level with
-  unreferenced diagrams or a package that mixes composition into the feature tree now breaches a
-  standard. Concorde's own hierarchy, tooling, guides, and templates were migrated in the same change.
-- Templates and guides reconciled in this change: docs/framework-overview.md (version citation);
-  docs/specification-model.md and docs/project-structure.md already describe the two-part package.
-- Follow-up TODOs (carried over, still open):
+- Motivation: an explicitly requested fast loop already bounds affected authorities, rejects
+  structural and policy changes, and requires proportional deterministic evidence. Requiring a
+  second human review for every small contract or maintained-diagram correction adds ceremony
+  without changing the accepted risk boundary.
+- Compatibility impact: governance-breaking. Eligible fast-loop architecture edits can now become
+  project intent after deterministic verification and truthful disclosure without exact-diff human
+  confirmation. Structural, responsibility, dependency, ambiguous, and project-policy changes still
+  require the normal reviewed lifecycle.
+- Templates and guides reconciled in this change: none; the constitution workflow writes only this
+  file.
+- Follow-up TODOs (owner: Concorde maintainers):
+  - Reconcile Fast Loop required behavior, abstract, command guidance, contracts, and tests with the
+    A.V exception; remove the obsolete review-pending completion gate.
+  - Reconcile `feature.concorde.workflow.specify-behavior`, its command/template quality checks,
+    workflow guidance, tests, and generated projections so they apply risk-proportional review rather
+    than requiring human review for every AI-authored architecture edit.
+  - Update the constitution version citation in `docs/framework-overview.md`.
   - Reconcile preset/extension guidance that cites old principle numerals (I-VII) with the
     A.I-A.V / B.I-B.II identifiers.
   - The feature path layout and Protocol v6 `providing_module` field still reflect the former
@@ -113,21 +118,42 @@ Every scenario interaction that crosses a module boundary MUST reference its gov
 A contract MUST use either a commonly adopted format (named, versioned, linked to its authoritative
 definition, with a summary of the information exchanged) or a custom format with a normative schema
 or grammar, field semantics, and at least one conforming example. Opaque or undocumented payloads are
-prohibited. Contract changes MUST be reviewed as potential feature and compatibility changes.
+prohibited. Every contract change MUST be evaluated as a potential feature and compatibility change.
+Human review is mandatory unless the change satisfies the fast-loop exception in A.V.
 
 Rationale: contracts are the promises other modules rely on. If a human cannot read what a boundary
 carries, the human cannot judge whether a change is safe, and the architecture view is decoration.
 
-### A.V Deterministic Validation, Human-Reviewed Evidence
+### A.V Deterministic Validation, Risk-Proportional Review
 Validation, rendering, documentation builds, freshness checks, and cross-reference checks MUST be
-deterministic and MUST NOT require an LLM. Every architecture change proposed or authored by an AI
-MUST receive human review and pass applicable validation before it becomes project intent. Tests MUST
-verify changed behavior, contract conformance, hierarchy integrity, and generated-output freshness in
-proportion to the change. A passing architecture check MUST NOT be presented as proof that the
-implementation is correct; structural validity and behavioral evidence remain distinct.
+deterministic and MUST NOT require an LLM. Architecture changes proposed or authored by an AI MUST
+receive human review and pass applicable validation before they become project intent, except for an
+explicitly invoked small change completed through the project's fast-loop workflow. That exception
+applies only when deterministic preflight and evidence establish all of the following:
 
-Rationale: AI-assisted changes are only trustworthy when they are reproducibly checkable and a
-human has accepted them. Generated artifacts earn no authority by existing.
+- every affected feature already has durable required behavior, an accepted realization, and no
+  active attempt;
+- the change creates or restructures no module or feature, changes no module responsibility or
+  dependency direction, and changes no project-level compatibility or migration policy;
+- the affected set and architectural impact are bounded and unambiguous, and every affected feature,
+  contract, maintained diagram, implementation, test, and user-facing source is reconciled;
+- proportional behavioral, contract, hierarchy, reference, freshness, and documentation checks pass;
+  and
+- the completion report discloses the exact changed sources, affected features, and verification
+  results without claiming that structural validation proves implementation correctness.
+
+When every condition holds, the maintainer's explicit fast-loop invocation authorizes the verified
+architecture edits to become project intent without a separate post-edit human review. "Small" is
+defined by these ownership and risk conditions, not by line count. Failure of any condition makes the
+exception unavailable and requires the normal reviewed lifecycle. A passing architecture check MUST
+NOT be presented as proof that the implementation is correct; structural validity and behavioral
+evidence remain distinct.
+
+Rationale: AI-assisted changes are trustworthy when authority is bounded, impact is explicit, and
+evidence is reproducible. Human review remains mandatory for structural, directional, ambiguous, or
+project-policy changes, while an explicitly requested and deterministically verified fast loop avoids
+a redundant second approval for small architecture corrections. Generated artifacts earn no
+authority by existing.
 
 ## Part B: Project Principles
 
@@ -223,4 +249,4 @@ of implementation agreement without evidence. Exceptions are temporary records, 
 Maintainers MUST review this constitution at least once per major release and whenever recurring
 exceptions indicate a rule no longer serves the project's goals.
 
-**Version**: 2.1.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-29
+**Version**: 3.0.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-31

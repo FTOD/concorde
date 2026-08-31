@@ -142,30 +142,3 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
     update ordering, behavioral versus referential changes, validation evidence, and which feature
     owns acceptance; changing those rules crosses several durable specifications and is not a local
     package-rename patch.
-
-### R-041 · Relaxed contract eligibility still requires architecture review
-
-- **Phase**: plan
-- **Date**: 2026-08-30
-- **Feature**: feature.concorde.workflow.fast-loop
-- **Kind**: specification
-- **Concerns**: feature.concorde.workflow.fast-loop
-- **Expected**: Inter-module contract and maintained-diagram changes may use fast-loop when module
-  responsibilities and dependency direction remain stable, while all constitutional architecture
-  review obligations remain explicit.
-- **Observed**: The first relaxed specification made contract and diagram changes eligible but did
-  not state that AI-authored architecture edits still require exact maintainer review before they
-  become project intent under constitution A.V.
-- **Effect**: worked-around
-- **Action**: Returned to specification and added a review-pending outcome and completion-report
-  requirement for fast loops that edit maintained architecture sources.
-- **Improvement**: Make policy relaxations that widen direct architecture authoring explicitly check
-  constitutional review timing before planning begins.
-- **Status**: open
-- **Occurrences**:
-  - implement 2026-08-30 feature.concorde.workflow.fast-loop — deferred to the owning
-    `feature.concorde.workflow.specify-behavior` lifecycle. Specify an early quality check that
-    identifies widened AI architecture authoring and requires exact maintainer-review timing before
-    planning; reconcile its design/abstract, specify command, design template, workflow guide, tests,
-    and generated projections together. That feature still has a placeholder realization and active
-    attempt artifacts, so fast-loop is ineligible.
