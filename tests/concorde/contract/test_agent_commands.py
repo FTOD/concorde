@@ -10,6 +10,22 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, VALID_PROJECT
 
 
 class AgentCommandContractTests(unittest.TestCase):
+    def test_analyze_writes_only_required_reflection_records(self):
+        surfaces = (
+            REPOSITORY_ROOT / "presets/concorde/commands/speckit.analyze.md",
+            REPOSITORY_ROOT / ".agents/skills/speckit-analyze/SKILL.md",
+        )
+        for path in surfaces:
+            content = path.read_text(encoding="utf-8")
+            for invariant in (
+                "READ-ONLY EXCEPT REFLECTION RECORDING",
+                "workspace.reflections",
+                "Every other file MUST remain byte-identical",
+                "no recordable problem MUST make zero filesystem changes",
+            ):
+                self.assertIn(invariant, content, path.as_posix())
+            self.assertNotIn("**STRICTLY READ-ONLY**", content, path.as_posix())
+
     def test_task_and_abstract_guidance_respect_durable_and_published_boundaries(self):
         tasks = (
             REPOSITORY_ROOT / "presets/concorde/templates/tasks-template.md"

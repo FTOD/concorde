@@ -33,30 +33,6 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
     supported outer-edge corridor, update the level-view JSON and prose together, and require
     Archify crossing diagnostics, showcase validation, and visual review.
 
-### R-006 · Analysis is specified as strictly read-only but must record problems
-
-- **Phase**: implement
-- **Date**: 2026-08-28
-- **Feature**: feature.concorde.record-workflow-reflections
-- **Kind**: specification
-- **Concerns**: feature.concorde.workflow.execute-and-reconcile
-- **Expected**: FR-001 of this feature requires recording through the analysis phase, while FR-004
-  of the execute-and-reconcile sub-feature and the `speckit.analyze` instruction make analysis
-  strictly read-only.
-- **Observed**: Both cannot hold literally; the analysis instruction had to name one exception.
-- **Effect**: assumed
-- **Action**: Made appending to the project reflection log the single permitted write of the
-  analysis phase in `presets/concorde/commands/speckit.analyze.md`; nothing else changed.
-- **Improvement**: Reconcile FR-004 of `feature.concorde.workflow.execute-and-reconcile` (and its
-  SC-002 "zero filesystem changes") with this exception through specification review of that root.
-- **Status**: open
-- **Occurrences**:
-  - implement 2026-08-30 feature.concorde.record-workflow-reflections — deferred to the owning
-    execute-and-reconcile specification lifecycle because it changes the definition of read-only
-    analysis. Reconcile FR-004, SC-002, the abstract surface/rules, and aggregate workflow prose so
-    the sole write is append-only `workspace.reflections`; add acceptance evidence that a seeded
-    problem changes only `reflections.md` and a no-problem run changes zero bytes.
-
 ### R-008 · The Documentation refinement still couples both published hierarchies
 
 - **Phase**: plan

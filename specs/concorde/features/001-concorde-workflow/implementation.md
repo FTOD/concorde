@@ -175,7 +175,7 @@ two preset-owned surfaces and any cited path missing from the checkout.
 
 - `preset.yml` lists `spec-template`, `abstract-template`, `implementation-template`,
   `reflections-template`, `plan-template`, `tasks-template`, and nine complete command modifications.
-- `speckit.specify.md` resolves the three templates, authors the abstract after the specification, seeds `implementation.md` when absent, and adds three abstract checklist items; `speckit.clarify.md` updates the abstract after each integrated answer; `speckit.checklist.md` names the abstract as in scope; `speckit.plan.md`, `speckit.tasks.md`, `speckit.implement.md`, `speckit.converge.md`, and `speckit.taskstoissues.md` read the feature `implementation.md` as baseline and never write the trio; `speckit.analyze.md` adds the "abstract Disagreement" detection pass.
+- `speckit.specify.md` resolves the three templates, authors the abstract after the specification, seeds `implementation.md` when absent, and adds three abstract checklist items; `speckit.clarify.md` updates the abstract after each integrated answer; `speckit.checklist.md` names the abstract as in scope; `speckit.plan.md`, `speckit.tasks.md`, `speckit.implement.md`, `speckit.converge.md`, and `speckit.taskstoissues.md` read the feature `implementation.md` as baseline and never write the trio; `speckit.analyze.md` adds the "abstract Disagreement" detection pass, preserves every non-reflection file, and writes `workspace.reflections` only when reflection recording requires it.
 - Extension commands document proposal v6 and the `CONCORDE-ABSTRACT-*` / layout inventory.
 - Local helpers export `FEATURE_ABSTRACT`, `FEATURE_DESIGN`, `FEATURE_IMPLEMENTATION`, and
   `ATTEMPT_DIR`.

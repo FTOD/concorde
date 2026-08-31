@@ -103,8 +103,8 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
 5. **Plan**: one attempt under `attempt/`, derived from the specification and the accepted
    design reference; the abstract only orients.
 6. **Execute and reconcile**: tasks run inside the attempt; analysis reports disagreement — including
-   a abstract that says something the specification does not — without editing anything; convergence
-   appends only real remaining work.
+   a abstract that says something the specification does not — while writing only required problem
+   records to the project reflection log; convergence appends only real remaining work.
 7. **Validate** whenever maintained structure changed; budget overruns are warnings, everything
    else in the document model is an error.
 8. **Accept**: the agent drafts the candidate feature `implementation.md` (optionally with a module

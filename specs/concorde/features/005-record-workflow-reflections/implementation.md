@@ -150,8 +150,6 @@ Final evidence on 2026-08-30:
 - **R-002**: plan/tasks guidance still contains the recorded module-edit authority disagreement.
 - **R-005**: the root level view intentionally remains module-oriented and does not draw every
   Feature 005-specific crossing; the feature core view carries the explanatory detail.
-- **R-006**: the execute-and-reconcile specification still describes analysis as strictly read-only
-  despite the reflection log being its one permitted write.
 - **R-007**: the docsite still rejects canonical links to non-published reflection artifacts; the
   abstract uses code spans for those paths.
 - **R-044**: native Spec Kit 0.16.4 lacks arbitrary custom-agent projection. Feature 003's installed

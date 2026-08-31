@@ -76,9 +76,13 @@ Identify inconsistencies, duplications, ambiguities, and underspecified items ac
 
 ## Operating Constraints
 
-**STRICTLY READ-ONLY**: Do **not** modify any files, with one exception: this phase may append to
-the project reflection log (`workspace.reflections`) per Reflection Recording below, and never
-repairs that log. Output a structured analysis report. Offer an optional remediation plan (user must explicitly approve before any follow-up editing commands would be invoked manually).
+**READ-ONLY EXCEPT REFLECTION RECORDING**: Do **not** modify any file except the project reflection
+log (`workspace.reflections`). This phase may create that log from its resolved template when absent
+and append a new entry or matching occurrence per Reflection Recording below; it never repairs,
+reorders, renumbers, or deletes reflection content. Every other file MUST remain byte-identical. A
+run that meets no recordable problem MUST make zero filesystem changes. Output a structured analysis
+report. Offer an optional remediation plan (user must explicitly approve before any follow-up editing
+commands would be invoked manually).
 
 **Constitution Authority**: The project constitution (`.specify/memory/constitution.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `$speckit-analyze`.
 
@@ -349,7 +353,9 @@ After reporting, check if `.specify/extensions.yml` exists in the project root.
 
 ### Analysis Guidelines
 
-- **NEVER modify files** (this is read-only analysis; the only permitted write is appending to the project reflection log)
+- **NEVER modify files other than `workspace.reflections`** (analysis may create or append/update
+  that log only as specified by Reflection Recording; when it has nothing to record, it writes
+  nothing)
 - **NEVER propose editing `implementation.md` or any module `module.md`/`design.md`**; when analysis surfaces rationale, alternatives, or implementation detail worth keeping, recommend recording it inside the attempt (`attempt/research.md` or `attempt/validation.md`) so acceptance can carry it forward
 - **NEVER hallucinate missing sections** (if absent, report them accurately)
 - **Prioritize constitution violations** (these are always CRITICAL)

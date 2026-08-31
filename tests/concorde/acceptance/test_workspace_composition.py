@@ -46,6 +46,11 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                 for phase in ("tasks", "implement", "analyze", "converge"):
                     surface = registered_artifact(root, integration, f"speckit.{phase}").read_text(encoding="utf-8")
                     self.assertIn(block, surface, phase)
+                analyze_surface = registered_artifact(root, integration, "speckit.analyze").read_text(encoding="utf-8")
+                self.assertIn("READ-ONLY EXCEPT REFLECTION RECORDING", analyze_surface)
+                self.assertIn("Every other file MUST remain byte-identical", analyze_surface)
+                self.assertIn("no recordable problem MUST make zero filesystem changes", analyze_surface)
+                self.assertNotIn("**STRICTLY READ-ONLY**", analyze_surface)
                 implement_surface = registered_artifact(root, integration, "speckit.implement").read_text(encoding="utf-8")
                 self.assertIn("`Effect: blocked`", implement_surface)
                 resolved = subprocess.run(["specify", "preset", "resolve", "reflections-template"], cwd=root, check=True, capture_output=True, text=True)

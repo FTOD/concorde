@@ -7,9 +7,10 @@ workflow step; the links at the end only redirect you when you want more.
 ## Purpose
 
 Let a coding agent execute the approved task list, report cross-artifact inconsistencies without
-changing anything, and append only genuine remaining work — all inside the selected root's bounded
-context, with everything it learns recorded where acceptance can later find it. The maintainer asks
-for the ready tasks to be delivered, verified, analyzed, and honestly reflected in the task list.
+changing analyzed artifacts, record problems only in the project reflection log, and append only
+genuine remaining work — all inside the selected root's bounded context, with everything it learns
+recorded where acceptance can later find it. The maintainer asks for the ready tasks to be delivered,
+verified, analyzed, and honestly reflected in the task list.
 
 ## Functionality
 
@@ -19,7 +20,7 @@ each confined to the selected lifecycle root and its attempt.
 | Surface | What it does | Writes |
 |---|---|---|
 | `speckit.implement` | Executes tasks in dependency order against the feature `implementation.md` baseline, runs relevant checks, and marks completion only after proportionate verification | Code, tests, `attempt/` |
-| `speckit.analyze` | Reports high-signal inconsistencies and coverage gaps across `abstract.md`, `design.md`, the accepted realization, plan, tasks, and constitution — including any abstract statement the specification does not support, naming the prevailing requirement | Nothing; strictly read-only |
+| `speckit.analyze` | Reports high-signal inconsistencies and coverage gaps across `abstract.md`, `design.md`, the accepted realization, plan, tasks, and constitution — including any abstract statement the specification does not support, naming the prevailing requirement | `workspace.reflections` only when a problem must be recorded; otherwise nothing |
 | `speckit.converge` | Appends only verified remaining work as new dependency-ordered tasks, preserving completed ones and avoiding duplicates | `attempt/` |
 
 Analysis distinguishes absent evidence, disagreement, ambiguity, duplication, and coverage gaps
@@ -42,7 +43,7 @@ adapter, work between the durable trio and the attempt.
 Maintainer ──execute · analyze · converge──▶ implement · analyze · converge (Spec Kit phase surfaces)
                                                 └─▶ selected-workspace adapter ──▶ .specify/feature.json
                                                       ├─ reads:   abstract.md · design.md · implementation.md (baseline) · attempt/ (plan, tasks, checklists)
-                                                      ├─ writes:  code · tests · attempt/ (task state, appended tasks, recorded rationale)
+                                                      ├─ writes:  code · tests · attempt/ (task state, appended tasks, recorded rationale) · reflections.md (problems only)
                                                       └─ never:   abstract.md · design.md · feature implementation.md · module.md · module implementation.md · attempt removal
 ```
 
@@ -54,8 +55,8 @@ Maintainer ──execute · analyze · converge──▶ implement · analyze ·
 3. Record any design decision, alternative, or implementation detail discovered during execution
    inside the attempt.
 4. Analyze: read the abstract, specification, accepted realization, plan, and tasks, and report
-   inconsistencies and gaps — including abstract statements the specification does not support — while
-   changing no file.
+   inconsistencies and gaps — including abstract statements the specification does not support —
+   while preserving every file except any required project reflection-log record.
 5. Converge: append only verified remaining work as new dependency-ordered tasks; if nothing genuine
    remains, append nothing.
 
@@ -66,7 +67,8 @@ Maintainer ──execute · analyze · converge──▶ implement · analyze ·
   completion only after proportionate verification (FR-002).
 - Implementation context excludes implicit parent and sibling attempts, unrelated deeper
   architecture, and any module `design.md` not deliberately opened and cited (FR-003).
-- Analysis is strictly read-only, prioritizes specification, accepted realization, plan, task, and
+- Analysis preserves every file except `workspace.reflections`, writes that log only when reflection
+  recording requires it, prioritizes specification, accepted realization, plan, task, and
   constitution inconsistencies, and reports any `abstract.md`/`design.md` disagreement naming the
   prevailing requirement (FR-004).
 - Analysis distinguishes absent evidence, disagreement, ambiguity, duplication, and coverage gaps
