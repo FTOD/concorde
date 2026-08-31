@@ -1,28 +1,32 @@
 # Concorde
 
-Concorde extends [Spec Kit](https://github.com/github/spec-kit) with a hierarchical architecture
-workflow for AI-developed software. It keeps feature specifications aligned with the module hierarchy
-that realizes them, boundary contracts, bounded architecture views, and accepted implementation
-evidence, so that a maintainer can understand any level of the project in minutes.
+Concorde extends [Spec Kit](https://github.com/github/spec-kit) from feature specifications into an
+architecture-aware specification system for AI-developed software. It keeps features aligned with
+the module hierarchy that realizes them, boundary contracts, concise text and diagrams at every
+level, and accepted implementation evidence, so that a maintainer can understand any part of the
+project in minutes while agents work from bounded context.
 
 ## Key features
 
-- **Hierarchical zoomable architecture** — start at the project, understand one module at a time, and descend only
-  when the question needs more detail.
-- **Architecture-aware specifications** — place each feature where all participating modules are
-  visible, with stable IDs and explicit refinement relationships.
-- **Bounded agent context** — retrieve one architectural level without silently loading child
-  internals, unrelated features, or accepted implementation detail.
-- **Human-readable contracts** — record boundary direction, exchanged information, obligations, and
-  failure behavior alongside the modules and features that rely on them.
-- **Durable intent, temporal attempts** — keep specifications and accepted realizations separate from
-  disposable plans, tasks, research, validation, and in-progress implementation work.
-- **Deterministic validation and review gates** — check hierarchy, references, contracts, diagrams,
-  evidence, and generated-output freshness without an LLM; architecture and acceptance changes remain
-  explicit human decisions.
-- **One generated project read model** — publish the README, architecture, guides, feature abstracts,
-  designs, accepted implementations, contracts, and interactive diagrams as a searchable Docusaurus
-  site without turning generated pages into sources.
+- **Architecture-aware specs, not isolated feature files** — describe the project at every level
+  through modules, features, contracts, and accepted implementations, using concise text and
+  diagrams that let readers move from the whole project to the detail they need.
+- **Good abstractions through bounded agent context** — give each task one coherent architectural
+  level without silently loading child internals, unrelated features, or accepted implementation
+  detail.
+- **Specs as an auto-docsite** — publish the README, architecture, guides, feature specs, accepted
+  implementations, contracts, and interactive diagrams as one searchable site without turning
+  generated pages into sources. See [Concorde's own auto-docsite](https://ftod.github.io/concorde/).
+- **Durable docs, temporal implementation attempts** — keep specifications and accepted
+  implementations durable while plans, tasks, research, validation, and in-progress work live in a
+  disposable attempt workspace.
+- **Auto-reflections that drive sub-agent improvement** — record workflow problems encountered
+  during planning and implementation in one durable project log, then use specialized investigator
+  and implementer sub-agents to turn those reflections into bounded, validated improvements while
+  maintainers control merges and final status.
+- **Deterministic validation and explicit review gates** — check hierarchy, references, contracts,
+  diagrams, evidence, and generated-output freshness without an LLM; architecture and acceptance
+  changes remain explicit human decisions.
 
 ## Concorde commands
 
