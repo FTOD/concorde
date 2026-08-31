@@ -40,8 +40,9 @@ manifest, and sandboxed delivered Archify views where architecture sources decla
 - `/` links to distinct Architecture, Documentation, and Features collections.
 - `/architecture/**`, `/docs/**`, and `/features/**` each project one canonical source per page.
 - The self-hosting `/docs` landing page provides a progressive path to the quick start, framework
-  overview, specification model, project structure, Concorde workflow, and command reference; those
-  guides retain working links to their canonical Architecture or Features authorities.
+  overview, project ontology, specification model, project structure, Concorde workflow, and command
+  reference; those guides retain working links to their canonical Architecture or Features
+  authorities.
 - Architecture pages expose stable ID, kind, hierarchy metadata, source provenance, and declared
   sandboxed Archify views; module design reference pages expose their owning module and source
   provenance; feature specification pages expose ID, module, and status, while feature

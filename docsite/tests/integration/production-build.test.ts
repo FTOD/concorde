@@ -48,6 +48,7 @@ describe('production build', () => {
       page.sourcePath === 'README.md' && page.route === '/')).toHaveLength(1);
     const searchIndex = await readFile(resolve(buildDir, 'search-index.json'), 'utf8');
     expect(searchIndex).toContain('Create Unified Project Docsite');
+    expect(searchIndex).toContain('Project Ontology and Terminology');
     expect(searchIndex).toContain('Scripts');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-interaction-architecture.html'), 'utf8')).toContain('Concorde Interaction Architecture');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-skill-workspace-file-flow.html'), 'utf8'))
@@ -64,14 +65,17 @@ describe('production build', () => {
       .toContain('Project Docsite — Publication Invocation');
     expect(await readFile(resolve(buildDir, 'architecture/concorde-command-workspace-file-flow.html'), 'utf8'))
       .toContain('Concorde Commands and Workspace Files');
-    expect(Object.keys(firstDiagramHashes)).toHaveLength(10);
+    expect(await readFile(resolve(buildDir, 'architecture/alignment-explorer-components.html'), 'utf8'))
+      .toContain('Concorde Alignment Explorer Components');
+    expect(Object.keys(firstDiagramHashes)).toHaveLength(11);
     expect((await readdir(resolve(siteDir, '../generated/architecture'))).every((name) => name.endsWith('.html'))).toBe(true);
     const concordeFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.workflow');
     const docsiteFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.publish-project-docsite');
     const selfHostingFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.self-host-framework');
+    const alignmentFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.explore-alignment');
     const documentationFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) =>
       page.kind === 'feature-abstract' && page.featureId === 'feature.auto-docs.publish-project-docsite');
-    if (!concordeFeature || !docsiteFeature || !selfHostingFeature) throw new Error('Expected the abstract landing pages of Features 001, 002, and 004 in the build manifest.');
+    if (!concordeFeature || !docsiteFeature || !selfHostingFeature || !alignmentFeature) throw new Error('Expected the abstract landing pages of Features 001, 002, 004, and 006 in the build manifest.');
     expect(documentationFeature?.route).toBe('/features/feature.auto-docs.publish-project-docsite');
     for (const page of manifest.pages.filter((candidate: {kind: string}) => candidate.kind.startsWith('feature-'))) {
       expect(page.route.slice('/features/'.length)).not.toMatch(/(?:^|\/)(?:architecture|modules|features)(?:\/|$)/);
@@ -88,6 +92,7 @@ describe('production build', () => {
       'feature.concorde.install-with-spec-kit',
       'feature.concorde.self-host-framework',
       'feature.concorde.record-workflow-reflections',
+      'feature.concorde.explore-alignment',
     ];
     const rootFeatureItems = featureSidebar[0].items.slice(0, rootFeatureIds.length);
     expect(rootFeatureItems.map((item: {link: {id: string}}) => item.link.id.replace(/\/abstract$/, '')))
@@ -97,7 +102,7 @@ describe('production build', () => {
       .map((page: {featureId: string; title: string}) => [page.featureId, page.title]));
     expect(rootFeatureItems.map((item: {label: string}) => item.label))
       .toEqual(rootFeatureIds.map((featureId) => featureTitles.get(featureId)));
-    expect(featureSidebar[0].items.slice(5).map((item: {label: string}) => item.label)).toEqual([
+    expect(featureSidebar[0].items.slice(rootFeatureIds.length).map((item: {label: string}) => item.label)).toEqual([
       'Skills', 'Scripts', 'Workspace Files', 'Distribution', 'Auto-Docs',
     ]);
     expect(concordeFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
@@ -116,6 +121,14 @@ describe('production build', () => {
       kind: 'architecture',
       route: '/architecture/concorde-self-hosting-components.html',
     })]));
+    expect(alignmentFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
+      source: 'specs/concorde/features/006-alignment-explorer/diagrams/alignment-explorer-components.json',
+      role: 'core',
+      kind: 'architecture',
+      route: '/architecture/alignment-explorer-components.html',
+    })]));
+    expect(manifest.pages.find((page: {sourcePath: string}) => page.sourcePath === 'docs/ontology.md')?.route)
+      .toBe('/docs/ontology');
     const workflowGuide = manifest.pages.find((page: {sourcePath: string}) => page.sourcePath === 'docs/concorde-workflow.md');
     expect(workflowGuide.diagrams).toEqual([expect.objectContaining({
       source: 'docs/diagrams/concorde-command-workspace-file-flow.json',
@@ -144,7 +157,7 @@ describe('production build', () => {
     expect(workflowGuideHtml).toContain('Concorde Commands and Workspace Files');
     expect(workflowGuideHtml).toContain('/architecture/concorde-command-workspace-file-flow.html');
     // The landing page links design and implementation; each links back to the abstract.
-    for (const landing of [concordeFeature, docsiteFeature, selfHostingFeature]) {
+    for (const landing of [concordeFeature, docsiteFeature, selfHostingFeature, alignmentFeature]) {
       const html = await readFile(resolve(buildDir, `${landing.route.slice(1)}.html`), 'utf8');
       expect(html).toContain(`${landing.designRoute}"`);
       expect(html).toContain(`${landing.implementationRoute}"`);

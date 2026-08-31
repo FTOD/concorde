@@ -16,7 +16,7 @@ describe('architecture source publication', () => {
       (document): document is ArchitectureSource => document.contentKind === 'architecture-source',
     );
     expect(validateRegistry(registry)).toEqual([]);
-    expect(sources).toHaveLength(25);
+    expect(sources).toHaveLength(27);
     expect(new Set(sources.map((source) => source.architectureId)).size).toBe(sources.length);
     expect(sources.find((source) => source.architectureId === 'module.concorde')).toMatchObject({
       architectureKind: 'module',
@@ -43,6 +43,14 @@ describe('architecture source publication', () => {
     expect(sources.find((source) => source.architectureId === 'contract.workspace-files.feature-workspace')).toMatchObject({
       architectureKind: 'contract',
       moduleId: 'module.concorde.workspace-files',
+    });
+    expect(sources.find((source) => source.architectureId === 'contract.concorde.alignment-explorer')).toMatchObject({
+      architectureKind: 'contract',
+      moduleId: 'module.concorde',
+    });
+    expect(sources.find((source) => source.architectureId === 'contract.understand-anything.knowledge-graph')).toMatchObject({
+      architectureKind: 'contract',
+      moduleId: 'module.concorde',
     });
   });
 

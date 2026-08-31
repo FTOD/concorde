@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Concorde Alignment Explorer Components",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "../../../../../generated/architecture/alignment-explorer-components.html",
+    "repository": {
+      "url": "https://github.com/FTOD/concorde.git",
+      "revision": "fce6c8cfe344dce619f205bc5188c249de866c3e"
+    },
+    "legend": {
+      "mode": "hidden"
+    },
+    "viewBox": [
+      1390,
+      960
+    ],
+    "views": [
+      {
+        "id": "explore-architecture",
+        "label": "浏览架构",
+        "focus": [
+          "developer",
+          "exploreUi",
+          "alignmentProjection",
+          "concordeSources"
+        ],
+        "note": "通过 /concorde-explore（skill: $speckit-concorde-explore）进入第二浏览通道，并保留到规范源的可追溯链接。"
+      },
+      {
+        "id": "inspect-alignment",
+        "label": "检查规范—实现一致性",
+        "focus": [
+          "concordeSources",
+          "codeTests",
+          "understandAnything",
+          "validator",
+          "projectOntology",
+          "alignmentProjection",
+          "exploreUi"
+        ],
+        "note": "项目 ontology 分别定义 Concorde、UA 及其关系；投影再应用 rendering profile 和证据状态。"
+      },
+      {
+        "id": "expose-unknowns",
+        "label": "暴露未知与冲突",
+        "focus": [
+          "validator",
+          "projectOntology",
+          "alignmentProjection",
+          "exploreUi"
+        ],
+        "note": "缺失映射、证据不足、陈旧与真实冲突保持可区分，系统不猜测一致性。"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "developer",
+      "type": "external",
+      "label": "Developer",
+      "sublabel": "浏览、搜索、下钻与审查",
+      "pos": [
+        1160,
+        120
+      ],
+      "size": [
+        210,
+        86
+      ]
+    },
+    {
+      "id": "concordeSources",
+      "type": "database",
+      "label": "Concorde Maintained Sources",
+      "sublabel": "module · feature · contract · scenario",
+      "tag": "规范意图的权威来源",
+      "sources": [
+        {
+          "path": "specs/concorde/module.md",
+          "label": "root module"
+        },
+        {
+          "path": "docs/specification-model.md",
+          "label": "source model"
+        }
+      ],
+      "pos": [
+        40,
+        120
+      ],
+      "size": [
+        250,
+        104
+      ]
+    },
+    {
+      "id": "projectOntology",
+      "type": "backend",
+      "label": "Project Ontology",
+      "sublabel": "Concorde + UA + relationships",
+      "tag": "docs/ontology.md",
+      "pos": [
+        400,
+        120
+      ],
+      "size": [
+        250,
+        104
+      ]
+    },
+    {
+      "id": "alignmentProjection",
+      "type": "backend",
+      "label": "Alignment Projection",
+      "sublabel": "correlation · status · provenance",
+      "tag": "generated read model",
+      "pos": [
+        780,
+        410
+      ],
+      "size": [
+        250,
+        104
+      ]
+    },
+    {
+      "id": "exploreUi",
+      "type": "frontend",
+      "label": "Alignment Explorer",
+      "sublabel": "/concorde-explore",
+      "tag": "second viewing channel",
+      "pos": [
+        1160,
+        410
+      ],
+      "size": [
+        220,
+        104
+      ]
+    },
+    {
+      "id": "codeTests",
+      "type": "database",
+      "label": "Code and Tests",
+      "sublabel": "executable reality and evidence",
+      "pos": [
+        40,
+        700
+      ],
+      "size": [
+        250,
+        96
+      ]
+    },
+    {
+      "id": "validator",
+      "type": "security",
+      "label": "Concorde Validator",
+      "sublabel": "deterministic findings",
+      "tag": "never infers correctness",
+      "sources": [
+        {
+          "path": ".specify/extensions/concorde/runtime/concorde/validate.py",
+          "label": "validation entry"
+        }
+      ],
+      "pos": [
+        400,
+        410
+      ],
+      "size": [
+        250,
+        96
+      ]
+    },
+    {
+      "id": "understandAnything",
+      "type": "external",
+      "label": "Understand Anything",
+      "sublabel": "implementation knowledge graph",
+      "tag": "27 adapter representation types",
+      "pos": [
+        400,
+        700
+      ],
+      "size": [
+        250,
+        96
+      ]
+    }
+  ],
+  "boundaries": [],
+  "connections": [
+    {
+      "id": "developerBrowses",
+      "from": "developer",
+      "to": "exploreUi",
+      "label": "invoke /concorde-explore",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "sourcesProvideIntent",
+      "from": "concordeSources",
+      "to": "projectOntology",
+      "label": "intent + stable IDs",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sourcesAreValidated",
+      "from": "concordeSources",
+      "to": "validator",
+      "label": "validate hierarchy and references"
+    },
+    {
+      "id": "ontologyDefinesRelations",
+      "from": "projectOntology",
+      "to": "alignmentProjection",
+      "label": "apply ontology relations",
+      "variant": "emphasis"
+    },
+    {
+      "id": "codeFeedsAnalyzer",
+      "from": "codeTests",
+      "to": "understandAnything",
+      "label": "analyze"
+    },
+    {
+      "id": "uaProvidesGraph",
+      "from": "understandAnything",
+      "to": "alignmentProjection",
+      "label": "knowledge graph v1"
+    },
+    {
+      "id": "validatorProvidesEvidence",
+      "from": "validator",
+      "to": "alignmentProjection",
+      "label": "findings + evidence status",
+      "labelAt": [
+        850,
+        560
+      ]
+    },
+    {
+      "id": "projectionFeedsExplorer",
+      "from": "alignmentProjection",
+      "to": "exploreUi",
+      "label": "graph + provenance",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Authority",
+      "items": [
+        "Concorde sources own intent",
+        "Code and tests own executable reality"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Bridge",
+      "items": [
+        "UA types are adapter representations",
+        "Cross-ontology relations remain explicit"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Alignment",
+      "items": [
+        "Unknown is never shown as aligned",
+        "Every claim links back to provenance"
+      ]
+    }
+  ]
+}

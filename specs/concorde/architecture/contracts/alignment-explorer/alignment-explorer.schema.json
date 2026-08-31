@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Concorde Alignment Explorer Bundle v1",
+  "type": "object",
+  "required": ["schema_version", "ontology_source", "ontology_version", "provenance", "knowledge_graph", "alignment"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "ontology_source": {"const": "docs/ontology.md"},
+    "ontology_version": {"type": "string", "minLength": 1},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "knowledge_graph": {"$ref": "../understand-anything-graph/knowledge-graph.schema.json"},
+    "alignment": {
+      "type": "object",
+      "required": ["relations", "records", "summary"],
+      "properties": {
+        "relations": {"type": "array", "items": {"$ref": "#/$defs/relation"}},
+        "records": {"type": "array", "items": {"$ref": "#/$defs/alignmentRecord"}},
+        "summary": {"$ref": "#/$defs/summary"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "provenance": {
+      "type": "object",
+      "required": [
+        "concorde_source_digest", "implementation_revision", "upstream_repository",
+        "upstream_revision", "graph_version", "analyzed_at"
+      ],
+      "properties": {
+        "concorde_source_digest": {"type": "string"},
+        "implementation_revision": {"type": "string"},
+        "upstream_repository": {"type": "string"},
+        "upstream_revision": {"type": "string"},
+        "graph_version": {"type": "string"},
+        "analyzed_at": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "relation": {
+      "type": "object",
+      "required": ["id", "source_id", "target_id", "canonical_relation", "adapter_edge_type", "mapping_basis"],
+      "properties": {
+        "id": {"type": "string"},
+        "source_id": {"type": "string"},
+        "target_id": {"type": "string"},
+        "canonical_relation": {"type": "string"},
+        "adapter_edge_type": {"type": "string"},
+        "mapping_basis": {
+          "enum": [
+            "stable-id", "source-path", "contract", "accepted-realization",
+            "executable-evidence", "deterministic-finding", "candidate-only"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "alignmentRecord": {
+      "type": "object",
+      "required": [
+        "subject_id", "status", "coverage", "specification_node_ids", "realization_node_ids",
+        "implementation_node_ids", "evidence_node_ids", "finding_ids", "relation_ids", "rationale"
+      ],
+      "properties": {
+        "subject_id": {"type": "string"},
+        "status": {"enum": ["unknown", "partial", "verified", "disagrees"]},
+        "coverage": {"$ref": "#/$defs/coverage"},
+        "specification_node_ids": {"$ref": "#/$defs/stringArray"},
+        "realization_node_ids": {"$ref": "#/$defs/stringArray"},
+        "implementation_node_ids": {"$ref": "#/$defs/stringArray"},
+        "evidence_node_ids": {"$ref": "#/$defs/stringArray"},
+        "finding_ids": {"$ref": "#/$defs/stringArray"},
+        "relation_ids": {"$ref": "#/$defs/stringArray"},
+        "rationale": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["specification", "accepted_realization", "implementation", "evidence"],
+      "properties": {
+        "specification": {"enum": ["present", "absent", "not-applicable"]},
+        "accepted_realization": {"enum": ["present", "placeholder", "absent", "not-applicable"]},
+        "implementation": {"enum": ["present", "absent", "ambiguous", "not-applicable"]},
+        "evidence": {"enum": ["present", "absent", "failing", "stale", "not-applicable"]}
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": ["unknown", "partial", "verified", "disagrees"],
+      "properties": {
+        "unknown": {"type": "integer", "minimum": 0},
+        "partial": {"type": "integer", "minimum": 0},
+        "verified": {"type": "integer", "minimum": 0},
+        "disagrees": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "stringArray": {"type": "array", "items": {"type": "string"}}
+  }
+}

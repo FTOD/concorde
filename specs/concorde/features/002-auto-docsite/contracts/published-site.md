@@ -39,6 +39,7 @@ For the Concorde self-hosting site, the Documentation route space includes this 
 | `/docs/` | Documentation overview and progressive reading path |
 | `/docs/quick-start` | Project-site preview, local framework installation, and first feature |
 | `/docs/framework-overview` | Concorde purpose, influences, hierarchy, and adjacent-tool boundaries |
+| `/docs/ontology` | Shared Concorde and pinned-UA terminology plus their cross-ontology relationships and adapter representation profile |
 | `/docs/specification-model` | Durable architecture, module design reference, specification, and accepted implementation versus the temporal implementation attempt |
 | `/docs/project-structure` | Workspace authority and correct edit locations |
 | `/docs/concorde-workflow` | End-to-end architecture-aware development lifecycle |
@@ -67,7 +68,7 @@ Draft status is visible and does not imply approval or implementation agreement.
 - Delivered Archify HTML is sandboxed and paired with accessible, searchable architecture or feature
   Markdown; feature diagrams are embedded automatically from `design.md` declarations.
 - Cross-collection source links resolve to the corresponding site pages with fragments preserved.
-- The Documentation landing page links directly to all six framework learning guides, and guides
+- The Documentation landing page links directly to all seven framework learning guides, and guides
   that summarize normative behavior link to the relevant canonical Architecture or Features page.
 - Presentation does not change canonical prose or write to the source trees.
 - The site includes accessible textual content and provenance independent of decorative formatting.

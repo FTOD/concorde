@@ -65,11 +65,16 @@ describe('feature designs', () => {
     const registry = await buildRegistry(resolve(__dirname, '../../..'));
     const features = registry.documents.filter((item): item is FeatureDesign => item.collectionId === 'features');
     const diagrams = features.flatMap((feature) => feature.diagrams);
-    expect(diagrams).toHaveLength(6);
+    expect(diagrams).toHaveLength(7);
     expect(diagrams.find((diagram) => diagram.source.includes('project-docsite-publication-flow'))).toMatchObject({
       kind: 'sequence',
       role: 'supplemental',
       route: '/architecture/project-docsite-publication-flow.html',
+    });
+    expect(diagrams.find((diagram) => diagram.source.includes('alignment-explorer-components'))).toMatchObject({
+      kind: 'architecture',
+      role: 'core',
+      route: '/architecture/alignment-explorer-components.html',
     });
   });
 });

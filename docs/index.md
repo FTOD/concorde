@@ -41,16 +41,18 @@ agent-invoked skills and takes you from installation to a first selected feature
 
 If you are already working in a Concorde project:
 
-1. Use [Specifications, design, and architecture](specification-model.md) to decide what kind of
+1. Use the [Project ontology and terminology](ontology.md) when a shared Concorde term, the pinned
+   Understand Anything vocabulary, or their relationship is in question.
+2. Use [Specifications, design, and architecture](specification-model.md) to decide what kind of
    information you are changing.
-2. Use [Project structure and source authority](project-structure.md) to find its canonical file.
-3. Follow the [Concorde workflow](concorde-workflow.md) from placement and specification through validation
+3. Use [Project structure and source authority](project-structure.md) to find its canonical file.
+4. Follow the [Concorde workflow](concorde-workflow.md) from placement and specification through validation
    and acceptance.
-4. Consult [Commands and installed surfaces](commands.md) to choose the right operation and
+5. Consult [Commands and installed surfaces](commands.md) to choose the right operation and
    understand what actually executes it.
-5. If you are contributing to Concorde itself, read
+6. If you are contributing to Concorde itself, read
    [Developing Concorde with Concorde](self-hosting.md) before changing framework sources.
-6. If you are cutting a release, follow [Releasing Concorde](releasing.md).
+7. If you are cutting a release, follow [Releasing Concorde](releasing.md).
 
 If you are modifying the publication system, read [Contributing to the docsite](contributing/docsite.md).
 
@@ -65,7 +67,9 @@ edge cases, status, and acceptance criteria live in:
   whose [abstract](../specs/concorde/features/001-concorde-workflow/abstract.md) is the fastest orientation;
 - [Feature 002: project docsite publication](../specs/concorde/features/002-auto-docsite/design.md); and
 - [Feature 003: installation through Spec Kit](../specs/concorde/features/003-installation/design.md); and
-- [Feature 004: development self-hosting](../specs/concorde/features/004-self-host/design.md).
+- [Feature 004: development self-hosting](../specs/concorde/features/004-self-host/design.md); and
+- [Feature 006: Alignment Explorer](../specs/concorde/features/006-alignment-explorer/design.md),
+  supported by the shared [project ontology](ontology.md).
 
 Feature status is shown rather than interpreted. A published draft remains a draft; publication does
 not imply approval, implementation, or verified evidence.

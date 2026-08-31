@@ -221,8 +221,9 @@ representative changes.
 **Acceptance Scenarios**:
 
 1. **Given** a first-time visitor on the Documentation landing page, **When** they follow the
-   recommended path, **Then** they can reach a quick start, framework overview, specification model,
-   project structure guide, Concorde workflow, and command reference without browsing repository files.
+   recommended path, **Then** they can reach a quick start, framework overview, project ontology,
+   specification model, project structure guide, Concorde workflow, and command reference without
+   browsing repository files.
 2. **Given** a reader learning Concorde's concepts, **When** they use the maintained guides, **Then**
    they can distinguish Spec Kit's normal lifecycle from Concorde's architectural controls and
    explain the roles of durable specifications, durable designs, temporary implementation attempts,
@@ -385,10 +386,10 @@ and has no separate hand-authored landing-page copy.
 - **FR-035**: The maintained Documentation collection MUST include a quick-start path that lets a
   reader preview the project read model and follow the supported installation and first-feature path,
   including prerequisites, verification, and approval boundaries.
-- **FR-036**: The maintained Documentation collection MUST explain the different authority and
-  lifecycle of architecture sources, feature specifications, permanent feature designs, contracts,
-  diagrams, current implementation attempts, workflow control, code/tests, and generated
-  projections.
+- **FR-036**: The maintained Documentation collection MUST explain the shared project ontology and
+  the different authority and lifecycle of architecture sources, feature specifications, permanent
+  feature designs, contracts, diagrams, current implementation attempts, workflow control,
+  code/tests, and generated projections.
 - **FR-037**: The maintained Documentation collection MUST provide a project structure guide that
   maps the major workspace locations to their purpose, ownership, maintenance status, and correct
   edit path.
@@ -500,8 +501,8 @@ and has no separate hand-authored landing-page copy.
   and freshness checks with zero errors or warnings and appears automatically on the canonical
   Feature 002 page with source provenance and a standalone-view link.
 - **SC-010**: From the Documentation landing page, a first-time reader can reach the quick start,
-  framework overview, specification model, project structure, workflow, and command guidance in no
-  more than two navigation actions per destination.
+  framework overview, project ontology, specification model, project structure, workflow, and command
+  guidance in no more than two navigation actions per destination.
 - **SC-013**: Every maintained framework guide that summarizes a normative workflow or boundary
   provides at least one working link to its canonical architecture or feature authority, with zero
   links to temporary implementation artifacts presented as permanent authority.

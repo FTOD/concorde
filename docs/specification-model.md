@@ -189,6 +189,11 @@ context and siblings are concise navigation summaries only.
     └── validation.md
 ```
 
+The shared project ontology lives at `docs/ontology.md`, outside every feature root. It defines
+Concorde terminology, the pinned Understand Anything compatibility vocabulary, and their relationship
+for all modules and features. Individual feature designs reference it and retain ownership of their
+required behavior; contracts retain ownership of serialization.
+
 The files at the feature root and those below `attempt/` have deliberately different
 lifetimes.
 
@@ -313,6 +318,7 @@ behavior and feature `implementation.md` as the accepted realization baseline—
 | what a boundary promises and what crosses it | the contract document under the module's `architecture/contracts/` (or the feature's `contracts/`) |
 | what a feature does, how it is basically structured, and how it works | `abstract.md` |
 | exactly what a feature must make observable, and how that is accepted and measured | `design.md` |
+| shared Concorde terminology, pinned UA vocabulary, and their identity/representation/alignment relationships | project-wide `docs/ontology.md` |
 | how the accepted implementation realizes that feature, in full detail | feature `implementation.md` |
 | what is being attempted right now | `attempt/` |
 | what the code actually does and whether it is proven | code and tests |

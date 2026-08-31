@@ -137,7 +137,7 @@ describe('content source diagnostics', () => {
 
   it('discovers maintained diagram declarations without treating HTML as an input source', async () => {
     const declarations = await discoverDiagramDeclarations(resolve(__dirname, '../../..'));
-    expect(declarations).toHaveLength(10);
+    expect(declarations).toHaveLength(11);
     expect(declarations.every((declaration) => declaration.ownerPath.startsWith('specs/') || declaration.ownerPath.startsWith('docs/'))).toBe(true);
     expect(declarations.every((declaration) => declaration.outputPath.startsWith('generated/'))).toBe(true);
     expect(declarations).toContainEqual(expect.objectContaining({
@@ -148,6 +148,11 @@ describe('content source diagnostics', () => {
       ownerPath: 'docs/concorde-workflow.md',
       sourcePath: 'docs/diagrams/concorde-command-workspace-file-flow.json',
       outputPath: 'generated/architecture/concorde-command-workspace-file-flow.html',
+    }));
+    expect(declarations).toContainEqual(expect.objectContaining({
+      ownerPath: 'specs/concorde/features/006-alignment-explorer/design.md',
+      sourcePath: 'specs/concorde/features/006-alignment-explorer/diagrams/alignment-explorer-components.json',
+      outputPath: 'generated/architecture/alignment-explorer-components.html',
     }));
   });
 

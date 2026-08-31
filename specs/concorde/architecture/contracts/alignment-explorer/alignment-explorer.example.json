@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "ontology_source": "docs/ontology.md",
+  "ontology_version": "1.1.0-draft",
+  "provenance": {
+    "concorde_source_digest": "sha256:example",
+    "implementation_revision": "0123456789abcdef0123456789abcdef01234567",
+    "upstream_repository": "https://github.com/Egonex-AI/Understand-Anything",
+    "upstream_revision": "ba450c43425f3de6d43daf76526950ad8ca93536",
+    "graph_version": "1.0.0",
+    "analyzed_at": "2026-08-31T00:00:00Z"
+  },
+  "knowledge_graph": {
+    "version": "1.0.0",
+    "kind": "codebase",
+    "project": {
+      "name": "Concorde Example",
+      "languages": ["Python", "Markdown"],
+      "frameworks": [],
+      "description": "Minimal Alignment Explorer bundle.",
+      "analyzedAt": "2026-08-31T00:00:00Z",
+      "gitCommitHash": "0123456789abcdef0123456789abcdef01234567"
+    },
+    "nodes": [
+      {
+        "id": "concorde:command:speckit.concorde.explore",
+        "type": "endpoint",
+        "name": "speckit.concorde.explore",
+        "summary": "Canonical Alignment Explorer command intent.",
+        "tags": ["command", "concorde-explore"],
+        "complexity": "simple",
+        "concordeMeta": {
+          "kind": "command",
+          "stableId": "speckit.concorde.explore",
+          "sourcePath": "specs/concorde/features/006-alignment-explorer/design.md",
+          "authorityClass": "durable-feature-intent",
+          "lifecycle": "durable",
+          "moduleId": "module.concorde",
+          "featureId": "feature.concorde.explore-alignment",
+          "ontologySource": "docs/ontology.md",
+          "ontologyVersion": "1.1.0-draft"
+        }
+      },
+      {
+        "id": "concorde:feature.concorde.explore-alignment",
+        "type": "concept",
+        "name": "Alignment Explorer",
+        "summary": "Browse architecture and inspect alignment.",
+        "tags": ["feature"],
+        "complexity": "complex",
+        "concordeMeta": {
+          "kind": "feature",
+          "stableId": "feature.concorde.explore-alignment",
+          "sourcePath": "specs/concorde/features/006-alignment-explorer/design.md",
+          "authorityClass": "durable-feature-intent",
+          "lifecycle": "durable",
+          "moduleId": "module.concorde",
+          "featureId": "feature.concorde.explore-alignment",
+          "ontologySource": "docs/ontology.md",
+          "ontologyVersion": "1.1.0-draft"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "source": "concorde:command:speckit.concorde.explore",
+        "target": "concorde:feature.concorde.explore-alignment",
+        "type": "serves",
+        "direction": "forward",
+        "description": "canonical command exposes the feature outcome",
+        "weight": 1
+      }
+    ],
+    "layers": [],
+    "tour": []
+  },
+  "alignment": {
+    "relations": [
+      {
+        "id": "relation:command-serves-feature",
+        "source_id": "speckit.concorde.explore",
+        "target_id": "feature.concorde.explore-alignment",
+        "canonical_relation": "exposes",
+        "adapter_edge_type": "serves",
+        "mapping_basis": "stable-id"
+      }
+    ],
+    "records": [
+      {
+        "subject_id": "feature.concorde.explore-alignment",
+        "status": "unknown",
+        "coverage": {
+          "specification": "present",
+          "accepted_realization": "placeholder",
+          "implementation": "absent",
+          "evidence": "absent"
+        },
+        "specification_node_ids": ["concorde:feature.concorde.explore-alignment"],
+        "realization_node_ids": [],
+        "implementation_node_ids": [],
+        "evidence_node_ids": [],
+        "finding_ids": [],
+        "relation_ids": ["relation:command-serves-feature"],
+        "rationale": "Required behavior exists, but no accepted realization or implementation evidence exists."
+      }
+    ],
+    "summary": {"unknown": 1, "partial": 0, "verified": 0, "disagrees": 0}
+  }
+}

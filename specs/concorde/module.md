@@ -14,13 +14,16 @@ features:
   - feature.concorde.install-with-spec-kit
   - feature.concorde.self-host-framework
   - feature.concorde.record-workflow-reflections
+  - feature.concorde.explore-alignment
 contracts:
   provided:
     - contract.concorde.workflow
     - contract.auto-docs.architecture-site
     - contract.concorde.spec-kit-installation
+    - contract.concorde.alignment-explorer
   required:
     - contract.concorde.spec-kit-platform
+    - contract.understand-anything.knowledge-graph
 ---
 
 # Concorde
@@ -34,7 +37,7 @@ temporal, and generated files.
 ## Boundary
 
 Concorde owns the installed skill instructions, portable launchers and runtime, workspace-file model,
-installable packages, and optional documentation projection. It does not own the coding-agent runtime,
+installable packages, and optional read-only documentation and exploration projections. It does not own the coding-agent runtime,
 Spec Kit's base lifecycle, user product code, Archify rendering semantics, or Docusaurus.
 
 ## Structure
@@ -70,6 +73,7 @@ read-only `ask` skill is followed directly by the coding agent.
 | `feature.concorde.install-with-spec-kit` | Inspect, install, update, and remove the supported Concorde package set. | Distribution → Skills + Scripts |
 | `feature.concorde.self-host-framework` | Materialize and verify the current checkout through the public installation path. | Distribution → Skills + Scripts |
 | `feature.concorde.publish-project-docsite` | Publish validated specifications and project docs as a browsable site. | Workspace Files → Auto-Docs |
+| `feature.concorde.explore-alignment` | Browse architecture and inspect evidence-qualified specification–implementation alignment through `speckit.concorde.explore`. | Workspace Files + executable reality → shared ontology relationship model → read-only explorer |
 
 The feature specifications remain under `features/`. They describe user outcomes; the
 module split above describes how those outcomes are realized.
@@ -82,6 +86,8 @@ module split above describes how those outcomes are realized.
 | `contract.concorde.spec-kit-installation` | provided | Bundle inspection and installation behavior. |
 | `contract.auto-docs.architecture-site` | provided through Auto-Docs | Published read-only project site. |
 | `contract.concorde.spec-kit-platform` | required | Spec Kit component and lifecycle host behavior. |
+| `contract.concorde.alignment-explorer` | provided | Read-only graph bundle and `speckit.concorde.explore` behavior with provenance and evidence states. |
+| `contract.understand-anything.knowledge-graph` | required | Pinned upstream implementation knowledge-graph input. |
 
 ## Submodules
 
@@ -116,4 +122,6 @@ returns a structured result to the skill. No other user-facing Concorde runtime 
 The modules are named after the things a maintainer can find in an installed project: skills,
 scripts, and workspace files. Distribution and Auto-Docs remain explicit because they cross the
 project boundary, but they are supporting adapters rather than the center of the workflow. Detailed
-source mapping and file-lifetime rules are recorded in the [design reference](design.md).
+source mapping and file-lifetime rules are recorded in the [design reference](design.md); shared
+Concorde and Understand Anything terminology and their relationship are defined by the project-wide
+[ontology](../../docs/ontology.md).

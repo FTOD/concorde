@@ -171,5 +171,6 @@ specs/**      ─┘        │                  Archify skill (.agents/skills/a
   refinement [publish-project-docsite](../../architecture/modules/auto-docs/features/001-publish-project-docsite/design.md).
 - **Contributing to the site** — [docs/contributing/docsite.md](../../../../docs/contributing/docsite.md),
   the shared project homepage [README.md](../../../../README.md), and the guides the site publishes:
-  [docs/index.md](../../../../docs/index.md) and
+  [docs/index.md](../../../../docs/index.md),
+  [docs/ontology.md](../../../../docs/ontology.md), and
   [docs/project-structure.md](../../../../docs/project-structure.md).

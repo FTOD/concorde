@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Understand Anything Knowledge Graph Compatibility Profile",
+  "type": "object",
+  "required": ["version", "project", "nodes", "edges", "layers", "tour"],
+  "properties": {
+    "version": {"type": "string", "minLength": 1},
+    "kind": {"enum": ["codebase", "knowledge", "design"]},
+    "project": {"$ref": "#/$defs/project"},
+    "nodes": {"type": "array", "items": {"$ref": "#/$defs/node"}},
+    "edges": {"type": "array", "items": {"$ref": "#/$defs/edge"}},
+    "layers": {"type": "array", "items": {"$ref": "#/$defs/layer"}},
+    "tour": {"type": "array", "items": {"$ref": "#/$defs/tourStep"}}
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "project": {
+      "type": "object",
+      "required": ["name", "languages", "frameworks", "description", "analyzedAt", "gitCommitHash"],
+      "properties": {
+        "name": {"type": "string"},
+        "languages": {"type": "array", "items": {"type": "string"}},
+        "frameworks": {"type": "array", "items": {"type": "string"}},
+        "description": {"type": "string"},
+        "analyzedAt": {"type": "string"},
+        "gitCommitHash": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "type", "name", "summary", "tags", "complexity"],
+      "properties": {
+        "id": {"type": "string"},
+        "type": {
+          "enum": [
+            "file", "function", "class", "module", "concept",
+            "config", "document", "service", "table", "endpoint", "pipeline", "schema", "resource",
+            "domain", "flow", "step",
+            "article", "entity", "topic", "claim", "source",
+            "page", "screen", "component", "componentSet", "instance", "token"
+          ]
+        },
+        "name": {"type": "string"},
+        "filePath": {"type": "string"},
+        "lineRange": {
+          "type": "array",
+          "prefixItems": [{"type": "number"}, {"type": "number"}],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "summary": {"type": "string"},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "complexity": {"enum": ["simple", "moderate", "complex"]},
+        "concordeMeta": {"$ref": "#/$defs/concordeMeta"}
+      },
+      "additionalProperties": true
+    },
+    "concordeMeta": {
+      "type": "object",
+      "required": ["kind", "sourcePath", "authorityClass", "lifecycle", "ontologySource", "ontologyVersion"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "module", "feature", "subfeature", "contract", "scenario", "command", "requirement", "artifact",
+            "attempt", "accepted-realization", "implementation-entity", "evidence", "finding", "projection"
+          ]
+        },
+        "stableId": {"type": "string"},
+        "sourcePath": {"type": "string"},
+        "authorityClass": {
+          "enum": [
+            "workflow-control", "installed-tooling", "maintained-architecture", "module-design-reference", "project-ontology", "feature-orientation",
+            "durable-feature-intent", "feature-implementation", "temporary-attempt",
+            "project-reflection-log", "executable-reality", "generated-read-model"
+          ]
+        },
+        "lifecycle": {"enum": ["control", "installed", "durable", "durable-summary", "durable-accepted", "temporal", "durable-process-memory", "executable", "generated"]},
+        "moduleId": {"type": "string"},
+        "featureId": {"type": "string"},
+        "ontologySource": {"const": "docs/ontology.md"},
+        "ontologyVersion": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "edge": {
+      "type": "object",
+      "required": ["source", "target", "type", "direction", "weight"],
+      "properties": {
+        "source": {"type": "string"},
+        "target": {"type": "string"},
+        "type": {
+          "enum": [
+            "imports", "exports", "contains", "inherits", "implements",
+            "calls", "subscribes", "publishes", "middleware",
+            "reads_from", "writes_to", "transforms", "validates",
+            "depends_on", "tested_by", "configures", "related", "similar_to",
+            "deploys", "serves", "provisions", "triggers", "migrates", "documents", "routes", "defines_schema",
+            "contains_flow", "flow_step", "cross_domain",
+            "cites", "contradicts", "builds_on", "exemplifies", "categorized_under", "authored_by",
+            "instance_of", "variant_of", "uses_token"
+          ]
+        },
+        "direction": {"enum": ["forward", "backward", "bidirectional"]},
+        "description": {"type": "string"},
+        "weight": {"type": "number", "minimum": 0, "maximum": 1}
+      },
+      "additionalProperties": false
+    },
+    "layer": {
+      "type": "object",
+      "required": ["id", "name", "description", "nodeIds"],
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "nodeIds": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "tourStep": {
+      "type": "object",
+      "required": ["order", "title", "description", "nodeIds"],
+      "properties": {
+        "order": {"type": "integer"},
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "nodeIds": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    }
+  }
+}
