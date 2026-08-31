@@ -89,8 +89,8 @@ request appear eligible.
    must not invent their own compatibility or migration policy. An explicitly requested pure naming
    migration is eligible when it follows that existing policy: record the complete old-to-new
    mapping, prove that implementation logic and behavioral semantics are unchanged, identify every
-   affected authority, and define the deterministic stale-name inventory that must reach zero (apart
-   from explicitly authorized historical/immutable exclusions).
+   affected authority, and define the deterministic stale-name inventory that must reach zero across
+   maintained sources (version-control history is not maintained source content).
 
 When any condition fails, make zero fast-loop edits. Name the failed condition and recommend the
 earliest applicable full-workflow stage: specification for new/changed behavior or ownership,
@@ -112,8 +112,11 @@ For an eligible request, directly complete the bounded modification in this comm
    unrelated feature or architecture source.
 4. For a pure naming migration, apply only the recorded mapping across the bounded affected set;
    classify each durable-document change as referential-only, preserve all implementation logic and
-   behavioral semantics, honor source-specific mutation rules, and run a deterministic inventory for
-   stale old names, partial new names, aliases, and duplicate identities.
+   behavioral semantics, and run a deterministic inventory for stale old names, partial new names,
+   aliases, and duplicate identities. Treat the reflection log as maintained docs/specs: rewrite its
+   matching text and references when required while preserving every exact `R-NNN` identifier,
+   identifier uniqueness, required structure, maintainer decision, occurrence identity, and problem
+   meaning; validate all renamed `Feature`/`Concerns` values and the complete log.
 5. After executable evidence passes, update each affected `design.md` and keep its `abstract.md`
    faithful only when that feature's required behavior changed. Leave both byte-identical for an
    unaffected, realization-only, or referential-only feature except for the required mapped names.
@@ -142,6 +145,10 @@ append or update the matching entry in the project reflection log at `workspace.
 the final report. Never place a reflection under `attempt/` and never change a maintainer-set status
 or note.
 
+This ordinary problem-recording rule does not prevent an explicitly requested rename or
+documentation correction from reconciling the log as maintained source under Direct Change. Such a
+rewrite preserves stable `R-NNN` identities and the validated entry structure and meaning.
+
 For a new entry, use the next `R-NNN` identifier and the fixed field order: `Phase: fast-loop`,
 `Date`, `Feature`, `Kind`, `Concerns`, `Expected`, `Observed`, `Effect`, `Action`, `Improvement`, and
 `Status: open`. When the same problem already exists, append one `fast-loop YYYY-MM-DD <feature-id>
@@ -165,7 +172,7 @@ Return a concise report containing:
 - tests and validations run, with results;
 - architecture evidence state (`not_applicable` or `validated`) and affected source paths/hashes;
 - for a pure rename, the old-to-new mapping, referential-only authorities, inventory command/result,
-  and any explicitly authorized historical/immutable exclusions;
+  and every rewritten reflection entry ID;
 - unrelated pre-existing changes preserved;
 - `No attempt: yes` and `No acceptance: yes`; and
 - `Reflections added: <identifiers or none> · open for this feature: <count>`.

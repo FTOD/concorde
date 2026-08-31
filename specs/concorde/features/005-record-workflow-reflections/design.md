@@ -32,7 +32,8 @@ realization**: [implementation.md](implementation.md) — consulted when writing
 
 **Created**: 2026-08-28
 
-**Revised**: 2026-08-30 — installed subagents turn recorded reflections into reviewed changes
+**Revised**: 2026-08-31 — reflection entries are maintained docs/specs that support controlled
+rewrites while preserving stable valid IDs
 
 **Status**: Draft
 
@@ -62,7 +63,10 @@ plan, execute eligible plans with specialized implementers in isolated worktrees
 validated commits from a clean checkout. Concorde installation materializes the shared workflow as
 the skills, agent roles, helper, and configuration expected by each supported agent platform, so a
 project receives the improvement loop rather than this repository's manual setup. Acceptance still
-cites the attempt's entries in the design reference, and the log itself outlives every attempt.
+cites the attempt's entries in the design reference, and the log itself outlives every attempt. As a
+maintained specification-root document, the log may be reconciled during an explicitly requested
+rename or documentation correction, provided every stable entry ID and semantic decision remains
+valid.
 
 ## Reflection Boundary
 
@@ -85,6 +89,12 @@ and they disappear when the attempt is accepted. This feature gives them one hom
   normal specification work, dismissal, or a blocking human decision. Implementers execute only
   eligible plans through the normal feature workspace and validation rules. The maintainer remains
   the authority for merge and for changing an entry's status or note.
+- **During maintained-source reconciliation** an explicitly requested rename or documentation
+  correction may rewrite existing entry titles, prose, `Feature`, `Concerns`, notes, and occurrence
+  text as needed to keep current identifiers and paths valid. The rewrite preserves every `R-NNN`
+  identifier, required field, status decision, occurrence identity, and problem meaning, and the
+  complete log must pass deterministic validation afterwards. Ordinary problem recording does not
+  grant this rewrite authority.
 - **At acceptance** the proposal presents the entries recorded for the feature by status; resolved
   entries that shaped the realization are cited among the design reference's decisions, and every
   still-open entry is cited among its known limitations. Acceptance never removes or rewrites the log.
@@ -265,16 +275,18 @@ feature produces a diary, not improvement.
 
 **Independent Test**: Starting from a log with open entries of every kind attributed to two
 features, resolve one through specification review, one through an architecture change, one
-through a guidance change, dismiss one with a note, and leave one open. Verify that each entry's
-status and resolution note are correct, that the resolved entries reference the change that resolved
-them, that nothing was deleted, and that the maintainer could find all open entries for one feature
-and all entries concerning one module within two minutes from the root module summary.
+through a guidance change, dismiss one with a note, leave one open, and apply one explicit identifier
+rename across the log. Verify that each entry's stable `R-NNN` ID, status, resolution note, field
+shape, and meaning are preserved, renamed `Feature`/`Concerns` references resolve, validation passes,
+and the maintainer can find all open entries for one feature and all entries concerning one module
+within two minutes from the root module summary.
 
 **Acceptance Scenarios**:
 
 1. **Given** an open `specification` entry, **When** the maintainer runs specification review and
    the specification changes, **Then** the entry is marked `resolved` with a note pointing at the
-   revised requirement, and the log keeps the original problem statement.
+   revised requirement, and the log keeps the original problem meaning even when later maintained
+   terminology reconciliation updates its wording.
 2. **Given** an open `guidance` or `tooling` entry in the Concorde project itself, **When** the
    maintainer accepts it, **Then** it is recorded as planned framework work or resolved by a
    framework change, and that change counts as used only after the self-hosted installation is
@@ -284,6 +296,10 @@ and all entries concerning one module within two minutes from the root module su
 4. **Given** a maintainer who has not followed the recent attempts, **When** they open the root
    module summary, **Then** the location of the log and the count of open entries per feature are
    discoverable without reading any plan or task list.
+5. **Given** an explicitly requested project rename or documentation correction, **When** it affects
+   historical reflection text or references, **Then** the matching entries are rewritten like other
+   maintained docs while every `R-NNN` identifier remains unchanged and unique, required fields and
+   maintainer decisions remain valid, renamed references resolve, and validation reports no finding.
 
 ---
 
@@ -357,6 +373,9 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   different features' attempts: one entry, several recorded occurrences naming phase and feature.
 - The maintainer edits the log by hand between phases: agents treat the maintainer's status and
   notes as authoritative and never reverse them.
+- A rename mapping would alter an `R-NNN` identifier, merge two entries, duplicate an identifier,
+  invalidate a `Feature`/`Concerns` reference, or change the problem's meaning: reconciliation stops
+  before writing.
 - An entry would contain a secret, a credential, or a large raw log: the entry cites the evidence
   file or the redacted location instead.
 - The attempt is discarded without acceptance: the entries stay in the log with their statuses;
@@ -364,8 +383,8 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
 - Guidance is refreshed while an attempt is in progress: entries recorded against the previous
   guidance keep their original citation and are flagged by analysis as referencing changed sources.
 - Two agents work on two features at once and both append: entries are appended, never renumbered;
-  a version-control merge conflict on the log is resolved by keeping both entries and renumbering
-  the later one.
+  a version-control merge conflict on two not-yet-accepted new entries is resolved by keeping both
+  and allocating the next unused ID to the colliding new entry, never by changing an existing ID.
 - Two investigators finish with the same proposed identifier: the orchestrator serializes plan
   persistence and rejects the duplicate result rather than overwriting either plan.
 - Two eligible plans affect the same feature or file: they stay in one ordered implementer group;
@@ -428,16 +447,18 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   phase or operation that owns it.
 - **FR-008**: When a recorded problem is met again — in any phase, on any feature — the agent MUST
   update the existing entry with the new occurrence (phase, date, feature) rather than add a
-  duplicate. Agents MUST NOT delete entries, renumber existing entries, or reverse a status or note
-  set by the maintainer; a status change MUST preserve the original problem statement.
+  duplicate. Ordinary recording MUST NOT delete entries, change an entry's `R-NNN` identifier, reuse
+  an identifier, or reverse a status or note set by the maintainer.
 - **FR-009**: Every phase that records into the log MUST list the entries it added and the number
   of open entries attributed to the selected feature in its completion report. Analysis MUST list
   those open entries and flag any entry whose referenced source changed after the entry was
   recorded. Convergence MUST treat an open entry attributed to the feature with the effect
   `deferred` as candidate remaining work only when it is genuine remaining work of the feature, and
   MUST NOT create work for dismissed entries.
-- **FR-010**: A maintainer MUST be able to resolve or dismiss any entry by editing the log directly,
-  recording the note and, for a resolved entry, a reference to the change that resolved it.
+- **FR-010**: A maintainer MUST be able to resolve or dismiss any entry, rewrite it as maintained
+  documentation, or explicitly remove a closed entry by editing the log directly. Resolution records
+  the note and a reference to the resolving change; rewriting or cleanup MUST preserve every
+  surviving `R-NNN` identifier and MUST NOT reuse a removed identifier.
 - **FR-011**: The acceptance proposal MUST present every entry attributed to the feature with its
   status. The candidate feature `implementation.md` MUST cite the identifier of every such entry that is
   still `open` among its known limitations, and SHOULD cite resolved entries that shaped the
@@ -458,10 +479,11 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
 - **FR-015**: The installed phase guidance and the log template MUST carry the recording obligation,
   the log's shape, and the acceptance citation rule, so that any project installed through Spec Kit
   obtains this behavior without a Concorde checkout.
-- **FR-016**: The reflection log MUST be a maintained, version-controlled source that no workflow
-  operation removes, that acceptance leaves byte-identical, and that this feature does not publish;
-  generated sites and reports MAY link to it but MUST NOT treat it as a specification, design
-  reference, or contract.
+- **FR-016**: The reflection log MUST be a maintained, version-controlled specification-root source
+  that no workflow operation removes as a file and that acceptance leaves byte-identical. This
+  feature does not publish it; generated sites and reports MAY link to it but MUST NOT treat it as a
+  feature specification, design reference, or contract. Its entry content MAY be reconciled under
+  FR-028.
 - **FR-017**: In the Concorde project itself, an accepted `guidance` or `tooling` entry MUST be
   recorded as planned framework work or resolved by a framework change, and that change MUST be
   refreshed through the self-hosted installation before it counts as used in Concorde's own
@@ -513,12 +535,19 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   inherit or narrow the parent permission boundary, and a platform that cannot provide the required
   isolation MUST stop with an actionable diagnostic rather than run parallel writes in the main
   checkout.
+- **FR-028**: An explicitly requested rename or documentation correction MAY rewrite existing
+  reflection entries. The rewrite MUST preserve each entry's exact `R-NNN` identifier, identifier
+  uniqueness, required field structure, phase/date/kind/effect, maintainer-owned status decision,
+  occurrence identity, and problem meaning; it MAY update the title, prose, `Feature`, `Concerns`,
+  `Note`, and occurrence text to keep names, stable IDs, and paths current. The complete log MUST pass
+  deterministic validation after the rewrite. Ordinary phase recording and triage implementation do
+  not implicitly authorize such reconciliation.
 
 ### Key Entities
 
 - **Reflection Log**: The project's one maintained, version-controlled file at the specification
   root that holds every problem any agent met during any attempt; created by the first recording
-  phase, never removed by the workflow.
+  phase, never removed by the workflow, and reconciled like other docs/specs under FR-028.
 - **Reflection Entry**: One recorded problem with its identifier, phase, date, attributed feature,
   kind, concerned source, expected-versus-observed statement, effect, suggested improvement, status,
   resolution note, and occurrence history.
@@ -590,6 +619,10 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
 - **SC-014**: Across Claude and Codex projections, identical log and plan fixtures produce the same
   ordered queue, route lifecycle, eligibility decisions, and merge report fields in 100% of
   contract tests.
+- **SC-015**: In every controlled-rewrite fixture, all pre-existing `R-NNN` identifiers remain
+  unchanged and unique, all renamed stable IDs and paths resolve, required fields and maintainer
+  decisions remain valid, only mapped documentation text changes, and validation returns zero
+  reflection findings.
 
 ## Scope
 
@@ -600,7 +633,8 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   de-duplication rule across features.
 - Surfacing of the feature's entries in phase completion reports, analysis, and the root module's
   bounded context.
-- Maintainer resolution and dismissal directly in the log.
+- Maintainer resolution, dismissal, controlled documentation rewrites, and explicit closed-entry
+  cleanup directly in the log while stable entry IDs remain valid and unreused.
 - Citation of the feature's entries at acceptance and the refusal to remove an attempt while an
   open attributed entry is uncited.
 - Deterministic shape validation of a present log.
@@ -618,7 +652,7 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
 - Automatically implementing `specify`, `dismiss`, or `blocked` routes, or changing durable intent
   and another feature's accepted sources outside the workflow that owns them.
 - Per-module or per-feature reflection files, a database, a dashboard, or a published page.
-- Automatic archiving or pruning of old entries.
+- Automatic archiving or pruning of old entries without explicit maintainer direction.
 - Judging whether an entry is a faithful account of what happened; that remains a review
   responsibility.
 - Sending entries to any external service.

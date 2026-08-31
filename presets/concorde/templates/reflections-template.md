@@ -3,8 +3,11 @@
 The project's one reflection log: every difficulty or problem a coding agent met while planning or
 implementing any feature, attributed to the feature that was being worked on and naming the source
 the problem concerns (any feature, module, contract, guidance, tool, or file in the project).
-Agents append entries and occurrences; maintainers resolve or dismiss them in place; acceptance cites
-a feature's open entries in its design reference; no operation removes this file.
+Ordinary recording appends entries and occurrences. Explicit rename/documentation reconciliation may
+rewrite entry text and references like other maintained docs/specs while preserving every stable,
+unique `R-NNN` identifier, required structure, maintainer decision, and problem meaning; maintainers
+may remove closed entries without renumbering or reusing IDs. Acceptance cites a feature's open
+entries in its design reference; no operation removes this file.
 
 <!--
   Grammar (Concorde Reflection Log v1). One H3 per entry, sequential identifiers, never reused:

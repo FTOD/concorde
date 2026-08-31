@@ -10,6 +10,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT, VALID_PR
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.diagnostics import canonical_json, operation_envelope  # noqa: E402
+from concorde.reflections import parse_reflection_log  # noqa: E402
 from concorde.validate import validate_project  # noqa: E402
 
 EXAMPLE_LOG = REPOSITORY_ROOT / "specs/concorde/features/005-record-workflow-reflections/contracts/examples/reflections.md"
@@ -71,6 +72,26 @@ class ReflectionRuleTests(unittest.TestCase):
                 project = self.project(temporary)
                 write_reflection_log(project, [entry])
                 self.assertEqual(reflect_rules(validate_project(project)), ["CONCORDE-REFLECT-004"])
+
+    def test_controlled_rename_keeps_ids_and_references_valid(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = self.project(temporary)
+            log = write_reflection_log(project, [
+                reflection_entry("R-007"),
+                reflection_entry("R-042", status="dismissed"),
+            ])
+            before = parse_reflection_log(log.read_text(encoding="utf-8"))
+            log.write_text(
+                log.read_text(encoding="utf-8")
+                .replace("feature.example.deliver", "feature.example.api.invoke")
+                .replace("contract.example.workflow", "specs/example/module.md")
+                .replace("Fixture problem", "Renamed fixture problem"),
+                encoding="utf-8",
+            )
+            after = parse_reflection_log(log.read_text(encoding="utf-8"))
+            self.assertEqual([entry.identifier for entry in after.entries], [entry.identifier for entry in before.entries])
+            self.assertEqual([entry.status for entry in after.entries], [entry.status for entry in before.entries])
+            self.assertEqual(reflect_rules(validate_project(project)), [])
 
     def test_archive_entries_are_validated_and_runs_are_byte_equivalent_and_read_only(self):
         with tempfile.TemporaryDirectory() as temporary:

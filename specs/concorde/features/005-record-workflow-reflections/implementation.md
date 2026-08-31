@@ -1,6 +1,7 @@
 # Feature Implementation: Record and Triage Workflow Reflections
 
-**Realization status**: Candidate second milestone, prepared for explicit acceptance on 2026-08-30.
+**Realization status**: Accepted realization, revised 2026-08-31 so reflection entries are maintained
+docs/specs with controlled rewrite support and stable valid identities.
 
 **Selected level**: Top-level feature of `module.concorde`; it has no parent feature.
 
@@ -11,6 +12,12 @@ planning, task generation, implementation, analysis, convergence, and fast-loop 
 closes the improvement loop by adding an explicit `reflections-triage` skill, specialized
 investigator and implementer roles, a deterministic queue/plan helper, shared project state, and
 Claude/Codex-native projections installed from the Concorde extension.
+
+Ordinary phase recording remains append/update-only. Separately, an explicitly requested rename or
+documentation correction may rewrite existing reflection text and references like other maintained
+docs/specs while preserving every exact unique `R-NNN` identifier, required structure, maintainer
+decision, occurrence identity, and problem meaning. Deterministic validation checks the complete
+result read-only.
 
 Canonical behavior lives once under `extensions/concorde/agent-assets/reflections/`. Thin wrappers
 render one triage skill and two roles for each supported platform. Investigators are read-only and
@@ -48,6 +55,15 @@ implement, analyze, and converge guidance. Workspace Protocol v8 returns the pro
 open count. The parser, validator, context operation, and acceptance citation gate continue to use
 one grammar and one project-level file. Existing parser, workspace, context, validation, composition,
 and implementation-acceptance tests all remain green.
+
+### Reconcile maintained reflection documentation (US4)
+
+An explicit rename or documentation correction may include `workspace.reflections` in its bounded
+maintained-source set. The agent applies only the requested mapping, keeps every `R-NNN` identifier
+unchanged and unique, preserves required fields, maintainer-owned decisions, occurrence identity, and
+problem meaning, updates renamed `Feature`/`Concerns` references so they resolve, and requires the
+complete log to pass deterministic validation. Explicit maintainer cleanup may remove closed entries;
+surviving IDs remain unchanged and removed IDs are never reused.
 
 ### Investigate and route (US3)
 
@@ -111,6 +127,10 @@ the feature prose and contracts.
   execution remains experiential evidence.
 - **Specification and storage corrections retained**: the project-wide log and end-state alignment
   decisions from R-003 and R-004 remain the basis of this realization.
+- **Maintained-document reconciliation**: reflection history is project documentation rather than an
+  immutable event store. Ordinary recording stays append/update-only, while explicit rewrite scope
+  permits rename/documentation reconciliation with stable IDs and deterministic structural/reference
+  validation.
 
 ## Traceability and Evidence
 
@@ -142,6 +162,11 @@ Final evidence on 2026-08-30:
   production promotion.
 - The Feature 005 core diagram passed 9/9 showcase checks with no errors or warnings; delivered
   source digest `6170494d039be8f8633c124506beb0af17e7adf4b18602d70c0480055dc0abc4`.
+
+The 2026-08-31 maintained-rewrite reconciliation passed 32 focused reflection parser/validation,
+installed phase-composition, command-contract, triage-projection, and manifest tests. The full
+Concorde suite passed 308 tests; deterministic validation returned zero findings. The full docsite
+gate passed TypeScript, 19 test files / 83 tests, 108-page validation, and production promotion.
 
 ## Known Limitations
 

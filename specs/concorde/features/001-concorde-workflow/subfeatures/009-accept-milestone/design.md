@@ -127,8 +127,8 @@ snapshotting all related roots, abstracts, specifications, module summaries, and
   `module.md` outside the selected mutation targets remain byte-identical.
 - **SC-005**: Repository validation finds zero current command, documentation, code, contract,
   schema, example, test, or specification references to the superseded terminology or interface,
-  apart from immutable version-control history and append-only historical entries in the
-  maintainer-owned project reflection log.
+  apart from immutable version-control history; matching maintained reflection entries are rewritten
+  with their stable `R-NNN` identifiers and valid structure preserved.
 
 ## Assumptions
 

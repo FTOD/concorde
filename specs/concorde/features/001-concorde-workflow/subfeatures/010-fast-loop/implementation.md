@@ -85,10 +85,11 @@ compatibility/migration promise is project-level and returns to the full workflo
 
 An explicitly requested pure naming migration is the referential-only special case. The agent records
 the complete mapping, proves branching, behavior, data meaning, permissions, failures, module
-responsibilities, and dependencies are unchanged, applies only mapped names and references, honors
-source-specific mutation rules, and runs an exhaustive inventory for stale old names, partial
-replacements, aliases, and duplicate identities. Explicitly authorized historical/immutable
-exclusions remain named in the report.
+responsibilities, and dependencies are unchanged, applies only mapped names and references, and runs
+an exhaustive inventory for stale old names, partial replacements, aliases, and duplicate identities.
+The reflection log participates as maintained docs/specs: matching text and references are rewritten
+while exact unique `R-NNN` identifiers, required structure, maintainer decisions, occurrence identity,
+and problem meaning remain unchanged. Version-control history is not maintained source content.
 
 AI-authored contract, maintained-diagram, or other architecture-authority edits are validated and
 reported with exact paths, hashes, and diff as architecture evidence `validated`; a run without
@@ -125,7 +126,7 @@ are recorded in the project reflection log.
   the whole project; feature/module sources do not invent separate policy. A pure rename may replace
   names only while following that existing policy and preserving logic and non-name semantics.
 - Pure rename evidence includes the explicit mapping, referential-only authorities, and a
-  deterministic stale-name/alias/duplicate inventory with named historical/immutable exclusions.
+  deterministic stale-name/alias/duplicate inventory with every rewritten reflection entry ID.
 - Behavioral documents remain byte-identical for unaffected or realization-only features; every
   changed authority is validated in proportion to its role.
 - Completion reports the anchor, complete affected set, per-feature behavioral/realization/

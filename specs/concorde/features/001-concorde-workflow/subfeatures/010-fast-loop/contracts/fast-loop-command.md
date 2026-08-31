@@ -56,8 +56,8 @@ The command decides eligibility before mutation. All conditions must hold:
 8. Bounded inspection leaves no material ambiguity about the required result.
 9. When the request claims a pure rename, it supplies a complete old-to-new mapping; changes only
    identifiers, labels, paths, and references; preserves implementation logic and non-name semantics;
-   and defines a deterministic stale-name/alias/duplicate inventory plus any explicitly authorized
-   historical or immutable exclusions.
+   and defines a deterministic stale-name/alias/duplicate inventory across every maintained source,
+   including the project reflection log.
 
 Expected ineligibility is a normal result, not a reflection-log problem. The command names the
 failed rule and recommends the earliest applicable full-workflow stage without changing any file.
@@ -78,6 +78,8 @@ The coding agent:
    keep the repository truthful without changing module responsibilities or dependencies;
 5. for a pure rename, classifies mapped durable changes as referential-only and deterministically
    rejects stale old names, partial replacements, unauthorized aliases, and duplicate identities;
+   it rewrites matching reflection text/references while preserving exact unique `R-NNN` identifiers,
+   required structure, maintainer decisions, occurrence identity, and problem meaning;
 6. runs targeted tests plus deterministic source/document validation; and
 7. when maintained architecture sources changed, reports their exact validated diff and source
    hashes with evidence state `validated`, without requiring separate post-edit human review under
@@ -103,7 +105,7 @@ A successful report includes:
 - architecture evidence state (`not_applicable` or `validated`) with the affected source paths and
   hashes;
 - for a pure rename, the mapping, referential-only authorities, stale-name inventory result, and
-  authorized historical/immutable exclusions; and
+  rewritten reflection entry IDs; and
 - explicit confirmation that no attempt, planning, task, implementation, convergence, or acceptance
   operation was used.
 

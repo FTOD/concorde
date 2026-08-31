@@ -4,7 +4,8 @@ The project's remaining open reflection log: unresolved difficulties or problems
 while planning or implementing a feature, attributed to that feature and naming the source the
 problem concerns. Closed entries are removed by explicit maintainer direction. Grammar:
 [reflection-log contract](features/005-record-workflow-reflections/contracts/reflection-log.md).
-Kept by hand under constitution B.II until the rule Feature 005 specifies is installed.
+Ordinary recording appends entries/occurrences; explicit rename or documentation reconciliation may
+rewrite existing content while preserving stable valid `R-NNN` identifiers and contract shape.
 
 ### R-005 · The root view cannot draw the feature's crossing into Spec Kit Integration
 
@@ -83,32 +84,3 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
     generic milestone-acceptance prerequisite would couple Feature 001 acceptance to Feature 002
     publication; define that cross-feature gate through the owning workflow architecture before
     changing acceptance behavior.
-
-### R-034 · Global identity cleanup conflicts with append-only reflection history
-
-- **Phase**: plan
-- **Date**: 2026-08-30
-- **Feature**: feature.concorde.install-with-spec-kit
-- **Kind**: specification
-- **Concerns**: feature.concorde.record-workflow-reflections
-- **Expected**: The maintainer-requested preset rename leaves no tracked path or content using the
-  retired preset identifier.
-- **Observed**: The project reflection log contains historical occurrences while its normal agent
-  contract is append-only and prohibits rewriting existing entries.
-- **Effect**: worked-around
-- **Action**: Treat the maintainer's explicit project-wide rename as authorization for a
-  terminology-only rewrite that preserves every entry ID, field, status, note, occurrence, and
-  meaning.
-- **Improvement**: Define how an explicitly approved global terminology or identifier migration may
-  reconcile historical reflection text without weakening ordinary append-only agent behavior.
-- **Status**: open
-- **Occurrences**:
-  - implement 2026-08-30 feature.concorde.install-with-spec-kit — deferred to Feature 005's owning
-    specification/contract lifecycle. Define a maintainer-approved terminology-migration exception
-    with explicit authorization, an exact old/new mapping, preservation of entry IDs/fields/statuses
-    and meaning, plus an appended audit occurrence; reconcile command guidance and parser/contract
-    tests together without weakening ordinary append-only behavior.
-  - implement 2026-08-31 feature.concorde.install-with-spec-kit — the maintainer explicitly directed
-    removal of every closed reflection before committing the triage fixes. That authorization makes
-    this pruning valid for the current change, but it reinforces the need for a durable contract rule
-    distinguishing maintainer-directed cleanup from ordinary agent append-only behavior.

@@ -74,6 +74,8 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
                 self.assertIn(route, role["developer_instructions"])
         self.assertEqual(investigator["sandbox_mode"], "read-only")
         self.assertEqual(implementer["sandbox_mode"], "workspace-write")
+        self.assertIn("Never change reflection `Status`/`Note` decisions", implementer["developer_instructions"])
+        self.assertIn("stable-ID validation rules", implementer["developer_instructions"])
 
         claude_investigator = claude[".claude/agents/reflection-investigator.md"]
         claude_implementer = claude[".claude/agents/reflection-implementer.md"]
@@ -81,6 +83,8 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
         self.assertNotIn("model:", claude_implementer)
         self.assertIn("Return the complete plan", claude_investigator)
         self.assertIn("assigned worktree", claude_implementer)
+        self.assertIn("Never change reflection `Status`/`Note` decisions", claude_implementer)
+        self.assertIn("stable-ID validation rules", claude_implementer)
 
 
 if __name__ == "__main__":

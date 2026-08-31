@@ -164,8 +164,6 @@ Final evidence on 2026-08-30:
 
 ## Known Limitations
 
-- **R-034**: the identity cutover required a maintainer-authorized terminology-only rewrite of
-  append-only reflection history; a general reviewed procedure remains undefined.
 - **R-036**: the failed-update fixture once duplicated a transport filename instead of deriving it
   from release inventory; the fixture is corrected but the improvement remains open.
 - **R-037**: the workflow diagram exposed stale repository-evidence pins during the identity/path

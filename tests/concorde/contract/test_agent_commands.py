@@ -111,6 +111,8 @@ class AgentCommandContractTests(unittest.TestCase):
             "stale-name",
             "architecture evidence state",
             "no separate post-edit human review",
+            "reflection log as maintained docs/specs",
+            "preserving every exact `R-NNN` identifier",
             "materially ambiguous",
             "overlap",
             "zero fast-loop edits",

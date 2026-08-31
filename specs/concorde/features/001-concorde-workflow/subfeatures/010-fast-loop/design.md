@@ -102,7 +102,8 @@ responsibilities and dependencies remain unchanged.
    data semantics, permissions, failure handling, responsibility, or dependency direction, **When**
    every affected accepted authority can be reconciled under the existing compatibility/migration
    policy, **Then** the command applies the rename directly across all affected roots and proves the
-   stale old-name inventory is empty apart from explicitly authorized historical/immutable records.
+   stale old-name inventory is empty across maintained sources, including rewritten reflection
+   entries whose stable `R-NNN` identifiers remain unchanged and valid.
 
 ---
 
@@ -229,8 +230,7 @@ run never claims completion or accepted evidence.
   and referential-only documentation changes, identify every check run and its result, disclose
   unrelated pre-existing changes preserved, report architecture evidence as `not_applicable` or
   `validated`, and state that no attempt or acceptance operation was used. For a pure rename it MUST
-  also report the old-to-new mapping, stale-name inventory, and authorized historical/immutable
-  exclusions.
+  also report the old-to-new mapping, stale-name inventory, and every rewritten reflection entry ID.
 - **FR-015**: Compatibility and migration eligibility MUST be evaluated only against durable
   project-level promises made to users of the whole project. Internal module contracts, data formats,
   and coordinated feature behavior MAY change in fast-loop when FR-003 through FR-012 remain
@@ -244,10 +244,12 @@ run never claims completion or accepted evidence.
 - **FR-017**: A pure naming migration MUST require an explicit complete old-to-new mapping and MUST
   change only identifiers, labels, paths, and their references. It MUST preserve implementation
   logic, behavioral and data semantics, permissions, failure handling, module responsibilities, and
-  dependency direction; reconcile every bounded affected authority under its source-specific
-  mutation rules; and deterministically reject stale old names, partial replacements, unauthorized
-  aliases, or duplicate identities. Historical or immutable exclusions require explicit maintainer
-  authorization and MUST appear in the completion report.
+  dependency direction; reconcile every bounded affected authority; and deterministically reject
+  stale old names, partial replacements, unauthorized aliases, or duplicate identities. The project
+  reflection log is maintained docs/specs and MUST be rewritten when its text or references match the
+  mapping, while preserving exact unique `R-NNN` identifiers, required structure, maintainer
+  decisions, occurrence identity, and problem meaning. Only version-control history is inherently
+  outside the maintained-source inventory.
 - **FR-014**: An ineligible or blocked response MUST be actionable: it MUST identify the failed
   eligibility rule, make no fast-loop mutation, and direct the maintainer to the normal workflow at
   the earliest applicable stage.
@@ -311,8 +313,8 @@ tasks, implementation, convergence, or acceptance.
   attempt/implementation-acceptance artifact.
 - **SC-009**: Every eligible pure-rename fixture changes all and only mapped names and references,
   reports every affected authority as referential-only, preserves implementation logic and
-  non-name semantics, and produces a zero-result stale-name/alias/duplicate inventory except for
-  explicitly authorized historical/immutable exclusions.
+  non-name semantics, preserves every rewritten reflection `R-NNN` identifier and valid log shape,
+  and produces a zero-result maintained-source stale-name/alias/duplicate inventory.
 - **SC-006**: The installed Codex and slash-command surfaces pass equivalent contract scenarios for
   eligible completion, ineligible escalation, target disclosure, and failure reporting.
 

@@ -10,7 +10,7 @@ Accept Milestone is the one workflow operation that accepts a completed temporal
 
 The operation preserves the existing safety model: at least one recognizable task, every task complete, every existing checklist item complete and well formed, safe canonical paths, a current source digest, an implementation candidate with the six required sections, citation of every open reflection attributed to the selected feature, an optional full providing-module design amendment, and exactly one whole-attempt removal target. Apply stages every update, moves the attempt recoverably, promotes all outputs atomically, and restores the previous implementation, module design, and attempt on failure.
 
-The migration is a clean break. No command alias, parser fallback, status alias, proposal compatibility branch, diagnostic compatibility name, old feature root, or old installed skill remains. Historical wording survives only in the append-only project reflection log and version-control history.
+The migration is a clean break. No command alias, parser fallback, status alias, proposal compatibility branch, diagnostic compatibility name, old feature root, or old installed skill remains. Historical wording survives only in version-control history; maintained reflection entries are reconciled like other docs/specs while their stable IDs and meaning remain valid.
 
 ## Module and Feature Collaboration
 
@@ -43,7 +43,7 @@ Apply re-resolves the target and every path, ignores only the proposal itself wh
 - Architecture Source Profile 4, Architecture Service Protocol v1, Build Manifest v8, and docsite generator 0.3.0 are unchanged because their structures are unaffected.
 - Canonical preset/extension sources remain authoritative. .specify, .agents, and .claude are regenerated mirrors verified against those sources and installed-project acceptance tests.
 - The parent workflow core diagram remains the single stable component view. Only its milestone view and connection terminology changed; the generated route and component structure are unchanged.
-- The append-only reflection log is intentionally exempt from text migration. Current commands, docs, code, contracts, schemas, examples, tests, specifications, accepted realizations, and mirrors use only the new vocabulary.
+- Reflection entries participate in text migration as maintained docs/specs; controlled rewrites preserve every exact unique `R-NNN` identifier, valid field structure, maintainer decision, occurrence identity, and problem meaning. Current commands, docs, code, contracts, schemas, examples, tests, specifications, accepted realizations, reflections, and mirrors use only the new vocabulary.
 - The old interface is rejected rather than translated, keeping one safety-sensitive mutation surface.
 
 ## Traceability and Evidence

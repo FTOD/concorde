@@ -172,8 +172,8 @@ type carries the distinction Spec Kit already requires. Type-qualified archive f
 separate transport collision without leaking packaging mechanics back into component identity.
 The repository-wide cutover demonstrated a terminology-only reconciliation across historical and
 adjacent durable references without changing module responsibilities, dependency direction, logic,
-or non-name semantics. Fast-loop now owns that bounded pure-rename case; R-034 separately preserves
-the append-only reflection-history lesson.
+or non-name semantics. Fast-loop now owns that bounded pure-rename case, including controlled rewrites
+of reflection text that preserve stable valid `R-NNN` identities and maintainer decisions.
 
 This split also makes testing clearer: command-surface tests belong to Skills, runtime and launcher
 tests belong to Scripts, workspace-layout and acceptance tests belong to Workspace Files, release and
@@ -238,8 +238,9 @@ projection-transaction tests belong to Distribution, and site tests belong to Au
   `extension:concorde`; retained `concorde-bundle` as the bundle identity.
 - 2026-08-30: Chose type-qualified preset/extension archive filenames to avoid a transport
   collision while preserving the shared component ID.
-- 2026-08-30: Rejected a compatibility alias and recorded the explicitly approved coordinated
-  durable-reference migration (R-034); its cross-authority pure-rename shape is now a fast-loop case.
+- 2026-08-30: Rejected a compatibility alias and completed the explicitly approved coordinated
+  durable-reference migration; its cross-authority pure-rename shape is now a fast-loop case, and
+  Feature 005 now permits stable-ID-preserving reflection reconciliation.
 - 2026-08-30: Refreshed repository-evidence pins and type-stable diagram sources exposed by the
   identity/path migration (R-037, R-038).
 - 2026-08-30: Packaged Feature 005's canonical triage bodies, wrappers, default config, and queue

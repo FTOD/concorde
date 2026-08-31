@@ -242,9 +242,10 @@ removes it.
   existing implementation it depends on, the installed guidance, the level's architecture, or the
   plan as written, or must assume, work around, defer, or stop — record it in this phase, before the
   completion report, not later. A problem met and solved within the phase is still recorded.
-- **Where**: append to `workspace.reflections`. If the file does not exist, create it first from the
-  template resolved by `specify preset resolve reflections-template`. Append only; never rewrite,
-  reorder, renumber, or delete entries.
+- **Where**: ordinary recording writes only `workspace.reflections`. If the file does not exist,
+  create it first from the template resolved by `specify preset resolve reflections-template`.
+  Append a new entry or matching occurrence; never change or reuse an existing `R-NNN` identifier,
+  delete an entry, or reverse a maintainer-set status or note as part of ordinary recording.
 - **What**: one `### R-NNN · <short title>` entry (the next unused identifier) with the fields, in
   order, `Phase` (this phase), `Date`, `Feature` (`workspace.feature_id`), `Kind`
   (`specification`, `architecture`, `guidance`, `tooling`, `environment`, or `implementation`),
@@ -256,10 +257,16 @@ removes it.
 - **Never fix in place**: a problem with `abstract.md`, feature `design.md`, feature `implementation.md`, any `module.md`, a
   contract, a view, a diagram, or another feature's code or tests is recorded, not edited; the
   owning phase or the maintainer changes that source later.
-- **Update, don't duplicate**: when the log already holds the same problem — recorded by any phase
+- **Update, don't duplicate**: when ordinary recording finds the same problem — recorded by any phase
   on any feature — add a line under its `- **Occurrences**:` list
   (`<phase> <date> <feature-id> — <context>`) instead of a new entry. Never change a `Status` or
   `Note` a maintainer set.
+- **Maintained reconciliation**: `workspace.reflections` is maintained docs/specs. An explicitly
+  requested rename or documentation correction MAY rewrite existing entry text and references, but
+  MUST preserve each exact `R-NNN` identifier, identifier uniqueness, required field structure,
+  maintainer-owned status decision, occurrence identity, and problem meaning; renamed `Feature` and
+  `Concerns` values MUST resolve, and the complete log MUST pass `speckit.concorde.validate`.
+  Ordinary problem recording does not implicitly authorize this reconciliation.
 - **Bounded**: recording never requires opening another root's `attempt/`; cite the other
   feature by stable ID or path.
 - **Hygiene**: no secrets, credentials, or bulk output — cite the evidence path instead; keep

@@ -9,7 +9,9 @@ invoke `speckit-fast-loop` for each plan.
 For every plan in order:
 
 1. Accept only route `fast-loop`; `specify`, `dismiss`, and `blocked` are ineligible.
-2. Follow the exact file set and change steps; never edit the reflection log.
+2. Follow the exact file set and change steps. Never change reflection `Status`/`Note` decisions or
+   `R-NNN` identifiers; when an explicit rename/documentation plan includes the reflection log, its
+   mapped text and references may be rewritten under the Fast Loop stable-ID validation rules.
 3. Run the plan's validation. If eligibility or validation fails, revert only that plan's edits and
    report `ineligible` or `failed` while preserving successful earlier commits.
 4. On success create exactly one commit named `reflect(<ID>): <short summary>`.

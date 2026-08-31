@@ -23,14 +23,15 @@ copying Concorde's repository-local Claude or Codex setup by hand.
 | What | How it shows up |
 |---|---|
 | Automatic recording | During plan, tasks, implement, analyze, and converge, an agent appends or updates an entry when it meets a problem, then continues if it can. No new phase command or approval. |
-| Project log | `reflections.md` directly inside the specification root, beside the root `module.md`; created from the installed template by the first recording phase and never removed. |
+| Project log | `reflections.md` directly inside the specification root, beside the root `module.md`; created from the installed template by the first recording phase, maintained with the other specifications/docs, and never removed. |
 | Entry contract | Identifier, phase, date, selected feature, kind, concerned source, expected versus observed, effect, action, improvement, status, note when closed, and occurrence history. |
+| Maintained reconciliation | An explicitly requested rename or documentation correction may rewrite existing entry text and references while preserving every `R-NNN` identifier, required structure, maintainer decision, and problem meaning; validation must still pass. |
 | Triage entry point | One installed skill with `status`, `investigate`, `implement`, and `merge` actions. `status` is read-only; all other actions preserve normal Concorde phase and maintainer authority. |
 | Investigation | One specialized investigator per open entry establishes evidence, owning feature, route (`fast-loop`, `specify`, `dismiss`, or `blocked`), file set, change, validation, and risks in one plan. |
 | Implementation | Ready fast-loop plans are grouped by owning feature and executed by specialized implementers in separate Git worktrees and branches, through Speckit Fast Loop, with one commit per successful plan. |
 | Merge | A clean maintainer checkout is required; branches merge one at a time, applicable deterministic checks rerun, conflicts stop safely, and only successful worktrees and plan states are cleaned up. |
 | Installation | Concorde distributes the shared skill, roles, deterministic queue helper, and default configuration as platform-appropriate Claude and Codex projections with common semantics and state. |
-| Maintainer authority | Triage suggests resolution notes and commits but never edits reflection `Status` or `Note`; `specify`, `dismiss`, and `blocked` routes remain human decisions. |
+| Maintainer authority | Triage suggests resolution decisions and commits but never changes a reflection `Status` decision or `Note` meaning; maintainers own those decisions and may explicitly authorize bounded terminology rewrites or cleanup of closed entries without renumbering or reusing IDs. |
 | Acceptance and validation | Acceptance presents the feature's entries and requires every open one to remain cited; deterministic validation checks a present log read-only and reports nothing for an absent log. |
 
 **Not part of this feature**: automatically changing reflection status, auto-implementing
@@ -85,7 +86,10 @@ Maintainer ──▶ triage orchestrator ─┬─▶ investigator agents ─▶
 5. `merge` requires a clean checkout, merges branches serially, stops on conflict or validation
    failure, cleans only successful worktrees, and reports suggested reflection notes without
    applying them.
-6. At acceptance, every open entry attributed to the feature stays cited in the accepted
+6. When a project rename or documentation correction reaches the log, apply the explicit mapping to
+   existing entry text and references while preserving each `R-NNN` identity, structure, status,
+   note, and meaning; validate the complete log after the rewrite.
+7. At acceptance, every open entry attributed to the feature stays cited in the accepted
    realization and the project log remains intact.
 
 **Rules the implementation must keep**
@@ -94,8 +98,9 @@ Maintainer ──▶ triage orchestrator ─┬─▶ investigator agents ─▶
   approval, or checkout dependency; triage is an explicit maintainer action (FR-001, FR-002,
   FR-006, FR-018).
 - One project-wide maintained log carries the fixed entry vocabulary and survives every attempt;
-  repeated problems update occurrences without reversing maintainer decisions (FR-003, FR-004,
-  FR-005, FR-008, FR-014, FR-016).
+  repeated problems update occurrences, while explicit document reconciliation may rewrite content
+  without changing stable entry IDs or maintainer decisions (FR-003, FR-004, FR-005, FR-008,
+  FR-014, FR-016, FR-028).
 - Recording never edits durable sources or reads another root's attempt, and phase reports,
   analysis, convergence, acceptance, and validation surface the entries within their existing
   authority (FR-007, FR-009, FR-010, FR-011, FR-012, FR-013, FR-015, FR-017).
@@ -112,7 +117,7 @@ Maintainer ──▶ triage orchestrator ─┬─▶ investigator agents ─▶
 ## Read Next
 
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): six user
-  stories, FR-001 to FR-027, and SC-001 to SC-014.
+  stories, FR-001 to FR-028, and SC-001 to SC-015.
 - **The accepted recording realization and the baseline for this new attempt** —
   [implementation.md](implementation.md).
 - **The log's grammar** — `contracts/reflection-log.md` and

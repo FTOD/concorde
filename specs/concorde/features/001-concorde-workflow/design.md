@@ -656,9 +656,12 @@ durable root without root-level compatibility copies.
   dependency-direction, project-level user compatibility/migration-policy, unsafe, or materially
   ambiguous work before mutation. An explicit pure naming migration MAY replace names while following
   existing policy when it preserves logic and all non-name semantics and deterministically inventories
-  stale names, aliases, and duplicates. Fast-loop MUST run proportional checks and report the anchor,
-  affected set, files, evidence, architecture evidence state, rename mapping when applicable, and
-  skipped ceremony; eligible architecture edits require no separate post-edit review.
+  stale names, aliases, and duplicates. Matching project reflection entries MUST be rewritten as
+  maintained docs/specs while their exact unique `R-NNN` identifiers, valid structure, maintainer
+  decisions, and problem meaning remain unchanged. Fast-loop MUST run proportional checks and report
+  the anchor, affected set, files, evidence, architecture evidence state, rename mapping and rewritten
+  reflection IDs when applicable, and skipped ceremony; eligible architecture edits require no
+  separate post-edit review.
 
 ### Scope
 

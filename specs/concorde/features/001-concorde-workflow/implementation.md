@@ -100,8 +100,10 @@ single `remove == [attempt_dir]`. Apply stages feature `implementation.md` and o
 - The additive fast-loop directly reconciles bounded existing authorities after resolving every
   affected root. A pure naming migration is eligible when it supplies a complete mapping, preserves
   logic and non-name semantics, follows existing compatibility/migration policy, and passes a
-  deterministic stale-name/alias/duplicate inventory. Eligible architecture edits report exact
-  validated diffs and hashes and require no separate post-edit human review under constitution A.V.
+  deterministic stale-name/alias/duplicate inventory. Reflection entries participate as maintained
+  docs/specs while keeping stable valid `R-NNN` identities and maintainer decisions. Eligible
+  architecture edits report exact validated diffs and hashes and require no separate post-edit human
+  review under constitution A.V.
 - The preset carries six templates; `abstract-template` and `implementation-template` resolve through
   the public preset stack; local helpers export `FEATURE_ABSTRACT`, `FEATURE_DESIGN`,
   `FEATURE_IMPLEMENTATION`, and `ATTEMPT_DIR`.

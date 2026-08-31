@@ -6,7 +6,8 @@ Define the one machine-checkable shape of the project reflection log — `reflec
 inside the specification root — in which coding agents record every difficulty or problem met during
 the plan, tasks, implement, analyze, and converge phases of any attempt, so that a maintainer can
 read it in minutes, deterministic validation can check it, phase reports and bounded context can
-count it, and acceptance can cite it.
+count it, acceptance can cite it, and explicit project renames or documentation corrections can
+reconcile it like the other maintained docs/specs without changing stable entry identities.
 
 ## Representation
 
@@ -25,7 +26,7 @@ H1         := "# Reflections: " project-title NEWLINE
 preamble   := any Markdown without an H2 or H3 heading
 archive    := "## Archive" NEWLINE entry*            (optional; same entry grammar)
 entry      := "### " ID " · " title NEWLINE field+ occurrences?
-ID         := "R-" DIGIT{3,}                          (unique in the log, sequential, never reused)
+ID         := "R-" DIGIT{3,}                          (unique; allocated monotonically; gaps allowed; never reused)
 field      := "- **" LABEL "**: " value NEWLINE (continuation lines indented by two spaces)
 LABEL      := Phase | Date | Feature | Kind | Concerns | Expected | Observed | Effect | Action | Improvement | Status | Note
 occurrences:= "- **Occurrences**:" NEWLINE ("  - " phase " " date " " feature-id " — " text NEWLINE)+
@@ -55,8 +56,15 @@ Required fields, in this order: `Phase`, `Date`, `Feature`, `Kind`, `Concerns`, 
 
 ## Obligations
 
-- Agents append entries and `Occurrences`; they never delete or renumber an entry or reverse a
-  maintainer's `Status` or `Note`.
+- Ordinary phase recording appends entries and `Occurrences`; it never deletes an entry, changes or
+  reuses an `R-NNN` identifier, or reverses a maintainer's `Status` or `Note`.
+- An explicitly requested rename or documentation correction MAY rewrite existing titles, prose,
+  `Feature`, `Concerns`, `Note`, and occurrence text. It MUST preserve each exact `R-NNN` identifier,
+  identifier uniqueness, required field structure, phase/date/kind/effect, maintainer-owned status
+  decision, occurrence identity, and problem meaning; renamed IDs and paths MUST resolve and the
+  complete rewritten log MUST validate without reflection findings.
+- Explicit maintainer cleanup MAY remove resolved or dismissed entries. Surviving entries keep their
+  identifiers, removed identifiers are never reused, and no entry is renumbered to close a gap.
 - Entries cite evidence paths rather than embedding secrets, credentials, or bulk output, and keep
   `Expected`/`Observed`/`Action` under about 150 words together.
 - Phases that record list the added identifiers and the open count for `Feature` = the selected
@@ -72,19 +80,22 @@ Required fields, in this order: `Phase`, `Date`, `Feature`, `Kind`, `Concerns`, 
 ## Failure Semantics
 
 A malformed log is a validation finding and blocks acceptance eligibility (`CONCORDE-ACCEPT-011`);
-it never causes a phase to stop, and no operation rewrites the log to repair it. A `Concerns` or
+it never causes a phase to stop, and validation never rewrites the log to repair it. A `Concerns` or
 `Feature` reference that stops resolving after a source change is reported by analysis as stale and
 by validation as `CONCORDE-REFLECT-004`. An open entry of the feature that the candidate design
 reference does not cite is `CONCORDE-ACCEPT-012` at apply time.
 
 ## Compatibility
 
-v1 permits additive optional fields (new labels after `Status`/`Note`). Removing or renaming a
-required label, changing the log's location, or changing a vocabulary value's meaning requires v2
-and migration guidance in the feature specification.
+v1 permits additive optional fields (new labels after `Status`/`Note`) and controlled maintained-text
+rewrites that preserve the grammar and stable `R-NNN` identities. Removing or renaming a required
+label, changing the log's location, changing the identifier grammar, or changing a vocabulary
+value's meaning requires v2 and migration guidance in the feature specification.
 
 ## Evidence
 
-Planned: `tests/concorde/unit/test_reflection_rules.py` (grammar and rules),
-`tests/concorde/integration/test_implementation_acceptance.py` (citation gate), and the schema/example
-contract tests of Feature 001. Evidence status: `unknown` until the attempt is implemented.
+`tests/concorde/unit/test_reflection_parser.py` covers grammar, duplicate IDs, stable-ID-preserving
+rewrites, archive handling, and summaries. `tests/concorde/unit/test_reflection_rules.py` covers all
+four validation rules plus controlled rename reference validity. Acceptance citation gates are in
+`tests/concorde/integration/test_implementation_acceptance.py`; installed phase parity is covered by
+`tests/concorde/acceptance/test_workspace_composition.py`.

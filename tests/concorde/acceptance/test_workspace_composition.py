@@ -43,6 +43,10 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                 block = rendered[block_start:rendered.index("## Mandatory Post-Execution Hooks", block_start)]
                 self.assertIn("workspace.reflections", block)
                 self.assertIn("Reflections added:", block)
+                self.assertIn("Maintained reconciliation", block)
+                self.assertIn("preserve each exact `R-NNN` identifier", block)
+                self.assertIn("complete log MUST pass", block)
+                self.assertNotIn("Append only; never rewrite", block)
                 for phase in ("tasks", "implement", "analyze", "converge"):
                     surface = registered_artifact(root, integration, f"speckit.{phase}").read_text(encoding="utf-8")
                     self.assertIn(block, surface, phase)

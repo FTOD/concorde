@@ -250,8 +250,12 @@ module, contract, instruction, or tool. Bounded context (`speckit.concorde.conte
 and the open count per feature. Resolve or dismiss an entry by editing its `Status` and `Note`
 directly; the actual improvement goes through the path that owns the concerned source — `specify`
 or `clarify` for a requirement, an architecture change for a placement or contract, a guidance or
-runtime change for an instruction or tool. Agents never delete entries or reverse a maintainer's
-decision. In the Concorde project itself, an accepted `guidance` or `tooling` entry is planned
+runtime change for an instruction or tool. Ordinary recording never deletes entries or reverses a
+maintainer's decision. Because the log is maintained docs/specs, an explicitly requested rename or
+documentation correction may rewrite matching entry text and references while preserving exact
+unique `R-NNN` IDs, valid structure, maintainer decisions, occurrence identity, and problem meaning;
+explicit maintainer cleanup may remove closed entries without renumbering or reusing IDs. In the
+Concorde project itself, an accepted `guidance` or `tooling` entry is planned
 framework work or a framework change, and that change counts as used only after the self-hosted
 installation is refreshed.
 

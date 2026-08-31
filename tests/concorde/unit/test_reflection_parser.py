@@ -79,6 +79,7 @@ class ReflectionParserTests(unittest.TestCase):
             log = write_reflection_log(Path(temporary), [reflection_entry("R-001"), reflection_entry("R-001")])
             parsed = parse_reflection_log(log.read_text(encoding="utf-8"))
             self.assertEqual([problem.code for problem in parsed.problems], ["duplicate"])
+            self.assertIn("never change an existing entry ID", parsed.problems[0].remediation)
         parsed = parse_reflection_log("# Reflections: X\n\n### Not an entry\n\n- **Phase**: plan\n")
         self.assertEqual([problem.code for problem in parsed.problems], ["shape"])
         self.assertEqual(parsed.entries, ())
@@ -94,6 +95,25 @@ class ReflectionParserTests(unittest.TestCase):
         self.assertEqual(parsed.problems, ())
         self.assertEqual(parsed.entries[0].fields["Expected"], "One line continued on the next.")
         self.assertEqual(parsed.entries[0].line, 11)
+
+    def test_controlled_document_rewrite_preserves_stable_entry_identities(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            log = write_reflection_log(Path(temporary), [
+                reflection_entry("R-007"),
+                reflection_entry("R-042", status="resolved"),
+            ])
+            before = parse_reflection_log(log.read_text(encoding="utf-8"))
+            rewritten = (
+                log.read_text(encoding="utf-8")
+                .replace("feature.example.deliver", "feature.example.api.invoke")
+                .replace("contract.example.workflow", "specs/example/module.md")
+                .replace("Fixture problem", "Renamed fixture problem")
+            )
+            after = parse_reflection_log(rewritten)
+            self.assertEqual(after.problems, ())
+            self.assertEqual([entry.identifier for entry in after.entries], [entry.identifier for entry in before.entries])
+            self.assertEqual([entry.status for entry in after.entries], [entry.status for entry in before.entries])
+            self.assertEqual(after.entries[1].fields["Note"], before.entries[1].fields["Note"])
 
 
 if __name__ == "__main__":
