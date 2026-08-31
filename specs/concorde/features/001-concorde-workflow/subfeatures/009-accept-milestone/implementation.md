@@ -66,7 +66,6 @@ The supported Codex self-host apply completed for 0.4.0 and reported source, ins
 - The self-host bootstrap requires an explicit Python interpreter in this checkout; direct execution is not permitted by file mode (R-015).
 - The project virtual environment does not install pytest; validation uses the standard-library unittest runner (R-016).
 - A shared-component bundle fixture that consumes the live preset must keep its pin synchronized with the current package version (R-017).
-- Feature 002 required a syntax-only code-span correction because a bare angle-bracket route placeholder was invalid MDX; future accepted candidates should pass the docsite build before acceptance (R-018).
 - Task-scoped temporary backup and release directories outside the repository could not be explicitly removed under the execution policy and are left for normal operating-system cleanup; no project artifact depends on them (R-019).
 - The current agent process was initialized before the on-disk skill rename. A new session is required before its capability list displays the new skill name, even though both installed trees and tests are current.
 - Historical reflection entries retain their original wording by contract. They are records of what agents encountered, not active command guidance.

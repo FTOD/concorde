@@ -60,27 +60,3 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
     `contract.auto-docs.project-content` from v8 to add root `README.md` as a maintainer-provided
     one-file source root with `/` ownership, then align the Auto-Docs abstract/design/implementation
     and contract tests across all three inputs (`README.md`, `docs/`, and `specs/`).
-
-### R-018 · Feature 002's accepted route placeholder was invalid MDX
-
-- **Phase**: implement
-- **Date**: 2026-08-29
-- **Feature**: feature.concorde.workflow.accept-milestone
-- **Kind**: implementation
-- **Concerns**: specs/concorde/features/002-create-project-docsite/implementation.md
-- **Expected**: The full docsite gate publishes all accepted feature implementations while validating
-  the Accept Milestone terminology migration.
-- **Observed**: Feature 002 contained bare `/features/<feature-id>` text; MDX parsed `<feature-id>` as
-  an unclosed JSX tag and stopped the production build.
-- **Effect**: worked-around
-- **Action**: Applied a syntax-only correction by formatting the route and adjacent path tokens as
-  code spans; no Feature 002 behavior or architecture changed.
-- **Improvement**: Require accepted implementation candidates containing angle-bracket placeholders
-  to pass the docsite MDX build before milestone acceptance.
-- **Status**: open
-- **Occurrences**:
-  - implement 2026-08-30 feature.concorde.workflow.accept-milestone — the syntax incident is fixed
-    and production publication exercises accepted implementations. Making the docsite build a
-    generic milestone-acceptance prerequisite would couple Feature 001 acceptance to Feature 002
-    publication; define that cross-feature gate through the owning workflow architecture before
-    changing acceptance behavior.
