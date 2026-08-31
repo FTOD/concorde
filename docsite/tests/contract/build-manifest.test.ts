@@ -10,7 +10,7 @@ describe('build manifest contract', () => {
   it('accepts the normative representative example', async () => {
     const contractRoot = resolve(
       process.cwd(),
-      '../specs/concorde/features/002-create-project-docsite/contracts',
+      '../specs/concorde/features/002-auto-docsite/contracts',
     );
     const schema = JSON.parse(
       await readFile(resolve(contractRoot, 'build-manifest.schema.json'), 'utf8'),
@@ -36,7 +36,7 @@ describe('build manifest contract', () => {
 
   it('compiles the normative schema under AJV strict types without diagnostics', async () => {
     const contractRoot = resolve(
-      process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts',
+      process.cwd(), '../specs/concorde/features/002-auto-docsite/contracts',
     );
     const schema = JSON.parse(await readFile(resolve(contractRoot, 'build-manifest.schema.json'), 'utf8'));
     const logged: string[] = [];
@@ -51,7 +51,7 @@ describe('build manifest contract', () => {
 
   it('rejects a core-role diagram on a project-document page', async () => {
     const contractRoot = resolve(
-      process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts',
+      process.cwd(), '../specs/concorde/features/002-auto-docsite/contracts',
     );
     const schema = JSON.parse(await readFile(resolve(contractRoot, 'build-manifest.schema.json'), 'utf8'));
     const manifest = JSON.parse(await readFile(resolve(contractRoot, 'build-manifest.example.json'), 'utf8'));
@@ -79,7 +79,7 @@ describe('build manifest contract', () => {
 
   it('keeps published-site v5 aligned with Build Manifest schema v9', async () => {
     const contractRoot = resolve(
-      process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts',
+      process.cwd(), '../specs/concorde/features/002-auto-docsite/contracts',
     );
     const publishedSite = await readFile(resolve(contractRoot, 'published-site.md'), 'utf8');
     expect(publishedSite).toContain('# Published Project Site Contract v5');
@@ -89,7 +89,7 @@ describe('build manifest contract', () => {
 
   it('projects a fixture manifest that satisfies the v9 schema', async () => {
     const schema = JSON.parse(await readFile(resolve(
-      process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json',
+      process.cwd(), '../specs/concorde/features/002-auto-docsite/contracts/build-manifest.schema.json',
     ), 'utf8'));
     const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(schema);
     const manifest = JSON.parse(JSON.stringify(createManifest(await buildRegistry(resolve(__dirname, '../fixtures/valid-project')))));

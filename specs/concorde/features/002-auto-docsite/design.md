@@ -10,14 +10,14 @@ contracts:
     - contract.auto-docs.architecture-site
   required: []
 diagrams:
-  - source: specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json
+  - source: specs/concorde/features/002-auto-docsite/diagrams/project-docsite-publication-flow.json
     role: supplemental
     kind: sequence
     scenarios:
       - publish-architecture
     output: generated/architecture/project-docsite-publication-flow.html
 evidence_status: verified
-canonical_design: specs/concorde/features/002-create-project-docsite/design.md
+canonical_design: specs/concorde/features/002-auto-docsite/design.md
 ---
 
 # Feature Design: Create Unified Project Docsite

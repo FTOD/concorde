@@ -9,9 +9,9 @@ representation:
   format: JSON
   serialization: JSON
   version: 7
-  definition: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json
-  schema: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json
-  example: specs/concorde/features/002-create-project-docsite/contracts/build-manifest.example.json
+  definition: specs/concorde/features/002-auto-docsite/contracts/build-manifest.schema.json
+  schema: specs/concorde/features/002-auto-docsite/contracts/build-manifest.schema.json
+  example: specs/concorde/features/002-auto-docsite/contracts/build-manifest.example.json
 counterparties:
   - external.project-maintainer
 consumers:
@@ -31,7 +31,7 @@ evidence_status: verified
 
 Provide a deterministic JSON inventory of included pages, explicit exclusions, verified routes,
 generator versions, source hashes, and passed checks. The normative schema is
-`specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json`; its representative example and
+`specs/concorde/features/002-auto-docsite/contracts/build-manifest.schema.json`; its representative example and
 complete field semantics live beside it. They are referenced here rather than copied.
 
 ## Information

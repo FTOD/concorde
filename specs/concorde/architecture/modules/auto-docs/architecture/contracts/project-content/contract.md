@@ -39,7 +39,7 @@ design reference); feature publication selects feature-root `abstract.md`, `desi
 `implementation.md`, while excluding `attempt/**`. Markdown follows
 [CommonMark 0.31.2](https://spec.commonmark.org/0.31.2/); optional front matter follows
 [YAML 1.2.2](https://yaml.org/spec/1.2.2/). Complete field, inclusion, link, failure, and compatibility
-semantics are defined once in `specs/concorde/features/002-create-project-docsite/contracts/content-sources.md`.
+semantics are defined once in `specs/concorde/features/002-auto-docsite/contracts/content-sources.md`.
 
 ## Information
 

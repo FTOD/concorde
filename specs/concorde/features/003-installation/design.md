@@ -14,13 +14,13 @@ contracts:
   required:
     - contract.concorde.spec-kit-platform
 diagrams:
-  - source: specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json
+  - source: specs/concorde/features/003-installation/diagrams/spec-kit-component-model.json
     role: core
     kind: architecture
     scenarios:
       - inspect-install-and-verify-concorde
     output: generated/architecture/concorde-spec-kit-component-model.html
-  - source: specs/concorde/features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json
+  - source: specs/concorde/features/003-installation/diagrams/bundle-installation-flow.json
     role: supplemental
     kind: workflow
     scenarios:
@@ -28,7 +28,7 @@ diagrams:
       - manage-concorde-installation
     output: generated/architecture/concorde-bundle-installation-flow.html
 evidence_status: partial
-canonical_design: specs/concorde/features/003-install-concorde-speckit/design.md
+canonical_design: specs/concorde/features/003-installation/design.md
 ---
 
 # Feature Design: Install and Set Up Concorde with Spec Kit

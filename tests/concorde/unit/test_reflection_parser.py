@@ -32,7 +32,7 @@ class ReflectionParserTests(unittest.TestCase):
 
     def test_contract_example_and_project_log_parse_without_problems(self):
         for relative in (
-            "specs/concorde/features/005-record-workflow-reflections/contracts/examples/reflections.md",
+            "specs/concorde/features/005-auto-reflections/contracts/examples/reflections.md",
             "specs/concorde/reflections.md",
         ):
             with self.subTest(log=relative):

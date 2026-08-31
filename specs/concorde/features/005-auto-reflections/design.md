@@ -10,7 +10,7 @@ contracts:
   required:
     - contract.concorde.spec-kit-platform
 diagrams:
-  - source: specs/concorde/features/005-record-workflow-reflections/diagrams/workflow-reflection-components.json
+  - source: specs/concorde/features/005-auto-reflections/diagrams/workflow-reflection-components.json
     role: core
     kind: architecture
     scenarios:
@@ -20,7 +20,7 @@ diagrams:
       - install-supported-projections
     output: generated/architecture/workflow-reflection-components.html
 evidence_status: partial
-canonical_design: specs/concorde/features/005-record-workflow-reflections/design.md
+canonical_design: specs/concorde/features/005-auto-reflections/design.md
 ---
 
 # Feature Design: Record and Triage Workflow Reflections

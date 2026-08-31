@@ -142,5 +142,5 @@ remains metadata and cross-links, not containment. The design
 tasks, checklists, and other attempt artifacts are excluded from the public Features collection.
 
 See the [root architecture](../specs/concorde/module.md) for Concorde's own module hierarchy and
-[Feature 002](../specs/concorde/features/002-create-project-docsite/design.md) for the complete
+[Feature 002](../specs/concorde/features/002-auto-docsite/design.md) for the complete
 publication contract.

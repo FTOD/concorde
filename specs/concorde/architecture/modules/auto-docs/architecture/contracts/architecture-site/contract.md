@@ -28,7 +28,7 @@ evidence_status: verified
 
 Provide static HTML, CSS, JavaScript, assets, local search data, and a build manifest as one browsable,
 read-only project view. The route, provenance, accessibility, failure, and compatibility guarantees
-are defined in `specs/concorde/features/002-create-project-docsite/contracts/published-site.md`.
+are defined in `specs/concorde/features/002-auto-docsite/contracts/published-site.md`.
 
 ## Information
 
@@ -67,4 +67,4 @@ space or provenance field is breaking.
 ## Evidence
 
 Production-build, accessibility, route-inventory, and repeatability tests are maintained under
-`docsite/tests/`; their requirement mapping is recorded in `specs/concorde/features/002-create-project-docsite/design.md`.
+`docsite/tests/`; their requirement mapping is recorded in `specs/concorde/features/002-auto-docsite/design.md`.

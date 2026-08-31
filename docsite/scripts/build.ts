@@ -46,7 +46,7 @@ async function runDocusaurus(candidate: string): Promise<void> {
 
 async function validateGeneratedManifest(candidate: string): Promise<void> {
   const [schemaText, manifestText] = await Promise.all([
-    readFile(resolve(projectRoot, 'specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json'), 'utf8'),
+    readFile(resolve(projectRoot, 'specs/concorde/features/002-auto-docsite/contracts/build-manifest.schema.json'), 'utf8'),
     readFile(resolve(candidate, 'build-manifest.json'), 'utf8'),
   ]);
   const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(JSON.parse(schemaText));

@@ -136,7 +136,7 @@ class SelfArchitectureTests(unittest.TestCase):
     def test_self_hosting_diagram_cites_authoritative_framework_sources(self):
         diagram = json.loads((
             REPOSITORY_ROOT
-            / "specs/concorde/features/004-self-host-concorde/diagrams/concorde-self-hosting-components.json"
+            / "specs/concorde/features/004-self-host/diagrams/concorde-self-hosting-components.json"
         ).read_text(encoding="utf-8"))
         component = next(item for item in diagram["components"] if item["id"] == "frameworkSources")
         cited = [source["path"] for source in component["sources"]]

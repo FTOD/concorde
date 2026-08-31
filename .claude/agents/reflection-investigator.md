@@ -49,7 +49,7 @@ title: <entry title>
 route: fast-loop | specify | dismiss | blocked
 status: proposed
 recorded_under: <Feature field of the entry>
-implement_in: <directory of the feature that owns the fix, e.g. specs/concorde/features/002-create-project-docsite>
+implement_in: <directory of the feature that owns the fix, e.g. specs/concorde/features/002-auto-docsite>
 implement_in_id: <that feature's id>
 touches_docsite: true | false
 effort: small | medium | large

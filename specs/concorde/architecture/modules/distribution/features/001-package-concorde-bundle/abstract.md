@@ -37,7 +37,7 @@ The installation feature's core view
 <a href="/architecture/concorde-spec-kit-component-model.html">Spec Kit component model</a> and
 supplemental <a href="/architecture/concorde-bundle-installation-flow.html">bundle installation
 flow</a> (maintained sources
-`specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` and
+`specs/concorde/features/003-installation/diagrams/spec-kit-component-model.json` and
 `.../bundle-installation-flow.json`) already isolate Distribution's package role and the bundle
 lifecycle crossing; the module owns no diagram of its own.
 
@@ -91,7 +91,7 @@ preset and extension arrive across `contract.distribution.component-packages`.
 - **The level this feature belongs to** — [module.md](../../module.md) (the Distribution summary)
   and its [design reference](../../design.md); the root summary is
   [module.md](../../../../../module.md).
-- **The parent features** — [Install and Set Up Concorde with Spec Kit](../../../../../features/003-install-concorde-speckit/abstract.md)
-  and [Self-Host the Concorde Framework](../../../../../features/004-self-host-concorde/abstract.md).
+- **The parent features** — [Install and Set Up Concorde with Spec Kit](../../../../../features/003-installation/abstract.md)
+  and [Self-Host the Concorde Framework](../../../../../features/004-self-host/abstract.md).
 - **Maintainer guides** — [docs/releasing.md](../../../../../../../docs/releasing.md) and
   [docs/quick-start.md](../../../../../../../docs/quick-start.md).

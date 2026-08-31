@@ -63,9 +63,9 @@ edge cases, status, and acceptance criteria live in:
   reference;
 - [Feature 001: the Concorde workflow](../specs/concorde/features/001-concorde-workflow/design.md),
   whose [abstract](../specs/concorde/features/001-concorde-workflow/abstract.md) is the fastest orientation;
-- [Feature 002: project docsite publication](../specs/concorde/features/002-create-project-docsite/design.md); and
-- [Feature 003: installation through Spec Kit](../specs/concorde/features/003-install-concorde-speckit/design.md); and
-- [Feature 004: development self-hosting](../specs/concorde/features/004-self-host-concorde/design.md).
+- [Feature 002: project docsite publication](../specs/concorde/features/002-auto-docsite/design.md); and
+- [Feature 003: installation through Spec Kit](../specs/concorde/features/003-installation/design.md); and
+- [Feature 004: development self-hosting](../specs/concorde/features/004-self-host/design.md).
 
 Feature status is shown rather than interpreted. A published draft remains a draft; publication does
 not imply approval, implementation, or verified evidence.

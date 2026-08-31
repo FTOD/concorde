@@ -6,7 +6,7 @@ from pathlib import Path
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-CONTRACT = REPOSITORY_ROOT / "specs/concorde/features/004-self-host-concorde/contracts"
+CONTRACT = REPOSITORY_ROOT / "specs/concorde/features/004-self-host/contracts"
 
 
 class SelfHostingContractTests(unittest.TestCase):

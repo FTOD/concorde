@@ -106,9 +106,9 @@ The three Spec Kit package concepts have different jobs:
 
 Catalogs are trusted discovery metadata for these independently versioned packages; they are not a
 fourth installed runtime component. See the maintained
-[component model](specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json),
-[installation flow](specs/concorde/features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json),
-and the full [Feature 003 setup specification](specs/concorde/features/003-install-concorde-speckit/design.md).
+[component model](specs/concorde/features/003-installation/diagrams/spec-kit-component-model.json),
+[installation flow](specs/concorde/features/003-installation/diagrams/bundle-installation-flow.json),
+and the full [Feature 003 setup specification](specs/concorde/features/003-installation/design.md).
 The project docsite build turns module-owned and feature-declared diagram sources into interactive
 standalone views.
 
@@ -160,7 +160,7 @@ uvx --from specify-cli==0.16.4 python install-concorde.py --integration codex
 
 The installer is an optional accelerator over public Spec Kit operations; it never copies component
 files or bypasses bundle ownership. Its full inputs, outputs, and failure behavior are in the
-[one-command installation design](specs/concorde/features/003-install-concorde-speckit/subfeatures/002-one-command-install/design.md).
+[one-command installation design](specs/concorde/features/003-installation/subfeatures/002-one-command-install/design.md).
 The manual native path remains in the [framework quick start](docs/quick-start.md).
 
 ### Install current checkout sources (development)
@@ -280,11 +280,11 @@ production Docusaurus build. Start with the maintained [documentation overview](
 - [Project constitution](https://github.com/FTOD/concorde/blob/main/.specify/memory/constitution.md)
 - [Root architecture](specs/concorde/module.md) (module summary; its design reference is the adjacent `design.md`)
 - [Concorde workflow abstract](specs/concorde/features/001-concorde-workflow/abstract.md) and [specification](specs/concorde/features/001-concorde-workflow/design.md)
-- [Project docsite specification](specs/concorde/features/002-create-project-docsite/design.md)
-- [Spec Kit installation specification](specs/concorde/features/003-install-concorde-speckit/design.md)
+- [Project docsite specification](specs/concorde/features/002-auto-docsite/design.md)
+- [Spec Kit installation specification](specs/concorde/features/003-installation/design.md)
 - [Releasing Concorde](docs/releasing.md)
-- [Development self-hosting specification](specs/concorde/features/004-self-host-concorde/design.md)
-- [Workflow reflections specification](specs/concorde/features/005-record-workflow-reflections/design.md); the maintained log is `specs/concorde/reflections.md`
+- [Development self-hosting specification](specs/concorde/features/004-self-host/design.md)
+- [Workflow reflections specification](specs/concorde/features/005-auto-reflections/design.md); the maintained log is `specs/concorde/reflections.md`
 
 
 ## Project status

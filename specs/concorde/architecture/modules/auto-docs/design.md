@@ -40,7 +40,7 @@ succeeds.
 - **Failure**: renderer diagnostics are preserved and publication stops for the affected view.
 - **Evidence**: both maintained architecture views pass all 9 Archify showcase checks; disposable
   deliveries are recreated under ignored `generated/architecture/`, while durable attempt evidence is
-  recorded in `specs/concorde/features/002-create-project-docsite/design.md`.
+  recorded in `specs/concorde/features/002-auto-docsite/design.md`.
 
 The other four contracts are summarized in `module.md` and defined in full under `architecture/contracts/`.
 
@@ -51,7 +51,7 @@ README-plus-two-tree source discovery, strict link mapping, permanent feature sp
 realization projection, sandboxed Archify embedding, local search, accessible presentation,
 schema-valid manifest, atomic promotion, repeatability, and source immutability all have executable
 evidence in `docsite/tests/` and
-`specs/concorde/features/002-create-project-docsite/design.md`. Browser containment
+`specs/concorde/features/002-auto-docsite/design.md`. Browser containment
 and light/dark perceptual review of the project-level and Auto-Docs artifacts remain pending
 because Chrome/Chromium is unavailable in the validation environment; structural checks are not
 treated as perceptual evidence.

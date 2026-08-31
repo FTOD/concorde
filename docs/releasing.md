@@ -9,7 +9,7 @@ A Concorde release is three archives and three Spec Kit catalogs published as im
 one GitHub release on `FTOD/concorde`, plus a small `release.json` pointer. Publication is automated:
 a maintainer marks a version by pushing a tag, and the `Publish Concorde release` workflow builds,
 verifies, and publishes it. The normative behavior is the
-[publish-release sub-feature](../specs/concorde/features/003-install-concorde-speckit/subfeatures/001-publish-release/design.md)
+[publish-release sub-feature](../specs/concorde/features/003-installation/subfeatures/001-publish-release/design.md)
 of Feature 003; the published layout and pointer schema are defined by that sub-feature's
 `contracts/release-publication.md` interface profile in the repository.
 

@@ -13,7 +13,7 @@ contracts:
   required:
     - contract.concorde.spec-kit-platform
 evidence_status: unknown
-canonical_design: specs/concorde/features/003-install-concorde-speckit/subfeatures/002-one-command-install/design.md
+canonical_design: specs/concorde/features/003-installation/subfeatures/002-one-command-install/design.md
 ---
 
 # Feature Design: One-Command Installation

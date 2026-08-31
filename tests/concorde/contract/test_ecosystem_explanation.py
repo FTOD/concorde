@@ -4,7 +4,7 @@ import unittest
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-FEATURE_ROOT = REPOSITORY_ROOT / "specs/concorde/features/003-install-concorde-speckit"
+FEATURE_ROOT = REPOSITORY_ROOT / "specs/concorde/features/003-installation"
 INSTALLER_FEATURE_ROOT = FEATURE_ROOT / "subfeatures/002-one-command-install"
 
 

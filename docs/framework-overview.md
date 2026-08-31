@@ -135,14 +135,14 @@ and convergence. Concorde adds architectural controls around that lifecycle:
 
 Installation is also Spec Kit-native. A bundle pins a preset and extension; the active coding-agent
 integration presents their command definitions as skills or slash commands. The detailed boundary is
-specified by [Feature 003](../specs/concorde/features/003-install-concorde-speckit/design.md).
+specified by [Feature 003](../specs/concorde/features/003-installation/design.md).
 
 ## What Concorde deliberately does not do
 
 Concorde does not supersede Spec Kit, choose architecture without maintainer review, model every class
 or function, or treat valid diagrams as proof that code works. It also does not turn Docusaurus or
 generated HTML into a source of intent. The documentation site specified by
-[Feature 002](../specs/concorde/features/002-create-project-docsite/design.md) is a reproducible read
+[Feature 002](../specs/concorde/features/002-auto-docsite/design.md) is a reproducible read
 model over the maintained sources.
 
 The next guide, [Specifications, design, and architecture](specification-model.md), explains how these

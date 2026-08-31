@@ -107,4 +107,4 @@ second child sequence would duplicate those two complementary views.
 
 - Source discovery, validation, route, provenance, search, and manifest tests under `docsite/tests/`.
 - Reproducible production output from `docsite/`.
-- Requirement-to-evidence mapping in `specs/concorde/features/002-create-project-docsite/implementation.md`.
+- Requirement-to-evidence mapping in `specs/concorde/features/002-auto-docsite/implementation.md`.

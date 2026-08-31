@@ -11,7 +11,7 @@ first architecture-aware feature. The installation paths are intentionally isola
 the bundle, preset, extension, and agent integration that a user project receives.
 
 The supported setup boundary and current evidence status are authoritative in
-[Feature 003](../specs/concorde/features/003-install-concorde-speckit/design.md).
+[Feature 003](../specs/concorde/features/003-installation/design.md).
 
 ## 1. Preview this project's read model
 
@@ -43,7 +43,7 @@ npm run check
 The gate checks types, tests, source validity, deterministic Archify delivery, routes, links,
 manifest completeness, and a production build. It recreates ignored standalone diagrams from their
 maintained JSON; a failed candidate is not promoted over the previous successful output. Publication
-behavior is specified by [Feature 002](../specs/concorde/features/002-create-project-docsite/design.md).
+behavior is specified by [Feature 002](../specs/concorde/features/002-auto-docsite/design.md).
 
 ## 2. Install the published release
 
@@ -87,7 +87,7 @@ less install-concorde.py
 uvx --from specify-cli==0.16.4 python install-concorde.py --integration codex
 ```
 
-The [one-command installation design](../specs/concorde/features/003-install-concorde-speckit/subfeatures/002-one-command-install/design.md)
+The [one-command installation design](../specs/concorde/features/003-installation/subfeatures/002-one-command-install/design.md)
 defines the required behavior, inputs, reports, and failure handling; its repository-owned
 `contracts/installer-cli.md` supplies the exact interface profile. The command is only an accelerator:
 it invokes public Spec Kit operations, then only the deterministic projector delivered by the

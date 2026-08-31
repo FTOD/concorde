@@ -10,7 +10,7 @@ contracts:
   required:
     - contract.concorde.spec-kit-platform
 diagrams:
-  - source: specs/concorde/features/004-self-host-concorde/diagrams/concorde-self-hosting-components.json
+  - source: specs/concorde/features/004-self-host/diagrams/concorde-self-hosting-components.json
     role: core
     kind: architecture
     scenarios:
@@ -19,7 +19,7 @@ diagrams:
       - verify-self-hosting-freshness
     output: generated/architecture/concorde-self-hosting-components.html
 evidence_status: unknown
-canonical_design: specs/concorde/features/004-self-host-concorde/design.md
+canonical_design: specs/concorde/features/004-self-host/design.md
 ---
 
 # Feature Design: Self-Host the Concorde Framework

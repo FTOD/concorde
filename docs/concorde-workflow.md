@@ -319,7 +319,7 @@ module-owned and feature-declared Archify source before Docusaurus consumes it. 
 deterministic and read-only; ignored generated pages and diagram deliveries never become a second source of project intent.
 
 The publication behavior is specified separately by
-[Feature 002](../specs/concorde/features/002-create-project-docsite/design.md).
+[Feature 002](../specs/concorde/features/002-auto-docsite/design.md).
 
 ## Starting the next change
 

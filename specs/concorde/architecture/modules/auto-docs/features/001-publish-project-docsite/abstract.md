@@ -95,7 +95,7 @@ fails, the last successful site is preserved.
 - **The level this feature belongs to** — [module.md](../../module.md) (the Auto-Docs summary)
   and its [design reference](../../design.md); the project module summary is
   [module.md](../../../../../module.md).
-- **The parent feature** — [Create Unified Project Docsite](../../../../../features/002-create-project-docsite/abstract.md)
-  and its [design.md](../../../../../features/002-create-project-docsite/design.md), which carries the
+- **The parent feature** — [Create Unified Project Docsite](../../../../../features/002-auto-docsite/abstract.md)
+  and its [design.md](../../../../../features/002-auto-docsite/design.md), which carries the
   project-wide requirements and evidence.
 - **Contributor guide** — [docs/contributing/docsite.md](../../../../../../../docs/contributing/docsite.md).

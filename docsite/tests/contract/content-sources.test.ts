@@ -10,7 +10,7 @@ import type {ValidationFinding} from '../../plugins/concorde-content/types';
 describe('content source diagnostics', () => {
   it('defines the README homepage, docs diagrams, and independent Architecture and Features projections in content-source contract v10', async () => {
     const contract = await readFile(resolve(
-      process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts/content-sources.md',
+      process.cwd(), '../specs/concorde/features/002-auto-docsite/contracts/content-sources.md',
     ), 'utf8');
     const moduleContract = await readFile(resolve(
       process.cwd(), '../specs/concorde/architecture/modules/auto-docs/architecture/contracts/project-content/contract.md',

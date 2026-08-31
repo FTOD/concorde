@@ -34,8 +34,8 @@ produces. See the installation feature's
 <a href="/architecture/concorde-spec-kit-component-model.html">component model</a> and
 <a href="/architecture/concorde-bundle-installation-flow.html">installation flow</a>. Their
 maintained sources are
-`specs/concorde/features/003-install-concorde-speckit/diagrams/spec-kit-component-model.json` and
-`specs/concorde/features/003-install-concorde-speckit/diagrams/bundle-installation-flow.json`.
+`specs/concorde/features/003-installation/diagrams/spec-kit-component-model.json` and
+`specs/concorde/features/003-installation/diagrams/bundle-installation-flow.json`.
 
 ## Features
 

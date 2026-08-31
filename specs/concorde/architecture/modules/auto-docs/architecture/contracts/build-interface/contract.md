@@ -28,7 +28,7 @@ evidence_status: verified
 
 Provide stable `inspect`, `validate`, `render-diagrams`, `start`, `test`, `build`, `typecheck`, and `check` operations from
 the private `docsite/` npm project. Complete inputs, outputs, command semantics, and exit behavior are
-defined in `specs/concorde/features/002-create-project-docsite/contracts/build-interface.md`.
+defined in `specs/concorde/features/002-auto-docsite/contracts/build-interface.md`.
 
 ## Information
 

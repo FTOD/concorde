@@ -13,7 +13,7 @@ from concorde.diagnostics import canonical_json, operation_envelope  # noqa: E40
 from concorde.reflections import parse_reflection_log  # noqa: E402
 from concorde.validate import validate_project  # noqa: E402
 
-EXAMPLE_LOG = REPOSITORY_ROOT / "specs/concorde/features/005-record-workflow-reflections/contracts/examples/reflections.md"
+EXAMPLE_LOG = REPOSITORY_ROOT / "specs/concorde/features/005-auto-reflections/contracts/examples/reflections.md"
 
 
 def reflect_rules(result) -> list[str]:

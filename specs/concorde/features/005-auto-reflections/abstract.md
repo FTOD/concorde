@@ -131,5 +131,5 @@ Maintainer ──▶ triage orchestrator ─┬─▶ investigator agents ─▶
 - **The level this feature belongs to** — [module.md](../../module.md) and its
   [design reference](../../design.md).
 - **Related feature authorities** — [Concorde Workflow](../001-concorde-workflow/abstract.md),
-  [Install Concorde for Spec Kit](../003-install-concorde-speckit/abstract.md), and
-  [Self-Host Concorde](../004-self-host-concorde/abstract.md).
+  [Install Concorde for Spec Kit](../003-installation/abstract.md), and
+  [Self-Host Concorde](../004-self-host/abstract.md).

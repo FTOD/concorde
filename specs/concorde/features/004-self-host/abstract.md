@@ -153,6 +153,6 @@ Preserved, never owned:  specs/** · docs/** · code · tests · project config 
   modules that contribute: [Distribution](../../architecture/modules/distribution/module.md) and
   [Skills](../../architecture/modules/skills/module.md).
 - **The neighbours** — the released path this feature mirrors:
-  [Install and Set Up Concorde with Spec Kit](../003-install-concorde-speckit/abstract.md); the workflow
+  [Install and Set Up Concorde with Spec Kit](../003-installation/abstract.md); the workflow
   it activates: [Concorde Workflow](../001-concorde-workflow/abstract.md).
 - **The maintainer guide** — [docs/self-hosting.md](../../../../docs/self-hosting.md).

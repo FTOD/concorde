@@ -10,7 +10,7 @@ root `README.md` plus the maintained `docs/` and `specs/` trees, then presents o
 and three navigation families: Documentation, Architecture, and Features.
 
 The complete publication behavior is specified by
-[Feature 002](../../specs/concorde/features/002-create-project-docsite/design.md).
+[Feature 002](../../specs/concorde/features/002-auto-docsite/design.md).
 
 ## Know which sources are eligible
 

@@ -13,7 +13,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 CONTRACT = (
     REPOSITORY_ROOT
-    / "specs/concorde/features/003-install-concorde-speckit/subfeatures/001-publish-release/contracts/release-publication.md"
+    / "specs/concorde/features/003-installation/subfeatures/001-publish-release/contracts/release-publication.md"
 )
 WORKFLOW = REPOSITORY_ROOT / ".github/workflows/publish-release.yml"
 

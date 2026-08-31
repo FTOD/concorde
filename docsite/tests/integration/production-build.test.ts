@@ -38,7 +38,7 @@ describe('production build', () => {
   it('publishes landing, three-part navigation, provenance, diagrams, local search, and all manifest routes', async () => {
     const manifest = JSON.parse(firstManifest);
     expect(manifest.schemaVersion).toBe(9);
-    const schema = JSON.parse(await readFile(resolve(siteDir, '../specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json'), 'utf8'));
+    const schema = JSON.parse(await readFile(resolve(siteDir, '../specs/concorde/features/002-auto-docsite/contracts/build-manifest.schema.json'), 'utf8'));
     expect(new Ajv2020({strictTypes: true, strictTuples: true}).compile(schema)(manifest)).toBe(true);
     const homepage = await readFile(resolve(buildDir, 'index.html'), 'utf8');
     expect(homepage).toContain('Key features');
@@ -107,11 +107,11 @@ describe('production build', () => {
       route: '/architecture/concorde-workflow-components.html',
     })]));
     expect(docsiteFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
-      source: 'specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json',
+      source: 'specs/concorde/features/002-auto-docsite/diagrams/project-docsite-publication-flow.json',
       route: '/architecture/project-docsite-publication-flow.html',
     })]));
     expect(selfHostingFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
-      source: 'specs/concorde/features/004-self-host-concorde/diagrams/concorde-self-hosting-components.json',
+      source: 'specs/concorde/features/004-self-host/diagrams/concorde-self-hosting-components.json',
       role: 'core',
       kind: 'architecture',
       route: '/architecture/concorde-self-hosting-components.html',

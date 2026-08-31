@@ -25,8 +25,8 @@ class ValidationIntegrationTests(unittest.TestCase):
         current_authorities = (
             REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/design.md",
             REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/agent-commands.md",
-            REPOSITORY_ROOT / "specs/concorde/features/003-install-concorde-speckit/design.md",
-            REPOSITORY_ROOT / "specs/concorde/features/003-install-concorde-speckit/contracts/installed-command-surfaces.md",
+            REPOSITORY_ROOT / "specs/concorde/features/003-installation/design.md",
+            REPOSITORY_ROOT / "specs/concorde/features/003-installation/contracts/installed-command-surfaces.md",
             REPOSITORY_ROOT / "specs/concorde/architecture/contracts/spec-kit-installation/contract.md",
             REPOSITORY_ROOT / "README.md",
             REPOSITORY_ROOT / "docs/commands.md",

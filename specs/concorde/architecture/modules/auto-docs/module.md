@@ -37,7 +37,7 @@ its module boundary, its external providers Project Content (root `README.md` pl
 Project Specifications (`specs/**`), and Archify (validated HTML views), and the Maintainer who builds and browses. The
 Feature 002 supplemental
 <a href="/architecture/project-docsite-publication-flow.html">publication flow</a> (maintained source
-`specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json`)
+`specs/concorde/features/002-auto-docsite/diagrams/project-docsite-publication-flow.json`)
 explains the build sequence without redefining this structure.
 
 ## Features
@@ -85,5 +85,5 @@ promotion is atomic. Realization detail and recorded decisions are in the
 ## Evidence Status
 
 The publication feature is implemented with executable evidence in `docsite/tests/` and
-`specs/concorde/features/002-create-project-docsite/design.md`; details are in the
+`specs/concorde/features/002-auto-docsite/design.md`; details are in the
 [design reference](design.md#evidence-status).

@@ -73,7 +73,7 @@
       },
       "links": [
         {
-          "targetSourcePath": "specs/concorde/features/002-create-project-docsite/abstract.md",
+          "targetSourcePath": "specs/concorde/features/002-auto-docsite/abstract.md",
           "targetRoute": "/features/feature.concorde.publish-project-docsite"
         }
       ]
@@ -95,7 +95,7 @@
     },
     {
       "kind": "feature-implementation",
-      "sourcePath": "specs/concorde/features/002-create-project-docsite/implementation.md",
+      "sourcePath": "specs/concorde/features/002-auto-docsite/implementation.md",
       "sourceSha256": "4444444444444444444444444444444444444444444444444444444444444444",
       "route": "/features/feature.concorde.publish-project-docsite/implementation",
       "title": "Feature Implementation: Create Unified Project Docsite",
@@ -105,7 +105,7 @@
       },
       "links": [
         {
-          "targetSourcePath": "specs/concorde/features/002-create-project-docsite/design.md",
+          "targetSourcePath": "specs/concorde/features/002-auto-docsite/design.md",
           "targetRoute": "/features/feature.concorde.publish-project-docsite/design"
         }
       ],
@@ -121,7 +121,7 @@
     },
     {
       "kind": "feature-design",
-      "sourcePath": "specs/concorde/features/002-create-project-docsite/design.md",
+      "sourcePath": "specs/concorde/features/002-auto-docsite/design.md",
       "sourceSha256": "1111111111111111111111111111111111111111111111111111111111111111",
       "route": "/features/feature.concorde.publish-project-docsite/design",
       "title": "Create Unified Project Docsite",
@@ -140,7 +140,7 @@
       "status": "Implemented",
       "diagrams": [
         {
-          "source": "specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json",
+          "source": "specs/concorde/features/002-auto-docsite/diagrams/project-docsite-publication-flow.json",
           "sourceSha256": "2222222222222222222222222222222222222222222222222222222222222222",
           "role": "supplemental",
           "kind": "sequence",
@@ -154,7 +154,7 @@
     },
     {
       "kind": "feature-abstract",
-      "sourcePath": "specs/concorde/features/002-create-project-docsite/abstract.md",
+      "sourcePath": "specs/concorde/features/002-auto-docsite/abstract.md",
       "sourceSha256": "6666666666666666666666666666666666666666666666666666666666666666",
       "route": "/features/feature.concorde.publish-project-docsite",
       "title": "Create Unified Project Docsite",
@@ -164,11 +164,11 @@
       },
       "links": [
         {
-          "targetSourcePath": "specs/concorde/features/002-create-project-docsite/implementation.md",
+          "targetSourcePath": "specs/concorde/features/002-auto-docsite/implementation.md",
           "targetRoute": "/features/feature.concorde.publish-project-docsite/implementation"
         },
         {
-          "targetSourcePath": "specs/concorde/features/002-create-project-docsite/design.md",
+          "targetSourcePath": "specs/concorde/features/002-auto-docsite/design.md",
           "targetRoute": "/features/feature.concorde.publish-project-docsite/design"
         }
       ],
@@ -182,7 +182,7 @@
       "status": "Implemented",
       "diagrams": [
         {
-          "source": "specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json",
+          "source": "specs/concorde/features/002-auto-docsite/diagrams/project-docsite-publication-flow.json",
           "sourceSha256": "2222222222222222222222222222222222222222222222222222222222222222",
           "role": "supplemental",
           "kind": "sequence",
@@ -230,7 +230,7 @@
   ],
   "excludedSources": [
     {
-      "sourcePath": "specs/concorde/features/002-create-project-docsite/attempt/plan.md",
+      "sourcePath": "specs/concorde/features/002-auto-docsite/attempt/plan.md",
       "reason": "not-canonical-feature-artifact"
     }
   ],
@@ -241,9 +241,9 @@
     "/architecture/concorde/module.concorde",
     "/architecture/project-docsite-publication-flow.html",
     "/docs/",
-    "/features/concorde/features/002-create-project-docsite/design",
-    "/features/concorde/features/002-create-project-docsite/feature.concorde.publish-project-docsite",
-    "/features/concorde/features/002-create-project-docsite/implementation"
+    "/features/concorde/features/002-auto-docsite/design",
+    "/features/concorde/features/002-auto-docsite/feature.concorde.publish-project-docsite",
+    "/features/concorde/features/002-auto-docsite/implementation"
   ],
   "validation": {
     "status": "passed",

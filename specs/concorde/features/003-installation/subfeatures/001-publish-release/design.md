@@ -13,7 +13,7 @@ contracts:
   required:
     - contract.concorde.spec-kit-platform
 evidence_status: verified
-canonical_design: specs/concorde/features/003-install-concorde-speckit/subfeatures/001-publish-release/design.md
+canonical_design: specs/concorde/features/003-installation/subfeatures/001-publish-release/design.md
 ---
 
 # Feature Design: Publish a Concorde Release

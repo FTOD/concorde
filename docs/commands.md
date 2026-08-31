@@ -19,7 +19,7 @@ workflow.
 The normative command behavior is defined by
 [Feature 001](../specs/concorde/features/001-concorde-workflow/design.md); distribution of the
 installed surfaces is defined by
-[Feature 003](../specs/concorde/features/003-install-concorde-speckit/design.md).
+[Feature 003](../specs/concorde/features/003-installation/design.md).
 
 ## Concorde-specific operations
 
