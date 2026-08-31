@@ -173,8 +173,6 @@ gate passed TypeScript, 19 test files / 83 tests, 108-page validation, and produ
 - **R-001**: the historical Claude self-host refresh limitation remains open in the maintainer log;
   the new projector is implemented and tested, but the entry's final disposition is maintainer-owned.
 - **R-002**: plan/tasks guidance still contains the recorded module-edit authority disagreement.
-- **R-005**: the root level view intentionally remains module-oriented and does not draw every
-  Feature 005-specific crossing; the feature core view carries the explanatory detail.
 - **R-007**: the docsite still rejects canonical links to non-published reflection artifacts; the
   abstract uses code spans for those paths.
 - **R-044**: native Spec Kit 0.16.4 lacks arbitrary custom-agent projection. Feature 003's installed
