@@ -185,6 +185,29 @@ def _write_json(path: Path, value: dict) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
 
 
+def _capability_counts(manifest: dict, *kinds: str) -> dict[str, int]:
+    """Count declared component capabilities from the manifest authority."""
+    provided = manifest.get("provides", {})
+    collections = provided.values() if isinstance(provided, dict) else (provided,)
+    entries = [
+        entry
+        for collection in collections
+        if isinstance(collection, list)
+        for entry in collection
+        if isinstance(entry, dict)
+    ]
+    if any("type" in entry for entry in entries):
+        return {
+            kind: sum(
+                1
+                for entry in entries
+                if entry.get("type") == kind.removesuffix("s")
+            )
+            for kind in kinds
+        }
+    return {kind: len(provided.get(kind, []) or []) for kind in kinds}
+
+
 def build_release(output: Path, base_url: str | None = None, version: str | None = None) -> dict[str, str]:
     """Build the three archives and three catalogs into ``output``.
 
@@ -195,6 +218,12 @@ def build_release(output: Path, base_url: str | None = None, version: str | None
     manifest_version = identity.version
     version = version or manifest_version
     base_url = base_url or default_base_url(version)
+    preset_capabilities = _capability_counts(
+        _load_yaml(REPOSITORY_ROOT / PRESET_MANIFEST), "templates", "commands"
+    )
+    extension_capabilities = _capability_counts(
+        _load_yaml(REPOSITORY_ROOT / EXTENSION_MANIFEST), "commands", "scripts"
+    )
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     archives = {
@@ -229,7 +258,7 @@ def build_release(output: Path, base_url: str | None = None, version: str | None
                     "effect": "read-write",
                     "download_url": f"{base_url}/concorde-extension-{version}.zip",
                     "sha256": f"sha256:{digests[f'concorde-extension-{version}.zip']}",
-                    "provides": {"commands": 5, "scripts": 5},
+                    "provides": extension_capabilities,
                     "tags": ["architecture", "context", "validation"],
                 }
             },
@@ -250,7 +279,7 @@ def build_release(output: Path, base_url: str | None = None, version: str | None
                     "description": "Architecture guidance plus authoritative nested-workspace routing for the Spec Kit lifecycle",
                     "download_url": f"{base_url}/concorde-preset-{version}.zip",
                     "sha256": f"sha256:{digests[f'concorde-preset-{version}.zip']}",
-                    "provides": {"templates": 6, "commands": 10},
+                    "provides": preset_capabilities,
                     "tags": ["architecture", "contracts", "spec-driven-development"],
                 }
             },

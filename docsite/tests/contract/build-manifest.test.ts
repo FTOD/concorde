@@ -18,7 +18,7 @@ describe('build manifest contract', () => {
     const example = JSON.parse(
       await readFile(resolve(contractRoot, 'build-manifest.example.json'), 'utf8'),
     );
-    const validate = new Ajv2020({allErrors: true}).compile(schema);
+    const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(schema);
 
     expect(validate(example), JSON.stringify(validate.errors, null, 2)).toBe(true);
     expect(example.schemaVersion).toBe(9);
@@ -32,6 +32,49 @@ describe('build manifest contract', () => {
       '/features/feature.concorde.publish-project-docsite',
     ]);
     expect(JSON.stringify(featurePages)).not.toMatch(/\/features\/concorde\/features\//);
+  });
+
+  it('compiles the normative schema under AJV strict types without diagnostics', async () => {
+    const contractRoot = resolve(
+      process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts',
+    );
+    const schema = JSON.parse(await readFile(resolve(contractRoot, 'build-manifest.schema.json'), 'utf8'));
+    const logged: string[] = [];
+    const logger = {
+      log: (message: unknown) => logged.push(String(message)),
+      warn: (message: unknown) => logged.push(String(message)),
+      error: (message: unknown) => logged.push(String(message)),
+    };
+    expect(() => new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true, logger}).compile(schema)).not.toThrow();
+    expect(logged).toEqual([]);
+  });
+
+  it('rejects a core-role diagram on a project-document page', async () => {
+    const contractRoot = resolve(
+      process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts',
+    );
+    const schema = JSON.parse(await readFile(resolve(contractRoot, 'build-manifest.schema.json'), 'utf8'));
+    const manifest = JSON.parse(await readFile(resolve(contractRoot, 'build-manifest.example.json'), 'utf8'));
+    const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(schema);
+    const page = manifest.pages.find((candidate: {kind: string; route: string}) =>
+      candidate.kind === 'project-document' && candidate.route === '/docs/');
+    page.diagrams = [{
+      source: 'docs/diagrams/example.json',
+      sourceSha256: 'a'.repeat(64),
+      role: 'core',
+      kind: 'architecture',
+      scenarios: ['example'],
+      title: 'Example',
+      route: '/architecture/example.html',
+    }];
+    expect(validate(manifest)).toBe(false);
+    expect(validate.errors).toEqual(expect.arrayContaining([expect.objectContaining({
+      keyword: 'const',
+      instancePath: expect.stringMatching(/^\/pages\/\d+\/diagrams\/0\/role$/),
+      params: {allowedValue: 'supplemental'},
+    })]));
+    page.diagrams[0].role = 'supplemental';
+    expect(validate(manifest), JSON.stringify(validate.errors, null, 2)).toBe(true);
   });
 
   it('keeps published-site v5 aligned with Build Manifest schema v9', async () => {
@@ -48,7 +91,7 @@ describe('build manifest contract', () => {
     const schema = JSON.parse(await readFile(resolve(
       process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json',
     ), 'utf8'));
-    const validate = new Ajv2020({allErrors: true}).compile(schema);
+    const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(schema);
     const manifest = JSON.parse(JSON.stringify(createManifest(await buildRegistry(resolve(__dirname, '../fixtures/valid-project')))));
     expect(validate(manifest), JSON.stringify(validate.errors, null, 2)).toBe(true);
     expect(manifest.pages.map((page: {kind: string}) => page.kind).sort()).toEqual([

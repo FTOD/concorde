@@ -39,7 +39,7 @@ describe('production build', () => {
     const manifest = JSON.parse(firstManifest);
     expect(manifest.schemaVersion).toBe(9);
     const schema = JSON.parse(await readFile(resolve(siteDir, '../specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json'), 'utf8'));
-    expect(new Ajv2020().compile(schema)(manifest)).toBe(true);
+    expect(new Ajv2020({strictTypes: true, strictTuples: true}).compile(schema)(manifest)).toBe(true);
     const homepage = await readFile(resolve(buildDir, 'index.html'), 'utf8');
     expect(homepage).toContain('Key features');
     expect(homepage).toContain('Concorde commands');
@@ -82,10 +82,21 @@ describe('production build', () => {
     const featureSidebar = JSON.parse(await readFile(resolve(siteDir, '.generated/features-sidebar.json'), 'utf8'));
     expect(featureSidebar).toHaveLength(1);
     expect(featureSidebar[0]).toMatchObject({type: 'category', label: 'Concorde', collapsed: false});
-    expect(featureSidebar[0].items.slice(0, 5).map((item: {label: string}) => item.label)).toEqual([
-      'Concorde Workflow', 'Create Unified Project Docsite', 'Install and Set Up Concorde with Spec Kit',
-      'Self-Host the Concorde Framework', 'Record and Triage Workflow Reflections',
-    ]);
+    const rootFeatureIds = [
+      'feature.concorde.workflow',
+      'feature.concorde.publish-project-docsite',
+      'feature.concorde.install-with-spec-kit',
+      'feature.concorde.self-host-framework',
+      'feature.concorde.record-workflow-reflections',
+    ];
+    const rootFeatureItems = featureSidebar[0].items.slice(0, rootFeatureIds.length);
+    expect(rootFeatureItems.map((item: {link: {id: string}}) => item.link.id.replace(/\/abstract$/, '')))
+      .toEqual(rootFeatureIds);
+    const featureTitles = new Map(manifest.pages
+      .filter((page: {featureId?: string; kind: string}) => page.kind === 'feature-abstract' && page.featureId)
+      .map((page: {featureId: string; title: string}) => [page.featureId, page.title]));
+    expect(rootFeatureItems.map((item: {label: string}) => item.label))
+      .toEqual(rootFeatureIds.map((featureId) => featureTitles.get(featureId)));
     expect(featureSidebar[0].items.slice(5).map((item: {label: string}) => item.label)).toEqual([
       'Skills', 'Scripts', 'Workspace Files', 'Distribution', 'Auto-Docs',
     ]);

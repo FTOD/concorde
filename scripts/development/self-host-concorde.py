@@ -400,9 +400,14 @@ def skill_path(command: str, integration: str = "codex") -> str:
     return f"{root}/{command.replace('.', '-')}/SKILL.md"
 
 
+def extension_link_cache(integration: str) -> str:
+    """Spec Kit's development-mode command cache for one integration inside the installed extension."""
+    return f".specify/extensions/{EXTENSION_ID}/.specify-dev/agent-commands/{integration}"
+
+
 def claude_extension_target(command: str) -> str:
     skill = command.replace(".", "-")
-    return f".specify/extensions/{EXTENSION_ID}/.specify-dev/agent-commands/claude/{skill}/SKILL.md"
+    return f"{extension_link_cache('claude')}/{skill}/SKILL.md"
 
 
 def surface_evidence(
@@ -465,6 +470,26 @@ def owned_paths(integration: str = "codex") -> tuple[str, ...]:
         TRIAGE_CONFIG_PATH,
         RECEIPT_PATH,
     }))
+
+
+def preserved_inactive_paths(integration: str) -> tuple[str, ...]:
+    """Concorde surfaces of every inactive protocol v1 integration.
+
+    Spec Kit's ``preset remove`` and forced ``extension add`` unregister every agent recorded in
+    the registry, not only the active one, so a refresh under one integration would delete or
+    revert the other integration's Concorde skills. Those trees are preserved project assets:
+    they are snapshotted with the owned scope and restored byte-for-byte after the host lifecycle
+    ran, on success and on rollback. They stay unregistered until their own reviewed apply.
+    """
+    integration_profile(integration)
+    paths: set[str] = set()
+    for other, profile in INTEGRATION_PROFILES.items():
+        if other == integration:
+            continue
+        paths.update(Path(skill_path(command, other)).parent.as_posix() for command in PRESET_COMMANDS + EXTENSION_COMMANDS)
+        if bool(profile["allow_extension_links"]):
+            paths.add(extension_link_cache(other))
+    return tuple(sorted(paths))
 
 
 def read_json(path: Path) -> dict[str, Any] | None:
@@ -768,6 +793,8 @@ def snapshot(root: Path, paths: Iterable[str], backup: Path) -> dict[str, bool]:
         if not state[relative]:
             continue
         destination = backup / relative
+        if destination.exists() or destination.is_symlink():
+            continue  # already captured inside an ancestor's snapshot (parents sort first)
         destination.parent.mkdir(parents=True, exist_ok=True)
         if source.is_dir() and not source.is_symlink():
             shutil.copytree(source, destination, symlinks=True)
@@ -1021,9 +1048,10 @@ def apply(root: Path, proposal_argument: str) -> dict[str, object]:
         return invalid_result(root, error)
 
     paths = owned_paths(str(fresh["integration"]))
+    preserved = preserved_inactive_paths(str(fresh["integration"]))
     with tempfile.TemporaryDirectory(prefix="concorde-self-host-backup-") as temporary:
         backup = Path(temporary)
-        state = snapshot(root, paths, backup)
+        state = snapshot(root, (*paths, *preserved), backup)
         try:
             refresh_components(root)
             refresh_agent_assets(
@@ -1032,6 +1060,15 @@ def apply(root: Path, proposal_argument: str) -> dict[str, object]:
                 str(next(item["version"] for item in fresh["components"] if item["kind"] == "extension")),
             )
             inject("verify")
+            unpreserved = restore(root, preserved, backup, state)
+            if unpreserved:
+                raise SelfHostError(
+                    "CONCORDE-SELF-HOST-023",
+                    "verify",
+                    unpreserved[0],
+                    "Inactive-integration Concorde surfaces could not be restored exactly after the host refresh.",
+                    "Restore the named path from version control, then retry from a new proposal.",
+                )
             installed_digest, registry_digest, surface_digest, surfaces = verify_materialization(root)
             receipt = {
                 "receipt_version": 1,
@@ -1063,7 +1100,7 @@ def apply(root: Path, proposal_argument: str) -> dict[str, object]:
                 "findings": [],
             }
         except SelfHostError as error:
-            residual = restore(root, paths, backup, state)
+            residual = restore(root, (*paths, *preserved), backup, state)
             findings = [error.finding]
             for relative in residual:
                 findings.append(finding(

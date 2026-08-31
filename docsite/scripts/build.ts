@@ -49,7 +49,7 @@ async function validateGeneratedManifest(candidate: string): Promise<void> {
     readFile(resolve(projectRoot, 'specs/concorde/features/002-create-project-docsite/contracts/build-manifest.schema.json'), 'utf8'),
     readFile(resolve(candidate, 'build-manifest.json'), 'utf8'),
   ]);
-  const validate = new Ajv2020({allErrors: true}).compile(JSON.parse(schemaText));
+  const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(JSON.parse(schemaText));
   if (!validate(JSON.parse(manifestText))) throw new Error(`Generated manifest violates its schema: ${JSON.stringify(validate.errors)}`);
 }
 

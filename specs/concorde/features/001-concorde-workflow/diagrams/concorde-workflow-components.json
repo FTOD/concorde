@@ -10,7 +10,7 @@
     },
     "repository": {
       "url": "https://github.com/FTOD/concorde.git",
-      "revision": "41e87dd3692d5909d92f50495df851ac5a9353ea"
+      "revision": "106f1b2f2861914fdc4199b800ca159ea58dbe11"
     },
     "viewBox": [1395, 1000],
     "views": [
@@ -75,7 +75,8 @@
       "pos": [440, 180],
       "size": [210, 86],
       "sources": [
-        {"path": ".agents/skills/speckit-plan/SKILL.md", "label": "representative surface"},
+        {"path": "presets/concorde/preset.yml", "label": "command inventory"},
+        {"path": "presets/concorde/commands/speckit.plan.md", "label": "representative surface"},
         {"path": "extensions/concorde/scripts/python/workspace.py", "label": "workspace gate"}
       ]
     },
@@ -101,7 +102,7 @@
       "pos": [440, 420],
       "size": [200, 86],
       "sources": [
-        {"path": ".agents/skills/speckit-fast-loop/SKILL.md", "label": "materialized surface"}
+        {"path": "presets/concorde/commands/speckit.fast-loop.md", "label": "command source"}
       ]
     },
     {

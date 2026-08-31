@@ -58,7 +58,8 @@ A preview and a production build use the same inclusion, routing, and validation
    Features category metadata supplies human-readable titles.
 5. Docusaurus renders a candidate site.
 6. Candidate pages, routes, links, provenance, and the build manifest (Build Manifest v9) are
-   validated.
+   validated. The manifest schema is compiled in AJV strict mode, so a strict-mode diagnostic in the
+   schema fails the build instead of printing a warning.
 7. Only a successful candidate is promoted to `docsite/build/`.
 
 Because generated diagrams, Architecture/Features pages, and site output are projections, never edit

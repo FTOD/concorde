@@ -10,6 +10,29 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, VALID_PROJECT
 
 
 class AgentCommandContractTests(unittest.TestCase):
+    def test_task_and_abstract_guidance_respect_durable_and_published_boundaries(self):
+        tasks = (
+            REPOSITORY_ROOT / "presets/concorde/templates/tasks-template.md"
+        ).read_text(encoding="utf-8")
+        abstract = (
+            REPOSITORY_ROOT / "presets/concorde/templates/abstract-template.md"
+        ).read_text(encoding="utf-8")
+        specify = (
+            REPOSITORY_ROOT / "presets/concorde/commands/speckit.specify.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertNotIn("module registrations, boundary contract", tasks)
+        self.assertIn("Do not turn a required module registration", tasks)
+        self.assertIn("maintainer-reviewed architecture edit or an eligible fast-loop", tasks)
+        for source in (abstract, specify):
+            self.assertIn("published module boundary contracts", source)
+            self.assertIn("code", source)
+        self.assertNotIn("[contracts/](contracts/)", abstract)
+        self.assertIn(
+            "Every declared scenario identifier resolves in the providing module's current-level view",
+            specify,
+        )
+
     def test_fast_loop_direct_edit_surface_has_bounded_no_attempt_contract(self):
         command = REPOSITORY_ROOT / "presets/concorde/commands/speckit.fast-loop.md"
         contract = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/contracts/fast-loop-command.md"
@@ -218,6 +241,27 @@ class AgentCommandContractTests(unittest.TestCase):
             self.assertIn("proposal_path", content, path.as_posix())
             self.assertIn("task_summary", content, path.as_posix())
             self.assertIn("checklist_summary", content, path.as_posix())
+
+    def test_planning_guidance_emits_runnable_quickstarts_and_resolved_task_paths(self):
+        plan = (REPOSITORY_ROOT / "presets/concorde/commands/speckit.plan.md").read_text(
+            encoding="utf-8"
+        )
+        tasks = (REPOSITORY_ROOT / "presets/concorde/commands/speckit.tasks.md").read_text(
+            encoding="utf-8"
+        )
+        task_template = (
+            REPOSITORY_ROOT / "presets/concorde/templates/tasks-template.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("concorde.py --project-root . validate", plan)
+        self.assertIn("python -m unittest discover -s tests/concorde -t .", plan)
+        self.assertIn(
+            "discover -s tests/concorde -t . -p test_*.py",
+            (REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8"),
+        )
+        self.assertIn("rg --files", tasks)
+        self.assertIn("implementation code, tests, generated projections, and public guides", task_template)
+        self.assertNotIn("every task path must remain beneath that child root", task_template)
 
     def test_python_launcher_preserves_exit_and_handles_quoted_root(self):
         launcher = REPOSITORY_ROOT / "extensions/concorde/scripts/python/concorde.py"

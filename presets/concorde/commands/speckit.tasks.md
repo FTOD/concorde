@@ -111,6 +111,9 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - Final Phase: Polish & cross-cutting concerns
    - All tasks must follow the strict checklist format (see Task Generation Rules below)
    - Clear file paths for each task
+   - Before finalizing, verify every path to an existing file against the repository file inventory
+     (for example, `rg --files`) and verify that every proposed new path has the intended existing
+     parent directory; do not invent a test module, source file, or acceptance target from memory
    - Dependencies section showing story completion order
    - Parallel execution examples per story
    - Implementation strategy section (MVP first, incremental delivery)

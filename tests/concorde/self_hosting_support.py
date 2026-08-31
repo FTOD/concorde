@@ -102,7 +102,14 @@ def hash_paths(root: Path, relatives: tuple[str, ...]) -> dict[str, str]:
     return result
 
 
-def preserved_sentinels() -> dict[str, str]:
+def load_preserved_fixture(path: Path) -> dict[str, str]:
+    """Read a preserved-files fixture strictly.
+
+    The object keys are the seeded relative paths, so they define preservation coverage rather
+    than incidental data. Ordinary JSON parsing keeps the last value of a repeated key silently;
+    here a repeated key or non-string content fails the fixture instead (R-039).
+    """
+
     def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
         value: dict[str, object] = {}
         for key, item in pairs:
@@ -111,7 +118,44 @@ def preserved_sentinels() -> dict[str, str]:
             value[key] = item
         return value
 
-    value = json.loads(PRESERVED_FIXTURE.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_keys)
+    value = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_keys)
     if not isinstance(value, dict) or not all(isinstance(key, str) and isinstance(item, str) for key, item in value.items()):
         raise AssertionError("Self-hosting preserved-files fixture must be a string-to-string object.")
     return value
+
+
+def preserved_sentinels() -> dict[str, str]:
+    return load_preserved_fixture(PRESERVED_FIXTURE)
+
+
+def select_integration(root: Path, integration: str) -> None:
+    """Make ``integration`` active the way a maintainer does by hand: rewrite both host records."""
+    integration_path = root / ".specify/integration.json"
+    state = json.loads(integration_path.read_text(encoding="utf-8"))
+    state["integration"] = integration
+    state["default_integration"] = integration
+    installed = state.setdefault("installed_integrations", [])
+    if integration not in installed:
+        installed.append(integration)
+    state.setdefault("integration_settings", {})[integration] = {"script": "sh", "invoke_separator": "-"}
+    integration_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+    options_path = root / ".specify/init-options.json"
+    options = json.loads(options_path.read_text(encoding="utf-8"))
+    options["ai"] = integration
+    options["integration"] = integration
+    options_path.write_text(json.dumps(options, indent=2) + "\n", encoding="utf-8")
+
+
+def surface_tree(root: Path, relative: str) -> dict[str, tuple[str, str]]:
+    """Every entry below ``relative`` with its representation: ('symlink', link value) or ('file', sha256)."""
+    base = root / relative
+    result: dict[str, tuple[str, str]] = {}
+    if not base.is_dir():
+        return result
+    for path in sorted(base.rglob("*")):
+        key = path.relative_to(root).as_posix()
+        if path.is_symlink():
+            result[key] = ("symlink", os.readlink(path))
+        elif path.is_file():
+            result[key] = ("file", hashlib.sha256(path.read_bytes()).hexdigest())
+    return result

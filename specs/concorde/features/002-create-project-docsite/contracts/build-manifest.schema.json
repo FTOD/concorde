@@ -148,21 +148,6 @@
       "allOf": [
         {
           "if": {
-            "properties": { "kind": { "const": "project-document" } },
-            "required": ["kind"]
-          },
-          "then": {
-            "properties": {
-              "diagrams": {
-                "items": {
-                  "properties": { "role": { "const": "supplemental" } }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": {
             "properties": { "role": { "const": "core" } },
             "required": ["role"]
           },
@@ -312,6 +297,23 @@
           },
           "then": {
             "required": ["moduleId", "moduleRoute"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "project-document" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "diagrams": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": { "role": { "const": "supplemental" } }
+                }
+              }
+            }
           }
         }
       ]

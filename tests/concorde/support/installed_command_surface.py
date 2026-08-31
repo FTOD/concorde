@@ -122,7 +122,7 @@ def execute_workspace_surface(
 ) -> CommandSurfaceReceipt:
     content = artifact.read_text(encoding="utf-8")
     match = re.search(
-        r"(?:python3|python)\s+\.specify/extensions/concorde/scripts/python/workspace\.py\s+--phase\s+([a-z-]+)",
+        r"(?:python3|python)\s+\.specify/extensions/concorde/scripts/python/workspace\.py\s+--phase\s+([^\s`]+)",
         content,
     )
     if match is None or match.group(1) != phase:

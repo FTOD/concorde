@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.self_hosting_support import initialize_checkout, load_self_hosting, run_cli, skill_file, skill_root
+from tests.concorde.self_hosting_support import SKILL_ROOTS, initialize_checkout, load_self_hosting, run_cli, select_integration, skill_file, skill_root, surface_tree
 
 
 self_host = load_self_hosting()
@@ -235,6 +235,33 @@ class _SelfHostingLifecycleMixin:
         self.assertNotEqual(completed.returncode, 0)
         self.assertEqual(result["status"], "failed")
         self.assertFalse((self.root / ".specify/presets/concorde").exists())
+
+    def test_cross_integration_refresh_and_rollback_preserve_registered_inactive_surfaces(self):
+        self.propose()
+        self.assertEqual(self.apply()["status"], "applied")
+        materialized_root = SKILL_ROOTS[self.integration]
+        before = surface_tree(self.root, materialized_root)
+        self.assertGreaterEqual(len(before), 15)
+        select_integration(self.root, "claude" if self.integration == "codex" else "codex")
+        self.propose()
+        completed, result = run_cli(
+            self.root,
+            "apply",
+            "--proposal",
+            ".specify/self-hosting-proposal.json",
+            environment={"CONCORDE_SELF_HOST_FAIL_STAGE": "verify"},
+            check=False,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertEqual(result["status"], "rolled_back")
+        self.assertEqual(surface_tree(self.root, materialized_root), before)
+        self.propose()
+        self.assertEqual(self.apply()["status"], "applied")
+        self.assertEqual(surface_tree(self.root, materialized_root), before)
+        for command in self_host.EXTENSION_COMMANDS:
+            self.assertTrue(skill_file(self.root, self.integration, command).resolve().is_file(), command)
+        _, current = run_cli(self.root, "status")
+        self.assertEqual(current["status"], "current")
 
 
 class CodexSelfHostingLifecycleTests(_SelfHostingLifecycleMixin, unittest.TestCase):

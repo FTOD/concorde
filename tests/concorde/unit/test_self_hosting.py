@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.self_hosting_support import initialize_checkout, load_self_hosting
+from tests.concorde.self_hosting_support import initialize_checkout, load_preserved_fixture, load_self_hosting, preserved_sentinels
 
 
 self_host = load_self_hosting()
@@ -143,6 +143,64 @@ class SelfHostingUnitTests(unittest.TestCase):
         self.assertEqual(result["status"], "absent")
         self.assertEqual(result["dimensions"]["activation"]["status"], "unknown")
         self.assertEqual(before, after)
+
+    def test_preserved_inactive_paths_cover_only_the_other_integration(self):
+        codex_active = self_host.preserved_inactive_paths("codex")
+        claude_active = self_host.preserved_inactive_paths("claude")
+        self.assertEqual(len(codex_active), 16)
+        self.assertIn(".specify/extensions/concorde/.specify-dev/agent-commands/claude", codex_active)
+        self.assertTrue(all(path.startswith((".claude/skills/speckit-", ".specify/")) for path in codex_active))
+        self.assertEqual(len(claude_active), 15)
+        self.assertTrue(all(path.startswith(".agents/skills/speckit-") for path in claude_active))
+        self.assertFalse(set(codex_active) & set(self_host.owned_paths("codex")))
+        self.assertFalse(set(claude_active) & set(self_host.owned_paths("claude")))
+        with self.assertRaises(self_host.SelfHostError):
+            self_host.preserved_inactive_paths("gemini")
+
+
+class PreservedFixtureTests(unittest.TestCase):
+    """The preservation fixture's keys define SC-005 coverage, so they are read strictly (R-039)."""
+
+    REQUIRED_SENTINELS = frozenset(
+        {
+            "specs/example/abstract.md",
+            "specs/example/design.md",
+            "specs/example/implementation.md",
+            "specs/example/architecture/contracts/io/contract.md",
+            "specs/example/diagrams/components.json",
+            "specs/example/attempt/tasks.md",
+            "docs/user.md",
+            "src/user.py",
+            "tests/user.txt",
+            ".concorde/config.json",
+            "generated/user.html",
+            ".agents/skills/user-owned/SKILL.md",
+        }
+    )
+
+    def test_fixture_seeds_every_preserved_content_class(self):
+        sentinels = preserved_sentinels()
+        self.assertLessEqual(self.REQUIRED_SENTINELS, set(sentinels))
+        self.assertTrue(all(content for content in sentinels.values()))
+        self.assertEqual(
+            len({sentinels[path] for path in ("specs/example/abstract.md", "specs/example/design.md", "specs/example/implementation.md")}),
+            3,
+        )
+
+    def test_fixture_loader_rejects_repeated_paths_and_non_string_content(self):
+        repeated = '{"specs/example/design.md": "# a\\n", "specs/example/design.md": "# b\\n"}'
+        self.assertEqual(json.loads(repeated), {"specs/example/design.md": "# b\n"})
+        with tempfile.TemporaryDirectory() as temporary:
+            fixture = Path(temporary) / "preserved-files.json"
+            fixture.write_text(repeated, encoding="utf-8")
+            with self.assertRaisesRegex(AssertionError, "repeats 'specs/example/design.md'"):
+                load_preserved_fixture(fixture)
+            fixture.write_text('{"specs/example/design.md": 1}', encoding="utf-8")
+            with self.assertRaisesRegex(AssertionError, "string-to-string"):
+                load_preserved_fixture(fixture)
+            fixture.write_text('["specs/example/design.md"]', encoding="utf-8")
+            with self.assertRaisesRegex(AssertionError, "string-to-string"):
+                load_preserved_fixture(fixture)
 
 
 if __name__ == "__main__":

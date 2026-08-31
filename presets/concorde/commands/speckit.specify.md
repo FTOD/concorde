@@ -201,7 +201,10 @@ Given that feature description, do this:
    `Structure` (link the declared core diagram, or the parent's core view or level view, or add a
    ```text sketch), `Logic` (the main flow, then \"**Rules the implementation must keep**\" bullets, each
    ending with the `FR-NNN` IDs it summarizes — every ID must exist in `SPEC_FILE`), and `Read Next`
-   (links to `design.md`, `implementation.md`, contracts, the module summary, and any parent or sub-features).
+   (links to `design.md`, `implementation.md`, published module boundary contracts, the module
+   summary, and any parent or sub-features). Feature-local contracts, examples, the project reflection
+   log, and any other sources excluded from publication are named as code-formatted paths instead of
+   Markdown links.
    Keep it under 3,000 body words and never let it state something `SPEC_FILE` does not.
 
 8. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
@@ -229,6 +232,7 @@ Given that feature description, do this:
       - [ ] Success criteria are measurable
       - [ ] Success criteria are technology-agnostic (no implementation details)
       - [ ] All acceptance scenarios are defined
+      - [ ] Every declared scenario identifier resolves in the providing module's current-level view
       - [ ] Edge cases are identified
       - [ ] Scope is clearly bounded
       - [ ] Dependencies and assumptions identified

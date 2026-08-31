@@ -2,7 +2,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.self_hosting_support import hash_paths, initialize_checkout, load_self_hosting, preserved_sentinels, run_cli, skill_file, skill_root
+from tests.concorde.self_hosting_support import (
+    hash_paths,
+    initialize_checkout,
+    load_self_hosting,
+    preserved_sentinels,
+    run_cli,
+    select_integration,
+    skill_file,
+    skill_root,
+    surface_tree,
+)
 
 
 self_host = load_self_hosting()
@@ -59,6 +69,42 @@ class SelfHostedCheckoutAcceptanceTests(unittest.TestCase):
                 self.assertEqual(refreshed["status"], "applied")
                 self.assertIn("acceptance refresh", (root / ".specify/presets/concorde/README.md").read_text())
                 self.assertEqual(before, hash_paths(root, tuple(sentinels)))
+
+    def test_switching_active_integration_twice_preserves_every_inactive_concorde_surface(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            initialize_checkout(root, "codex")
+            run_cli(root, "propose")
+            _, applied = run_cli(root, "apply", "--proposal", ".specify/self-hosting-proposal.json")
+            self.assertEqual(applied["status"], "applied")
+            codex_tree = surface_tree(root, ".agents/skills")
+            self.assertEqual(len(list(skill_root(root, "codex").glob("speckit-*/SKILL.md"))), 16)
+
+            select_integration(root, "claude")
+            _, proposal = run_cli(root, "propose")
+            self.assertEqual([item["path"] for item in proposal["changes"] if item["path"].startswith(".agents/")], [])
+            _, applied = run_cli(root, "apply", "--proposal", ".specify/self-hosting-proposal.json")
+            self.assertEqual(applied["status"], "applied")
+            self.assertEqual(surface_tree(root, ".agents/skills"), codex_tree)
+            for command in self_host.EXTENSION_COMMANDS + ("speckit.fast-loop",):
+                self.assertTrue(skill_file(root, "codex", command).is_file(), command)
+            self.assertEqual(len(list(skill_root(root, "claude").glob("speckit-*/SKILL.md"))), 15)
+            claude_tree = surface_tree(root, ".claude/skills")
+            _, current = run_cli(root, "status")
+            self.assertEqual(current["status"], "current")
+
+            select_integration(root, "codex")
+            run_cli(root, "propose")
+            _, applied = run_cli(root, "apply", "--proposal", ".specify/self-hosting-proposal.json")
+            self.assertEqual(applied["status"], "applied")
+            self.assertEqual(surface_tree(root, ".claude/skills"), claude_tree)
+            for command in self_host.EXTENSION_COMMANDS:
+                link = skill_file(root, "claude", command)
+                self.assertTrue(link.is_symlink(), command)
+                self.assertTrue(link.resolve().is_file(), command)
+            self.assertEqual(surface_tree(root, ".agents/skills"), codex_tree)
+            _, current = run_cli(root, "status")
+            self.assertEqual(current["status"], "current")
 
 
 if __name__ == "__main__":

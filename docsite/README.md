@@ -64,6 +64,8 @@ Validation diagnostics use a stable rule ID, project-relative source, reason, an
 failed candidate is removed and never replaces the last verified `build/`. Successful builds emit
 `build/build-manifest.json` (Build Manifest v9), including actual routes, SHA-256 source provenance,
 and each module page's `architectureDiagrams`.
+The manifest schema is compiled with AJV `strictTypes` and `strictTuples` errors enabled, so a schema
+authoring slip fails `npm run build` and `npm test` rather than logging a warning.
 
 Ordinary builds do not run Archify `visual-check`: it requires Chrome/Chromium and produces captures
 for human inspection. Run it explicitly when perceptual evidence is required, and never treat an

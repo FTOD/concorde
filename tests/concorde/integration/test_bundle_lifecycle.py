@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 from tests.concorde.support.catalog_server import CatalogServer
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.specify_project import SpecifyProject
@@ -52,6 +54,23 @@ class BundleLifecycleTests(unittest.TestCase):
 
     def tearDown(self):
         self.project_temporary.cleanup()
+
+    def shared_component_fixture(self) -> Path:
+        """Render the shared-source fixture against the maintained preset version."""
+        source = REPOSITORY_ROOT / "tests/concorde/fixtures/releases/shared-component"
+        target = self.root / "shared-component-fixture"
+        shutil.copytree(source, target)
+        manifest = target / "bundle.yml"
+        content = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+        presets = content["provides"]["presets"]
+        concorde = next(item for item in presets if item["id"] == "concorde")
+        concorde["version"] = _builder.read_release_version()
+        manifest.write_text(
+            yaml.safe_dump(content, sort_keys=False),
+            encoding="utf-8",
+            newline="\n",
+        )
+        return target
 
     def test_preview_install_repeat_and_provenance_match(self):
         preview = self.project.json("bundle", "info", "concorde-bundle", "--json")
@@ -139,8 +158,10 @@ class BundleLifecycleTests(unittest.TestCase):
     def test_failed_update_retains_prior_record_and_sources(self):
         self.project.run("bundle", "install", "concorde-bundle")
         source_hashes = self.project.source_hashes()
-        _builder.build_release(self.dist, self.server.base_url, "0.3.1")
-        extension = self.dist / "concorde-extension-0.3.1.zip"
+        artifacts = _builder.build_release(self.dist, self.server.base_url, "0.3.1")
+        extension_names = [name for name in artifacts if name.startswith("concorde-extension-")]
+        self.assertEqual(extension_names, ["concorde-extension-0.3.1.zip"])
+        extension = self.dist / extension_names[0]
         extension.write_bytes(extension.read_bytes() + b"integrity failure")
         self.project.clear_catalog_caches()
         result = self.project.run("bundle", "update", "concorde-bundle", check=False)
@@ -169,7 +190,7 @@ class BundleLifecycleTests(unittest.TestCase):
         self.assertEqual(self.project.source_hashes((".agents/skills/user-owned",)), unrelated_hashes)
 
     def test_component_shared_with_another_bundle_is_not_removed(self):
-        shared_bundle = REPOSITORY_ROOT / "tests/concorde/fixtures/releases/shared-component"
+        shared_bundle = self.shared_component_fixture()
         self.project.run("bundle", "install", str(shared_bundle))
         self.project.run("bundle", "install", "concorde-bundle")
         installed = self.project.json("bundle", "list", "--json")

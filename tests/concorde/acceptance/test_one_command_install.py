@@ -379,6 +379,8 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
             match = re.search(r"http://127\.0\.0\.1:(\d+)", output.getvalue())
             self.assertIsNotNone(match, output.getvalue())
             port = int(match.group(1))
+            with self.assertRaises(OSError):
+                socket.create_connection(("127.0.0.1", port), timeout=1)
             with socket.socket() as probe:
                 probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 probe.bind(("127.0.0.1", port))

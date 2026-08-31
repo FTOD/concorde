@@ -48,7 +48,16 @@ The live checkout was self-applied through Claude after implementation. The revi
 
 ### Preserve work and recover safely
 
-Only the active integration root enters proposal ownership, snapshot, restore, drift inventory, and rollback. Existing directory snapshot and restoration preserve symlinks as links. Inactive Codex or Claude surfaces, including an exact Concorde-named sentinel, are byte-preserved.
+Proposal ownership, drift inventory, receipt evidence, and verification follow the active
+integration root. Because Spec Kit 0.16.4's `preset remove` and forced `extension add`
+unregister every agent recorded in the registry, `apply` additionally snapshots the inactive
+integration's declared Concorde skill directories — and, for an inactive Claude, its extension
+link cache — with the owned scope and restores them byte-for-byte after the host refresh, on
+success and on rollback; an incomplete restoration raises `CONCORDE-SELF-HOST-023` and never
+records success (R-042). Directory snapshot and restoration preserve symlinks as links, and a
+preserved path nested inside an owned path is captured once within its ancestor's snapshot.
+Inactive Codex or Claude surfaces, whether registered by an earlier apply or hand-created
+sentinels, are byte-preserved.
 
 Successful and injected-failure fixtures cover Codex and Claude. Every preset, extension, and verification mutation boundary restores the prior owned scope; residual rollback failure remains exact and cannot record success.
 
@@ -57,21 +66,24 @@ Successful and injected-failure fixtures cover Codex and Claude. Every preset, e
 1. **Keep public Spec Kit development primitives.** Component copies, registry ownership, templates, and integration surfaces continue to be produced by the host lifecycle rather than a parallel installer.
 2. **Keep first-install bootstrap independent.** The repository script remains usable before Concorde commands exist.
 3. **Use a closed integration profile.** Protocol v1 recognizes exactly Codex and Claude and retains the exact Spec Kit 0.16.4 compatibility check.
-4. **Own only the active integration.** Profile-specific registry keys and skill roots prevent one integration's refresh from mutating or judging the inactive integration.
+4. **Own only the active integration.** Profile-specific registry keys and skill roots prevent one integration's refresh from mutating or judging the inactive integration. The inactive tree is preserved by restoration around the host lifecycle, never by editing Spec Kit's registry or skipping its removal step.
 5. **Model surface representation as evidence.** Path, digest, file/link representation, and canonical target participate in the receipt surface digest.
 6. **Permit only the canonical Claude extension link.** Broad in-project symlink following was rejected because it could bind self-hosting evidence to unrelated content.
 7. **Bind receipts to integration identity.** Equal shared source or registry content cannot make an old integration receipt current after an integration switch.
 8. **Keep review and rollback exact.** Proposal equality, isolated preflight, active-scope snapshot, reverse restoration, and residual reporting remain unchanged.
 9. **Keep the public JSON schema at v1.** The integration field was already shape-generic; compatibility prose and executable evidence changed without a payload migration.
 10. **Preserve the existing architecture view.** Codex and Claude occupy the same stable active-materialization role, so a new component or dynamic diagram would add noise rather than architecture.
+11. **Read coverage-defining fixtures strictly.** The preservation fixture's object keys are the seeded paths, so `tests/concorde/self_hosting_support.py` loads it through `load_preserved_fixture`, which rejects a repeated key or non-string content instead of letting ordinary JSON parsing keep the last value silently (R-039).
 
 ## Traceability and Evidence
 
 The runtime implementation is `scripts/development/self-host-concorde.py`. Reusable disposable-checkout support is in `tests/concorde/self_hosting_support.py`; contract, unit, lifecycle, and acceptance evidence remains under the corresponding `tests/concorde/{contract,unit,integration,acceptance}/` paths.
 
-Focused Feature 004 evidence passes 40 tests across Codex and Claude. It covers supported and unsupported profiles, integration-specific initialization, active registry keys and collision detection, canonical Claude links, regular-file fallback, unsafe and retargeted links, receipt mismatch, proposal/apply, unchanged and changed refresh, source/installed/registry/surface drift, every injected rollback boundary, read-only status, and inactive-integration preservation.
+Focused Feature 004 evidence covers supported and unsupported profiles, integration-specific initialization, active registry keys and collision detection, canonical Claude links, regular-file fallback, unsafe and retargeted links, receipt mismatch, proposal/apply, unchanged and changed refresh, source/installed/registry/surface drift, every injected rollback boundary, read-only status, inactive-integration preservation, cross-integration refresh in both directions including rollback with registered inactive surfaces, and strict loading of the preservation fixture. A repeated path key or non-string content is rejected, and every preserved content class, including distinct abstract, design, and implementation paths, is seeded.
 
-The complete Concorde suite passes 280 tests. Deterministic Concorde validation reports zero errors and warnings for Feature 004. The docsite gate passes TypeScript, 19 test files with 81 tests, 108-page source validation, canonical Feature 004 diagram embedding, and production build promotion. The maintained core diagram stayed byte-identical with `meta.legend.mode: hidden`; no new perceptual review is claimed.
+The complete Concorde suite, deterministic Feature 004 validation, and docsite gate are the project-level evidence. The docsite gate covers TypeScript, source validation, canonical Feature 004 diagram embedding, and production build promotion. The maintained core diagram keeps its layout and `meta.legend.mode: hidden`; only repository evidence changed, and no new perceptual review is claimed.
+
+The core diagram's repository evidence pins `106f1b2` and cites the authoritative `presets/concorde/preset.yml` for the framework-sources role, replacing the materialized skill cited while the preset rename was still uncommitted (R-038). `tests/concorde/integration/test_self_architecture.py` verifies that every maintained repository-evidence diagram cites paths that exist both in the checkout and at its pinned revision, and that this diagram's framework-sources role cites no materialization, so an identity or path migration is caught by the Python suite before the docsite build runs Archify.
 
 The live Claude self-apply ends `current` with source, installed copy, registry, and surfaces matching, no findings, and activation honestly reported as `reload_required`. This replaces R-001's former `CONCORDE-SELF-HOST-005` workaround with supported self-hosting evidence.
 
@@ -81,7 +93,7 @@ The live Claude self-apply ends `current` with source, installed copy, registry,
 - Status cannot prove what an already-running external coding agent loaded. Every successful apply remains `reload_required` until fresh-session evidence exists.
 - The bootstrap's standard-library manifest reader is deliberately narrow and is not a general YAML or third-party component installer.
 - Self-hosting verifies local-source materialization, not release-archive isolation; Feature 003 remains the release proof.
-- Browser-based perceptual review of the unchanged Feature 004 diagram remains pending from the accepted baseline; deterministic structure, freshness, embedding, and production delivery pass.
+- Browser-based perceptual review of the Feature 004 diagram remains pending (its layout is unchanged; only its repository evidence moved) from the accepted baseline; deterministic structure, freshness, embedding, and production delivery pass.
 - R-039 remains open in the maintainer-owned reflection log: the preservation fixture previously repeated one JSON key. The fixture now uses distinct paths and rejects duplicate keys, but acceptance does not resolve reflection status.
-- R-040 remains open and cross-feature: Feature 002's build-manifest schema emits two non-fatal AJV strict-type warnings during an otherwise successful docsite gate. This Feature 004 attempt did not edit that external contract.
+- The inactive integration's Concorde tree is preserved, not verified: `status` judges only the active integration, and the preserved tree becomes current only through its own reviewed apply after switching (R-042).
 - Root architecture prose still describes Scripts as contributing deterministic freshness findings, while the accepted runtime keeps those findings in the root-owned bootstrap; a future architecture revision may clarify that shared diagnostic convention.

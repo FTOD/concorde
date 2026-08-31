@@ -36,6 +36,15 @@ The active value in `.specify/integration.json` selects the registry keys, owned
 inventory, snapshot, rollback, and receipt evidence for one reviewed operation. An inactive
 integration's assets remain outside that operation and are preserved.
 
+Spec Kit's `preset remove` and forced `extension add` act on every agent recorded in its
+registry, not only the active one. Apply therefore snapshots the inactive integration's Concorde
+skill directories — and, for Claude, its extension link cache under
+`.specify/extensions/concorde/.specify-dev/agent-commands/claude/` — together with the owned
+scope and restores them byte-for-byte after Spec Kit has run, on success and on rollback.
+Switching the active integration and applying again leaves the other integration's tree exactly
+as it was; that tree stays unregistered, and status does not judge it, until its own reviewed
+apply.
+
 Codex materializes Concorde skills as regular files. Claude materializes preset skills as regular
 files and may materialize development-mode extension skills as relative links into
 `.specify/extensions/concorde/.specify-dev/agent-commands/claude/`. The bootstrap accepts only that
@@ -90,7 +99,9 @@ installs both components there through public `specify preset add --dev` and
 `specify extension add --dev` operations. The real checkout is untouched if preflight fails.
 
 After preflight, the bootstrap snapshots only the declared Concorde component copies, registry
-entries/files, composed templates, active-integration Concorde/Spec Kit skill directories, and prior receipt.
+entries/files, composed templates, active-integration Concorde/Spec Kit skill directories,
+and prior receipt, plus the inactive integration's Concorde skill directories so they can be
+restored unchanged after Spec Kit runs.
 It delegates installation to Spec Kit, verifies installed bytes, normalized registrations, and all
 declared surfaces, then atomically writes `.specify/self-hosting.json`. A failure restores that
 scope; if restoration itself is incomplete, every residual path is named and success is not

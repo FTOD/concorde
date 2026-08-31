@@ -132,6 +132,19 @@ project documents. All ten declared views pass the build-owned Archify gate.
 The self-host apply refreshed Codex and Claude projections; status remains `unknown` while Claude is
 the active integration because the self-host status protocol currently validates Codex only.
 
+The core diagram's repository evidence pins `106f1b2` and cites the maintained preset —
+`presets/concorde/preset.yml` (command inventory) and `presets/concorde/commands/speckit.plan.md`
+for the nine phase surfaces, `presets/concorde/commands/speckit.fast-loop.md` for the fast-loop
+surface — in place of the materialized `.agents/skills/…` files cited while the preset rename was
+still uncommitted (R-037). Because the source declares evidence, Archify refuses to validate or
+deliver it without the checkout root (`repository-evidence/root-required`): the docsite build
+passes `--repo-root` automatically, and the manual check is
+`node .agents/skills/archify/bin/archify.mjs validate architecture <source> --quality showcase --json --repo-root <checkout>`.
+A pin can only name committed history, so a renamed or newly cited path is committed first and
+the pin then advanced to a commit that contains it;
+`tests/concorde/integration/test_self_architecture.py` rejects a materialized citation for the
+two preset-owned surfaces and any cited path missing from the checkout.
+
 ## Known Limitations
 
 - The first-time-maintainer comprehension pilot (SC-005) and the human placement, mental-model, and acceptance-comprehension studies remain pending; automated evidence does not substitute for them.
