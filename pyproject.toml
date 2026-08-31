@@ -16,4 +16,4 @@ package = false
 
 [tool.concorde]
 python = "3.11"
-test-command = "uv run python -m unittest discover -s tests/concorde -t . -p test_*.py"
+test-command = ".venv/bin/python -m unittest discover -s tests/concorde -t . -p test_*.py"

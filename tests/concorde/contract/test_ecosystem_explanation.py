@@ -44,6 +44,11 @@ class EcosystemExplanationContractTests(unittest.TestCase):
                 self.assertIn("--preview", guide)
                 self.assertIn("--checkout", guide)
                 self.assertIn("manual native", guide.lower())
+        self.assertIn(
+            "uvx --from specify-cli==0.16.4 python .specify/extensions/concorde/scripts/python/concorde.py",
+            quick_start,
+        )
+        self.assertNotIn("\npython .specify/extensions/concorde/scripts/python/concorde.py", quick_start)
 
     def test_textual_explanations_name_every_ecosystem_role(self):
         sources = [

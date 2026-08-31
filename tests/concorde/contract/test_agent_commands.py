@@ -289,9 +289,9 @@ class AgentCommandContractTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn("concorde.py --project-root . validate", plan)
-        self.assertIn("python -m unittest discover -s tests/concorde -t .", plan)
+        self.assertIn(".venv/bin/python -m unittest discover -s tests/concorde -t .", plan)
         self.assertIn(
-            "discover -s tests/concorde -t . -p test_*.py",
+            'test-command = ".venv/bin/python -m unittest discover -s tests/concorde -t . -p test_*.py"',
             (REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8"),
         )
         self.assertIn("rg --files", tasks)

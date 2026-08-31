@@ -161,6 +161,9 @@ Final evidence on 2026-08-30:
 - Both Feature 003 diagrams passed 9/9 showcase checks with zero errors or warnings; their source
   digests are `c6ef046652c3084190f968946fc2dabba7f2009022256fb49aa815e0e9d8a809`
   and `58250e1f90f9b22fd2eaac61dc9727b538090fd0968061a498f3f6aa37ec92f2`.
+- Repository verification uses the explicit `.venv/bin/python` interpreter declared by
+  `[tool.concorde]`; adopter-facing manual projection commands use the pinned
+  `uvx --from specify-cli==0.16.4 python` environment rather than assuming bare `python` exists.
 
 ## Known Limitations
 

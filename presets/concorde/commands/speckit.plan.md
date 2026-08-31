@@ -242,7 +242,8 @@ line `Reflections added: <identifiers or none> · open for this feature: <count>
    - Put Concorde's global `--project-root` option before the operation verb (for example,
      `concorde.py --project-root . validate`)
    - For Python `unittest` discovery below `tests/`, preserve the repository root as the import top
-     level with `-t .` (for example, `python -m unittest discover -s tests/concorde -t .`)
+     level with `-t .` and use the repository-declared interpreter (for this checkout,
+     `.venv/bin/python -m unittest discover -s tests/concorde -t .` from `[tool.concorde]`)
    - Use links or references to contracts and data model details instead of duplicating them
    - Do not include full implementation code, model/service/controller bodies, migrations, or complete test suites
    - Keep this artifact as a validation/run guide; implementation details belong in `tasks.md` and the implementation phase

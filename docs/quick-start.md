@@ -164,11 +164,11 @@ Project and verify the active integration's native reflection agents from the ex
 just installed:
 
 ```bash
-python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
+uvx --from specify-cli==0.16.4 python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
   agent-assets preview --integration codex --concorde-version 0.5.0
-python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
+uvx --from specify-cli==0.16.4 python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
   agent-assets sync --integration codex --concorde-version 0.5.0
-python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
+uvx --from specify-cli==0.16.4 python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
   agent-assets verify --integration codex --concorde-version 0.5.0
 ```
 
