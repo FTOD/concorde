@@ -290,7 +290,7 @@
         "speckit.constitution separately writes .specify/memory/constitution.md as project policy",
         "concorde.context, concorde.validate, and concorde.ask can inspect the configured module hierarchy without writing",
         "Normal feature phases consume the selected feature's bounded level; fast-loop may resolve related affected levels explicitly",
-        "Fast-loop may reconcile related contracts and diagrams without changing module responsibilities or dependencies, pending exact review"
+        "Fast-loop may reconcile related contracts, diagrams, and pure rename migrations without changing logic, module responsibilities, or dependencies"
       ]
     },
     {
@@ -312,7 +312,7 @@
         "analyze only appends reflections; converge appends tasks + reflections; taskstoissues writes external issues",
         "impl.accept reads durable feature files, the full attempt, reflections, code, and tests",
         "Acceptance writes feature implementation.md, may amend module design.md, and removes only the selected attempt/",
-        "Fast-loop directly updates bounded affected code and authorities; architecture edits stay review-pending and no attempt is created"
+        "Fast-loop directly updates bounded affected code and authorities; eligible architecture edits finalize after validation and no attempt is created"
       ]
     }
   ]

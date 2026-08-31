@@ -115,12 +115,17 @@ diagrams, module references, and user guidance. Cross-feature behavior and inter
 format changes are allowed when bounded and complete. It creates no plan, tasks, implementation
 attempt, convergence pass, or acceptance proposal.
 
+An explicit pure rename may replace identifiers, labels, paths, and references across the bounded
+affected set when it follows existing compatibility/migration policy and preserves implementation
+logic and every non-name semantic. Its completion evidence includes the full mapping and a
+deterministic stale-name/alias/duplicate inventory.
+
 New or restructured features/modules, changed module responsibilities or dependency direction,
 changes to durable compatibility/migration promises for users of the whole project, material
 ambiguity, and overlapping edits of uncertain ownership stop before mutation and return to the
 earliest applicable normal stage. Any AI-authored contract, maintained diagram, or other architecture
-authority is validated and shown as an exact diff; the run remains `review_pending` until the
-maintainer confirms that diff.
+authority is validated and shown as an exact diff with source hashes; an otherwise eligible fast loop
+requires no separate post-edit human review under constitution A.V.
 
 If the behavior is too broad for one clear specification, keep one aggregate parent and create one
 level of immediate sub-features beneath it. Point `SPECIFY_FEATURE_DIRECTORY` at

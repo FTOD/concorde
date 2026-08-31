@@ -102,11 +102,17 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
                 "module responsibility",
                 "dependency direction",
                 "users of the whole project",
-                "review_pending",
+                "Pure rename",
+                "old-to-new mapping",
+                "referential-only",
+                "stale-name",
+                "architecture evidence state",
+                "needs no separate post-edit",
                 "No attempt: yes",
                 "No acceptance: yes",
             ):
                 self.assertIn(requirement, fast_content)
+            self.assertNotIn("review_pending", fast_content)
             self.assertNotIn(str(REPOSITORY_ROOT), fast_content)
             ask = registered_artifact(root, "codex", "speckit.concorde.ask")
             content = ask.read_text(encoding="utf-8")

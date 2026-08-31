@@ -96,7 +96,7 @@ source ownership.
 Revision note (2026-08-29): feature roots use `abstract.md`, `design.md`, and `implementation.md`,
 with temporal work under `attempt/`. The placeholder is seeded at specification and written in full by the first acceptance,
   a module `design.md` is written by acceptance, directly by a maintainer, or by an eligible
-  fast-loop whose exact architecture diff receives maintainer review; the level view is
+  fast-loop whose exact architecture diff passes deterministic validation; the level view is
 the required module diagram, reading-budget overruns are warnings, and adoption is a one-time
 refactor of this repository.
 
@@ -106,11 +106,14 @@ refactor of this repository.
   beginning from one selected anchor and affecting one or more related existing features, each with
   accepted realization and no active attempt. It may reconcile inter-module contract/format and
   architecture detail, but cannot change module responsibilities, dependency direction, or durable
-  compatibility/migration promises to users of the whole project.
+  compatibility/migration policy promised to users of the whole project. An explicit pure naming
+  migration may replace identifiers, labels, paths, and references across bounded authorities when
+  it follows the existing policy and changes no logic or non-name semantics.
 - Q: Which maintained documents may fast-loop write? → A: Every affected feature's durable trio
   according to its behavior/realization delta, plus directly related contracts, maintained diagrams,
   module references, and user guidance. It cannot create a first accepted realization or write
-  unrelated sources; AI-authored architecture edits remain pending exact maintainer review.
+  unrelated sources; eligible AI-authored architecture edits finish after deterministic validation
+  without a separate post-edit review.
 
 ## Workflow Boundary
 
@@ -270,7 +273,7 @@ children, and remain distinct from adjacent-module feature refinement.
 | Any | Ask a source-grounded, read-only workflow question. | `speckit.concorde.ask` | Installed guidance, module summaries, feature abstracts; a specification or design reference only when the question requires it | — |
 | 3 | Create the feature root at its canonical path, or select an existing root through the standard Spec Kit selection (`.specify/feature.json` / `SPECIFY_FEATURE_DIRECTORY`). | `speckit.specify` / Spec Kit selection | — | New `abstract.md` + `design.md` + placeholder `implementation.md`; selection pointer |
 | 4 | Define behavior, resolve material uncertainty, keep the abstract faithful, and review requirements quality. | `speckit.specify` / `speckit.clarify` / `speckit.checklist` | `abstract.md`, `design.md`; existing feature `implementation.md` read-only; level summary | `abstract.md`, `design.md`; `attempt/checklists/` |
-| Fast | Complete an eligible small change across a bounded set of related existing accepted features without attempt ceremony. | `speckit.fast-loop` | Anchor and each affected durable trio, bounded module/contract context, relevant code/tests/docs, worktree state | Code, tests, all affected feature documents, related contract/architecture detail and user docs; no `attempt/`; architecture edits require exact review |
+| Fast | Complete an eligible small change across a bounded set of related existing accepted features without attempt ceremony. | `speckit.fast-loop` | Anchor and each affected durable trio, bounded module/contract context, relevant code/tests/docs, worktree state | Code, tests, all affected feature documents, related contract/architecture detail and user docs; pure renames may span bounded authorities; no `attempt/` or separate post-edit architecture review |
 | 5 | Plan one implementation attempt, order its work, and optionally project tasks into issues. | `speckit.plan` / `speckit.tasks` / `speckit.taskstoissues` | `design.md`, feature `implementation.md`, level summary; the module reference on demand | `attempt/` |
 | 6 | Execute tasks, analyze artifact consistency, and append only genuine remaining work. | `speckit.implement` / `speckit.analyze` / `speckit.converge` | The attempt and the durable trio | `attempt/`, code, tests, project reflection log |
 | 7 | Deterministically validate maintained architecture and evidence references. | `speckit.concorde.validate` | All maintained sources | — |
@@ -293,8 +296,9 @@ feature's abstract, design, and established implementation directly. A later att
 from the durable specification and last accepted realization. Fast-loop is an alternate branch after
 selection only when every affected feature is already realized and has no active attempt; it may
 reconcile bounded cross-feature and contract/architecture detail while module responsibilities,
-dependency direction, and project-level user compatibility/migration policy stay stable. Maintained
-architecture edits require exact maintainer review before final success.
+dependency direction, and project-level user compatibility/migration policy stay stable. A pure
+naming migration may replace names while following that policy. Maintained architecture edits finish
+after exact-diff and deterministic evidence validation without separate post-edit review.
 
 ## Core Component Diagram and Supplemental Scenario Views
 
@@ -384,7 +388,8 @@ that every phase uses only the selected root's authoritative paths and the three
    that preserves module responsibilities, dependency direction, and project-level user policy,
    **Then** code, proportional tests, and every affected feature/contract/architecture/user document
    are reconciled directly without planning, tasks, implementation, convergence, or acceptance
-   artifacts; maintained architecture edits remain pending exact maintainer review.
+   artifacts; an explicit pure rename changes only mapped names/references, and maintained
+   architecture edits complete after deterministic validation without separate post-edit review.
 
 ---
 
@@ -479,7 +484,8 @@ durable root without root-level compatibility copies.
 - A phase finds an existing non-empty attempt and must report it as active rather than replace it.
 - Fast-loop finds a placeholder implementation or active attempt in any affected root, a changed
   module responsibility or dependency direction, changed project-level user compatibility/migration
-  policy, material ambiguity, or work overlapping user edits.
+  policy (other than a pure rename that follows it), material ambiguity, or work overlapping user
+  edits.
 - A contract, refinement, scenario, diagram, or parent registration is missing or contradictory.
 - The maintained source digest changes between proposal review and approved application.
 - Generated evidence disagrees with maintained intent or cannot be reproduced.
@@ -623,11 +629,11 @@ durable root without root-level compatibility copies.
   findings without silently expanding unrelated deeper content.
 - **FR-027**: Proposal-only, question, context, analysis, and validation operations MUST be read-only.
 - **FR-028**: Mutations of maintained architectural intent or a module design reference MUST receive
-  exact maintainer review and MUST fail safely if reviewed inputs become stale. Normal architecture
-  creation and acceptance use a presented proposal. A concrete fast-loop invocation authorizes its
-  bounded affected-source edits, but any resulting contract, maintained-diagram, or other
-  architecture-authority change stays review-pending until the maintainer confirms the exact
-  validated diff.
+  exact maintainer review except where constitution A.V authorizes an eligible fast-loop exception,
+  and MUST fail safely if reviewed inputs become stale. Normal architecture creation and acceptance
+  use a presented proposal. A concrete eligible fast-loop invocation authorizes its bounded affected-
+  source edits; any resulting contract, maintained-diagram, or other architecture-authority change
+  MUST report its exact validated diff and hashes but requires no separate post-edit review.
 - **FR-029**: Missing or conflicting implementation evidence MUST be represented as unknown or
   disagreement, never as inferred agreement.
 - **FR-030**: Installed Codex and slash-command presentations MUST preserve equivalent command intent,
@@ -647,9 +653,12 @@ durable root without root-level compatibility copies.
   invoking planning, task, implementation, convergence, or acceptance artifacts. It MUST use one
   selected root as an anchor, explicitly resolve every affected root, require an accepted baseline
   and no active attempt for each, preserve unrelated worktree changes, reject module responsibility,
-  dependency-direction, project-level user compatibility/migration, unsafe, or materially ambiguous
-  work before mutation, run proportional checks, require exact review of architecture edits, and
-  report the anchor, affected set, files, evidence, review state, and skipped ceremony.
+  dependency-direction, project-level user compatibility/migration-policy, unsafe, or materially
+  ambiguous work before mutation. An explicit pure naming migration MAY replace names while following
+  existing policy when it preserves logic and all non-name semantics and deterministically inventories
+  stale names, aliases, and duplicates. Fast-loop MUST run proportional checks and report the anchor,
+  affected set, files, evidence, architecture evidence state, rename mapping when applicable, and
+  skipped ceremony; eligible architecture edits require no separate post-edit review.
 
 ### Scope
 
@@ -745,11 +754,11 @@ remains a separately tracked follow-up.
   `abstract.md`, `design.md`, parent, sibling, child, and summary authority not named by the proposal.
 - **SC-013**: In every analysis fixture with a seeded abstract/specification disagreement, the report
   names the disagreeing statement and the prevailing `design.md` requirement.
-- **SC-014**: Every eligible fast-loop fixture, including multi-feature and inter-module-format
-  cases, finishes with aligned code, proportional tests, every affected authority, and no attempt
-  artifact; architecture-source cases remain review-pending until exact maintainer review. Every
-  module-boundary, project-policy, or otherwise ineligible fixture makes zero mutations and
-  identifies the normal workflow stage to use.
+- **SC-014**: Every eligible fast-loop fixture, including multi-feature, inter-module-format, pure
+  rename, and architecture-source cases, finishes with aligned code, proportional tests, every
+  affected authority, validated architecture evidence, a zero stale-name inventory when applicable,
+  and no attempt or separate post-edit review. Every module-boundary, project-policy, or otherwise
+  ineligible fixture makes zero mutations and identifies the normal workflow stage to use.
 
 ## Assumptions
 

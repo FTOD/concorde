@@ -112,33 +112,3 @@ Kept by hand under constitution B.II until the rule Feature 005 specifies is ins
     removal of every closed reflection before committing the triage fixes. That authorization makes
     this pruning valid for the current change, but it reinforces the need for a durable contract rule
     distinguishing maintainer-directed cleanup from ordinary agent append-only behavior.
-
-### R-035 · One package rename crosses several durable feature authorities
-
-- **Phase**: plan
-- **Date**: 2026-08-30
-- **Feature**: feature.concorde.install-with-spec-kit
-- **Kind**: architecture
-- **Concerns**: module.concorde
-- **Expected**: Feature 003 owns package identity and can keep every project reference synchronized
-  with its renamed preset.
-- **Observed**: The identity is repeated in accepted realizations and required sources owned by the
-  workflow, release, self-hosting, and reflection features, while normal selected-root guidance
-  prohibits editing another feature's durable body.
-- **Effect**: worked-around
-- **Action**: Use the root-level placement and the maintainer's explicit all-project instruction to
-  reconcile referential terminology across those sources without changing their independently owned
-  behavior; only Feature 003 receives a new accepted realization through this attempt.
-- **Improvement**: Add a reviewed coordinated-migration procedure for one authoritative identity
-  change that requires non-behavioral reference updates across several durable feature documents.
-- **Status**: open
-- **Occurrences**:
-  - plan 2026-08-30 feature.concorde.workflow.fast-loop — the relaxed policy changes the selected
-    child and parent aggregate workflow authorities plus project contracts and views; used the
-    maintainer's explicit all-related-sources instruction for one coordinated attempt while keeping
-    every independently owned behavior change explicit and reviewable.
-  - implement 2026-08-30 feature.concorde.install-with-spec-kit — deferred to a reviewed root-level
-    architecture procedure. It must name the owning feature authorities, approved migration scope,
-    update ordering, behavioral versus referential changes, validation evidence, and which feature
-    owns acceptance; changing those rules crosses several durable specifications and is not a local
-    package-rename patch.

@@ -198,19 +198,27 @@ references, and user guidance. Behavior changes update each affected `design.md`
 Verified realization changes reconcile each affected `implementation.md` directly. The command
 creates no attempt, plan, task list, implementation phase, convergence pass, or acceptance proposal.
 
+An explicitly requested pure naming migration is also eligible when it supplies a complete old-to-
+new mapping, follows the existing project compatibility/migration policy, and changes only
+identifiers, labels, paths, and references. The report classifies those authority edits as
+referential-only and includes a deterministic stale-name/alias/duplicate inventory; implementation
+logic and every non-name semantic remain unchanged.
+
 Fast-loop rejects before mutation when any affected feature has only a placeholder realization or an
 active attempt, edits overlap work of uncertain ownership, the request creates/restructures a feature
 or module, changes a module responsibility or dependency direction, changes compatibility/migration
 policy promised to users of the whole project, or remains materially ambiguous. Cross-feature
 coordination and internal contract/data-format changes are not independently disqualifying when
 bounded and fully reconciled. An internal contract that is also the project's public user interface
-still falls under project-level policy.
+still falls under project-level policy; a pure rename may replace its name only while following that
+existing policy.
 
 Expected ineligibility is not itself a reflection. A successful report names the anchor and every
 affected target, every changed file, per-feature behavioral/realization impact, checks and outcomes,
-preserved unrelated changes, architecture review state, and explicit confirmation that no attempt or
-acceptance ran. If maintained architecture sources changed, the validated exact diff remains
-`review_pending` until the maintainer confirms it; success is not claimed while review is pending.
+preserved unrelated changes, architecture evidence state, and explicit confirmation that no attempt
+or acceptance ran. If maintained architecture sources changed, the report includes their exact
+validated diff and hashes; constitution A.V requires no separate post-edit review for an otherwise
+eligible fast loop.
 
 ## Normal Spec Kit phases under Concorde
 
@@ -250,7 +258,7 @@ never automatic.
 For an eligible established small change, the alternate branch is:
 
 ```text
-select anchor → discover + resolve affected features → fast-loop → validation + architecture review when needed
+select anchor → discover + resolve affected features → fast-loop → validation + exact evidence
 ```
 
 ## What actually runs

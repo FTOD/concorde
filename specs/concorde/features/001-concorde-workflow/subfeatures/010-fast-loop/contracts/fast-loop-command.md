@@ -48,11 +48,16 @@ The command decides eligibility before mutation. All conditions must hold:
    dependency direction.
 5. The change does not alter project-level compatibility or migration policy promised to users of
    the whole project. Internal inter-module contracts and data formats are not independently
-   disqualifying.
+   disqualifying. An explicitly requested pure naming migration may replace names while following
+   the existing policy.
 6. Every affected feature, contract, architecture detail, and user document can be reconciled in the
    same bounded loop.
 7. Relevant current worktree edits can be distinguished safely from the command's proposed edits.
 8. Bounded inspection leaves no material ambiguity about the required result.
+9. When the request claims a pure rename, it supplies a complete old-to-new mapping; changes only
+   identifiers, labels, paths, and references; preserves implementation logic and non-name semantics;
+   and defines a deterministic stale-name/alias/duplicate inventory plus any explicitly authorized
+   historical or immutable exclusions.
 
 Expected ineligibility is a normal result, not a reflection-log problem. The command names the
 failed rule and recommends the earliest applicable full-workflow stage without changing any file.
@@ -71,10 +76,13 @@ The coding agent:
    and `implementation.md` according to its behavior and realization delta, plus every directly
    related inter-module contract, maintained diagram or module reference, and user guide needed to
    keep the repository truthful without changing module responsibilities or dependencies;
-5. runs targeted tests plus deterministic source/document validation; and
-6. when maintained architecture sources changed, presents their exact diff and remains
-   `review_pending` until the maintainer confirms review; and
-7. returns the completion report below.
+5. for a pure rename, classifies mapped durable changes as referential-only and deterministically
+   rejects stale old names, partial replacements, unauthorized aliases, and duplicate identities;
+6. runs targeted tests plus deterministic source/document validation; and
+7. when maintained architecture sources changed, reports their exact validated diff and source
+   hashes with evidence state `validated`, without requiring separate post-edit human review under
+   constitution A.V; and
+8. returns the completion report below.
 
 The command does not create or read any affected feature's attempt and does not write any `attempt/`
 artifact. It edits a parent, sibling, module, contract, or maintained diagram source only when that
@@ -92,14 +100,16 @@ A successful report includes:
 - every test and validation command with its result;
 - unrelated pre-existing changes preserved;
 - reflections appended, if a genuine workflow problem was encountered; and
-- architecture review state (`not_required`, `review_pending`, or `reviewed`) with the affected
-  source paths; and
+- architecture evidence state (`not_applicable` or `validated`) with the affected source paths and
+  hashes;
+- for a pure rename, the mapping, referential-only authorities, stale-name inventory result, and
+  authorized historical/immutable exclusions; and
 - explicit confirmation that no attempt, planning, task, implementation, convergence, or acceptance
   operation was used.
 
-An architecture-source change cannot produce a successful final report while its review state is
-`review_pending`. Maintainer review is an explicit confirmation of the validated diff, not an
-implementation-acceptance proposal, and creates no attempt artifact.
+An otherwise eligible architecture-source change may complete after its exact diff, hashes, and
+applicable deterministic evidence validate. It requires no separate post-edit human review and
+creates no attempt or implementation-acceptance artifact.
 
 ## Failures
 

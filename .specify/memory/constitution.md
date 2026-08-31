@@ -19,11 +19,10 @@ Sync Impact Report
   project intent after deterministic verification and truthful disclosure without exact-diff human
   confirmation. Structural, responsibility, dependency, ambiguous, and project-policy changes still
   require the normal reviewed lifecycle.
-- Templates and guides reconciled in this change: none; the constitution workflow writes only this
-  file.
+- Templates and guides reconciled after this amendment: Fast Loop required behavior, accepted
+  realization, command guidance, contracts, user guides, tests, and maintained workflow diagrams now
+  implement the A.V exception and the bounded pure-rename case.
 - Follow-up TODOs (owner: Concorde maintainers):
-  - Reconcile Fast Loop required behavior, abstract, command guidance, contracts, and tests with the
-    A.V exception; remove the obsolete review-pending completion gate.
   - Reconcile `feature.concorde.workflow.specify-behavior`, its command/template quality checks,
     workflow guidance, tests, and generated projections so they apply risk-proportional review rather
     than requiring human review for every AI-authored architecture edit.

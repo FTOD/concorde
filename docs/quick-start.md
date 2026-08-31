@@ -269,10 +269,12 @@ $speckit-fast-loop <small-change description>
 Fast-loop discovers and explicitly resolves every affected feature before mutation, then directly
 reconciles code, proportional tests, each affected durable trio, and related contract/architecture/
 user documentation. Cross-feature and internal contract/data-format changes can remain on the fast
-path when module responsibilities and dependencies stay stable. Changes to those module boundaries,
-to project-level compatibility/migration promises for users of the whole project, ambiguous work, or
-unsafe worktree overlap return to the normal lifecycle. Architecture-source edits require exact
-maintainer review. Fast-loop creates no attempt or acceptance proposal.
+path when module responsibilities and dependencies stay stable. An explicit pure rename may cross
+bounded authorities when it follows existing compatibility/migration policy, preserves logic and
+non-name semantics, and passes a stale-name inventory. Changes to module boundaries or actual
+project-level policy, ambiguous work, or unsafe worktree overlap return to the normal lifecycle.
+Architecture-source edits require exact-diff validation but no separate post-edit review. Fast-loop
+creates no attempt or acceptance proposal.
 
 The abstract (`abstract.md`), behavioral design (`design.md`), and accepted implementation
 (`implementation.md`) stay at

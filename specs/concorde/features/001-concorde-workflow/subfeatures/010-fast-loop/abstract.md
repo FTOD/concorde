@@ -15,9 +15,9 @@ module-boundary, project-policy, larger, or riskier work to the normal workflow 
 | Part | What it does |
 |---|---|
 | `speckit.fast-loop` | Accepts a concrete small-change description and resolves a selected anchor feature. |
-| Eligibility preflight | Discovers every affected existing feature; confirms accepted baselines, no active attempts, stable module responsibilities and dependencies, stable project-level user compatibility/migration policy, and safe worktree ownership. |
-| Direct change | Updates code, proportional tests, every affected feature's durable documents, and related contract, architecture-detail, and user guidance sources. |
-| Verification | Runs proportional tests and deterministic validation, presents any architecture-source diff for required maintainer review, then reports the anchor, affected set, files, evidence, and preserved unrelated work. |
+| Eligibility preflight | Discovers every affected existing feature; confirms accepted baselines, no active attempts, stable module responsibilities and dependencies, stable project-level user compatibility/migration policy, and safe worktree ownership. An explicit pure rename additionally requires a complete old-to-new mapping and unchanged logic and semantics. |
+| Direct change | Updates code, proportional tests, every affected feature's durable documents, and related contract, architecture-detail, and user guidance sources. Pure renames change only mapped identifiers, labels, paths, and references. |
+| Verification | Runs proportional tests, deterministic validation, and any required stale-name inventory, then reports the anchor, affected set, files, architecture evidence, and preserved unrelated work. |
 | Escalation | Rejects ineligible work before mutation and points to the earliest applicable stage of the full workflow. |
 
 The command updates `design.md` and keeps `abstract.md` faithful only when required behavior changes;
@@ -26,7 +26,8 @@ it updates `implementation.md` whenever verified realization changes. It never c
 
 **Not part of this feature**: first-time realization, active attempts in any affected feature, new or
 restructured features or modules, changed module responsibilities or dependencies, changes to the
-project's compatibility or migration policy for users of the whole project, unrelated source edits,
+project's compatibility or migration policy for users of the whole project (an explicit pure rename
+that follows the existing policy is eligible), unrelated source edits,
 and hidden execution of the ordinary planning, task, implementation, convergence, or acceptance
 phases.
 
@@ -62,12 +63,13 @@ the direct change set.
    policy, unaccepted or active affected roots, material ambiguity, and edits that cannot be
    separated safely.
 3. Apply the bounded code and test change, reconcile every affected feature plus related contract,
-   architecture-detail, and user-facing documentation, and create no attempt artifacts.
-4. Run proportional tests and deterministic validation. Repair within the same loop or report the
-   remaining failure without claiming success. When architecture sources changed, present their
-   exact diff and keep the result review-pending until the maintainer confirms it.
+   architecture-detail, and user-facing documentation, and create no attempt artifacts. For a pure
+   rename, apply only the explicit mapping and classify affected authorities as referential-only.
+4. Run proportional tests and deterministic validation plus, for a pure rename, an exhaustive
+   stale-name/alias inventory. Repair within the same loop or report the remaining failure without
+   claiming success. Eligible architecture edits finish after validation without separate review.
 5. Report the anchor, affected feature set, eligibility, files, documentation impact, checks,
-   architecture-review state, preserved unrelated work, and confirmation that no attempt or
+   architecture-evidence state, preserved unrelated work, and confirmation that no attempt or
    acceptance operation ran.
 
 **Rules the implementation must keep**
@@ -76,7 +78,8 @@ the direct change set.
   each affected root requires an accepted baseline and no active attempt. (FR-001, FR-002, FR-003)
 - Cross-feature and contract-format changes remain eligible when bounded, but module responsibility,
   dependency direction, and project-level user compatibility/migration policy changes always
-  escalate before mutation. (FR-004, FR-014, FR-015)
+  escalate before mutation; an explicit logic-preserving pure rename may replace names while
+  following the existing policy. (FR-004, FR-014, FR-015, FR-017)
 - Direct edits keep code, proportional tests, every affected durable feature document, related
   contract and architecture detail, and user guidance truthful without creating or invoking attempt
   lifecycle artifacts. (FR-006, FR-007, FR-008, FR-009)
@@ -84,8 +87,8 @@ the direct change set.
   (FR-005, FR-010)
 - Claim completion only after proportional checks pass, and report the anchor, affected set, changes,
   evidence, failures, and skipped ceremony explicitly. (FR-011, FR-012, FR-013)
-- Treat validated contract or maintained-diagram edits as review-pending until the maintainer reviews
-  their exact diff; this review creates no attempt or acceptance proposal. (FR-016)
+- Report exact diffs and hashes for validated contract or maintained-diagram edits; constitution A.V
+  requires no separate post-edit review for an otherwise eligible fast loop. (FR-016)
 
 ## Read Next
 

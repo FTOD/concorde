@@ -55,9 +55,15 @@ class InstalledSlashWorkflowTests(unittest.TestCase):
                     "module responsibility",
                     "dependency direction",
                     "users of the whole project",
-                    "review_pending",
+                    "Pure rename",
+                    "old-to-new mapping",
+                    "referential-only",
+                    "stale-name",
+                    "architecture evidence state",
+                    "needs no separate post-edit",
                 ):
                     self.assertIn(requirement, fast_loop)
+                self.assertNotIn("review_pending", fast_loop)
                 for command, phase in PRESET_COMMANDS.items():
                     receipt = execute_workspace_surface(
                         root,

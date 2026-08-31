@@ -25,6 +25,9 @@ a bug.
 
 **Created**: 2026-08-29
 
+**Revised**: 2026-08-31 — admit explicit logic-preserving pure renames and align architecture
+evidence with Constitution 3.0.0
+
 **Status**: Draft
 
 **Input**: User description: "Add a `fast-loop` command for small modifications. The normal workflow
@@ -93,8 +96,13 @@ responsibilities and dependencies remain unchanged.
    implementation reference, tests, and affected user-facing documentation are reconciled.
 4. **Given** an otherwise eligible change that edits an inter-module contract or maintained
    architecture view, **When** code, documentation, and deterministic checks are complete, **Then**
-   the command presents the exact architecture-source diff for maintainer review and does not report
-   those edits as final project intent until that review is confirmed.
+   the command reports the exact architecture-source diff and hashes as validated evidence and may
+   complete without separate post-edit human review under constitution A.V.
+5. **Given** an explicit old-to-new name mapping that changes no implementation logic, behavioral or
+   data semantics, permissions, failure handling, responsibility, or dependency direction, **When**
+   every affected accepted authority can be reconciled under the existing compatibility/migration
+   policy, **Then** the command applies the rename directly across all affected roots and proves the
+   stale old-name inventory is empty apart from explicitly authorized historical/immutable records.
 
 ---
 
@@ -110,8 +118,9 @@ active-attempt state, the first accepted realization, or project-level user comp
 active attempt in any affected feature, a new feature, changed module responsibility, changed module
 dependency direction, changed whole-project user compatibility or migration policy, and ambiguous
 scope; verify each is rejected before any file changes and the response recommends the normal
-workflow. Separately verify that a bounded cross-feature change and inter-module contract-format
-change remain eligible when all affected authorities are reconciled.
+workflow. Separately verify that a bounded cross-feature change, inter-module contract-format change,
+and explicit pure rename that follows existing policy remain eligible when all affected authorities
+are reconciled.
 
 **Acceptance Scenarios**:
 
@@ -121,7 +130,9 @@ change remain eligible when all affected authorities are reconciled.
 2. **Given** a request that creates or restructures a feature or module, changes a module's
    responsibility or dependency direction, or changes the project's compatibility or migration
    policy for users of the whole project, **When** eligibility is evaluated, **Then** it is rejected
-   before mutation and redirected to specify → plan → tasks → implement → accept.
+   before mutation and redirected to specify → plan → tasks → implement → accept; an explicit pure
+   rename is not such a policy change when it follows the existing policy and changes no logic or
+   semantics.
 3. **Given** pre-existing worktree changes overlap files the command would edit and safe ownership of
    the edits cannot be established, **When** preflight runs, **Then** the command preserves those
    changes and stops with an actionable explanation.
@@ -159,6 +170,8 @@ run never claims completion or accepted evidence.
 - The change initially looks local but a failing test reveals another affected feature or contract;
   the agent expands the affected set and reconciles it before continuing.
 - Related prose exists in both feature documents and general user-facing guides.
+- A requested rename omits part of the old-to-new mapping, changes executable branching or data
+  meaning, leaves a partial old token or duplicate identity, or conflicts with an append-only source.
 - The worktree contains unrelated edits, untracked files, or an overlapping edit made by the user.
 - The requested change is documentation-only but changes module responsibility, dependency
   direction, or a whole-project user compatibility promise.
@@ -183,6 +196,8 @@ run never claims completion or accepted evidence.
   after bounded inspection. A cross-feature behavioral effect, inter-module contract change, or
   maintained diagram update is not independently disqualifying when the change is otherwise small,
   every related authority is reconciled, and module responsibilities and dependencies stay stable.
+  An explicit pure naming migration that satisfies FR-017 follows rather than changes existing
+  compatibility/migration policy and is not independently disqualifying.
 - **FR-005**: Eligibility preflight MUST inspect the anchor's selection and attempt state, discover the
   affected feature set from bounded module, contract, implementation, test, and documentation
   evidence, deliberately read each affected feature's durable authority and accepted realization,
@@ -211,17 +226,28 @@ run never claims completion or accepted evidence.
   report failure and MUST NOT present unverified realization as accepted.
 - **FR-013**: The completion report MUST name the anchor and every affected feature, summarize
   eligibility, list changed files, distinguish each feature's behavioral from realization-only
-  documentation changes, identify every check run and its result, disclose unrelated pre-existing
-  changes preserved, and state that no attempt or acceptance operation was used.
+  and referential-only documentation changes, identify every check run and its result, disclose
+  unrelated pre-existing changes preserved, report architecture evidence as `not_applicable` or
+  `validated`, and state that no attempt or acceptance operation was used. For a pure rename it MUST
+  also report the old-to-new mapping, stale-name inventory, and authorized historical/immutable
+  exclusions.
 - **FR-015**: Compatibility and migration eligibility MUST be evaluated only against durable
   project-level promises made to users of the whole project. Internal module contracts, data formats,
   and coordinated feature behavior MAY change in fast-loop when FR-003 through FR-012 remain
   satisfied; feature or module sources MUST NOT invent a separate compatibility or migration policy.
+  A pure naming migration MAY replace project-visible names only when it follows the existing policy
+  for aliases, deprecation, and migration rather than inventing or weakening that policy.
 - **FR-016**: When an eligible invocation edits an inter-module contract, maintained architecture
-  diagram, or other architecture authority, the command MUST present those exact edits for maintainer
-  review after deterministic validation and MUST NOT report them as final project intent until the
-  maintainer confirms review. This review is not an implementation-acceptance proposal and creates
-  no attempt artifact.
+  diagram, or other architecture authority, the command MUST report the exact validated diff and
+  source hashes with architecture evidence state `validated`. Under constitution A.V it MUST NOT
+  require a separate post-edit human review for an otherwise eligible fast loop.
+- **FR-017**: A pure naming migration MUST require an explicit complete old-to-new mapping and MUST
+  change only identifiers, labels, paths, and their references. It MUST preserve implementation
+  logic, behavioral and data semantics, permissions, failure handling, module responsibilities, and
+  dependency direction; reconcile every bounded affected authority under its source-specific
+  mutation rules; and deterministically reject stale old names, partial replacements, unauthorized
+  aliases, or duplicate identities. Historical or immutable exclusions require explicit maintainer
+  authorization and MUST appear in the completion report.
 - **FR-014**: An ineligible or blocked response MUST be actionable: it MUST identify the failed
   eligibility rule, make no fast-loop mutation, and direct the maintainer to the normal workflow at
   the earliest applicable stage.
@@ -231,13 +257,15 @@ run never claims completion or accepted evidence.
 **In scope**: direct corrections and small enhancements beginning from one existing anchor and
 affecting one or more related existing features; proportional code and test changes; direct
 reconciliation of every affected feature's durable trio; bounded inter-module contract-format and
-architecture-detail updates that preserve module responsibilities and dependencies; related user
-documentation; preflight eligibility, worktree safety, targeted validation, and a truthful report.
+architecture-detail updates that preserve module responsibilities and dependencies; explicit pure
+naming migrations across bounded authorities; related user documentation; preflight eligibility,
+worktree safety, targeted validation, and a truthful report.
 
 **Out of scope**: new feature roots; a first accepted realization; active attempts in any affected
 feature; module or feature restructuring; changed module responsibility or dependency direction;
-changes to project-level user compatibility or migration policy; unrelated feature or architecture
-sources; and any hidden use of planning, tasks, implementation, convergence, or acceptance.
+changes to project-level user compatibility or migration policy other than an explicit pure rename
+that follows that policy; unrelated feature or architecture sources; and any hidden use of planning,
+tasks, implementation, convergence, or acceptance.
 
 ### Key Entities
 
@@ -250,6 +278,8 @@ sources; and any hidden use of planning, tasks, implementation, convergence, or 
 - **Direct change set**: The code, tests, affected feature documents, related contract and
   architecture detail, and user-facing docs edited by one eligible invocation, excluding unrelated
   worktree changes.
+- **Pure naming migration**: An explicit old-to-new mapping applied exhaustively across bounded
+  affected authorities with implementation logic and all non-name semantics preserved.
 - **Evidence report**: The command's final account of target, scope, files, checks, outcomes, and
   preserved pre-existing work.
 
@@ -274,10 +304,15 @@ sources; and any hidden use of planning, tasks, implementation, convergence, or 
 - **SC-007**: Eligible fixtures that span two existing features or change an inter-module contract
   format complete directly with all related authorities reconciled; fixtures that change module
   responsibility, dependency direction, or whole-project user compatibility/migration policy make
-  zero fast-loop edits and redirect to the full workflow.
-- **SC-008**: Every eligible fixture that edits maintained architecture sources ends in an explicit
-  review-pending state until the maintainer reviews the exact validated diff; no attempt or
-  implementation-acceptance artifact is created for that review.
+  zero fast-loop edits and redirect to the full workflow unless the request is a pure rename that
+  follows the existing policy.
+- **SC-008**: Every eligible fixture that edits maintained architecture sources reports exact
+  validated paths, hashes, and diff and completes without a separate post-edit human review or any
+  attempt/implementation-acceptance artifact.
+- **SC-009**: Every eligible pure-rename fixture changes all and only mapped names and references,
+  reports every affected authority as referential-only, preserves implementation logic and
+  non-name semantics, and produces a zero-result stale-name/alias/duplicate inventory except for
+  explicitly authorized historical/immutable exclusions.
 - **SC-006**: The installed Codex and slash-command surfaces pass equivalent contract scenarios for
   eligible completion, ineligible escalation, target disclosure, and failure reporting.
 
@@ -286,7 +321,8 @@ sources; and any hidden use of planning, tasks, implementation, convergence, or 
 - “Small” is determined by ownership and architectural risk, not solely by line count or the number
   of affected feature roots. A coordinated change remains eligible when its affected set is bounded,
   all related authorities can be reconciled in one loop, and module responsibilities, dependencies,
-  and project-level user compatibility/migration policy remain stable.
+  and project-level user compatibility/migration policy remain stable. Replacing names under that
+  existing policy is referential change, not new policy, when FR-017 holds.
 - Invoking `speckit.fast-loop` with a concrete change description is the maintainer's explicit
   authorization for the bounded direct edits described here, including related feature and
   inter-module contract sources; it is not approval to change a module responsibility, dependency,
@@ -317,8 +353,8 @@ sources; and any hidden use of planning, tasks, implementation, convergence, or 
 - **Authority split**: the parent owns aggregate lifecycle order and safety; this child owns fast-loop
   eligibility, direct reconciliation, escalation, and evidence reporting.
 - **Observable textual outcome**: one safe small change across a bounded set of existing related
-  features can be completed directly without attempt ceremony, while module-boundary and
-  project-policy changes are redirected before mutation.
+  features, including a logic-preserving pure rename, can be completed directly without attempt
+  ceremony, while module-boundary and project-policy changes are redirected before mutation.
 - **Parent refinement**: internal child of the project-level workflow feature.
 - **Representative scenarios**: the existing current-level `feature-work` scenario covers the
   normal/full-flow contrast and `direct-authoring` covers an eligible small direct change; the

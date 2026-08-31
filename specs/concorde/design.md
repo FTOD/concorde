@@ -77,7 +77,9 @@ current phase. Attempt files may be replaced during convergence. Durable intent 
 relevant specification workflow. The first accepted realization is written through explicit,
 digest-bound implementation acceptance. An explicitly requested eligible fast-loop may later
 reconcile a bounded set of affected existing features and related contract/architecture detail after
-proportional evidence passes; maintained architecture edits remain pending exact maintainer review.
+proportional evidence passes. A pure naming migration may cross bounded authorities when it follows
+existing compatibility/migration policy and preserves logic and non-name semantics; maintained
+architecture edits complete after exact-diff validation without separate post-edit review.
 
 ### Interaction matrix
 
@@ -86,7 +88,7 @@ proportional evidence passes; maintained architecture edits remain pending exact
 | Clarify / specify | Existing durable architecture and feature intent | Durable feature intent | Selected-workspace routing as needed |
 | Plan / tasks | Durable intent and bounded architecture | `attempt/` planning and task files | Workspace routing; context/validation when instructed |
 | Implement / analyze / converge | Durable intent plus current `attempt/` | Product code, task state, attempt evidence, reflections | Workspace routing; context/validation when instructed |
-| `fast-loop` | One selected anchor plus every explicitly resolved affected feature; bounded module/contract/code/test/doc evidence; worktree state | Eligible code/tests, every affected feature document, related contract/architecture/module-reference/user docs, genuine reflections; architecture edits require exact review | Repeated root-scoped workspace routing only |
+| `fast-loop` | One selected anchor plus every explicitly resolved affected feature; bounded module/contract/code/test/doc evidence; worktree state | Eligible code/tests, every affected feature document, related contract/architecture/module-reference/user docs, pure name mappings, genuine reflections; architecture edits require exact validation, not separate review | Repeated root-scoped workspace routing only |
 | `reflections-triage` | Project reflection log, shared config, validated plans, assigned worktree state | Parent-persisted plans; implementer commits only in assigned worktrees; maintainer-owned merge/status | Installed queue helper and platform-native child roles |
 | `concorde.context` / `validate` | Maintained architecture and feature files | None | Deterministic runtime operation |
 | `concorde.init` | Project/config state | Proposal only, then approved root files | Deterministic runtime operation |
@@ -168,9 +170,10 @@ primitive.
 Using one shared component ID keeps the public name aligned with the product while the component
 type carries the distinction Spec Kit already requires. Type-qualified archive filenames solve the
 separate transport collision without leaking packaging mechanics back into component identity.
-The repository-wide cutover required explicitly approved terminology-only reconciliation across
-historical and adjacent durable references; R-034 and R-035 preserve that migration lesson without
-changing the modules' responsibilities or dependency direction.
+The repository-wide cutover demonstrated a terminology-only reconciliation across historical and
+adjacent durable references without changing module responsibilities, dependency direction, logic,
+or non-name semantics. Fast-loop now owns that bounded pure-rename case; R-034 separately preserves
+the append-only reflection-history lesson.
 
 This split also makes testing clearer: command-surface tests belong to Skills, runtime and launcher
 tests belong to Scripts, workspace-layout and acceptance tests belong to Workspace Files, release and
@@ -193,7 +196,8 @@ projection-transaction tests belong to Distribution, and site tests belong to Au
   from an unbounded registry response.
 - **Keep contracts, diagrams, and cross-feature behavior categorically ineligible** — rejected because
   they can be bounded implementation detail when module responsibilities and dependency direction
-  remain stable; exact architecture review preserves governance (R-041).
+  remain stable; Constitution 3.0.0 instead requires exact deterministic architecture evidence for an
+  eligible fast loop without a separate post-edit review.
 - **Alias fast-loop to `speckit.implement`** — rejected because implementation requires an active
   attempt and would silently reintroduce the planning, tasks, and acceptance ceremony this path omits.
 - **Define smallness by changed-line or feature-root count** — rejected because affected-authority
@@ -221,8 +225,9 @@ projection-transaction tests belong to Distribution, and site tests belong to Au
 - Assigned deterministic operations and workspace routing to Scripts rather than to an abstract core.
 - 2026-08-30: Added `speckit.fast-loop` as an additive agent-followed preset surface with root-scoped workspace routing and no mutation runtime.
 - 2026-08-30: Relaxed fast-loop from one-feature/non-contract scope to an anchor plus bounded affected
-  features, kept module responsibility/dependency and project-level user policy as the hard boundary,
-  and required exact review of architecture edits (R-041).
+  features and kept module responsibility/dependency and project-level user policy as the hard
+  boundary; Constitution 3.0.0 later replaced the architecture-review gate with exact validated
+  evidence and no separate post-edit review.
 - 2026-08-30: Kept Protocol v8 and Python scripts unchanged; fast-loop repeats explicit single-root
   resolution and leaves semantic impact discovery with the agent.
 - 2026-08-30: Recorded the cross-integration self-host materialization workaround pending an
@@ -234,7 +239,7 @@ projection-transaction tests belong to Distribution, and site tests belong to Au
 - 2026-08-30: Chose type-qualified preset/extension archive filenames to avoid a transport
   collision while preserving the shared component ID.
 - 2026-08-30: Rejected a compatibility alias and recorded the explicitly approved coordinated
-  durable-reference migration (R-034, R-035).
+  durable-reference migration (R-034); its cross-authority pure-rename shape is now a fast-loop case.
 - 2026-08-30: Refreshed repository-evidence pins and type-stable diagram sources exposed by the
   identity/path migration (R-037, R-038).
 - 2026-08-30: Packaged Feature 005's canonical triage bodies, wrappers, default config, and queue

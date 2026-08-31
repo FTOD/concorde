@@ -239,7 +239,7 @@
         "module.md summary + design.md reference: level architecture",
         "parent spec owns aggregate facts; child spec owns focused behavior",
         "normal phases remain isolated to one selected root; fast-loop explicitly resolves each bounded affected root",
-        "contract/diagram edits preserve module boundaries and remain pending exact maintainer review"
+        "contract/diagram edits preserve module boundaries and finish after exact-diff validation; pure renames preserve logic and non-name semantics"
       ]
     }
   ]

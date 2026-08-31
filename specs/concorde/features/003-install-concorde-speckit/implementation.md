@@ -166,8 +166,6 @@ Final evidence on 2026-08-30:
 
 - **R-034**: the identity cutover required a maintainer-authorized terminology-only rewrite of
   append-only reflection history; a general reviewed procedure remains undefined.
-- **R-035**: one package identity migration required coordinated referential edits across durable
-  feature authorities; Concorde still has no general cross-feature migration operation.
 - **R-036**: the failed-update fixture once duplicated a transport filename instead of deriving it
   from release inventory; the fixture is corrected but the improvement remains open.
 - **R-037**: the workflow diagram exposed stale repository-evidence pins during the identity/path

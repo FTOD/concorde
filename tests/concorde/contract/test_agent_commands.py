@@ -82,7 +82,7 @@ class AgentCommandContractTests(unittest.TestCase):
         self.assertIn("No presentation embeds an absolute Concorde checkout path", contract_content)
         self.assertNotIn(str(REPOSITORY_ROOT), command_content)
 
-    def test_fast_loop_rejects_every_ineligible_class_before_mutation(self):
+    def test_fast_loop_supports_pure_renames_and_rejects_other_ineligible_classes_before_mutation(self):
         command = (
             REPOSITORY_ROOT / "presets/concorde/commands/speckit.fast-loop.md"
         ).read_text(encoding="utf-8")
@@ -105,7 +105,12 @@ class AgentCommandContractTests(unittest.TestCase):
             "users of the whole project",
             "inter-module contract",
             "maintained diagram",
-            "review_pending",
+            "Pure rename",
+            "old-to-new mapping",
+            "referential-only",
+            "stale-name",
+            "architecture evidence state",
+            "no separate post-edit human review",
             "materially ambiguous",
             "overlap",
             "zero fast-loop edits",
@@ -121,9 +126,16 @@ class AgentCommandContractTests(unittest.TestCase):
             "dependency direction",
             "users of the whole project",
             "inter-module contracts",
-            "review_pending",
+            "pure naming migration",
+            "old-to-new mapping",
+            "referential-only",
+            "stale-name",
+            "architecture evidence state",
+            "no separate post-edit human review",
         ):
             self.assertIn(invariant, normalized_contract, invariant)
+        self.assertNotIn("review_pending", normalized_command)
+        self.assertNotIn("review_pending", normalized_contract)
         for obsolete in (
             "Exactly one existing canonical feature root",
             "No module responsibility, dependency, maintained diagram, or contract changes",

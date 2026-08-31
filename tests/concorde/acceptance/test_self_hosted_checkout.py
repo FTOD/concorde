@@ -55,10 +55,16 @@ class SelfHostedCheckoutAcceptanceTests(unittest.TestCase):
                     "module responsibility",
                     "dependency direction",
                     "users of the whole project",
-                    "review_pending",
+                    "Pure rename",
+                    "old-to-new mapping",
+                    "referential-only",
+                    "stale-name",
+                    "architecture evidence state",
+                    "needs no separate post-edit",
                     "No attempt: yes",
                 ):
                     self.assertIn(requirement, fast_loop_content)
+                self.assertNotIn("review_pending", fast_loop_content)
                 self.assertEqual(before, hash_paths(root, tuple(sentinels)))
                 _, current = run_cli(root, "status")
                 self.assertEqual(current["status"], "current")

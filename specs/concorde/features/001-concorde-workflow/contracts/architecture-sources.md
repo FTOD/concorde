@@ -126,8 +126,11 @@ realizations. The selected root is its anchor; bounded evidence may identify oth
 features, each of which is resolved explicitly through the same Feature Workspace Protocol and must
 have a non-placeholder `implementation.md` plus `attempt_state: absent`. Fast-loop may reconcile each
 affected durable trio and directly related contracts, diagrams, module design-reference detail, and
-user guidance when module responsibilities and dependency direction remain stable. Any AI-authored
-architecture source remains review-pending until the maintainer confirms its exact validated diff.
+user guidance when module responsibilities and dependency direction remain stable. An explicit pure
+naming migration may reconcile bounded authorities when it follows existing compatibility/migration
+policy, preserves logic and non-name semantics, and passes a deterministic stale-name inventory. Any
+AI-authored architecture source reports its exact validated diff and hashes; an otherwise eligible
+fast loop requires no separate post-edit human review under constitution A.V.
 
 ## Phase Path Mapping
 
@@ -139,7 +142,7 @@ The selected feature pointer identifies the feature root. Operations resolve fro
 | custom requirements checklists | read durable root plus available attempt context (the abstract is in scope); write only `attempt/checklists/` |
 | plan, research, technical model, quickstart | read root `design.md` + `implementation.md` and the module summary (the abstract orients only); consult the module `design.md` only deliberately and cite it; write `attempt/` |
 | tasks, implement, analyze, converge, task-to-issue conversion, delivery validation | `attempt/`; analysis also reads `abstract.md` to report disagreement with `design.md` |
-| fast-loop | resolve the selected root as an anchor, then explicitly resolve every affected existing root; read each affected durable trio and bounded related module/contract/code/test/doc evidence; write verified code/tests plus every affected feature, contract, diagram, module-reference, and user-guide source needed for truthfulness; create no attempt; reject module responsibility/dependency and project-level user compatibility/migration policy changes; require exact review of architecture edits |
+| fast-loop | resolve the selected root as an anchor, then explicitly resolve every affected existing root; read each affected durable trio and bounded related module/contract/code/test/doc evidence; write verified code/tests plus every affected feature, contract, diagram, module-reference, and user-guide source needed for truthfulness; create no attempt; reject module responsibility/dependency and project-level user compatibility/migration policy changes; admit explicit pure renames that follow existing policy and preserve logic/non-name semantics; require a deterministic stale-name inventory for renames and exact validated evidence, but no separate post-edit review, for architecture edits |
 | implementation acceptance | read root `abstract.md` + `design.md` + `implementation.md`, the module summary and `design.md`, and all attempt inputs; approved apply writes feature `implementation.md`, optionally module `design.md`, and removes `attempt/` |
 
 `.specify/feature.json` is the standard project-scoped selection record and may point to a valid

@@ -97,6 +97,11 @@ single `remove == [attempt_dir]`. Apply stages feature `implementation.md` and o
   Manifest is v7.
 - The accepted realization is seeded as a placeholder at specification, written in full by the first acceptance, completed by later ones, keeps the six required headings first, and rejects the placeholder marker as candidate content.
 - Acceptance promotes an ordered set of staged files and the attempt removal atomically with full rollback; the source digest binds `abstract.md` and both design references so a manual edit between review and apply is a `conflict`.
+- The additive fast-loop directly reconciles bounded existing authorities after resolving every
+  affected root. A pure naming migration is eligible when it supplies a complete mapping, preserves
+  logic and non-name semantics, follows existing compatibility/migration policy, and passes a
+  deterministic stale-name/alias/duplicate inventory. Eligible architecture edits report exact
+  validated diffs and hashes and require no separate post-edit human review under constitution A.V.
 - The preset carries six templates; `abstract-template` and `implementation-template` resolve through
   the public preset stack; local helpers export `FEATURE_ABSTRACT`, `FEATURE_DESIGN`,
   `FEATURE_IMPLEMENTATION`, and `ATTEMPT_DIR`.

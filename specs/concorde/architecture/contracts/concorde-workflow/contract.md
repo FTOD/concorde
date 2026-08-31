@@ -70,8 +70,12 @@ presentation never changes either contract.
 - Fast-loop MAY directly reconcile bounded cross-feature behavior, inter-module contract/data-format
   detail, maintained views, and module design-reference detail when every affected feature has an
   accepted realization and no active attempt and module responsibilities/dependency direction remain
-  stable. Architecture-source edits MUST remain pending exact maintainer review, and project-level
-  compatibility/migration promises to users of the whole project MUST return to the full workflow.
+  stable. An explicit pure naming migration MAY replace identifiers, labels, paths, and references
+  across those bounded authorities when it follows existing project-level compatibility/migration
+  policy, preserves implementation logic and all non-name semantics, and passes a deterministic
+  stale-name/alias/duplicate inventory. Architecture-source edits MUST report exact validated diffs
+  and hashes but require no separate post-edit review under constitution A.V; actual project-level
+  compatibility/migration policy changes MUST return to the full workflow.
 - Validation MUST be deterministic, read-only, and explicit about unknown or conflicting evidence.
 - Generated read models MUST preserve provenance and MUST NOT become maintained intent.
 
