@@ -14,7 +14,7 @@
         "id": "publish-project-docsite",
         "label": "Publish project docsite",
         "focus": ["projectDocs", "projectSpecs", "archify", "autoDocs", "maintainer"],
-        "note": "The specs tree supplies architecture, feature specs, and accepted realizations; project Markdown completes three read-only views."
+        "note": "README.md supplies the homepage; docs and specs supply three read-only navigation views."
       }
     ]
   },
@@ -22,8 +22,8 @@
     {
       "id": "projectDocs",
       "type": "external",
-      "label": "Project Docs",
-      "sublabel": "docs/**/*.md",
+      "label": "Project Content",
+      "sublabel": "README.md · docs/**",
       "pos": [40, 105],
       "size": [170, 72]
     },
@@ -123,6 +123,7 @@
       "dot": "cyan",
       "title": "Authority",
       "items": [
+        "README.md owns the project introduction",
         "docs/ owns project documentation",
         "specs/ owns architecture and feature intent",
         "Path patterns project separate reader views",

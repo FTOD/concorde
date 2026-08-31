@@ -43,8 +43,8 @@ and verified static-site artifacts communicated through stdout, stderr, and exit
   Docusaurus consumption; no committed HTML prerequisite or stale fallback is allowed.
 - Success is reported only after validation and promised output complete.
 - Production candidates are promoted only after route and manifest verification.
-- Commands do not write beneath `docs/` or `specs/`; diagram and site outputs stay beneath ignored
-  generated roots and require no hosted service or LLM.
+- Commands do not write root `README.md` or beneath `docs/` or `specs/`; diagram and site outputs stay
+  beneath ignored generated roots and require no hosted service or LLM.
 
 ## Failure Semantics
 

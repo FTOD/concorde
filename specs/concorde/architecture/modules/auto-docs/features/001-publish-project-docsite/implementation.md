@@ -4,23 +4,27 @@
 
 ## Realization Overview
 
-The Auto-Docs module converts validated architecture and feature sources into hierarchical pages and embeds fresh Archify HTML.
+The Auto-Docs module publishes root `README.md` at `/`, converts validated architecture and feature
+sources into hierarchical pages, publishes project guidance from `docs/`, and embeds fresh Archify HTML.
 
 ## Module and Feature Collaboration
 
-Source discovery, view-model construction, Docusaurus rendering, and production validation collaborate behind the documentation contracts.
+Source discovery across `README.md`, `docs/`, and `specs/`, view-model construction, Docusaurus
+rendering, and production validation collaborate behind the documentation contracts.
 
 ## Scenario Realization
 
-A build reads canonical sources, verifies diagrams, writes generated pages, and validates the production site.
+A build reads the homepage file and both canonical source trees, verifies diagrams, writes generated
+pages, and validates the production site.
 
 ## Durable Implementation Decisions
 
-Generated content is reproducible and non-authoritative; source provenance remains visible.
+Root `README.md` remains the one-file homepage authority, `docs/` and `specs/` remain the recursive
+source trees, generated content is reproducible and non-authoritative, and source provenance remains visible.
 
 ## Traceability and Evidence
 
-Auto-Docs unit, integration, and production-build tests provide evidence.
+Auto-Docs unit, integration, contract, and production-build tests cover all three maintained inputs.
 
 ## Known Limitations
 

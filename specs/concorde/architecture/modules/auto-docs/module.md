@@ -33,8 +33,8 @@ The maintained level view is
 [level-view.json](architecture/diagrams/level-view.json), the one diagram under this module's
 `architecture/diagrams/`, delivered as
 `generated/architecture/auto-docs.html`. It shows Auto-Docs (the validated read model) inside
-its module boundary, its external providers Project Docs (`docs/**/*.md`), Project Specifications
-(`specs/**`), and Archify (validated HTML views), and the Maintainer who builds and browses. The
+its module boundary, its external providers Project Content (root `README.md` plus `docs/**/*.md`),
+Project Specifications (`specs/**`), and Archify (validated HTML views), and the Maintainer who builds and browses. The
 Feature 002 supplemental
 <a href="/architecture/project-docsite-publication-flow.html">publication flow</a> (maintained source
 `specs/concorde/features/002-create-project-docsite/diagrams/project-docsite-publication-flow.json`)
@@ -44,7 +44,7 @@ explains the build sequence without redefining this structure.
 
 | Feature ID | Outcome | Refines | Specification |
 |---|---|---|---|
-| `feature.auto-docs.publish-project-docsite` | Architecture sources, project docs, feature specifications, and accepted realizations from the unified `specs/` hierarchy and `docs/` become one searchable, traceable, read-only website, with each declared delivered Archify view embedded beside its textual source. | `feature.concorde.publish-project-docsite` | [design.md](features/001-publish-project-docsite/design.md) |
+| `feature.auto-docs.publish-project-docsite` | Root `README.md`, architecture sources, project docs, feature specifications, and accepted realizations from `docs/` and the unified `specs/` hierarchy become one searchable, traceable, read-only website, with each declared delivered Archify view embedded beside its textual source. | `feature.concorde.publish-project-docsite` | [design.md](features/001-publish-project-docsite/design.md) |
 
 ## Contracts
 
@@ -65,7 +65,7 @@ None.
 `publish-project-docsite` is maintained in `architecture/diagrams/level-view.json` and uses only this module, its declared
 external providers and consumer, and the governing boundary contracts. A maintainer invokes the
 documented build interface across `contract.auto-docs.build-interface`. Auto-Docs consumes
-project Markdown from `docs/` and architecture, contract, and canonical feature sources from `specs/`
+the root `README.md`, project Markdown from `docs/`, and architecture, contract, and canonical feature sources from `specs/`
 through `contract.auto-docs.project-content`, hands every diagram beneath each module's
 `architecture/diagrams/` and every declared feature diagram to Archify
 through `contract.auto-docs.archify-renderer` and receives rendered views, then validates
@@ -75,8 +75,8 @@ fails, the last successful site is preserved.
 
 ## Design Rationale
 
-Auto-Docs is a projection, never an authority: `docs/` owns project documentation, `specs/` owns
-architecture and feature intent, and generated pages link canonical sources instead of copying them.
+Auto-Docs is a projection, never an authority: root `README.md` owns the project introduction,
+`docs/` owns project documentation, `specs/` owns architecture and feature intent, and generated pages link canonical sources instead of copying them.
 Publication is gated so the site can never silently disagree with validated sources: every declared
 view must be deliverable, links map strictly, provenance and the manifest are deterministic, and
 promotion is atomic. Realization detail and recorded decisions are in the

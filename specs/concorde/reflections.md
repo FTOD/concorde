@@ -33,30 +33,3 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
     through its reviewed lifecycle; compare reordering the feature/Integration/Core columns with a
     supported outer-edge corridor, update the level-view JSON and prose together, and require
     Archify crossing diagnostics, showcase validation, and visual review.
-
-### R-008 · The Documentation refinement still couples both published hierarchies
-
-- **Phase**: plan
-- **Date**: 2026-08-29
-- **Feature**: feature.concorde.publish-project-docsite
-- **Kind**: specification
-- **Concerns**: feature.auto-docs.publish-project-docsite
-- **Expected**: The Documentation refinement agrees with root Feature 002 that Architecture follows
-  module containment while Features follows only feature identity and explicit feature containment.
-- **Observed**: FR-DOC-003 still requires both views to preserve the same module/feature hierarchy
-  expressed by source paths and IDs, which would retain module-storage categories in Features.
-- **Effect**: deferred
-- **Action**: Implemented the maintainer-approved root Feature 002 delta without editing the adjacent
-  feature's durable sources; the refinement requires its own later specification review.
-- **Improvement**: Revise FR-DOC-003 through the Documentation feature's specify lifecycle so it
-  requires independent semantic projections from the shared `specs/` packages.
-- **Status**: open
-- **Occurrences**:
-  - plan 2026-08-29 feature.concorde.publish-project-docsite — the root feature now publishes
-    `README.md` at `/`, while FR-DOC-004 and the Documentation module's project-content contract still
-    describe exactly two accepted source roots; both require their own owning lifecycle update.
-  - implement 2026-08-30 feature.concorde.publish-project-docsite — triage confirmed FR-DOC-003 is
-    already reconciled. The remaining change is architectural: revise FR-DOC-004 and bump
-    `contract.auto-docs.project-content` from v8 to add root `README.md` as a maintainer-provided
-    one-file source root with `/` ownership, then align the Auto-Docs abstract/design/implementation
-    and contract tests across all three inputs (`README.md`, `docs/`, and `specs/`).

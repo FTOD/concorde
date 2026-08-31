@@ -29,7 +29,8 @@ class ReflectionParserTests(unittest.TestCase):
             with self.subTest(log=relative):
                 parsed = parse_reflection_log((REPOSITORY_ROOT / relative).read_text(encoding="utf-8"))
                 self.assertEqual(parsed.problems, ())
-                self.assertGreaterEqual(len(parsed.entries), 2)
+                if "/examples/" in relative:
+                    self.assertGreaterEqual(len(parsed.entries), 2)
                 for entry in parsed.entries:
                     self.assertTrue(all(entry.fields.get(name) for name in REQUIRED_FIELDS), entry.identifier)
 

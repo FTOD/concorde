@@ -19,7 +19,7 @@ providers:
   - external.spec-kit
 features:
   - feature.auto-docs.publish-project-docsite
-version: 8
+version: 9
 evidence:
   tests:
     - docsite/tests/contract/content-sources.test.ts
@@ -30,8 +30,8 @@ evidence_status: verified
 
 ## Purpose
 
-Provide UTF-8 architecture sources and canonical feature specifications and accepted implementations
-from the unified `specs/` hierarchy, plus project documentation from `docs/**/*.md` and its declared
+Provide the UTF-8 root `README.md` project introduction, architecture sources and canonical feature
+specifications and accepted implementations from the unified `specs/` hierarchy, plus project documentation from `docs/**/*.md` and its declared
 supplemental Archify JSON beneath adjacent `diagrams/` directories, without
 relocating or modifying any authority. Architecture publication selects `**/module.md`,
 `**/contracts/**/contract.md`, and every module-level `design.md` beside a `module.md` (the module
@@ -43,13 +43,15 @@ semantics are defined once in `specs/concorde/features/002-create-project-docsit
 
 ## Information
 
-The boundary carries UTF-8 Markdown and YAML metadata from two maintained roots, project-relative
-links, stable feature and architecture identity, and declared Archify JSON view references owned by
-modules, features, or custom documentation pages.
+The boundary carries UTF-8 Markdown and YAML metadata from root `README.md` plus the `docs/` and
+`specs/` maintained trees, project-relative links, stable feature and architecture identity, and
+declared Archify JSON view references owned by modules, features, or custom documentation pages.
 
 ## Obligations
 
 - Every eligible valid source is included exactly once and retains its authored meaning.
+- Root `README.md` is required, maps to exactly one `/` page, and remains the maintained project
+  introduction for both repository and generated-site readers.
 - Concorde's self-hosting input retains its eight-page framework-guide baseline as ordinary project
   documentation: one landing page, six progressive learning guides, and one nested docsite
   contributor guide.
@@ -61,7 +63,8 @@ modules, features, or custom documentation pages.
   prerequisites and resolve to build-delivered Archify HTML before publication.
 - A documentation page may declare only supplemental diagrams directly beneath its adjacent
   `diagrams/` directory; each is embedded on that page with source provenance and a standalone link.
-- Project-relative links resolve within or across the two accepted source roots and three published views.
+- Project-relative links resolve within or across all three accepted inputs and the homepage plus
+  three published navigation views.
 - Temporal plans, tasks, and supporting implementation files are observable exclusions, not
   permanent feature documentation.
 - Reads do not change source bytes, metadata, or timestamps.
@@ -73,7 +76,8 @@ route-colliding sources stop publication with rule, source, reason, and remediat
 
 ## Compatibility
 
-Version 8 adds docs-owned supplemental Archify declarations beneath each declaring page's adjacent
+Version 9 adds root `README.md` as the required maintainer-provided one-file homepage input at `/`,
+alongside the existing `docs/` and `specs/` trees. Version 8 adds docs-owned supplemental Archify declarations beneath each declaring page's adjacent
 `diagrams/` directory without changing Documentation routes or Markdown authority. Version 7 adopts
 feature `abstract.md`, `design.md`, and `implementation.md` inputs and temporal
 `attempt/**` exclusion. Module `design.md` remains an architecture input. Version 4 introduced
@@ -84,5 +88,5 @@ elements require a new major contract version.
 
 ## Evidence
 
-Valid and invalid source fixtures, source-immutability checks, architecture discovery, and production
-rendering are exercised under `docsite/tests/`.
+Valid and invalid README, documentation, and specification fixtures, source-immutability checks,
+architecture discovery, and production rendering are exercised under `docsite/tests/`.

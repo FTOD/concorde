@@ -7,9 +7,9 @@ redirect you when you want more.
 
 ## Purpose
 
-The Auto-Docs module projects architecture, permanent feature specifications and designs from
-the unified `specs/` hierarchy, and project Markdown from `docs/` into one searchable, traceable,
-read-only website, embedding each declared delivered Archify view beside its textual source. The
+The Auto-Docs module projects the root `README.md` introduction, architecture and permanent feature
+specifications and designs from the unified `specs/` hierarchy, and project Markdown from `docs/`
+into one searchable, traceable, read-only website, embedding each declared delivered Archify view beside its textual source. The
 project-level feature owns the project-wide outcome; this feature owns the module's narrower behavior,
 contracts, scenario, and evidence, for the maintainer who builds and browses the site without ever
 treating a generated page as authority.
@@ -18,9 +18,10 @@ treating a generated page as authority.
 
 | View | Sources | Boundary |
 |---|---|---|
+| Home | root `README.md` | The one-file project introduction owns `/` and remains ordinary maintained Markdown. |
 | Architecture | `specs/**/module.md`, its sibling `design.md`, `specs/**/architecture/contracts/**/contract.md`, and every diagram beneath `specs/**/architecture/diagrams/` | Authority stays with the sources; a renderer projection is never maintained content. |
 | Features | `specs/**/design.md` and each feature's permanent design reference | Temporal implementation artifacts are excluded. |
-| Documentation | `docs/**/*.md` | A third view over the same two canonical roots. |
+| Documentation | `docs/**/*.md` | Project guidance remains in its dedicated maintained directory tree. |
 
 Architecture preserves declared module containment. Features uses the same module groups for
 top-level feature ownership and explicit parent/sub-feature containment within each group, while
@@ -30,20 +31,21 @@ renderer-specific staging is disposable, ignored, regenerated from the canonical
 invisible in published provenance.
 
 **Not part of this feature**: maintained architecture intent, validation semantics, Archify
-rendering itself, user-authored sources, and any mutation of `specs/` or `docs/`.
+rendering itself, user-authored sources, and any mutation of `README.md`, `specs/`, or `docs/`.
 
 ## Structure
 
 The maintained level view is <a href="/architecture/auto-docs.html">Auto-Docs</a>
 (maintained source `specs/concorde/architecture/modules/auto-docs/architecture/diagrams/level-view.json`): the validated read
-model inside its module boundary, its providers Project Docs, Project Specifications, and Archify,
+model inside its module boundary, its providers Project Content (`README.md` and `docs/**`), Project
+Specifications, and Archify,
 and the maintainer who builds and browses. The parent's supplemental
 <a href="/architecture/project-docsite-publication-flow.html">publication flow</a> explains the
 build sequence.
 
 ```text
 maintainer ──build-interface──▶ Auto-Docs
-   docs/** · specs/** ──project-content──▶ │ registry: classify · route · validate
+   README.md · docs/** · specs/** ──project-content──▶ │ registry: classify · route · validate
    Archify ◀──archify-renderer──▶          │ deliver declared views
                                            ├──build-manifest──▶ maintainer / freshness checks
                                            └──architecture-site──▶ maintainer browser
@@ -59,8 +61,8 @@ fails, the last successful site is preserved.
 **One build**
 
 1. The maintainer invokes the documented build interface.
-2. Auto-Docs consumes module and contract specifications, project Markdown, and canonical
-   feature specification and design pairs through the project-content contract.
+2. Auto-Docs consumes the root README, module and contract specifications, project Markdown, and
+   canonical feature specification and design pairs through the project-content contract.
 3. Each declared Archify JSON view is handed to the renderer and its delivered HTML associated with
    the source.
 4. The read model is validated (identities, links, routes) and rendered; the deterministic build
@@ -75,7 +77,7 @@ fails, the last successful site is preserved.
   artifacts are excluded from it (FR-DOC-002).
 - Architecture preserves module containment; Features groups by owning module and explicit feature containment
   (FR-DOC-003).
-- `docs/` is a third view while only two canonical source roots exist: `specs/` and `docs/`
+- Root `README.md` owns `/`, while `specs/` and `docs/` remain the two recursive source trees
   (FR-DOC-004).
 - Renderer-specific staging is disposable, ignored, regenerated from the canonical registry, and
   invisible in published provenance (FR-DOC-005).

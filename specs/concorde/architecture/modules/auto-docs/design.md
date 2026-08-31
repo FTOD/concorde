@@ -9,9 +9,9 @@ view, and the five boundary contracts remain owned by `module.md`, the level vie
 ### Docsite realization
 
 The module is realized by the private TypeScript Docusaurus project under `docsite/`. It publishes a
-read-only project model from two maintained source roots without creating a second content
-authority: `specs/` supplies architecture sources plus durable feature specifications and accepted
-realizations, and `docs/` supplies project-authored guidance. A shared registry
+read-only project model from root `README.md` plus two maintained source trees without creating a
+second content authority: `README.md` supplies the project introduction, `specs/` supplies architecture
+sources plus durable feature specifications and accepted realizations, and `docs/` supplies project-authored guidance. A shared registry
 (`docsite/plugins/concorde-content/registry.ts`) classifies those inputs into source collections and
 presents them through three navigation families: Architecture, Documentation, and Features. The
 Documentation collection reads `docs/**/*.md` directly; Architecture and Features use ignored
@@ -47,7 +47,7 @@ The other four contracts are summarized in `module.md` and defined in full under
 ### Evidence status
 
 The publication feature is implemented. Its locked dependency installation, validation interface,
-two-root/three-view source discovery, strict link mapping, permanent feature specification and
+README-plus-two-tree source discovery, strict link mapping, permanent feature specification and
 realization projection, sandboxed Archify embedding, local search, accessible presentation,
 schema-valid manifest, atomic promotion, repeatability, and source immutability all have executable
 evidence in `docsite/tests/` and
@@ -58,9 +58,9 @@ treated as perceptual evidence.
 
 ## Design Rationale
 
-- Two roots, one authority each: `docs/` and `specs/` are read where they live, and generated pages
-  link canonical sources instead of copying normative text, so the site cannot drift into a second
-  authority.
+- Three inputs, one authority each: root `README.md`, `docs/`, and `specs/` are read where they live,
+  and generated pages link canonical sources instead of copying normative text, so the site cannot
+  drift into a second authority.
 - A publication gate rather than best effort: identities, links, and routes are validated, every
   module, feature, and documentation diagram must be deliverable, provenance and the manifest are deterministic, and the last
   successful site survives a failed build.

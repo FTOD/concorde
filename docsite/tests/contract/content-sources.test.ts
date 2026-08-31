@@ -12,6 +12,9 @@ describe('content source diagnostics', () => {
     const contract = await readFile(resolve(
       process.cwd(), '../specs/concorde/features/002-create-project-docsite/contracts/content-sources.md',
     ), 'utf8');
+    const moduleContract = await readFile(resolve(
+      process.cwd(), '../specs/concorde/architecture/modules/auto-docs/architecture/contracts/project-content/contract.md',
+    ), 'utf8');
     expect(contract).toContain('# Content Sources Contract v10');
     expect(contract).toContain('documentation diagrams from');
     expect(contract).toContain('docs-page front matter');
@@ -19,6 +22,9 @@ describe('content source diagnostics', () => {
     expect(contract).toContain('Architecture navigation and routes follow declared module containment.');
     expect(contract).toContain("Features navigation follows declared module containment and each module's ordered `features`");
     expect(contract).toContain('Adjacent-level `refines` relationships remain metadata and cross-links rather than navigation');
+    expect(moduleContract).toContain('version: 9');
+    expect(moduleContract).toContain('root `README.md`');
+    expect(moduleContract).toContain('all three accepted inputs');
   });
 
   it('requires the root README and rejects broken or competing homepage sources', async () => {

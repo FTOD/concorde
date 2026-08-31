@@ -59,7 +59,6 @@ All ten declared diagrams pass the Archify 2.16 delivery gate with 9/9 showcase 
 
 ## Known Limitations
 
-- The Auto-Docs refinement still contains earlier hierarchy and two-source-root requirements. Its FR-DOC-003, FR-DOC-004, and module-level project-content contract require their own lifecycle update; this acceptance does not edit adjacent durable sources (R-008).
 - Cross-contract version references have executable alignment evidence at schema v9, but the maintainer-owned record of the earlier published-site drift remains open for review (R-009).
 - Duplicate feature IDs intentionally emit identity findings plus companion route-collision findings. They are actionable but may be noisy until diagnostics are grouped (R-010).
 - Publication clears `.docusaurus` and `node_modules/.cache` on every preview/build preparation. This favors route correctness over warm-cache reuse and must remain aligned with future Docusaurus cache locations (R-011).

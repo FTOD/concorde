@@ -28,8 +28,8 @@ canonical_design: specs/concorde/architecture/modules/auto-docs/features/001-pub
 
 ## Outcome
 
-The Auto-Docs module projects architecture plus permanent feature specifications and designs from the unified `specs/`
-hierarchy plus project Markdown from `docs/` into one searchable, traceable, read-only website, embedding each
+The Auto-Docs module projects the root `README.md` introduction, architecture plus permanent feature specifications and designs from the unified `specs/`
+hierarchy, and project Markdown from `docs/` into one searchable, traceable, read-only website, embedding each
 declared delivered Archify view beside its textual architecture source.
 
 ## Structural Refinement
@@ -45,15 +45,15 @@ module's narrower behavior, contracts, scenario examples, and evidence links.
 As a maintainer, I can build one site from the project's maintained specifications and documentation
 so that I can inspect architecture and feature intent without treating generated pages as authority.
 
-**Independent Test**: Build from a fixture containing a module, a contract, a nested feature spec/design pair,
-and project documentation; verify three distinct views, canonical provenance, and no source mutation.
+**Independent Test**: Build from a fixture containing a root README, a module, a contract, a nested feature spec/design pair,
+and project documentation; verify the homepage plus three distinct views, canonical provenance, and no source mutation.
 
 **Acceptance Scenarios**:
 
 1. **Given** module, contract, and permanent feature specifications/designs under `specs/`, **When** the site is built,
    **Then** Architecture and Features are separate views of that same hierarchy.
-2. **Given** project Markdown under `docs/`, **When** the site is built, **Then** Documentation is a
-   third view and every page points back to its canonical source.
+2. **Given** root `README.md` and project Markdown under `docs/`, **When** the site is built, **Then**
+   the README owns `/`, Documentation is a third view, and every page points back to its canonical source.
 3. **Given** unchanged canonical inputs, **When** the site is built twice, **Then** its manifest and
    source-to-route mappings are identical.
 
@@ -61,8 +61,8 @@ and project documentation; verify three distinct views, canonical provenance, an
 
 **ID**: `publish-project-docsite`
 
-A maintainer invokes the documented build interface. Auto-Docs consumes module and contract
-specifications, project Markdown, and canonical feature `abstract.md`/`design.md`/`implementation.md` trios through
+A maintainer invokes the documented build interface. Auto-Docs consumes root `README.md`, module and
+contract specifications, project Markdown, and canonical feature `abstract.md`/`design.md`/`implementation.md` trios through
 `contract.auto-docs.project-content`,
 associates declared Archify JSON with delivered HTML, validates and renders the read model, emits
 `contract.auto-docs.build-manifest`, and provides
@@ -90,17 +90,18 @@ second child sequence would duplicate those two complementary views.
 - **FR-DOC-003**: Architecture MUST preserve declared module containment; Features MUST group
   top-level features by that owning module hierarchy and preserve explicit parent/sub-feature
   containment inside each module group, without deriving navigation from raw storage segments.
-- **FR-DOC-004**: The module MUST expose project documentation from `docs/` as a third view while maintaining only
-  two canonical source roots: `specs/` and `docs/`.
+- **FR-DOC-004**: The module MUST publish root `README.md` as the one-file homepage at `/` and expose
+  project documentation from `docs/` as a third view, while `specs/` and `docs/` remain the two
+  recursive canonical source trees.
 - **FR-DOC-005**: Any renderer-specific staging MUST be disposable, ignored, regenerated from the
   canonical registry, and invisible in published provenance.
 
 ## Success Criteria
 
-- **SC-DOC-001**: Every eligible module, boundary contract, feature specification, feature design, and project document
+- **SC-DOC-001**: The root README and every eligible module, boundary contract, feature specification, feature design, and project document
   appears exactly once in the build manifest.
 - **SC-DOC-002**: Two builds from identical inputs produce identical manifests.
-- **SC-DOC-003**: Validation and build operations produce zero changes under `specs/` and `docs/`.
+- **SC-DOC-003**: Validation and build operations produce zero changes to `README.md` or under `specs/` and `docs/`.
 
 ## Expected evidence
 
