@@ -164,18 +164,8 @@ Final evidence on 2026-08-30:
 
 ## Known Limitations
 
-- **R-036**: the failed-update fixture once duplicated a transport filename instead of deriving it
-  from release inventory; the fixture is corrected but the improvement remains open.
-- **R-037**: the workflow diagram exposed stale repository-evidence pins during the identity/path
-  migration; its evidence is refreshed, while the recorded tooling improvement remains open.
-- **R-038**: the self-hosting diagram exposed the same evidence-pin weakness and remains an open
-  tooling lesson despite corrected evidence.
-- **R-046**: installer acceptance requires loopback catalog permission unavailable in the default
-  sandbox; the unchanged approved rerun passed.
-- **R-047**: a docsite fixture duplicated Feature 005's former title; only the stale expectation was
-  corrected, while deriving labels from maintained identity remains open.
 - Browser-based containment and light/dark perceptual review remains pending because Chrome/Chromium
-  was unavailable; deterministic showcase checks are not claimed as visual review (R-026).
+  was unavailable; deterministic showcase checks are not claimed as visual review.
 - Compatibility remains limited to Spec Kit `>=0.16.4,<0.16.5`.
 - Public release hosting and a first-time remote installation timing proof remain owned by the
   `publish-release` and `one-command-install` sub-features; this milestone builds and verifies 0.5.0

@@ -26,7 +26,8 @@ The candidate captures accepted collaboration, flows, decisions, evidence, limit
 implementation detail a coder needs under the parent's six fixed sections, without copying the task
 log. A module amendment carries only detail and rationale developed during the attempt, under the
 reference's stable headings, and never alters facts owned by `module.md`, contracts, or the level
-view. A stale or interrupted apply leaves the previous feature `implementation.md`, the previous module
+view. Reflection entries are presented transiently from the project log for review; neither durable
+candidate may persist an `R-NNN` identifier or reflection entry content. A stale or interrupted apply leaves the previous feature `implementation.md`, the previous module
 `implementation.md`, and the complete attempt recoverable.
 
 **Not part of this step**: executing incomplete work (the execute step), changing behavior
@@ -54,7 +55,8 @@ Maintainer ──review · explicit approval──▶ speckit.concorde.impl.acce
 2. Synthesize the candidate feature `implementation.md` and, when warranted, the module `design.md`
    amendment; compute the source digest and the whole-attempt cleanup target.
 3. Present the exact proposal — candidate, amendment, cleanup manifest, digest, retained
-   authorities — and change nothing.
+   authorities, and transient reflection summary — and change nothing; reject reflection identifiers
+   copied into either durable candidate.
 4. On explicit approval of that unchanged proposal, apply realization replacement, reference
    amendment, and attempt removal atomically; on staleness, an unsafe path, or interruption, restore
    every prior state.
@@ -69,7 +71,8 @@ Maintainer ──review · explicit approval──▶ speckit.concorde.impl.acce
   selected target, optional module-reference amendment target, cleanup target, and source digest
   (FR-002).
 - The candidate captures collaboration, flows, decisions, evidence, limitations, and coder-level
-  detail under the six fixed sections, without copying the task log (FR-003).
+  detail under the six fixed sections, without copying the task log or reflection identity/content
+  from the centralized project log (FR-003).
 - Apply requires explicit approval of the exact unchanged proposal (FR-004).
 - Mutation targets are only the selected root's `implementation.md`, its complete `attempt/`, and —
   when proposed — the module `design.md` of the level where the feature is specified; any

@@ -151,6 +151,12 @@ append or update the matching entry in the project reflection log at `workspace.
 the final report. Never place a reflection under `attempt/` and never change a maintainer-set status
 or note.
 
+`workspace.reflections` is the sole persisted reflection-record authority. Do not copy or cite an
+entry's `R-NNN` identity, status, note, occurrences, or prose into affected feature/module
+documents, attempt artifacts, contracts, diagrams, code, or tests; retain independently true facts
+without reflection identity. Triage plans and completion reports may use an identifier only for
+transient coordination.
+
 This ordinary problem-recording rule does not prevent an explicitly requested rename or
 documentation correction from reconciling the log as maintained source under Direct Change. Such a
 rewrite preserves stable `R-NNN` identities and the validated entry structure and meaning.

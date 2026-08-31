@@ -133,7 +133,7 @@ are recorded in the project reflection log.
   referential impact, changed files, checks, architecture evidence state, any rename mapping and
   inventory, preserved unrelated work, and explicit no-attempt/no-acceptance confirmation.
 - Installed-surface generation continues through self-hosting. A dual active-integration refresh
-  currently needs a generated Codex backup/restore to survive the second Claude apply (R-042); this
+  currently needs a generated Codex backup/restore to survive the second Claude apply; this
   does not change the canonical command or either final projection.
 
 ## Traceability and Evidence
@@ -173,19 +173,4 @@ tests, 108-page validation, and production build promotion.
 ## Known Limitations
 
 - Browser containment and light/dark perceptual review remains pending because Chrome/Chromium is
-  unavailable; deterministic delivery is not visual inspection (R-026).
-- The tasks template's literal selected-child path wording still conflicts with realizing source,
-  test, and coordinated authority paths outside the child root (R-027).
-- Generated task paths are not checked automatically against repository files (R-028).
-- Installed receipt parsing still derives accepted phase-token shape from a regex rather than the
-  runtime vocabulary (R-029).
-- Additive fast-loop recomposition remains a special ownership case without a lower winner (R-030).
-- Ad hoc full-suite discovery can shadow the runtime package unless the discovery root is chosen
-  correctly (R-031).
-- Release capability counts remain duplicated literals instead of manifest-derived values (R-032).
-- Specification validation does not yet catch invented level-view scenario identifiers early
-  (R-033).
-- Switching active integration twice during self-host refresh can delete inactive generated
-  Concorde surfaces; the final dual projection currently requires backup/restore (R-042).
-- The generic skill-creator validator rejects Spec Kit/Claude-owned front-matter keys, so Concorde's
-  repository-native manifest/surface/release gates remain authoritative (R-043).
+  unavailable; deterministic delivery is not visual inspection.

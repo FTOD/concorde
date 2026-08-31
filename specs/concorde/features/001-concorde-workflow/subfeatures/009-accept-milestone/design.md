@@ -90,7 +90,10 @@ snapshotting all related roots, abstracts, specifications, module summaries, and
   target, and source digest.
 - **FR-003**: The candidate feature `implementation.md` MUST capture accepted collaboration, flows,
   decisions, evidence, limitations, and the implementation detail a coder needs under the parent's
-  six fixed sections, without copying the temporal task log.
+  six fixed sections, without copying the temporal task log. Acceptance MUST present attributed
+  reflection entries transiently from `reflections.md`, MUST keep that log as their sole persisted
+  authority, and MUST reject an `R-NNN` identifier in candidate feature `implementation.md` or module
+  `design.md` content with `CONCORDE-ACCEPT-012`.
 - **FR-004**: Apply MUST require explicit approval of the exact unchanged proposal.
 - **FR-005**: Apply MUST accept only the selected root's `implementation.md`, its complete `attempt/`
   directory, and — when the proposal includes it — the module `design.md` of the level at which the
@@ -120,7 +123,7 @@ snapshotting all related roots, abstracts, specifications, module summaries, and
   changes.
 - **SC-002**: Every approved fixture leaves a feature `implementation.md` byte-identical to the reviewed
   candidate, a module `design.md` byte-identical to the reviewed amendment when one was proposed,
-  and removes exactly one attempt.
+  removes exactly one attempt, and persists zero reflection identifiers outside `reflections.md`.
 - **SC-003**: Every injected interruption restores the prior feature `implementation.md`, the prior module
   `implementation.md`, and the complete attempt.
 - **SC-004**: All parent, child, and sibling roots, every `abstract.md` and `design.md`, and every

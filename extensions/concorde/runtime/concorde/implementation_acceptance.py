@@ -26,6 +26,7 @@ TASK_LINE = re.compile(r"^\s*-\s+\[([ xX])\]\s+(T\d{3,})\b")
 TASK_REFERENCE = re.compile(r"\bT\d{3,}\b")
 CHECKLIST_LINE = re.compile(r"^\s*-\s+\[([ xX])\](?:\s+.*)?$")
 CHECKBOX_LIKE_LINE = re.compile(r"^\s*-\s+\[[^\]]*\]")
+REFLECTION_IDENTIFIER = re.compile(r"\bR-\d{3,}\b")
 PLACEHOLDER_MARKER = "No implementation realization has been accepted yet."
 REQUIRED_IMPLEMENTATION_HEADINGS = (
     "## Realization Overview",
@@ -258,13 +259,9 @@ def _amendment_target(paths: dict[str, Any], amendment: Any) -> str:
     return path
 
 
-def _uncited_open_reflections(project: Path, paths: dict[str, Any], target: str, content: str) -> list[str]:
-    """Identifiers of open entries attributed to ``target`` that candidate implementation.md omits."""
-    log = project / paths["reflections"]
-    if not log.is_file() or log.is_symlink():
-        return []
-    parsed = parse_reflection_log(log.read_text(encoding="utf-8"))
-    return [entry.identifier for entry in parsed.entries_for(target) if entry.status == "open" and entry.identifier not in content]
+def _persisted_reflection_identifiers(*contents: str | None) -> list[str]:
+    """Reflection identifiers copied into acceptance-managed durable documents."""
+    return sorted({match.group(0) for content in contents if content for match in REFLECTION_IDENTIFIER.finditer(content)})
 
 
 def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationResult:
@@ -303,15 +300,6 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
         if proposal.get("remove") != [paths["attempt_dir"]]:
             raise WorkspaceError("proposal removal set must contain exactly the selected feature's attempt/ directory")
         content = _validate_implementation(realization.get("content"))
-        uncited = _uncited_open_reflections(project, paths, target, content)
-        if uncited:
-            return OperationResult(
-                "impl.accept",
-                target,
-                "invalid",
-                findings=(_finding("CONCORDE-ACCEPT-012", paths["reflections"], "Open reflection entries attributed to this feature are not cited by the candidate implementation.md: " + ", ".join(uncited), "Cite every open entry's identifier under ## Known Limitations (or resolve or dismiss it in the log with a note), then regenerate the proposal."),),
-                result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"], "reflection_summary": eligibility.result["reflection_summary"]},
-            )
         repository = ProjectRepository(project)
         implementation_path = repository.resolve(paths["feature_implementation"])
         attempt_path = repository.resolve(paths["attempt_dir"])
@@ -321,6 +309,16 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
         if amendment is not None:
             module_design_path = repository.resolve(_amendment_target(paths, amendment))
             module_design_content = _validate_module_design(amendment.get("content"))
+        persisted_reflections = _persisted_reflection_identifiers(content, module_design_content)
+        if persisted_reflections:
+            source = paths["feature_implementation"] if REFLECTION_IDENTIFIER.search(content) else paths["module_design"]
+            return OperationResult(
+                "impl.accept",
+                target,
+                "invalid",
+                findings=(_finding("CONCORDE-ACCEPT-012", source, "Acceptance-managed durable documents must not persist reflection identifiers: " + ", ".join(persisted_reflections), "Keep reflection entries, identifiers, statuses, notes, and occurrences only in the project reflections.md; describe independently true implementation facts without reflection identity."),),
+                result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"], "reflection_summary": eligibility.result["reflection_summary"]},
+            )
         if implementation_path.is_symlink() or attempt_path.is_symlink() or (module_design_path is not None and module_design_path.is_symlink()):
             raise WorkspaceError("acceptance targets may not be symlinks")
         old_content = implementation_path.read_text(encoding="utf-8") if implementation_path.is_file() else None

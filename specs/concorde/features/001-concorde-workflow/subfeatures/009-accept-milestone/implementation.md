@@ -8,13 +8,13 @@
 
 Accept Milestone is the one workflow operation that accepts a completed temporal implementation attempt as the selected feature's durable realization. The public command is speckit.concorde.impl.accept, the CLI is impl accept, the structured operation is impl.accept, and a successful apply reports status accepted. Proposal mode remains read-only; apply remains impossible without explicit maintainer approval of the exact digest-bound candidate.
 
-The operation preserves the existing safety model: at least one recognizable task, every task complete, every existing checklist item complete and well formed, safe canonical paths, a current source digest, an implementation candidate with the six required sections, citation of every open reflection attributed to the selected feature, an optional full providing-module design amendment, and exactly one whole-attempt removal target. Apply stages every update, moves the attempt recoverably, promotes all outputs atomically, and restores the previous implementation, module design, and attempt on failure.
+The operation preserves the existing safety model: at least one recognizable task, every task complete, every existing checklist item complete and well formed, safe canonical paths, a current source digest, an implementation candidate with the six required sections, centralized reflection review with no copied identifiers in durable candidates, an optional full providing-module design amendment, and exactly one whole-attempt removal target. Apply stages every update, moves the attempt recoverably, promotes all outputs atomically, and restores the previous implementation, module design, and attempt on failure.
 
 The migration is a clean break. No command alias, parser fallback, status alias, proposal compatibility branch, diagnostic compatibility name, old feature root, or old installed skill remains. Historical wording survives only in version-control history; maintained reflection entries are reconciled like other docs/specs while their stable IDs and meaning remain valid.
 
 ## Module and Feature Collaboration
 
-The parent feature feature.concorde.workflow owns lifecycle order, durable/temporal authority, the six-section implementation model, and the rule that only explicit acceptance establishes a new baseline. This child owns eligibility, candidate synthesis guidance, proposal identity, approval binding, atomic apply/rollback, cleanup, reflection citation, and result reporting.
+The parent feature feature.concorde.workflow owns lifecycle order, durable/temporal authority, the six-section implementation model, and the rule that only explicit acceptance establishes a new baseline. This child owns eligibility, candidate synthesis guidance, proposal identity, approval binding, atomic apply/rollback, cleanup, centralized reflection presentation, and result reporting.
 
 Skills publishes the selected-workspace adapter, nine normal-phase overrides, templates, and the renamed installed command surface. Scripts supplies the portable Python runtime, Feature Workspace Protocol v8, acceptance proposal v6, path resolution, reflection parsing, diagnostics, and mutation boundary. Distribution packages concorde 0.4.0, concorde 0.4.0, and concorde-bundle 0.4.0 with regenerated catalogs and release artifacts. Documentation publishes the renamed specifications, commands, examples, accepted realizations, and parent core view.
 
@@ -26,9 +26,9 @@ A coding agent or maintainer selects one valid feature or immediate sub-feature.
 
 The agent reads only the bounded selected root, read-only parent context for a child, concise sibling summaries, relevant architecture/contracts, the complete selected attempt, and cited implementation evidence. It drafts a complete implementation.md and, only when warranted, a full providing-module design amendment. The proposal uses proposal_version 6 and operation impl.accept, names exactly the returned implementation and optional module-design paths, and contains exactly the selected attempt directory in remove.
 
-The agent presents the complete candidate, any module amendment diff, cleanup manifest, reflection citations, retained authorities, and digest. Checked boxes and successful validation do not grant approval. Only the maintainer's explicit approval authorizes impl accept --apply --proposal.
+The agent presents the complete candidate, any module amendment diff, cleanup manifest, transient log-sourced reflection summary, retained authorities, and digest. Checked boxes and successful validation do not grant approval. Only the maintainer's explicit approval authorizes impl accept --apply --proposal.
 
-Apply re-resolves the target and every path, ignores only the proposal itself when recomputing the digest, rejects changed inputs and unsafe or broader targets, checks the candidate and reflection citations, stages updates, moves the attempt to a recoverable backup, and atomically promotes the reviewed bytes. The result reports prior/resulting implementation digests, optional module-design digests, removed artifacts, retained authorities, reflection summary, changes, findings, selected target, and absent attempt state.
+Apply re-resolves the target and every path, ignores only the proposal itself when recomputing the digest, rejects changed inputs and unsafe or broader targets, checks both durable candidates for copied `R-NNN` identifiers, stages updates, moves the attempt to a recoverable backup, and atomically promotes the reviewed bytes. The result reports prior/resulting implementation digests, optional module-design digests, removed artifacts, retained authorities, reflection summary, changes, findings, selected target, and absent attempt state.
 
 ## Durable Implementation Decisions
 
@@ -43,7 +43,7 @@ Apply re-resolves the target and every path, ignores only the proposal itself wh
 - Architecture Source Profile 4, Architecture Service Protocol v1, Build Manifest v8, and docsite generator 0.3.0 are unchanged because their structures are unaffected.
 - Canonical preset/extension sources remain authoritative. .specify, .agents, and .claude are regenerated mirrors verified against those sources and installed-project acceptance tests.
 - The parent workflow core diagram remains the single stable component view. Only its milestone view and connection terminology changed; the generated route and component structure are unchanged.
-- Reflection entries participate in text migration as maintained docs/specs; controlled rewrites preserve every exact unique `R-NNN` identifier, valid field structure, maintainer decision, occurrence identity, and problem meaning. Current commands, docs, code, contracts, schemas, examples, tests, specifications, accepted realizations, reflections, and mirrors use only the new vocabulary.
+- Reflection entries participate in text migration only inside centralized `reflections.md`; controlled rewrites preserve every exact unique `R-NNN` identifier, valid field structure, maintainer decision, occurrence identity, and problem meaning. Acceptance-managed durable documents retain independently true facts without copying reflection identity.
 - The old interface is rejected rather than translated, keeping one safety-sensitive mutation surface.
 
 ## Traceability and Evidence
@@ -62,11 +62,13 @@ The supported Codex self-host apply completed for 0.4.0 and reported source, ins
 
 ## Known Limitations
 
-- The self-host status implementation still cannot assess the active Claude integration; Claude surface confidence comes from public Spec Kit materialization and installed acceptance tests rather than self-host status (project reflection R-001).
-- The self-host bootstrap requires an explicit Python interpreter in this checkout; direct execution is not permitted by file mode (R-015).
-- The project virtual environment does not install pytest; validation uses the standard-library unittest runner (R-016).
-- A shared-component bundle fixture that consumes the live preset must keep its pin synchronized with the current package version (R-017).
-- Task-scoped temporary backup and release directories outside the repository could not be explicitly removed under the execution policy and are left for normal operating-system cleanup; no project artifact depends on them (R-019).
+- The self-host bootstrap requires an explicit Python interpreter in this checkout; direct execution
+  is not permitted by file mode.
+- The project virtual environment does not install pytest; validation uses the standard-library
+  unittest runner.
+- A shared-component bundle fixture that consumes the live preset must keep its pin synchronized
+  with the current package version.
+- Task-scoped temporary backup and release directories outside the repository are left for normal
+  operating-system cleanup; no project artifact depends on them.
 - The current agent process was initialized before the on-disk skill rename. A new session is required before its capability list displays the new skill name, even though both installed trees and tests are current.
-- Historical reflection entries retain their original wording by contract. They are records of what agents encountered, not active command guidance.
 - Human perceptual review of the terminology-changed diagrams remains pending; automated showcase and production rendering are not visual approval.

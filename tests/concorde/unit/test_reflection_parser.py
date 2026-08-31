@@ -1,3 +1,4 @@
+import re
 import sys
 import tempfile
 import unittest
@@ -21,6 +22,14 @@ from concorde.reflections import (  # noqa: E402
 
 
 class ReflectionParserTests(unittest.TestCase):
+    def test_accepted_implementations_do_not_persist_concrete_reflection_identifiers(self):
+        pattern = re.compile(r"\bR-\d{3,}\b")
+        implementations = sorted((REPOSITORY_ROOT / "specs").rglob("implementation.md"))
+        self.assertGreater(len(implementations), 0)
+        for path in implementations:
+            with self.subTest(path=path.relative_to(REPOSITORY_ROOT)):
+                self.assertIsNone(pattern.search(path.read_text(encoding="utf-8")))
+
     def test_contract_example_and_project_log_parse_without_problems(self):
         for relative in (
             "specs/concorde/features/005-record-workflow-reflections/contracts/examples/reflections.md",

@@ -32,7 +32,7 @@ copying Concorde's repository-local Claude or Codex setup by hand.
 | Merge | A clean maintainer checkout is required; branches merge one at a time, applicable deterministic checks rerun, conflicts stop safely, and only successful worktrees and plan states are cleaned up. |
 | Installation | Concorde distributes the shared skill, roles, deterministic queue helper, and default configuration as platform-appropriate Claude and Codex projections with common semantics and state. |
 | Maintainer authority | Triage suggests resolution decisions and commits but never changes a reflection `Status` decision or `Note` meaning; maintainers own those decisions and may explicitly authorize bounded terminology rewrites or cleanup of closed entries without renumbering or reusing IDs. |
-| Acceptance and validation | Acceptance presents the feature's entries and requires every open one to remain cited; deterministic validation checks a present log read-only and reports nothing for an absent log. |
+| Acceptance and validation | Acceptance presents the feature's entries transiently, keeps every entry and `R-NNN` identity only in `reflections.md`, and rejects copied identifiers in accepted realization/module candidates; deterministic validation checks a present log read-only and reports nothing for an absent log. |
 
 **Not part of this feature**: automatically changing reflection status, auto-implementing
 `specify`/`dismiss`/`blocked` routes, per-feature logs, an external service, a dashboard, automatic
@@ -89,8 +89,9 @@ Maintainer ──▶ triage orchestrator ─┬─▶ investigator agents ─▶
 6. When a project rename or documentation correction reaches the log, apply the explicit mapping to
    existing entry text and references while preserving each `R-NNN` identity, structure, status,
    note, and meaning; validate the complete log after the rewrite.
-7. At acceptance, every open entry attributed to the feature stays cited in the accepted
-   realization and the project log remains intact.
+7. At acceptance, the feature's entries are presented by status from the log, but no identifier or
+   entry content is persisted in `implementation.md` or a module amendment; the project log remains
+   the sole authoritative record and stays byte-identical.
 
 **Rules the implementation must keep**
 
@@ -101,9 +102,10 @@ Maintainer ──▶ triage orchestrator ─┬─▶ investigator agents ─▶
   repeated problems update occurrences, while explicit document reconciliation may rewrite content
   without changing stable entry IDs or maintainer decisions (FR-003, FR-004, FR-005, FR-008,
   FR-014, FR-016, FR-028).
-- Recording never edits durable sources or reads another root's attempt, and phase reports,
-  analysis, convergence, acceptance, and validation surface the entries within their existing
-  authority (FR-007, FR-009, FR-010, FR-011, FR-012, FR-013, FR-015, FR-017).
+- Recording never edits durable sources or reads another root's attempt. Phase reports, analysis,
+  convergence, acceptance, and validation may surface entries transiently, but only the project log
+  persists their identity, status, notes, occurrences, and prose (FR-007, FR-009, FR-010, FR-011,
+  FR-012, FR-013, FR-015, FR-016, FR-017).
 - Investigation handles one entry per specialized agent and produces the complete plan contract in
   bounded waves with explicit failure reporting (FR-019, FR-020, FR-021).
 - Implementation selects only ready fast-loop routes, protects maintainer edits, groups by owning

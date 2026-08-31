@@ -2,11 +2,12 @@
 
 ## Purpose
 
-Define the one machine-checkable shape of the project reflection log — `reflections.md` directly
-inside the specification root — in which coding agents record every difficulty or problem met during
-the plan, tasks, implement, analyze, and converge phases of any attempt, so that a maintainer can
-read it in minutes, deterministic validation can check it, phase reports and bounded context can
-count it, acceptance can cite it, and explicit project renames or documentation corrections can
+Define the one machine-checkable shape and sole persisted authority of the project reflection log —
+`reflections.md` directly inside the specification root — in which coding agents record every
+difficulty or problem met during the plan, tasks, implement, analyze, and converge phases of any
+attempt, so that a maintainer can read it in minutes, deterministic validation can check it, phase
+reports and bounded context can count it, acceptance can present it transiently, and explicit
+project renames or documentation corrections can
 reconcile it like the other maintained docs/specs without changing stable entry identities.
 
 ## Representation
@@ -69,9 +70,14 @@ Required fields, in this order: `Phase`, `Date`, `Feature`, `Kind`, `Concerns`, 
   `Expected`/`Observed`/`Action` under about 150 words together.
 - Phases that record list the added identifiers and the open count for `Feature` = the selected
   root in their completion report.
-- Acceptance presents every entry whose `Feature` is the selected root by status; the candidate
-  feature `design.md` cites the identifier of every such `open` entry; apply refuses otherwise and
-  never modifies the log.
+- The log is the only file that persists entry identifiers, fields, statuses, notes, occurrences,
+  and prose. Feature/module documents, attempt artifacts, contracts, diagrams, code, and tests MUST
+  NOT copy or cite that reflection identity or entry content; they MAY retain independently verified
+  facts without reflection identity. Triage plans and completion reports MAY refer to identifiers
+  only for transient coordination.
+- Acceptance presents every entry whose `Feature` is the selected root by status as a transient
+  log-sourced view; candidate feature `implementation.md` and module `design.md` content containing
+  an `R-NNN` identifier is refused, and acceptance never modifies the log.
 - Validation reads the log read-only and reports `CONCORDE-REFLECT-001` to `-004` findings; it
   reports nothing for an absent log.
 - No workflow operation removes the log; it is a maintained, version-controlled source and is not
@@ -82,8 +88,8 @@ Required fields, in this order: `Phase`, `Date`, `Feature`, `Kind`, `Concerns`, 
 A malformed log is a validation finding and blocks acceptance eligibility (`CONCORDE-ACCEPT-011`);
 it never causes a phase to stop, and validation never rewrites the log to repair it. A `Concerns` or
 `Feature` reference that stops resolving after a source change is reported by analysis as stale and
-by validation as `CONCORDE-REFLECT-004`. An open entry of the feature that the candidate design
-reference does not cite is `CONCORDE-ACCEPT-012` at apply time.
+by validation as `CONCORDE-REFLECT-004`. A candidate feature `implementation.md` or module
+`design.md` that persists an `R-NNN` identifier is `CONCORDE-ACCEPT-012` at apply time.
 
 ## Compatibility
 
@@ -96,6 +102,6 @@ value's meaning requires v2 and migration guidance in the feature specification.
 
 `tests/concorde/unit/test_reflection_parser.py` covers grammar, duplicate IDs, stable-ID-preserving
 rewrites, archive handling, and summaries. `tests/concorde/unit/test_reflection_rules.py` covers all
-four validation rules plus controlled rename reference validity. Acceptance citation gates are in
+four validation rules plus controlled rename reference validity. Acceptance centralization gates are in
 `tests/concorde/integration/test_implementation_acceptance.py`; installed phase parity is covered by
 `tests/concorde/acceptance/test_workspace_composition.py`.

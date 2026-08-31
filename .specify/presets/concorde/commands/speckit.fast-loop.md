@@ -135,6 +135,12 @@ append or update the matching entry in the project reflection log at `workspace.
 the final report. Never place a reflection under `attempt/` and never change a maintainer-set status
 or note.
 
+`workspace.reflections` is the sole persisted reflection-record authority. Do not copy or cite an
+entry's `R-NNN` identity, status, note, occurrences, or prose into affected feature/module
+documents, attempt artifacts, contracts, diagrams, code, or tests; retain independently true facts
+without reflection identity. Triage plans and completion reports may use an identifier only for
+transient coordination.
+
 For a new entry, use the next `R-NNN` identifier and the fixed field order: `Phase: fast-loop`,
 `Date`, `Feature`, `Kind`, `Concerns`, `Expected`, `Observed`, `Effect`, `Action`, `Improvement`, and
 `Status: open`. When the same problem already exists, append one `fast-loop YYYY-MM-DD <feature-id>

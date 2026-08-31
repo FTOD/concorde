@@ -415,7 +415,7 @@ class ImplementationAcceptanceIntegrationTests(unittest.TestCase):
 
 
 class ReflectionAcceptanceTests(ImplementationAcceptanceIntegrationTests):
-    """Acceptance reads the project reflection log, summarizes the feature's entries, and gates on open ones."""
+    """Acceptance summarizes the centralized log without copying reflection identity elsewhere."""
 
     def project_with_log(self, temporary: str, entries) -> Path:
         root = self.project_copy(temporary)
@@ -457,20 +457,18 @@ class ReflectionAcceptanceTests(ImplementationAcceptanceIntegrationTests):
             self.assertEqual(eligibility.findings[0].source, "specs/example/reflections.md")
             self.assertEqual(tree_hashes(root), before)
 
-    def test_uncited_open_entry_refuses_apply_and_preserves_attempt_and_log(self):
+    def test_open_entries_do_not_require_candidate_citations_and_leave_log_byte_identical(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_with_log(temporary, [reflection_entry("R-001"), reflection_entry("R-002", feature="feature.example.api.invoke")])
+            log_before = (root / "specs/example/reflections.md").read_bytes()
             eligibility = propose_acceptance(root)
             proposal = self.write_proposal(root, eligibility)
-            before = tree_hashes(root)
             result = apply_acceptance(root, proposal.relative_to(root).as_posix())
-            self.assertEqual(result.status, "invalid")
-            self.assertEqual([item.rule_id for item in result.findings], ["CONCORDE-ACCEPT-012"])
-            self.assertIn("R-001", result.findings[0].message)
-            self.assertNotIn("R-002", result.findings[0].message)
-            self.assertEqual(tree_hashes(root), before)
+            self.assertEqual(result.status, "accepted", result.findings)
+            self.assertEqual((root / "specs/example/reflections.md").read_bytes(), log_before)
+            self.assertEqual(result.result["reflection_summary"], {"entries": 1, "open": 1, "resolved": 0, "dismissed": 0})
 
-    def test_cited_open_entries_accept_and_leave_the_log_byte_identical(self):
+    def test_candidate_reflection_identifier_refuses_apply_and_preserves_attempt_and_log(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_with_log(temporary, [reflection_entry("R-001"), reflection_entry("R-002", status="resolved"), reflection_entry("R-003", feature="feature.example.api.invoke")])
             log_before = (root / "specs/example/reflections.md").read_bytes()
@@ -479,12 +477,25 @@ class ReflectionAcceptanceTests(ImplementationAcceptanceIntegrationTests):
             proposal = json.loads(self.write_proposal(root, eligibility).read_text(encoding="utf-8"))
             proposal["implementation"]["content"] = CANDIDATE.replace("No additional delivery variants are accepted in this fixture.", "Open reflection R-001 (fallback command) remains unresolved.")
             path.write_text(json.dumps(proposal) + "\n", encoding="utf-8")
+            before = tree_hashes(root)
             result = apply_acceptance(root, path.relative_to(root).as_posix())
-            self.assertEqual(result.status, "accepted", result.findings)
+            self.assertEqual(result.status, "invalid")
+            self.assertEqual([item.rule_id for item in result.findings], ["CONCORDE-ACCEPT-012"])
+            self.assertIn("R-001", result.findings[0].message)
             self.assertEqual((root / "specs/example/reflections.md").read_bytes(), log_before)
-            self.assertEqual(result.result["reflection_summary"], {"entries": 2, "open": 1, "resolved": 1, "dismissed": 0})
-            self.assertIn("specs/example/reflections.md", result.result["retained_artifacts"])
-            self.assertFalse((root / "specs/example/features/001-deliver/attempt").exists())
+            self.assertEqual(tree_hashes(root), before)
+
+    def test_module_design_reflection_identifier_refuses_apply(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_with_log(temporary, [reflection_entry("R-001", status="resolved")])
+            eligibility = propose_acceptance(root)
+            proposal = self.write_proposal(root, eligibility, module_design=AMENDMENT + "\n- Reflection R-001 shaped delivery.\n")
+            before = tree_hashes(root)
+            result = apply_acceptance(root, proposal.relative_to(root).as_posix())
+            self.assertEqual(result.status, "invalid")
+            self.assertEqual([item.rule_id for item in result.findings], ["CONCORDE-ACCEPT-012"])
+            self.assertEqual(result.findings[0].source, "specs/example/design.md")
+            self.assertEqual(tree_hashes(root), before)
 
     def test_log_changed_after_proposal_is_a_conflict(self):
         with tempfile.TemporaryDirectory() as temporary:

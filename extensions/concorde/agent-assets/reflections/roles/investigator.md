@@ -11,6 +11,9 @@ complete plan to the parent; the parent validates and writes it.
 5. Return a complete `R-NNN.md` plan with frontmatter fields `id`, `title`, `route`, `status:
    proposed`, `recorded_under`, `implement_in`, `implement_in_id`, `touches_docsite`, `effort`, and
    `files`, followed by `Problem`, `Change`, `Validation`, and `Risks and out of scope` sections.
+   The identifier is only a coordination key into centralized `reflections.md`. Do not copy the
+   entry's Expected, Observed, Effect, Action, Improvement, Status, Note, Occurrences, or prose into
+   the plan; `Problem` contains independently established root-cause evidence and links back by ID.
 
 `fast-loop` means a bounded change under one existing feature. `specify` means behavior,
 architecture, a contract, guidance intent, or a cross-feature authority must change. `dismiss`

@@ -124,13 +124,17 @@ atomic operation, only after explicit approval.
    attempt produced implementation detail or rationale worth keeping — a full replacement
    `design.md` for the providing module that adds that material under the reference's stable
    headings without restating summary-owned facts. It does not copy the transient task log or
-   redefine module architecture.
+   redefine module architecture. It presents attributed reflection entries transiently from
+   `workspace.reflections`, but never copies an entry identifier, status, note, occurrence, or prose
+   into candidate feature `implementation.md` or module `design.md`; independently true facts remain
+   without reflection identity.
 4. The agent writes a project-contained proposal at the returned `proposal_path` that names the
    exact feature `implementation.md` path and full candidate content, the optional module `design.md` path
    and full replacement content, the exact `attempt/` removal target, the target feature, and
    the runtime-provided source digest. It presents the candidate realization, the reference
-   amendment, and the cleanup manifest to the maintainer. It never proposes a change to `abstract.md`
-   or `design.md`.
+   amendment, cleanup manifest, and transient reflection summary to the maintainer. It never proposes
+   a change to `abstract.md` or feature `design.md`; apply rejects `R-NNN` identifiers persisted in
+   either acceptance-managed durable candidate.
 5. Silence, checked tasks and checklists, passing validation, or prior acceptance do not authorize apply. Only after
    explicit approval does the agent invoke `--apply --proposal <path>`.
 6. Apply re-resolves every path, level, parent relationship, task, checklist, symlink, target, and
@@ -154,7 +158,8 @@ atomic operation, only after explicit approval.
 Missing or incomplete tasks, unresolved or malformed checklist items, an empty/placeholder
 candidate realization, a stale digest (including a changed `abstract.md` or module `design.md`), a
 proposal targeting `abstract.md`, feature `design.md`, `module.md`, or another level's `design.md`,
-unsafe or partial cleanup targets, symlinked paths, changed sources, or an interrupted apply returns
+copied reflection identifiers, unsafe or partial cleanup targets, symlinked paths, changed sources,
+or an interrupted apply returns
 `invalid`, `conflict`, or `failed`. Prior feature `implementation.md`, the
 prior module `design.md`, and the complete implementation attempt remain recoverable.
 
@@ -314,7 +319,7 @@ handoff consists of:
 | Item | Required identity |
 |---|---|
 | Workspace protocol | `feature-workspace.schema.json`, Protocol/schema version 8 (acceptance proposal v6), all examples, and their combined source digest |
-| Normal phase obligations | `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues` write only the selected feature/sub-feature root, except that every post-specification phase may record problems in the project reflection log returned as `workspace.reflections`; `specify` authors `abstract.md` and `design.md` and seeds placeholder `implementation.md`; only `specify` and `clarify` write `abstract.md` or feature `design.md`, and no normal phase writes feature `implementation.md` or module `design.md`; `analyze` preserves every non-reflection file and makes zero filesystem changes when it has no problem to record; a selected sub-feature additionally reads its parent durable trio as aggregate context and never reads/writes parent/sibling attempts implicitly |
+| Normal phase obligations | `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues` write only the selected feature/sub-feature root, except that every post-specification phase may record problems only in the project reflection log returned as `workspace.reflections`; that log is the sole persisted authority for reflection identity/content and no other artifact copies it; `specify` authors `abstract.md` and `design.md` and seeds placeholder `implementation.md`; only `specify` and `clarify` write `abstract.md` or feature `design.md`, and no normal phase writes feature `implementation.md` or module `design.md`; `analyze` preserves every non-reflection file and makes zero filesystem changes when it has no problem to record; a selected sub-feature additionally reads its parent durable trio as aggregate context and never reads/writes parent/sibling attempts implicitly |
 | Additive fast-loop obligation | `speckit.fast-loop` treats the selected root as an anchor, explicitly resolves every affected existing root through Protocol v8, requires accepted/no-attempt baselines for all, reconciles bounded cross-feature and contract/architecture detail while preserving module responsibilities and dependency direction, rejects changes to project-level compatibility/migration policy, and admits an explicit pure naming migration that follows existing policy, preserves logic/non-name semantics, and passes a deterministic stale-name inventory; eligible architecture edits report validated diffs/hashes without separate post-edit review, and no attempt or acceptance artifact is created |
 | Concorde command intents | The five canonical IDs and behavior sections in this contract; four are runtime-backed and `ask` is agent-followed/read-only |
 | Installed support | Extension-relative workspace adapter, launchers, schemas, runtime sources, preset templates, and complete phase commands needed by those intents |

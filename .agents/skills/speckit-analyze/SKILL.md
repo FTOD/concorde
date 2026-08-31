@@ -293,6 +293,12 @@ removes it.
   create it first from the template resolved by `specify preset resolve reflections-template`.
   Append a new entry or matching occurrence; never change or reuse an existing `R-NNN` identifier,
   delete an entry, or reverse a maintainer-set status or note as part of ordinary recording.
+- **Centralized authority**: `workspace.reflections` is the only file that may persist a
+  reflection entry or its `R-NNN` identity, status, note, or occurrences. Never copy or cite that
+  reflection identity or entry content into attempt artifacts, feature/module documents, contracts,
+  diagrams, code, or tests; those artifacts may state independently verified facts without
+  reflection identity. Triage plans and completion reports may refer to an identifier for transient
+  coordination, but they never become a second reflection record.
 - **What**: one `### R-NNN · <short title>` entry (the next unused identifier) with the fields, in
   order, `Phase` (this phase), `Date`, `Feature` (`workspace.feature_id`), `Kind`
   (`specification`, `architecture`, `guidance`, `tooling`, `environment`, or `implementation`),

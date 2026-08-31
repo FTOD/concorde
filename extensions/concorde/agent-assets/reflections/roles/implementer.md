@@ -21,4 +21,6 @@ checks when applicable. Leave no uncommitted changes.
 
 Return branch, worktree, head, per-plan status and commit, files changed per plan, and complete
 follow-up reflections for the parent to consider. The parent owns plan metadata, merge, and all
-reflection `Status`/`Note` decisions.
+reflection `Status`/`Note` decisions. Follow-up output is transient: the parent records each genuine
+new reflection only in centralized `reflections.md`, and no plan, commit message, or maintained
+implementation document becomes a second reflection record.

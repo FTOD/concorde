@@ -277,7 +277,7 @@ children, and remain distinct from adjacent-module feature refinement.
 | 5 | Plan one implementation attempt, order its work, and optionally project tasks into issues. | `speckit.plan` / `speckit.tasks` / `speckit.taskstoissues` | `design.md`, feature `implementation.md`, level summary; the module reference on demand | `attempt/` |
 | 6 | Execute tasks, analyze artifact consistency, and append only genuine remaining work. | `speckit.implement` / `speckit.analyze` / `speckit.converge` | The attempt and the durable trio | `attempt/`, code, tests, project reflection log |
 | 7 | Deterministically validate maintained architecture and evidence references. | `speckit.concorde.validate` | All maintained sources | — |
-| 8 | Review and explicitly compact a completed attempt into the accepted realization. | `speckit.concorde.impl.accept` | Durable trio, complete attempt, level summary and module reference | Feature `implementation.md`; optional reviewed module `design.md` amendment; removes `attempt/` |
+| 8 | Review and explicitly compact a completed attempt into the accepted realization. | `speckit.concorde.impl.accept` | Durable trio, complete attempt, level summary and module reference, centralized reflection log | Feature `implementation.md`; optional reviewed module `design.md` amendment; removes `attempt/`; reflection entries remain only in the byte-identical log |
 
 Validation may be invoked after any maintained structural change, not only at stage 7. Context and
 the question surface may be used whenever a maintainer needs to navigate or understand the workflow.
@@ -656,9 +656,9 @@ durable root without root-level compatibility copies.
   dependency-direction, project-level user compatibility/migration-policy, unsafe, or materially
   ambiguous work before mutation. An explicit pure naming migration MAY replace names while following
   existing policy when it preserves logic and all non-name semantics and deterministically inventories
-  stale names, aliases, and duplicates. Matching project reflection entries MUST be rewritten as
-  maintained docs/specs while their exact unique `R-NNN` identifiers, valid structure, maintainer
-  decisions, and problem meaning remain unchanged. Fast-loop MUST run proportional checks and report
+  stale names, aliases, and duplicates. Matching project reflection entries MUST be rewritten only
+  inside centralized `reflections.md` while their exact unique `R-NNN` identifiers, valid structure,
+  maintainer decisions, and problem meaning remain unchanged. Fast-loop MUST run proportional checks and report
   the anchor, affected set, files, evidence, architecture evidence state, rename mapping and rewritten
   reflection IDs when applicable, and skipped ceremony; eligible architecture edits require no
   separate post-edit review.

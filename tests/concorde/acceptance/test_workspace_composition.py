@@ -42,6 +42,8 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                 block_start = rendered.index("## Reflection Recording")
                 block = rendered[block_start:rendered.index("## Mandatory Post-Execution Hooks", block_start)]
                 self.assertIn("workspace.reflections", block)
+                self.assertIn("only file that may persist", block)
+                self.assertIn("never become a second reflection record", block)
                 self.assertIn("Reflections added:", block)
                 self.assertIn("Maintained reconciliation", block)
                 self.assertIn("preserve each exact `R-NNN` identifier", block)

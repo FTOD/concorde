@@ -55,20 +55,22 @@ and every `module.md` remain byte-identical.
    the feature. Reference module architecture instead of redefining module responsibilities,
    boundaries, contracts, or one-level organization. Retain durable decisions and useful evidence
    links; omit transient task ordering and raw validation logs. Alternatives and module-level
-   rationale belong in the module `design.md` amendment, not here. Cite the feature's reflection
-   entries by identifier: every entry whose `Feature` is this root and whose `Status` is `open`
-   under `## Known Limitations` (apply refuses with `CONCORDE-ACCEPT-012` while one is uncited);
-   resolved entries that shaped the realization under `## Durable Implementation Decisions`. Never
-   edit, resolve, or dismiss entries from here — the log is maintainer-owned and acceptance leaves
-   it byte-identical; a malformed log is `CONCORDE-ACCEPT-011` and must be repaired first.
+   rationale belong in the module `design.md` amendment, not here. Present the feature's reflection
+   entries and statuses transiently for maintainer review, but keep `workspace.reflections` as the
+   sole persisted reflection-record authority. Never copy or cite an entry identifier, status, note,
+   occurrence, or entry prose in candidate `implementation.md` or module `design.md`; independently
+   true implementation facts may remain without reflection identity. Apply refuses with
+   `CONCORDE-ACCEPT-012` when either candidate persists an `R-NNN` identifier. Never edit, resolve,
+   or dismiss entries from acceptance — the log is maintainer-owned and remains byte-identical; a
+   malformed log is `CONCORDE-ACCEPT-011` and must be repaired first.
 5. When the attempt produced implementation detail, rationale, alternatives, or decisions worth
    keeping at module level, draft a FULL replacement of the providing module's `design.md` (its path
    is `workspace.module_design`). Add that material under the reference's stable headings
    (`Implementation Notes`, `Design Rationale`, `Alternatives Considered`, `Decision Log`), keep
    everything already recorded, and do not restate facts owned by `module.md`, the level view, or
-   contracts. Reflection entries whose lesson concerns the level's guidance, tooling, or
-   architecture may be cited here by identifier as planned work or rationale. Skip the amendment
-   when nothing module-level was learned.
+   contracts. Do not copy reflection identity or entry content into the amendment; retain any
+   independently true module-level rationale without an `R-NNN` reference. Skip the amendment when
+   nothing module-level was learned.
 6. Write the candidate to the exact project-contained `proposal_path` returned by the runtime. The JSON
    must conform to the installed Feature Workspace Protocol and contain:
    - `proposal_version: 6` and `operation: "impl.accept"`;
@@ -83,7 +85,7 @@ and every `module.md` remain byte-identical.
 7. BEFORE asking for approval, present the entire candidate feature `implementation.md`, the module
    `design.md` amendment shown as a DIFF against the current reference (or state that none is
    proposed), the exact cleanup manifest (the removal target), the feature's reflection entries by
-   status with where each is cited, and the retained `abstract.md`, `design.md`, `module.md`, the project
+   status as a transient view sourced only from the log, and the retained `abstract.md`, `design.md`, `module.md`, the project
    reflection log, parent and sibling trios, architecture, code, and test authorities. Ask for explicit approval of this exact proposal.
    Silence is not approval; neither are prior milestone acceptance, passing validation, or checked
    tasks and checklists.

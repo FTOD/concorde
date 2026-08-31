@@ -19,6 +19,13 @@ docs/specs while preserving every exact unique `R-NNN` identifier, required stru
 decision, occurrence identity, and problem meaning. Deterministic validation checks the complete
 result read-only.
 
+`reflections.md` is the sole persisted reflection-record authority. Phase and acceptance reports may
+present entries transiently, and triage plans may key coordination by identifier, but feature/module
+documents, attempt artifacts, contracts, diagrams, code, and tests never copy or cite entry identity,
+status, notes, occurrences, or prose. They retain independently verified facts without reflection
+identity. Acceptance rejects an `R-NNN` identifier in candidate feature implementation or module
+design content.
+
 Canonical behavior lives once under `extensions/concorde/agent-assets/reflections/`. Thin wrappers
 render one triage skill and two roles for each supported platform. Investigators are read-only and
 return a complete plan to the parent; implementers receive complete plans and an assigned Git
@@ -51,10 +58,12 @@ No module responsibility, boundary, dependency direction, level view, or module 
 ### Record during delivery (US1 and US2)
 
 The accepted shared Reflection Recording block remains byte-identical across plan, tasks,
-implement, analyze, and converge guidance. Workspace Protocol v8 returns the project log path and
-open count. The parser, validator, context operation, and acceptance citation gate continue to use
-one grammar and one project-level file. Existing parser, workspace, context, validation, composition,
-and implementation-acceptance tests all remain green.
+implement, analyze, and converge guidance. It names `workspace.reflections` as the only persisted
+reflection-record file and prohibits copied entry identity/content in other artifacts. Workspace
+Protocol v8 returns the project log path and open count. The parser, validator, context operation,
+and acceptance centralization gate continue to use one grammar and one project-level file. Existing
+parser, workspace, context, validation, composition, and implementation-acceptance tests all remain
+green.
 
 ### Reconcile maintained reflection documentation (US4)
 
@@ -102,11 +111,12 @@ logs, unrelated skills, permission settings, and inactive integration receipts a
 
 ### Review, acceptance, and validation (US4–US6)
 
-Maintainers may still edit log status/note directly. Acceptance continues to present attributed
-entries and refuse an uncited open entry. Deterministic validation still checks Reflection Log v1
-without rewriting it. The updated core diagram shows automatic recording, explicit triage, isolated
-implementation, validation/merge, and installed projections while leaving behavior authoritative in
-the feature prose and contracts.
+Maintainers may still edit log status/note directly. Acceptance presents attributed entries
+transiently, accepts open entries without candidate citations, and refuses candidate feature/module
+documents that persist an `R-NNN` identifier. Deterministic validation still checks Reflection Log
+v1 without rewriting it. The updated core diagram shows automatic recording, explicit triage,
+isolated implementation, validation/merge, and installed projections while leaving behavior
+authoritative in the feature prose and contracts.
 
 ## Durable Implementation Decisions
 
@@ -126,11 +136,14 @@ the feature prose and contracts.
   semantics, paths, state transitions, ownership, and installation are release gates; live agent
   execution remains experiential evidence.
 - **Specification and storage corrections retained**: the project-wide log and end-state alignment
-  decisions from R-003 and R-004 remain the basis of this realization.
+  decisions remain the basis of this realization without copying historical reflection identity.
 - **Maintained-document reconciliation**: reflection history is project documentation rather than an
   immutable event store. Ordinary recording stays append/update-only, while explicit rewrite scope
   permits rename/documentation reconciliation with stable IDs and deterministic structural/reference
   validation.
+- **Centralized persistence**: `reflections.md` alone stores entry identity/content. Other artifacts
+  may describe independently true facts, while acceptance rule `CONCORDE-ACCEPT-012` prevents
+  durable reflection-ID copies in feature implementation or module design candidates.
 
 ## Traceability and Evidence
 
@@ -168,17 +181,18 @@ installed phase-composition, command-contract, triage-projection, and manifest t
 Concorde suite passed 308 tests; deterministic validation returned zero findings. The full docsite
 gate passed TypeScript, 19 test files / 83 tests, 108-page validation, and production promotion.
 
+The centralized-record reconciliation passed 86 focused acceptance, parser, validation, command,
+composition, triage-asset, manifest, and release checks. The full Concorde suite passed 310 tests;
+deterministic validation returned zero findings with source digest
+`sha256:f90c2531d928c22c275c834a3dc1276a6e6a821f884f4277b4980a149e579640`.
+The full docsite gate passed TypeScript, 19 test files / 83 tests, 108-page validation, and production
+promotion. The updated core diagram passed all 9 showcase checks with zero errors or warnings;
+delivered source digest `6abb0abc3d8b2b2642e22a9db0835726e93798fac758a27786f9bf32c128ec6a`.
+
 ## Known Limitations
 
-- **R-001**: the historical Claude self-host refresh limitation remains open in the maintainer log;
-  the new projector is implemented and tested, but the entry's final disposition is maintainer-owned.
-- **R-002**: plan/tasks guidance still contains the recorded module-edit authority disagreement.
-- **R-007**: the docsite still rejects canonical links to non-published reflection artifacts; the
-  abstract uses code spans for those paths.
-- **R-044**: native Spec Kit 0.16.4 lacks arbitrary custom-agent projection. Feature 003's installed
-  bounded projector is implemented, but the reflection remains open until maintainer disposition.
-- **R-045**: the sandboxed docsite runner could not bind its local IPC socket; the exact approved
-  rerun passed and no test was weakened.
+- Native Spec Kit 0.16.4 still lacks arbitrary custom-agent projection; Feature 003 supplies a
+  bounded installed projector until the host provides an equivalent primitive.
 - Browser-based containment and light/dark perceptual review remains pending because Chrome/Chromium
   was unavailable; deterministic showcase checks are not claimed as visual review.
 

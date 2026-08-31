@@ -364,7 +364,7 @@
       "id": "logFeedsAcceptance",
       "from": "reflectionLog",
       "to": "acceptedRealization",
-      "label": "open entries remain known limitations"
+      "label": "entries stay authoritative only in log"
     },
     {
       "id": "checksProtectRealization",

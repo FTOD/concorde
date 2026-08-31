@@ -20,6 +20,7 @@ class AgentCommandContractTests(unittest.TestCase):
             for invariant in (
                 "READ-ONLY EXCEPT REFLECTION RECORDING",
                 "workspace.reflections",
+                "only file that may persist",
                 "Every other file MUST remain byte-identical",
                 "no recordable problem MUST make zero filesystem changes",
             ):
@@ -271,6 +272,10 @@ class AgentCommandContractTests(unittest.TestCase):
             self.assertIn("proposal_path", content, path.as_posix())
             self.assertIn("task_summary", content, path.as_posix())
             self.assertIn("checklist_summary", content, path.as_posix())
+            self.assertIn("sole persisted reflection-record authority", content, path.as_posix())
+            self.assertIn("CONCORDE-ACCEPT-012", content, path.as_posix())
+            self.assertIn("Never copy or cite an entry identifier", content, path.as_posix())
+            self.assertNotIn("while one is uncited", content, path.as_posix())
 
     def test_planning_guidance_emits_runnable_quickstarts_and_resolved_task_paths(self):
         plan = (REPOSITORY_ROOT / "presets/concorde/commands/speckit.plan.md").read_text(

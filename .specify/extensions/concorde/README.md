@@ -8,9 +8,10 @@ The extension registers five integration-neutral command surfaces:
   than comparing it with starter text.
 - `speckit.concorde.impl.accept` verifies task completion, presents a digest-bound proposal for
   durable feature `implementation.md` (optionally amending the `design.md` of the module at which the
-  feature is specified), requires the candidate to cite every open reflection entry attributed to
-  the feature (`CONCORDE-ACCEPT-011`/`-012`), and only after explicit approval promotes it
-  atomically and removes the temporal attempt; the reflection log is left byte-identical.
+  feature is specified), presents attributed entries transiently while keeping `reflections.md` as
+  their sole persisted authority, rejects copied `R-NNN` identifiers (`CONCORDE-ACCEPT-012`), and
+  only after explicit approval promotes the proposal atomically and removes the temporal attempt;
+  the reflection log is left byte-identical.
 - `speckit.concorde.context` returns one bounded architectural level, including the module's
   `diagrams` list (every diagram beneath its `architecture/diagrams/`) and the project reflection
   log's path and the open entry count per feature when the log exists.

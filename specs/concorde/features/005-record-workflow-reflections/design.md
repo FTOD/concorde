@@ -33,7 +33,7 @@ realization**: [implementation.md](implementation.md) — consulted when writing
 **Created**: 2026-08-28
 
 **Revised**: 2026-08-31 — reflection entries are maintained docs/specs that support controlled
-rewrites while preserving stable valid IDs
+rewrites while preserving stable valid IDs, and `reflections.md` is their sole persisted authority
 
 **Status**: Draft
 
@@ -95,9 +95,11 @@ and they disappear when the attempt is accepted. This feature gives them one hom
   identifier, required field, status decision, occurrence identity, and problem meaning, and the
   complete log must pass deterministic validation afterwards. Ordinary problem recording does not
   grant this rewrite authority.
-- **At acceptance** the proposal presents the entries recorded for the feature by status; resolved
-  entries that shaped the realization are cited among the design reference's decisions, and every
-  still-open entry is cited among its known limitations. Acceptance never removes or rewrites the log.
+- **At acceptance** the proposal presents the entries recorded for the feature by status as a
+  transient review view sourced from the log. Candidate feature `implementation.md` and module
+  `design.md` content never copy an entry identifier, status, note, occurrence, or prose; they may
+  retain independently verified implementation facts without reflection identity. Acceptance
+  refuses copied `R-NNN` identifiers and never removes or rewrites the log.
 
 For the Concorde project itself, entries about guidance and tooling are the feedback loop the
 constitution's self-application principle asks for: they are the concrete, cumulative list of what
@@ -303,35 +305,31 @@ within two minutes from the root module summary.
 
 ---
 
-### User Story 5 - Carry the Attempt's Lessons Through Acceptance (Priority: P2)
+### User Story 5 - Review Centralized Reflections During Acceptance (Priority: P2)
 
 As a maintainer accepting a milestone, I can see every entry recorded for the feature and its status
-before the attempt is removed, so that the resolved lessons that shaped the realization reach the
-design reference and every open problem is stated as a known limitation, while the log itself stays
-intact for the next attempt on any feature.
+before the attempt is removed, while `reflections.md` remains the only persisted reflection record
+and accepted implementation/module documents contain no copied reflection identity or entry text.
 
-**Why this priority**: Acceptance deletes the attempt and writes the design reference in full; it is
-the moment the attempt's experience must be reflected in the accepted realization.
+**Why this priority**: Acceptance deletes the attempt and writes the realization in full, so it must
+surface unresolved project memory without scattering a second durable reflection ledger.
 
 **Independent Test**: Accept an attempt whose feature has resolved, dismissed, and open entries in
 the project log, alongside entries attributed to other features. Verify that the proposal presents
-the feature's entries by status, that the accepted design reference cites the realization-shaping
-resolved entries among its decisions and every open entry among its known limitations, that an open
-entry the candidate does not cite prevents apply, that entries of other features are untouched and
-unlisted, and that the log is byte-identical after apply.
+the feature's entries by status transiently, a candidate with no reflection identifier accepts, a
+candidate `implementation.md` or module amendment containing `R-NNN` is rejected, other-feature
+entries are untouched and unlisted, and the log is byte-identical after apply.
 
 **Acceptance Scenarios**:
 
-1. **Given** a resolved entry that changed how the feature is realized, **When** acceptance drafts
-   the feature design reference, **Then** the decision appears among its durable implementation
-   decisions citing the entry's identifier.
-2. **Given** an open entry attributed to the feature at acceptance time, **When** the proposal is
-   presented, **Then** the entry appears among the feature's known limitations with its identifier,
-   and when it concerns the level's guidance, tooling, or architecture, also in the module design
-   reference amendment as planned work.
-3. **Given** an open entry attributed to the feature that the candidate design reference does not
-   cite, **When** apply is requested, **Then** apply is refused with a finding naming the entry, and
-   the attempt is preserved.
+1. **Given** resolved, dismissed, and open entries attributed to the feature, **When** acceptance
+   presents the proposal, **Then** it shows them by status from `reflections.md` without copying them
+   into either durable candidate.
+2. **Given** an open entry attributed to the feature and a candidate with no reflection identifier,
+   **When** apply is approved, **Then** acceptance succeeds and the log remains byte-identical.
+3. **Given** a candidate `implementation.md` or module amendment containing an `R-NNN` identifier,
+   **When** apply is requested, **Then** apply is refused with `CONCORDE-ACCEPT-012` and the attempt
+   is preserved.
 4. **Given** the maintainer approves the proposal, **When** apply completes, **Then** the attempt is
    removed, the log is unchanged, and every entry of the feature remains readable in the log with its
    status.
@@ -441,10 +439,12 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
 - **FR-006**: Recording MUST NOT halt a phase that can otherwise continue. When a problem blocks the
   phase, the agent MUST record it with the effect `blocked` and the stop reason before halting, and
   the existing stop and review rules of that phase remain unchanged.
-- **FR-007**: Recording MUST NOT edit `abstract.md`, `design.md`, any `implementation.md`, any `module.md`,
-  contracts, level views, feature diagrams, or another feature's code or tests. A problem with a
-  durable document or an existing implementation is recorded; the source is changed only through the
-  phase or operation that owns it.
+- **FR-007**: `reflections.md` MUST be the sole persisted reflection-record authority. Recording MUST
+  NOT copy or cite an entry's `R-NNN` identifier, status, note, occurrences, or prose in
+  `abstract.md`, `design.md`, any `implementation.md`, any `module.md`, attempt artifacts, contracts,
+  level views, feature diagrams, code, or tests. Those artifacts MAY state independently verified
+  facts without reflection identity. Triage plans and completion reports MAY use an identifier only
+  for transient coordination and MUST NOT become a second reflection record.
 - **FR-008**: When a recorded problem is met again — in any phase, on any feature — the agent MUST
   update the existing entry with the new occurrence (phase, date, feature) rather than add a
   duplicate. Ordinary recording MUST NOT delete entries, change an entry's `R-NNN` identifier, reuse
@@ -460,11 +460,11 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   the note and a reference to the resolving change; rewriting or cleanup MUST preserve every
   surviving `R-NNN` identifier and MUST NOT reuse a removed identifier.
 - **FR-011**: The acceptance proposal MUST present every entry attributed to the feature with its
-  status. The candidate feature `implementation.md` MUST cite the identifier of every such entry that is
-  still `open` among its known limitations, and SHOULD cite resolved entries that shaped the
-  realization among its decisions; entries whose lesson concerns the level's guidance, tooling, or
-  architecture MAY additionally be cited in the module `design.md` amendment. Apply MUST refuse
-  while an open attributed entry is not cited, and MUST NOT modify or remove the log.
+  status as a transient view sourced from `reflections.md`. Candidate feature `implementation.md`
+  and module `design.md` content MUST NOT persist an entry identifier or entry content. Apply MUST
+  refuse either candidate containing an `R-NNN` identifier with `CONCORDE-ACCEPT-012`, MAY retain
+  independently verified implementation facts without reflection identity, and MUST NOT modify or
+  remove the log.
 - **FR-012**: Deterministic validation MUST check a present reflection log read-only for unique
   identifiers, required fields, permitted kind, effect, and status values, an attributed feature
   that resolves, and concerned sources that resolve, reporting each breach as a finding with rule,
@@ -477,13 +477,14 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   evidence location instead, and its problem statement SHOULD stay under 150 words so that a log
   remains reviewable in minutes.
 - **FR-015**: The installed phase guidance and the log template MUST carry the recording obligation,
-  the log's shape, and the acceptance citation rule, so that any project installed through Spec Kit
-  obtains this behavior without a Concorde checkout.
+  the log's shape, the sole-persisted-authority rule, and the acceptance centralization gate, so that
+  any project installed through Spec Kit obtains this behavior without a Concorde checkout.
 - **FR-016**: The reflection log MUST be a maintained, version-controlled specification-root source
-  that no workflow operation removes as a file and that acceptance leaves byte-identical. This
-  feature does not publish it; generated sites and reports MAY link to it but MUST NOT treat it as a
-  feature specification, design reference, or contract. Its entry content MAY be reconciled under
-  FR-028.
+  that no workflow operation removes as a file and that acceptance leaves byte-identical. It is the
+  only persisted authority for entry identity, fields, status, notes, and occurrences. This feature
+  does not publish it; generated sites and reports MAY link to it but MUST NOT duplicate its entries
+  or treat it as a feature specification, design reference, or contract. Its entry content MAY be
+  reconciled under FR-028.
 - **FR-017**: In the Concorde project itself, an accepted `guidance` or `tooling` entry MUST be
   recorded as planned framework work or resolved by a framework change, and that change MUST be
   refreshed through the self-hosted installation before it counts as used in Concorde's own
@@ -501,7 +502,9 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   implement-in feature identifiers and directories; affected files; documentation impact; effort;
   problem and root-cause evidence; ordered change; exact validation; and risks and exclusions. A
   non-`fast-loop` route MUST contain the proposal, rationale, or blocking question and MUST NOT be
-  auto-implemented.
+  auto-implemented. The identifier is a coordination key into centralized `reflections.md`; the plan
+  MUST NOT copy the entry's fields, status, note, occurrences, or prose, and its problem section MUST
+  contain independently established root-cause evidence.
 - **FR-021**: Investigation MUST dispatch no more than the configured concurrency, assign exactly
   one open entry to each investigator, wait for every result in a wave, verify that each plan exists
   and has a route, retry a missing plan at most once, and report every success or failure without
@@ -514,7 +517,8 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   plan text, select the owning Concorde feature, use Speckit Fast Loop for each plan, run the plan's
   validation and the repository-wide checks required by its changes, create one commit per
   successful plan, revert only that plan's edits on bounded failure, and return branch, worktree,
-  commit, file, and follow-up-reflection evidence.
+  commit, file, and transient follow-up-reflection evidence. The parent records each genuine new
+  reflection only in `reflections.md`.
 - **FR-024**: Merge MUST require a clean maintainer checkout, merge implemented branches one at a
   time, abort and stop on conflict, rerun applicable deterministic repository and documentation
   checks, remove only successfully merged worktrees and branches, and move only their plan records
@@ -587,10 +591,10 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
 - **SC-003**: A maintainer who has not followed recent attempts finds every open entry for one
   feature, and every entry concerning one module, within two minutes of opening the root module
   summary, and reviews a log of ten entries in under ten minutes.
-- **SC-004**: At acceptance, 100% of the feature's entries are presented with their status; 100% of
-  its open entries are cited in the accepted design reference; zero attempts are removed while an
-  open attributed entry is uncited; and the log is byte-identical before and after apply in 100% of
-  fixtures.
+- **SC-004**: At acceptance, 100% of the feature's entries are presented with their status from the
+  log; candidates without reflection identifiers accept regardless of open-entry count; 100% of
+  candidates that persist `R-NNN` in feature implementation or module design are rejected; and the
+  log is byte-identical before and after apply in 100% of fixtures.
 - **SC-005**: In fixtures with only non-blocking problems, 100% of phases complete with their
   entries recorded; in fixtures with a blocking problem, 100% of halts have the stop reason recorded
   before the halt.
@@ -598,7 +602,8 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   duplicate identifier, invalid kind, effect, or status, unknown attributed feature, unresolvable
   reference), reports none for a well-formed or absent log, and is byte-equivalent on repeat.
 - **SC-007**: Recording changes zero documents other than the log, and zero contracts, views,
-  diagrams, or other features' code, in 100% of fixtures.
+  diagrams, or other features' code, in 100% of fixtures; maintained implementation files contain
+  zero concrete `R-NNN` reflection identifiers.
 - **SC-008**: Re-encountering an already recorded problem — from the same or another feature —
   yields zero duplicate entries in 100% of fixtures, and no maintainer-set status or note is
   reversed by an agent.
@@ -635,8 +640,8 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   bounded context.
 - Maintainer resolution, dismissal, controlled documentation rewrites, and explicit closed-entry
   cleanup directly in the log while stable entry IDs remain valid and unreused.
-- Citation of the feature's entries at acceptance and the refusal to remove an attempt while an
-  open attributed entry is uncited.
+- Transient presentation of the feature's entries at acceptance and refusal of candidate
+  implementation/module documents that persist an `R-NNN` identifier.
 - Deterministic shape validation of a present log.
 - The self-application loop for guidance and tooling entries in the Concorde project.
 - The installed reflection-triage workflow, its investigator and implementer roles, plan contract,
@@ -665,7 +670,8 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
 - The log is a Markdown file with one section per entry so that both humans and agents can read
   and edit it without tooling; its exact layout is fixed by the installed template and the
   reflection-log contract.
-- Identifiers are allocated sequentially across the whole log (for example `R-001`, `R-002`) and are
+- Identifiers are allocated sequentially across the whole log (for example `R-NNN`, then the next
+  unused numeric identity) and are
   stable for the life of the project because design references cite them.
 - The existing practice of recording rationale and implementation detail in `research.md` and
   `validation.md` continues; the reflection log holds problems, not every decision. An entry may
@@ -714,7 +720,7 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   features would duplicate the queue and plan contract.
 - **Feature containment**: none; this feature has no sub-features.
 - **Authority split**: this specification owns the log's location, shape, attribution, lifecycle,
-  triage actions, agent-role behavior, plan semantics, and acceptance citation rule. Workflow
+  triage actions, agent-role behavior, plan semantics, and acceptance centralization rule. Workflow
   sub-features keep ownership of their phases, Speckit Fast Loop keeps ownership of eligibility and
   bounded implementation, and Feature 003 keeps ownership of generic installation and distribution
   mechanics.

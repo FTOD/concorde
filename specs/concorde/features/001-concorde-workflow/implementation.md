@@ -142,8 +142,7 @@ the active integration because the self-host status protocol currently validates
 The core diagram's repository evidence pins `106f1b2` and cites the maintained preset —
 `presets/concorde/preset.yml` (command inventory) and `presets/concorde/commands/speckit.plan.md`
 for the nine phase surfaces, `presets/concorde/commands/speckit.fast-loop.md` for the fast-loop
-surface — in place of the materialized `.agents/skills/…` files cited while the preset rename was
-still uncommitted (R-037). Because the source declares evidence, Archify refuses to validate or
+surface — in place of the former materialized `.agents/skills/…` citations. Because the source declares evidence, Archify refuses to validate or
 deliver it without the checkout root (`repository-evidence/root-required`): the docsite build
 passes `--repo-root` automatically, and the manual check is
 `node .agents/skills/archify/bin/archify.mjs validate architecture <source> --quality showcase --json --repo-root <checkout>`.
@@ -183,6 +182,9 @@ two preset-owned surfaces and any cited path missing from the checkout.
 - `preset.yml` lists `spec-template`, `abstract-template`, `implementation-template`,
   `reflections-template`, `plan-template`, `tasks-template`, and nine complete command modifications.
 - `speckit.specify.md` resolves the three templates, authors the abstract after the specification, seeds `implementation.md` when absent, and adds three abstract checklist items; `speckit.clarify.md` updates the abstract after each integrated answer; `speckit.checklist.md` names the abstract as in scope; `speckit.plan.md`, `speckit.tasks.md`, `speckit.implement.md`, `speckit.converge.md`, and `speckit.taskstoissues.md` read the feature `implementation.md` as baseline and never write the trio; `speckit.analyze.md` adds the "abstract Disagreement" detection pass, preserves every non-reflection file, and writes `workspace.reflections` only when reflection recording requires it.
+- Every recording block names `workspace.reflections` as the sole persisted reflection-record
+  authority. Acceptance presents its entries transiently and rejects copied `R-NNN` identifiers in
+  candidate feature implementation or module design content.
 - Extension commands document proposal v6 and the `CONCORDE-ABSTRACT-*` / layout inventory.
 - Local helpers export `FEATURE_ABSTRACT`, `FEATURE_DESIGN`, `FEATURE_IMPLEMENTATION`, and
   `ATTEMPT_DIR`.

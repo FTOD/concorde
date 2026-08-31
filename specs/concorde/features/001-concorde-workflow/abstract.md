@@ -132,6 +132,9 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
 - Acceptance never edits `abstract.md`, `design.md`, or any `module.md`; a module `design.md` amendment
   rides only on the same reviewed, digest-bound proposal and applies atomically with the
   compaction (FR-017, FR-028).
+- `reflections.md` is the sole persisted reflection-record authority. Acceptance may present entries
+  transiently but rejects an `R-NNN` identifier copied into candidate feature implementation or
+  module design content (FR-028 and Feature 005 FR-007/FR-011/FR-016).
 - Every normal phase operates on the one selected canonical root through Feature Workspace Protocol
   paths and never derives competing root-level plan, task, or checklist paths; fast-loop may repeat
   explicit resolution for its bounded affected roots without creating another selection registry

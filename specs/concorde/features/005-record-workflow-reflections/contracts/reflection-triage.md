@@ -23,9 +23,12 @@ An empty invocation is `status`. Unknown actions or malformed identifiers fail w
 ## Shared State
 
 - Configuration: `.concorde/reflections/config.json`, seeded once and then maintainer-owned.
-- Plans: `.concorde/reflections/plans/R-NNN.md`, written only by the orchestrator.
+- Plans: `.concorde/reflections/plans/R-NNN.md`, written only by the orchestrator. The identifier is
+  a coordination key; a plan records independently established root cause/change/validation and
+  never copies the reflection entry's fields, status, note, occurrences, or prose.
 - Worktrees: `.concorde/reflections/worktrees/<group>/`, ephemeral and never a source of intent.
-- Reflection log: derived from the specification root in `.concorde/config.json`; never duplicated.
+- Reflection log: derived from the specification root in `.concorde/config.json`; the sole persisted
+  reflection record, never duplicated.
 - Projection receipt: `.specify/concorde-agent-assets.json`, installer-owned.
 
 Plans and worktrees are ignored by version control by default; configuration is version controlled.

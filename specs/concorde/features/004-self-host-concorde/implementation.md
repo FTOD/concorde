@@ -54,7 +54,7 @@ unregister every agent recorded in the registry, `apply` additionally snapshots 
 integration's declared Concorde skill directories — and, for an inactive Claude, its extension
 link cache — with the owned scope and restores them byte-for-byte after the host refresh, on
 success and on rollback; an incomplete restoration raises `CONCORDE-SELF-HOST-023` and never
-records success (R-042). Directory snapshot and restoration preserve symlinks as links, and a
+records success. Directory snapshot and restoration preserve symlinks as links, and a
 preserved path nested inside an owned path is captured once within its ancestor's snapshot.
 Inactive Codex or Claude surfaces, whether registered by an earlier apply or hand-created
 sentinels, are byte-preserved.
@@ -73,7 +73,7 @@ Successful and injected-failure fixtures cover Codex and Claude. Every preset, e
 8. **Keep review and rollback exact.** Proposal equality, isolated preflight, active-scope snapshot, reverse restoration, and residual reporting remain unchanged.
 9. **Keep the public JSON schema at v1.** The integration field was already shape-generic; compatibility prose and executable evidence changed without a payload migration.
 10. **Preserve the existing architecture view.** Codex and Claude occupy the same stable active-materialization role, so a new component or dynamic diagram would add noise rather than architecture.
-11. **Read coverage-defining fixtures strictly.** The preservation fixture's object keys are the seeded paths, so `tests/concorde/self_hosting_support.py` loads it through `load_preserved_fixture`, which rejects a repeated key or non-string content instead of letting ordinary JSON parsing keep the last value silently (R-039).
+11. **Read coverage-defining fixtures strictly.** The preservation fixture's object keys are the seeded paths, so `tests/concorde/self_hosting_support.py` loads it through `load_preserved_fixture`, which rejects a repeated key or non-string content instead of letting ordinary JSON parsing keep the last value silently.
 
 ## Traceability and Evidence
 
@@ -83,9 +83,9 @@ Focused Feature 004 evidence covers supported and unsupported profiles, integrat
 
 The complete Concorde suite, deterministic Feature 004 validation, and docsite gate are the project-level evidence. The docsite gate covers TypeScript, source validation, canonical Feature 004 diagram embedding, and production build promotion. The maintained core diagram keeps its layout and `meta.legend.mode: hidden`; only repository evidence changed, and no new perceptual review is claimed.
 
-The core diagram's repository evidence pins `106f1b2` and cites the authoritative `presets/concorde/preset.yml` for the framework-sources role, replacing the materialized skill cited while the preset rename was still uncommitted (R-038). `tests/concorde/integration/test_self_architecture.py` verifies that every maintained repository-evidence diagram cites paths that exist both in the checkout and at its pinned revision, and that this diagram's framework-sources role cites no materialization, so an identity or path migration is caught by the Python suite before the docsite build runs Archify.
+The core diagram's repository evidence pins `106f1b2` and cites the authoritative `presets/concorde/preset.yml` for the framework-sources role, replacing the former materialized-skill citation. `tests/concorde/integration/test_self_architecture.py` verifies that every maintained repository-evidence diagram cites paths that exist both in the checkout and at its pinned revision, and that this diagram's framework-sources role cites no materialization, so an identity or path migration is caught by the Python suite before the docsite build runs Archify.
 
-The live Claude self-apply ends `current` with source, installed copy, registry, and surfaces matching, no findings, and activation honestly reported as `reload_required`. This replaces R-001's former `CONCORDE-SELF-HOST-005` workaround with supported self-hosting evidence.
+The live Claude self-apply ends `current` with source, installed copy, registry, and surfaces matching, no findings, and activation honestly reported as `reload_required`. This supported evidence supersedes the former `CONCORDE-SELF-HOST-005` workaround.
 
 ## Known Limitations
 
@@ -94,6 +94,5 @@ The live Claude self-apply ends `current` with source, installed copy, registry,
 - The bootstrap's standard-library manifest reader is deliberately narrow and is not a general YAML or third-party component installer.
 - Self-hosting verifies local-source materialization, not release-archive isolation; Feature 003 remains the release proof.
 - Browser-based perceptual review of the Feature 004 diagram remains pending (its layout is unchanged; only its repository evidence moved) from the accepted baseline; deterministic structure, freshness, embedding, and production delivery pass.
-- R-039 remains open in the maintainer-owned reflection log: the preservation fixture previously repeated one JSON key. The fixture now uses distinct paths and rejects duplicate keys, but acceptance does not resolve reflection status.
-- The inactive integration's Concorde tree is preserved, not verified: `status` judges only the active integration, and the preserved tree becomes current only through its own reviewed apply after switching (R-042).
+- The inactive integration's Concorde tree is preserved, not verified: `status` judges only the active integration, and the preserved tree becomes current only through its own reviewed apply after switching.
 - Root architecture prose still describes Scripts as contributing deterministic freshness findings, while the accepted runtime keeps those findings in the root-owned bootstrap; a future architecture revision may clarify that shared diagnostic convention.

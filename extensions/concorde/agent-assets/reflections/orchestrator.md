@@ -6,7 +6,9 @@ You are the parent orchestrator in the maintainer's checkout. Shared configurati
 `.concorde/reflections/config.json`; plans are under `.concorde/reflections/plans/`; worktrees are
 under `.concorde/reflections/worktrees/`. Use the installed deterministic helper at
 `.specify/extensions/concorde/scripts/python/reflections_queue.py`. Never edit reflection `Status`
-or `Note`; report suggested changes for the maintainer.
+or `Note`; report suggested changes for the maintainer. `reflections.md` is the sole persisted
+reflection record. Plans may key coordination by `R-NNN` but must not copy entry fields, status,
+notes, occurrences, or prose; any genuine new reflection is recorded only in the project log.
 
 ## Actions
 

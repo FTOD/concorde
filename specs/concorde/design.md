@@ -111,18 +111,18 @@ lifecycle paths sparse; the embedded matrices name the exact per-skill exception
 Distribution packages the maintained preset and extension, publishes their catalogs, and delegates
 component and command materialization to Spec Kit. It treats the nine normal commands as complete
 instruction modifications and fast-loop as an additive surface: removal can reveal lower normal
-winners, while solely owned fast-loop disappears (R-030).
+winners, while solely owned fast-loop disappears.
 
 Spec Kit 0.16.4 has no arbitrary custom-agent projection primitive. After successful bundle work,
 Distribution invokes only the `agent-assets` operation from the installed extension. Preview uses a
 disposable installed candidate; apply synchronizes and verifies one native triage skill and two roles;
 update/removal act only on paths whose current digest matches the projection receipt. Direct installer
-rendering was rejected because it would fork Feature 005's canonical semantics (R-044).
+rendering was rejected because it would fork Feature 005's canonical semantics.
 
 Self-hosting uses the same projector and receipt rules. Integration records are independent, so a
 Claude refresh preserves Codex outputs and vice versa; shared config, plans, worktrees, logs,
 permission settings, unrelated assets, and modified projections remain untouched. This replaces the
-prior backup-and-restore workaround recorded by R-042 without changing the module boundary.
+prior backup-and-restore workaround without changing the module boundary.
 
 Auto-Docs validates maintained sources, renders declared diagrams, and projects `specs/`, `docs/`,
 and the root README into a generated site. These adapters consume the workflow architecture; they do
@@ -230,10 +230,7 @@ projection-transaction tests belong to Distribution, and site tests belong to Au
   evidence and no separate post-edit review.
 - 2026-08-30: Kept Protocol v8 and Python scripts unchanged; fast-loop repeats explicit single-root
   resolution and leaves semantic impact discovery with the agent.
-- 2026-08-30: Recorded the cross-integration self-host materialization workaround pending an
-  inactive-surface preservation fix (R-042).
-- 2026-08-30: Kept additive fast-loop removal distinct from lower-layer restoration for the nine normal command modifications (R-030).
-- 2026-08-30: Retained follow-up to clarify selected-sub-feature task-path wording (R-027) and to derive release capability counts from manifests rather than duplicated literals (R-032).
+- 2026-08-30: Kept additive fast-loop removal distinct from lower-layer restoration for the nine normal command modifications.
 - 2026-08-30: Unified the preset and extension IDs as type-qualified `preset:concorde` and
   `extension:concorde`; retained `concorde-bundle` as the bundle identity.
 - 2026-08-30: Chose type-qualified preset/extension archive filenames to avoid a transport
@@ -242,10 +239,10 @@ projection-transaction tests belong to Distribution, and site tests belong to Au
   durable-reference migration; its cross-authority pure-rename shape is now a fast-loop case, and
   Feature 005 now permits stable-ID-preserving reflection reconciliation.
 - 2026-08-30: Refreshed repository-evidence pins and type-stable diagram sources exposed by the
-  identity/path migration (R-037, R-038).
+  identity/path migration.
 - 2026-08-30: Packaged Feature 005's canonical triage bodies, wrappers, default config, and queue
   helper in `extension:concorde@0.5.0`; no platform-specific behavior fork was introduced.
 - 2026-08-30: Added one post-bundle `agent-assets` transaction sourced only from the installed
-  extension, with disposable installed preview and digest-receipt update/removal ownership (R-044).
+  extension, with disposable installed preview and digest-receipt update/removal ownership.
 - 2026-08-30: Reused that transaction for self-hosting and replaced the inactive-integration
-  backup/restore workaround with independent integration receipt preservation (R-042).
+  backup/restore workaround with independent integration receipt preservation.

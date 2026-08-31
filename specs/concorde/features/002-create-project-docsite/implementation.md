@@ -45,7 +45,7 @@ Docusaurus renders a fresh candidate with the README homepage, all three navigat
 - Maintained Archify JSON and its textual counterpart own diagram meaning. Generated HTML and automated receipts never constitute intent or perceptual review. Diagram-set promotion and site-candidate promotion remain separate atomic boundaries.
 - The root Architecture view remains the sufficient core component view for Feature 002. `diagrams/project-docsite-publication-flow.json` remains a supplemental sequence for invocation order; adding README changes source content, not participants or ordering.
 - The build remains pinned to Node.js 20+, Docusaurus 3.10.2, TypeScript 5.9, React 19, Ajv 8, Vitest 4, Archify 2.16.0-dev.0, and the committed npm lockfile.
-- Schema v9 states the project-document diagram rule on the `page` definition (a `project-document` page's `diagrams` are all `supplemental`), matching the registry's documentation-diagram check. The production gate and contract tests compile the schema with AJV `strictTypes` and `strictTuples` errors enabled, so a schema authoring slip fails publication instead of logging a warning (R-040).
+- Schema v9 states the project-document diagram rule on the `page` definition (a `project-document` page's `diagrams` are all `supplemental`), matching the registry's documentation-diagram check. The production gate and contract tests compile the schema with AJV `strictTypes` and `strictTuples` errors enabled, so a schema authoring slip fails publication instead of logging a warning.
 
 ## Traceability and Evidence
 
@@ -59,13 +59,6 @@ All ten declared diagrams pass the Archify 2.16 delivery gate with 9/9 showcase 
 
 ## Known Limitations
 
-- Cross-contract version references have executable alignment evidence at schema v9, but the maintainer-owned record of the earlier published-site drift remains open for review (R-009).
-- Duplicate feature IDs intentionally emit identity findings plus companion route-collision findings. They are actionable but may be noisy until diagnostics are grouped (R-010).
-- Publication clears `.docusaurus` and `node_modules/.cache` on every preview/build preparation. This favors route correctness over warm-cache reuse and must remain aligned with future Docusaurus cache locations (R-011).
-- Cross-package validation commands must run from the repository root or use paths appropriate to their working directory; the earlier digest-path mistake remains recorded as an operational caution (R-012).
-- Refinement summaries depend on the invariant that every feature route is assigned before any relationship edge is projected (R-013).
-- Strict manifest schemas must change in the same milestone as shared page fields. Schema v9 now covers both refinements and the homepage collection, while the earlier omission remains open in the reflection log (R-014).
-- Concorde validation accepts `--project-root` as a global option before the `validate` verb; generated quickstarts should retain that ordering (R-020).
 - The deep feature-route migration has no redirects. The `/features` base remains stable, but older deep links must be updated.
 - Browser containment captures and human light/dark perceptual review remain pending. Ordinary builds intentionally do not claim visual polish.
 - Live preview prepares diagrams at startup; changing a maintained diagram while the server is running requires redelivery or preview restart.
