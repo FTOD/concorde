@@ -319,6 +319,26 @@ and never changes a task checkbox or treats publication as implementation comple
 or mismatched remote, unknown dependency, missing prerequisite issue, or ambiguous target stops
 external writes with an actionable report.
 
+## Execute and Reconcile Handoff
+
+`speckit.implement`, `speckit.analyze`, and `speckit.converge` share one Protocol v9 selected
+workspace and one authoritative temporal attempt.
+
+| Item | Required fields and obligations |
+|---|---|
+| Implementation execution | Selected feature/root and attempt, ready task/dependencies, accepted baseline or explicit no-baseline state, changed code/tests, protected-authority comparison, and resulting task state |
+| Attempt evidence | Task ID/trace, verification command or check, outcome, relevant artifact/path, and material limitation; only passing proportionate evidence permits `[X]` |
+| Analysis result | Selected durable/temporal sources, finding category and severity, abstract/specification prevailing requirement when relevant, reflection-log-only mutation result, or byte-identical clean result |
+| Convergence result | Intent/evidence inventory counts, gap type/severity/source/evidence, appended task IDs and next phase number, or byte-identical converged result |
+
+Failed verification leaves the task unchecked. Analysis uses the required categories `absent
+evidence`, `disagreement`, `ambiguity`, `duplication`, and `coverage gap`; it changes only a required
+centralized reflection record, while a clean run changes nothing. Convergence is append-only,
+suppresses semantic duplicates already represented by unchecked or completed tasks, preserves every
+existing task marker and byte, and emits no empty phase when converged. Missing/malformed
+prerequisites, an incompatible mutating analysis hook, unexpected protected-authority drift, or an
+unresolved convergence dependency stops before partial mutation.
+
 ## Portability Acceptance
 
 - Codex skills mode contains one `SKILL.md` per canonical command under the active project-local

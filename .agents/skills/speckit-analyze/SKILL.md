@@ -21,14 +21,15 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase analyze` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_abstract`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
 `workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
 Require Protocol v9 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
-recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_design` and `feature_implementation` only as aggregate durable context. Never load a
+recorded detail and cite it. When `workspace_kind` is `subfeature`, read
+`parent_context.feature_abstract`, `parent_context.feature_design`, and
+`parent_context.feature_implementation` only as aggregate durable context. Never load a
 sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 
@@ -74,6 +75,10 @@ For `checklist`, resolve `checklist-template` separately through the same public
     ```
     After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
+
+Every analysis hook is inside the same mutation budget as analysis. Before executing a mandatory
+hook, require its maintained contract to be read-only except for the same required
+`workspace.reflections` record; otherwise stop before invoking it and report the incompatible hook.
 
 ## Goal
 
@@ -160,12 +165,21 @@ Create internal representations (do not include raw artifacts in output):
 
 - **Requirements inventory**: For each Functional Requirement (FR-###) and Success Criterion (SC-###), record a stable key. Use the explicit FR-/SC- identifier as the primary key when present, and optionally also derive an imperative-phrase slug for readability (e.g., "User can upload file" → `user-can-upload-file`). Include only Success Criteria items that require buildable work (e.g., load-testing infrastructure, security audit tooling), and exclude post-launch outcome metrics and business KPIs (e.g., "Reduce support tickets by 50%").
 - **User story/action inventory**: Discrete user actions with acceptance criteria
+- **Accepted-realization inventory**: Durable implementation decisions, scenario realization,
+  evidence, and limitations from feature `implementation.md`; preserve an explicit no-baseline state
+- **Plan-decision inventory**: Named technical decisions, constraints, and planned touch-points from
+  `attempt/plan.md`
 - **Task coverage mapping**: Map each task to one or more requirements or stories (inference by keyword / explicit reference patterns like IDs or key phrases)
 - **Constitution rule set**: Extract principle names and MUST/SHOULD normative statements
 
 ### 4. Detection Passes (Token-Efficient Analysis)
 
 Focus on high-signal findings. Limit to 50 findings total; aggregate remainder in overflow summary.
+
+Every reported item uses exactly one primary finding category from this required taxonomy:
+`absent evidence`, `disagreement`, `ambiguity`, `duplication`, or `coverage gap`. The detection
+passes below provide subtypes and evidence; do not collapse absent evidence into agreement or use
+generic inconsistency when one of the five categories applies.
 
 #### A. Duplication Detection
 
@@ -209,11 +223,12 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 - More than one `role: core` diagram, a core diagram whose kind is not `architecture`, or a
   sequence/workflow/data-flow/lifecycle view presented as the feature's core component model
 
-#### E. abstract Disagreement
+#### G. Abstract Disagreement
 
-- A `abstract.md` statement that `design.md` does not support, or that contradicts a requirement, scope
-  boundary, or success criterion: report it naming the disagreeing statement and the prevailing
-  `FR-NNN`/section (design.md wins; the abstract is fixed through `$speckit-specify` or
+- An `abstract.md` statement that `design.md` does not support, or that contradicts a requirement,
+  scope boundary, or success criterion: report it as `disagreement`, naming the disagreeing
+  statement and the prevailing `design.md` requirement (`FR-NNN`/section; design.md wins; the
+  abstract is fixed through `$speckit-specify` or
   `$speckit-clarify`, never by this command)
 - A `Logic` rule citing an `FR-NNN` that `design.md` does not define, or a missing/extra/misordered
   abstract section
@@ -359,6 +374,9 @@ After reporting, check if `.specify/extensions.yml` exists in the project root.
     ```
     After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
+
+An after-analysis hook is also inside the analysis mutation budget and MUST satisfy the same
+read-only-except-reflection contract before invocation.
 
 ## Operating Principles
 

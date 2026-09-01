@@ -21,14 +21,15 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase implement` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_abstract`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
 `workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
 Require Protocol v9 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
-recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_design` and `feature_implementation` only as aggregate durable context. Never load a
+recorded detail and cite it. When `workspace_kind` is `subfeature`, read
+`parent_context.feature_abstract`, `parent_context.feature_design`, and
+`parent_context.feature_implementation` only as aggregate durable context. Never load a
 sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 Bind `CHECKLISTS_DIR` to the returned `workspace.checklists_dir`; never derive it from `FEATURE_DIR`.
@@ -78,7 +79,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Outline
 
-1. Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase implement` from repo root and parse FEATURE_DIR, ATTEMPT_DIR, FEATURE_DESIGN, FEATURE_IMPLEMENTATION, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase implement` from repo root and parse FEATURE_DIR, ATTEMPT_DIR, FEATURE_ABSTRACT, FEATURE_DESIGN, FEATURE_IMPLEMENTATION, IMPL_PLAN, TASKS, and AVAILABLE_DOCS. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
 2. **Check checklists status** (if `CHECKLISTS_DIR/` exists):
    - Treat checklist markers as a read-only gate: scan checkbox state, report status, and ask before proceeding when needed; do NOT modify checklist files or markers
@@ -115,6 +116,8 @@ For `checklist`, resolve `checklist-template` separately through the same public
      - Automatically proceed to step 3
 
 3. Load and analyze the implementation context:
+   - **ORIENTATION ONLY**: Read FEATURE_ABSTRACT as the selected feature's bounded summary; it never
+     substitutes for FEATURE_DESIGN.
    - **REQUIRED**: Read FEATURE_DESIGN for behavioral authority and FEATURE_IMPLEMENTATION for the accepted
      realization baseline (the placeholder means no accepted baseline). Implement the plan's delta
      without editing `abstract.md`, feature `design.md`, feature `implementation.md`, or any module `module.md`/`design.md`; promotion belongs
@@ -135,6 +138,9 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - **IF EXISTS**: Read `ATTEMPT_DIR/quickstart.md` for integration scenarios
    - **IF REFERENCED**: Read feature-owned Archify JSON beside the durable `design.md` and its textual
      explanation. Treat generated HTML and visual receipts as reproducible evidence, never as source.
+   - **BOUNDARY**: Do not load unrelated deeper architecture. Follow only plan/task paths and a
+     deliberately opened, cited module `design.md`; parent/sibling attempts and sibling bodies remain
+     excluded.
 
 4. **Project Setup Verification**:
    - **REQUIRED**: Create/verify ignore files based on actual project setup:
@@ -154,8 +160,10 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - Check if terraform files (*.tf) exist → create/verify .terraformignore
    - Check if .helmignore needed (helm charts present) → create/verify .helmignore
 
-   **If ignore file already exists**: Verify it contains essential patterns, append missing critical patterns only
-   **If ignore file missing**: Create with full pattern set for detected technology
+   **If ignore file already exists**: Verify it contains essential patterns; append a missing critical
+   pattern only when the plan or an executable task puts that detected tool in scope
+   **If ignore file missing**: Create it only when the plan or an executable task requires the
+   detected tool; otherwise keep project setup verification read-only
 
    **Common Patterns by Technology** (from plan.md tech stack):
    - **Node.js/JavaScript/TypeScript**: `node_modules/`, `dist/`, `build/`, `*.log`, `.env*`
@@ -210,6 +218,27 @@ For `checklist`, resolve `checklist-template` separately through the same public
      `diagrams/`, declare it in `design.md`, and verify provenance, generated freshness, and automatic
      feature-page embedding.
 
+### Evidence before completion
+
+For every executable task, write or update its compact Attempt Evidence in
+`ATTEMPT_DIR/validation.md` before changing its task marker to `[X]`. The evidence MUST name:
+
+- the task ID and requirement/acceptance trace;
+- the verification command or check actually run;
+- the outcome (`passed`, `failed`, or truthfully `skipped`);
+- the relevant artifact or project-relative evidence path; and
+- every material limitation on what the check proves.
+
+Only a `passed` proportionate check authorizes completion. A task with missing evidence, a skipped
+required check, or failed verification MUST remain unchecked; do not reinterpret intent, test
+existence, or a structurally valid diagram as implementation proof.
+
+At implementation start and completion, record a protected-authority SHA-256 comparison in
+`ATTEMPT_DIR/validation.md` for the selected durable trio, any returned parent durable trio, module
+summary/reference, and canonical bounded sibling-summary JSON. Do not hash sibling bodies. Any
+unexpected protected-authority change stops the phase before further task completion and is recorded
+as a problem in `workspace.reflections`.
+
 8. Progress tracking and error handling:
    - Report progress after each completed task
    - Before marking a task failed, and before any halt, record the problem in the project reflection
@@ -218,7 +247,8 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - For parallel tasks [P], continue with successful tasks, report failed ones
    - Provide clear error messages with context for debugging
    - Suggest next steps if implementation cannot proceed
-   - **IMPORTANT** For completed tasks, make sure to mark the task off as [X] in the tasks file.
+   - **IMPORTANT** For completed tasks, first satisfy Evidence before completion, then mark the task
+     `[X]` in the tasks file.
 
 9. Completion validation:
    - Verify all required tasks are completed

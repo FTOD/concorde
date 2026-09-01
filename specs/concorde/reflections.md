@@ -46,6 +46,7 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
 - **Improvement**: Provide Chrome/Chromium in the development validation environment or set `ARCHIFY_CHROME` to a supported executable.
 - **Occurrences**:
   - implement 2026-09-01 feature.concorde.workflow.plan-delivery — inherited parent core and module level views were freshly delivered and structurally validated, but both visual checks skipped for the same unavailable browser.
+  - implement 2026-09-01 feature.concorde.workflow.execute-and-reconcile — inherited parent core and module level views again passed showcase delivery, while both visual checks skipped for the unavailable browser.
 - **Status**: open
 
 ### R-004 · Temporary Codex self-host refresh hit registry mismatch
@@ -87,6 +88,7 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
 - **Improvement**: Add MDX compilation of terminology aliases and the canonical extension command inventory to focused pre-docsite tests.
 - **Occurrences**:
   - plan 2026-09-01 feature.concorde.workflow.plan-delivery — `docs/commands.md` still names the former accept stage and `concorde-impl-accept` command after the delivery rename.
+  - plan 2026-09-01 feature.concorde.workflow.execute-and-reconcile — the selected abstract still names the former accept step after the canonical delivery rename.
 - **Status**: open
 
 ### R-007 · Plan Delivery still names the module reference as implementation
@@ -100,6 +102,8 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
 - **Effect**: assumed
 - **Action**: Planned against the parent ontology and returned `workspace.module_design` path without editing the selected feature specification.
 - **Improvement**: Reconcile the child specification and abstract through their owning specification workflow before claiming terminology completeness.
+- **Occurrences**:
+  - plan 2026-09-01 feature.concorde.workflow.execute-and-reconcile — FR-007/FR-008 and the abstract still call the inherited module design reference `implementation.md`.
 - **Status**: open
 
 ### R-008 · Bounded level view retains the former accept label
@@ -113,6 +117,8 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
 - **Effect**: worked-around
 - **Action**: Kept the inherited view read-only, used `deliver` in the plan, and recorded the discrepancy for the architecture owner.
 - **Improvement**: Reconcile and redeliver the level view through its owning architecture workflow, then add a stale-operation label check.
+- **Occurrences**:
+  - plan 2026-09-01 feature.concorde.workflow.execute-and-reconcile — the same inherited level view is the bounded architecture context for feature 007.
 - **Status**: open
 
 ### R-009 · Planning guidance writes contracts outside temporal attempt memory
@@ -139,6 +145,8 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
 - **Effect**: worked-around
 - **Action**: Kept the command's stronger wording and aligned the test with that exact semantic invariant.
 - **Improvement**: Prefer stable normative phrases over newly invented shorthand when adding prose-contract assertions.
+- **Occurrences**:
+  - implement 2026-09-01 feature.concorde.workflow.execute-and-reconcile — the new handoff test required lowercase `failed verification` while the contract correctly began the sentence with `Failed verification`.
 - **Status**: open
 
 ### R-011 · Partial Codex projection backup exposed lower-layer skills
@@ -178,4 +186,56 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
 - **Effect**: deferred
 - **Action**: Left the temporary backups outside the project; no maintained, generated, or installed repository artifact depends on them.
 - **Improvement**: Provide a policy-compatible managed temporary-directory cleanup operation for generated projection workflows.
+- **Status**: open
+
+### R-014 · Convergence diagram guidance contradicted its durable-write boundary
+- **Phase**: implement
+- **Date**: 2026-09-01
+- **Feature**: feature.concorde.workflow.execute-and-reconcile
+- **Kind**: guidance
+- **Concerns**: presets/concorde/commands/speckit.converge.md
+- **Expected**: Convergence appends only implementation-owned remaining work and never creates a task that edits feature `design.md`.
+- **Observed**: Diagram-gap guidance requested declaration work in `design.md`, while the append rules later prohibited every task that edits that durable authority.
+- **Effect**: worked-around
+- **Action**: Routed declaration/role/prose authority disagreements to the centralized reflection log and retained only authorized diagram implementation/evidence tasks.
+- **Improvement**: Separate specification-owned diagram problems from implementation-owned diagram freshness gaps in convergence guidance and tests.
+- **Status**: open
+
+### R-015 · Analysis hooks were outside the declared mutation audit
+- **Phase**: implement
+- **Date**: 2026-09-01
+- **Feature**: feature.concorde.workflow.execute-and-reconcile
+- **Kind**: guidance
+- **Concerns**: presets/concorde/commands/speckit.analyze.md
+- **Expected**: The complete analysis surface preserves every file except a required centralized reflection record.
+- **Observed**: Mandatory before/after hooks were executed without first requiring the same read-only-except-reflection contract, so a mutating hook could violate the phase promise.
+- **Effect**: worked-around
+- **Action**: Required hook contract compatibility before invocation and included after-hooks in the same mutation budget.
+- **Improvement**: Add a reusable hook-effect declaration and deterministic compatibility check to every read-only command surface.
+- **Status**: open
+
+### R-016 · Generic setup verification could exceed the selected task scope
+- **Phase**: implement
+- **Date**: 2026-09-01
+- **Feature**: feature.concorde.workflow.execute-and-reconcile
+- **Kind**: guidance
+- **Concerns**: presets/concorde/commands/speckit.implement.md
+- **Expected**: Implementation changes project setup only when the selected plan or executable task requires the detected tool.
+- **Observed**: Generic setup guidance could create or extend ignore files merely because repository tooling was detected, even when no selected task authorized that write.
+- **Effect**: worked-around
+- **Action**: Made setup verification read-only unless the plan or an executable task puts the tool and ignore change in scope.
+- **Improvement**: Bind all implementation setup mutations to explicit task trace tokens before execution.
+- **Status**: open
+
+### R-017 · Self-host rollback needed write access to inactive Codex surfaces
+- **Phase**: implement
+- **Date**: 2026-09-01
+- **Feature**: feature.concorde.workflow.execute-and-reconcile
+- **Kind**: environment
+- **Concerns**: scripts/development/self-host-concorde.py
+- **Expected**: Refreshing configured Claude preserves and verifies the already materialized inactive Codex skill set atomically.
+- **Observed**: The first sandboxed apply could not rewrite `.agents/skills` during inactive-integration restoration, so verification failed and rollback could not restore those paths exactly.
+- **Effect**: worked-around
+- **Action**: Re-ran the same current proposal with approved write access; apply completed and both integration assets verified.
+- **Improvement**: Declare inactive-integration projection paths as required self-host write scope before the transaction begins.
 - **Status**: open

@@ -84,6 +84,32 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                     "attempt/tasks.md remains authoritative",
                 ):
                     self.assertIn(invariant, issues_surface, invariant)
+                execute_surface = registered_artifact(root, integration, "speckit.implement").read_text(encoding="utf-8")
+                analyze_surface = registered_artifact(root, integration, "speckit.analyze").read_text(encoding="utf-8")
+                converge_surface = registered_artifact(root, integration, "speckit.converge").read_text(encoding="utf-8")
+                for surface in (execute_surface, analyze_surface, converge_surface):
+                    self.assertIn("workspace.feature_abstract", surface)
+                    self.assertIn("parent_context.feature_abstract", surface)
+                for invariant in (
+                    "Evidence before completion",
+                    "ATTEMPT_DIR/validation.md",
+                    "MUST remain unchecked",
+                    "protected-authority",
+                ):
+                    self.assertIn(invariant, execute_surface, invariant)
+                for invariant in (
+                    "absent evidence",
+                    "prevailing `design.md` requirement",
+                    "no recordable problem MUST make zero filesystem changes",
+                ):
+                    self.assertIn(invariant, analyze_surface, invariant)
+                for invariant in (
+                    "Attempt Evidence",
+                    "semantic duplicate",
+                    "preserve completed tasks",
+                    "no empty Convergence header",
+                ):
+                    self.assertIn(invariant, converge_surface, invariant)
                 resolved = subprocess.run(["specify", "preset", "resolve", "reflections-template"], cwd=root, check=True, capture_output=True, text=True)
                 self.assertIn("reflections-template.md", resolved.stdout.replace("\n", ""))
                 surfaces = {registered_artifact(root, integration, command) for command in CONCORDE_COMMANDS}

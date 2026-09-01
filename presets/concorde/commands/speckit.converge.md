@@ -16,14 +16,15 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIPT}` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_abstract`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
 `workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
 Require Protocol v9 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
-recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_design` and `feature_implementation` only as aggregate durable context. Never load a
+recorded detail and cite it. When `workspace_kind` is `subfeature`, read
+`parent_context.feature_abstract`, `parent_context.feature_design`, and
+`parent_context.feature_implementation` only as aggregate durable context. Never load a
 sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 
@@ -158,7 +159,13 @@ Load only the minimal necessary context from each artifact:
 **From tasks.md:**
 
 - Task IDs (to compute the next ID and next phase number)
-- Descriptions, phase grouping, and referenced file paths
+- Descriptions, phase grouping, referenced file paths, dependency/trace tokens, and current markers;
+  preserve completed tasks exactly
+
+**From `attempt/validation.md` (when present):**
+
+- Attempt Evidence per task: verification command/check, outcome, relevant artifact, and limitation
+- Protected-authority comparisons and aggregate validation outcomes
 
 **From constitution (if not an unfilled template):**
 
@@ -175,6 +182,9 @@ Create an internal model (do not echo raw artifacts):
   search for the concepts each requirement describes, derive the set of source files and
   components in scope for assessment. Bound the assessment to these — do **not** infer
   scope beyond what the artifacts define.
+- **Attempt Evidence map**: connect each existing task to its persisted verification outcome; a
+  checked task without passing evidence is a gap, while an evidenced completed task is never
+  appended again
 
 ### 4. Assess the Codebase and Classify Findings
 
@@ -190,14 +200,21 @@ For each item in the intent inventory, inspect the current code in scope and pro
   (surfaced for awareness — converge does **not** delete code, it only appends a task to
   review/justify or remove it).
 
-Treat a missing required core component view, multiple core views, a non-architecture core view, or
-missing, stale, unvalidated, or textually/contractually inconsistent required feature diagrams
-as buildable gaps. Append work for `diagrams/` placement, declaration in `design.md`, maintained Archify
-JSON, prose alignment, contract references, delivery, automatic feature-page embedding, truthful
-visual-review evidence, and freshness; never append a task to hand-edit generated HTML or screenshots.
+Treat missing, stale, unvalidated, or textually/contractually inconsistent implementation-owned
+diagram source/evidence as a buildable gap. A missing required diagram declaration, incorrect core
+role/kind, or prose/contract authority disagreement belongs to specification or architecture review:
+record the problem in `workspace.reflections` and recommend the owning workflow, but never append a
+task that edits feature `design.md`. Append only implementation-owned work for maintained JSON that
+is already authorized, validation, delivery, automatic embedding, truthful visual-review evidence,
+and freshness; never append a task to hand-edit generated HTML or screenshots.
 
 Each `Finding` records: a stable id, the `source-ref` it traces to, the `gap-type`, a
 severity, and a short human-readable description with the evidence (the file/area observed).
+
+Before retaining a finding, compare its source reference, affected paths, and required outcome with
+every existing unchecked and completed task. Suppress any semantic duplicate, even when wording
+differs. A completed task may yield a new finding only when current Attempt Evidence proves failure,
+regression, or incomplete scope.
 
 **Edge cases:**
 
@@ -256,8 +273,9 @@ Append to the **end** of `tasks.md`, per the append contract:
 
    Constitution-violation tasks MUST be emitted first and described as
    `CRITICAL`.
-4. Never reuse or renumber existing IDs. If a prior Convergence phase exists, add a new,
-   separately-numbered one below it — do not touch the old one.
+4. Never reuse or renumber existing IDs. Preserve completed tasks and every existing marker,
+   description, dependency, and phase byte-for-byte. If a prior Convergence phase exists, add a new,
+   separately-numbered one below it — do not touch the old one. Report the next phase number used.
 5. When execution surfaced rationale, alternatives, or implementation detail worth keeping, append a
    task that records it inside the attempt (`attempt/research.md` or
    `attempt/validation.md`) so delivery can carry it forward. Never append a task that edits
