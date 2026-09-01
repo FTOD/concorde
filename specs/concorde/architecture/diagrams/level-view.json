@@ -124,7 +124,7 @@
       "id": "contract_scripts_workspace-files",
       "from": "scripts",
       "to": "workspaceFiles",
-      "label": "resolve · propose · validate · accept",
+      "label": "resolve · propose · validate · deliver",
       "variant": "emphasis"
     },
     {

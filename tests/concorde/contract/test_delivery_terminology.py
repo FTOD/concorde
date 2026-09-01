@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import unittest
 from pathlib import Path
 import re
@@ -132,6 +133,16 @@ class DeliveryTerminologyContractTests(unittest.TestCase):
             self.assertTrue(path.is_file(), path.as_posix())
         for path in superseded:
             self.assertFalse(path.exists(), path.as_posix())
+
+    def test_root_interaction_view_uses_delivery_operation(self) -> None:
+        diagram_path = REPOSITORY_ROOT / "specs/concorde/architecture/diagrams/level-view.json"
+        diagram = json.loads(diagram_path.read_text(encoding="utf-8"))
+        connection = next(
+            connection
+            for connection in diagram["connections"]
+            if connection["id"] == "contract_scripts_workspace-files"
+        )
+        self.assertEqual(connection["label"], "resolve · propose · validate · deliver")
 
     def test_superseded_delivery_interface_tokens_are_absent(self) -> None:
         stale_tokens = (
