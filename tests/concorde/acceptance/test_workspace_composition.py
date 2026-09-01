@@ -59,9 +59,20 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                 self.assertNotIn("**STRICTLY READ-ONLY**", analyze_surface)
                 implement_surface = registered_artifact(root, integration, "speckit.implement").read_text(encoding="utf-8")
                 self.assertIn("`Effect: blocked`", implement_surface)
+                specify_surface = registered_artifact(root, integration, "speckit.specify").read_text(encoding="utf-8")
                 plan_surface = registered_artifact(root, integration, "speckit.plan").read_text(encoding="utf-8")
                 tasks_surface = registered_artifact(root, integration, "speckit.tasks").read_text(encoding="utf-8")
                 issues_surface = registered_artifact(root, integration, "speckit.taskstoissues").read_text(encoding="utf-8")
+                normalized_specify = " ".join(specify_surface.split())
+                normalized_plan = " ".join(plan_surface.split())
+                for invariant in (
+                    "normalized project-relative `.html` path beneath `generated/`",
+                    "diagram-relative `meta.output`",
+                    "resolves to that same project-relative target",
+                    "unique across all maintained diagram declarations",
+                    "correct the invalid declaration before reporting specification readiness",
+                ):
+                    self.assertIn(invariant, normalized_specify, invariant)
                 for invariant in (
                     "workspace.feature_abstract",
                     "parent_context.feature_abstract",
@@ -70,6 +81,14 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                     "MUST NOT update",
                 ):
                     self.assertIn(invariant, plan_surface, invariant)
+                for invariant in (
+                    "validate every existing diagram declaration",
+                    "same unique target beneath `generated/`",
+                    "route the invalid durable declaration back to specification authority",
+                    "MUST NOT repair `design.md`",
+                    "Only after every declaration passes",
+                ):
+                    self.assertIn(invariant, normalized_plan, invariant)
                 for invariant in (
                     "requirement ID or acceptance-outcome",
                     "ATTEMPT_DIR/contracts/",

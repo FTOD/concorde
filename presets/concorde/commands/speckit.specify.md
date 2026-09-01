@@ -179,9 +179,13 @@ Given that feature description, do this:
        `role: supplemental` workflow, sequence, data-flow, or lifecycle diagrams when individual
        scenarios need order, timing, state, or data-movement detail. A sequence diagram MUST NOT be
        the feature's core diagram. Use descriptive filenames other than `architecture.json` and
-       declare every diagram in `design.md` so Documentation can embed it automatically. Diagrams
-       supplement the textual feature and contracts; they do not define new behavior or low-level
-       class/function inventories. Every maintained Concorde Archify source MUST set
+       declare every diagram in `design.md` so Documentation can embed it automatically. Every
+       declaration's `output` MUST be a normalized project-relative `.html` path beneath
+       `generated/`. The maintained JSON uses a diagram-relative `meta.output`, interpreted relative
+       to that JSON source, which MUST resolve to that same project-relative target. The resolved
+       target MUST be unique across all maintained diagram declarations. Diagrams supplement the
+       textual feature and contracts; they do not define new behavior or low-level class/function
+       inventories. Every maintained Concorde Archify source MUST set
        `meta.legend.mode` to `hidden`; domain labels and the textual counterpart explain the view,
        not Archify's renderer-owned generic legend categories.
     5. Author the level-local `## Terminology` declaration
@@ -252,6 +256,8 @@ Given that feature description, do this:
       - [ ] The abstract is self-contained and states no requirement, scope boundary, or success criterion that design.md does not state
       - [ ] Dynamic scenario views are supplemental and no sequence diagram is designated as core
       - [ ] Every maintained Archify source explicitly sets `meta.legend.mode` to `hidden`
+      - [ ] Every diagram declaration has a normalized project-relative `.html` output beneath `generated/`, and every diagram-relative `meta.output` resolves to that same project-relative target
+      - [ ] Diagram declaration validation passes, including target uniqueness across all maintained diagram declarations
       - [ ] `## Terminology` defines every important local concept or uses the exact inherited-only declaration
       - [ ] Terminology rows use the exact Term, Meaning, Relationships profile without copying inherited rows
       - [ ] Every alias and typed relationship target resolves locally or through the permitted ancestor chain
@@ -268,6 +274,10 @@ Given that feature description, do this:
       - Document specific issues found (quote relevant spec sections)
 
    c. **Handle Validation Results**:
+
+      A failed diagram declaration check is not a readiness warning: correct the invalid declaration
+      before reporting specification readiness. Do not mark either diagram-output checklist item
+      complete until the output boundary, JSON resolution, and repository-wide uniqueness all pass.
 
       - **If all items pass**: Mark checklist complete and proceed to the Mandatory Post-Execution Hooks section
 

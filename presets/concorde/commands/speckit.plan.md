@@ -85,7 +85,13 @@ For `checklist`, resolve `checklist-template` separately through the same public
    module `design.md` (`workspace.module_design`) only for a specific recorded detail and cite it.
    Load IMPL_PLAN template (already
    copied). Also read every feature-owned Archify JSON source referenced by the specification; keep it
-   distinct from the providing module's level views under `architecture/diagrams/`.
+   distinct from the providing module's level views under `architecture/diagrams/`. Before generating
+   implementation work, validate every existing diagram declaration: its `output` MUST be a
+   normalized project-relative `.html` declaration output beneath `generated/`; its maintained JSON
+   MUST carry a diagram-relative `meta.output` that resolves to the same unique target beneath
+   `generated/`; and no other maintained diagram declaration may claim that target. If any check
+   fails, stop planning and route the invalid durable declaration back to specification authority.
+   Planning MUST NOT repair `design.md` or silently change the maintained JSON declaration.
 
 3. **Execute plan workflow**: Follow the structure in IMPL_PLAN template to:
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
@@ -94,7 +100,8 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - Phase 0: Generate `ATTEMPT_DIR/research.md` (resolve all NEEDS CLARIFICATION)
    - Phase 1: Generate `ATTEMPT_DIR/data-model.md`, proposed contract deltas under
      `ATTEMPT_DIR/contracts/` when applicable, and `ATTEMPT_DIR/quickstart.md`
-   - Define the feature-diagram strategy in two layers. First define at most one `role: core`
+   - Only after every declaration passes, define the feature-diagram strategy in two layers and name
+     generated delivery, validation, freshness, and evidence work. First define at most one `role: core`
      Archify `architecture` view for stable components, responsibilities, interactions, and
      governing contracts, or preserve an explicit sufficiency rationale. Then define any
      `role: supplemental` workflow, sequence, data-flow, or lifecycle views needed for narrower
@@ -273,6 +280,8 @@ deltas, `ATTEMPT_DIR/quickstart.md`
 - [ ] Plan workflow executed and design artifacts generated
 - [ ] Durable feature `implementation.md` was used as the accepted baseline (or recorded as no accepted baseline) and remained byte-for-byte unchanged; `abstract.md`, feature `design.md`, and every module `module.md`/`design.md` were not edited
 - [ ] Required feature diagrams or explicit sufficiency rationales are covered by the plan; diagram
-      sources remain under `diagrams/` and their automatic feature-page publication is verified
+      declarations passed output-boundary, JSON-resolution, and uniqueness validation before work
+      was generated; sources remain under `diagrams/` and their automatic feature-page publication
+      is verified
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with branch, plan path, and generated artifacts
