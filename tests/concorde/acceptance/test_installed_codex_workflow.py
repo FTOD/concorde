@@ -20,6 +20,21 @@ from tests.concorde.support.specify_project import SpecifyProject
 
 FEATURE = "specs/example/features/003-authorize-payment.md"
 ATTEMPT = ".concorde/attempts/feature.example.checkout.authorize"
+REMOVED_AUTHORITY_TOKENS_BY_PROFILE = {
+    7: (
+        "workspace_kind",
+        "parent_context",
+        "siblings",
+        "feature_directory",
+        "feature_abstract",
+        "feature_design",
+        "feature_implementation",
+        "module_summary",
+        "module_design",
+        "contracts_dir",
+        "diagrams_dir",
+    ),
+}
 
 
 class InstalledCodexWorkflowTests(unittest.TestCase):
@@ -37,6 +52,9 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 project.run("bundle", "install", "concorde-bundle")
                 shutil.copytree(TWO_LEVEL_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
                 shutil.copytree(TWO_LEVEL_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
+                profile = json.loads((root / ".concorde/config.json").read_text(encoding="utf-8"))["profile_version"]
+                self.assertIn(profile, REMOVED_AUTHORITY_TOKENS_BY_PROFILE)
+                removed_authority_tokens = REMOVED_AUTHORITY_TOKENS_BY_PROFILE[profile]
                 (root / ".specify/feature.json").write_text(
                     json.dumps({"feature_path": FEATURE}, separators=(",", ":")) + "\n",
                     encoding="utf-8",
@@ -64,11 +82,9 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 self.assertEqual(workspace["module_architecture"], "specs/example/architecture.md")
                 self.assertEqual(workspace["module_ancestry"], [])
                 self.assertEqual(workspace["checklists_dir"], workspace["attempt_dir"] + "/checklists")
-                for removed in (
-                    "feature_directory", "feature_design", "workspace_kind", "feature_abstract",
-                    "feature_implementation", "module_summary", "module_design", "contracts_dir", "parent_context",
-                ):
-                    self.assertNotIn(removed, workspace)
+                for token in removed_authority_tokens:
+                    with self.subTest(profile=profile, surface="checklist workspace", token=token):
+                        self.assertNotIn(token, workspace)
 
                 launcher = root / ".specify/extensions/concorde/scripts/python/concorde.py"
                 for arguments in (("validate",), ("context", "module.example")):
@@ -100,7 +116,9 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 self.assertEqual(delivery["schema_version"], 12)
                 self.assertEqual(delivery["task_summary"], {"complete": 1, "incomplete": 0, "malformed": 0})
                 self.assertEqual(delivery["evidence_summary"], {"passed": 1, "missing": 0})
-                self.assertNotIn("feature_implementation", delivery["workspace"])
+                for token in removed_authority_tokens:
+                    with self.subTest(profile=profile, surface="delivery proposal workspace", token=token):
+                        self.assertNotIn(token, delivery["workspace"])
 
                 proposal_path = root / delivery["proposal_path"]
                 proposal_path.write_text(
