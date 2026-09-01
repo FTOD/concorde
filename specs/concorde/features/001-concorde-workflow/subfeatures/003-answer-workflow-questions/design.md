@@ -106,3 +106,11 @@ uncertainty, reference opening, and zero mutations.
 ## Assumptions
 
 - The active coding agent can read installed guidance and explicitly requested maintained sources.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Grounded answer` | A read-only response whose project claims are supported by the smallest relevant maintained sources. | `bounded by` → `Question scope`; `supported by` → `Source citation` |
+| `Question scope` | The requested workflow, module, feature, contract, or implementation detail that limits which sources may be opened. | `selects` → `Durable artifact` |
+| `Source citation` | A path and specific source kind named beside the factual claim it supports. | `points to` → `Durable artifact` |

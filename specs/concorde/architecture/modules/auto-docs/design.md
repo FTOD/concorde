@@ -89,3 +89,14 @@ treated as perceptual evidence.
   moves from v4 to v5.
 - 2026-08-27 — Switched diagram delivery to the project-local Archify 2.16 skill.
 - 2026-08-26 — Rendered Archify diagrams during docsite builds; published the site to GitHub Pages.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Content registry` | The deterministic classification of maintained project sources, identities, routes, and diagram declarations used for publication. | `projects as` → `Content page`; `produces` → `Build manifest` |
+| `Content page` | One generated documentation page that preserves a maintained source's meaning and provenance. | `is a` → `Generated projection`; `has` → `Canonical route` |
+| `Build manifest` | The deterministic inventory mapping every included source and diagram delivery to its published route and provenance. | `describes` → `Content page`; `describes` → `Diagram delivery` |
+| `Diagram delivery` | A validated standalone HTML projection produced from one maintained Archify JSON source. | `is a` → `Generated projection`; `checked by` → `Publication gate` |
+| `Canonical route` | The unique public path assigned from semantic identity rather than raw storage layout. | `belongs to` → `Content page` |
+| `Publication gate` | The deterministic checks that prevent invalid, stale, colliding, or incomplete read models from replacing the last successful site. | `validates` → `Build manifest`; `validates` → `Diagram delivery` |

@@ -110,3 +110,12 @@ module references.
 
 - The task list is the execution index, while durable behavior and accepted realization remain
   higher authorities.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Executable task` | One dependency-ordered checklist item with an exact action and file path. | `implements` → `Feature specification`; `updates` → `Task state` |
+| `Task state` | The unchecked or completed marker persisted in the active attempt's task list. | `describes` → `Executable task`; `is a` → `Temporal artifact` |
+| `Attempt evidence` | Commands, outcomes, and limitations recorded for the current delivery without claiming acceptance. | `supports` → `Executable task`; `belongs to` → `Attempt` |
+| `Reconciliation` | The comparison of implemented behavior, tasks, tests, and durable intent that identifies remaining work or disagreement. | `compares` → `Feature specification`; `uses` → `Attempt evidence` |

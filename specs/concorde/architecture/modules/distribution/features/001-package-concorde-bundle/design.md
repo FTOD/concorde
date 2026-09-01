@@ -53,3 +53,11 @@ a separate Distribution-owned diagram would duplicate them.
 - Failures do not record success and name residual state that could not be rolled back.
 - Acceptance executes the installed winning command surfaces and does not infer correctness from
   archive membership or expected text alone.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Resolved bundle plan` | The exact component identities and versions produced by preview and accepted for installation. | `expands` → `Bundle recipe`; `installs` → `Installed component` |
+| `Installed component` | One preset or extension version materialized through Spec Kit with recorded provenance. | `comes from` → `Release archive`; `tracked by` → `Ownership record` |
+| `Ownership record` | The installed path/component provenance used to make update and removal safe. | `owns` → `Installed component` |

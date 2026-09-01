@@ -30,3 +30,12 @@ Scripts even though the extension archive distributes them together.
 
 - Named the module after the installed user-facing artifact.
 - Kept agent-followed questions separate from runtime-backed operations.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Phase skill` | A Skill that composes Concorde guidance into one normal Spec Kit lifecycle phase. | `is a` → `Skills`; `uses` → `Workspace receipt` |
+| `Command source` | A maintained preset or extension instruction body from which an agent-facing skill is materialized. | `materializes as` → `Installed skill` |
+| `Installed skill` | The active integration's generated presentation of one command source. | `presents` → `Phase skill`; `is a` → `Generated projection` |
+| `Workspace receipt` | The structured result that names the selected root and phase-authorized paths before path-sensitive guidance runs. | `returned by` → `Scripts`; `identifies` → `Workspace Files` |

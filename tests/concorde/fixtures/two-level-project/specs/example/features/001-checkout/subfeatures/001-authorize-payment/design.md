@@ -20,3 +20,7 @@ canonical_design: specs/example/features/001-checkout/subfeatures/001-authorize-
 A valid checkout receives an authorization decision.
 ## Requirements
 The decision is explicit and traceable to the parent checkout.
+
+## Terminology
+
+No local terminology. This level uses inherited terminology unchanged.

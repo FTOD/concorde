@@ -49,3 +49,12 @@ architectural level, so a child diagram is unnecessary.
 - Unsafe, symlinked, ambiguous, stale, or conflicting paths MUST fail without partial mutation.
 - `ask` MUST NOT appear as a runtime operation.
 - The runtime MUST require only the declared Python baseline and standard library.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Operation envelope` | The serialized structured result shared by launchers and runtime operations. | `represents` → `Structured result` |
+| `Read operation` | A runtime operation that observes repository state without mutating sources. | `is a` → `Runtime operation`; `returns` → `Operation envelope` |
+| `Write operation` | A runtime operation that separates a reviewed mutation proposal from digest-bound apply. | `is a` → `Runtime operation`; `applies` → `Mutation proposal` |
+| `Source digest` | A deterministic hash over the bounded source set used to detect stale proposals and evidence. | `binds` → `Operation envelope`; `binds` → `Mutation proposal` |

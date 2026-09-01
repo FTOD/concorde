@@ -140,3 +140,12 @@ snapshotting all related roots, abstracts, specifications, module summaries, and
 - The level at which the feature is specified is the level whose module `design.md` an acceptance
   proposal may amend; a feature realized across several modules records lower-level detail in those
   modules' references through their own feature milestones.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Milestone acceptance` | The explicit reviewed operation that promotes a complete attempt into durable accepted realization. | `applies` → `Acceptance proposal`; `writes` → `Feature implementation` |
+| `Acceptance candidate` | The full proposed replacement content and exact removal set presented for approval before apply. | `forms` → `Acceptance proposal`; `contains` → `Removal set` |
+| `Removal set` | The exact complete attempt artifacts deleted only after the accepted replacements are safely committed. | `contains` → `Temporal artifact` |
+| `Retained authority` | A maintained source explicitly proven byte-identical across acceptance, such as feature specification, abstract, module summary, contracts, or reflection log. | `is a` → `Durable artifact` |

@@ -57,7 +57,8 @@ Decide eligibility before changing any file:
 | Attempt | Every affected feature has `workspace.attempt_state == "absent"` | Resume implementation or acceptance for that root |
 | Module boundary | The change creates/restructures no feature or module and changes no module responsibility or dependency direction | Specification, then the full workflow |
 | Related authority | Every affected feature, inter-module contract, maintained diagram, module reference, and user guide can be reconciled in this bounded loop | Planning or specification |
-| Project compatibility | No project-level compatibility or migration policy promised to users of the whole project changes | Specification, then the full workflow |
+| Project compatibility | No project-level compatibility or migration policy promised to users of the whole project changes; an explicit pure naming migration may replace names while following the existing policy | Specification, then the full workflow |
+| Pure rename (when claimed) | The request supplies an explicit old-to-new mapping; only identifiers, labels, paths, and their references change; behavior, data semantics, permissions, failure handling, responsibilities, and dependencies remain unchanged | Specification, then the full workflow |
 | Worktree | Proposed edits do not overlap changes of uncertain ownership | Stop for maintainer coordination |
 | Clarity | Bounded inspection leaves no materially ambiguous result | Clarification or specification |
 
@@ -85,7 +86,11 @@ request appear eligible.
 6. Evaluate compatibility and migration only against durable project-level promises to users of the
    whole project. Internal coordination is not independently disqualifying, but an internal contract
    that is also the project's public user interface remains project-level. Feature or module sources
-   must not invent their own compatibility or migration policy.
+   must not invent their own compatibility or migration policy. An explicitly requested pure naming
+   migration is eligible when it follows that existing policy: record the complete old-to-new
+   mapping, prove that implementation logic and behavioral semantics are unchanged, identify every
+   affected authority, and define the deterministic stale-name inventory that must reach zero across
+   maintained sources (version-control history is not maintained source content).
 
 When any condition fails, make zero fast-loop edits. Name the failed condition and recommend the
 earliest applicable full-workflow stage: specification for new/changed behavior or ownership,
@@ -105,20 +110,28 @@ For an eligible request, directly complete the bounded modification in this comm
    maintained diagram, module reference, and user guide required to keep the repository truthful.
    Never use such edits to change a module responsibility or dependency direction, and never edit an
    unrelated feature or architecture source.
-4. After executable evidence passes, update each affected `design.md` and keep its `abstract.md`
+4. For a pure naming migration, apply only the recorded mapping across the bounded affected set;
+   classify each durable-document change as referential-only, preserve all implementation logic and
+   behavioral semantics, and run a deterministic inventory for stale old names, partial new names,
+   aliases, and duplicate identities. Treat the reflection log as maintained docs/specs: rewrite its
+   matching text and references when required while preserving every exact `R-NNN` identifier,
+   identifier uniqueness, required structure, maintainer decision, occurrence identity, and problem
+   meaning; validate all renamed `Feature`/`Concerns` values and the complete log.
+5. After executable evidence passes, update each affected `design.md` and keep its `abstract.md`
    faithful only when that feature's required behavior changed. Leave both byte-identical for an
-   unaffected or realization-only feature.
-5. Reconcile every affected `implementation.md` with its verified realization delta. This is direct
+   unaffected, realization-only, or referential-only feature except for the required mapped names.
+   For every changed design, update its local `## Terminology` table in the same edit: define newly
+   introduced concepts and relationships, preserve inherited terms without copying them, and reject
+   any incompatible inherited redefinition before continuing.
+6. Reconcile every affected `implementation.md` with its verified realization delta. This is direct
    maintained-source authoring authorized by the explicit fast-loop request, not acceptance
    compaction.
-6. Run every targeted test and deterministic validation required by the changed code, feature,
+7. Run every targeted test and deterministic validation required by the changed code, feature,
    contract, architecture, and user documentation. Claim completion only when all agree.
-7. If an inter-module contract, maintained architecture diagram, or other architecture authority
-   changed, set architecture review state to `review_pending`, present the exact validated diff and
-   source hashes, and stop without a success claim. After the maintainer confirms that exact diff,
-   recompute the hashes; claim completion only if unchanged and report state `reviewed`. If no
-   architecture authority changed, report `not_required`. This review is not an implementation-
-   acceptance proposal and creates no attempt artifact.
+8. If an inter-module contract, maintained architecture diagram, or other architecture authority
+   changed, report its exact validated diff, source hashes, and architecture evidence state
+   `validated`. Under constitution A.V an otherwise eligible fast loop needs no separate post-edit
+   human review. If no architecture authority changed, report `not_applicable`.
 
 No attempt is created or used. Do not create `plan.md`, `tasks.md`, a task checklist, or an acceptance
 proposal. Do not delegate to the planning, task-generation, implementation, convergence, or
@@ -141,6 +154,10 @@ documents, attempt artifacts, contracts, diagrams, code, or tests; retain indepe
 without reflection identity. Triage plans and completion reports may use an identifier only for
 transient coordination.
 
+This ordinary problem-recording rule does not prevent an explicitly requested rename or
+documentation correction from reconciling the log as maintained source under Direct Change. Such a
+rewrite preserves stable `R-NNN` identities and the validated entry structure and meaning.
+
 For a new entry, use the next `R-NNN` identifier and the fixed field order: `Phase: fast-loop`,
 `Date`, `Feature`, `Kind`, `Concerns`, `Expected`, `Observed`, `Effect`, `Action`, `Improvement`, and
 `Status: open`. When the same problem already exists, append one `fast-loop YYYY-MM-DD <feature-id>
@@ -162,11 +179,11 @@ Return a concise report containing:
 - all changed files;
 - per-feature behavioral and realization documents: changed or byte-identical;
 - tests and validations run, with results;
-- architecture review state (`not_required`, `review_pending`, or `reviewed`) and affected source
-  paths/hashes;
+- architecture evidence state (`not_applicable` or `validated`) and affected source paths/hashes;
+- for a pure rename, the old-to-new mapping, referential-only authorities, inventory command/result,
+  and every rewritten reflection entry ID;
 - unrelated pre-existing changes preserved;
 - `No attempt: yes` and `No acceptance: yes`; and
 - `Reflections added: <identifiers or none> · open for this feature: <count>`.
 
-Do not claim success when a required test, validation, or mandatory hook failed, or while architecture
-review state is `review_pending`.
+Do not claim success when a required test, validation, inventory, or mandatory hook failed.

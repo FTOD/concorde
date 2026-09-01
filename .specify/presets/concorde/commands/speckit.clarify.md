@@ -213,7 +213,7 @@ Execution steps:
        - Data shape / entities → Update Data Model (add fields, types, relationships) preserving ordering; note added constraints succinctly.
        - Non-functional constraint → Add/modify measurable criteria in Success Criteria > Measurable Outcomes (convert vague adjective to metric or explicit target).
        - Edge case / negative flow → Add a new bullet under Edge Cases / Error Handling (or create such subsection if template provides placeholder for it).
-       - Terminology conflict → Normalize term across spec; retain original only if necessary by adding `(formerly referred to as "X")` once.
+       - Terminology conflict → Normalize prose to the preferred expression and update the level's `## Terminology` row; declare a necessary alternate expression as an explicit backticked alias, never as a second concept.
     - If the clarification invalidates an earlier ambiguous statement, replace that statement instead of duplicating; leave no obsolete contradictory text.
     - Save the spec file AFTER each integration to minimize risk of context loss (atomic overwrite).
     - Preserve formatting: do not reorder unrelated sections; keep heading hierarchy intact.
@@ -225,7 +225,7 @@ Execution steps:
    - Updated sections contain no lingering vague placeholders the new answer was meant to resolve.
    - No contradictory earlier statement remains (scan for now-invalid alternative choices removed).
    - Markdown structure valid; only allowed new headings: `## Clarifications`, `### Session YYYY-MM-DD`.
-   - Terminology consistency: same canonical term used across all updated sections.
+   - Terminology consistency: same preferred term used across all updated sections; every important new concept, alias, or typed relationship is present in the local `Term`, `Meaning`, `Relationships` table, inherited rows are not copied, and relationship targets resolve through the permitted ancestor chain.
 
 8. Write the updated spec back to `FEATURE_DESIGN`.
 

@@ -76,9 +76,13 @@ Identify inconsistencies, duplications, ambiguities, and underspecified items ac
 
 ## Operating Constraints
 
-**STRICTLY READ-ONLY**: Do **not** modify any files, with one exception: this phase may append to
-the project reflection log (`workspace.reflections`) per Reflection Recording below, and never
-repairs that log. Output a structured analysis report. Offer an optional remediation plan (user must explicitly approve before any follow-up editing commands would be invoked manually).
+**READ-ONLY EXCEPT REFLECTION RECORDING**: Do **not** modify any file except the project reflection
+log (`workspace.reflections`). This phase may create that log from its resolved template when absent
+and append a new entry or matching occurrence per Reflection Recording below; it never repairs,
+reorders, renumbers, or deletes reflection content. Every other file MUST remain byte-identical. A
+run that meets no recordable problem MUST make zero filesystem changes. Output a structured analysis
+report. Offer an optional remediation plan (user must explicitly approve before any follow-up editing
+commands would be invoked manually).
 
 **Constitution Authority**: The project constitution (`.specify/memory/constitution.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `$speckit-analyze`.
 
@@ -280,9 +284,10 @@ removes it.
   existing implementation it depends on, the installed guidance, the level's architecture, or the
   plan as written, or must assume, work around, defer, or stop — record it in this phase, before the
   completion report, not later. A problem met and solved within the phase is still recorded.
-- **Where**: append to `workspace.reflections`. If the file does not exist, create it first from the
-  template resolved by `specify preset resolve reflections-template`. Append only; never rewrite,
-  reorder, renumber, or delete entries.
+- **Where**: ordinary recording writes only `workspace.reflections`. If the file does not exist,
+  create it first from the template resolved by `specify preset resolve reflections-template`.
+  Append a new entry or matching occurrence; never change or reuse an existing `R-NNN` identifier,
+  delete an entry, or reverse a maintainer-set status or note as part of ordinary recording.
 - **Centralized authority**: `workspace.reflections` is the only file that may persist a
   reflection entry or its `R-NNN` identity, status, note, or occurrences. Never copy or cite that
   reflection identity or entry content into attempt artifacts, feature/module documents, contracts,
@@ -300,10 +305,16 @@ removes it.
 - **Never fix in place**: a problem with `abstract.md`, feature `design.md`, feature `implementation.md`, any `module.md`, a
   contract, a view, a diagram, or another feature's code or tests is recorded, not edited; the
   owning phase or the maintainer changes that source later.
-- **Update, don't duplicate**: when the log already holds the same problem — recorded by any phase
+- **Update, don't duplicate**: when ordinary recording finds the same problem — recorded by any phase
   on any feature — add a line under its `- **Occurrences**:` list
   (`<phase> <date> <feature-id> — <context>`) instead of a new entry. Never change a `Status` or
   `Note` a maintainer set.
+- **Maintained reconciliation**: `workspace.reflections` is maintained docs/specs. An explicitly
+  requested rename or documentation correction MAY rewrite existing entry text and references, but
+  MUST preserve each exact `R-NNN` identifier, identifier uniqueness, required field structure,
+  maintainer-owned status decision, occurrence identity, and problem meaning; renamed `Feature` and
+  `Concerns` values MUST resolve, and the complete log MUST pass `speckit.concorde.validate`.
+  Ordinary problem recording does not implicitly authorize this reconciliation.
 - **Bounded**: recording never requires opening another root's `attempt/`; cite the other
   feature by stable ID or path.
 - **Hygiene**: no secrets, credentials, or bulk output — cite the evidence path instead; keep
@@ -355,7 +366,9 @@ After reporting, check if `.specify/extensions.yml` exists in the project root.
 
 ### Analysis Guidelines
 
-- **NEVER modify files** (this is read-only analysis; the only permitted write is appending to the project reflection log)
+- **NEVER modify files other than `workspace.reflections`** (analysis may create or append/update
+  that log only as specified by Reflection Recording; when it has nothing to record, it writes
+  nothing)
 - **NEVER propose editing `implementation.md` or any module `module.md`/`design.md`**; when analysis surfaces rationale, alternatives, or implementation detail worth keeping, recommend recording it inside the attempt (`attempt/research.md` or `attempt/validation.md`) so acceptance can carry it forward
 - **NEVER hallucinate missing sections** (if absent, report them accurately)
 - **Prioritize constitution violations** (these are always CRITICAL)

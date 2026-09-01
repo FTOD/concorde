@@ -120,6 +120,9 @@ For an eligible request, directly complete the bounded modification in this comm
 5. After executable evidence passes, update each affected `design.md` and keep its `abstract.md`
    faithful only when that feature's required behavior changed. Leave both byte-identical for an
    unaffected, realization-only, or referential-only feature except for the required mapped names.
+   For every changed design, update its local `## Terminology` table in the same edit: define newly
+   introduced concepts and relationships, preserve inherited terms without copying them, and reject
+   any incompatible inherited redefinition before continuing.
 6. Reconcile every affected `implementation.md` with its verified realization delta. This is direct
    maintained-source authoring authorized by the explicit fast-loop request, not acceptance
    compaction.

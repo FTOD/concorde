@@ -64,9 +64,9 @@ feature `implementation.md` can point from that model to the concrete code that 
 | Workflow control | `.concorde/config.json`, `.specify/feature.json` | Where sources and the active feature are located—not project behavior |
 | Installed tooling | `.specify/extensions/concorde/`, agent skill or slash-command directories | How the installed workflow is invoked—not project intent |
 | Maintained architecture | `module.md` (module summary), `architecture/contracts/`, the level views under `architecture/diagrams/` | Responsibility, boundaries, the features specified at the level, and current-level organization |
-| Module design reference | `design.md` beside each `module.md` | Implementation detail, rationale, alternatives, and decisions for one level; it explains module architecture and never redefines it |
+| Module design reference | `design.md` beside each `module.md` | Implementation detail, rationale, alternatives, decisions, and the terminology introduced by one level; it explains module architecture and never redefines it |
 | Feature orientation | `abstract.md` beside each `design.md` | A self-contained quick understanding of one feature; it summarizes `design.md` and never defines beyond it |
-| Durable feature intent | `design.md`, feature contracts, declared diagrams | Required behavior, normative feature representations, and representative explanations |
+| Durable feature intent | `design.md`, feature contracts, declared diagrams | Required behavior, local terminology/relationships, normative feature representations, and representative explanations |
 | Project ontology | `docs/ontology.md` | Shared Concorde and pinned-UA vocabulary, cross-ontology relationships, invariants, and adapter representation profile; not feature behavior or contract serialization |
 | Feature implementation | `implementation.md` beside each feature `design.md` | How the accepted implementation realizes one feature, in full implementation detail |
 | Temporary attempt | `attempt/**` | Proposed work, task/checklist state, research, and current evidence |
@@ -87,7 +87,7 @@ it is committed under a project-specific policy.
 | A module boundary or immediate-child organization | `module.md`, the affected contracts under `architecture/contracts/`, and the level views under `architecture/diagrams/` together |
 | Why a level is built the way it is, or implementation detail beneath its summary | The module's `design.md`, edited directly or amended by an approved acceptance proposal; keep `module.md` a summary |
 | Information crossing a boundary | The owning contract and any normative schema/example |
-| Shared project terminology, UA compatibility vocabulary, or ontology relationships | `docs/ontology.md`, reconciled with affected feature designs, contracts, schemas/examples, validation, and publication |
+| Shared project terminology, UA compatibility vocabulary, or ontology relationships | `docs/ontology.md`; define level-local concepts in the affected module/feature `design.md` terminology tables and reconcile contracts, schemas/examples, validation, diagrams, and publication |
 | How an accepted implementation realizes a feature | Complete the attempt and use approved implementation acceptance to write feature `implementation.md`; do not directly promote a plan |
 | The current implementation approach or work order | Files under the selected feature's `attempt/` directory |
 | Runtime behavior or executable proof | Source code and tests, reconciled against the durable sources |

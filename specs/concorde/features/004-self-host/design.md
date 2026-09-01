@@ -373,3 +373,14 @@ ownership, recovery of the prior active framework, and actionable residual-state
 - `contract.concorde.spec-kit-installation` and `contract.concorde.spec-kit-platform` for component
   lifecycle, integration materialization, provenance, ownership, and compatibility behavior.
 - The selected coding-agent integration's documented activation and reload behavior.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Authoritative framework source set` | The trusted preset, extension, bundle, and declared package inputs used to materialize the current checkout. | `bound by` → `Self-hosting proposal`; `realized as` → `Active project materialization` |
+| `Self-hosting proposal` | The reviewable source identity, compatibility, owned changes, preserved content, and activation boundary; it grants no mutation authority before approval. | `targets` → `Active project materialization`; `produces` → `Self-hosting receipt` |
+| `Active project materialization` | The replaceable Concorde-owned skills, commands, templates, runtime files, adapters, and registrations for the active integration. | `is a` → `Generated projection`; `recorded by` → `Self-hosting receipt` |
+| `Self-hosting receipt` | Provenance connecting one accepted framework source state to completed materialization, ownership, compatibility, and activation evidence. | `records` → `Active project materialization`; `checked by` → `Freshness result` |
+| `Freshness result` | The read-only comparison of source, materialization, registration, compatibility, ownership, and session evidence. | `compares` → `Authoritative framework source set`; `compares` → `Self-hosting receipt` |
+| `Activation boundary` | The point at which refreshed installed instructions become observable, including a required agent reload or new session. | `governs` → `Active project materialization` |

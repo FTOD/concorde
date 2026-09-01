@@ -20,6 +20,7 @@ from .validation.summary import validate_summaries
 from .validation.diagrams import validate_diagrams
 from .validation.abstract import validate_abstracts
 from .validation.reflections import validate_reflections
+from .validation.terminology import validate_terminology
 
 
 EVIDENCE_STATES = {"unknown", "partial", "verified", "disagrees", "implemented"}
@@ -30,6 +31,7 @@ FOCUSED_VALIDATORS = (
     validate_diagrams,
     validate_abstracts,
     validate_reflections,
+    validate_terminology,
     validate_layout,
     validate_contracts,
     validate_scenarios,

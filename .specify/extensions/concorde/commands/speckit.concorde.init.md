@@ -19,6 +19,10 @@ project itself provides those product responsibilities.
 
 The proposed seed level view explicitly sets `meta.legend.mode` to `hidden`, matching the Concorde
 policy for every maintained Archify diagram. Treat a proposal that omits that setting as invalid.
+The proposed module `design.md` also contains the exact `## Terminology` table profile and defines
+the seeded Skills, Scripts, Workspace Files, and Attempt concepts with typed relationships. Treat a
+proposal with a missing/malformed terminology declaration or unresolved relationship target as invalid.
+The root has no inherited level; later child modules and features inherit these definitions without copying them.
 
 If the status is `unchanged`, report the existing `architecture` paths, children, features, and
 contracts. Do not present a new starter proposal or overwrite the configured hierarchy. If the status

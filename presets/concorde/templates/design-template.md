@@ -1,3 +1,20 @@
+## Terminology
+
+<!--
+  Define only concepts and expressions introduced by this level. Terms from ancestor modules, the
+  providing module chain, and (for a sub-feature) the immediate parent feature are inherited and
+  MUST NOT be copied here. Use the exact columns below. A term cell contains one backticked preferred
+  expression and may add `<br>Aliases:` followed by backticked aliases. Relationships are `None` or
+  semicolon-separated `` `predicate` → `Target term` `` expressions whose targets resolve locally or
+  through the permitted ancestor chain.
+
+  If this level introduces no terminology, replace the table with exactly:
+  No local terminology. This level uses inherited terminology unchanged.
+-->
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `[Preferred term]` | [Non-circular meaning sufficient for a reader who knows ancestor levels.] | `[predicate]` → `[Target term]` |
 
 ## Concorde Architecture Alignment
 

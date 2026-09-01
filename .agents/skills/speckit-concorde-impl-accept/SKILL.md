@@ -68,7 +68,10 @@ and every `module.md` remain byte-identical.
    is `workspace.module_design`). Add that material under the reference's stable headings
    (`Implementation Notes`, `Design Rationale`, `Alternatives Considered`, `Decision Log`), keep
    everything already recorded, and do not restate facts owned by `module.md`, the level view, or
-   contracts. Do not copy reflection identity or entry content into the amendment; retain any
+   contracts. Preserve the module design's `## Terminology` section and update it in the same full
+   replacement whenever accepted module-level material introduces a concept, alias, or typed
+   relationship; do not copy unchanged ancestor rows or incompatibly redefine inherited terminology.
+   Do not copy reflection identity or entry content into the amendment; retain any
    independently true module-level rationale without an `R-NNN` reference. Skip the amendment when
    nothing module-level was learned.
 6. Write the candidate to the exact project-contained `proposal_path` returned by the runtime. The JSON

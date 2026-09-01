@@ -21,3 +21,7 @@ canonical_design: specs/example/features/001-checkout/design.md
 A shopper completes one correlated checkout outcome.
 ## Shared Invariants
 Authorization precedes confirmation and both children share the checkout identity.
+
+## Terminology
+
+No local terminology. This level uses inherited terminology unchanged.

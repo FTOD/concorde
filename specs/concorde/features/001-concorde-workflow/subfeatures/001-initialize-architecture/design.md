@@ -125,3 +125,11 @@ operation and compare maintained bytes.
 - The maintainer supplies a project root they are authorized to initialize.
 - Adding a `design.md` to a module that predates it is migration work owned by the parent, not an
   initialization behavior.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Initialization proposal` | A digest-bound, reviewable set of root architecture files that grants no mutation authority before approval. | `creates` → `Root module package`; `applied by` → `Explicit initialization apply` |
+| `Root module package` | The configured specification root containing the first module summary, design reference, and level view. | `contains` → `Module summary`; `contains` → `Module design reference`; `describes` → `Module` |
+| `Explicit initialization apply` | The approved operation that writes exactly an unchanged initialization proposal or fails without partial architecture. | `applies` → `Initialization proposal` |

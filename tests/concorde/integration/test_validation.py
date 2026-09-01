@@ -49,6 +49,17 @@ class ValidationIntegrationTests(unittest.TestCase):
             self.assertEqual(before, after)
             self.assertIn('"source_digest":"sha256:', outputs[0])
 
+    def test_ontology_validation_is_deterministic_and_bounded(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "project"
+            shutil.copytree(VALID_PROJECT, root)
+            before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}
+            first = canonical_json(operation_envelope(validate_project(root, "module.example.api")))
+            second = canonical_json(operation_envelope(validate_project(root, "module.example.api")))
+            self.assertEqual(first, second)
+            self.assertEqual(before, {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()})
+            self.assertNotIn("CONCORDE-ONTOLOGY-", first)
+
     def test_bounded_target_and_unknown_evidence_are_supported(self):
         result = validate_project(VALID_PROJECT, "module.example.api")
         self.assertEqual(result.status, "success")

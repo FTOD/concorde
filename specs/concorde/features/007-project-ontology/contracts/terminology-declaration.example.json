@@ -1,0 +1,12 @@
+{
+  "level_id": "feature.concorde.define-project-ontology",
+  "terms": [
+    {
+      "term": "Terminology table",
+      "meaning": "The local ontology declaration in one level's design.",
+      "relationships": [
+        {"predicate": "defines", "target": "Concept"}
+      ]
+    }
+  ]
+}

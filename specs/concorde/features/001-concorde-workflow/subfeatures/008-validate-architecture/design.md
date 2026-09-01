@@ -121,3 +121,12 @@ scenario, refinement, containment, layout, diagram, selection, evidence, and doc
   judgments.
 - The reading-budget proxies are the ones recorded in the parent's assumptions; changing them is a
   parent specification change, not a validation change.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Architecture finding` | A deterministic structural diagnostic about maintained hierarchy, contracts, views, terminology, evidence, or freshness. | `is a` → `Finding`; `belongs to` → `Validation result` |
+| `Validation target` | A project root, stable ID, or package path that bounds the requested validation report. | `selects` → `Durable artifact` |
+| `Validation result` | The non-mutating status, findings, artifacts, and source digest returned for one validation target. | `contains` → `Architecture finding`; `describes` → `Validation target` |
+| `Evidence state` | The explicit classification unknown, partial, verified, disagrees, or implemented for a bounded subject. | `reported by` → `Validation result` |

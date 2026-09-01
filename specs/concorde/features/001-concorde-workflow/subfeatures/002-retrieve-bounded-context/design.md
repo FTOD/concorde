@@ -98,3 +98,11 @@ and inspect the result for required inclusions and forbidden expansions.
 
 - Maintained sources are the authority; navigation references do not authorize automatic expansion.
 - Deliberately opening a reference is the caller's act, outside this operation.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Bounded context` | The deterministic projection of exactly one requested architecture level and its immediate visible relationships. | `centered on` → `Current level`; `contains` → `Navigation reference` |
+| `Current level` | The requested module whose summary, children, features, contracts, and views define the returned altitude. | `is a` → `Module` |
+| `Navigation reference` | A stable ID or path that points to deeper detail without loading that detail implicitly. | `points to` → `Durable artifact` |

@@ -246,3 +246,19 @@ projection-transaction tests belong to Distribution, and site tests belong to Au
   extension, with disposable installed preview and digest-receipt update/removal ownership.
 - 2026-08-30: Reused that transaction for self-hosting and replaced the inactive-integration
   backup/restore workaround with independent integration receipt preservation.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Skills` | Maintainer-facing instructions that define how a coding agent performs a Concorde workflow operation. | `may invoke` → `Scripts`; `operates on` → `Workspace Files` |
+| `Scripts` | Deterministic launchers and runtime operations used when routing, validation, proposal, or acceptance must be structurally safe. | `operates on` → `Workspace Files` |
+| `Workspace Files` | Files with explicit Concorde roles, authorities, and lifetimes. | `classifies` → `Durable artifact`; `classifies` → `Temporal artifact`; `classifies` → `Generated projection` |
+| `Module` | One architectural level with a responsibility, boundary, immediate children, contracts, features, and maintained views. | `provides` → `Feature`; `owns` → `Contract` |
+| `Feature` | One observable outcome specified exactly once at the level where its participating modules are visible. | `specified at` → `Module`; `exposed through` → `Contract`; `owns` → `Attempt` |
+| `Contract` | A human-readable boundary promise describing information, obligations, failure, compatibility, and evidence. | `owned by` → `Module`; `exposes` → `Feature` |
+| `Attempt` | One selected feature's current delivery proposal and working memory below `attempt/`; existence never implies acceptance. | `belongs to` → `Feature`; `contains` → `Temporal artifact` |
+| `Durable artifact` | A maintained source whose meaning survives attempts, such as architecture, required intent, or accepted realization. | `stored as` → `Workspace Files` |
+| `Temporal artifact` | Attempt-local planning, task, research, checklist, guide, or evidence state that is not accepted intent. | `stored as` → `Workspace Files`; `contained by` → `Attempt` |
+| `Generated projection` | A reproducible read model derived from maintained or executable inputs and carrying no source authority. | `derived from` → `Durable artifact` |
+| `Finding` | A deterministic rule result with severity, source, message, and remediation. | `concerns` → `Durable artifact` |

@@ -65,7 +65,7 @@ describe('feature designs', () => {
     const registry = await buildRegistry(resolve(__dirname, '../../..'));
     const features = registry.documents.filter((item): item is FeatureDesign => item.collectionId === 'features');
     const diagrams = features.flatMap((feature) => feature.diagrams);
-    expect(diagrams).toHaveLength(7);
+    expect(diagrams).toHaveLength(8);
     expect(diagrams.find((diagram) => diagram.source.includes('project-docsite-publication-flow'))).toMatchObject({
       kind: 'sequence',
       role: 'supplemental',
@@ -76,5 +76,19 @@ describe('feature designs', () => {
       role: 'core',
       route: '/architecture/alignment-explorer-components.html',
     });
+    expect(diagrams.find((diagram) => diagram.source.includes('concorde-ontology-model'))).toMatchObject({
+      kind: 'architecture',
+      role: 'core',
+      route: '/architecture/concorde-ontology-model.html',
+    });
+  });
+
+  it('preserves level-local terminology tables as maintained feature content', async () => {
+    const registry = await buildRegistry(resolve(__dirname, '../../..'));
+    const features = registry.documents.filter((item): item is FeatureDesign => item.collectionId === 'features');
+    const feature = features.find((item) => item.featureId === 'feature.concorde.define-project-ontology');
+    expect(feature?.content).toContain('## Terminology');
+    expect(feature?.content).toContain('| Term | Meaning | Relationships |');
+    expect(feature?.content).toContain('`Terminology inheritance`');
   });
 });

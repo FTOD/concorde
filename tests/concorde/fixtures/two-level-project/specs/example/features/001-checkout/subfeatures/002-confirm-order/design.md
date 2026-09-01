@@ -20,3 +20,7 @@ canonical_design: specs/example/features/001-checkout/subfeatures/002-confirm-or
 An authorized checkout receives one confirmation.
 ## Requirements
 Confirmation preserves the parent checkout identity.
+
+## Terminology
+
+No local terminology. This level uses inherited terminology unchanged.

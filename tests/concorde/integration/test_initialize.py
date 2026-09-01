@@ -44,8 +44,12 @@ class InitializationTests(unittest.TestCase):
             config = next(item for item in proposal["files"] if item["path"] == ".concorde/config.json")
             self.assertIn('"profile_version": 4', config["content"])
             module = next(item for item in proposal["files"] if item["path"].endswith("/module.md"))
+            design = next(item for item in proposal["files"] if item["path"].endswith("/design.md"))
             self.assertNotIn("view:", module["content"].split("---")[1])
             self.assertIn("(architecture/diagrams/level-view.json)", module["content"])
+            self.assertIn("## Terminology", design["content"])
+            self.assertIn("| Term | Meaning | Relationships |", design["content"])
+            self.assertIn("`Skills`", design["content"])
             for concept in ("Skills", "Scripts", "Workspace Files", "attempt/"):
                 self.assertIn(concept, module["content"])
             diagram = next(item for item in proposal["files"] if item["path"].endswith("/level-view.json"))

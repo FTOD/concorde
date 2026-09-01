@@ -336,3 +336,15 @@ confirm that the projection reports the drift and refuses to assign a misleading
   that gap.
 - **Evidence status**: `unknown`; no implementation realization or behavioral evidence has been
   accepted for this feature.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Concorde entity` | A module, feature, contract, scenario, requirement, or source artifact with canonical project meaning and identity. | `correlates with` → `Implementation entity`; `participates in` → `Ontology relationship model` |
+| `Implementation entity` | A code, configuration, document, service, data, design, or test element anchored to an implementation revision. | `correlates with` → `Concorde entity`; `participates in` → `Alignment record` |
+| `Ontology relationship model` | The versioned Concorde and pinned-UA vocabularies plus explicit identity, representation, correlation, realization, evidence, provenance, and drift relationships. | `governs` → `Alignment record`; `governs` → `Adapter representation profile` |
+| `Adapter representation profile` | The subordinate rules choosing UA node and edge types for Concorde subjects without replacing canonical project kinds and relations. | `represents` → `Concorde entity`; `governed by` → `Ontology relationship model` |
+| `Alignment record` | The evidence-qualified correlation among a Concorde subject, specification, accepted realization, implementation nodes, findings, coverage, and revisions. | `correlates` → `Concorde entity`; `correlates` → `Implementation entity`; `carries` → `Projection provenance` |
+| `Projection provenance` | The source digest, implementation revision, upstream/schema pin, ontology version, and analysis time needed for freshness and reproduction. | `qualifies` → `Alignment record`; `detects` → `Ontology drift finding` |
+| `Ontology drift finding` | A deterministic incompatibility between a pinned mapping and an upstream or Concorde vocabulary/schema change. | `is a` → `Finding`; `concerns` → `Ontology relationship model` |

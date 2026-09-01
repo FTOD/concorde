@@ -120,6 +120,9 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - Final Phase: Polish & cross-cutting concerns
    - All tasks must follow the strict checklist format (see Task Generation Rules below)
    - Clear file paths for each task
+   - Before finalizing, verify every path to an existing file against the repository file inventory
+     (for example, `rg --files`) and verify that every proposed new path has the intended existing
+     parent directory; do not invent a test module, source file, or acceptance target from memory
    - Dependencies section showing story completion order
    - Parallel execution examples per story
    - Implementation strategy section (MVP first, incremental delivery)
@@ -135,9 +138,10 @@ removes it.
   existing implementation it depends on, the installed guidance, the level's architecture, or the
   plan as written, or must assume, work around, defer, or stop — record it in this phase, before the
   completion report, not later. A problem met and solved within the phase is still recorded.
-- **Where**: append to `workspace.reflections`. If the file does not exist, create it first from the
-  template resolved by `specify preset resolve reflections-template`. Append only; never rewrite,
-  reorder, renumber, or delete entries.
+- **Where**: ordinary recording writes only `workspace.reflections`. If the file does not exist,
+  create it first from the template resolved by `specify preset resolve reflections-template`.
+  Append a new entry or matching occurrence; never change or reuse an existing `R-NNN` identifier,
+  delete an entry, or reverse a maintainer-set status or note as part of ordinary recording.
 - **Centralized authority**: `workspace.reflections` is the only file that may persist a
   reflection entry or its `R-NNN` identity, status, note, or occurrences. Never copy or cite that
   reflection identity or entry content into attempt artifacts, feature/module documents, contracts,
@@ -155,10 +159,16 @@ removes it.
 - **Never fix in place**: a problem with `abstract.md`, feature `design.md`, feature `implementation.md`, any `module.md`, a
   contract, a view, a diagram, or another feature's code or tests is recorded, not edited; the
   owning phase or the maintainer changes that source later.
-- **Update, don't duplicate**: when the log already holds the same problem — recorded by any phase
+- **Update, don't duplicate**: when ordinary recording finds the same problem — recorded by any phase
   on any feature — add a line under its `- **Occurrences**:` list
   (`<phase> <date> <feature-id> — <context>`) instead of a new entry. Never change a `Status` or
   `Note` a maintainer set.
+- **Maintained reconciliation**: `workspace.reflections` is maintained docs/specs. An explicitly
+  requested rename or documentation correction MAY rewrite existing entry text and references, but
+  MUST preserve each exact `R-NNN` identifier, identifier uniqueness, required field structure,
+  maintainer-owned status decision, occurrence identity, and problem meaning; renamed `Feature` and
+  `Concerns` values MUST resolve, and the complete log MUST pass `speckit.concorde.validate`.
+  Ordinary problem recording does not implicitly authorize this reconciliation.
 - **Bounded**: recording never requires opening another root's `attempt/`; cite the other
   feature by stable ID or path.
 - **Hygiene**: no secrets, credentials, or bulk output — cite the evidence path instead; keep

@@ -254,3 +254,13 @@ serving process remains afterwards.
   projector reads.
 - The installer lives in the Concorde repository and is published from the same location as the
   current-release pointer.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Installation plan` | The previewed ordered public operations, release version, and component versions that a real run will execute. | `installs` → `Bundle recipe`; `produces` → `Run report` |
+| `Run report` | The final status naming installed versions, reload requirements, residual state, and the next safe step. | `describes` → `Installation plan`; `records` → `Projection receipt` |
+| `Development source` | A local Concorde checkout substituted for a published release during one explicitly local installation run. | `supplies` → `Installation plan` |
+| `Projection plan` | The previewed active integration, source digest, native target actions, ownership conflicts, and remediation. | `produces` → `Projection receipt`; `belongs to` → `Installation plan` |
+| `Projection receipt` | The one-command install's verified ownership record for generated agent files. | `specializes` → `Agent projection receipt`; `produced by` → `Projection plan` |

@@ -43,3 +43,31 @@ Python packages.
 A selected sub-feature uses its own durable/temporal paths and receives its parent's durable
 `abstract.md`/`design.md`/`implementation.md` only as read-only aggregate context plus concise sibling summaries. Feature
 containment remains distinct from adjacent-module `refines` links.
+
+## Reflection triage agent assets
+
+The extension also carries the canonical `reflection-triage/v1` orchestration body, model-neutral
+investigator and implementer roles, a safe default configuration, thin Claude/Codex wrappers, and
+the deterministic `scripts/python/reflections_queue.py` helper. These are support assets for Feature
+005, not a sixth `speckit.concorde.*` command.
+
+`concorde agent-assets preview|sync|verify|remove --integration <claude|codex>` renders and
+reconciles the native project surfaces. Claude receives
+`.claude/skills/reflections-triage/SKILL.md` and two `.claude/agents/*.md` roles; Codex receives
+`.agents/skills/reflections-triage/SKILL.md` and two `.codex/agents/*.toml` roles. The generated
+files share canonical bodies and contain no mandatory model or Concorde-checkout path.
+
+Shared maintainer state lives under `.concorde/reflections/`: version-controlled `config.json`,
+ignored plans, and ignored worktrees. The installer-owned
+`.specify/concorde-agent-assets.json` receipt contains hashes only for generated projections.
+Projection updates or removal touch a listed path only while its observed hash matches the receipt;
+modified, legacy, inactive-integration, unrelated, and permission-policy files are preserved and
+reported as conflicts when necessary.
+
+Investigators are read-only and return complete plans to the parent. Implementers receive full plan
+text and an explicit assigned worktree; the parent owns plan persistence, metadata, merge, and every
+reflection status or note. Claude may also use native worktree isolation. Codex uses an explicit Git
+worktree because its project custom-agent TOML has no per-agent worktree-isolation field.
+
+Feature 005 owns these semantics and the deterministic operation. Feature 003 owns when installation
+preview, apply, update, remove, release building, and self-hosting invoke and verify that operation.

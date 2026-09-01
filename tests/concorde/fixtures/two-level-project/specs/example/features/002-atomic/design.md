@@ -17,3 +17,7 @@ canonical_design: specs/example/features/002-atomic/design.md
 **Status**: Atomic fixture
 ## Outcome
 One small behavior remains undecomposed.
+
+## Terminology
+
+No local terminology. This level uses inherited terminology unchanged.

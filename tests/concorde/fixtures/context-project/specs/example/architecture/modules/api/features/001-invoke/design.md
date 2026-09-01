@@ -16,3 +16,7 @@ canonical_design: specs/example/architecture/modules/api/features/001-invoke/des
 # Invoke
 ## Outcome
 Invoke the API.
+
+## Terminology
+
+No local terminology. This level uses inherited terminology unchanged.

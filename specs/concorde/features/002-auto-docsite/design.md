@@ -567,3 +567,14 @@ and has no separate hand-authored landing-page copy.
 - The README remains conventional GitHub-flavored Markdown without site-only imports or authored
   React components. The generated site may stage a disposable metadata wrapper or rewritten-link
   projection so long as the visible narrative and authority remain the root README.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Project document` | A maintained Markdown guide under `docs/` or the root README, identified by path, title, links, and content. | `projects as` → `Content page` |
+| `Content page` | The read-only site representation of one maintained source with provenance and one semantic route. | `is a` → `Generated projection`; `placed by` → `Navigation entry` |
+| `Navigation entry` | The semantic relationship that places a content page in Documentation, Architecture, or Features navigation. | `places` → `Content page` |
+| `Build manifest` | The deterministic inventory mapping included maintained sources and diagram deliveries to output routes and provenance. | `inventories` → `Content page`; `inventories` → `Diagram delivery set` |
+| `Diagram delivery set` | The complete outputs produced from every declared Archify source for one preview or production build. | `contains` → `Generated projection`; `recorded by` → `Build manifest` |
+| `Documentation diagram` | A docs-owned Archify JSON view declared by one project document and embedded with source provenance. | `explains` → `Project document`; `belongs to` → `Diagram delivery set` |

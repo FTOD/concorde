@@ -103,3 +103,12 @@ dependency order, and reference citations.
 ## Assumptions
 
 - External issue creation occurs only when the maintainer separately authorizes and configures it.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Implementation plan` | The attempt-local technical design and realization delta for delivering one feature specification. | `implements` → `Feature specification`; `contains` → `Research decision`; `contains` → `Realization delta` |
+| `Research decision` | A resolved technical choice with rationale and alternatives considered. | `supports` → `Implementation plan` |
+| `Realization delta` | The planned decisions that retain, replace, or extend an accepted feature implementation, or an explicit no-baseline statement. | `compares` → `Feature implementation`; `belongs to` → `Implementation plan` |
+| `Quickstart` | The attempt-local runnable validation guide for proving the planned feature end to end. | `validates` → `Implementation plan`; `is a` → `Temporal artifact` |

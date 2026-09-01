@@ -16,3 +16,7 @@ canonical_design: specs/example/architecture/modules/api/features/001-invoke/des
 # Invoke API
 ## Outcome
 The API accepts a workflow invocation.
+
+## Terminology
+
+No local terminology. This level uses inherited terminology unchanged.

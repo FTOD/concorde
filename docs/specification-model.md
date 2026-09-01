@@ -78,6 +78,11 @@ front matter and no stable ID, may be as long as it needs to be, and may say tha
 recorded yet. Validation requires a real, non-empty one beside every `module.md`
 (`CONCORDE-MODULE-002`).
 
+Every module design reference also contains `## Terminology`. Its `Term`, `Meaning`, and
+`Relationships` table defines only concepts introduced by that module level; child modules and
+features inherit those concepts without copying the rows. A module with no local concepts uses the
+exact inherited-only declaration from Concorde Terminology Table Profile 1.
+
 Neither humans nor agents need it to understand the level. It is opened only for a detail the
 summary deliberately leaves out, and no workflow operation reads it implicitly: bounded context
 returns it as a navigation reference, `ask` opens it only when a question asks for implementation
@@ -192,7 +197,9 @@ context and siblings are concise navigation summaries only.
 The shared project ontology lives at `docs/ontology.md`, outside every feature root. It defines
 Concorde terminology, the pinned Understand Anything compatibility vocabulary, and their relationship
 for all modules and features. Individual feature designs reference it and retain ownership of their
-required behavior; contracts retain ownership of serialization.
+required behavior; contracts retain ownership of serialization. The project ontology supplies shared
+classes and relationship meanings, while each level's `design.md` table anchors the concepts first
+introduced at that level and exposes them to descendants through bounded terminology inheritance.
 
 The files at the feature root and those below `attempt/` have deliberately different
 lifetimes.
@@ -232,6 +239,11 @@ actors, requirements, constraints, failures, success criteria, and representativ
 prescribing source layout or implementation mechanics. It is complete and self-contained: readable
 without the abstract, more detailed than it, and free of realization detail; it may link
 `abstract.md` and `implementation.md` for redirection. It has no deterministic reading budget.
+
+Its `## Terminology` table defines important feature-local concepts and typed relationships. A
+top-level feature inherits the root-to-provider module chain; a sub-feature additionally inherits its
+immediate parent feature. Sibling and descendant terminology is never an implicit input. The
+qualified concept identity combines the defining level's stable ID and normalized preferred term.
 
 The prose is the definition. A scenario is an example used to make the behavior testable and show
 which visible components participate; it cannot silently narrow or expand the textual requirements.

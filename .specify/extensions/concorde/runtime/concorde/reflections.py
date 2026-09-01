@@ -110,7 +110,7 @@ def _finish(
     problems: list[LogProblem],
 ) -> None:
     if identifier in seen:
-        problems.append(LogProblem("duplicate", line, identifier, f"Entry identifier {identifier} is used more than once.", "Renumber the later entry with the next unused identifier; identifiers are never reused."))
+        problems.append(LogProblem("duplicate", line, identifier, f"Entry identifier {identifier} is used more than once.", "For a collision between new uncommitted entries, allocate the next unused identifier to the colliding new entry; never change an existing entry ID or reuse a removed identifier."))
     seen.add(identifier)
     missing = [name for name in REQUIRED_FIELDS if not fields.get(name, "").strip()]
     if missing:

@@ -137,7 +137,7 @@ describe('content source diagnostics', () => {
 
   it('discovers maintained diagram declarations without treating HTML as an input source', async () => {
     const declarations = await discoverDiagramDeclarations(resolve(__dirname, '../../..'));
-    expect(declarations).toHaveLength(11);
+    expect(declarations).toHaveLength(12);
     expect(declarations.every((declaration) => declaration.ownerPath.startsWith('specs/') || declaration.ownerPath.startsWith('docs/'))).toBe(true);
     expect(declarations.every((declaration) => declaration.outputPath.startsWith('generated/'))).toBe(true);
     expect(declarations).toContainEqual(expect.objectContaining({

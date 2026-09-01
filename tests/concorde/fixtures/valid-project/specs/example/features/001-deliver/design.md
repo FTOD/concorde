@@ -15,3 +15,7 @@ canonical_design: specs/example/features/001-deliver/design.md
 # Deliver
 ## Outcome
 The maintainer receives the example workflow.
+
+## Terminology
+
+No local terminology. This level uses inherited terminology unchanged.

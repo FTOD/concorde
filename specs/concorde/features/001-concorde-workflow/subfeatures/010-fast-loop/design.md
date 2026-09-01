@@ -368,3 +368,14 @@ tasks, implementation, convergence, or acceptance.
 - **Level views**: the project module's level view remains authoritative; fast-loop may reconcile
   contract or architecture detail but cannot change module responsibilities or dependencies.
 - **Evidence status**: `unknown` until command-surface, fixture, and end-to-end evidence exists.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Fast-loop request` | The maintainer's explicit small-change description and selected anchor used to begin bounded impact discovery. | `evaluated by` → `Eligibility decision`; `discovers` → `Affected feature set` |
+| `Affected feature set` | Every accepted feature whose behavior, realization, or related authority must change together. | `contains` → `Feature`; `bounds` → `Direct change set` |
+| `Eligibility decision` | The pre-mutation result that either permits the direct loop or names the normal workflow stage required. | `classifies` → `Fast-loop request` |
+| `Direct change set` | The bounded code, tests, feature documents, contracts, architecture detail, and guides edited by one eligible invocation. | `implements` → `Fast-loop request`; `reported by` → `Evidence report` |
+| `Pure naming migration` | An explicit old-to-new mapping that changes names across bounded authorities while preserving logic and non-name semantics. | `is a` → `Direct change set` |
+| `Evidence report` | The final account of scope, files, checks, outcomes, preserved work, and architecture evidence. | `describes` → `Direct change set`; `contains` → `Finding` |

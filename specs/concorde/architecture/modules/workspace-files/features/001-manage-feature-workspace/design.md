@@ -55,3 +55,11 @@ Workspace Files boundary. A child diagram would restate the file table in prose.
 
 Workspace layout, nested selection, path-matrix, acceptance, reflection, and documentation source
 tests cover automated behavior. Clean installed end-to-end evidence remains partial.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Canonical feature root` | The one registered directory that owns a feature's durable trio, contracts, diagrams, and optional attempt. | `is a` → `Feature workspace`; `selected by` → `Selection state` |
+| `Current attempt` | The optional active temporal delivery memory belonging to one canonical feature root. | `is an` → `Attempt`; `belongs to` → `Canonical feature root` |
+| `Acceptance transaction` | The digest-bound replacement of accepted realization and exact removal of a complete current attempt after approval. | `writes` → `Accepted realization`; `removes` → `Current attempt` |

@@ -2,10 +2,14 @@
 ## Concorde Task Coverage
 
 When applicable, include dependency-ordered tasks to update module-owned feature specifications,
-module registrations, boundary contract definitions and custom schemas/examples under the module's
+boundary contract definitions and custom schemas/examples under the module's
 `architecture/contracts/`, the level's diagrams under `architecture/diagrams/`, deterministic Concorde validation, implementation/test traceability, and generated
 output freshness. Mark evidence only after the producing command passes; retain `unknown` when no
 implementation evidence exists.
+
+Do not turn a required module registration or other `module.md` reconciliation into an attempt task.
+Identify it in the Concorde Architecture Gate and route the exact summary change through a separate
+maintainer-reviewed architecture edit or an eligible fast-loop.
 
 First verify that the feature has at most one `role: core` diagram and that it uses Archify
 `architecture` to show stable components and interactions; dynamic diagram kinds must be
@@ -27,7 +31,8 @@ not generate a task that edits `abstract.md`, feature `design.md`, feature `impl
 module `module.md` or `design.md`, or removes `attempt/`; after every task is complete,
 the user may invoke the separate Concorde acceptance command.
 
-For a selected sub-feature, every task path must remain beneath that child root except explicit
-read-only references to the parent durable design/implementation. Do not generate tasks that mutate or
-accept a parent/sibling root, read a parent/sibling attempt implicitly, or create another
+For a selected sub-feature, feature-workspace artifacts must remain beneath that child root, while
+tasks may name the implementation code, tests, generated projections, and public guides from the
+approved plan wherever those realizing files live in the project. Do not generate tasks that mutate
+or accept a parent/sibling feature root, read a parent/sibling attempt implicitly, or create another
 `subfeatures/` directory beneath the child.

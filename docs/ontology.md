@@ -6,7 +6,7 @@ sidebar_position: 3.5
 # Project Ontology and Terminology
 
 **Status**: Draft shared project ontology  
-**Ontology version**: `1.1.0-draft`  
+**Ontology version**: `1.2.0-draft`
 **Concorde scope**: the complete maintained project hierarchy  
 **Understand Anything baseline**: commit
 [`ba450c43425f3de6d43daf76526950ad8ca93536`](https://github.com/Egonex-AI/Understand-Anything/tree/ba450c43425f3de6d43daf76526950ad8ca93536)
@@ -85,6 +85,13 @@ Five rules govern every cross-ontology statement:
 
 | Class | Definition | Identity and owning authority |
 |---|---|---|
+| **Design level** | One specification-root module, architecture/module, feature, or immediate sub-feature at which a maintained `design.md` declares local terminology | Stable module/feature ID; the root module is the specification-root level |
+| **Terminology table** | The `Term`, `Meaning`, and `Relationships` declaration containing only concepts introduced by one design level | Defining level ID plus canonical `## Terminology` section in that level's `design.md` |
+| **Concept** | One named project entity or idea with a non-circular meaning and typed semantic relationships | Qualified concept identity anchored at its defining level |
+| **Preferred term** | The canonical word or expression naming one concept at its defining level | Normalized expression within one terminology table; explicit aliases do not create another concept |
+| **Concept relationship** | One typed, directed semantic connection from a source concept to a local or inherited target concept | Source qualified identity plus normalized predicate plus target qualified identity |
+| **Terminology inheritance** | The bounded rule that exposes ancestor concepts to a descendant without copying their rows | Ordered module chain and, for a sub-feature, its immediate parent feature |
+| **Qualified concept identity** | The project-wide identity that distinguishes branch-local concepts even when they share a surface word | `<defining-level-id>#<normalized-preferred-term>` |
 | **Project** | One repository or workspace governed by one Concorde source profile and rooted specification hierarchy | Project path plus `.concorde/config.json`; the configured root module is its architecture entry point |
 | **Module** | One architectural level with one responsibility, one boundary, immediate submodules, features specified at that level, provided/required contracts, and maintained level views | Stable `module.*` ID; its `module.md`, contracts, and level views own current-level architecture |
 | **Root module** | The module selected by the source profile as the project-level entry point | `root_module_id`; "root" is a lookup role, not a special runtime component |
@@ -111,11 +118,11 @@ The filename alone does not determine meaning; its containing package and declar
 | Artifact role | Meaning | Authority |
 |---|---|---|
 | **Module summary** (`module.md`) | Fast orientation for one level: responsibility, boundary, structure, inventories, representative scenario, rationale link | Owns module responsibility, boundary, immediate hierarchy, and inventories together with contracts/views |
-| **Module design reference** (`design.md` beside `module.md`) | Detailed module implementation rationale, alternatives, and decisions | Explains but never redefines module architecture |
+| **Module design reference** (`design.md` beside `module.md`) | Detailed module implementation rationale, alternatives, decisions, and level-local terminology | Explains but never redefines module architecture; owns concepts first introduced at this level |
 | **Level view** (`architecture/diagrams/*.json`) | Maintained machine-readable organization and interaction at one module level | Owns visible current-level composition together with module prose/contracts |
 | **Module contract** (`architecture/contracts/**/contract.md`) | Boundary identity and obligations owned by one module | Normative boundary authority |
 | **Feature abstract** (`abstract.md`) | Self-contained orientation to one feature in under fifteen minutes | Summary only; cannot define beyond feature design |
-| **Feature design** (`design.md` under a feature root) | Complete required behavior, scenarios, constraints, failures, and success criteria | Normative behavioral authority |
+| **Feature design** (`design.md` under a feature root) | Complete required behavior, scenarios, constraints, failures, success criteria, and level-local terminology | Normative behavioral authority and owner of concepts first introduced by the feature |
 | **Feature implementation** (`implementation.md`) | Current accepted realization and implementation detail | Normative accepted-realization authority, not behavioral authority |
 | **Feature contract/schema** | Detailed representation or interface specific to one feature | Normative for the serialized/interaction boundary it declares |
 | **Feature diagram** (`diagrams/*.json`) | Core or supplemental explanation of feature participation and interaction | Maintained explanation; textual requirements/contracts still govern behavior |
@@ -145,6 +152,10 @@ The filename alone does not determine meaning; its containing package and declar
 
 | Relationship | Domain → range | Meaning and invariant |
 |---|---|---|
+| `concorde:definesConcept` | Design level → Concept | The level's terminology table is the single maintained definition of the concept |
+| `concorde:inheritsTerminologyFrom` | Design level → Design level | The source may use the target level's concepts without copying their rows; follows only the permitted ancestor chain |
+| `concorde:namedBy` | Concept → Preferred term/alias | One preferred term and zero or more explicit aliases name the same concept identity |
+| `concorde:relatesConcept` | Concept → Concept | A terminology-table predicate supplies the typed semantic connection; the target must resolve locally or through inheritance |
 | `concorde:containsModule` | Module → Module | Immediate module containment; acyclic; exactly one parent except the root |
 | `concorde:registersFeature` | Module → Feature | The level at which a top-level feature is specified; exactly one registration |
 | `concorde:containsSubfeature` | Feature → Sub-feature | One immediate decomposition level; bidirectional with `parent_feature`; acyclic |
@@ -164,6 +175,9 @@ The filename alone does not determine meaning; its containing package and declar
 ### 3.5 Concorde invariants
 
 - Stable IDs are unique and references resolve.
+- Every module, feature, and sub-feature design has exactly one local terminology declaration; unchanged inherited rows are not repeated.
+- Preferred terms and aliases are unique within a level, inherited expressions are not incompatibly redefined, and relationship targets resolve through bounded ancestry.
+- Equal surface words on unrelated branches do not establish identity; qualified concept identity retains the defining level.
 - Module containment, feature containment, and adjacent-level refinement remain distinguishable and
   acyclic.
 - A feature is specified once; a sub-feature has exactly one parent and cannot have children.
@@ -483,7 +497,7 @@ target identities, adapter edge type, mapping basis, and provenance.
     "authorityClass": "durable-feature-intent",
     "lifecycle": "durable",
     "ontologySource": "docs/ontology.md",
-    "ontologyVersion": "1.1.0-draft"
+    "ontologyVersion": "1.2.0-draft"
   }
 }
 ```

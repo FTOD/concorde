@@ -55,3 +55,11 @@ duplicate those two established views.
 - `speckit.concorde.ask` MUST remain read-only and agent-followed, with no runtime subcommand.
 - Structured script findings MUST be shown completely; skills MUST NOT infer approval or silently repair sources.
 - Release-installed and self-hosted materializations MUST use the same maintained command sources.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Composed command` | The winning instruction body formed from Spec Kit core plus ordered preset/extension layers. | `generated from` → `Command source`; `materializes as` → `Agent presentation` |
+| `Agent presentation` | A supported integration-specific spelling and file representation of one composed command. | `is an` → `Installed skill`; `presents` → `Composed command` |
+| `Workspace gate` | The first path-sensitive instruction that requires a successful workspace receipt before a phase accesses artifacts. | `belongs to` → `Phase skill`; `requires` → `Workspace receipt` |

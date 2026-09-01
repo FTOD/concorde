@@ -108,3 +108,12 @@ second child sequence would duplicate those two complementary views.
 - Source discovery, validation, route, provenance, search, and manifest tests under `docsite/tests/`.
 - Reproducible production output from `docsite/`.
 - Requirement-to-evidence mapping in `specs/concorde/features/002-auto-docsite/implementation.md`.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Published project model` | The read-only website projection of maintained architecture, feature, README, and documentation sources. | `contains` → `Architecture collection`; `contains` → `Features collection`; `contains` → `Documentation collection` |
+| `Architecture collection` | Published module summaries, module design references, contracts, and level views organized by module containment. | `is part of` → `Published project model` |
+| `Features collection` | Published durable feature abstracts, designs, and accepted implementations organized by module and feature containment. | `is part of` → `Published project model` |
+| `Documentation collection` | Published root README and project-authored guides organized by documentation paths. | `is part of` → `Published project model` |

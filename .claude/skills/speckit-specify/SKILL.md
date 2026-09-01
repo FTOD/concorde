@@ -194,15 +194,20 @@ Given that feature description, do this:
        class/function inventories. Every maintained Concorde Archify source MUST set
        `meta.legend.mode` to `hidden`; domain labels and the textual counterpart explain the view,
        not Archify's renderer-owned generic legend categories.
-    5. Generate Functional Requirements
+    5. Author the level-local `## Terminology` declaration
+       - Read terminology from the permitted ancestor module chain and, for a sub-feature, its immediate parent feature
+       - Define every important concept or expression introduced by this level exactly once in the `Term`, `Meaning`, and `Relationships` table
+       - Do not copy unchanged inherited rows; when there are no local concepts, use the exact inherited-only declaration from the template
+       - Use backticked preferred terms/aliases and typed `` `predicate` → `Target term` `` relationships whose targets resolve locally or through ancestors
+    6. Generate Functional Requirements
        Each requirement must be testable
        Use reasonable defaults for unspecified details (document assumptions in Assumptions section)
-    6. Define Success Criteria
+    7. Define Success Criteria
        Create measurable, technology-agnostic outcomes
        Include both quantitative metrics (time, performance, volume) and qualitative measures (user satisfaction, task completion)
        Each criterion must be verifiable without implementation details
-    7. Identify Key Entities (if data involved)
-    8. Return: SUCCESS (spec ready for planning)
+    8. Identify Key Entities (if data involved)
+    9. Return: SUCCESS (spec ready for planning)
 
 7. Write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (arguments) while preserving section order and headings.
 
@@ -211,7 +216,10 @@ Given that feature description, do this:
    `Structure` (link the declared core diagram, or the parent's core view or level view, or add a
    ```text sketch), `Logic` (the main flow, then \"**Rules the implementation must keep**\" bullets, each
    ending with the `FR-NNN` IDs it summarizes — every ID must exist in `SPEC_FILE`), and `Read Next`
-   (links to `design.md`, `implementation.md`, contracts, the module summary, and any parent or sub-features).
+   (links to `design.md`, `implementation.md`, published module boundary contracts, the module
+   summary, and any parent or sub-features). Feature-local contracts, examples, the project reflection
+   log, and any other sources excluded from publication are named as code-formatted paths instead of
+   Markdown links.
    Keep it under 3,000 body words and never let it state something `SPEC_FILE` does not.
 
 8. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
@@ -239,6 +247,7 @@ Given that feature description, do this:
       - [ ] Success criteria are measurable
       - [ ] Success criteria are technology-agnostic (no implementation details)
       - [ ] All acceptance scenarios are defined
+      - [ ] Every declared scenario identifier resolves in the providing module's current-level view
       - [ ] Edge cases are identified
       - [ ] Scope is clearly bounded
       - [ ] Dependencies and assumptions identified
@@ -253,6 +262,9 @@ Given that feature description, do this:
       - [ ] The abstract is self-contained and states no requirement, scope boundary, or success criterion that design.md does not state
       - [ ] Dynamic scenario views are supplemental and no sequence diagram is designated as core
       - [ ] Every maintained Archify source explicitly sets `meta.legend.mode` to `hidden`
+      - [ ] `## Terminology` defines every important local concept or uses the exact inherited-only declaration
+      - [ ] Terminology rows use the exact Term, Meaning, Relationships profile without copying inherited rows
+      - [ ] Every alias and typed relationship target resolves locally or through the permitted ancestor chain
       - [ ] Feature meets measurable outcomes defined in Success Criteria
       - [ ] No implementation details leak into specification
 

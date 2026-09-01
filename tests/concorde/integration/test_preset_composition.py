@@ -58,8 +58,10 @@ class PresetCompositionTests(unittest.TestCase):
                 text=True,
                 env=resolver_environment,
             ).stdout
-            self.assertIn("Concorde Architecture Alignment", resolved)
-            self.assertIn("User Scenarios", resolved)
+        self.assertIn("Concorde Architecture Alignment", resolved)
+        self.assertIn("User Scenarios", resolved)
+        self.assertIn("## Terminology", resolved)
+        self.assertIn("| Term | Meaning | Relationships |", resolved)
 
 
 if __name__ == "__main__":

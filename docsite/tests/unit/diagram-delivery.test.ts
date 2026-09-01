@@ -48,14 +48,14 @@ contracts:
 }
 
 describe('diagram declaration discovery', () => {
-  it('discovers the eleven real declarations in stable source order without generated HTML', async () => {
+  it('discovers the twelve real declarations in stable source order without generated HTML', async () => {
     const projectRoot = resolve(__dirname, '../../..');
     const declarations = await discoverDiagramDeclarations(projectRoot);
-    expect(declarations).toHaveLength(11);
+    expect(declarations).toHaveLength(12);
     expect(declarations.map((item) => item.sourcePath)).toEqual(
       [...declarations.map((item) => item.sourcePath)].sort(),
     );
-    expect(new Set(declarations.map((item) => item.outputPath)).size).toBe(11);
+    expect(new Set(declarations.map((item) => item.outputPath)).size).toBe(12);
     expect(declarations.every((item) => item.outputPath.startsWith('generated/architecture/'))).toBe(true);
   });
 

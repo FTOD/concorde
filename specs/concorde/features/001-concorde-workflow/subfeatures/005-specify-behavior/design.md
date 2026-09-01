@@ -129,3 +129,11 @@ context reads.
 - Spec Kit supplies the normal phase procedure and active templates; Concorde supplies path and
   architecture context, including resolved templates for the abstract and for the placeholder
   `implementation.md`.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Specification draft` | The current authored feature specification before its quality checklist is complete. | `becomes` → `Feature specification`; `reviewed by` → `Specification quality checklist` |
+| `Specification quality checklist` | The attempt-local review record for completeness, testability, measurable outcomes, terminology, and diagram readiness. | `reviews` → `Specification draft`; `is a` → `Temporal artifact` |
+| `Core component view` | The optional single Archify architecture view explaining stable feature participants and interactions. | `explains` → `Feature`; `supports` → `Feature specification` |

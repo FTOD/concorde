@@ -196,6 +196,15 @@ Concorde manages this architecture through three explicit mechanisms:
 
 These mechanisms support development; they do not determine {project_name}'s product-module names.
 
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Skills` | Maintainer-facing instructions that define how an agent performs a workflow operation. | `may invoke` → `Scripts`; `operates on` → `Workspace Files` |
+| `Scripts` | Deterministic operations invoked by Skills when routing, validation, proposal, or acceptance must be structurally safe. | `operates on` → `Workspace Files` |
+| `Workspace Files` | Maintained, temporal, control, or generated files with explicit workflow roles and lifetimes. | `contains` → `Attempt` |
+| `Attempt` | The selected feature's temporal delivery workspace below `attempt/`; its existence never implies acceptance. | `belongs to` → `Workspace Files` |
+
 ## Design Rationale
 
 The root is initialized without inferred product decomposition so maintainers can name modules after

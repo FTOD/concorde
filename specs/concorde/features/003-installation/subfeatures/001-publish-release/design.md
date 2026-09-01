@@ -165,3 +165,11 @@ digests with the published catalogs.
   second build path.
 - Release marking is done by a maintainer with permission to publish; no consumer-facing signing or
   key management is in scope for the first published version.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Published release` | One immutable marked version with its package archives, catalogs, notes, and public locations. | `publishes` → `Bundle recipe`; `named by` → `Current-release pointer`; `evidenced by` → `Publication record` |
+| `Current-release pointer` | The stable discovery location that identifies the newest published release. | `names` → `Published release` |
+| `Publication record` | The evidence that release verification passed and identifies exactly which artifacts and locations were published. | `evidences` → `Published release` |

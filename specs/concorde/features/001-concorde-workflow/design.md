@@ -835,3 +835,18 @@ remains a separately tracked follow-up.
   (`level-view.json`).
 - **Evidence status**: `partial` — existing evidence covers the previous two-document model; the
   abstract tier and the feature-root rename have no realization yet.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Module summary` | The bounded, budgeted, diagram-backed `module.md` that orients readers to one architecture level. | `summarizes` → `Module`; `links to` → `Module design reference` |
+| `Module design reference` | The module-level `design.md` containing implementation detail, rationale, alternatives, decisions, and local terminology. | `explains` → `Module` |
+| `Feature root` | A top-level feature or immediate sub-feature directory with its own durable and temporal artifact boundaries. | `belongs to` → `Feature`; `contains` → `Feature abstract`; `contains` → `Feature specification`; `contains` → `Feature implementation`; `owns` → `Attempt` |
+| `Feature abstract` | The self-contained five-section quick understanding of a feature; it summarizes but never defines behavior. | `summarizes` → `Feature specification` |
+| `Feature specification` | The feature-root `design.md` that owns observable required behavior and acceptance criteria. | `specifies` → `Feature`; `belongs to` → `Feature root` |
+| `Feature implementation` | The feature-root `implementation.md` that records the currently accepted realization or an explicit placeholder. | `realizes` → `Feature`; `belongs to` → `Feature root` |
+| `Selection` | The canonical pointer to exactly one feature root for lifecycle routing. | `selects` → `Feature root` |
+| `Workspace result` | The versioned paths, state, and bounded relationship context returned for a selected feature root. | `describes` → `Feature root`; `derived from` → `Selection` |
+| `Acceptance proposal` | The reviewed, digest-bound candidate that may replace a feature implementation and optionally a module design reference. | `updates` → `Feature implementation`; `may update` → `Module design reference` |
+| `Workflow finding` | A finding produced while routing, authoring, validating, or accepting a Concorde workflow change. | `is a` → `Finding` |

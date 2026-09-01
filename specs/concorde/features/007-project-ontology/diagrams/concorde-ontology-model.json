@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Concorde Ontology Model",
+    "output": "../../../../../generated/architecture/concorde-ontology-model.html",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "hidden"
+    }
+  },
+  "components": [
+    {
+      "id": "project",
+      "type": "cloud",
+      "label": "Specification Root",
+      "sublabel": "Project-wide authority",
+      "pos": [40, 280],
+      "size": [150, 70]
+    },
+    {
+      "id": "module",
+      "type": "backend",
+      "label": "Module Level",
+      "sublabel": "module.md + design.md",
+      "pos": [300, 280],
+      "size": [155, 70]
+    },
+    {
+      "id": "feature",
+      "type": "frontend",
+      "label": "Feature Level",
+      "sublabel": "abstract + design",
+      "pos": [580, 280],
+      "size": [155, 70]
+    },
+    {
+      "id": "subfeature",
+      "type": "frontend",
+      "label": "Sub-feature Level",
+      "sublabel": "one refinement depth",
+      "pos": [860, 280],
+      "size": [155, 70]
+    },
+    {
+      "id": "terminology",
+      "type": "database",
+      "label": "Terminology Table",
+      "sublabel": "local terms and meanings",
+      "pos": [300, 60],
+      "size": [170, 70]
+    },
+    {
+      "id": "concept",
+      "type": "backend",
+      "label": "Concept",
+      "sublabel": "named project entity",
+      "pos": [580, 60],
+      "size": [155, 70]
+    },
+    {
+      "id": "relationship",
+      "type": "messagebus",
+      "label": "Relationship",
+      "sublabel": "typed concept link",
+      "pos": [860, 60],
+      "size": [155, 70]
+    },
+    {
+      "id": "attempt",
+      "type": "database",
+      "label": "Attempt Workspace",
+      "sublabel": "temporal delivery memory",
+      "pos": [580, 500],
+      "size": [170, 70]
+    }
+  ],
+  "connections": [
+    {
+      "id": "project-contains-module",
+      "from": "project",
+      "to": "module",
+      "label": "contains",
+      "variant": "emphasis"
+    },
+    {
+      "id": "module-provides-feature",
+      "from": "module",
+      "to": "feature",
+      "label": "provides",
+      "labelDy": 60,
+      "variant": "emphasis"
+    },
+    {
+      "id": "feature-refines-subfeature",
+      "from": "feature",
+      "to": "subfeature",
+      "label": "may refine",
+      "variant": "emphasis"
+    },
+    {
+      "id": "module-defines-terms",
+      "from": "module",
+      "to": "terminology",
+      "label": "defines local vocabulary",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "terminology-defines-concept",
+      "from": "terminology",
+      "to": "concept",
+      "label": "defines"
+    },
+    {
+      "id": "concept-participates-relationship",
+      "from": "concept",
+      "to": "relationship",
+      "label": "participates in"
+    },
+    {
+      "id": "terminology-inherited-by-feature",
+      "from": "terminology",
+      "to": "feature",
+      "label": "inherits",
+      "variant": "dashed"
+    },
+    {
+      "id": "feature-owns-attempt",
+      "from": "feature",
+      "to": "attempt",
+      "label": "owns current attempt",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Inheritance",
+      "items": [
+        "A level uses terminology from all ancestors without copying it",
+        "A local table defines only new or narrowed concepts"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Relationship semantics",
+      "items": [
+        "Concept meaning includes how it relates to other concepts",
+        "The maintained diagram visualizes relationships; prose remains authoritative"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Consistency",
+      "items": [
+        "Conflicting redefinitions and unresolved references fail validation",
+        "Attempts verify changes before durable acceptance"
+      ]
+    }
+  ]
+}

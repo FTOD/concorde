@@ -16,7 +16,7 @@ describe('architecture source publication', () => {
       (document): document is ArchitectureSource => document.contentKind === 'architecture-source',
     );
     expect(validateRegistry(registry)).toEqual([]);
-    expect(sources).toHaveLength(27);
+    expect(sources).toHaveLength(28);
     expect(new Set(sources.map((source) => source.architectureId)).size).toBe(sources.length);
     expect(sources.find((source) => source.architectureId === 'module.concorde')).toMatchObject({
       architectureKind: 'module',

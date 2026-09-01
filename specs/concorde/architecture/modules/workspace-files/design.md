@@ -31,3 +31,12 @@ against the maintained hierarchy.
 - Promoted the file model to an immediate module.
 - Defined `attempt/` as the only temporal-memory boundary.
 - Kept selection state separate from durable feature content.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Feature workspace` | One canonical feature or sub-feature root containing durable sources and at most one current attempt. | `belongs to` → `Feature`; `contains` → `Durable artifact`; `contains` → `Attempt` |
+| `Selection state` | The Spec Kit-owned pointer that chooses exactly one feature workspace for lifecycle routing. | `selects` → `Feature workspace` |
+| `Accepted realization` | The durable account of how the currently accepted implementation realizes one feature; a placeholder means none is accepted. | `is a` → `Durable artifact`; `realizes` → `Feature` |
+| `Project reflection log` | The specification-root file that records cross-attempt workflow problems without becoming behavioral intent. | `is a` → `Durable artifact`; `concerns` → `Feature` |

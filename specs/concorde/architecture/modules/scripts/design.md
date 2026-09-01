@@ -31,3 +31,13 @@ Workspace Files prevents parsing code from becoming a second specification of wh
 
 - Replaced the ambiguous Scripts label with Scripts.
 - Made Workspace Files an explicit required boundary.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Runtime operation` | One deterministic Scripts behavior selected by the CLI and implemented against repository files. | `returns` → `Structured result`; `operates on` → `Workspace Files` |
+| `Workspace resolver` | The bounded operation that verifies a selected feature and derives its canonical durable and temporal paths. | `is a` → `Runtime operation`; `returns` → `Structured result` |
+| `Structured result` | A versioned status envelope containing artifacts, findings, and operation-specific data. | `contains` → `Validation finding` |
+| `Validation finding` | A deterministic rule result with severity, source, explanation, and remediation. | `returned in` → `Structured result` |
+| `Mutation proposal` | A digest-bound description of an allowed file change that grants no authority until explicitly approved. | `applied by` → `Runtime operation`; `targets` → `Durable artifact` |

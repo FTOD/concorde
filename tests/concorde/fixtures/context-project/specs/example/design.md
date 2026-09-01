@@ -15,3 +15,7 @@ Not recorded yet.
 ## Decision Log
 
 - (empty)
+
+## Terminology
+
+No local terminology. This level uses inherited terminology unchanged.

@@ -41,6 +41,7 @@ is welcome.]
 
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md)
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md)
-- **Contracts** — [contracts/](contracts/) [when the directory exists]
+- **Contracts** — [links to relevant published module boundary contracts]; name excluded
+  feature-local `contracts/...`, example, and project-log paths in code spans instead of links
 - **The level this feature belongs to** — the module summary `module.md` [relative link]
 - **Parent or sub-features** — [links when applicable]

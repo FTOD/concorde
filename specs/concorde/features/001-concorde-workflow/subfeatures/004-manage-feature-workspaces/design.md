@@ -133,3 +133,13 @@ legacy-name and missing-abstract fixtures.
 - Adding the abstract path and renaming the accepted-realization path in the protocol follow the
   protocol's own compatibility rules; whether that is a new major protocol version is decided by
   the implementation plan.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Selected workspace` | The canonical feature root and phase-authorized paths resolved from the current selection. | `is a` → `Feature root`; `described by` → `Workspace result` |
+| `Workspace kind` | The classification of a selected workspace as top-level feature or immediate sub-feature. | `classifies` → `Selected workspace` |
+| `Parent context` | Read-only aggregate paths and identity returned only for a selected sub-feature's immediate parent. | `describes` → `Feature root` |
+| `Sibling summary` | A bounded navigation record for another immediate child of the same parent, never its design or attempt body. | `summarizes` → `Feature` |
+| `Attempt state` | The explicit classification of whether the selected feature root has an active temporal attempt. | `describes` → `Attempt` |

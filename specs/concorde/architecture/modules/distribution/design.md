@@ -84,3 +84,13 @@ The maintained definitions are `contracts/bundle-lifecycle/contract.md` and
 - 2026-08-27 — Concorde releases are published from version tags; v0.1.0 publication evidence
   recorded.
 - 2026-08-26 — Renamed `concorde-starter` to `concorde-bundle`.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Bundle recipe` | A versioned, non-executable plan that pins a tested preset and extension pair. | `pins` → `Preset component`; `pins` → `Extension component` |
+| `Preset component` | The installable Spec Kit contribution containing Concorde templates and normal-phase command modifications. | `packaged by` → `Bundle recipe` |
+| `Extension component` | The installable Spec Kit contribution containing Concorde-specific commands, launchers, runtime, and supporting assets. | `packaged by` → `Bundle recipe` |
+| `Catalog entry` | Trusted discovery metadata for one versioned component or bundle, including location, compatibility, and integrity. | `discovers` → `Release archive` |
+| `Release archive` | A deterministic allowlisted package of one versioned component's distributable files. | `described by` → `Catalog entry` |

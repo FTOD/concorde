@@ -607,3 +607,14 @@ project-owned sources.
 - Feature 001 for the Concorde workflow used after setup.
 - The `publish-release` sub-feature for a publicly reachable release, and the `one-command-install`
   sub-feature for the accelerated component-plus-projection path over it.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Bundle recipe` | The inspectable, non-executable plan that pins compatible Concorde package identities and versions. | `pins` → `Preset package`; `pins` → `Extension package` |
+| `Preset package` | The `preset:concorde` contribution of templates and normal lifecycle command modifications. | `installed by` → `Installation record` |
+| `Extension package` | The `extension:concorde` contribution of commands, launchers, runtime, and supporting assets. | `installed by` → `Installation record` |
+| `Catalog entry` | Trusted package discovery metadata containing identity, version, location, compatibility, integrity, and policy. | `discovers` → `Bundle recipe` |
+| `Installation record` | Provenance and ownership state used to verify, update, and safely remove installed packages. | `records` → `Preset package`; `records` → `Extension package`; `records` → `Agent projection receipt` |
+| `Agent projection receipt` | Path-and-digest ownership evidence for generated agent-native files, excluding shared configuration and state. | `is a` → `Generated projection`; `belongs to` → `Installation record` |

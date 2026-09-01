@@ -46,7 +46,11 @@ class ModuleDiagramRuleTests(unittest.TestCase):
         }), encoding="utf-8")
         if link_from == "design":
             design = root / "specs/example/design.md"
-            design.write_text(design.read_text(encoding="utf-8") + "\n\nThe [release flow](architecture/diagrams/release-flow.json) explains publication order.\n", encoding="utf-8")
+            text = design.read_text(encoding="utf-8")
+            design.write_text(text.replace(
+                "\n## Terminology",
+                "\n\nThe [release flow](architecture/diagrams/release-flow.json) explains publication order.\n\n## Terminology",
+            ), encoding="utf-8")
         elif link_from == "reflections":
             (root / "specs/example/reflections.md").write_text(
                 "# Reflections: Example\n\nSee the [release flow](architecture/diagrams/release-flow.json).\n", encoding="utf-8"
@@ -111,7 +115,11 @@ class ModuleDiagramRuleTests(unittest.TestCase):
                 "[level-view.json](architecture/diagrams/level-view.json)", "the level view"
             ), encoding="utf-8")
             design = root / "specs/example/design.md"
-            design.write_text(design.read_text(encoding="utf-8") + "\n\nSee the [level view](architecture/diagrams/level-view.json).\n", encoding="utf-8")
+            text = design.read_text(encoding="utf-8")
+            design.write_text(text.replace(
+                "\n## Terminology",
+                "\n\nSee the [level view](architecture/diagrams/level-view.json).\n\n## Terminology",
+            ), encoding="utf-8")
             result = validate_project(root)
             self.assertIn("CONCORDE-SUMMARY-002", rules(result))
             self.assertNotIn("CONCORDE-VIEW-006", rules(result))

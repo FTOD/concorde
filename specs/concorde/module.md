@@ -15,12 +15,14 @@ features:
   - feature.concorde.self-host-framework
   - feature.concorde.record-workflow-reflections
   - feature.concorde.explore-alignment
+  - feature.concorde.define-project-ontology
 contracts:
   provided:
     - contract.concorde.workflow
     - contract.auto-docs.architecture-site
     - contract.concorde.spec-kit-installation
     - contract.concorde.alignment-explorer
+    - contract.concorde.ontology
   required:
     - contract.concorde.spec-kit-platform
     - contract.understand-anything.knowledge-graph
@@ -74,6 +76,7 @@ read-only `ask` skill is followed directly by the coding agent.
 | `feature.concorde.self-host-framework` | Materialize and verify the current checkout through the public installation path. | Distribution → Skills + Scripts |
 | `feature.concorde.publish-project-docsite` | Publish validated specifications and project docs as a browsable site. | Workspace Files → Auto-Docs |
 | `feature.concorde.explore-alignment` | Browse architecture and inspect evidence-qualified specification–implementation alignment through `speckit.concorde.explore`. | Workspace Files + executable reality → shared ontology relationship model → read-only explorer |
+| `feature.concorde.define-project-ontology` | Define inherited level terminology and typed concept relationships consistently across the project. | Workspace Files → validation → Auto-Docs + Archify views |
 
 The feature specifications remain under `features/`. They describe user outcomes; the
 module split above describes how those outcomes are realized.
@@ -87,6 +90,7 @@ module split above describes how those outcomes are realized.
 | `contract.auto-docs.architecture-site` | provided through Auto-Docs | Published read-only project site. |
 | `contract.concorde.spec-kit-platform` | required | Spec Kit component and lifecycle host behavior. |
 | `contract.concorde.alignment-explorer` | provided | Read-only graph bundle and `speckit.concorde.explore` behavior with provenance and evidence states. |
+| `contract.concorde.ontology` | provided | Level-local terminology tables, bounded inheritance, typed relationship resolution, and deterministic ontology findings. |
 | `contract.understand-anything.knowledge-graph` | required | Pinned upstream implementation knowledge-graph input. |
 
 ## Submodules

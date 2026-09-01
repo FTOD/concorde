@@ -67,7 +67,9 @@ describe('production build', () => {
       .toContain('Concorde Commands and Workspace Files');
     expect(await readFile(resolve(buildDir, 'architecture/alignment-explorer-components.html'), 'utf8'))
       .toContain('Concorde Alignment Explorer Components');
-    expect(Object.keys(firstDiagramHashes)).toHaveLength(11);
+    expect(await readFile(resolve(buildDir, 'architecture/concorde-ontology-model.html'), 'utf8'))
+      .toContain('Concorde Ontology Model');
+    expect(Object.keys(firstDiagramHashes)).toHaveLength(12);
     expect((await readdir(resolve(siteDir, '../generated/architecture'))).every((name) => name.endsWith('.html'))).toBe(true);
     const concordeFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.workflow');
     const docsiteFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.publish-project-docsite');
@@ -93,6 +95,7 @@ describe('production build', () => {
       'feature.concorde.self-host-framework',
       'feature.concorde.record-workflow-reflections',
       'feature.concorde.explore-alignment',
+      'feature.concorde.define-project-ontology',
     ];
     const rootFeatureItems = featureSidebar[0].items.slice(0, rootFeatureIds.length);
     expect(rootFeatureItems.map((item: {link: {id: string}}) => item.link.id.replace(/\/abstract$/, '')))

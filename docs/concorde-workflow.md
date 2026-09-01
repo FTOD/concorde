@@ -150,13 +150,21 @@ Use the normal `specify` and `clarify` phases to describe:
 - expected failures and degraded behavior;
 - measurable outcomes;
 - boundary contracts; and
-- representative user or system scenarios.
+- representative user or system scenarios;
+- important concepts introduced at this level, their meanings, aliases, and typed relationships.
 
 `specify` writes two documents: `design.md`, the complete authority, and `abstract.md`, a self-contained
 quick understanding of the feature in five fixed sections (`Purpose`, `Functionality`, `Structure`,
 `Logic`, `Read Next`) that summarizes the specification and never defines beyond it. `clarify`
 encodes accepted answers into `design.md` and updates the abstract wherever it summarized the changed
 behavior. Keep the abstract within its budget and faithful: `design.md` prevails when they disagree.
+
+Every `design.md` has exactly one `## Terminology` declaration. Define only concepts introduced by
+the current level in the `Term`, `Meaning`, and `Relationships` table. Use terminology from ancestor
+modules—and, for a sub-feature, its immediate parent feature—without copying their rows. A level with
+no local concepts uses the exact inherited-only declaration. Validation rejects duplicate local
+expressions, incompatible inherited redefinitions, ambiguous aliases, and unresolved relationship
+targets.
 
 Keep the distinction clear: the prose defines the feature; scenarios illustrate it. When multiple
 components collaborate, add one core Archify architecture diagram showing stable participants,

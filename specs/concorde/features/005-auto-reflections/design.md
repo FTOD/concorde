@@ -740,3 +740,17 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   (`level-view.json`).
 - **Evidence status**: `partial`; automatic recording has an accepted realization, while installed
   triage roles and projections are the delta proposed by this revision.
+
+## Terminology
+
+| Term | Meaning | Relationships |
+|---|---|---|
+| `Reflection log` | The project's one maintained specification-root file containing workflow problems encountered across attempts. | `contains` → `Reflection entry`; `is a` → `Durable artifact` |
+| `Reflection entry` | One stable problem record with phase, feature, concerned source, expectation, observation, effect, action, improvement, and maintainer-owned status. | `belongs to` → `Reflection log`; `may produce` → `Reflection plan` |
+| `Attributed feature` | The feature selected when a reflection entry was first recorded and used to group phase/acceptance reporting. | `is a` → `Feature`; `named by` → `Reflection entry` |
+| `Concerned source` | The stable ID or path whose specification, architecture, guidance, tooling, environment, or implementation presented the problem. | `named by` → `Reflection entry`; `is a` → `Durable artifact` |
+| `Reflection plan` | The reviewed triage proposal that routes one reflection entry to an owning feature, bounded files, change steps, evidence, and implementation worktree. | `addresses` → `Reflection entry`; `implemented by` → `Implementer role` |
+| `Investigator role` | A read-heavy specialized agent role that handles one reflection entry and proposes a bounded plan without changing sources. | `investigates` → `Reflection entry`; `produces` → `Reflection plan` |
+| `Implementer role` | A specialized agent role that executes approved reflection plans in assigned worktrees and validates each change. | `implements` → `Reflection plan` |
+| `Triage configuration` | Shared project policy for queue order, plan state, concurrency, approval, and skipped reflection entries. | `governs` → `Investigator role`; `governs` → `Implementer role` |
+| `Agent projection` | A platform-specific installed representation of the shared triage skill and roles. | `is a` → `Generated projection`; `presents` → `Investigator role`; `presents` → `Implementer role` |
