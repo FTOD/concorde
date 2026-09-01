@@ -136,7 +136,8 @@ kind, parent context and sibling summaries for a sub-feature, durable and tempor
 `module.md` and `design.md` of the module at which the feature is specified (`providing_module`) as
 navigation references, and `attempt_state`. A non-empty
 `attempt/` attempt appears as `attempt_state: active`; there is no separate resume
-step—decide whether to continue that attempt or accept or archive it.
+step—decide whether to continue that attempt, deliver it when complete, or archive it through an
+explicit maintenance decision.
 
 ### `$speckit-concorde-validate [path-or-id]`
 
@@ -237,23 +238,23 @@ added and the feature's open count.
 | `$speckit-specify` | Creating or revising required behavior and representative scenarios | Authors root `abstract.md` and `design.md` together; seeds placeholder `implementation.md` for a new root and preserves an existing one byte-for-byte; review state goes under `attempt/checklists/` |
 | `$speckit-clarify` | Important behavioral ambiguity remains before planning | Encodes answers into `design.md` and updates the abstract wherever it summarized the changed behavior; keeps checklist state temporary |
 | `$speckit-checklist` | You need a requirements-quality review focused on a domain such as contracts, security, or UX | Reads durable context, the abstract included, and writes only `attempt/checklists/*.md` |
-| `$speckit-plan` | Behavior and architectural boundaries are ready for one implementation proposal | Reads root `design.md` and feature `implementation.md` with module `module.md` as bounded context (the abstract orients only; module `design.md` only deliberately); writes plan artifacts under `attempt/`; records unresolved problems in the project reflection log |
-| `$speckit-tasks` | The plan is ready to become dependency-ordered executable work | Writes `attempt/tasks.md` |
+| `$speckit-plan` | Behavior and architectural boundaries are ready for one implementation proposal | Reads root `design.md` and feature `implementation.md` with module `module.md` as bounded context (the abstract orients only; module `design.md` only deliberately); writes plan artifacts and proposed contract deltas under `attempt/`; records unresolved problems in the project reflection log |
+| `$speckit-tasks` | The plan is ready to become dependency-ordered executable work | Writes traceable, independently actionable work to `attempt/tasks.md` |
 | `$speckit-analyze` | Tasks exist and you want a read-only consistency check before coding | Compares the durable trio with the active plan/tasks, reporting any abstract statement that `design.md` does not make and the feature's open reflection entries (flagging stale ones); edits nothing except appending to the reflection log |
 | `$speckit-implement` | The reviewed plan and tasks are ready to execute | Works from the selected durable sources, with feature `implementation.md` as the accepted baseline, and the active attempt |
 | `$speckit-converge` | Code exists and you need to discover what remains unbuilt | Assesses code against intent and appends missing work to the same tasks file; an open, deferred reflection entry of the feature is candidate work only when genuine |
-| `$speckit-taskstoissues` | The active work should be executed as external issues | Converts the selected attempt's tasks without changing their authority |
+| `$speckit-taskstoissues` | The active work should be executed as external issues | On separate invocation, projects the selected attempt's task identity, order, dependencies, phase/story, scope, and trace tokens to the matching GitHub repository without changing task authority or checkboxes |
 
 A common order is:
 
 ```text
 specify → clarify → checklist → plan → tasks → analyze
-        → implement → converge → validate → accept
+        → implement → converge → validate → deliver
 ```
 
 The order is not a blind pipeline. `clarify` and custom checklists are used when needed; validation
-may run repeatedly; convergence can add tasks that require another implementation pass. Acceptance is
-never automatic.
+may run repeatedly; convergence can add tasks that require another implementation pass. Delivery
+runs only when the maintainer explicitly invokes it.
 
 For an eligible established small change, the alternate branch is:
 
@@ -272,7 +273,7 @@ The installed workflow has four distinct layers:
 3. **A workspace adapter or portable launcher** resolves phase paths or locates the installed
    extension runtime using project-relative paths.
 4. **The Concorde Python runtime** performs deterministic initialization, selected-workspace
-   resolution, bounded-context projection, validation, and acceptance controls.
+resolution, bounded-context projection, validation, and delivery controls.
 
 For a normal Spec Kit phase, the agent invokes the workspace adapter, obtains the selected durable
 and temporary paths, and continues the normal phase. For one of the four Concorde-specific
@@ -302,4 +303,4 @@ skill does not change the distributed framework.
 | Approved tasks are ready | `implement` |
 | Code may still be incomplete | `converge`, then implement remaining tasks |
 | Architecture or evidence may be inconsistent | `concorde-validate` |
-| The completed result is accepted as a milestone | `concorde-impl-accept` |
+| The completed result is ready to become the durable milestone | `concorde-deliver` |

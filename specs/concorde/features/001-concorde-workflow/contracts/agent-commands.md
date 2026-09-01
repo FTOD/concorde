@@ -300,6 +300,25 @@ Validation checks, in stable order:
 
 Repeated runs over unchanged bytes and arguments produce byte-equivalent JSON and the same exit code.
 
+## Plan Delivery Handoff
+
+`speckit.plan`, `speckit.tasks`, and `speckit.taskstoissues` share one Protocol v9 selected workspace
+and one authoritative temporal attempt.
+
+| Item | Required fields and obligations |
+|---|---|
+| Implementation plan | Selected feature/root, required `design.md`, orientation-only `abstract.md`, accepted `implementation.md` baseline or explicit no-baseline state, bounded module/view inputs, realization delta, constitution result, and cited deliberate module-reference reads |
+| Proposed contract delta | Attempt-local path under `attempt/contracts/`, affected durable contract, compatibility/schema/example/evidence consequences, and the implementation work needed to reconcile it; planning never writes the durable contract |
+| Task list | Stable task IDs in dependency order, phase/story, concrete scope/paths, explicit requirement IDs or acceptance-outcome trace tokens, dependency graph, and architecture/contract/validation/documentation/evidence coverage |
+| Issue projection | Selected feature/root, project-relative `attempt/tasks.md` source, task identity, task-file order, phase/story, scope, prerequisite task IDs and issue links, trace tokens, plus created/skipped/failed results |
+
+The task list remains authoritative. External issue writes require a separate invocation of
+`speckit.taskstoissues`, a matching GitHub remote, and an unambiguous selected scope. Conversion
+deduplicates across open and closed issues, creates only missing issues, preserves dependency links,
+and never changes a task checkbox or treats publication as implementation completion. A non-GitHub
+or mismatched remote, unknown dependency, missing prerequisite issue, or ambiguous target stops
+external writes with an actionable report.
+
 ## Portability Acceptance
 
 - Codex skills mode contains one `SKILL.md` per canonical command under the active project-local

@@ -59,6 +59,31 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                 self.assertNotIn("**STRICTLY READ-ONLY**", analyze_surface)
                 implement_surface = registered_artifact(root, integration, "speckit.implement").read_text(encoding="utf-8")
                 self.assertIn("`Effect: blocked`", implement_surface)
+                plan_surface = registered_artifact(root, integration, "speckit.plan").read_text(encoding="utf-8")
+                tasks_surface = registered_artifact(root, integration, "speckit.tasks").read_text(encoding="utf-8")
+                issues_surface = registered_artifact(root, integration, "speckit.taskstoissues").read_text(encoding="utf-8")
+                for invariant in (
+                    "workspace.feature_abstract",
+                    "parent_context.feature_abstract",
+                    "no accepted baseline",
+                    "ATTEMPT_DIR/contracts/",
+                    "MUST NOT update",
+                ):
+                    self.assertIn(invariant, plan_surface, invariant)
+                for invariant in (
+                    "requirement ID or acceptance-outcome",
+                    "ATTEMPT_DIR/contracts/",
+                    "parent_context.feature_abstract",
+                ):
+                    self.assertIn(invariant, tasks_surface, invariant)
+                for invariant in (
+                    "Invocation authorization",
+                    "task-file order",
+                    "prerequisite task IDs",
+                    "issue links",
+                    "attempt/tasks.md remains authoritative",
+                ):
+                    self.assertIn(invariant, issues_surface, invariant)
                 resolved = subprocess.run(["specify", "preset", "resolve", "reflections-template"], cwd=root, check=True, capture_output=True, text=True)
                 self.assertIn("reflections-template.md", resolved.stdout.replace("\n", ""))
                 surfaces = {registered_artifact(root, integration, command) for command in CONCORDE_COMMANDS}

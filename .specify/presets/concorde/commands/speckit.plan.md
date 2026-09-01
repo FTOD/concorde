@@ -16,14 +16,15 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIPT}` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_abstract`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
 `workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
 Require Protocol v9 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
-recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_design` and `feature_implementation` only as aggregate durable context. Never load a
+recorded detail and cite it. When `workspace_kind` is `subfeature`, read
+`parent_context.feature_abstract`, `parent_context.feature_design`, and
+`parent_context.feature_implementation` only as aggregate durable context. Never load a
 sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 
@@ -72,9 +73,10 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 ## Outline
 
-1. **Setup**: Run `{SCRIPT}` from repo root and parse JSON for FEATURE_DESIGN, FEATURE_IMPLEMENTATION, IMPL_PLAN, ATTEMPT_DIR, SPECS_DIR, BRANCH. `FEATURE_DESIGN`, `FEATURE_IMPLEMENTATION` (the returned `workspace.feature_implementation`), and feature contracts are durable sources at the feature root; `IMPL_PLAN` and the other plan-phase artifacts belong to the temporal `ATTEMPT_DIR`. After delivery, planning creates a fresh `attempt/` beneath the same root and never a root-level copy. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. **Setup**: Run `{SCRIPT}` from repo root and parse JSON for FEATURE_ABSTRACT, FEATURE_DESIGN, FEATURE_IMPLEMENTATION, IMPL_PLAN, ATTEMPT_DIR, SPECS_DIR, BRANCH. `FEATURE_ABSTRACT`, `FEATURE_DESIGN`, `FEATURE_IMPLEMENTATION` (the returned `workspace.feature_implementation`), and feature contracts are durable sources at the feature root; `IMPL_PLAN` and the other plan-phase artifacts belong to the temporal `ATTEMPT_DIR`. After delivery, planning creates a fresh `attempt/` beneath the same root and never a root-level copy. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
-2. **Load context**: Read FEATURE_DESIGN, FEATURE_IMPLEMENTATION, and `.specify/memory/constitution.md`. Treat
+2. **Load context**: Read FEATURE_ABSTRACT for orientation only, then read FEATURE_DESIGN,
+   FEATURE_IMPLEMENTATION, and `.specify/memory/constitution.md`. Treat
    FEATURE_IMPLEMENTATION as the accepted realization baseline and plan the current attempt as an explicit
    delta from it; do not update the accepted realization during planning. When it still holds the
    placeholder ("No implementation realization has been accepted yet."), there is NO baseline: the
@@ -90,7 +92,8 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - Fill Constitution Check section from constitution
    - Evaluate gates (ERROR if violations unjustified)
    - Phase 0: Generate `ATTEMPT_DIR/research.md` (resolve all NEEDS CLARIFICATION)
-   - Phase 1: Generate `ATTEMPT_DIR/data-model.md`, durable feature-root `contracts/`, and `ATTEMPT_DIR/quickstart.md`
+   - Phase 1: Generate `ATTEMPT_DIR/data-model.md`, proposed contract deltas under
+     `ATTEMPT_DIR/contracts/` when applicable, and `ATTEMPT_DIR/quickstart.md`
    - Define the feature-diagram strategy in two layers. First define at most one `role: core`
      Archify `architecture` view for stable components, responsibilities, interactions, and
      governing contracts, or preserve an explicit sufficiency rationale. Then define any
@@ -230,11 +233,17 @@ line `Reflections added: <identifiers or none> · open for this feature: <count>
    - Validation rules from requirements
    - State transitions if applicable
 
-2. **Define interface contracts** (if project has external interfaces) → feature-root `/contracts/`:
+2. **Define proposed contract deltas** (if the feature changes an external interface) →
+   `ATTEMPT_DIR/contracts/`:
+   - Read the existing feature-root contract only through the returned durable contract path
    - Identify what interfaces the project exposes to users or other systems
-   - Document the contract format appropriate for the project type
+   - Document the proposed contract format or delta appropriate for the project type
    - Examples: public APIs for libraries, command schemas for CLI tools, endpoints for web services, grammars for parsers, UI contracts for applications
-   - Skip if project is purely internal (build scripts, one-off tools, etc.)
+   - Record compatibility, migration, schema/example, and evidence consequences
+   - Ensure `tasks.md` later contains an implementation task that applies the reviewed contract delta
+     together with code, tests, examples, and documentation
+   - Skip if project is purely internal (build scripts, one-off tools, etc.) or no contract changes
+     are required
 
 3. **Create quickstart validation guide** → `ATTEMPT_DIR/quickstart.md`:
    - Document runnable validation scenarios that prove the feature works end-to-end
@@ -248,12 +257,16 @@ line `Reflections added: <identifiers or none> · open for this feature: <count>
    - Do not include full implementation code, model/service/controller bodies, migrations, or complete test suites
    - Keep this artifact as a validation/run guide; implementation details belong in `tasks.md` and the implementation phase
 
-**Output**: `ATTEMPT_DIR/data-model.md`, feature-root `/contracts/*`, `ATTEMPT_DIR/quickstart.md`
+**Output**: `ATTEMPT_DIR/data-model.md`, optional `ATTEMPT_DIR/contracts/*` proposed contract
+deltas, `ATTEMPT_DIR/quickstart.md`
 
 ## Key rules
 
 - Use absolute paths for filesystem operations; use project-relative paths for references in documentation
 - ERROR on gate failures or unresolved clarifications
+- Planning MUST NOT update a feature-root contract or any other durable source. A proposed contract
+  remains temporal until an explicit implementation task reconciles the durable contract, code,
+  examples, evidence, and documentation.
 
 ## Done When
 

@@ -43,6 +43,11 @@ data model, runnable validation guide, and delivery evidence under the feature's
 directory. That directory represents one temporal delivery attempt and must not be mirrored by
 compatibility copies beside `design.md`.
 
+When interface work is needed, read durable feature-root contracts as accepted input and write each
+proposed contract delta beneath `attempt/contracts/`. Planning never writes a feature-root contract.
+The plan and later tasks identify compatibility, schema/example, evidence, code, test, and
+documentation work needed to apply the proposed contract during implementation.
+
 When the selected root is an immediate sub-feature, also read the Protocol v9 parent `abstract.md`,
 `design.md`, and `implementation.md` only as aggregate context. Plan and write exclusively beneath the selected child root.
 Sibling summaries are navigation context; sibling bodies and all parent/sibling attempts are out of

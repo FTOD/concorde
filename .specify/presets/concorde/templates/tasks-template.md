@@ -31,6 +31,12 @@ not generate a task that edits `abstract.md`, feature `design.md`, feature `impl
 module `module.md` or `design.md`, or removes `attempt/`; after every task is complete,
 the user may invoke the separate Concorde delivery command.
 
+Give every task an explicit requirement ID or acceptance-outcome trace token (a named plan section
+is sufficient only for setup mechanics). When `attempt/contracts/` contains a proposed contract
+delta, include dependency-ordered tasks that reconcile the durable contract, compatibility policy,
+schema/examples, code, tests, evidence, and documentation during implementation; planning does not
+promote that proposal.
+
 For a selected sub-feature, feature-workspace artifacts must remain beneath that child root, while
 tasks may name the implementation code, tests, generated projections, and public guides from the
 approved plan wherever those realizing files live in the project. Do not generate tasks that mutate

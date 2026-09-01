@@ -21,14 +21,15 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase tasks` from the target
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
+the returned `workspace.feature_directory`, `workspace.feature_abstract`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
 `workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
 Require Protocol v9 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
-recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_design` and `feature_implementation` only as aggregate durable context. Never load a
+recorded detail and cite it. When `workspace_kind` is `subfeature`, read
+`parent_context.feature_abstract`, `parent_context.feature_design`, and
+`parent_context.feature_implementation` only as aggregate durable context. Never load a
 sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
 write only through the selected sub-feature's returned paths.
 
@@ -81,7 +82,7 @@ For `checklist`, resolve `checklist-template` separately through the same public
 
 2. **Load design documents** using the returned paths:
    - **Required**: IMPL_PLAN (proposed tech stack, libraries, structure), FEATURE_DESIGN (user stories with priorities), FEATURE_IMPLEMENTATION (accepted realization baseline; the placeholder means no accepted baseline)
-   - **Optional**: `ATTEMPT_DIR/data-model.md` (entities), `FEATURE_DIR/contracts/` (durable interface contracts), `ATTEMPT_DIR/research.md` (decisions), `ATTEMPT_DIR/quickstart.md` (test scenarios)
+   - **Optional**: `ATTEMPT_DIR/data-model.md` (entities), `FEATURE_DIR/contracts/` (durable interface contracts), `ATTEMPT_DIR/contracts/` (proposed contract deltas), `ATTEMPT_DIR/research.md` (decisions), `ATTEMPT_DIR/quickstart.md` (test scenarios)
    - **IF REFERENCED**: Load feature-owned Archify JSON beside `FEATURE_DESIGN` as durable explanatory
      sources; do not confuse them with the module's diagrams under `architecture/diagrams/` or generated HTML.
    - **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints
@@ -93,9 +94,13 @@ For `checklist`, resolve `checklist-template` separately through the same public
    - Load the feature design.md and distinguish retained accepted realization from changes proposed by plan.md; when it is the placeholder, treat every planned decision as new work against no accepted baseline
    - Read the level's `module.md` as bounded architecture context; consult a module `design.md` only for a specific recorded detail and cite it
    - If data-model.md exists: Extract entities and map to user stories
-   - If contracts/ exists: Map interface contracts to user stories
+   - If durable or proposed contracts exist: Map interface contracts and their compatibility/evidence
+     work to user stories; a proposed contract delta requires an implementation task that reconciles
+     the durable contract, code, schemas/examples, tests, and documentation
    - If research.md exists: Extract decisions for setup tasks
    - Generate tasks organized by user story (see Task Generation Rules below)
+   - Give every task at least one explicit requirement ID or acceptance-outcome trace token; setup
+     mechanics may trace to the named plan section that requires them
    - Generate dependency graph showing user story completion order
    - Create parallel execution examples per user story
    - Validate task completeness (each user story has all needed tasks, independently testable)
