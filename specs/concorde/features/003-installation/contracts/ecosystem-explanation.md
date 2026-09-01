@@ -21,7 +21,7 @@ including install-time composition and the two distinct use-time paths.
 | Active coding-agent integration | Materializes commands and selects native triage skill/role destinations without owning their behavior. |
 | Projection receipt | Proves which generated agent paths Concorde may update/remove by digest; it owns no maintainer state. |
 | Skills | Are the installed user-facing command instructions materialized from the preset and extension sources. |
-| Scripts | Implement workspace routing and deterministic initialization, context, validation, and acceptance operations. |
+| Scripts | Implement workspace routing and deterministic initialization, context, validation, and delivery operations. |
 | Workspace Files | Preserve durable specification and accepted realization outside `attempt/`, and temporal delivery memory inside it. |
 
 The explanation must say that Concorde augments the standard Spec Kit lifecycle; the bounded

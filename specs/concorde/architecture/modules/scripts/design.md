@@ -12,7 +12,7 @@ Operations are split by behavior rather than by user command syntax:
 - `context.py` projects exactly one bounded architectural level.
 - `validate.py` and `validation/` produce deterministic findings without source mutation.
 - `feature_workspace.py` resolves nested durable and temporal paths.
-- `implementation_acceptance.py` atomically promotes an approved completed attempt.
+- `delivery.py` atomically promotes an approved completed attempt.
 - `reflections.py` parses and summarizes the durable project reflection log.
 
 ## Design Rationale

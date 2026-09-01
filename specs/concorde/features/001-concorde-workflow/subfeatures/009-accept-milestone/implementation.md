@@ -1,74 +1,71 @@
-# Feature Implementation: Accept Milestone
+# Feature Implementation: Deliver Milestone
 
-**Realization status**: Accepted realization of the approval-gated Accept Milestone workflow and the complete 0.4.0 terminology migration.
+**Realization status**: Accepted realization of the one-invocation Deliver Milestone workflow, Feature Workspace Protocol v9, delivery proposal v7, and the complete Concorde 0.6.0 surface migration.
 
-**Selected level**: Immediate sub-feature of feature.concorde.workflow; parent durable sources remain aggregate read-only context.
+**Selected level**: Immediate sub-feature of `feature.concorde.workflow`; parent durable sources remain aggregate read-only context. The stable feature ID and `subfeatures/009-accept-milestone/` path are retained for traceability.
 
 ## Realization Overview
 
-Accept Milestone is the one workflow operation that accepts a completed temporal implementation attempt as the selected feature's durable realization. The public command is speckit.concorde.impl.accept, the CLI is impl accept, the structured operation is impl.accept, and a successful apply reports status accepted. Proposal mode remains read-only; apply remains impossible without explicit maintainer approval of the exact digest-bound candidate.
+Deliver Milestone is the workflow operation that promotes one completed temporal attempt into the selected feature or immediate sub-feature's durable `implementation.md`. Its canonical public surface is `speckit.concorde.deliver`, its runtime verb and structured operation are `deliver`, successful apply returns `delivered`, and diagnostics use `CONCORDE-DELIVER-001` through `CONCORDE-DELIVER-012`.
 
-The operation preserves the existing safety model: at least one recognizable task, every task complete, every existing checklist item complete and well formed, safe canonical paths, a current source digest, an implementation candidate with the six required sections, centralized reflection review with no copied identifiers in durable candidates, an optional full providing-module design amendment, and exactly one whole-attempt removal target. Apply stages every update, moves the attempt recoverably, promotes all outputs atomically, and restores the previous implementation, module design, and attempt on failure.
+The user's delivery invocation is the authorization. The agent still invokes a read-only proposal phase, synthesizes a complete digest-bound candidate, and invokes apply immediately, but it does not display a second approval question or wait for another response. This removes one interaction without collapsing the technical safety boundary.
 
-The migration is a clean break. No command alias, parser fallback, status alias, proposal compatibility branch, diagnostic compatibility name, old feature root, or old installed skill remains. Historical wording survives only in version-control history; maintained reflection entries are reconciled like other docs/specs while their stable IDs and meaning remain valid.
+Eligibility still requires at least one recognizable task, every task complete, and every existing checklist item complete and well formed. Apply still enforces canonical paths, a current source digest, the six required implementation sections, centralized reflection ownership, an optional full providing-module design amendment, exactly one whole-attempt removal target, atomic staging, recoverable cleanup, and complete rollback on failure.
+
+The migration is a clean break. The former command, nested CLI verb, operation discriminator, status, diagnostic prefix, proposal filename, command file, runtime module, test modules, and installed skill are absent. No compatibility alias or parser fallback remains. The architecture feature ID and directory retain their stable historical identity; they are not executable aliases.
 
 ## Module and Feature Collaboration
 
-The parent feature feature.concorde.workflow owns lifecycle order, durable/temporal authority, the six-section implementation model, and the rule that only explicit acceptance establishes a new baseline. This child owns eligibility, candidate synthesis guidance, proposal identity, approval binding, atomic apply/rollback, cleanup, centralized reflection presentation, and result reporting.
+The parent `feature.concorde.workflow` owns lifecycle order, the durable-versus-temporal authority model, the six-section feature implementation shape, and the aggregate command inventory. This child owns delivery eligibility, candidate-synthesis guidance, invocation-bound authorization, proposal identity, atomic apply and rollback, cleanup, transient reflection presentation, and normative result reporting.
 
-Skills publishes the selected-workspace adapter, nine normal-phase overrides, templates, and the renamed installed command surface. Scripts supplies the portable Python runtime, Feature Workspace Protocol v8, acceptance proposal v6, path resolution, reflection parsing, diagnostics, and mutation boundary. Distribution packages concorde 0.4.0, concorde 0.4.0, and concorde-bundle 0.4.0 with regenerated catalogs and release artifacts. Documentation publishes the renamed specifications, commands, examples, accepted realizations, and parent core view.
+- `module.concorde.skills` publishes the installed `speckit.concorde.deliver` procedure, the nine normal Spec Kit phase overrides, fast-loop, and the feature templates. The delivery procedure performs propose and apply in one user interaction.
+- `module.concorde.scripts` supplies `delivery.py`, CLI dispatch, Feature Workspace Protocol v9 serialization, delivery diagnostics, source-digest computation, reflection parsing, target validation, atomic promotion, and rollback.
+- `module.concorde.workspace-files` owns the selected feature's durable trio, the active `attempt/`, proposal path `attempt/deliver-proposal.json`, and delivery proposal v7 shape.
+- `module.concorde.distribution` packages preset, extension, and bundle 0.6.0, publishes matching catalogs and reproducible archives, and materializes the delivery skill for Claude and Codex.
+- `module.concorde.auto-docs` verifies the renamed maintained sources and fresh diagrams through the project documentation gate; generated pages and HTML remain projections.
 
-The operation crosses contract.concorde.workflow and contract.concorde.spec-kit-platform. Detailed command intent is governed by the parent agent-command contract; workspace, proposal, status, digest, reflection, and result shapes are governed by feature-workspace.schema.json. Module responsibilities, boundaries, contracts, and one-level organization are unchanged.
+The operation crosses `contract.concorde.workflow` and `contract.concorde.spec-kit-platform`. Command intent is governed by `contracts/agent-commands.md`; request, workspace, proposal, status, digest, reflection-summary, and result shapes are governed by `contracts/feature-workspace.schema.json`. Module responsibilities, boundaries, contracts, containment, and dependency direction remain unchanged.
 
 ## Scenario Realization
 
-A coding agent or maintainer selects one valid feature or immediate sub-feature. The installed launcher invokes impl accept --propose. Runtime resolution returns Protocol v8 workspace paths, task and checklist summaries, reflection counts, the proposal path attempt/accept-proposal.json, the exact attempt cleanup target, and a digest covering the reviewed durable, architectural, reflection, and temporal inputs.
+### Deliver an eligible attempt
 
-The agent reads only the bounded selected root, read-only parent context for a child, concise sibling summaries, relevant architecture/contracts, the complete selected attempt, and cited implementation evidence. It drafts a complete implementation.md and, only when warranted, a full providing-module design amendment. The proposal uses proposal_version 6 and operation impl.accept, names exactly the returned implementation and optional module-design paths, and contains exactly the selected attempt directory in remove.
+1. The installed command invokes `deliver --propose` for the explicit target or selected feature.
+2. Runtime resolution returns the Protocol v9 workspace, task and checklist summaries, transient reflection counts, exact proposal path, exact cleanup target, and source digest.
+3. The agent reads only the bounded selected root, permitted parent context and sibling summaries, providing-module summary and design, relevant contracts and architecture, the complete selected attempt, and cited code and tests.
+4. The agent writes delivery proposal v7 with the full feature implementation candidate, an optional full providing-module design replacement when warranted, and exactly the selected `attempt/` removal target.
+5. The original command invocation authorizes immediate `deliver --apply --proposal ...`; no second question is emitted.
+6. Apply re-resolves every path and completion gate, recomputes the digest while ignoring only the proposal itself, validates durable candidate content, stages every update, moves the attempt recoverably, promotes atomically, and removes recovery artifacts.
+7. The result reports prior and resulting implementation digests, optional module-design digests, removed artifacts, retained authorities, reflection summary, findings, selected target, and absent attempt state.
 
-The agent presents the complete candidate, any module amendment diff, cleanup manifest, transient log-sourced reflection summary, retained authorities, and digest. Checked boxes and successful validation do not grant approval. Only the maintainer's explicit approval authorizes impl accept --apply --proposal.
+### Reject unsafe or incomplete delivery
 
-Apply re-resolves the target and every path, ignores only the proposal itself when recomputing the digest, rejects changed inputs and unsafe or broader targets, checks both durable candidates for copied `R-NNN` identifiers, stages updates, moves the attempt to a recoverable backup, and atomically promotes the reviewed bytes. The result reports prior/resulting implementation digests, optional module-design digests, removed artifacts, retained authorities, reflection summary, changes, findings, selected target, and absent attempt state.
+Incomplete or malformed tasks/checklists, an invalid target, unsafe or broader paths, copied reflection identifiers, placeholder candidate content, a stale digest, a malformed reflection log, a symlink, or an interrupted filesystem mutation returns `invalid`, `conflict`, or `failed`. Before-state tests prove the previous feature implementation, module design, complete attempt, parent, children, and siblings remain recoverable or byte-identical as required.
 
 ## Durable Implementation Decisions
 
-- Accept Milestone is the canonical human-facing label; accept is the command/runtime verb; accepted is the success state.
-- The owning feature is feature.concorde.workflow.accept-milestone at subfeatures/009-accept-milestone.
-- The runtime module is implementation_acceptance.py with propose_acceptance and apply_acceptance.
-- Diagnostics retain their established numeric meanings under CONCORDE-ACCEPT-001 through CONCORDE-ACCEPT-012.
-- Feature Workspace Protocol v8 changes the operation and success vocabulary while retaining the workspace, digest, change, artifact, finding, reflection, and result fields.
-- Acceptance proposal v6 changes the discriminator and proposal identity while retaining implementation, optional module_design, source_digest, target, and exact remove semantics.
-- The seeded empty-realization marker is replaced in full by the first accepted milestone; later milestones complete the same durable file.
-- The preset, extension, and bundle advance together to 0.4.0 because command identity, runtime dispatch, protocol, proposal, status, diagnostics, templates, packaging allowlists, and installed surfaces form one breaking interface set.
-- Architecture Source Profile 4, Architecture Service Protocol v1, Build Manifest v8, and docsite generator 0.3.0 are unchanged because their structures are unaffected.
-- Canonical preset/extension sources remain authoritative. .specify, .agents, and .claude are regenerated mirrors verified against those sources and installed-project acceptance tests.
-- The parent workflow core diagram remains the single stable component view. Only its milestone view and connection terminology changed; the generated route and component structure are unchanged.
-- Reflection entries participate in text migration only inside centralized `reflections.md`; controlled rewrites preserve every exact unique `R-NNN` identifier, valid field structure, maintainer decision, occurrence identity, and problem meaning. Acceptance-managed durable documents retain independently true facts without copying reflection identity.
-- The old interface is rejected rather than translated, keeping one safety-sensitive mutation surface.
+- Proposal and apply remain two internal runtime modes because the agent must author Markdown between eligibility and mutation; only the redundant second user authorization was removed.
+- The clean-break vocabulary is `speckit.concorde.deliver`, CLI/operation `deliver`, status `delivered`, `CONCORDE-DELIVER-*`, and `deliver-proposal.json`. The former interface is rejected and has no alias.
+- Feature Workspace Protocol v9 and delivery proposal v7 make the incompatible closed-enum changes explicit. Preset, extension, and bundle advance together to 0.6.0.
+- Constitution 4.0.0 narrowly authorizes one-invocation delivery after the normal completed lifecycle while preserving validation, digest binding, target restriction, atomicity, rollback, and evidence requirements.
+- The stable `feature.concorde.workflow.accept-milestone` ID and canonical directory remain unchanged because architecture identities are durable references, not command aliases.
+- Delivery retains the optional full providing-module `design.md` amendment so attempt-developed implementation detail and rationale are not discarded. The amendment remains limited to the providing level and applies atomically with feature realization and cleanup.
+- `reflections.md` remains the sole persisted reflection-record authority. Delivery presents attributed entries transiently and rejects reflection identifiers in either durable candidate.
+- The parent core component view and root command/workspace data-flow views remain the explanatory authorities. Their topology is unchanged; only delivery labels and invocation semantics changed.
+- Canonical extension and preset sources remain authoritative. `.specify`, Claude, and Codex materializations are regenerated projections and require a new agent interaction before reload is externally evidenced.
 
 ## Traceability and Evidence
 
-Behavior is defined by this sub-feature's design.md and abstract.md, with parent aggregate behavior in the Concorde Workflow trio. The agent-command contract, architecture-source contract, Feature Workspace Protocol v8 schema, acceptance proposal/eligibility examples, package manifests, and parent core diagram provide durable traceability.
+Required behavior is defined by this sub-feature's `design.md` and `abstract.md`, with aggregate lifecycle behavior in the parent feature. Related module summaries, design references, boundary contracts, workflow diagrams, installation specifications, user guides, and Constitution 4.0.0 were reconciled with the same delivery ontology.
 
-Implementation is centered in extensions/concorde/runtime/concorde/implementation_acceptance.py, cli.py, diagnostics.py, scripts/python/workspace.py, the impl.accept command Markdown, preset phase guidance and templates, bundle/catalog manifests, self-host and release builders, installed Codex/Claude surfaces, and the renamed Python test/support modules.
+Runtime realization is centered in `extensions/concorde/runtime/concorde/delivery.py`, `cli.py`, `diagnostics.py`, and `scripts/python/workspace.py`. Canonical command guidance is `extensions/concorde/commands/speckit.concorde.deliver.md`; installed Claude and Codex surfaces contain `speckit-concorde-deliver` and omit the former skill.
 
-Focused runtime, contract, installed-surface, and bundle evidence passes 76 tests. The complete Python suite passes 234 tests. Deterministic Concorde validation returns zero findings. The active-source terminology contract passes and verifies the old command and skill paths are absent.
+Executable evidence on 2026-09-01 includes 84 focused delivery/runtime/contract/installed/bundle tests and the complete 324-test Python suite. Deterministic Concorde validation returns success with zero findings. The documentation gate passes TypeScript, all 19 Vitest files and 85 tests, validation of 118 pages with zero errors, and an optimized production build. Claude self-host source, installed bytes, registry, and surfaces match; Claude and Codex agent-asset verification both succeed.
 
-The complete docsite gate passes TypeScript typechecking, 19 Vitest files with 77 tests, validation of 100 pages with 24 deliberate exclusions and zero errors, and verified production rendering. A syntax-only code-span correction to Feature 002's accepted route placeholder was required for MDX compilation and changed no behavior.
-
-All ten maintained diagrams pass the Archify 2.16 gate with 9/9 showcase checks, composition pass, and zero errors or warnings. The updated parent core view is freshly delivered and embedded at /architecture/concorde-workflow-components.html. No browser visual-check was performed, so the evidence makes no new perceptual-review claim.
-
-The supported Codex self-host apply completed for 0.4.0 and reported source, installed bytes, registry, and surfaces matching. Claude was restored and materialized through the public Spec Kit preset/extension flow. Canonical preset and extension trees are byte-equal to their installed mirrors, the new skills exist, and the superseded skill paths are absent.
+Three changed workflow sources each pass Archify's 9/9 showcase gate with zero composition errors or warnings and have fresh generated HTML: `concorde-workflow-components.json`, `skill-workspace-file-flow.json`, and `concorde-command-workspace-file-flow.json`. The component build produces reproducible 0.6.0 bundle, extension, and preset archives whose digests are recorded in the completed attempt validation evidence.
 
 ## Known Limitations
 
-- The self-host bootstrap requires an explicit Python interpreter in this checkout; direct execution
-  is not permitted by file mode.
-- The project virtual environment does not install pytest; validation uses the standard-library
-  unittest runner.
-- A shared-component bundle fixture that consumes the live preset must keep its pin synchronized
-  with the current package version.
-- Task-scoped temporary backup and release directories outside the repository are left for normal
-  operating-system cleanup; no project artifact depends on them.
-- The current agent process was initialized before the on-disk skill rename. A new session is required before its capability list displays the new skill name, even though both installed trees and tests are current.
-- Human perceptual review of the terminology-changed diagrams remains pending; automated showcase and production rendering are not visual approval.
+- Browser containment and light/dark perceptual review of the three changed diagrams remain pending because Chrome/Chromium is unavailable. Showcase validation and production rendering do not establish visual polish.
+- The on-disk self-host state is current, but a new agent interaction is required before the refreshed instruction set can be counted as loaded by the running agent.
+- The stable feature ID and directory retain the historical `accept-milestone` token. This is deliberate identity continuity; every current executable and user-facing delivery surface uses the new vocabulary.

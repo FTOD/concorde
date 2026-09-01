@@ -22,7 +22,7 @@ class OntologyWorkflowContractTests(unittest.TestCase):
             "presets/concorde/commands/speckit.clarify.md",
             "presets/concorde/commands/speckit.fast-loop.md",
             "extensions/concorde/commands/speckit.concorde.init.md",
-            "extensions/concorde/commands/speckit.concorde.impl.accept.md",
+            "extensions/concorde/commands/speckit.concorde.deliver.md",
         )
         for relative in sources:
             text = (REPOSITORY_ROOT / relative).read_text(encoding="utf-8")

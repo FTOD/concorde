@@ -23,7 +23,7 @@ Before any hook, setup step, prerequisite check, or artifact access, run `.venv/
 project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
 the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
 `workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
-Require Protocol v8 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
+Require Protocol v9 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
 `workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
 `workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
 only where a phase names it as bounded context, and open the module `design.md` only for a specific
@@ -374,7 +374,7 @@ After reporting, check if `.specify/extensions.yml` exists in the project root.
 - **NEVER modify files other than `workspace.reflections`** (analysis may create or append/update
   that log only as specified by Reflection Recording; when it has nothing to record, it writes
   nothing)
-- **NEVER propose editing `implementation.md` or any module `module.md`/`design.md`**; when analysis surfaces rationale, alternatives, or implementation detail worth keeping, recommend recording it inside the attempt (`attempt/research.md` or `attempt/validation.md`) so acceptance can carry it forward
+- **NEVER propose editing `implementation.md` or any module `module.md`/`design.md`**; when analysis surfaces rationale, alternatives, or implementation detail worth keeping, recommend recording it inside the attempt (`attempt/research.md` or `attempt/validation.md`) so delivery can carry it forward
 - **NEVER hallucinate missing sections** (if absent, report them accurately)
 - **Prioritize constitution violations** (these are always CRITICAL)
 - **Use examples over exhaustive rules** (cite specific instances, not generic patterns)

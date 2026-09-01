@@ -29,10 +29,10 @@ copy or symlink. Generate tasks against both feature `design.md` and accepted `i
 (a placeholder means no accepted baseline), but do
 not generate a task that edits `abstract.md`, feature `design.md`, feature `implementation.md`, any
 module `module.md` or `design.md`, or removes `attempt/`; after every task is complete,
-the user may invoke the separate Concorde acceptance command.
+the user may invoke the separate Concorde delivery command.
 
 For a selected sub-feature, feature-workspace artifacts must remain beneath that child root, while
 tasks may name the implementation code, tests, generated projections, and public guides from the
 approved plan wherever those realizing files live in the project. Do not generate tasks that mutate
-or accept a parent/sibling feature root, read a parent/sibling attempt implicitly, or create another
+or deliver a parent/sibling feature root, read a parent/sibling attempt implicitly, or create another
 `subfeatures/` directory beneath the child.

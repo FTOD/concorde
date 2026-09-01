@@ -144,7 +144,7 @@ Project-owned: .concorde/config.json · .concorde/reflections/** · specs/** · 
 - **Exact requirements, scenarios, and success criteria** — [design.md](design.md): the delivery model
   table, the four user stories, FR-001 to FR-043, and the measurable outcomes.
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (accepted realization and
-  implementation detail, written by acceptance).
+  implementation detail, written by delivery).
 - **The contracts** — `contracts/bundle-distribution.md`,
   `contracts/installed-command-surfaces.md`, and
   `contracts/ecosystem-explanation.md`; the boundary promise is

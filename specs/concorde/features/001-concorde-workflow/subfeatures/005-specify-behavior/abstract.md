@@ -75,7 +75,7 @@ Maintainer ──describe · answer · review──▶ specify · clarify · che
 - Clarification prioritizes consequential choices, encodes answers in `design.md`, and updates the
   abstract where it summarized the changed behavior (FR-007).
 - A new root gets `abstract.md`, `design.md`, and placeholder `implementation.md`, never a legacy filename;
-  substantive implementation is written by acceptance (FR-008).
+  substantive implementation is written by delivery (FR-008).
 - The level's `module.md` is bounded architecture context; module `design.md` is never an
   implicit input and is never written here (FR-009).
 - The authored abstract is self-contained, has exactly the five sections in order, links a structure

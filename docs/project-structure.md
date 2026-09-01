@@ -85,10 +85,10 @@ it is committed under a project-specific policy.
 | Required behavior, scope, failure handling, or success criteria | The owning feature's `design.md` through specification review, with its `abstract.md` updated wherever it summarized the change |
 | The level at which a feature is specified, or the modules that realize it | The feature's placement (its `module` and canonical root) and the affected module packages, with architecture review |
 | A module boundary or immediate-child organization | `module.md`, the affected contracts under `architecture/contracts/`, and the level views under `architecture/diagrams/` together |
-| Why a level is built the way it is, or implementation detail beneath its summary | The module's `design.md`, edited directly or amended by an approved acceptance proposal; keep `module.md` a summary |
+| Why a level is built the way it is, or implementation detail beneath its summary | The module's `design.md`, edited directly or amended by an invocation-authorized delivery proposal; keep `module.md` a summary |
 | Information crossing a boundary | The owning contract and any normative schema/example |
 | Shared project terminology, UA compatibility vocabulary, or ontology relationships | `docs/ontology.md`; define level-local concepts in the affected module/feature `design.md` terminology tables and reconcile contracts, schemas/examples, validation, diagrams, and publication |
-| How an accepted implementation realizes a feature | Complete the attempt and use approved implementation acceptance to write feature `implementation.md`; do not directly promote a plan |
+| How an accepted implementation realizes a feature | Complete the attempt and invoke delivery to write feature `implementation.md`; do not directly promote a plan |
 | The current implementation approach or work order | Files under the selected feature's `attempt/` directory |
 | Runtime behavior or executable proof | Source code and tests, reconciled against the durable sources |
 | Adoption or contributor explanation | Markdown under `docs/` |
@@ -109,7 +109,7 @@ or one immediate sub-feature. Selection itself is standard Spec Kit: the project
 explicitly through `SPECIFY_FEATURE_DIRECTORY`. Concorde adds no selection command and no second
 selection store.
 
-Feature Workspace Protocol v8 classifies the selected root before every normal phase: safe path,
+Feature Workspace Protocol v9 classifies the selected root before every normal phase: safe path,
 canonical `abstract.md`/`design.md`/`implementation.md` trio with no legacy names or attempt directory, workspace kind,
 `attempt_state`, and the `module.md` and `design.md` of the module at which the feature is
 specified (the result's `providing_module`) as navigation references. The result names the trio as

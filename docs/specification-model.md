@@ -88,8 +88,8 @@ summary deliberately leaves out, and no workflow operation reads it implicitly: 
 returns it as a navigation reference, `ask` opens it only when a question asks for implementation
 detail or rationale and cites it, and planning consults it deliberately. Maintainers may edit it
 directly at any time as an ordinary maintained source; workflow operations write it only through an
-approved acceptance proposal (see
-[Acceptance](#acceptance-changes-the-lifetime-not-the-behavior)).
+invocation-authorized delivery proposal (see
+[Delivery](#delivery-changes-the-lifetime-not-the-behavior)).
 
 ### `architecture/diagrams/`: the level views and explanatory views
 
@@ -270,7 +270,8 @@ Limitations`, followed by any further headings the implementation detail needs.
 
 The file exists from the moment the feature does. `speckit.specify` seeds a placeholder from the
 `implementation-template` whose only content is the statement that no implementation realization has been
-accepted yet; the first approved acceptance writes it in full, and each later acceptance completes it.
+accepted yet; the first delivery writes it in full, and each later delivery completes it under the
+user's command invocation without another approval interaction.
 No other workflow step writes its substantive content. Planning treats the placeholder as the
 absence of a baseline and must not invent an accepted realization merely because work is proposed.
 
@@ -282,8 +283,8 @@ Validation rejects a feature root without `implementation.md` (`CONCORDE-LAYOUT-
 ### `attempt/`: one temporary attempt
 
 `attempt/` contains the current delivery proposal and its review state: checklists, research,
-plan, tasks, technical models, acceptance guidance, and evidence. It represents at most one active
-attempt, and acceptance compacts it into `implementation.md`.
+plan, tasks, technical models, delivery guidance, and evidence. It represents at most one active
+attempt, and delivery compacts it into `implementation.md`.
 
 These files may contain alternatives, sequencing decisions, incomplete work, and transient notes.
 Their presence beneath `specs/` does not make them durable intent. There must be no compatibility
@@ -296,24 +297,25 @@ exists — another feature's realization, a module boundary, an instruction, a t
 in one maintained file, `reflections.md` directly inside the specification root, as entries that
 name the feature being worked on (`Feature`) and the source the problem concerns (`Concerns`), with
 a kind, an effect, and a maintainer-owned status. Every phase after specification appends to it; no
-operation removes it; acceptance cites a feature's open entries in its implementation and leaves
+operation removes it; delivery presents a feature's entries transiently and leaves
 the log byte-identical; validation checks its shape; the docsite does not publish it.
 
-## Acceptance changes the lifetime, not the behavior
+## Delivery changes the lifetime, not the behavior
 
 Once every recognizable task and every existing checklist item is complete, the maintainer may ask
-Concorde to accept the attempt. The coding agent synthesizes candidate feature `implementation.md` and,
+Concorde to deliver the attempt. The coding agent synthesizes candidate feature `implementation.md` and,
 when the attempt produced implementation detail or rationale worth keeping, a full replacement of
 the `design.md` of the module at which the feature is specified, adding that material under the
 reference's stable headings.
 The runtime binds both candidates and the exact `attempt/` removal target to the current
 source digest, which covers the module `design.md` and the abstract as well.
 
-Nothing changes until the maintainer explicitly approves that exact proposal. On success, the
+The maintainer's delivery invocation authorizes the generated current proposal, so the agent applies
+it without another approval interaction. On success, the
 feature `implementation.md` is updated, module `design.md` is amended when the proposal included it, and
 the whole `attempt/` directory is removed as one atomic, failure-safe operation. `abstract.md`,
-`design.md`, every `module.md`, contracts, views, code, and tests are not changed by acceptance.
-Acceptance is the only workflow step that carries attempt-derived rationale into a module design
+`design.md`, every `module.md`, contracts, views, code, and tests are not changed by delivery.
+Delivery is the only workflow step that carries attempt-derived rationale into a module design
 reference.
 
 A later change begins a fresh attempt. Planning reads two durable documents—`design.md` as required

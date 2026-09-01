@@ -12,7 +12,7 @@
       {"id": "architecture-commands", "label": "Architecture commands", "focus": ["constitution", "concordeInit", "concordeContext", "concordeAsk", "concordeValidate", "constitutionFile", "rootPackage", "contextResult", "askResult", "validationResult"], "note": "See what the five architecture-oriented commands read, write, or return without a file."},
       {"id": "specification-commands", "label": "Specify intent", "focus": ["specify", "clarify", "featureFiles"], "note": "Specify creates the durable feature root; clarify updates only required behavior and its abstract."},
       {"id": "planning-commands", "label": "Plan and review", "focus": ["plan", "tasks", "checklist", "analyze", "attemptPlan", "attemptTasks", "reviewFiles"], "note": "Planning files, tasks, and checklists stay below the selected attempt/ workspace."},
-      {"id": "delivery-commands", "label": "Deliver and accept", "focus": ["implement", "converge", "implAccept", "featureFiles", "attemptTasks", "codeEvidence", "reviewFiles"], "note": "Implementation writes code and evidence; acceptance promotes implementation.md and removes attempt/."},
+      {"id": "delivery-commands", "label": "Deliver realization", "focus": ["implement", "converge", "deliverMilestone", "featureFiles", "attemptTasks", "codeEvidence", "reviewFiles"], "note": "Implementation writes code and evidence; delivery promotes implementation.md and removes attempt/ under one invocation."},
       {"id": "external-results", "label": "Reports and issues", "focus": ["concordeContext", "concordeAsk", "concordeValidate", "analyze", "taskstoissues", "contextResult", "askResult", "validationResult"], "note": "Reports stay in the conversation; taskstoissues creates external issue records rather than workspace authority."}
     ]
   },
@@ -48,7 +48,7 @@
     {"id": "taskstoissues", "type": "security", "label": "taskstoissues", "sublabel": "$speckit-taskstoissues", "stage": 4, "row": 1, "width": 120, "tag": "Spec Kit + Concorde"},
     {"id": "implement", "type": "security", "label": "implement", "sublabel": "$speckit-implement", "stage": 4, "row": 2, "width": 120, "tag": "Spec Kit + Concorde"},
     {"id": "converge", "type": "security", "label": "converge", "sublabel": "$speckit-converge", "stage": 4, "row": 3, "width": 120, "tag": "Spec Kit + Concorde"},
-    {"id": "implAccept", "type": "security", "label": "impl.accept", "sublabel": "approval-gated promotion", "stage": 4, "row": 4, "width": 120, "tag": "Concorde"}
+    {"id": "deliverMilestone", "type": "security", "label": "deliver", "sublabel": "one invocation", "stage": 4, "row": 4, "width": 120, "tag": "Concorde"}
   ],
   "flows": [
     {"id": "constitution-write", "from": "constitution", "to": "constitutionFile", "label": "writes", "variant": "emphasis"},
@@ -65,11 +65,11 @@
     {"id": "issues-read", "from": "attemptTasks", "to": "taskstoissues", "label": "reads", "variant": "dashed"},
     {"id": "implement-read", "from": "attemptPlan", "to": "implement", "label": "reads", "variant": "default"},
     {"id": "converge-read", "from": "codeEvidence", "to": "converge", "label": "reads", "variant": "default"},
-    {"id": "accept-read", "from": "reviewFiles", "to": "implAccept", "label": "reviews", "variant": "security"}
+    {"id": "delivery-read", "from": "reviewFiles", "to": "deliverMilestone", "label": "reads completed attempt", "variant": "security", "labelDy": 53}
   ],
   "cards": [
     {"dot": "cyan", "title": "Architecture and Control Files", "items": ["init writes .concorde/config.json, module.md, module design.md, and architecture/diagrams/level-view.json after approval", "context reads config, module summaries, diagrams, contracts, feature paths, and reflection counts; ask reads installed guidance and the smallest project sources needed", "validate reads maintained architecture, feature roots, selection, evidence, and freshness; context, ask, and validate do not write result files"]},
     {"dot": "amber", "title": "Feature and Attempt Files", "items": ["specify writes .specify/feature.json plus abstract.md, design.md, and a placeholder implementation.md; clarify updates abstract.md and design.md", "plan writes attempt/plan.md, research.md, data-model.md, quickstart.md and may write durable feature contracts/**", "tasks writes attempt/tasks.md; checklist writes attempt/checklists/<name>.md"]},
-    {"dot": "emerald", "title": "Delivery and External Effects", "items": ["analyze returns a report and may append reflections.md; taskstoissues creates external issues without replacing attempt/tasks.md", "implement reads the durable baseline and attempt, writes source/tests/evidence, marks tasks [X], and appends reflections.md; converge only appends tasks and reflections", "impl.accept replaces feature implementation.md, may replace module design.md, and removes the complete attempt/ after explicit approval"]}
+    {"dot": "emerald", "title": "Delivery and External Effects", "items": ["analyze returns a report and may append reflections.md; taskstoissues creates external issues without replacing attempt/tasks.md", "implement reads the durable baseline and attempt, writes source/tests/evidence, marks tasks [X], and appends reflections.md; converge only appends tasks and reflections", "deliver replaces feature implementation.md, may replace module design.md, and removes the complete attempt/ under the user's invocation without another approval"]}
   ]
 }

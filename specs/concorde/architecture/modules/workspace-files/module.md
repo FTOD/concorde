@@ -51,8 +51,8 @@ None.
 ## Representative Scenario
 
 A plan skill resolves `.specify/feature.json`, reads the selected feature's durable `abstract.md` and
-`design.md`, and writes `attempt/plan.md`. Later, explicit acceptance replaces the durable
-`implementation.md` with the reviewed realization and removes only that feature's accepted
+`design.md`, and writes `attempt/plan.md`. Later, explicit delivery replaces the durable
+`implementation.md` with the invocation-authorized realization and removes only that feature's completed
 `attempt/` directory.
 
 ## Design Rationale

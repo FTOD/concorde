@@ -66,7 +66,7 @@ class AgentCommandContractTests(unittest.TestCase):
             "proportional tests",
             "related",
             "No attempt",
-            "No acceptance",
+            "No delivery",
             "changed files",
             "Reflections added:",
         ):
@@ -76,7 +76,7 @@ class AgentCommandContractTests(unittest.TestCase):
             "speckit.tasks`",
             "speckit.implement`",
             "speckit.converge`",
-            "speckit.concorde.impl.accept`",
+            "speckit.concorde.deliver`",
         ):
             self.assertNotIn(f"invoke `{forbidden}", command_content)
         self.assertIn("Presentation Parity", contract_content)
@@ -152,7 +152,7 @@ class AgentCommandContractTests(unittest.TestCase):
         commands = REPOSITORY_ROOT / "extensions/concorde/commands"
         expected = {
             "speckit.concorde.init.md",
-            "speckit.concorde.impl.accept.md",
+            "speckit.concorde.deliver.md",
             "speckit.concorde.context.md",
             "speckit.concorde.validate.md",
             "speckit.concorde.ask.md",
@@ -210,7 +210,7 @@ class AgentCommandContractTests(unittest.TestCase):
             "taskstoissues",
         ):
             self.assertIn(command, command_contract)
-        for command in ("init", "impl.accept", "context", "validate", "ask"):
+        for command in ("init", "deliver", "context", "validate", "ask"):
             self.assertIn(command, command_contract)
         self.assertEqual(schema["$defs"]["workspacePaths"]["required"], [
             "workspace_kind",
@@ -261,20 +261,25 @@ class AgentCommandContractTests(unittest.TestCase):
                 path.as_posix(),
             )
 
-    def test_acceptance_surfaces_require_checklists_and_return_review_metadata(self):
+    def test_delivery_surfaces_require_checklists_and_apply_without_second_prompt(self):
         surfaces = (
-            REPOSITORY_ROOT / "extensions/concorde/commands/speckit.concorde.impl.accept.md",
-            REPOSITORY_ROOT / ".agents/skills/speckit-concorde-impl-accept/SKILL.md",
+            REPOSITORY_ROOT / "extensions/concorde/commands/speckit.concorde.deliver.md",
+            REPOSITORY_ROOT / ".agents/skills/speckit-concorde-deliver/SKILL.md",
         )
         for path in surfaces:
             content = path.read_text(encoding="utf-8")
+            normalized = " ".join(content.lower().split())
             self.assertIn("attempt/checklists", content, path.as_posix())
             self.assertIn("proposal_path", content, path.as_posix())
             self.assertIn("task_summary", content, path.as_posix())
             self.assertIn("checklist_summary", content, path.as_posix())
             self.assertIn("sole persisted reflection-record authority", content, path.as_posix())
-            self.assertIn("CONCORDE-ACCEPT-012", content, path.as_posix())
+            self.assertIn("CONCORDE-DELIVER-012", content, path.as_posix())
             self.assertIn("Never copy or cite an entry identifier", content, path.as_posix())
+            self.assertIn("invocation is authorization", normalized, path.as_posix())
+            self.assertIn("without asking", normalized, path.as_posix())
+            self.assertNotIn("ask for explicit approval", normalized, path.as_posix())
+            self.assertNotIn("only after the maintainer's explicit yes", normalized, path.as_posix())
             self.assertNotIn("while one is uncited", content, path.as_posix())
 
     def test_planning_guidance_emits_runnable_quickstarts_and_resolved_task_paths(self):

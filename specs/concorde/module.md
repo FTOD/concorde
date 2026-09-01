@@ -70,7 +70,7 @@ read-only `ask` skill is followed directly by the coding agent.
 
 | Feature ID | Observable outcome | Primary path |
 |---|---|---|
-| `feature.concorde.workflow` | Direct a feature from specification through explicit implementation acceptance. | Skills → Scripts when needed → Workspace Files |
+| `feature.concorde.workflow` | Direct a feature from specification through explicit implementation delivery. | Skills → Scripts when needed → Workspace Files |
 | `feature.concorde.record-workflow-reflections` | Record workflow problems in the one durable project reflection log. | Skills → Workspace Files |
 | `feature.concorde.install-with-spec-kit` | Inspect, install, update, and remove the supported Concorde package set. | Distribution → Skills + Scripts |
 | `feature.concorde.self-host-framework` | Materialize and verify the current checkout through the public installation path. | Distribution → Skills + Scripts |
@@ -118,7 +118,7 @@ module split above describes how those outcomes are realized.
 `feature-work` in the level view follows the normal path. The maintainer invokes a skill. The skill
 names the selected feature workspace and the files relevant to the phase. The coding agent reads or
 writes those files and invokes a launcher only for initialization, context retrieval, validation, or
-implementation acceptance. The script resolves the selection, operates on the named files, and
+implementation delivery. The script resolves the selection, operates on the named files, and
 returns a structured result to the skill. No other user-facing Concorde runtime exists.
 
 ## Design Rationale

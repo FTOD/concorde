@@ -4,13 +4,13 @@
 
 **Realization status**: Accepted realization of the architecture-aware Spec Kit workflow under the
 feature-root `abstract.md` / `design.md` / `implementation.md` model, module `module.md` / `design.md`
-pair, Architecture Source Profile 4, Feature Workspace Protocol v8, acceptance proposal v6, and Build
+pair, Architecture Source Profile 4, Feature Workspace Protocol v9, delivery proposal v7, and Build
 Manifest v8. Revised 2026-08-29 for the canonical naming model and again for the module
 `architecture/` directory, and migrated across this repository.
 
 ## Realization Overview
 
-Concorde preserves Spec Kit as the owner of specification, clarification, planning, tasks, implementation, analysis, convergence, and task-to-issue conversion. Around that lifecycle it adds reviewed module ownership, feature placement, one optional level of first-class sub-features, selected-workspace routing, bounded context built from module summaries and feature abstracts, deterministic validation (structure, contracts, scenarios, evidence, freshness, summary shape and budget, abstract shape and budget, reference presence, and the feature-root durable trio), feature-owned diagrams, approval-gated acceptance, and a source-grounded read-only question surface.
+Concorde preserves Spec Kit as the owner of specification, clarification, planning, tasks, implementation, analysis, convergence, and task-to-issue conversion. Around that lifecycle it adds reviewed module ownership, feature placement, one optional level of first-class sub-features, selected-workspace routing, bounded context built from module summaries and feature abstracts, deterministic validation (structure, contracts, scenarios, evidence, freshness, summary shape and budget, abstract shape and budget, reference presence, and the feature-root durable trio), feature-owned diagrams, single-invocation delivery, and a source-grounded read-only question surface.
 
 Every level separates what is read from what is consulted. A module owns `module.md` (the
 eight-section summary), `design.md` (implementation notes, rationale, alternatives, and decisions),
@@ -18,11 +18,11 @@ and, under `architecture/`, its diagrams (`diagrams/`, at least one level view f
 boundary contracts (`contracts/`), and submodules (`modules/`). A feature root owns durable `abstract.md` (read-first
 orientation), `design.md` (self-contained required behavior), and `implementation.md` (accepted
 realization), optional `contracts/` and `diagrams/`, and at most one temporal `attempt/`. New feature
-implementations begin as the `implementation-template` placeholder and are replaced only by approved
-acceptance. No alias or symlink stands in for any canonical name.
+implementations begin as the `implementation-template` placeholder and are replaced only by explicit
+delivery. No alias or symlink stands in for any canonical name.
 
 Selection remains the standard Spec Kit `.specify/feature.json` pointer (or
-`SPECIFY_FEATURE_DIRECTORY`). Protocol v8 derives the selected kind, ID, providing module,
+`SPECIFY_FEATURE_DIRECTORY`). Protocol v9 derives the selected kind, ID, providing module,
 `feature_abstract`, `feature_design`, `feature_implementation`, `module_summary`, `module_design`,
 `attempt_dir`, `attempt_state`, nullable parent context, and bounded sibling summaries with
 `abstract`, `design`, and `implementation` paths but never bodies.
@@ -33,15 +33,15 @@ Selection remains the standard Spec Kit `.specify/feature.json` pointer (or
   `abstract`, `implementation`, `reflections`, `plan`, `tasks`), and the extension's five
   user-visible command surfaces.
 - `module.concorde.scripts` owns selected-workspace routing, Profile 4 discovery, bounded context,
-  readiness, validation, reflection diagnostics, and implementation-acceptance operations.
-- `module.concorde.workspace-files` owns Protocol v8 paths and lifetimes for the durable feature
+  readiness, validation, reflection diagnostics, and implementation-delivery operations.
+- `module.concorde.workspace-files` owns Protocol v9 paths and lifetimes for the durable feature
   trio, module summaries and references, selection state, reflections, and temporal `attempt/`
   evidence.
 - `module.concorde.auto-docs` publishes Build Manifest v8 collections `architecture`, `docs`,
   `feature-abstracts`, `features`, and `feature-implementations`; routes are the abstract landing page,
   `/design`, and `/implementation`, and `attempt/**` is excluded.
 - `module.concorde.distribution` packages the six templates, nine normal-phase modifications, five
-  Concorde surfaces, and four portable scripts at version 0.4.0.
+  Concorde surfaces, and four portable scripts at version 0.6.0.
 
 Across `contract.concorde.spec-kit-platform`, `abstract-template` and `implementation-template` are
 resolved through the public preset stack. The tracked local helpers export `FEATURE_ABSTRACT`,
@@ -77,26 +77,27 @@ The installed `ask` surface opens feature `design.md` for exact requirements, mo
 module rationale, and feature `implementation.md` for accepted realization, citing every file and
 remaining read-only.
 
-### Accept one selected lifecycle root
+### Deliver one selected lifecycle root
 
-Proposal mode requires complete tasks and checklists and returns the Protocol v8 workspace and digest.
-Proposal v4 uses `implementation.path == feature_implementation`, optional `module_design`, and a
+Proposal mode requires complete tasks and checklists and returns the Protocol v9 workspace and digest.
+Proposal v7 uses `implementation.path == feature_implementation`, optional `module_design`, and a
 single `remove == [attempt_dir]`. Apply stages feature `implementation.md` and optional module
 `design.md`, moves the attempt aside, promotes atomically, restores on failure, and reports
-`implementation_digest_before/after` plus module-design digests.
+`implementation_digest_before/after` plus module-design digests. The user's delivery invocation
+authorizes candidate generation and immediate apply without a second approval question.
 
 ## Durable Implementation Decisions
 
 - Feature `design.md` and `implementation.md` have distinct meanings; module `design.md` remains the
   module design reference. No compatibility alias or transition period exists.
-- The feature abstract is an authored, self-contained document with exactly the five sections in order, a structure link (declared diagram, level view, delivered `/architecture/*.html` route) or a fenced text sketch, `Logic` citations resolving to `**FR-NNN**` definitions in the adjacent `design.md`, and a 3,000-word budget reported as a warning; it is written by specification and clarification only and never by acceptance, and where it disagrees with `design.md` the specification prevails and analysis reports the disagreement.
+- The feature abstract is an authored, self-contained document with exactly the five sections in order, a structure link (declared diagram, level view, delivered `/architecture/*.html` route) or a fenced text sketch, `Logic` citations resolving to `**FR-NNN**` definitions in the adjacent `design.md`, and a 3,000-word budget reported as a warning; it is written by specification and clarification only and never by delivery, and where it disagrees with `design.md` the specification prevails and analysis reports the disagreement.
 - `CONCORDE-ABSTRACT-003` fires on an unknown citation, or on no citation when the design defines at
   least one `**FR-NNN**`.
-- Feature Workspace Protocol v8 is a closed schema with `feature_abstract`, `feature_design`,
-  `feature_implementation`, `attempt_dir`, and `attempt_state`; acceptance proposals are v4 and Build
+- Feature Workspace Protocol v9 is a closed schema with `feature_abstract`, `feature_design`,
+  `feature_implementation`, `attempt_dir`, and `attempt_state`; delivery proposals are v7 and Build
   Manifest is v7.
-- The accepted realization is seeded as a placeholder at specification, written in full by the first acceptance, completed by later ones, keeps the six required headings first, and rejects the placeholder marker as candidate content.
-- Acceptance promotes an ordered set of staged files and the attempt removal atomically with full rollback; the source digest binds `abstract.md` and both design references so a manual edit between review and apply is a `conflict`.
+- The accepted realization is seeded as a placeholder at specification, written in full by the first delivery, completed by later ones, keeps the six required headings first, and rejects the placeholder marker as candidate content.
+- Delivery promotes an ordered set of staged files and the attempt removal atomically with full rollback; the source digest binds `abstract.md` and both design references so a manual edit between review and apply is a `conflict`.
 - The additive fast-loop directly reconciles bounded existing authorities after resolving every
   affected root. A pure naming migration is eligible when it supplies a complete mapping, preserves
   logic and non-name semantics, follows existing compatibility/migration policy, and passes a
@@ -120,16 +121,16 @@ single `remove == [attempt_dir]`. Apply stages feature `implementation.md` and o
 Behavior and acceptance criteria are in `design.md` and its nine sub-feature designs; the feature
 abstract is adjacent. Project-level ownership and interactions are in `specs/concorde/module.md` and the
 level view under `specs/concorde/architecture/diagrams/`; module rationale is in `specs/concorde/design.md`. Command behavior is governed
-by `contracts/agent-commands.md`; Protocol v8/proposal v6 by `feature-workspace.schema.json`; the
+by `contracts/agent-commands.md`; Protocol v9/proposal v7 by `feature-workspace.schema.json`; the
 documentation read model by the Auto-Docs contracts and Build Manifest v8.
 
 Runtime realization is centered in `repository.py`, `feature_workspace.py`, `context.py`,
-`implementation_acceptance.py`, `diagnostics.py`, and `validation/{abstract,diagrams,layout}.py`. Protocol and workspace
-adapters emit schema version 8. Publication realization is in `docsite/plugins/concorde-content/`
+`delivery.py`, `diagnostics.py`, and `validation/{abstract,diagrams,layout}.py`. Protocol and workspace
+adapters emit schema version 9. Publication realization is in `docsite/plugins/concorde-content/`
 and its Abstract · Design · Implementation companion navigation.
 
 Executable evidence on 2026-08-29: 234 Python tests pass across unit, contract, integration, and
-acceptance suites, including Protocol v8 routing, proposal v6 acceptance, legacy-name findings,
+acceptance suites, including Protocol v9 routing, proposal v7 delivery, legacy-name findings,
 rollback, resume, installed surfaces, and all migrated fixtures. TypeScript compilation and all 77
 Vitest tests pass, including an optimized production build. Content validation publishes 100 pages
 with zero errors and 24 deliberate exclusions; Build Manifest v8 contains 21 feature abstracts, 21
@@ -161,7 +162,7 @@ two preset-owned surfaces and any cited path missing from the checkout.
   designs number requirements without `**FR-NNN**` identifiers, so their abstracts cite by section.
 - The documentation site does not publish feature-root contract documents (`contracts/<name>.md`, schemas); widening that set is feature 002 scope.
 - Compatibility is bounded to Spec Kit 0.16.4; deterministic validation cannot prove that a abstract or summary is well written or faithful, and the reading-budget proxies are advisory.
-- The constitution's A.III relaxation of one providing module per feature remains a separately tracked follow-up; Protocol v8 still reports one `providing_module`.
+- The constitution's A.III relaxation of one providing module per feature remains a separately tracked follow-up; Protocol v9 still reports one `providing_module`.
 
 ## Implementation Detail
 
@@ -173,9 +174,9 @@ two preset-owned surfaces and any cited path missing from the checkout.
   `attempt_dir`, and `attempt_state`; parent and sibling projections carry the same durable meanings.
 - `validation/abstract.py` owns `REQUIRED_ABSTRACT_SECTIONS`, the 3,000-word budget, structure links,
   and FR citations; `validation/layout.py` owns trio, legacy-name, and selection findings.
-- `implementation_acceptance.py` accepts proposal v6 `implementation`, updates only
+- `delivery.py` accepts proposal v7 `implementation`, updates only
   `feature_implementation`, optionally amends `module_design`, and removes only `attempt_dir`.
-- `diagnostics.py` and `scripts/python/workspace.py` emit feature protocol schema version 8.
+- `diagnostics.py` and `scripts/python/workspace.py` emit feature protocol schema version 9.
 
 ### Preset, extension, and helpers
 
@@ -183,24 +184,24 @@ two preset-owned surfaces and any cited path missing from the checkout.
   `reflections-template`, `plan-template`, `tasks-template`, and nine complete command modifications.
 - `speckit.specify.md` resolves the three templates, authors the abstract after the specification, seeds `implementation.md` when absent, and adds three abstract checklist items; `speckit.clarify.md` updates the abstract after each integrated answer; `speckit.checklist.md` names the abstract as in scope; `speckit.plan.md`, `speckit.tasks.md`, `speckit.implement.md`, `speckit.converge.md`, and `speckit.taskstoissues.md` read the feature `implementation.md` as baseline and never write the trio; `speckit.analyze.md` adds the "abstract Disagreement" detection pass, preserves every non-reflection file, and writes `workspace.reflections` only when reflection recording requires it.
 - Every recording block names `workspace.reflections` as the sole persisted reflection-record
-  authority. Acceptance presents its entries transiently and rejects copied `R-NNN` identifiers in
+  authority. Delivery presents its entries transiently and rejects copied `R-NNN` identifiers in
   candidate feature implementation or module design content.
-- Extension commands document proposal v6 and the `CONCORDE-ABSTRACT-*` / layout inventory.
+- Extension commands document proposal v7 and the `CONCORDE-ABSTRACT-*` / layout inventory.
 - Local helpers export `FEATURE_ABSTRACT`, `FEATURE_DESIGN`, `FEATURE_IMPLEMENTATION`, and
   `ATTEMPT_DIR`.
 
 ### Auto-Docs site
 
 - `registry.ts` declares `feature-abstracts`, `features`, and `feature-implementations`, pairs them by
-  root, and excludes `attempt/**`; `manifest.ts` emits schema version 7.
+  root, and excludes `attempt/**`; `manifest.ts` emits schema version 8.
 - `CompanionLinks.tsx` renders Abstract · Design · Implementation with the current page unlinked.
 - Fixtures model missing implementation, legacy names, missing/unpaired abstracts, unpaired
   implementations, and core-diagram embedding.
 
 ### Test map
 
-- Unit and integration suites cover abstract rules, Protocol v8 paths, layout migration findings,
-  proposal v6 acceptance, rollback, resume, and publication pairing.
+- Unit and integration suites cover abstract rules, Protocol v9 paths, layout migration findings,
+  proposal v7 delivery, rollback, resume, and publication pairing.
 - Contract and acceptance suites cover installed Codex/Claude surfaces, six templates, protocol
   examples, and clean-project installation.
 - Docsite: `tests/unit/{registry,feature-designs,links}.test.ts`, `tests/contract/{build-manifest,content-sources}.test.ts`, `tests/integration/{feature-publication,production-build,performance,framework-guides}.test.ts`.

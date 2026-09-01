@@ -9,7 +9,7 @@ unique `R-NNN` identifier, required structure, maintainer decision, and problem 
 may remove closed entries without renumbering or reusing IDs. This file is the sole persisted
 authority for entry identity, status, notes, occurrences, and prose; no attempt artifact,
 feature/module document, contract, diagram, code, or test copies or cites that reflection content.
-Acceptance presents entries transiently and rejects copied `R-NNN` identifiers; no operation removes
+Delivery presents entries transiently and rejects copied `R-NNN` identifiers; no operation removes
 this file.
 
 <!--

@@ -39,7 +39,7 @@ related documentation without planning, tasks, implementation, or acceptance."
 A maintainer can explicitly invoke `speckit.fast-loop` for a small, well-bounded modification and
 receive one directly reconciled change to code, tests, and related maintained documentation without
 creating an attempt or running the planning, task-generation, implementation, or implementation-
-acceptance commands. Changes that are not safely small are rejected before mutation and redirected
+delivery commands. Changes that are not safely small are rejected before mutation and redirected
 to the full workflow.
 
 ## Parent Boundary
@@ -48,7 +48,7 @@ The parent [Concorde Workflow](../../design.md) owns the aggregate lifecycle, du
 selection rules, shared safety invariants, and command inventory. This child owns only the alternate
 direct-edit path that begins from an existing selected anchor feature and may reconcile other related
 existing features. It does not redefine ordinary specification, planning, execution, validation, or
-acceptance behavior.
+delivery behavior.
 
 ## Core Component Diagram and Supplemental Scenario Views
 
@@ -90,7 +90,7 @@ responsibilities and dependencies remain unchanged.
 2. **Given** an eligible change that alters observable behavior in multiple related features,
    **When** the loop completes, **Then** every affected feature's `design.md`, `abstract.md`, and
    `implementation.md` describe the resulting behavior and realization consistently without a
-   planning or acceptance artifact.
+   planning or delivery artifact.
 3. **Given** an eligible implementation-only correction that leaves required behavior unchanged,
    **When** the loop completes, **Then** behavioral authority remains unchanged while the accepted
    implementation reference, tests, and affected user-facing documentation are reconciled.
@@ -217,7 +217,7 @@ run never claims completion or accepted evidence.
   direction and MUST exclude unrelated feature and architecture sources.
 - **FR-009**: The command MUST NOT create or use `attempt/`, `plan.md`, `tasks.md`, acceptance
   proposals, or task checklists, and MUST NOT invoke the plan, tasks, implement, converge, or
-  implementation-acceptance workflows as hidden substeps.
+  implementation-delivery workflows as hidden substeps.
 - **FR-010**: The command MUST preserve unrelated pre-existing worktree changes and MUST stop before
   writing when overlapping ownership cannot be established safely.
 - **FR-011**: The command MUST run tests and deterministic validation in proportion to every changed
@@ -229,7 +229,7 @@ run never claims completion or accepted evidence.
   eligibility, list changed files, distinguish each feature's behavioral from realization-only
   and referential-only documentation changes, identify every check run and its result, disclose
   unrelated pre-existing changes preserved, report architecture evidence as `not_applicable` or
-  `validated`, and state that no attempt or acceptance operation was used. For a pure rename it MUST
+  `validated`, and state that no attempt or delivery operation was used. For a pure rename it MUST
   also report the old-to-new mapping, stale-name inventory, and every rewritten reflection entry ID.
 - **FR-015**: Compatibility and migration eligibility MUST be evaluated only against durable
   project-level promises made to users of the whole project. Internal module contracts, data formats,
@@ -302,7 +302,7 @@ tasks, implementation, convergence, or acceptance.
   the command, and ambiguous overlapping edits cause a pre-mutation stop.
 - **SC-005**: Every successful invocation reports the selected anchor and complete affected feature
   set, every changed file, every required check and result, and explicit confirmation that no attempt
-  or acceptance operation ran.
+  or delivery operation ran.
 - **SC-007**: Eligible fixtures that span two existing features or change an inter-module contract
   format complete directly with all related authorities reconciled; fixtures that change module
   responsibility, dependency direction, or whole-project user compatibility/migration policy make
@@ -310,7 +310,7 @@ tasks, implementation, convergence, or acceptance.
   follows the existing policy.
 - **SC-008**: Every eligible fixture that edits maintained architecture sources reports exact
   validated paths, hashes, and diff and completes without a separate post-edit human review or any
-  attempt/implementation-acceptance artifact.
+  attempt/implementation-delivery artifact.
 - **SC-009**: Every eligible pure-rename fixture changes all and only mapped names and references,
   reports every affected authority as referential-only, preserves implementation logic and
   non-name semantics, preserves every rewritten reflection `R-NNN` identifier and valid log shape,
@@ -340,7 +340,7 @@ tasks, implementation, convergence, or acceptance.
 ## Dependencies
 
 - The parent `feature.concorde.workflow` document model, selection rules, and safety invariants.
-- Feature Workspace Protocol v8 or its compatible successor for canonical selection, durable paths,
+- Feature Workspace Protocol v9 or its compatible successor for canonical selection, durable paths,
   parent context, bounded siblings, and attempt state.
 - `contract.concorde.spec-kit-platform` for equivalent installed command presentation.
 - Existing project-specific test and deterministic validation surfaces.

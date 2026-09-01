@@ -12,11 +12,11 @@ counterparties:
 representation:
   kind: custom
   format: Concorde Feature Workspace Protocol
-  version: "6"
+  version: "9"
   definition: specs/concorde/features/001-concorde-workflow/contracts/feature-workspace.schema.json
 examples:
-  - specs/concorde/features/001-concorde-workflow/contracts/examples/impl-accept-eligible-response.json
-  - specs/concorde/features/001-concorde-workflow/contracts/examples/impl-accept-proposal.json
+  - specs/concorde/features/001-concorde-workflow/contracts/examples/deliver-eligible-response.json
+  - specs/concorde/features/001-concorde-workflow/contracts/examples/deliver-proposal.json
 features:
   - feature.workspace-files.manage-feature-workspace
 evidence_status: partial
@@ -59,11 +59,12 @@ command. Complete field types and allowed values are defined by the linked schem
   `plan.md` or `tasks.md` aliases.
 - An existing non-empty `attempt/` attempt MUST be reported through `attempt_state:
   active` and MUST never be replaced, archived as a second authority, or removed except by an
-  approved acceptance apply.
-- Acceptance proves every canonical task is complete and every recognizable existing checklist item
-  is satisfied, binds the reviewed realization, the optional module design-reference amendment, and
+  successful delivery apply.
+- Delivery proves every canonical task is complete and every recognizable existing checklist item
+  is satisfied, binds the generated realization, the optional module design-reference amendment, and
   the exact removal set to a source digest, returns the exact proposal path and task/checklist
-  summaries, requires explicit approval, atomically replaces the selected feature's `implementation.md` and (when
+  summaries, uses the user's invocation as authorization without a second approval, atomically
+  replaces the selected feature's `implementation.md` and (when
   proposed) the providing module's `design.md`, and removes only the selected feature's complete
   `attempt/` directory; `abstract.md`, feature `design.md`, `module.md`, and every other root remain
   byte-identical.
@@ -79,12 +80,12 @@ sources, the active attempt, and the standard Spec Kit selection unchanged.
 
 ## Compatibility
 
-Protocol v8 sets `schema_version` 8 and exposes `feature_abstract`, `feature_design`,
+Protocol v9 sets `schema_version` 9 and exposes `feature_abstract`, `feature_design`,
 `feature_implementation`, `attempt_dir`, `attempt_state`, `module_summary`, and `module_design`.
-Acceptance proposal v6 uses `implementation`, optional `module_design`, and `remove`, and results use
+Delivery proposal v7 uses `implementation`, optional `module_design`, and `remove`, and results use
 `implementation_digest_*`. Protocol v3 withdrew `feature.create` and `feature.select` together with their
 creation/selection request options in favour of standard Spec Kit creation (`speckit.specify` with
-`SPECIFY_FEATURE_DIRECTORY`) and selection (`.specify/feature.json`); `impl.accept` is the only
+`SPECIFY_FEATURE_DIRECTORY`) and selection (`.specify/feature.json`); `deliver` is the only
 remaining operation. The constitution (v2.0.0, principle A.III) no longer requires one providing
 module per feature, and the withdrawn operations encoded that assumption. Removing a required field,
 changing the meaning of the selected root, or changing durable/temporal path authority requires a
@@ -94,6 +95,6 @@ for explicitly tested Spec Kit versions.
 ## Evidence
 
 Automated evidence verifies selected-root resolution, collision and unsafe-path safety, idempotency,
-acceptance eligibility/apply/rollback, cross-integration command parity, and the complete
+delivery eligibility/apply/rollback, cross-integration command parity, and the complete
 phase-to-path matrix. Evidence remains `partial` until the human placement and explicit
 architecture-approval protocols are completed.

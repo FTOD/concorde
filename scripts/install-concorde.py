@@ -79,7 +79,7 @@ def normalize_version(value: str) -> str:
             EXIT_REQUEST,
             "request-validation",
             f"Invalid Concorde version: {value!r}.",
-            "Pass a release version such as 0.5.0.",
+            "Pass a release version such as 0.6.0.",
         )
     return normalized
 
@@ -1020,7 +1020,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--integration", help="Coding-agent integration; required for a fresh target")
     result.add_argument("--integration-options", help="Options forwarded to `specify init`")
     source = result.add_mutually_exclusive_group()
-    source.add_argument("--version", help="Published Concorde version (for example 0.5.0)")
+    source.add_argument("--version", help="Published Concorde version (for example 0.6.0)")
     source.add_argument("--checkout", help="Local Concorde checkout to build, verify, and install")
     result.add_argument("--preview", action="store_true", help="Print the exact plan without changing the target")
     return result

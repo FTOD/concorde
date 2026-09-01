@@ -23,10 +23,10 @@
         "note": "Feature intent stays durable while plan, tasks, checklists, and delivery evidence remain scoped to the selected attempt."
       },
       {
-        "id": "accept-feature",
-        "label": "Accept feature realization",
-        "focus": ["featureWorkspace", "attemptMemory", "projectState", "acceptSkill", "acceptedRealization"],
-        "note": "Acceptance reviews feature sources, attempt evidence, code, tests, and reflections before durable promotion."
+        "id": "deliver-feature",
+        "label": "Deliver feature realization",
+        "focus": ["featureWorkspace", "attemptMemory", "projectState", "deliverSkill", "acceptedRealization"],
+        "note": "Delivery reads feature sources, attempt evidence, code, tests, and reflections, then promotes under the user's invocation."
       }
     ]
   },
@@ -139,11 +139,11 @@
       "width": 180
     },
     {
-      "id": "acceptSkill",
+      "id": "deliverSkill",
       "type": "security",
-      "label": "Implementation Accept",
-      "sublabel": "concorde.impl.accept",
-      "tag": "explicit approval",
+      "label": "Deliver",
+      "sublabel": "concorde.deliver",
+      "tag": "invocation-authorized",
       "stage": 4,
       "row": 0,
       "width": 180
@@ -260,20 +260,20 @@
       "labelAt": [745, 271]
     },
     {
-      "id": "project-feeds-acceptance",
+      "id": "project-feeds-delivery",
       "from": "projectState",
-      "to": "acceptSkill",
-      "label": "review feature + attempt + code",
-      "classification": "acceptance input",
+      "to": "deliverSkill",
+      "label": "read feature + attempt + code",
+      "classification": "delivery input",
       "variant": "security",
       "labelDy": 54
     },
     {
-      "id": "acceptance-promotes-feature",
-      "from": "acceptSkill",
+      "id": "delivery-promotes-feature",
+      "from": "deliverSkill",
       "to": "acceptedRealization",
       "label": "write implementation; remove attempt/",
-      "classification": "explicit promotion",
+      "classification": "invocation-authorized promotion",
       "variant": "emphasis",
       "fromSide": "bottom",
       "toSide": "top",
@@ -306,12 +306,12 @@
     },
     {
       "dot": "violet",
-      "title": "Attempt, project state, and acceptance",
+      "title": "Attempt, project state, and delivery",
       "items": [
         "implement consumes feature intent and attempt memory, then writes code and task state",
         "analyze only appends reflections; converge appends tasks + reflections; taskstoissues writes external issues",
-        "impl.accept reads durable feature files, the full attempt, reflections, code, and tests",
-        "Acceptance writes feature implementation.md, may amend module design.md, and removes only the selected attempt/",
+        "deliver reads durable feature files, the full attempt, reflections, code, and tests",
+        "Delivery writes feature implementation.md, may amend module design.md, and removes only the selected attempt/ without a second approval",
         "Fast-loop directly updates bounded affected code and authorities; eligible architecture edits finalize after validation and no attempt is created"
       ]
     }

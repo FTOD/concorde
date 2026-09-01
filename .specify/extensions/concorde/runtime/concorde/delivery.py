@@ -1,4 +1,4 @@
-"""Review-first acceptance of a completed attempt into the feature's implementation.md,
+"""Invocation-authorized delivery of a completed attempt into implementation.md,
 optionally amending the providing module's design reference in the same atomic apply."""
 
 from __future__ import annotations
@@ -56,11 +56,11 @@ def _resolve_target(project: Path, package: Any, target: str | None) -> tuple[So
 def _attempt_files(project: Path, attempt_dir: str, ignored: str | None = None) -> list[str]:
     attempt = project / attempt_dir
     if not attempt.is_dir() or attempt.is_symlink():
-        raise WorkspaceError("acceptance requires one real attempt/ directory")
+        raise WorkspaceError("delivery requires one real attempt/ directory")
     files: list[str] = []
     for path in sorted(attempt.rglob("*")):
         if path.is_symlink():
-            raise WorkspaceError(f"acceptance input may not be a symlink: {path.relative_to(project).as_posix()}")
+            raise WorkspaceError(f"delivery input may not be a symlink: {path.relative_to(project).as_posix()}")
         if path.is_file():
             relative = path.relative_to(project).as_posix()
             if relative != ignored:
@@ -68,7 +68,7 @@ def _attempt_files(project: Path, attempt_dir: str, ignored: str | None = None) 
     return files
 
 
-def _acceptance_digest(project: Path, package: Any, paths: Any, ignored: str | None = None) -> str:
+def _delivery_digest(project: Path, package: Any, paths: Any, ignored: str | None = None) -> str:
     sources = [item.path for item in package.sources]
     sources.extend(package.views)
     sources.extend(package.diagrams)
@@ -104,11 +104,11 @@ def _checklist_state(
 ) -> tuple[int, list[str], list[str], list[str]]:
     directory = project / checklists_dir
     if directory.is_symlink():
-        raise WorkspaceError(f"acceptance checklist directory may not be a symlink: {checklists_dir}")
+        raise WorkspaceError(f"delivery checklist directory may not be a symlink: {checklists_dir}")
     if not directory.exists():
         return 0, [], [], []
     if not directory.is_dir():
-        raise WorkspaceError(f"acceptance checklist path is not a directory: {checklists_dir}")
+        raise WorkspaceError(f"delivery checklist path is not a directory: {checklists_dir}")
 
     complete: list[str] = []
     incomplete: list[str] = []
@@ -117,7 +117,7 @@ def _checklist_state(
     for path in sorted(directory.glob("*.md")):
         relative = path.relative_to(project).as_posix()
         if path.is_symlink():
-            raise WorkspaceError(f"acceptance checklist input may not be a symlink: {relative}")
+            raise WorkspaceError(f"delivery checklist input may not be a symlink: {relative}")
         if not path.is_file():
             continue
         files += 1
@@ -131,7 +131,7 @@ def _checklist_state(
     return files, complete, incomplete, malformed
 
 
-def propose_acceptance(
+def propose_delivery(
     project_root: str | Path,
     target: str | None = None,
     ignored_proposal: str | None = None,
@@ -145,32 +145,32 @@ def propose_acceptance(
             project,
             paths.checklists_dir,
         )
-        source_digest = _acceptance_digest(project, package, paths, ignored_proposal)
+        source_digest = _delivery_digest(project, package, paths, ignored_proposal)
     except (RepositoryError, WorkspaceError, OSError, UnicodeError) as error:
         return OperationResult(
-            "impl.accept",
+            "deliver",
             target or ".",
             "invalid",
-            findings=(_finding("CONCORDE-ACCEPT-001", ".specify/feature.json", str(error), "Select a valid feature with real durable abstract.md, design.md, and implementation.md files and an active attempt."),),
+            findings=(_finding("CONCORDE-DELIVER-001", ".specify/feature.json", str(error), "Select a valid feature with real durable abstract.md, design.md, and implementation.md files and an active attempt."),),
         )
     findings: list[Finding] = []
     if incomplete:
-        findings.append(_finding("CONCORDE-ACCEPT-002", paths.tasks, "Unchecked tasks block acceptance: " + ", ".join(incomplete), "Complete or deliberately remove the blocking work through the normal task workflow."))
+        findings.append(_finding("CONCORDE-DELIVER-002", paths.tasks, "Unchecked tasks block delivery: " + ", ".join(incomplete), "Complete or deliberately remove the blocking work through the normal task workflow."))
     if malformed:
-        findings.append(_finding("CONCORDE-ACCEPT-003", paths.tasks, "Task completion cannot be proven: " + ", ".join(malformed), "Use canonical '- [ ] T###' or '- [X] T###' task items and complete every task."))
+        findings.append(_finding("CONCORDE-DELIVER-003", paths.tasks, "Task completion cannot be proven: " + ", ".join(malformed), "Use canonical '- [ ] T###' or '- [X] T###' task items and complete every task."))
     if checklist_incomplete:
-        findings.append(_finding("CONCORDE-ACCEPT-009", paths.checklists_dir, "Unchecked checklist items block acceptance: " + ", ".join(checklist_incomplete), "Resolve every existing checklist item through the normal specification and implementation workflow."))
+        findings.append(_finding("CONCORDE-DELIVER-009", paths.checklists_dir, "Unchecked checklist items block delivery: " + ", ".join(checklist_incomplete), "Resolve every existing checklist item through the normal specification and implementation workflow."))
     if checklist_malformed:
-        findings.append(_finding("CONCORDE-ACCEPT-010", paths.checklists_dir, "Checklist completion cannot be proven: " + ", ".join(checklist_malformed), "Use canonical '- [ ]' or '- [X]' checklist markers and resolve every item."))
+        findings.append(_finding("CONCORDE-DELIVER-010", paths.checklists_dir, "Checklist completion cannot be proven: " + ", ".join(checklist_malformed), "Use canonical '- [ ]' or '- [X]' checklist markers and resolve every item."))
     reflection_summary = {"entries": 0, "open": 0, "resolved": 0, "dismissed": 0}
     reflections_body = package.auxiliary.get(log_path(package.specification_root))
     if reflections_body is not None:
         parsed = parse_reflection_log(reflections_body)
         if parsed.problems:
-            findings.append(_finding("CONCORDE-ACCEPT-011", paths.reflections, "The project reflection log is malformed: " + "; ".join(problem.message for problem in parsed.problems), "Repair the log per the reflection-log contract (speckit.concorde.validate reports each CONCORDE-REFLECT finding) and re-propose."))
+            findings.append(_finding("CONCORDE-DELIVER-011", paths.reflections, "The project reflection log is malformed: " + "; ".join(problem.message for problem in parsed.problems), "Repair the log per the reflection-log contract (speckit.concorde.validate reports each CONCORDE-REFLECT finding) and re-propose."))
         reflection_summary = parsed.summary(feature.identifier)
     changes = [
-        {"path": paths.feature_implementation, "action": "update", "meaning": "Replace the feature's durable implementation with the reviewed candidate."},
+        {"path": paths.feature_implementation, "action": "update", "meaning": "Replace the feature's durable implementation with the invocation-authorized candidate."},
         {"path": paths.attempt_dir, "action": "delete", "meaning": "Remove the complete temporal attempt after the implementation is promoted."},
     ]
     result = {
@@ -184,7 +184,7 @@ def propose_acceptance(
             "incomplete": len(checklist_incomplete),
             "malformed": len(checklist_malformed),
         },
-        "proposal_path": f"{paths.attempt_dir}/accept-proposal.json",
+        "proposal_path": f"{paths.attempt_dir}/deliver-proposal.json",
         "reflection_summary": reflection_summary,
     }
     artifacts = [paths.feature_design, paths.feature_implementation, paths.tasks]
@@ -195,7 +195,7 @@ def propose_acceptance(
     if (project / paths.module_design).is_file():
         artifacts.append(paths.module_design)
     return OperationResult(
-        "impl.accept",
+        "deliver",
         feature.identifier,
         "eligible" if not findings else "invalid",
         tuple(artifacts),
@@ -210,9 +210,9 @@ def _load_proposal(project: Path, proposal_path: str) -> tuple[str, dict[str, An
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
-        raise WorkspaceError(f"cannot read acceptance proposal: {error}") from error
+        raise WorkspaceError(f"cannot read delivery proposal: {error}") from error
     if not isinstance(value, dict):
-        raise WorkspaceError("acceptance proposal must be a JSON object")
+        raise WorkspaceError("delivery proposal must be a JSON object")
     return relative, value
 
 
@@ -251,7 +251,7 @@ def _amendment_target(paths: dict[str, Any], amendment: Any) -> str:
     if not isinstance(path, str) or not path:
         raise WorkspaceError("module_design.path is required")
     if path.endswith("/module.md") or path == "module.md":
-        raise WorkspaceError("acceptance may not edit a module summary (module.md); amend the module design.md instead")
+        raise WorkspaceError("delivery may not edit a module summary (module.md); amend the module design.md instead")
     if path != paths["module_design"]:
         if path.startswith(paths["feature_directory"] + "/"):
             raise WorkspaceError("module_design must name the providing module's design.md, not a path inside the feature root")
@@ -260,22 +260,22 @@ def _amendment_target(paths: dict[str, Any], amendment: Any) -> str:
 
 
 def _persisted_reflection_identifiers(*contents: str | None) -> list[str]:
-    """Reflection identifiers copied into acceptance-managed durable documents."""
+    """Reflection identifiers copied into delivery-managed durable documents."""
     return sorted({match.group(0) for content in contents if content for match in REFLECTION_IDENTIFIER.finditer(content)})
 
 
-def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationResult:
+def apply_delivery(project_root: str | Path, proposal_path: str) -> OperationResult:
     project = Path(project_root).resolve()
     try:
         relative_proposal, proposal = _load_proposal(project, proposal_path)
-        if proposal.get("proposal_version") != 6 or proposal.get("operation") != "impl.accept":
-            raise WorkspaceError("unsupported acceptance proposal; proposal_version 6 with operation impl.accept is required")
+        if proposal.get("proposal_version") != 7 or proposal.get("operation") != "deliver":
+            raise WorkspaceError("unsupported delivery proposal; proposal_version 7 with operation deliver is required")
         if "design" in proposal:
-            raise WorkspaceError("proposal v6 names the durable implementation under 'implementation'; 'design' is not accepted")
+            raise WorkspaceError("proposal v7 names the durable implementation under 'implementation'; 'design' is not accepted")
         target = proposal.get("target")
         if not isinstance(target, str) or not target:
-            raise WorkspaceError("acceptance proposal target is required")
-        eligibility = propose_acceptance(project, target, relative_proposal)
+            raise WorkspaceError("delivery proposal target is required")
+        eligibility = propose_delivery(project, target, relative_proposal)
         if eligibility.status != "eligible":
             return eligibility
         paths = eligibility.result["workspace"]
@@ -283,10 +283,10 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
             raise WorkspaceError(f"proposal must be stored at {eligibility.result['proposal_path']}")
         if proposal.get("source_digest") != eligibility.result["source_digest"]:
             return OperationResult(
-                "impl.accept",
+                "deliver",
                 target,
                 "conflict",
-                findings=(_finding("CONCORDE-ACCEPT-004", relative_proposal, "Acceptance inputs changed after proposal.", "Regenerate and review a proposal against the current completed attempt."),),
+                findings=(_finding("CONCORDE-DELIVER-004", relative_proposal, "Delivery inputs changed after proposal.", "Regenerate the proposal against the current completed attempt."),),
                 result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"]},
             )
         realization = proposal.get("implementation")
@@ -295,7 +295,7 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
         realization_path = realization.get("path")
         if realization_path != paths["feature_implementation"]:
             if isinstance(realization_path, str) and realization_path.rsplit("/", 1)[-1] in {"abstract.md", "design.md", "module.md", "spec.md", "tldr.md"}:
-                raise WorkspaceError("acceptance writes only feature implementation.md; it never writes abstract.md, design.md, module.md, spec.md, or tldr.md")
+                raise WorkspaceError("delivery writes only feature implementation.md; it never writes abstract.md, design.md, module.md, spec.md, or tldr.md")
             raise WorkspaceError("proposal implementation path must be the selected feature's root implementation.md")
         if proposal.get("remove") != [paths["attempt_dir"]]:
             raise WorkspaceError("proposal removal set must contain exactly the selected feature's attempt/ directory")
@@ -313,14 +313,14 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
         if persisted_reflections:
             source = paths["feature_implementation"] if REFLECTION_IDENTIFIER.search(content) else paths["module_design"]
             return OperationResult(
-                "impl.accept",
+                "deliver",
                 target,
                 "invalid",
-                findings=(_finding("CONCORDE-ACCEPT-012", source, "Acceptance-managed durable documents must not persist reflection identifiers: " + ", ".join(persisted_reflections), "Keep reflection entries, identifiers, statuses, notes, and occurrences only in the project reflections.md; describe independently true implementation facts without reflection identity."),),
+                findings=(_finding("CONCORDE-DELIVER-012", source, "Delivery-managed durable documents must not persist reflection identifiers: " + ", ".join(persisted_reflections), "Keep reflection entries, identifiers, statuses, notes, and occurrences only in the project reflections.md; describe independently true implementation facts without reflection identity."),),
                 result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"], "reflection_summary": eligibility.result["reflection_summary"]},
             )
         if implementation_path.is_symlink() or attempt_path.is_symlink() or (module_design_path is not None and module_design_path.is_symlink()):
-            raise WorkspaceError("acceptance targets may not be symlinks")
+            raise WorkspaceError("delivery targets may not be symlinks")
         old_content = implementation_path.read_text(encoding="utf-8") if implementation_path.is_file() else None
         old_module_design = (
             module_design_path.read_text(encoding="utf-8")
@@ -330,10 +330,10 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
         removed_artifacts = _attempt_files(project, paths["attempt_dir"])
     except (RepositoryError, WorkspaceError, OSError, UnicodeError) as error:
         return OperationResult(
-            "impl.accept",
+            "deliver",
             ".",
             "invalid",
-            findings=(_finding("CONCORDE-ACCEPT-005", proposal_path, str(error), "Correct and re-review the acceptance proposal before applying it."),),
+            findings=(_finding("CONCORDE-DELIVER-005", proposal_path, str(error), "Correct and regenerate the delivery proposal before applying it."),),
         )
 
     # Ordered file set promoted atomically with the attempt removal: all succeed or all are restored.
@@ -346,9 +346,9 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
     try:
         for _, staged, backup in stages:
             if staged.exists() or backup.exists():
-                raise WorkspaceError("stale acceptance stage or recovery artifact exists")
+                raise WorkspaceError("stale delivery stage or recovery artifact exists")
         if attempt_backup.exists():
-            raise WorkspaceError("stale acceptance stage or recovery artifact exists")
+            raise WorkspaceError("stale delivery stage or recovery artifact exists")
         for (target_path, new_content), (_, staged, _) in zip(updates, stages):
             staged.write_text(new_content, encoding="utf-8", newline="\n")
         for target_path, _, backup in stages:
@@ -368,10 +368,10 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
                 target_path.unlink(missing_ok=True)
                 backup.replace(target_path)
         return OperationResult(
-            "impl.accept",
+            "deliver",
             target,
             "failed",
-            findings=(_finding("CONCORDE-ACCEPT-006", paths["feature_directory"], f"Acceptance commit failed: {error}", "Resolve the filesystem failure; the prior feature implementation.md, module design.md, and attempt were restored."),),
+            findings=(_finding("CONCORDE-DELIVER-006", paths["feature_directory"], f"Delivery commit failed: {error}", "Resolve the filesystem failure; the prior feature implementation.md, module design.md, and attempt were restored."),),
             result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"]},
         )
 
@@ -381,7 +381,7 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
         for _, _, backup in stages:
             backup.unlink(missing_ok=True)
     except OSError as error:
-        cleanup_findings.append(Finding("CONCORDE-ACCEPT-007", "warning", paths["feature_directory"], f"Acceptance committed but recovery cleanup is pending: {error}", "Remove the hidden Concorde backup after confirming the durable realization and version-control recovery."))
+        cleanup_findings.append(Finding("CONCORDE-DELIVER-007", "warning", paths["feature_directory"], f"Delivery committed but recovery cleanup is pending: {error}", "Remove the hidden Concorde backup after confirming the durable realization and version-control recovery."))
     retained_artifacts = [paths["feature_abstract"], paths["feature_design"], paths["module_summary"]]
     if (project / paths["reflections"]).is_file():
         retained_artifacts.append(paths["reflections"])
@@ -403,12 +403,12 @@ def apply_acceptance(project_root: str | Path, proposal_path: str) -> OperationR
     changes = list(eligibility.result["changes"])
     result_artifacts = [paths["feature_implementation"]]
     if module_design_path is not None:
-        changes.insert(1, {"path": paths["module_design"], "action": "update", "meaning": "Amend the module design reference with the reviewed implementation detail and rationale."})
+        changes.insert(1, {"path": paths["module_design"], "action": "update", "meaning": "Amend the module design reference with invocation-authorized implementation detail and rationale."})
         result_artifacts.append(paths["module_design"])
     return OperationResult(
-        "impl.accept",
+        "deliver",
         target,
-        "accepted",
+        "delivered",
         tuple(result_artifacts),
         tuple(cleanup_findings),
         {

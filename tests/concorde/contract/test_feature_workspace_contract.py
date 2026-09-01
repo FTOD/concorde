@@ -8,10 +8,10 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 class FeatureWorkspaceContractTests(unittest.TestCase):
     def test_examples_share_safe_complete_workspace_shape(self):
         examples = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples"
-        for name in ("impl-accept-eligible-response.json",):
+        for name in ("deliver-eligible-response.json",):
             payload = json.loads((examples / name).read_text(encoding="utf-8"))
-            self.assertEqual(payload["schema_version"], 8)
-            self.assertEqual(payload["operation"], "impl.accept")
+            self.assertEqual(payload["schema_version"], 9)
+            self.assertEqual(payload["operation"], "deliver")
             self.assertEqual(
                 set(payload["workspace"]),
                 {
@@ -58,9 +58,9 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts"
         workspace = json.loads((contracts / "feature-workspace.schema.json").read_text())
         architecture = json.loads((contracts / "architecture-service.schema.json").read_text())
-        self.assertEqual(workspace["$defs"]["operation"]["enum"], ["impl.accept"])
-        self.assertEqual(workspace["$defs"]["request"]["properties"]["schema_version"]["const"], 8)
-        self.assertEqual(workspace["$defs"]["response"]["properties"]["schema_version"]["const"], 8)
+        self.assertEqual(workspace["$defs"]["operation"]["enum"], ["deliver"])
+        self.assertEqual(workspace["$defs"]["request"]["properties"]["schema_version"]["const"], 9)
+        self.assertEqual(workspace["$defs"]["response"]["properties"]["schema_version"]["const"], 9)
         self.assertIn("implementation_digest_before", response_properties := workspace["$defs"]["response"]["properties"])
         self.assertIn("module_design_digest_after", response_properties)
         response_properties = workspace["$defs"]["response"]["properties"]
@@ -69,11 +69,11 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         self.assertIn("checklist_summary", response_properties)
         self.assertEqual(architecture["$defs"]["operation"]["enum"], ["init", "context", "validate"])
 
-    def test_acceptance_proposal_binds_one_realization_optional_reference_and_one_removal_target(self):
-        path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples/impl-accept-proposal.json"
+    def test_delivery_proposal_binds_one_realization_optional_reference_and_one_removal_target(self):
+        path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples/deliver-proposal.json"
         proposal = json.loads(path.read_text(encoding="utf-8"))
-        self.assertEqual(proposal["proposal_version"], 6)
-        self.assertEqual(proposal["operation"], "impl.accept")
+        self.assertEqual(proposal["proposal_version"], 7)
+        self.assertEqual(proposal["operation"], "deliver")
         realization = Path(proposal["implementation"]["path"])
         removal = Path(proposal["remove"][0])
         self.assertEqual(realization.name, "implementation.md")
@@ -84,19 +84,19 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         self.assertEqual(reference.name, "design.md")
         self.assertNotEqual(reference.parent, realization.parent)
         schema = json.loads((path.parents[1] / "feature-workspace.schema.json").read_text(encoding="utf-8"))
-        acceptance = schema["$defs"]["acceptanceProposal"]
-        self.assertEqual(acceptance["properties"]["proposal_version"]["const"], 6)
-        self.assertIn("implementation", acceptance["required"])
-        self.assertNotIn("design", acceptance["properties"])
-        self.assertNotIn("module_design", acceptance["required"])
+        delivery = schema["$defs"]["deliveryProposal"]
+        self.assertEqual(delivery["properties"]["proposal_version"]["const"], 7)
+        self.assertIn("implementation", delivery["required"])
+        self.assertNotIn("design", delivery["properties"])
+        self.assertNotIn("module_design", delivery["required"])
 
-    def test_acceptance_eligibility_example_exposes_review_metadata(self):
-        path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples/impl-accept-eligible-response.json"
+    def test_delivery_eligibility_example_exposes_candidate_metadata(self):
+        path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples/deliver-eligible-response.json"
         payload = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(payload["status"], "eligible")
         self.assertEqual(
             payload["proposal_path"],
-            payload["workspace"]["attempt_dir"] + "/accept-proposal.json",
+            payload["workspace"]["attempt_dir"] + "/deliver-proposal.json",
         )
         self.assertEqual(payload["task_summary"]["incomplete"], 0)
         self.assertEqual(payload["checklist_summary"]["incomplete"], 0)
@@ -112,8 +112,8 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         self.assertNotIn("reflections_open", workspace["required"])
         self.assertIn("reflections_open", schema["$defs"]["featureSummary"]["properties"])
         self.assertIn("reflection_summary", schema["$defs"]["response"]["properties"])
-        self.assertNotIn("reflections", schema["$defs"]["acceptanceProposal"]["properties"])
-        payload = json.loads((contracts / "examples/impl-accept-eligible-response.json").read_text(encoding="utf-8"))
+        self.assertNotIn("reflections", schema["$defs"]["deliveryProposal"]["properties"])
+        payload = json.loads((contracts / "examples/deliver-eligible-response.json").read_text(encoding="utf-8"))
         self.assertEqual(payload["reflection_summary"], {"entries": 2, "open": 1, "resolved": 1, "dismissed": 0})
         self.assertEqual(payload["workspace"]["reflections"], "specs/example/reflections.md")
         context = json.loads((contracts / "examples/context-response.json").read_text(encoding="utf-8"))
@@ -123,8 +123,8 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         except ImportError:  # pragma: no cover - dev dependency
             self.skipTest("jsonschema unavailable")
         jsonschema.validate(payload, {**schema, "$ref": "#/$defs/response"})
-        proposal = json.loads((contracts / "examples/impl-accept-proposal.json").read_text(encoding="utf-8"))
-        jsonschema.validate(proposal, {**schema, "$ref": "#/$defs/acceptanceProposal"})
+        proposal = json.loads((contracts / "examples/deliver-proposal.json").read_text(encoding="utf-8"))
+        jsonschema.validate(proposal, {**schema, "$ref": "#/$defs/deliveryProposal"})
 
 
 if __name__ == "__main__":

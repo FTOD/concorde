@@ -30,7 +30,7 @@ class AttemptWorkspaceIntegration(unittest.TestCase):
         feature_root = FEATURE_RELATIVE
         attempt = feature_root + "/attempt"
 
-        self.assertEqual(payload["schema_version"], 8)
+        self.assertEqual(payload["schema_version"], 9)
         self.assertEqual(paths["feature_design"], feature_root + "/design.md")
         self.assertEqual(paths["feature_implementation"], feature_root + "/implementation.md")
         self.assertEqual(paths["attempt_dir"], attempt)

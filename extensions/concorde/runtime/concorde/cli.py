@@ -33,15 +33,13 @@ def create_parser() -> argparse.ArgumentParser:
     validate.add_argument("target", nargs="?")
     validate.add_argument("--format", choices=["json"], default="json")
 
-    implementation = subparsers.add_parser("impl")
-    implementation_commands = implementation.add_subparsers(dest="implementation_operation", required=True)
-    accept = implementation_commands.add_parser("accept")
-    accept.add_argument("target", nargs="?")
-    accept_mode = accept.add_mutually_exclusive_group(required=True)
-    accept_mode.add_argument("--propose", action="store_true")
-    accept_mode.add_argument("--apply", action="store_true")
-    accept.add_argument("--proposal")
-    accept.add_argument("--format", choices=["json"], default="json")
+    deliver = subparsers.add_parser("deliver")
+    deliver.add_argument("target", nargs="?")
+    deliver_mode = deliver.add_mutually_exclusive_group(required=True)
+    deliver_mode.add_argument("--propose", action="store_true")
+    deliver_mode.add_argument("--apply", action="store_true")
+    deliver.add_argument("--proposal")
+    deliver.add_argument("--format", choices=["json"], default="json")
 
     agent_assets = subparsers.add_parser("agent-assets")
     asset_commands = agent_assets.add_subparsers(dest="agent_asset_operation", required=True)
@@ -73,19 +71,19 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
         from .context import bounded_context
 
         return bounded_context(root, arguments.target)
-    if arguments.operation == "impl":
-        from .implementation_acceptance import apply_acceptance, propose_acceptance
+    if arguments.operation == "deliver":
+        from .delivery import apply_delivery, propose_delivery
 
         if arguments.apply:
             if not arguments.proposal:
                 return OperationResult(
-                    "impl.accept",
+                    "deliver",
                     arguments.target or ".",
                     "invalid",
-                    findings=(Finding("CONCORDE-ACCEPT-008", "error", ".specify/feature.json", "--apply requires --proposal.", "Pass the project-relative reviewed acceptance proposal."),),
+                    findings=(Finding("CONCORDE-DELIVER-008", "error", ".specify/feature.json", "--apply requires --proposal.", "Pass the project-relative generated delivery proposal."),),
                 )
-            return apply_acceptance(root, arguments.proposal)
-        return propose_acceptance(root, arguments.target)
+            return apply_delivery(root, arguments.proposal)
+        return propose_delivery(root, arguments.target)
     if arguments.operation == "agent-assets":
         from .agent_assets import (
             preview_agent_assets,
@@ -119,10 +117,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     except Exception as error:  # command boundary: always return the normative envelope
         operation = argv[0] if argv else "validate"
         payload = envelope(
-            "impl.accept"
-            if operation == "impl"
-            else operation
-            if operation in {"init", "context", "validate", "agent-assets"}
+            operation
+            if operation in {"init", "context", "validate", "deliver", "agent-assets"}
             else "validate",
             ".",
             "failed",

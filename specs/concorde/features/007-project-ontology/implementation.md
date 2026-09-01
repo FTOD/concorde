@@ -56,7 +56,7 @@ The maintained Archify architecture source at <code>specs/concorde/features/007-
 | Ontology relationship view (FR-013–FR-015) | Maintained Archify source plus generated standalone HTML | 9/9 showcase checks, zero composition errors, zero warnings, source/artifact SHA-256 receipts |
 | Publication (FR-016) | Auto-Docs registry, materialization, diagram delivery, route inventory, and production build | TypeScript typecheck, 19 docsite test files with 85 passing tests, 118-page validation, successful production build |
 | Self-application (FR-017–FR-018) | Thirty maintained design tables, project ontology 1.2.0-draft, root contract registration | Full Concorde validation with zero findings and complete Python suite with 322 passing tests |
-| Installed workflow freshness | Reviewed 0.5.0 self-host application for Codex and Claude | Current self-host status; matching source, installed bytes, registries, and active surfaces; both agent-asset verifications succeed |
+| Installed workflow freshness | Reviewed 0.6.0 self-host application for Codex and Claude | Current self-host status; matching source, installed bytes, registries, and active surfaces; both agent-asset verifications succeed |
 
 The ontology diagram specification digest is <code>2232856ccad1745f3da8a465a23ae080cb60cf16ea822a6281e7d17b3d261e6f</code>; the delivered artifact digest is <code>308dd5391a1d0933ea3b4fc645ae93c145c6f687d26e855b20819f05c8354609</code>. Full project validation completed with no errors, warnings, or informational findings.
 

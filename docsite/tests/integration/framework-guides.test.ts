@@ -37,7 +37,7 @@ describe('maintained Concorde framework guides', () => {
     expect(features).toBeGreaterThan(-1);
     expect(commands).toBeGreaterThan(features);
     expect(status).toBeGreaterThan(commands);
-    for (const command of ['init', 'context', 'ask', 'validate', 'impl-accept']) {
+    for (const command of ['init', 'context', 'ask', 'validate', 'deliver']) {
       expect(readme.content).toContain(`$speckit-concorde-${command}`);
     }
     expect(readme.links.some((link) => link.targetSourcePath === 'docs/commands.md')).toBe(true);

@@ -6,11 +6,12 @@ The extension registers five integration-neutral command surfaces:
   a minimal product-specific root without guessing product modules, writes only after explicit
   acceptance of an exact proposal, and reports an existing configured hierarchy as unchanged rather
   than comparing it with starter text.
-- `speckit.concorde.impl.accept` verifies task completion, presents a digest-bound proposal for
+- `speckit.concorde.deliver` verifies task completion, generates a digest-bound proposal for
   durable feature `implementation.md` (optionally amending the `design.md` of the module at which the
   feature is specified), presents attributed entries transiently while keeping `reflections.md` as
-  their sole persisted authority, rejects copied `R-NNN` identifiers (`CONCORDE-ACCEPT-012`), and
-  only after explicit approval promotes the proposal atomically and removes the temporal attempt;
+  their sole persisted authority, rejects copied `R-NNN` identifiers (`CONCORDE-DELIVER-012`), and
+  under the user's invocation immediately promotes the proposal atomically without a second approval
+  question and removes the temporal attempt;
   the reflection log is left byte-identical.
 - `speckit.concorde.context` returns one bounded architectural level, including the module's
   `diagrams` list (every diagram beneath its `architecture/diagrams/`) and the project reflection
@@ -30,7 +31,7 @@ hierarchy when `SPECIFY_FEATURE_DIRECTORY` names `<module directory>/features/NN
 `.specify/feature.json`, which is the only selection record. `speckit.concorde.validate` enforces
 registration, canonical paths, and two-level containment afterwards.
 
-The extension also provides the Protocol v8 selected-workspace adapter used by the preset's nine
+The extension also provides the Protocol v9 selected-workspace adapter used by the preset's nine
 normal command modifications. It resolves and validates the selected root before every
 phase-sensitive step and reports its kind, durable and temporal paths, parent context, sibling
 summaries, the `module.md` and `design.md` of the module at which the feature is specified

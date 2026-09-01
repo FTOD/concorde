@@ -29,7 +29,7 @@ artifacts. Generated views live outside the source hierarchy. The parent
 2. Skills ask Scripts to resolve and validate that root.
 3. Each phase receives exact durable and temporal paths.
 4. The agent reads and writes only phase-authorized files.
-5. Acceptance promotes the reviewed realization and removes the accepted attempt.
+5. Delivery promotes the generated realization and removes the completed attempt.
 
 ## Read Next
 

@@ -34,7 +34,7 @@ class CodexSkillsAcceptance(unittest.TestCase):
                     "--integration",
                     "codex",
                     "--concorde-version",
-                    "0.5.0",
+                    "0.6.0",
                 ],
                 cwd=root,
                 check=True,
@@ -43,7 +43,7 @@ class CodexSkillsAcceptance(unittest.TestCase):
             names = {path.parent.name for path in (root / ".agents/skills").glob("speckit-concorde-*/SKILL.md")}
             self.assertEqual(names, {
                 "speckit-concorde-init",
-                "speckit-concorde-impl-accept",
+                "speckit-concorde-deliver",
                 "speckit-concorde-context",
                 "speckit-concorde-validate",
                 "speckit-concorde-ask",

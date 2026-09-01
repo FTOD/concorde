@@ -9,7 +9,7 @@ Make the installed skill set the single, consistent interface for Concorde featu
 ## Functionality
 
 - Composes Concorde guidance into the normal Spec Kit lifecycle skills.
-- Adds init, context, validate, implementation-acceptance, and ask skills.
+- Adds init, context, validate, implementation-delivery, and ask skills.
 - Resolves the selected feature before a phase assumes any file path.
 - Names the durable or temporal files a phase may read and write.
 - Invokes Scripts only for routing or deterministic operations.

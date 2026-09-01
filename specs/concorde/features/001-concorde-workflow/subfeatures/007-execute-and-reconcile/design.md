@@ -31,7 +31,7 @@ attempt, keeping every discovery inside it until acceptance.
 A coding agent can execute the approved task list, report cross-artifact inconsistencies without
 mutating analyzed artifacts, record problems in the project reflection log, and append only genuine
 remaining work while staying inside bounded selected context and recording what it learns where
-acceptance can later find it.
+delivery can later find it.
 
 ## Parent Context and Boundary
 
@@ -92,7 +92,7 @@ module references.
 - **FR-007**: None of these phases may update `abstract.md`, `design.md`, the feature `implementation.md`, any
   module `module.md` or `implementation.md`, or remove the temporal attempt.
 - **FR-008**: Rationale, alternatives, and implementation detail discovered during execution MUST be
-  recorded within the selected attempt so that acceptance can carry the durable parts into the
+  recorded within the selected attempt so that delivery can carry the durable parts into the
   feature `implementation.md` and the level's `implementation.md`.
 
 ## Success Criteria

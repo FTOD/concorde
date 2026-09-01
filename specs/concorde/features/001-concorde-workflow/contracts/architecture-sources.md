@@ -119,7 +119,7 @@ realization into feature `implementation.md`, optionally amend the providing mod
 the same atomic operation, and remove the whole `attempt/` directory. A completed attempt
 remains temporal until this operation succeeds. An existing non-empty attempt is reported as
 `attempt_state: active` and must never be replaced, archived as a second authority, or
-removed silently. Acceptance never writes `abstract.md` or `design.md`.
+removed silently. Delivery never writes `abstract.md` or `design.md`.
 
 An explicitly invoked eligible fast-loop is the direct-authoring exception for established
 realizations. The selected root is its anchor; bounded evidence may identify other affected existing
@@ -143,7 +143,7 @@ The selected feature pointer identifies the feature root. Operations resolve fro
 | plan, research, technical model, quickstart | read root `design.md` + `implementation.md` and the module summary (the abstract orients only); consult the module `design.md` only deliberately and cite it; write `attempt/` |
 | tasks, implement, analyze, converge, task-to-issue conversion, delivery validation | `attempt/`; analysis also reads `abstract.md` to report disagreement with `design.md` |
 | fast-loop | resolve the selected root as an anchor, then explicitly resolve every affected existing root; read each affected durable trio and bounded related module/contract/code/test/doc evidence; write verified code/tests plus every affected feature, contract, diagram, module-reference, and user-guide source needed for truthfulness; create no attempt; reject module responsibility/dependency and project-level user compatibility/migration policy changes; admit explicit pure renames that follow existing policy and preserve logic/non-name semantics; require a deterministic stale-name inventory for renames and exact validated evidence, but no separate post-edit review, for architecture edits |
-| implementation acceptance | read root `abstract.md` + `design.md` + `implementation.md`, the module summary and `design.md`, and all attempt inputs; approved apply writes feature `implementation.md`, optionally module `design.md`, and removes `attempt/` |
+| implementation delivery | read root `abstract.md` + `design.md` + `implementation.md`, the module summary and `design.md`, and all attempt inputs; approved apply writes feature `implementation.md`, optionally module `design.md`, and removes `attempt/` |
 
 `.specify/feature.json` is the standard project-scoped selection record and may point to a valid
 top-level feature or immediate sub-feature root. Read-only resolution may inspect but not rewrite
@@ -237,7 +237,7 @@ organized under stable headings such as `Implementation Notes`, `Design Rational
 `Alternatives Considered`, and `Decision Log`. Before anything is recorded it may state that no
 implementation detail or design rationale has been recorded yet. It must be a real, non-empty,
 non-symlink file. Maintainers may edit it directly; workflow operations write it only through an
-approved acceptance proposal targeting the module at which the selected feature is specified. It is
+invocation-authorized delivery proposal targeting the module at which the selected feature is specified. It is
 included in the package's source digest and returned by context as a navigation reference only.
 
 ### Feature abstract
@@ -319,8 +319,8 @@ Feature `implementation.md` is UTF-8 Markdown at exactly the feature root. It ha
 feature ID and does not duplicate `design.md` front matter. Its H1 is conventionally
 `# Feature Implementation: <title>`. Before the first accepted milestone it holds only the
 explicit statement that no implementation realization has been accepted yet under the required
-headings (seeded from the `implementation-template`). The first approved acceptance writes it in full and
-each later acceptance completes it. Once accepted, it contains enough current information to explain:
+headings (seeded from the `implementation-template`). The first delivery writes it in full and each
+later delivery completes it. Once accepted, it contains enough current information to explain:
 
 - how related modules and lower-level features collaborate for the feature's scenarios;
 - which maintained contracts govern boundaries and what data/control moves across them;

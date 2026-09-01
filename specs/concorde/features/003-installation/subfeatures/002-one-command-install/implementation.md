@@ -1,6 +1,6 @@
 # Feature Implementation: One-Command Installation
 
-**Realization status**: Accepted realization of the public bundle-plus-projector installer for Concorde 0.5.0.
+**Realization status**: Accepted realization of the public bundle-plus-projector installer for Concorde 0.6.0.
 
 **Selected level**: Immediate sub-feature of `feature.concorde.install-with-spec-kit`; parent and sibling durable sources remain aggregate read-only authorities.
 
@@ -91,7 +91,7 @@ Planning and implementation preserved exact hashes for the child accepted baseli
 
 - The public presentation currently targets POSIX-style shells and requires `uvx`; a Windows-native presentation remains future scope.
 - Compatibility is intentionally pinned to Spec Kit `>=0.16.4,<0.16.5`.
-- The default published path depends on the repository's current-release pointer and published assets. This acceptance proves isolated 0.5.0 release artifacts and the checkout path; it does not claim live public hosting availability or a first-time remote timing result.
+- The default published path depends on the repository's current-release pointer and published assets. This acceptance proves isolated 0.6.0 release artifacts and the checkout path; it does not claim live public hosting availability or a first-time remote timing result.
 - The installer source is served from the maintained repository's `main` branch rather than an immutable release asset. The documented inspect-before-run path supports source review; a future release may add a versioned installer asset without changing the CLI contract.
 
 ### Installer transaction detail

@@ -13,7 +13,7 @@ diagrams:
 # Concorde Workflow
 
 Concorde surrounds the normal Spec Kit lifecycle with architectural ownership, bounded context,
-deterministic validation, and approval-gated acceptance. It keeps specification, planning, tasks,
+deterministic validation, and single-invocation delivery. It keeps specification, planning, tasks,
 and implementation as the normal path, with one explicitly invoked fast-loop alternate for an
 established small change.
 
@@ -113,7 +113,7 @@ Eligible work directly updates code and proportional tests, then reconciles ever
 `design.md`, `abstract.md`, and `implementation.md` plus directly related contracts, maintained
 diagrams, module references, and user guidance. Cross-feature behavior and internal contract/data-
 format changes are allowed when bounded and complete. It creates no plan, tasks, implementation
-attempt, convergence pass, or acceptance proposal.
+attempt, convergence pass, or delivery proposal.
 
 An explicit pure rename may replace identifiers, labels, paths, and references across the bounded
 affected set when it follows existing compatibility/migration policy and preserves implementation
@@ -286,22 +286,22 @@ specification, accepted realization, code, tests, or projections are reported as
 Review behavioral, architectural, implementation, and evidence changes together. Do not resolve a
 finding by weakening the wrong authority.
 
-## 8. Accept an accepted milestone
+## 8. Deliver a completed milestone
 
-Acceptance is appropriate only when:
+Delivery is appropriate only when:
 
 - the active attempt has a real `attempt/tasks.md` with at least one task;
 - every recognizable task is complete;
 - every existing checklist item is satisfied;
-- validation and evidence have been reviewed; and
-- the maintainer accepts the implementation as the new durable baseline.
+- validation and evidence are current; and
+- the maintainer explicitly invokes delivery for the implementation.
 
 The agent first asks the runtime for eligibility (which also summarizes the feature's reflection
 entries by status), then synthesizes proposed feature `implementation.md` from the complete attempt,
 current feature `implementation.md`, the abstract and design, the module summary and module
-`design.md`, relevant architecture, contracts, code, tests, and the project reflection log: every
-open entry attributed to the feature is cited among the known limitations, and resolved entries that
-shaped the realization among the decisions. When the attempt
+`design.md`, relevant architecture, contracts, code, tests, and the project reflection log. Entries
+are presented transiently by status, but neither durable candidate may persist a reflection
+identifier, status, note, occurrence, or entry content. When the attempt
 produced implementation detail or rationale worth keeping, the same proposal carries a full
 replacement `design.md` for the module at which the feature is specified, adding that material
 under the reference's stable headings without restating what the summary owns. The proposal names
@@ -309,12 +309,13 @@ the exact feature `implementation.md` target, the optional module `design.md` ta
 `attempt/` removal target, and a digest of the source bytes reviewed, which includes the
 current module `design.md`.
 
-Checked boxes do not grant approval. Only explicit acceptance of that exact proposal authorizes the
-runtime to write feature `implementation.md`, amend module `design.md` when proposed, and remove
-`attempt/` as one atomic operation; the result reports digests for both documents. A stale
+The user's delivery invocation is authorization. After generating the current proposal, the agent
+immediately asks the runtime to write feature `implementation.md`, amend module `design.md` when
+proposed, and remove `attempt/` as one atomic operation without a second approval question; the
+result reports digests for both documents. A stale
 digest, changed path, symlink, incomplete task, unresolved checklist, amendment aimed at `abstract.md`,
-`design.md`, `module.md`, or another level, an uncited open reflection entry (`CONCORDE-ACCEPT-012`),
-or failed apply leaves the previous state recoverable. Acceptance never edits `abstract.md`, `design.md`,
+`design.md`, `module.md`, or another level, a persisted reflection identifier
+(`CONCORDE-DELIVER-012`), or failed apply leaves the previous state recoverable. Delivery never edits `abstract.md`, `design.md`,
 `module.md`, the reflection log, contracts, or architecture diagrams.
 
 ## 9. Publish the read model

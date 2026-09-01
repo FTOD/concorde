@@ -130,7 +130,7 @@ and convergence. Concorde adds architectural controls around that lifecycle:
 - phase routing between durable feature files and a temporary implementation attempt;
 - deterministic validation of identity, hierarchy, contracts, views, scenarios, references, and
   evidence status; and
-- approval-gated acceptance of a completed attempt into the durable accepted realization,
+- single-invocation delivery of a completed attempt into the durable accepted realization,
   optionally amending the module design reference.
 
 Installation is also Spec Kit-native. A bundle pins a preset and extension; the active coding-agent

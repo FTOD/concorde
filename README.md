@@ -43,7 +43,7 @@ change beginning from one selected anchor and spanning a bounded set of related 
 | `$speckit-concorde-context <module-or-feature-id>` | Retrieve exactly one bounded architectural level. |
 | `$speckit-concorde-ask <question>` | Get a cited, read-only answer about Concorde or its use in the current project. |
 | `$speckit-concorde-validate` | Deterministically validate the maintained hierarchy, contracts, views, documents, and evidence. |
-| `$speckit-concorde-impl-accept <feature-id>` | Propose and, after explicit approval, accept a completed implementation as the durable realization. |
+| `$speckit-concorde-deliver <feature-id>` | Deliver a completed implementation as the durable realization in one authorizing invocation. |
 
 Features are created with the normal `$speckit-specify` phase at their canonical module path and
 selected through `.specify/feature.json`; Concorde deliberately adds no separate create or select
@@ -74,11 +74,12 @@ A typical combined workflow is:
 ```text
 speckit.specify → speckit.clarify/checklist → speckit.plan → speckit.tasks
                 → speckit.analyze → speckit.implement → speckit.converge
-                → speckit.concorde.validate → speckit.concorde.impl.accept
+                → speckit.concorde.validate → speckit.concorde.deliver
 ```
 
 Clarification, checklists, analysis, and convergence are used when needed; validation can run
-repeatedly, and acceptance is always a separate approval-gated Concorde operation. See
+repeatedly, and delivery is always a separate, explicitly invoked Concorde operation that does not
+ask for a second approval. See
 [Commands](docs/commands.md) for complete timing, inputs, outputs, and installed execution layers.
 For an eligible established small change, select an anchor feature and invoke `speckit.fast-loop`;
 it resolves every affected feature explicitly, creates no attempt, and performs no acceptance
@@ -189,7 +190,7 @@ After installation, invoke these agent skills from the target project:
 
 ```text
 $speckit-concorde-init
-$speckit-concorde-impl-accept feature.<project-slug>.<name>
+$speckit-concorde-deliver feature.<project-slug>.<name>
 $speckit-concorde-context module.<project-slug>
 $speckit-concorde-validate
 $speckit-concorde-ask When should I use context instead of changing the selected feature?
@@ -203,11 +204,11 @@ $speckit-concorde-ask When should I use context instead of changing the selected
   or `<parent feature root>/subfeatures/NNN-<short-name>` for a sub-feature—and are selected
   through the standard `.specify/feature.json`; Concorde adds no creation or selection command.
   Every feature root owns `abstract.md` (read first), `design.md` (the authority), and
-  `implementation.md` (the accepted implementation, written by acceptance).
-- `impl.accept` proposes the feature `implementation.md`—and, when the attempt produced detail or
+  `implementation.md` (the accepted implementation, written by delivery).
+- `deliver` generates the feature `implementation.md`—and, when the attempt produced detail or
   rationale worth keeping, an amendment to the `design.md` of the module at which the feature is
-  specified—from a task-complete implementation attempt and, only after explicit approval, applies
-  both atomically and removes that temporal `attempt/` directory.
+  specified—from a task-complete implementation attempt, then applies both atomically under the
+  original invocation without a second approval question and removes that temporal `attempt/` directory.
 - `context` returns one bounded architectural level without expanding child internals or the body
   of any module `design.md` or feature `implementation.md`.
 - `validate` deterministically checks identities, hierarchy, module layout, references, contracts,
@@ -294,8 +295,8 @@ production Docusaurus build. Start with the maintained [documentation overview](
 ## Project status
 
 Feature 001 defines the Concorde architecture-aware development workflow. Its root initialization,
-Feature Workspace Protocol v8 resolution of the standard Spec Kit selection, bounded context,
-deterministic validation, approval-gated implementation acceptance, and the read-only `ask` procedure are
+Feature Workspace Protocol v9 resolution of the standard Spec Kit selection, bounded context,
+deterministic validation, single-invocation implementation delivery, and the read-only `ask` procedure are
 implemented and covered by the automated suites, and this repository itself lives under the
 three-tier feature document model (`abstract.md`, `design.md`, `implementation.md`) and the module summary/design
 reference pair that the feature specifies. Feature 002's docsite publication pipeline, Feature 003's
@@ -309,7 +310,7 @@ kept separate from automated evidence.
 
 The newest published release is `v0.1.0`, which predates the module design reference, the feature
 abstract, and the removal of the `feature.create`/`feature.select` commands. This README and the guides
-under `docs/` describe the `0.5.0` sources in this checkout; until `0.5.0` is published, the local
+under `docs/` describe the `0.6.0` sources in this checkout; until `0.6.0` is published, the local
 development path above is the way to use them.
 
 Concorde can also install the current checkout's framework sources into this repository for

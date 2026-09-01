@@ -39,10 +39,10 @@
         "note": "Separate control, architecture, selected intent, accepted realization, and root-local temporal work."
       },
       {
-        "id": "accept-milestone",
+        "id": "deliver-milestone",
         "label": "Reconcile realization",
         "focus": ["maintainer", "agent", "fastLoop", "concordeCommands", "runtime", "featureSpec", "featureDesign", "implementation"],
-        "note": "Acceptance compacts one reviewed attempt; fast-loop reconciles one bounded change across an anchor and all affected accepted features."
+        "note": "Delivery compacts one completed attempt under its invocation; fast-loop reconciles bounded changes across accepted features."
       }
     ]
   },
@@ -51,7 +51,7 @@
       "id": "maintainer",
       "type": "external",
       "label": "Maintainer",
-      "sublabel": "intent + approval",
+      "sublabel": "intent + invocation",
       "pos": [20, 450],
       "size": [150, 76]
     },
@@ -208,8 +208,8 @@
     {"id": "govern-architecture", "from": "runtime", "to": "architectureSources", "label": "init / context / validate", "variant": "security"},
     {"id": "answer-question", "from": "concordeCommands", "to": "architectureSources", "label": "ask: cited read-only guidance", "labelAt": [675, 810], "variant": "dashed"},
     {"id": "guide-attempt", "from": "featureSpec", "to": "implementation", "label": "selected intent + parent context", "labelAt": [1275, 340], "variant": "emphasis"},
-    {"id": "accept-milestone", "from": "implementation", "to": "featureDesign", "label": "approved realization + cleanup", "labelAt": [1275, 590], "variant": "security"},
-    {"id": "apply-accept", "from": "runtime", "to": "implementation", "label": "verify tasks + stage removal", "labelAt": [1060, 600], "variant": "security"}
+    {"id": "deliver-milestone", "from": "implementation", "to": "featureDesign", "label": "invocation-authorized realization + cleanup", "labelAt": [1275, 590], "variant": "security"},
+    {"id": "apply-delivery", "from": "runtime", "to": "implementation", "label": "verify tasks + stage removal", "labelAt": [1060, 600], "variant": "security"}
   ],
   "cards": [
     {

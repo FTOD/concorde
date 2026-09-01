@@ -22,7 +22,7 @@ return complete structured results to Skills.
 ## Boundary
 
 Scripts owns launchers, CLI parsing, repository-safe path resolution, initialization proposals,
-bounded context, validation, readiness, reflection diagnostics, and implementation acceptance. It
+bounded context, validation, readiness, reflection diagnostics, and implementation delivery. It
 does not own user-facing guidance, agent-authored prose, file-lifetime policy, package installation,
 or documentation presentation.
 
@@ -37,7 +37,7 @@ Files contract.
 
 | Feature ID | Outcome | Refines | Specification |
 |---|---|---|---|
-| `feature.scripts.run-workflow-operations` | Skills can resolve a selected workspace and invoke init, context, validate, readiness, reflection, or acceptance behavior with deterministic structured results. | `feature.concorde.workflow`, `feature.concorde.self-host-framework`, `feature.concorde.record-workflow-reflections` | [design.md](features/001-run-workflow-operations/design.md) |
+| `feature.scripts.run-workflow-operations` | Skills can resolve a selected workspace and invoke init, context, validate, readiness, reflection, or delivery behavior with deterministic structured results. | `feature.concorde.workflow`, `feature.concorde.self-host-framework`, `feature.concorde.record-workflow-reflections` | [design.md](features/001-run-workflow-operations/design.md) |
 
 ## Contracts
 

@@ -9,7 +9,7 @@ workflow step; the links at the end only redirect you when you want more.
 Let a coding agent execute the approved task list, report cross-artifact inconsistencies without
 changing analyzed artifacts, record problems only in the project reflection log, and append only
 genuine remaining work — all inside the selected root's bounded context, with everything it learns
-recorded where acceptance can later find it. The maintainer asks for the ready tasks to be delivered,
+recorded where delivery can later find it. The maintainer asks for the ready tasks to be delivered,
 verified, analyzed, and honestly reflected in the task list.
 
 ## Functionality
@@ -78,7 +78,7 @@ Maintainer ──execute · analyze · converge──▶ implement · analyze ·
 - No phase updates `abstract.md`, `design.md`, the feature `implementation.md`, any `module.md` or module
   `implementation.md`, or removes the attempt (FR-007).
 - Rationale, alternatives, and implementation detail discovered during execution are recorded in the
-  attempt so acceptance can carry the durable parts forward (FR-008).
+  attempt so delivery can carry the durable parts forward (FR-008).
 
 ## Read Next
 

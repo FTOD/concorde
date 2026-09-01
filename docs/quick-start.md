@@ -95,8 +95,8 @@ installed extension; the manual equivalent below uses that same operation.
 
 The newest published version is currently `v0.1.0`, which predates the module design reference, the
 feature abstract, and the removal of the `feature.create`/`feature.select` commands. These guides
-describe the `0.5.0` sources in this checkout; to work under the document model they describe, use
-the development path in part 3 until `0.5.0` is published. Otherwise continue with part 4.
+describe the `0.6.0` sources in this checkout; to work under the document model they describe, use
+the development path in part 3 until `0.6.0` is published. Otherwise continue with part 4.
 
 ## 3. Build the current local release (development path)
 
@@ -165,11 +165,11 @@ just installed:
 
 ```bash
 uvx --from specify-cli==0.16.4 python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
-  agent-assets preview --integration codex --concorde-version 0.5.0
+  agent-assets preview --integration codex --concorde-version 0.6.0
 uvx --from specify-cli==0.16.4 python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
-  agent-assets sync --integration codex --concorde-version 0.5.0
+  agent-assets sync --integration codex --concorde-version 0.6.0
 uvx --from specify-cli==0.16.4 python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
-  agent-assets verify --integration codex --concorde-version 0.5.0
+  agent-assets verify --integration codex --concorde-version 0.6.0
 ```
 
 Use `--integration claude` for Claude. Preview reports conflicts without mutation. Sync refuses to
@@ -274,7 +274,7 @@ bounded authorities when it follows existing compatibility/migration policy, pre
 non-name semantics, and passes a stale-name inventory. Changes to module boundaries or actual
 project-level policy, ambiguous work, or unsafe worktree overlap return to the normal lifecycle.
 Architecture-source edits require exact-diff validation but no separate post-edit review. Fast-loop
-creates no attempt or acceptance proposal.
+creates no attempt or delivery proposal.
 
 The abstract (`abstract.md`), behavioral design (`design.md`), and accepted implementation
 (`implementation.md`) stay at
@@ -283,17 +283,17 @@ stay under the single active `attempt/` attempt.
 
 ## 5. Finish the milestone deliberately
 
-When all tasks and every existing checklist item are complete, validation has been reviewed, and you
-accept the implementation, ask the agent to accept that implementation:
+When all tasks and every existing checklist item are complete and validation is current, ask the
+agent to deliver that implementation:
 
 ```text
-$speckit-concorde-impl-accept feature.<project>.<name>
+$speckit-concorde-deliver feature.<project>.<name>
 ```
 
-The first result is a proposal, not a mutation. Review the full candidate feature `implementation.md`, any
-proposed amendment to the `design.md` of the module at which the feature is specified, the exact
-`attempt/` removal target, and the source digest. Only explicit approval applies that
-unchanged proposal. On success, the durable realization (and the amended design reference, when
+The invocation authorizes the agent to generate the full candidate feature `implementation.md`, any
+warranted amendment to the `design.md` of the module at which the feature is specified, the exact
+`attempt/` removal target, and the source digest, then apply that unchanged proposal immediately
+without asking again. On success, the durable realization (and the amended design reference, when
 proposed) remains and the temporary attempt is removed.
 
 Continue with the [Concorde workflow](concorde-workflow.md) for the review gates and

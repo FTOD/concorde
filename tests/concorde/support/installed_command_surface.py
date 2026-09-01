@@ -30,7 +30,7 @@ PRESET_COMMANDS = {**NORMAL_PHASES, **FAST_LOOP_PHASES}
 
 CONCORDE_RUNTIME_COMMANDS = (
     "speckit.concorde.init",
-    "speckit.concorde.impl-accept",
+    "speckit.concorde.deliver",
     "speckit.concorde.context",
     "speckit.concorde.validate",
 )

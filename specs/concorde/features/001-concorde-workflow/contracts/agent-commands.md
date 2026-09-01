@@ -6,18 +6,19 @@
 
 ## Shared Rules
 
-- Canonical names are `speckit.concorde.init`, `speckit.concorde.impl.accept`,
+- Canonical names are `speckit.concorde.init`, `speckit.concorde.deliver`,
   `speckit.concorde.context`, `speckit.concorde.validate`, and `speckit.concorde.ask`.
 - Agent-specific invocation punctuation is presentation only. Codex skills and slash-command outputs
   must preserve the intent, arguments, runtime operation, result schema, and failure behavior below.
 - The command body locates the installed extension runtime relative to the project and invokes it
   using the project's selected script flavor. It does not embed an absolute installation path.
 - Architecture operation JSON conforms to `architecture-service.schema.json` (Protocol v1);
-  selected-workspace resolution and acceptance JSON conforms to `feature-workspace.schema.json`
-  (Feature Workspace Protocol v8, acceptance proposal v6). Agent prose may
+  selected-workspace resolution and delivery JSON conforms to `feature-workspace.schema.json`
+  (Feature Workspace Protocol v9, delivery proposal v7). Agent prose may
   summarize either normative result but must not hide findings or claim stronger evidence.
-- Context, validation, and acceptance eligibility/proposal checks are read-only. Initialization and
-  acceptance apply write only after an explicit accepted proposal is supplied to apply mode.
+- Context, validation, and delivery eligibility/proposal checks are read-only. Initialization writes
+  only after explicit proposal approval. Delivery writes after the user invokes the command and the
+  agent supplies the generated current proposal to apply mode; it requests no second approval.
 - The question command is agent-answered and read-only. It does not claim deterministic runtime
   execution and does not invoke another lifecycle operation merely because that operation would help
   answer the question.
@@ -84,15 +85,15 @@ Unsafe paths, malformed proposals, duplicate IDs, changed target state, existing
 or incomplete promotion return `conflict`, `invalid`, or `failed` with findings. Existing maintained
 content is never silently overwritten.
 
-## `speckit.concorde.impl.accept`
+## `speckit.concorde.deliver`
 
 ### Intent
 
-Review and compact one completed attempt into selected feature/sub-feature
+Deliver one completed attempt into selected feature/sub-feature
 `implementation.md` (written in full on the first milestone,
 completed on later ones) — optionally amend the providing module's `design.md` with the implementation detail and rationale
 developed during the attempt, and remove the temporal `attempt/` directory — all as one
-atomic operation, only after explicit approval.
+atomic operation authorized by the user's command invocation without a second approval interaction.
 
 ### Inputs
 
@@ -100,8 +101,8 @@ atomic operation, only after explicit approval.
 |---|---:|---|
 | `[feature-id-or-root]` | no | Stable feature ID or canonical feature root; defaults to the selected feature. |
 | `--propose` | eligibility | Return task/checklist completion status, current paths, digest, and required proposal shape without mutation. |
-| `--proposal <path>` | apply only | Project-relative reviewed acceptance proposal (proposal v6) containing candidate feature `implementation.md`, optional module `design.md` amendment, and exact cleanup manifest. |
-| `--apply` | no | Apply the unchanged reviewed proposal; absent means eligibility/proposal-only. |
+| `--proposal <path>` | apply only | Project-relative generated delivery proposal (proposal v7) containing candidate feature `implementation.md`, optional module `design.md` amendment, and exact cleanup manifest. |
+| `--apply` | no | Internal mode that applies the unchanged invocation-authorized proposal; absent means eligibility/proposal-only. |
 
 ### Agent and runtime responsibilities
 
@@ -111,7 +112,7 @@ atomic operation, only after explicit approval.
    exists, a task is unchecked or malformed, or an existing checklist item is unresolved or
    malformed. A missing optional checklist directory represents zero checklist items; symlinked
    checklist paths are unsafe and invalid.
-2. An eligible schema-v8 result directly returns `proposal_path`, `task_summary`, and
+2. An eligible schema-v9 result directly returns `proposal_path`, `task_summary`, and
    `checklist_summary` alongside `workspace` (including `feature_abstract`, `feature_design`,
    `feature_implementation`, `module_summary`, and `module_design`) and a `source_digest` that covers
    current `abstract.md`, feature `implementation.md`, and module `design.md`; the agent never derives or guesses the proposal or
@@ -131,12 +132,13 @@ atomic operation, only after explicit approval.
 4. The agent writes a project-contained proposal at the returned `proposal_path` that names the
    exact feature `implementation.md` path and full candidate content, the optional module `design.md` path
    and full replacement content, the exact `attempt/` removal target, the target feature, and
-   the runtime-provided source digest. It presents the candidate realization, the reference
-   amendment, cleanup manifest, and transient reflection summary to the maintainer. It never proposes
+   the runtime-provided source digest. It never proposes
    a change to `abstract.md` or feature `design.md`; apply rejects `R-NNN` identifiers persisted in
-   either acceptance-managed durable candidate.
-5. Silence, checked tasks and checklists, passing validation, or prior acceptance do not authorize apply. Only after
-   explicit approval does the agent invoke `--apply --proposal <path>`.
+   either delivery-managed durable candidate.
+5. The user's invocation is authorization. After writing a valid current proposal, the agent MUST
+   invoke `--apply --proposal <path>` immediately without displaying a second approval question or
+   waiting for another response. Checked tasks, passing validation, or prior delivery do not
+   authorize a delivery that the user did not invoke.
 6. Apply re-resolves every path, level, parent relationship, task, checklist, symlink, target, and
    digest; accepts only `implementation.path == workspace.feature_implementation`,
    `module_design.path == workspace.module_design` (when present), and `remove ==
@@ -146,8 +148,8 @@ atomic operation, only after explicit approval.
 
 ### Success artifacts
 
-- `<feature-root>/implementation.md` containing the reviewed accepted realization
-- when proposed, `<module>/design.md` equal to the reviewed amendment
+- `<feature-root>/implementation.md` containing the delivered accepted realization
+- when proposed, `<module>/design.md` equal to the generated amendment
 - no `<feature-root>/attempt/` directory
 - canonical result listing prior/resulting feature implementation digests (`implementation_digest_before/after`),
   prior/resulting module design digests (null when not amended), removed artifacts, and retained
@@ -304,7 +306,7 @@ Repeated runs over unchanged bytes and arguments produce byte-equivalent JSON an
   skills root.
 - One slash-command integration contains the five corresponding registered command artifacts.
 - Each supported presentation exercises top-level and sub-feature selection through the standard
-  Spec Kit pointer, phase routing, acceptance eligibility/apply, context, validation, and read-only
+  Spec Kit pointer, phase routing, delivery eligibility/apply, context, validation, and read-only
   workflow questions against the same fixture. Runtime-backed operations return equivalent normative JSON, parent context stays
   read-only and bounded, and the question surface preserves equivalent grounding, citation,
   uncertainty, bounded-context, and non-mutation behavior.
@@ -318,9 +320,9 @@ handoff consists of:
 
 | Item | Required identity |
 |---|---|
-| Workspace protocol | `feature-workspace.schema.json`, Protocol/schema version 8 (acceptance proposal v6), all examples, and their combined source digest |
+| Workspace protocol | `feature-workspace.schema.json`, Protocol/schema version 9 (delivery proposal v7), all examples, and their combined source digest |
 | Normal phase obligations | `specify`, `clarify`, `checklist`, `plan`, `tasks`, `implement`, `analyze`, `converge`, and `taskstoissues` write only the selected feature/sub-feature root, except that every post-specification phase may record problems only in the project reflection log returned as `workspace.reflections`; that log is the sole persisted authority for reflection identity/content and no other artifact copies it; `specify` authors `abstract.md` and `design.md` and seeds placeholder `implementation.md`; only `specify` and `clarify` write `abstract.md` or feature `design.md`, and no normal phase writes feature `implementation.md` or module `design.md`; `analyze` preserves every non-reflection file and makes zero filesystem changes when it has no problem to record; a selected sub-feature additionally reads its parent durable trio as aggregate context and never reads/writes parent/sibling attempts implicitly |
-| Additive fast-loop obligation | `speckit.fast-loop` treats the selected root as an anchor, explicitly resolves every affected existing root through Protocol v8, requires accepted/no-attempt baselines for all, reconciles bounded cross-feature and contract/architecture detail while preserving module responsibilities and dependency direction, rejects changes to project-level compatibility/migration policy, and admits an explicit pure naming migration that follows existing policy, preserves logic/non-name semantics, and passes a deterministic stale-name inventory; eligible architecture edits report validated diffs/hashes without separate post-edit review, and no attempt or acceptance artifact is created |
+| Additive fast-loop obligation | `speckit.fast-loop` treats the selected root as an anchor, explicitly resolves every affected existing root through Protocol v9, requires accepted/no-attempt baselines for all, reconciles bounded cross-feature and contract/architecture detail while preserving module responsibilities and dependency direction, rejects changes to project-level compatibility/migration policy, and admits an explicit pure naming migration that follows existing policy, preserves logic/non-name semantics, and passes a deterministic stale-name inventory; eligible architecture edits report validated diffs/hashes without separate post-edit review, and no attempt or delivery artifact is created |
 | Concorde command intents | The five canonical IDs and behavior sections in this contract; four are runtime-backed and `ask` is agent-followed/read-only |
 | Installed support | Extension-relative workspace adapter, launchers, schemas, runtime sources, preset templates, and complete phase commands needed by those intents |
 | Acceptance binding | Spec Kit host version, package versions/digests, handoff digest, actual registered winner, selected paths, outputs, and checkout-access result |

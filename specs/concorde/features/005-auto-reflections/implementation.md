@@ -32,7 +32,7 @@ return a complete plan to the parent; implementers receive complete plans and an
 worktree. The parent alone persists plan state, authorizes merge, and suggests—but never applies—
 reflection status or note changes.
 
-Feature 003 packages these assets in `extension:concorde@0.5.0`. The one-command installer previews
+Feature 003 packages these assets in `extension:concorde@0.6.0`. The one-command installer previews
 the component and agent plan, installs or updates the Spec Kit bundle, invokes only the projector
 from the installed extension, verifies path/digest ownership, and reports success afterwards.
 Self-hosting uses the same projector and preserves inactive integrations and maintainer state.
@@ -60,7 +60,7 @@ No module responsibility, boundary, dependency direction, level view, or module 
 The accepted shared Reflection Recording block remains byte-identical across plan, tasks,
 implement, analyze, and converge guidance. It names `workspace.reflections` as the only persisted
 reflection-record file and prohibits copied entry identity/content in other artifacts. Workspace
-Protocol v8 returns the project log path and open count. The parser, validator, context operation,
+Protocol v9 returns the project log path and open count. The parser, validator, context operation,
 and acceptance centralization gate continue to use one grammar and one project-level file. Existing
 parser, workspace, context, validation, composition, and implementation-acceptance tests all remain
 green.
@@ -142,7 +142,7 @@ authoritative in the feature prose and contracts.
   permits rename/documentation reconciliation with stable IDs and deterministic structural/reference
   validation.
 - **Centralized persistence**: `reflections.md` alone stores entry identity/content. Other artifacts
-  may describe independently true facts, while acceptance rule `CONCORDE-ACCEPT-012` prevents
+  may describe independently true facts, while acceptance rule `CONCORDE-DELIVER-012` prevents
   durable reflection-ID copies in feature implementation or module design candidates.
 
 ## Traceability and Evidence
@@ -167,7 +167,7 @@ Final evidence on 2026-08-30:
 - 294 Concorde Python tests passed; the final focused post-adjustment regression passed 16 tests.
 - Concorde validation returned zero findings with source digest
   `sha256:8c0842bd38da77720f3e6cb2b0ce130e984f170010f404a6b79260ec2a06ae4f`.
-- The 0.5.0 release rebuilt and verified byte-equivalently: bundle
+- The 0.6.0 release rebuilt and verified byte-equivalently: bundle
   `sha256:9a81094801d52fd1c2511400b4ec3b2854a9fde69b6a724583476641c5d243c9`,
   extension `sha256:900044f0d275caa38c8a4bae18a1a85666e0e4aee6356b774004f80c8ea4c307`,
   preset `sha256:997050c07587028f0e5e45fd7eb3fb249bda58f96cb81c5a9f0de54fe5c04fe4`.

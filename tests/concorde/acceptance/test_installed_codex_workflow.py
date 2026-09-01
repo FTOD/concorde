@@ -50,7 +50,7 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     check=True,
                 )
                 checklist_payload = json.loads(checklist_paths.stdout)
-                self.assertEqual(checklist_payload["schema_version"], 8)
+                self.assertEqual(checklist_payload["schema_version"], 9)
                 workspace_payload = checklist_payload["workspace"]
                 self.assertEqual(workspace_payload["workspace_kind"], "subfeature")
                 self.assertEqual(workspace_payload["parent_context"]["feature_id"], "feature.example.checkout")
@@ -94,28 +94,29 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 attempt = root / "specs/example/features/001-checkout/subfeatures/001-authorize-payment/attempt"
                 attempt.mkdir(exist_ok=True)
                 (attempt / "tasks.md").write_text("# Tasks\n\n- [X] T001 Complete installed fixture\n", encoding="utf-8")
-                accept = subprocess.run(
-                    [sys.executable, str(launcher), "--project-root", str(root), "impl", "accept", "--propose"],
+                delivery = subprocess.run(
+                    [sys.executable, str(launcher), "--project-root", str(root), "deliver", "--propose"],
                     cwd=root,
                     text=True,
                     capture_output=True,
                 )
-                self.assertEqual(accept.returncode, 0, accept.stdout + accept.stderr)
-                accept_payload = json.loads(accept.stdout)
-                self.assertEqual(accept_payload["status"], "eligible")
+                self.assertEqual(delivery.returncode, 0, delivery.stdout + delivery.stderr)
+                delivery_payload = json.loads(delivery.stdout)
+                self.assertEqual(delivery_payload["status"], "eligible")
                 self.assertEqual(
-                    accept_payload["proposal_path"],
-                    accept_payload["workspace"]["attempt_dir"] + "/accept-proposal.json",
+                    delivery_payload["proposal_path"],
+                    delivery_payload["workspace"]["attempt_dir"] + "/deliver-proposal.json",
                 )
-                self.assertEqual(accept_payload["task_summary"], {"complete": 1, "incomplete": 0, "malformed": 0})
+                self.assertEqual(delivery_payload["task_summary"], {"complete": 1, "incomplete": 0, "malformed": 0})
                 self.assertEqual(
-                    accept_payload["checklist_summary"],
+                    delivery_payload["checklist_summary"],
                     {"files": 0, "complete": 0, "incomplete": 0, "malformed": 0},
                 )
-                self.assertEqual(accept_payload["schema_version"], 8)
-                self.assertEqual(accept_payload["workspace"]["module_design"], "specs/example/design.md")
-                self.assertIn("specs/example/design.md", accept_payload["artifacts"])
-                # Proposal v6 with a module-reference amendment: review boundary holds until explicit apply.
+                self.assertEqual(delivery_payload["schema_version"], 9)
+                self.assertEqual(delivery_payload["workspace"]["module_design"], "specs/example/design.md")
+                self.assertIn("specs/example/design.md", delivery_payload["artifacts"])
+                # Proposal v7 retains the read-only runtime boundary; the agent command applies it
+                # automatically under the original invocation.
                 before = {
                     path.relative_to(root): path.read_bytes()
                     for path in (root / "specs").rglob("*")
@@ -128,24 +129,24 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     "## Traceability and Evidence\n\nInstalled.\n\n## Known Limitations\n\nNone.\n"
                 )
                 amendment = "# Design Reference: Example Commerce\n\n## Decision Log\n\n- Accepted authorize-payment in the installed fixture.\n"
-                proposal_path = root / accept_payload["proposal_path"]
+                proposal_path = root / delivery_payload["proposal_path"]
                 proposal_path.write_text(
                     json.dumps(
                         {
-                            "proposal_version": 6,
-                            "operation": "impl.accept",
-                            "target": accept_payload["target"],
-                            "source_digest": accept_payload["source_digest"],
-                            "implementation": {"path": accept_payload["workspace"]["feature_implementation"], "content": candidate},
-                            "module_design": {"path": accept_payload["workspace"]["module_design"], "content": amendment},
-                            "remove": [accept_payload["workspace"]["attempt_dir"]],
+                            "proposal_version": 7,
+                            "operation": "deliver",
+                            "target": delivery_payload["target"],
+                            "source_digest": delivery_payload["source_digest"],
+                            "implementation": {"path": delivery_payload["workspace"]["feature_implementation"], "content": candidate},
+                            "module_design": {"path": delivery_payload["workspace"]["module_design"], "content": amendment},
+                            "remove": [delivery_payload["workspace"]["attempt_dir"]],
                         }
                     )
                     + "\n",
                     encoding="utf-8",
                 )
                 reviewed = subprocess.run(
-                    [sys.executable, str(launcher), "--project-root", str(root), "impl", "accept", "--propose"],
+                    [sys.executable, str(launcher), "--project-root", str(root), "deliver", "--propose"],
                     cwd=root,
                     text=True,
                     capture_output=True,
@@ -154,13 +155,13 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 after_review = {
                     path.relative_to(root): path.read_bytes()
                     for path in (root / "specs").rglob("*")
-                    if path.is_file() and path.name != "accept-proposal.json"
+                    if path.is_file() and path.name != "deliver-proposal.json"
                 }
-                self.assertEqual({k: v for k, v in before.items() if k.name != "accept-proposal.json"}, after_review)
+                self.assertEqual({k: v for k, v in before.items() if k.name != "deliver-proposal.json"}, after_review)
                 applied = subprocess.run(
                     [
                         sys.executable, str(launcher), "--project-root", str(root),
-                        "impl", "accept", "--apply", "--proposal", accept_payload["proposal_path"],
+                        "deliver", "--apply", "--proposal", delivery_payload["proposal_path"],
                     ],
                     cwd=root,
                     text=True,
@@ -168,7 +169,7 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 )
                 self.assertEqual(applied.returncode, 0, applied.stdout + applied.stderr)
                 applied_payload = json.loads(applied.stdout)
-                self.assertEqual(applied_payload["status"], "accepted")
+                self.assertEqual(applied_payload["status"], "delivered")
                 self.assertRegex(applied_payload["module_design_digest_after"], r"^sha256:[0-9a-f]{64}$")
                 self.assertEqual((root / "specs/example/design.md").read_text(encoding="utf-8"), amendment)
                 self.assertEqual(

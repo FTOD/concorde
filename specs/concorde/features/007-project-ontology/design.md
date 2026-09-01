@@ -172,7 +172,7 @@ As a maintainer or coding agent, I can inspect a maintained Archify view of Conc
 - **Stable feature ID**: `feature.concorde.define-project-ontology`
 - **Providing module**: `module.concorde`
 - **Decomposition decision**: Keep the feature atomic because terminology tables, inheritance checks, relationship views, and project migration form one consistency contract.
-- **Authority split**: This design defines observable ontology behavior. `implementation.md` will record an accepted realization only after explicit implementation acceptance.
+- **Authority split**: This design defines observable ontology behavior. `implementation.md` will record an accepted realization only after explicit implementation delivery.
 - **Observable textual outcome**: Every level exposes a local terminology table, inherits ancestor concepts consistently, and makes important concept relationships inspectable.
 - **Parent refinement**: This is a project-level feature because it applies across every Concorde module and feature hierarchy.
 - **Core feature diagram**: `diagrams/concorde-ontology-model.json` (`role: core`, Archify `architecture`).

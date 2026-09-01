@@ -35,15 +35,15 @@ when it still holds the placeholder, record "no accepted baseline" rather than i
 providing module's `module.md` as bounded context and open its `design.md` only for a specific
 recorded detail, citing it. Never
 update `abstract.md`, feature `design.md`, feature `implementation.md`, or a module `design.md` during
-planning or implementation; only the explicit Concorde acceptance command may promote a task-complete,
-user-approved milestone. Keep durable feature sources (`abstract.md`, `design.md`,
+planning or implementation; only the explicit Concorde delivery command may promote a task-complete,
+invocation-authorized milestone. Keep durable feature sources (`abstract.md`, `design.md`,
 `implementation.md`, `contracts/`, and feature-owned `diagrams/`) at the feature root. Keep every
 requirements-quality checklist under `attempt/checklists/`. Write this plan and its research,
 data model, runnable validation guide, and delivery evidence under the feature's `attempt/`
 directory. That directory represents one temporal delivery attempt and must not be mirrored by
 compatibility copies beside `design.md`.
 
-When the selected root is an immediate sub-feature, also read the Protocol v8 parent `abstract.md`,
+When the selected root is an immediate sub-feature, also read the Protocol v9 parent `abstract.md`,
 `design.md`, and `implementation.md` only as aggregate context. Plan and write exclusively beneath the selected child root.
 Sibling summaries are navigation context; sibling bodies and all parent/sibling attempts are out of
 scope unless the maintainer explicitly selects them in a separate lifecycle operation. Reject any

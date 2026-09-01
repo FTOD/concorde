@@ -328,7 +328,7 @@ entries are untouched and unlisted, and the log is byte-identical after apply.
 2. **Given** an open entry attributed to the feature and a candidate with no reflection identifier,
    **When** apply is approved, **Then** acceptance succeeds and the log remains byte-identical.
 3. **Given** a candidate `implementation.md` or module amendment containing an `R-NNN` identifier,
-   **When** apply is requested, **Then** apply is refused with `CONCORDE-ACCEPT-012` and the attempt
+   **When** apply is requested, **Then** apply is refused with `CONCORDE-DELIVER-012` and the attempt
    is preserved.
 4. **Given** the maintainer approves the proposal, **When** apply completes, **Then** the attempt is
    removed, the log is unchanged, and every entry of the feature remains readable in the log with its
@@ -459,10 +459,10 @@ well-formed log produces none, that no file was rewritten, and that both runs ar
   documentation, or explicitly remove a closed entry by editing the log directly. Resolution records
   the note and a reference to the resolving change; rewriting or cleanup MUST preserve every
   surviving `R-NNN` identifier and MUST NOT reuse a removed identifier.
-- **FR-011**: The acceptance proposal MUST present every entry attributed to the feature with its
+- **FR-011**: The delivery proposal MUST present every entry attributed to the feature with its
   status as a transient view sourced from `reflections.md`. Candidate feature `implementation.md`
   and module `design.md` content MUST NOT persist an entry identifier or entry content. Apply MUST
-  refuse either candidate containing an `R-NNN` identifier with `CONCORDE-ACCEPT-012`, MAY retain
+  refuse either candidate containing an `R-NNN` identifier with `CONCORDE-DELIVER-012`, MAY retain
   independently verified implementation facts without reflection identity, and MUST NOT modify or
   remove the log.
 - **FR-012**: Deterministic validation MUST check a present reflection log read-only for unique

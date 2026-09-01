@@ -18,7 +18,7 @@ provides:
   extensions: []
   presets:
     - id: "concorde"
-      version: "0.5.0"
+      version: "0.6.0"
       priority: 10
       strategy: "append"
   steps: []

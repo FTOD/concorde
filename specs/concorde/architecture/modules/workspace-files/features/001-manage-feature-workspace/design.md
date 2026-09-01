@@ -32,7 +32,7 @@ accepted realization without duplicate memory.
 `scenario.workspace-files.manage-selected-feature` begins with Spec Kit selecting a registered
 feature root. A plan skill reads `abstract.md` and `design.md`, writes `attempt/plan.md`, and leaves
 the durable `implementation.md` unchanged. After tasks and checklists are complete, explicit
-acceptance replaces `implementation.md` with the reviewed realization and removes that `attempt/`.
+delivery replaces `implementation.md` with the generated realization and removes that `attempt/`.
 
 ## Diagram Decision
 
@@ -48,12 +48,13 @@ Workspace Files boundary. A child diagram would restate the file table in prose.
 - Current planning and delivery memory MUST live inside the selected feature's `attempt/`.
 - Normal phases MUST NOT create root-level `plan.md`, `tasks.md`, checklist, or other temporal aliases.
 - Generated documentation and diagrams MUST remain disposable projections.
-- Acceptance MUST verify complete tasks and checklists, bind exact replacement/removal content to a digest, and require explicit approval.
-- A failed resolution or acceptance MUST leave the selection, durable files, and attempt unchanged.
+- Delivery MUST verify complete tasks and checklists, bind exact replacement/removal content to a
+  digest, and treat the user's invocation as authorization without another approval prompt.
+- A failed resolution or delivery MUST leave the selection, durable files, and attempt unchanged.
 
 ## Evidence
 
-Workspace layout, nested selection, path-matrix, acceptance, reflection, and documentation source
+Workspace layout, nested selection, path-matrix, delivery, reflection, and documentation source
 tests cover automated behavior. Clean installed end-to-end evidence remains partial.
 
 ## Terminology

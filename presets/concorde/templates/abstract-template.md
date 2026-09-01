@@ -10,7 +10,7 @@ redirect you when you want more.
   minutes (at most 3,000 body words). Exactly these five H2 sections, in this order. Summarize
   design.md; never state a requirement, scope boundary, or success criterion design.md does not state.
   Links redirect; they are never required reading. Clarification updates this page whenever an
-  accepted answer changes something it summarizes. Acceptance never writes it.
+  accepted answer changes something it summarizes. Delivery never writes it.
 -->
 
 ## Purpose

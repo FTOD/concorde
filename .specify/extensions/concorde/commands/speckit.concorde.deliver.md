@@ -1,5 +1,5 @@
 ---
-description: Accept a completed implementation attempt as the durable implementation.
+description: Deliver a completed implementation attempt as the durable implementation.
 ---
 
 ## User Input
@@ -11,15 +11,16 @@ $ARGUMENTS
 ## Purpose
 
 Compact the selected feature or immediate sub-feature's completed attempt into its permanent
-`implementation.md`, then remove the temporal `attempt/` directory. The first accepted milestone
+`implementation.md`, then remove the temporal `attempt/` directory. The first delivered milestone
 writes `implementation.md` in full; each later milestone completes
 it. When the attempt produced
-implementation detail or rationale worth keeping, the same reviewed proposal may amend the providing
-module's `design.md`. This is an explicit milestone operation. Checked
-tasks and every existing item under `attempt/checklists/` establish eligibility; they do not
-grant approval.
+implementation detail or rationale worth keeping, the same generated proposal may amend the
+providing module's `design.md`. This is an explicit milestone operation. The user's invocation is
+authorization for candidate generation and apply; the command proceeds without asking for a second
+approval. Checked tasks and every existing item under `attempt/checklists/` establish eligibility,
+but do not authorize delivery unless the user invoked this command.
 
-Protocol v8 classifies the selected lifecycle root. For a sub-feature, parent durable paths and
+Protocol v9 classifies the selected lifecycle root. For a sub-feature, parent durable paths and
 sibling summaries are read-only retained authorities. Apply may update only the selected child's
 feature `implementation.md`, optionally the providing module's `design.md`, and remove only that child's
 complete `attempt/`; the child's `abstract.md` and `design.md`, parent, siblings, their attempts,
@@ -28,7 +29,7 @@ and every `module.md` remain byte-identical.
 ## Workflow
 
 1. From the target project root, invoke
-   `.specify/extensions/concorde/scripts/bash/concorde.sh impl accept --propose` (or the installed
+   `.specify/extensions/concorde/scripts/bash/concorde.sh deliver --propose` (or the installed
    PowerShell launcher on PowerShell projects). Pass a user-supplied stable feature ID or canonical
    feature-root path before `--propose`; otherwise use the selected feature.
 2. Read the returned `proposal_path`, `task_summary`, and `checklist_summary` directly. Stop on any
@@ -55,9 +56,9 @@ and every `module.md` remain byte-identical.
    sole persisted reflection-record authority. Never copy or cite an entry identifier, status, note,
    occurrence, or entry prose in candidate `implementation.md` or module `design.md`; independently
    true implementation facts may remain without reflection identity. Apply refuses with
-   `CONCORDE-ACCEPT-012` when either candidate persists an `R-NNN` identifier. Never edit, resolve,
-   or dismiss entries from acceptance — the log is maintainer-owned and remains byte-identical; a
-   malformed log is `CONCORDE-ACCEPT-011` and must be repaired first.
+   `CONCORDE-DELIVER-012` when either candidate persists an `R-NNN` identifier. Never edit, resolve,
+   or dismiss entries during delivery — the log is maintainer-owned and remains byte-identical; a
+   malformed log is `CONCORDE-DELIVER-011` and must be repaired first.
 5. When the attempt produced implementation detail, rationale, alternatives, or decisions worth
    keeping at module level, draft a FULL replacement of the providing module's `design.md` (its path
    is `workspace.module_design`). Add that material under the reference's stable headings
@@ -71,7 +72,7 @@ and every `module.md` remain byte-identical.
    nothing module-level was learned.
 6. Write the candidate to the exact project-contained `proposal_path` returned by the runtime. The JSON
    must conform to the installed Feature Workspace Protocol and contain:
-   - `proposal_version: 6` and `operation: "impl.accept"`;
+   - `proposal_version: 7` and `operation: "deliver"`;
    - the resolved stable feature ID as `target`;
    - the exact returned `source_digest`;
    - `implementation.path` equal to the returned `workspace.feature_implementation` and
@@ -80,30 +81,26 @@ and every `module.md` remain byte-identical.
    - optionally `module_design.path` equal to the returned `workspace.module_design` and
      `module_design.content` equal to the complete replacement Markdown; and
    - `remove` containing exactly the returned `workspace.attempt_dir`.
-7. BEFORE asking for approval, present the entire candidate feature `implementation.md`, the module
-   `design.md` amendment shown as a DIFF against the current reference (or state that none is
-   proposed), the exact cleanup manifest (the removal target), the feature's reflection entries by
-   status as a transient view sourced only from the log, and the retained `abstract.md`, `design.md`, `module.md`, the project
-   reflection log, parent and sibling trios, architecture, code, and test authorities. Ask for explicit approval of this exact proposal.
-   Silence is not approval; neither are prior milestone acceptance, passing validation, or checked
-   tasks and checklists.
-8. Only after the maintainer's explicit yes, invoke the same installed launcher with
-   `impl accept --apply --proposal <returned-project-relative-proposal-path>`. Never invoke
-   `--apply` without that yes. Present the complete
-   normative result, including stale-digest conflicts, warnings, removed artifacts, and the
-   feature-implementation and module-design digests.
+7. Treat the user's invocation as authorization for this delivery. Do not display another approval
+   question and do not wait for a second response after generating the candidate. Immediately invoke
+   the same installed launcher with
+   `deliver --apply --proposal <returned-project-relative-proposal-path>`.
+8. Present the complete normative result after apply, including the feature ID, candidate summary,
+   module `design.md` amendment summary (or state that none was applied), cleanup manifest, transient
+   reflection summary, stale-digest conflicts, warnings, removed artifacts, retained authorities,
+   and the feature-implementation and module-design digests.
 
 ## Safety Invariants
 
-- Do not edit the feature `implementation.md` or any module `design.md` directly; only the approved runtime
+- Do not edit the feature `implementation.md` or any module `design.md` directly; only the invocation-authorized runtime
   apply promotes the candidate and its amendment atomically. Never propose a change to `abstract.md` or
   `design.md`; requirements change through specification review.
 - Do not remove individual implementation files, keep a second archived attempt below the selected
   root, or target a parent, sibling, child, or any path outside the selected lifecycle root.
 - Do not modify `abstract.md`, feature `design.md`, `module.md`, the project reflection log, module
-  architecture, code, tests, or generated projections during acceptance.
-- On any conflict or failure, stop and preserve the proposal for review. Never retry apply against a
-  changed digest without regenerating and re-presenting the proposal.
+  architecture, code, tests, or generated projections during delivery.
+- On any conflict or failure, stop and preserve the proposal for diagnosis. Never retry apply against
+  a changed digest without regenerating the proposal from a fresh eligible result.
 - Apply rejects, and you must never propose, an `implementation` target other than the selected root's
   `implementation.md` (never `abstract.md`, feature `design.md`, or `module.md`) or a
   `module_design` amendment targeting `module.md`, another level's `design.md`, or a path inside the

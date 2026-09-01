@@ -99,8 +99,9 @@ nested feature workspace before any phase-specific file is read or written. Dura
 (`abstract.md` and `design.md`) and the accepted design reference (`implementation.md`) stay at the feature root,
 while requirements-quality checklists, planning, and delivery artifacts stay under
 `attempt/`. The preset also supplies the feature abstract template and the permanent `implementation.md`
-template. The extension supplies `speckit.concorde.impl.accept`, which proposes and, only after
-explicit approval, atomically promotes a completed attempt into that design reference and removes
+template. The extension supplies `speckit.concorde.deliver`, whose invocation authorizes proposal
+generation and atomic promotion of a completed attempt into that design reference without a second
+approval prompt, then removes
 `attempt/`.
 Repository-local `.agents/`, `.codex/`, and `.claude/` files are self-hosting or migration evidence
 only. A released installation must obtain canonical agent assets from the installed extension,
@@ -252,7 +253,7 @@ removal.
 6. **Given** one skills-based and one slash-command-based integration, **When** equivalent lifecycle
    and Concorde commands run, **Then** they produce equivalent selected-workspace, phase-path, result,
    and failure behavior.
-7. **Given** a completed implementation attempt, **When** the installed acceptance command is proposed
+7. **Given** a completed implementation attempt, **When** the installed delivery command is proposed
    and explicitly approved, **Then** the reviewed design replaces root `implementation.md` and the exact
    `attempt/` directory, including its resolved checklists, is removed; incomplete tasks,
    unresolved checklist items, or stale proposals make no change.
@@ -387,7 +388,7 @@ project-owned sources.
   context, checkout independence, and non-mutation rules through each supported presentation style
   without making installation responsible for their core workflow semantics. It MUST structurally
   parse and compare Claude/Codex triage skill and role projections without requiring a live model.
-- **FR-020**: Clean-project acceptance MUST install from the built bundle and generated catalogs with
+- **FR-020**: Clean-project delivery MUST install from the built bundle and generated catalogs with
   the Concorde checkout unavailable; project-local `.agents/`, `.specify/`, templates, or scripts in
   this repository MUST NOT count as distributed product behavior, and projected agents MUST derive
   only from the extension archive installed in the clean target.
@@ -420,8 +421,8 @@ project-owned sources.
   evidence; verification MUST execute the installed winning command surfaces and compare their
   observable workspace results with the accepted distribution contract.
 - **FR-030**: Clean-project verification MUST prove that feature creation provides root `abstract.md`,
-  `design.md`, and `implementation.md` and that installed acceptance refuses incomplete or stale attempts and applies only an explicitly
-  approved, digest-bound proposal to the selected feature.
+  `design.md`, and `implementation.md` and that installed delivery refuses incomplete or stale
+  attempts and applies only an invocation-authorized, digest-bound proposal to the selected feature.
 - **FR-031**: Installed `specify`, `clarify`, and `checklist` surfaces MUST route every generated
   requirements-quality artifact to the selected feature's `attempt/checklists/` directory;
   they MUST NOT create or preserve a feature-root `checklists/` compatibility location.
@@ -463,7 +464,7 @@ project-owned sources.
 - **FR-042**: Agent projection removal and superseded-path cleanup MUST use the same digest ownership
   rule as update; a missing or modified owned path MUST be preserved/reported and MUST NOT cause
   unrelated owned outputs or shared state to be deleted.
-- **FR-043**: Development self-hosting and clean-install acceptance MUST exercise Claude and Codex
+- **FR-043**: Development self-hosting and clean-install delivery MUST exercise Claude and Codex
   projection cycles, including switching integrations, and prove that inactive surfaces survive,
   customized shared config/plans survive, and no checkout path appears in rendered files.
 

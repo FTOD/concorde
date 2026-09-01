@@ -59,7 +59,7 @@ must reject the host version and require an upstream-supported capability instea
 The extension supplies these five canonical intents:
 
 1. `speckit.concorde.init`
-2. `speckit.concorde.impl.accept`
+2. `speckit.concorde.deliver`
 3. `speckit.concorde.context`
 4. `speckit.concorde.validate`
 5. `speckit.concorde.ask`
@@ -115,7 +115,7 @@ unregistered package member is not an installed command surface.
 | Tasks | `attempt/tasks.md` | Root `tasks.md` |
 | Implement / analyze / converge / taskstoissues | Feature-root durable intent plus the same active `attempt/` attempt | Root temporal copies, symlinks, or a second active attempt |
 | Init / context / validate | Feature 001 contract paths and result envelopes | Checkout-relative runtime or agent-specific semantic drift |
-| Implementation accept | Root trio, module summary/design, completed tasks/checklists, returned proposal metadata, digest-bound proposal v6 (candidate feature `implementation.md`, optional module `design.md` amendment), exact `attempt/` removal | Derived paths, wrong targets, unchecked work, implicit approval, stale apply, or broader deletion |
+| Deliver | Root trio, module summary/design, completed tasks/checklists, returned proposal metadata, digest-bound proposal v7 (candidate feature `implementation.md`, optional module `design.md` amendment), exact `attempt/` removal | Derived paths, wrong targets, unchecked work, an absent user invocation, stale apply, or broader deletion |
 | Ask | Installed extension/preset guidance plus the smallest relevant bounded maintained project sources | Launcher/runtime invocation, checkout dependency, uncited facts, unrelated deeper context, mutation, or implicit lifecycle work |
 | Reflection triage | Installed canonical agent bodies/wrappers, shared config/queue/plans, and explicit implementer worktrees | Checkout dependency, duplicate platform queue, model pin, permission overwrite, main-checkout parallel writes, or automatic log status changes |
 
@@ -134,9 +134,9 @@ of the fifteen command surfaces and the selected integration's three triage outp
 6. compare command behavior and triage semantics across Claude and Codex;
 7. parse native agent metadata and verify receipt/source/materialized digests.
 
-For an eligible installed acceptance proposal, acceptance also records the runtime-returned
+For an eligible installed delivery proposal, delivery also records the runtime-returned
 `proposal_path`, `task_summary`, and `checklist_summary`. The proposal path must be exactly
-`<workspace.attempt_dir>/accept-proposal.json`; installed agents must consume it without
+`<workspace.attempt_dir>/deliver-proposal.json`; installed agents must consume it without
 derivation, and apply must revalidate both summaries before mutation.
 
 Acceptance fails on any checkout read, missing required archive member, wrong winner, late workspace

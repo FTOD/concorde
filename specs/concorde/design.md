@@ -18,7 +18,7 @@ The skill sources come from two packages:
   converge. The same preset adds `speckit.fast-loop` as a separate additive command for an eligible
   established small change; it is not a tenth normal Spec Kit phase.
 - `extensions/concorde/commands/` defines the Concorde-specific init, context, validate,
-  implementation-acceptance, and read-only ask skills. The extension also carries Feature 005's
+  implementation-delivery, and read-only ask skills. The extension also carries Feature 005's
   canonical reflection-triage bodies, Claude/Codex wrappers, queue helper, and projector as support
   assets rather than another command surface.
 
@@ -31,7 +31,7 @@ shared `.concorde/reflections/` state remains maintainer-owned.
 ### Script boundary
 
 Only four Concorde-specific skills cross into the deterministic runtime: `init`, `context`,
-`validate`, and `impl.accept`. The read-only `ask` skill and the mutating `fast-loop` skill are
+`validate`, and `deliver`. The read-only `ask` skill and the mutating `fast-loop` skill are
 followed by the coding agent and have no runtime subcommand. Normal phase skills call `workspace.py`
 only to resolve the selected nested workspace and derive phase paths. Fast-loop calls the same
 root-scoped adapter first for its selected anchor and then explicitly for every discovered affected
@@ -45,7 +45,7 @@ The script boundary is implemented by:
 - `extensions/concorde/scripts/python/workspace.py` — selected-workspace adapter;
 - `extensions/concorde/scripts/python/reflections_queue.py` — installed triage queue and plan helper;
 - `extensions/concorde/runtime/concorde/` — deterministic initialization, context, validation,
-  reflection, readiness, implementation-acceptance, and agent-projection logic.
+  reflection, readiness, implementation-delivery, and agent-projection logic.
 
 The installed `agent-assets` runtime operation is invoked by Distribution and self-hosting after Spec
 Kit component work; it is not an additional maintainer-facing skill or component lifecycle. It renders
@@ -54,7 +54,7 @@ preserves shared state and inactive integrations.
 
 Scripts return structured results. Command instructions interpret those results and present them to
 the maintainer. A script never becomes a second conversational interface. Semantic affected-feature
-discovery remains with the agent; Protocol v8 and the workspace runtime remain unchanged.
+discovery remains with the agent; Protocol v9 and the workspace runtime remain unchanged.
 
 ### Workspace file model
 
@@ -75,7 +75,7 @@ The workflow uses files as durable documentation or scoped memory:
 An agent may read durable files for bounded context and write the files explicitly assigned to the
 current phase. Attempt files may be replaced during convergence. Durable intent changes through the
 relevant specification workflow. The first accepted realization is written through explicit,
-digest-bound implementation acceptance. An explicitly requested eligible fast-loop may later
+digest-bound implementation delivery. An explicitly requested eligible fast-loop may later
 reconcile a bounded set of affected existing features and related contract/architecture detail after
 proportional evidence passes. A pure naming migration may cross bounded authorities when it follows
 existing compatibility/migration policy and preserves logic and non-name semantics; maintained
@@ -92,7 +92,7 @@ architecture edits complete after exact-diff validation without separate post-ed
 | `reflections-triage` | Project reflection log, shared config, validated plans, assigned worktree state | Parent-persisted plans; implementer commits only in assigned worktrees; maintainer-owned merge/status | Installed queue helper and platform-native child roles |
 | `concorde.context` / `validate` | Maintained architecture and feature files | None | Deterministic runtime operation |
 | `concorde.init` | Project/config state | Proposal only, then approved root files | Deterministic runtime operation |
-| `concorde.impl.accept` | Completed attempt and durable targets | Approved durable realization and attempt cleanup | Atomic deterministic operation |
+| `concorde.deliver` | Completed attempt and durable targets | Approved durable realization and attempt cleanup | Atomic deterministic operation |
 | `concorde.ask` | Smallest relevant installed guidance and project sources | None | No runtime operation; agent answers with citations |
 | Distribution / self-host | Installed extension, component/projection plans, receipts | Spec Kit-owned components plus digest-owned native projections | Public Spec Kit lifecycle followed by installed `agent-assets` preview/sync/verify |
 
@@ -204,7 +204,7 @@ projection-transaction tests belong to Distribution, and site tests belong to Au
   completeness and architectural risk determine whether direct authoring is safe.
 - **Render native reflection agents inside the installer** — rejected because it would duplicate
   Feature 005's canonical behavior and could disagree with the installed extension archive.
-- **Wait for a native Spec Kit custom-agent manifest field** — rejected for 0.5.0 because Spec Kit
+- **Wait for a native Spec Kit custom-agent manifest field** — rejected for 0.6.0 because Spec Kit
   0.16.4 lacks that primitive and the bounded installed operation preserves its lifecycle authority.
 - **Treat matching filenames as projection ownership** — rejected because update/removal could
   overwrite customized or unrelated agent assets; current digest plus receipt is required.
@@ -228,7 +228,7 @@ projection-transaction tests belong to Distribution, and site tests belong to Au
   features and kept module responsibility/dependency and project-level user policy as the hard
   boundary; Constitution 3.0.0 later replaced the architecture-review gate with exact validated
   evidence and no separate post-edit review.
-- 2026-08-30: Kept Protocol v8 and Python scripts unchanged; fast-loop repeats explicit single-root
+- 2026-08-30: Kept Protocol v9 and Python scripts unchanged; fast-loop repeats explicit single-root
   resolution and leaves semantic impact discovery with the agent.
 - 2026-08-30: Kept additive fast-loop removal distinct from lower-layer restoration for the nine normal command modifications.
 - 2026-08-30: Unified the preset and extension IDs as type-qualified `preset:concorde` and
@@ -241,7 +241,7 @@ projection-transaction tests belong to Distribution, and site tests belong to Au
 - 2026-08-30: Refreshed repository-evidence pins and type-stable diagram sources exposed by the
   identity/path migration.
 - 2026-08-30: Packaged Feature 005's canonical triage bodies, wrappers, default config, and queue
-  helper in `extension:concorde@0.5.0`; no platform-specific behavior fork was introduced.
+  helper in `extension:concorde@0.6.0`; no platform-specific behavior fork was introduced.
 - 2026-08-30: Added one post-bundle `agent-assets` transaction sourced only from the installed
   extension, with disposable installed preview and digest-receipt update/removal ownership.
 - 2026-08-30: Reused that transaction for self-hosting and replaced the inactive-integration
@@ -252,7 +252,7 @@ projection-transaction tests belong to Distribution, and site tests belong to Au
 | Term | Meaning | Relationships |
 |---|---|---|
 | `Skills` | Maintainer-facing instructions that define how a coding agent performs a Concorde workflow operation. | `may invoke` → `Scripts`; `operates on` → `Workspace Files` |
-| `Scripts` | Deterministic launchers and runtime operations used when routing, validation, proposal, or acceptance must be structurally safe. | `operates on` → `Workspace Files` |
+| `Scripts` | Deterministic launchers and runtime operations used when routing, validation, proposal, or delivery must be structurally safe. | `operates on` → `Workspace Files` |
 | `Workspace Files` | Files with explicit Concorde roles, authorities, and lifetimes. | `classifies` → `Durable artifact`; `classifies` → `Temporal artifact`; `classifies` → `Generated projection` |
 | `Module` | One architectural level with a responsibility, boundary, immediate children, contracts, features, and maintained views. | `provides` → `Feature`; `owns` → `Contract` |
 | `Feature` | One observable outcome specified exactly once at the level where its participating modules are visible. | `specified at` → `Module`; `exposed through` → `Contract`; `owns` → `Attempt` |

@@ -30,7 +30,7 @@ project root and parse its canonical JSON. Stop without mutation on any status o
 or `selected`. Treat this first resolved root as the **anchor feature**: it starts bounded impact
 discovery but does not assert that exactly one feature owns the change.
 
-Require Protocol v8 `workspace.workspace_kind`, `workspace.feature_id`,
+Require Protocol v9 `workspace.workspace_kind`, `workspace.feature_id`,
 `workspace.providing_module`, `workspace.parent_context`, bounded `workspace.siblings`,
 `workspace.feature_directory`, `workspace.feature_abstract`, `workspace.feature_design`,
 `workspace.feature_implementation`, `workspace.module_summary`, `workspace.module_design`,
@@ -61,8 +61,8 @@ Decide eligibility before changing any file:
 |---|---|---|
 | Anchor | At least one existing canonical anchor feature resolves | Specification/selection repair |
 | Affected feature set | Every feature whose behavior or accepted realization can change is identified and resolves canonically | Clarification or specification |
-| Baseline | Every affected feature's `implementation.md` is not the placeholder | Implementation acceptance for that root |
-| Attempt | Every affected feature has `workspace.attempt_state == "absent"` | Resume implementation or acceptance for that root |
+| Baseline | Every affected feature's `implementation.md` is not the placeholder | Delivery for that root |
+| Attempt | Every affected feature has `workspace.attempt_state == "absent"` | Resume implementation or delivery for that root |
 | Module boundary | The change creates/restructures no feature or module and changes no module responsibility or dependency direction | Specification, then the full workflow |
 | Related authority | Every affected feature, inter-module contract, maintained diagram, module reference, and user guide can be reconciled in this bounded loop | Planning or specification |
 | Project compatibility | No project-level compatibility or migration policy promised to users of the whole project changes; an explicit pure naming migration may replace names while following the existing policy | Specification, then the full workflow |
@@ -103,7 +103,7 @@ request appear eligible.
 When any condition fails, make zero fast-loop edits. Name the failed condition and recommend the
 earliest applicable full-workflow stage: specification for new/changed behavior or ownership,
 planning for a non-small delivery approach, tasks for a plan lacking executable work, implementation
-for an active attempt, or implementation acceptance for a completed attempt. Expected ineligibility
+for an active attempt, or delivery for a completed attempt. Expected ineligibility
 is a normal response and is not itself a reflection-log problem.
 
 ## Direct Change
@@ -132,7 +132,7 @@ For an eligible request, directly complete the bounded modification in this comm
    introduced concepts and relationships, preserve inherited terms without copying them, and reject
    any incompatible inherited redefinition before continuing.
 6. Reconcile every affected `implementation.md` with its verified realization delta. This is direct
-   maintained-source authoring authorized by the explicit fast-loop request, not acceptance
+   maintained-source authoring authorized by the explicit fast-loop request, not delivery
    compaction.
 7. Run every targeted test and deterministic validation required by the changed code, feature,
    contract, architecture, and user documentation. Claim completion only when all agree.
@@ -141,9 +141,9 @@ For an eligible request, directly complete the bounded modification in this comm
    `validated`. Under constitution A.V an otherwise eligible fast loop needs no separate post-edit
    human review. If no architecture authority changed, report `not_applicable`.
 
-No attempt is created or used. Do not create `plan.md`, `tasks.md`, a task checklist, or an acceptance
+No attempt is created or used. Do not create `plan.md`, `tasks.md`, a task checklist, or a delivery
 proposal. Do not delegate to the planning, task-generation, implementation, convergence, or
-implementation-acceptance procedures as hidden substeps.
+delivery procedures as hidden substeps.
 
 If a required check cannot pass, keep unrelated user work intact, do not describe unverified
 realization as accepted, and report the exact remaining diff/failure plus the safe next action.
@@ -191,7 +191,7 @@ Return a concise report containing:
 - for a pure rename, the old-to-new mapping, referential-only authorities, inventory command/result,
   and every rewritten reflection entry ID;
 - unrelated pre-existing changes preserved;
-- `No attempt: yes` and `No acceptance: yes`; and
+- `No attempt: yes` and `No delivery: yes`; and
 - `Reflections added: <identifiers or none> · open for this feature: <count>`.
 
 Do not claim success when a required test, validation, inventory, or mandatory hook failed.

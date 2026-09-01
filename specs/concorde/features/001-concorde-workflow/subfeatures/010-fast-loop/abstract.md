@@ -22,7 +22,7 @@ module-boundary, project-policy, larger, or riskier work to the normal workflow 
 
 The command updates `design.md` and keeps `abstract.md` faithful only when required behavior changes;
 it updates `implementation.md` whenever verified realization changes. It never creates or uses an
-`attempt/`, plan, task list, or acceptance proposal.
+`attempt/`, plan, task list, or delivery proposal.
 
 **Not part of this feature**: first-time realization, active attempts in any affected feature, new or
 restructured features or modules, changed module responsibilities or dependencies, changes to the
@@ -71,7 +71,7 @@ the direct change set.
    claiming success. Eligible architecture edits finish after validation without separate review.
 5. Report the anchor, affected feature set, eligibility, files, documentation impact, checks,
    architecture-evidence state, preserved unrelated work, and confirmation that no attempt or
-   acceptance operation ran.
+   delivery operation ran.
 
 **Rules the implementation must keep**
 

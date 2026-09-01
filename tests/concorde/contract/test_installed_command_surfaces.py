@@ -61,7 +61,7 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
                 "--integration",
                 integration,
                 "--concorde-version",
-                "0.5.0",
+                "0.6.0",
             ],
             cwd=root,
             check=True,
@@ -109,7 +109,7 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
                 "architecture evidence state",
                 "needs no separate post-edit",
                 "No attempt: yes",
-                "No acceptance: yes",
+                "No delivery: yes",
             ):
                 self.assertIn(requirement, fast_content)
             self.assertNotIn("review_pending", fast_content)

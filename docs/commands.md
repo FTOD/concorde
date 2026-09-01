@@ -23,10 +23,10 @@ installed surfaces is defined by
 
 ## Concorde-specific operations
 
-Feature operations use Feature Workspace Protocol v8 (acceptance proposal v6) over Architecture
+Feature operations use Feature Workspace Protocol v9 (delivery proposal v7) over Architecture
 Source Profile 4. Features are created and selected through the
 normal Spec Kit lifecycle (see [Creating and selecting a feature](#creating-and-selecting-a-feature)
-below); Concorde adds no creation or selection command. `impl.accept` accepts either valid level
+below); Concorde adds no creation or selection command. `deliver` accepts either valid level
 while operating on exactly one lifecycle root. `context` reports containment summaries separately
 from cross-module refinement, and `validate` rejects a third feature level.
 
@@ -166,27 +166,27 @@ budget (`CONCORDE-ABSTRACT-004`, a warning), and the durable trio: a missing `im
 `implementation/` attempt directory (`CONCORDE-LAYOUT-008`), or a missing `abstract.md`
 (`CONCORDE-LAYOUT-009`).
 
-### `$speckit-concorde-impl-accept [feature-id-or-root]`
+### `$speckit-concorde-deliver [feature-id-or-root]`
 
 Use only when the selected implementation attempt is task-complete, all existing checklist items are
-satisfied, evidence has been reviewed, and the maintainer accepts the result as a milestone.
+satisfied, applicable evidence is current, and the maintainer wants to deliver the result as a milestone.
 
 The skill first asks the runtime for eligibility, then the agent drafts candidate feature
 `implementation.md` and, when the attempt produced implementation detail or rationale worth keeping, a full
 replacement `design.md` for the module at which the feature is specified. The runtime returns the
 digest-bound proposal location and exact cleanup target; the digest covers the current module
-`design.md`. Nothing is changed until the maintainer explicitly approves those exact bytes and
-paths. Successful apply writes feature `implementation.md`, amends module `design.md` when proposed,
+`design.md`. The user's invocation authorizes immediate apply without another approval question.
+Successful apply writes feature `implementation.md`, amends module `design.md` when proposed,
 and removes the complete `attempt/` directory as one atomic operation, reporting digests for
 both documents; stale or unsafe proposals change nothing, and `abstract.md`, `design.md`, `module.md`, and
 the project reflection log are never edited. Eligibility summarizes the feature's reflection entries
-by status; the candidate must cite every open one among its known limitations or apply refuses with
-`CONCORDE-ACCEPT-012`.
+by status; candidates must not persist reflection identifiers or entry content, and apply refuses
+either violation with `CONCORDE-DELIVER-012`.
 
 ## `$speckit-fast-loop <small-change description>`
 
 Use fast-loop only for one concrete, bounded modification beginning from an existing selected anchor.
-The command resolves that root through Feature Workspace Protocol v8, discovers every related
+The command resolves that root through Feature Workspace Protocol v9, discovers every related
 existing feature whose behavior or realization can change, and resolves each affected root
 explicitly through the same adapter. Every affected feature must already have an accepted realization
 and no active `attempt/` before mutation.
@@ -196,7 +196,7 @@ durable documents and directly related inter-module contracts, maintained diagra
 references, and user guidance. Behavior changes update each affected `design.md` and keep its
 `abstract.md` faithful; realization-only corrections leave behavioral documents byte-identical.
 Verified realization changes reconcile each affected `implementation.md` directly. The command
-creates no attempt, plan, task list, implementation phase, convergence pass, or acceptance proposal.
+creates no attempt, plan, task list, implementation phase, convergence pass, or delivery proposal.
 
 An explicitly requested pure naming migration is also eligible when it supplies a complete old-to-
 new mapping, follows the existing project compatibility/migration policy, and changes only

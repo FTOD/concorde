@@ -25,7 +25,7 @@ evidence_status: verified
 ## Purpose
 
 Provide workspace routing and deterministic initialization, bounded context, validation, readiness,
-reflection, and implementation-acceptance operations over configured project files.
+reflection, and implementation-delivery operations over configured project files.
 
 ## Information
 

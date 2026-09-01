@@ -101,7 +101,7 @@ context reads.
   changed behavior.
 - **FR-008**: For a new root, specification MUST author `abstract.md` and `design.md` and seed a
   `implementation.md` holding only the explicit not-yet-accepted state; substantive implementation
-  content is written by acceptance.
+  content is written by delivery.
 - **FR-009**: These phases MUST use the level's `module.md` as bounded architecture context and MUST
   NOT treat the level's `design.md` as an implicit input or write to it.
 - **FR-010**: The authored abstract MUST be self-contained (understood without opening any other

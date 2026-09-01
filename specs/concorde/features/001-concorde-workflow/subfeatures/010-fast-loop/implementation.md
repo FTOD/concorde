@@ -13,7 +13,7 @@ remains aggregate authority and is not restated here.
 Concorde ships `speckit.fast-loop` as an additive tenth command in the `concorde` preset, beside nine
 normal Spec Kit phase modifications and five Concorde extension surfaces. The coding agent follows
 the command Markdown directly; no new mutation runtime or launcher verb exists. Its first action
-invokes the installed project-relative workspace adapter with `--phase fast-loop`. Protocol v8
+invokes the installed project-relative workspace adapter with `--phase fast-loop`. Protocol v9
 resolves the standard selected root, which fast-loop treats as an anchor rather than proof of
 single-feature ownership.
 
@@ -44,7 +44,7 @@ invocation.
   `fast-loop` root-scoped, and `workspace.py` already accepts one explicit `--feature-directory` per
   call. Repeated calls validate affected roots without a protocol or schema change; semantic impact
   discovery remains with the coding agent.
-- `module.concorde.workspace-files` supplies Protocol v8 durable trio paths, providing-module and
+- `module.concorde.workspace-files` supplies Protocol v9 durable trio paths, providing-module and
   parent/sibling bounds, attempt state, and project reflection path for each resolved root. Normal
   phases remain single-selected-root operations.
 - `module.concorde.distribution` packages ten preset commands and materializes the additive surface.
@@ -58,7 +58,7 @@ The external procedure is `contracts/fast-loop-command.md` under
 `contracts/agent-commands.md` define durable-write and distribution obligations; the project
 `architecture/contracts/concorde-workflow/contract.md` defines single-root lookup plus the bounded
 fast-loop exception. The implementation changes no module responsibility, dependency direction,
-Protocol v8 payload, runtime operation, or project compatibility policy.
+Protocol v9 payload, runtime operation, or project compatibility policy.
 
 ## Scenario Realization
 
@@ -112,7 +112,7 @@ are recorded in the project reflection log.
 - Fast-loop remains an additive preset command, not a normal Spec Kit phase and not a deterministic
   runtime operation.
 - `.specify/feature.json` remains a single canonical pointer. Fast-loop treats it as an anchor and
-  independently resolves each affected existing root through unchanged Protocol v8.
+  independently resolves each affected existing root through unchanged Protocol v9.
 - Semantic impact discovery belongs to the coding agent; a deterministic path-only impact engine and
   an all-project feature payload were rejected as unreliable or unbounded.
 - Every affected feature requires a non-placeholder accepted implementation and no active attempt.

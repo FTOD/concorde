@@ -28,7 +28,7 @@ is a separate, explicitly invoked direct-authoring path limited to an establishe
 | module root | `design.md` | the module design reference: implementation notes, rationale, alternatives, decision log; consulted, never required |
 | feature root | `abstract.md` | this kind of page: purpose, functionality, structure, logic; under 15 minutes |
 | feature root | `design.md` | the complete behavioral authority: scenarios, requirements, success criteria |
-| feature root | `implementation.md` | the feature design reference: how the accepted implementation realizes the feature, in full detail; normally written by acceptance and directly reconciled only by an eligible fast-loop |
+| feature root | `implementation.md` | the feature design reference: how the accepted implementation realizes the feature, in full detail; normally written by delivery and directly reconciled only by an eligible fast-loop |
 | feature root | `attempt/` | the one attempt in progress: plan, tasks, checklists, research, evidence; removed when accepted |
 
 **The command surfaces** — 15 in total, all reached through the active coding-agent integration as
@@ -40,7 +40,7 @@ skills or slash commands:
 | `speckit.concorde.context` | Returns exactly one level — a module with its immediate children, current-level features, contracts, and scenarios, or a feature with its parent and siblings — with any `implementation.md` as a link, never as content. |
 | `speckit.concorde.ask` | Answers a workflow question read-only from installed guidance, module summaries, and feature abstracts, citing anything deeper it opens. Agent-followed; no runtime. |
 | `speckit.concorde.validate` | Checks every maintained source deterministically and returns sorted findings with rule, severity, location, and remediation; byte-equivalent on repeat. |
-| `speckit.concorde.impl.accept` | Turns a completed attempt into accepted realization: proposal, exact review, explicit approval, atomic apply. |
+| `speckit.concorde.deliver` | Turns a completed attempt into accepted realization: one authorizing invocation, digest-bound proposal, and atomic apply without a second approval prompt. |
 | `speckit.fast-loop` | Directly reconciles an eligible small change across code, tests, every affected existing feature, and related contract/architecture/reflection/user documentation; an explicit logic-preserving pure rename may span bounded authorities while reflection `R-NNN` IDs remain stable; no attempt or separate post-edit architecture review is created. |
 | `speckit.specify` · `clarify` · `checklist` | Author `abstract.md` and `design.md` for the selected root, seed a placeholder `implementation.md` for a new root, and write review checklists under `attempt/checklists/`. |
 | `speckit.plan` · `tasks` · `taskstoissues` | Plan one attempt from `design.md`, the accepted `implementation.md`, and the level's `module.md`; write only under `attempt/`. |
@@ -61,7 +61,7 @@ Maintainer ──invoke · review · approve──▶ Coding-agent integration (
                                             ├─ 9 Spec Kit phase surfaces ──▶ selected-workspace adapter ──▶ .specify/feature.json
                                             ├─ fast-loop direct surface ───▶ code + tests + all affected authorities
                                             └─ 5 Concorde surfaces ────────▶ launchers + Python runtime ──▶ architecture sources
-                                                 (init · context · validate · impl.accept · ask)        (module.md · design.md · architecture/: diagrams · contracts · modules)
+                                                 (init · context · validate · deliver · ask)           (module.md · design.md · architecture/: diagrams · contracts · modules)
 
 Selected feature root:   abstract.md   design.md   implementation.md      +   attempt/  (one attempt, until accepted)
                          read      authority reference           plan · tasks · checklists · research · evidence
@@ -100,7 +100,7 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
    For an already-realized bounded small change, the maintainer may instead invoke **fast-loop**:
    the selected root anchors affected-feature discovery, every affected baseline is checked before
    mutation, then code, tests, and all related authorities are reconciled directly with no attempt or
-   acceptance operation; explicit pure renames are referential-only and maintained architecture
+   delivery operation; explicit pure renames are referential-only and maintained architecture
    edits finish after validation.
 5. **Plan**: one attempt under `attempt/`, derived from the specification and the accepted
    design reference; the abstract only orients.
@@ -109,10 +109,10 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
    records to the project reflection log; convergence appends only real remaining work.
 7. **Validate** whenever maintained structure changed; budget overruns are warnings, everything
    else in the document model is an error.
-8. **Accept**: the agent drafts the candidate feature `implementation.md` (optionally with a module
-   `implementation.md` amendment), the maintainer reviews the exact proposal, and only an explicit yes
-   applies it atomically and removes `attempt/`. The next attempt starts again from the
-   trio.
+8. **Deliver**: invoking the command authorizes the agent to draft the candidate feature
+   `implementation.md` (optionally with a module `design.md` amendment), bind it to the current
+   sources, apply it atomically, and remove `attempt/` without pausing for another yes. The next
+   attempt starts again from the trio.
 
 `speckit.concorde.ask` fits anywhere in that sequence and never mutates anything.
 
@@ -126,13 +126,13 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   `design.md` prevails when they disagree (FR-006, FR-007).
 - Module `design.md` and feature `implementation.md` are never implicit inputs; context, questions,
   and planning reach them deliberately and cite them (FR-004, FR-011, FR-012, FR-015).
-- The feature `implementation.md` gets its first accepted realization only through acceptance;
+- The feature `implementation.md` gets its first accepted realization only through delivery;
   an eligible fast-loop may directly reconcile an established realization with a verified small
   change and never creates the first one (FR-008, FR-017, FR-035).
-- Acceptance never edits `abstract.md`, `design.md`, or any `module.md`; a module `design.md` amendment
-  rides only on the same reviewed, digest-bound proposal and applies atomically with the
+- Delivery never edits `abstract.md`, feature `design.md`, or any `module.md`; a module `design.md` amendment
+  rides only on the same invocation-authorized, digest-bound proposal and applies atomically with the
   compaction (FR-017, FR-028).
-- `reflections.md` is the sole persisted reflection-record authority. Acceptance may present entries
+- `reflections.md` is the sole persisted reflection-record authority. Delivery may present entries
   transiently but rejects an `R-NNN` identifier copied into candidate feature implementation or
   module design content (FR-028 and Feature 005 FR-007/FR-011/FR-016).
 - Every normal phase operates on the one selected canonical root through Feature Workspace Protocol
@@ -141,9 +141,9 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   (FR-013, FR-023, FR-024, FR-035).
 - Exactly two containment levels exist; a sub-feature reads its parent's trio as read-only context
   and never loads sibling bodies or attempts (FR-025, FR-026).
-- Proposal, question, context, analysis, and validation are read-only; mutations of maintained
-  intent require explicit approval of the presented proposal and fail safely when reviewed inputs
-  go stale (FR-027, FR-028).
+- Proposal, question, context, analysis, and validation are read-only. Initialization requires
+  approval of its presented proposal; delivery is authorized by invocation and fails safely when
+  its generated proposal goes stale (FR-027, FR-028).
 - Generated diagrams, pages, manifests, and reports are reproducible projections that exclude
   temporal attempts; missing evidence is reported as unknown, never inferred (FR-029, FR-031).
 - Fast-loop starts from one selected anchor, requires every affected feature to be already realized
@@ -158,11 +158,11 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   and "Where a fact lives" table, the Decomposition table, the End-to-End Workflow table, FR-001 to
   FR-035, and SC-001 to SC-014.
 - **How the accepted implementation realizes this feature** — [implementation.md](implementation.md) (accepted realization and
-  implementation detail, written by acceptance).
+  implementation detail, written by delivery).
 - **The contracts this feature crosses** — `contracts/agent-commands.md`
   (command surfaces), `contracts/architecture-sources.md` (the source
   profile), and `contracts/feature-workspace.schema.json` (the
-  workspace protocol and acceptance proposal); the boundary promise is
+  workspace protocol and delivery proposal); the boundary promise is
   [contract.concorde.workflow](../../architecture/contracts/concorde-workflow/contract.md).
 - **The level this feature belongs to** — [module.md](../../module.md) (the root summary, linking the root
   level view under `../../architecture/diagrams/`) and its [design reference](../../design.md).
@@ -175,7 +175,7 @@ Selected feature root:   abstract.md   design.md   implementation.md      +   at
   [plan](subfeatures/006-plan-delivery/design.md),
   [execute](subfeatures/007-execute-and-reconcile/design.md),
   [validate](subfeatures/008-validate-architecture/design.md),
-  [accept](subfeatures/009-accept-milestone/design.md),
+  [deliver](subfeatures/009-accept-milestone/design.md),
   [fast-loop](subfeatures/010-fast-loop/design.md).
 - **Framework-level explanation** — [docs/concorde-workflow.md](../../../../docs/concorde-workflow.md)
   and [docs/specification-model.md](../../../../docs/specification-model.md).

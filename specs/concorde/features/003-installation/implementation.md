@@ -7,8 +7,8 @@
 ## Realization Overview
 
 Concorde is delivered through Spec Kit 0.16.4 as three independently versioned, type-qualified
-components: `bundle:concorde-bundle@0.5.0`, `preset:concorde@0.5.0`, and
-`extension:concorde@0.5.0`. The bundle remains a passive recipe that pins exactly one preset and one
+components: `bundle:concorde-bundle@0.6.0`, `preset:concorde@0.6.0`, and
+`extension:concorde@0.6.0`. The bundle remains a passive recipe that pins exactly one preset and one
 extension. The preset and extension intentionally share the `concorde` ID because Spec Kit resolves
 them through separate component types, catalogs, registries, installed directories, and lifecycle
 verbs.
@@ -114,7 +114,7 @@ or failure produces residual-state evidence and never records false terminal suc
   installation succeeds only after native outputs and their receipt verify.
 - **Disposable installed preview**: preview exercises the actual candidate archive and stays
   read-only against the target rather than consulting checkout-local assets.
-- **One aligned 0.5.0 release**: bundle, preset, and extension versions advance together so an
+- **One aligned 0.6.0 release**: bundle, preset, and extension versions advance together so an
   already-current 0.4.0 installation cannot skip new archive members or projections.
 - **Explicit release allowlists**: canonical agent assets extend the integrity-covered extension
   inventory without inventing an unsupported Spec Kit manifest field.
@@ -152,7 +152,7 @@ Final evidence on 2026-08-30:
 - The full Concorde Python suite passed 294 tests.
 - Concorde validation returned zero findings with source digest
   `sha256:8c0842bd38da77720f3e6cb2b0ce130e984f170010f404a6b79260ec2a06ae4f`.
-- The 0.5.0 release rebuilt byte-equivalently: bundle
+- The 0.6.0 release rebuilt byte-equivalently: bundle
   `sha256:9a81094801d52fd1c2511400b4ec3b2854a9fde69b6a724583476641c5d243c9`,
   extension `sha256:900044f0d275caa38c8a4bae18a1a85666e0e4aee6356b774004f80c8ea4c307`,
   and preset `sha256:997050c07587028f0e5e45fd7eb3fb249bda58f96cb81c5a9f0de54fe5c04fe4`.
@@ -171,7 +171,7 @@ Final evidence on 2026-08-30:
   was unavailable; deterministic showcase checks are not claimed as visual review.
 - Compatibility remains limited to Spec Kit `>=0.16.4,<0.16.5`.
 - Public release hosting and a first-time remote installation timing proof remain owned by the
-  `publish-release` and `one-command-install` sub-features; this milestone builds and verifies 0.5.0
+  `publish-release` and `one-command-install` sub-features; this milestone builds and verifies 0.6.0
   artifacts but does not claim those pending outcomes complete.
 
 ## Implementation Detail

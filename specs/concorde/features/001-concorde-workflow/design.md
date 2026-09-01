@@ -46,7 +46,7 @@ realization**: [implementation.md](implementation.md) — consulted when writing
 **Status**: Revised around the feature-root `abstract.md` / `design.md` / `implementation.md` trio
 and temporal `attempt/` directory. `abstract.md` is read first, `design.md` owns required behavior,
 and `implementation.md` records accepted realization. Modules retain `module.md` / `design.md`.
-Protocol v8, proposal v6, and Build Manifest v8 carry these names through every surface, and
+Protocol v9, proposal v7, and Build Manifest v8 carry these names through every surface, and
 Architecture Source Profile 4 places each module's diagrams, boundary contracts, and submodules under
 its `architecture/` directory beside `features/`. A tenth immediate child now owns the explicitly
 invoked fast path for small, non-architectural changes.
@@ -69,12 +69,12 @@ source ownership.
 ### Session 2026-08-27
 
 - Q: Should a new feature root get a placeholder `implementation.md` at specification time, or
-  should the file not exist until the first acceptance writes it? → A: Specification seeds a
+  should the file not exist until the first delivery writes it? → A: Specification seeds a
   placeholder whose only content is the explicit "no realization has been accepted yet" state;
-  the first acceptance overwrites it in full and later acceptances complete it. A valid root always
+  the first delivery overwrites it in full and later deliveries complete it. A valid root always
   owns the durable pair `design.md` + `implementation.md`.
 - Q: When and by whom is implementation detail and rationale written into a module's `implementation.md`?
-  → A: During work it is captured inside `attempt/`; only an approved acceptance proposal
+  → A: During work it is captured inside `attempt/`; only an invocation-authorized delivery proposal
   writes attempt-derived content into `implementation.md`. Maintainers may edit `implementation.md` directly at any
   time as an ordinary maintained source; at that revision no workflow phase other than acceptance
   wrote it. The later fast-loop clarification below adds one bounded direct-authoring exception.
@@ -95,7 +95,7 @@ source ownership.
 
 Revision note (2026-08-29): feature roots use `abstract.md`, `design.md`, and `implementation.md`,
 with temporal work under `attempt/`. The placeholder is seeded at specification and written in full by the first acceptance,
-  a module `design.md` is written by acceptance, directly by a maintainer, or by an eligible
+  a module `design.md` is written by delivery, directly by a maintainer, or by an eligible
   fast-loop whose exact architecture diff passes deterministic validation; the level view is
 the required module diagram, reading-budget overruns are warnings, and adoption is a one-time
 refactor of this repository.
@@ -178,8 +178,8 @@ features/<number-name>/
 |---|---|---|---|
 | `abstract.md` | Give a self-contained quick understanding of the feature: its purpose, its functionality (what it does and does not do), its basic structure (the participating parts and how they collaborate, with the declared core diagram when there is one), and its logic (how it works and the rules code must not break), plus where the rest lives. | The first — and for most questions the only — feature document a programmer or agent opens. Complete on its own for a quick understanding; its links to `design.md` and `implementation.md` redirect, they are never required reading. It summarizes; it never defines. | Under 15 minutes of reading; five fixed sections (`Purpose`, `Functionality`, `Structure`, `Logic`, `Read Next`); a diagram or text sketch, short lists, short prose. |
 | `design.md` | Define required behavior completely: user scenarios, functional requirements, success criteria, scope, key entities, clarifications, assumptions, dependencies, and architecture alignment. | The authority whenever a requirement is defined, reviewed, tested, or disputed. Self-contained: readable without the abstract, more detailed than it, and still free of realization detail; it may link to `abstract.md` and `implementation.md` for redirection. | The Spec Kit specification shape. No deterministic reading budget; anything that explains *how* rather than *what* belongs in `implementation.md`. |
-| `implementation.md` | Record how the currently accepted implementation realizes the feature: collaborating modules and lower-level features, contracts and data/control flow, scenario realization, durable implementation decisions, evidence references, known limitations, and the full implementation detail a coder needs. | Required only when writing code or fixing a bug. Written by acceptance; before the first accepted milestone it states only that no realization has been accepted. | Six fixed sections followed by any further implementation-detail headings; unbounded and navigable. |
-| `attempt/` | The one attempt in progress: plan, tasks, checklists, research, models, guidance, evidence. | Acceptance compacts it into `implementation.md` and removes it. | Temporal; never published. |
+| `implementation.md` | Record how the currently accepted implementation realizes the feature: collaborating modules and lower-level features, contracts and data/control flow, scenario realization, durable implementation decisions, evidence references, known limitations, and the full implementation detail a coder needs. | Required only when writing code or fixing a bug. Written by delivery; before the first delivered milestone it states only that no realization has been accepted. | Six fixed sections followed by any further implementation-detail headings; unbounded and navigable. |
+| `attempt/` | The one attempt in progress: plan, tasks, checklists, research, models, guidance, evidence. | Delivery compacts it into `implementation.md` and removes it. | Temporal; never published. |
 
 The reading path is **orientation → authority → realization**: `abstract.md` answers "what is this",
 `design.md` answers "exactly what must hold", `implementation.md` answers "how is it built". A feature root
@@ -222,12 +222,12 @@ names. No compatibility alias or symlink may stand in for the canonical paths.
 | 1 | `feature.concorde.workflow.initialize-architecture` | `speckit.concorde.init` | Unchanged: initialization creates the root module package and no feature root. |
 | 2 | `feature.concorde.workflow.retrieve-bounded-context` | `speckit.concorde.context` | Feature summaries expose abstract/design/implementation paths; module `design.md` and feature `implementation.md` are navigation references only. |
 | 3 | `feature.concorde.workflow.answer-workflow-questions` | `speckit.concorde.ask` | Answers ground in installed guidance, module summaries, and feature abstracts first; `design.md` is opened for a requirement's exact wording and a `implementation.md` only for implementation detail or rationale, each cited. |
-| 4 | `feature.concorde.workflow.manage-feature-workspaces` | Feature Workspace Protocol routing of the standard Spec Kit selection (no Concorde command) | Protocol v8 exposes the durable trio and `attempt/`; legacy filenames are invalid. |
+| 4 | `feature.concorde.workflow.manage-feature-workspaces` | Feature Workspace Protocol routing of the standard Spec Kit selection (no Concorde command) | Protocol v9 exposes the durable trio and `attempt/`; legacy filenames are invalid. |
 | 5 | `feature.concorde.workflow.specify-behavior` | `speckit.specify`, `speckit.clarify`, `speckit.checklist` | Specification authors `abstract.md` and `design.md` together and seeds or preserves the placeholder `implementation.md`; clarification keeps the abstract current; checklists review the abstract. |
 | 6 | `feature.concorde.workflow.plan-delivery` | `speckit.plan`, `speckit.tasks`, `speckit.taskstoissues` | The accepted baseline is the feature `implementation.md`; the abstract is orientation, not a planning input. |
 | 7 | `feature.concorde.workflow.execute-and-reconcile` | `speckit.implement`, `speckit.analyze`, `speckit.converge` | Implementation reads the feature `implementation.md` as its baseline; analysis reports abstract/specification disagreement and writes only required problem records to the project reflection log. |
 | 8 | `feature.concorde.workflow.validate-architecture` | `speckit.concorde.validate` | Rules cover abstract shape, durable trio, and legacy names. |
-| 9 | `feature.concorde.workflow.accept-milestone` | `speckit.concorde.impl.accept` | Compaction targets feature `implementation.md`; the proposal may amend module `design.md`. |
+| 9 | `feature.concorde.workflow.accept-milestone` | `speckit.concorde.deliver` | One invocation authorizes compaction into feature `implementation.md`; the proposal may amend module `design.md` and applies without a second approval prompt. |
 | 10 | `feature.concorde.workflow.fast-loop` | `speckit.fast-loop` | An explicitly invoked small-change path directly reconciles code, tests, and related feature/user documentation without an attempt or acceptance; ineligible work is redirected before mutation. |
 
 The decomposition follows maintainer outcomes rather than implementation packages. Commands are
@@ -259,7 +259,8 @@ children, and remain distinct from adjacent-module feature refinement.
   reports are projections, not maintained intent.
 - A **reading budget** bounds every document that is read first: under 20 minutes for a module
   summary and under 15 minutes for a feature abstract, for a first-time reader.
-- Human approval is required before architecture creation or acceptance mutates maintained intent.
+- Human approval is required before architecture creation mutates maintained intent. Invoking
+  delivery authorizes its digest-bound mutation; delivery does not request a second approval.
   Read-only questions, context retrieval, analysis, and validation do not grant approval.
 - Feature containment and adjacent-module feature refinement are separate relationships with
   separate validation and documentation labels.
@@ -277,7 +278,7 @@ children, and remain distinct from adjacent-module feature refinement.
 | 5 | Plan one implementation attempt, order its work, and optionally project tasks into issues. | `speckit.plan` / `speckit.tasks` / `speckit.taskstoissues` | `design.md`, feature `implementation.md`, level summary; the module reference on demand | `attempt/` |
 | 6 | Execute tasks, analyze artifact consistency, and append only genuine remaining work. | `speckit.implement` / `speckit.analyze` / `speckit.converge` | The attempt and the durable trio | `attempt/`, code, tests, project reflection log |
 | 7 | Deterministically validate maintained architecture and evidence references. | `speckit.concorde.validate` | All maintained sources | — |
-| 8 | Review and explicitly compact a completed attempt into the accepted realization. | `speckit.concorde.impl.accept` | Durable trio, complete attempt, level summary and module reference, centralized reflection log | Feature `implementation.md`; optional reviewed module `design.md` amendment; removes `attempt/`; reflection entries remain only in the byte-identical log |
+| 8 | Deliver a completed attempt into the accepted realization with one authorizing invocation. | `speckit.concorde.deliver` | Durable trio, complete attempt, level summary and module reference, centralized reflection log | Feature `implementation.md`; optional module `design.md` amendment; removes `attempt/`; reflection entries remain only in the byte-identical log |
 
 Validation may be invoked after any maintained structural change, not only at stage 7. Context and
 the question surface may be used whenever a maintainer needs to navigate or understand the workflow.
@@ -288,7 +289,7 @@ Initialization must precede operations that depend on an existing Concorde hiera
 first writer of a module summary and reference. Workspace management establishes the selected root
 consumed by all normal Spec Kit phases. Specification is the durable behavioral input to planning
 and normally owns the abstract; planning creates the temporal artifacts consumed by execution;
-validation may challenge any maintained structural claim; acceptance is eligible only after execution
+validation may challenge any maintained structural claim; delivery is eligible only after execution
 work and review state are complete, normally writes the feature implementation, and is the only
 workflow step that carries rationale developed during an attempt into a module design reference.
 An eligible fast-loop is the bounded exception that may reconcile the anchor and every affected
@@ -373,7 +374,7 @@ that every phase uses only the selected root's authoritative paths and the three
 
 1. **Given** an initialized project, **When** a maintainer completes all ordered stages, **Then** the
    result has one canonical `abstract.md` and `design.md`, one accepted `implementation.md`, no temporal
-   attempt, a module summary untouched by acceptance, and — when the reviewed proposal included one —
+   attempt, a module summary untouched by delivery, and — when the generated proposal included one —
    a module `design.md` amended exactly as reviewed.
 2. **Given** a new root is created through specification, **When** the phase completes, **Then**
    the root contains an `abstract.md` in the required shape, `design.md`, and `implementation.md`
@@ -430,20 +431,21 @@ reference.
 A maintainer can inspect any proposal, question answer, context result, analysis report, or validation
 finding before authorizing a mutation.
 
-**Why this priority**: Explicit human authority over maintained intent is a constitutional
-obligation, and acceptance may now touch two design references in one proposal, so review must see
-both.
+**Why this priority**: Human authority over maintained intent is a constitutional obligation.
+Initialization still has a review boundary; delivery derives authority from its explicit invocation
+and preserves deterministic proposal, digest, and rollback controls without a second prompt.
 
 **Independent Test**: Exercise every review-only mode against a snapshot and verify maintained
 sources are byte-identical afterward.
 
 **Acceptance Scenarios**:
 
-1. **Given** an initialization or acceptance proposal, **When** approval is withheld, **Then** no
-   maintained source or selection state changes.
-2. **Given** a acceptance proposal that includes a module `design.md` amendment, **When** it is
-   presented, **Then** the maintainer sees the exact reference change alongside the candidate
-   feature `implementation.md` and the cleanup manifest before deciding.
+1. **Given** an initialization proposal, **When** approval is withheld, **Then** no maintained source
+   or selection state changes.
+2. **Given** delivery is explicitly invoked and its generated proposal includes a module `design.md`
+   amendment, **When** the proposal is valid and current, **Then** it applies without another
+   approval interaction and the completion result reports the reference change, feature
+   `implementation.md`, and cleanup manifest.
 3. **Given** missing or conflicting evidence, **When** validation or analysis runs, **Then** the
    result reports disagreement or uncertainty rather than rewriting intent.
 
@@ -476,7 +478,7 @@ durable root without root-level compatibility copies.
   level view, or a contract.
 - A feature root contains legacy `tldr.md`/`spec.md` files or an `implementation/` directory, or
   lacks one of the durable trio.
-- A acceptance proposal tries to edit `abstract.md`, feature `design.md`, `module.md`, or module `design.md` at
+- A delivery proposal tries to edit `abstract.md`, feature `design.md`, `module.md`, or module `design.md` at
   a level other than the one at which the feature is specified.
 - A question or planning step needs a detail that exists only in a design reference.
 - A command receives an unknown, ambiguous, unsafe, or stale module/feature target.
@@ -487,7 +489,7 @@ durable root without root-level compatibility copies.
   policy (other than a pure rename that follows it), material ambiguity, or work overlapping user
   edits.
 - A contract, refinement, scenario, diagram, or parent registration is missing or contradictory.
-- The maintained source digest changes between proposal review and approved application.
+- The maintained source digest changes between proposal creation and invocation-authorized apply.
 - Generated evidence disagrees with maintained intent or cannot be reproduced.
 
 ## Requirements
@@ -514,7 +516,7 @@ durable root without root-level compatibility copies.
   nothing has been recorded yet, and MUST NOT redefine responsibility, boundary, contracts, or
   organization owned by `module.md`, the contract documents, and the level view. A maintainer MAY
   edit it directly as an ordinary maintained source; workflow operations write it only through an
-  approved acceptance proposal.
+  invocation-authorized delivery proposal.
 - **FR-004**: No workflow operation MAY treat module `design.md` or feature `implementation.md` as an
   implicit input. They are reached through deliberate navigation and cited when used.
 
@@ -548,8 +550,8 @@ durable root without root-level compatibility copies.
   Collaboration`, `Scenario Realization`, `Durable Implementation Decisions`, `Traceability and
   Evidence`, `Known Limitations`), followed by any further headings the full implementation detail
   needs; before the first accepted milestone it MUST hold only the explicit "no realization
-  accepted" state. The first accepted acceptance MUST overwrite the placeholder in full and each later
-  acceptance MUST complete it. An explicitly invoked eligible fast-loop MAY directly reconcile an
+  accepted" state. The first delivery MUST overwrite the placeholder in full and each later
+  delivery MUST complete it. An explicitly invoked eligible fast-loop MAY directly reconcile an
   already-accepted implementation with a verified small change; it MUST NOT create the first accepted
   realization.
 - **FR-009**: Module `design.md`, feature `design.md`, and feature `implementation.md` MUST retain
@@ -582,11 +584,12 @@ durable root without root-level compatibility copies.
 - **FR-016**: Implementation MUST read the feature `implementation.md` as its accepted baseline; analysis
   MUST report any disagreement between `abstract.md` and `design.md` alongside its other inconsistencies;
   neither they nor convergence MAY write a durable document.
-- **FR-017**: Acceptance MUST compact the completed attempt into the selected root's `implementation.md` and
-  remove `attempt/`; the same reviewed proposal MAY carry the implementation details and
+- **FR-017**: Delivery MUST compact the completed attempt into the selected root's `implementation.md` and
+  remove `attempt/`; the same digest-bound proposal MAY carry the implementation details and
   rationales developed during the attempt into module `design.md` of the level at which the feature is
-  specified. Every part of the proposal MUST apply atomically under one explicit approval or not at
-  all, and acceptance MUST NOT edit `abstract.md`, `design.md`, or any `module.md`.
+  specified. The user's delivery invocation MUST authorize proposal generation and immediate apply
+  without a second approval interaction. Every part of the proposal MUST apply atomically or not at
+  all, and delivery MUST NOT edit `abstract.md`, `design.md`, or any `module.md`.
 - **FR-018**: Validation MUST deterministically check module summary shape (required sections, an
   explicit link to the level view or a recorded leaf rationale, inventory tables) and reading
   budget; module reference presence and reachability; abstract presence, section shape, structure
@@ -650,7 +653,7 @@ durable root without root-level compatibility copies.
 - **FR-035**: `speckit.fast-loop` MUST directly reconcile an eligible small change across code,
   proportional tests, every affected existing feature's durable documents, and directly related
   contracts, architecture detail, module references, and user documentation without creating or
-  invoking planning, task, implementation, convergence, or acceptance artifacts. It MUST use one
+  invoking planning, task, implementation, convergence, or delivery artifacts. It MUST use one
   selected root as an anchor, explicitly resolve every affected root, require an accepted baseline
   and no active attempt for each, preserve unrelated worktree changes, reject module responsibility,
   dependency-direction, project-level user compatibility/migration-policy, unsafe, or materially
@@ -670,7 +673,7 @@ two-document module model; the reading budgets; the one-time feature-root rename
 `tldr.md`/`spec.md`/`design.md` to `abstract.md`/`design.md`/`implementation.md` and from
 `implementation/` to `attempt/`; root initialization; bounded context; workflow questions; Feature Workspace Protocol
 resolution of the standard Spec Kit selection; selected-root routing for all nine normal Spec Kit
-phases; architecture validation; implementation acceptance including reviewed module-reference amendments;
+phases; implementation delivery including digest-bound module-reference amendments;
 the explicitly invoked fast-loop alternate for a bounded small change across already-realized
 related features while module boundaries and project-level user policy remain stable;
 migration of installed guidance and of Concorde's own hierarchy; the shared authority and
@@ -703,7 +706,7 @@ remains a separately tracked follow-up.
   needed only when writing the code or fixing a bug.
 - **Fast-loop change**: A directly authored, verified code/test/document change beginning from one
   selected anchor and spanning a bounded affected set of existing accepted features, with no
-  temporal attempt or acceptance proposal and exact review for maintained architecture edits.
+  temporal attempt or delivery proposal and exact review for maintained architecture edits.
 - **Implementation attempt** (`attempt/`): Temporary plan, tasks, checklists, research,
   models, guidance, and evidence for one delivery cycle.
 - **Reading budget**: The maximum first-time reading effort a module summary (20 minutes) or a
@@ -739,8 +742,10 @@ remains a separately tracked follow-up.
 - **SC-007**: In all lifecycle routing tests, every phase reads or writes only the selected top-level
   feature or immediate sub-feature paths returned by the workspace result, and no phase other than
   specification and clarification writes `abstract.md` or `design.md`.
-- **SC-008**: In all approval-gated fixtures, withholding approval or changing reviewed sources causes
-  zero maintained-intent mutations, including zero design-reference changes.
+- **SC-008**: In initialization fixtures, withholding approval causes zero maintained-intent
+  mutations; in delivery fixtures, ineligibility or a stale generated proposal causes zero
+  maintained-intent mutations, including zero design-reference changes, without requesting a
+  second approval.
 - **SC-009**: Repeated validation of unchanged sources produces byte-equivalent ordered findings,
   including the document-model rules.
 - **SC-010**: All seeded invalid cases — missing, over-budget, or malformed abstract; legacy
@@ -848,5 +853,5 @@ remains a separately tracked follow-up.
 | `Feature implementation` | The feature-root `implementation.md` that records the currently accepted realization or an explicit placeholder. | `realizes` → `Feature`; `belongs to` → `Feature root` |
 | `Selection` | The canonical pointer to exactly one feature root for lifecycle routing. | `selects` → `Feature root` |
 | `Workspace result` | The versioned paths, state, and bounded relationship context returned for a selected feature root. | `describes` → `Feature root`; `derived from` → `Selection` |
-| `Acceptance proposal` | The reviewed, digest-bound candidate that may replace a feature implementation and optionally a module design reference. | `updates` → `Feature implementation`; `may update` → `Module design reference` |
-| `Workflow finding` | A finding produced while routing, authoring, validating, or accepting a Concorde workflow change. | `is a` → `Finding` |
+| `Delivery proposal` | The invocation-authorized, digest-bound candidate that may replace a feature implementation and optionally a module design reference. | `updates` → `Feature implementation`; `may update` → `Module design reference` |
+| `Workflow finding` | A finding produced while routing, authoring, validating, or delivering a Concorde workflow change. | `is a` → `Finding` |

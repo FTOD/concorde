@@ -24,7 +24,7 @@ canonical_design: specs/concorde/architecture/modules/scripts/features/001-run-w
 ## Outcome
 
 Skills can resolve a selected workspace and invoke deterministic initialization, context, validation,
-readiness, reflection, or implementation-acceptance behavior with complete structured results and
+readiness, reflection, or implementation-delivery behavior with complete structured results and
 repository-safe file access.
 
 ## Representative Scenario

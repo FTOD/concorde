@@ -1,27 +1,26 @@
 <!--
 Sync Impact Report
-- Version change: 2.1.0 -> 3.0.0 (MAJOR: the universal human-review requirement for AI-authored
-  architecture is replaced by a risk-proportional rule with a narrow fast-loop exception)
+- Version change: 3.0.0 -> 4.0.0 (MAJOR: a completed normal lifecycle may be delivered under one
+  explicit invocation without a separate exact-proposal approval interaction)
 - Modified principles:
-  - A.IV Contracts Are Human-Readable Promises: contract changes MUST still be evaluated for feature
-    and compatibility impact, but a separate human review is no longer universal when the change
-    satisfies the A.V fast-loop exception.
-  - A.V Deterministic Validation, Human-Reviewed Evidence -> A.V Deterministic Validation,
-    Risk-Proportional Review: eligible, explicitly invoked small fast-loop architecture changes MAY
-    become project intent without a separate post-edit human review; all other AI-authored
-    architecture changes retain the review requirement.
+  - A.V Deterministic Validation, Risk-Proportional Review: adds a second narrow authorization
+    route. An explicit delivery invocation after the normal task/checklist lifecycle MAY authorize
+    the generated digest-bound realization and providing-module design amendment without a second
+    exact-proposal approval; initialization and other AI-authored architecture changes retain their
+    existing review rules.
 - Added sections: none. Removed sections: none.
-- Motivation: an explicitly requested fast loop already bounds affected authorities, rejects
-  structural and policy changes, and requires proportional deterministic evidence. Requiring a
-  second human review for every small contract or maintained-diagram correction adds ceremony
-  without changing the accepted risk boundary.
-- Compatibility impact: governance-breaking. Eligible fast-loop architecture edits can now become
-  project intent after deterministic verification and truthful disclosure without exact-diff human
-  confirmation. Structural, responsibility, dependency, ambiguous, and project-policy changes still
-  require the normal reviewed lifecycle.
-- Templates and guides reconciled after this amendment: Fast Loop required behavior, accepted
-  realization, command guidance, contracts, user guides, tests, and maintained workflow diagrams now
-  implement the A.V exception and the bounded pure-rename case.
+- Motivation: requesting delivery already follows specification, planning, dependency-ordered
+  tasks, implementation, checklist completion, and deterministic validation. Requiring another
+  yes/no response after the agent generates the delivery candidate duplicates authorization while
+  leaving the technical safety boundary unchanged.
+- Compatibility impact: governance-breaking. A user may now invoke delivery once and have the
+  eligible current proposal applied automatically. Eligibility, target restriction, source digest,
+  candidate validation, atomic promotion, rollback, and complete evidence reporting remain
+  mandatory. Initialization and changes outside delivery or the existing fast-loop exception still
+  require their prior review behavior.
+- Templates and guides reconciled after this amendment: Deliver Milestone required behavior,
+  command guidance, runtime/protocol contracts, package inventories, user guides, tests, and
+  maintained workflow diagrams implement the one-invocation rule.
 - Follow-up TODOs (owner: Concorde maintainers):
   - Reconcile `feature.concorde.workflow.specify-behavior`, its command/template quality checks,
     workflow guidance, tests, and generated projections so they apply risk-proportional review rather
@@ -126,9 +125,10 @@ carries, the human cannot judge whether a change is safe, and the architecture v
 ### A.V Deterministic Validation, Risk-Proportional Review
 Validation, rendering, documentation builds, freshness checks, and cross-reference checks MUST be
 deterministic and MUST NOT require an LLM. Architecture changes proposed or authored by an AI MUST
-receive human review and pass applicable validation before they become project intent, except for an
-explicitly invoked small change completed through the project's fast-loop workflow. That exception
-applies only when deterministic preflight and evidence establish all of the following:
+receive human review and pass applicable validation before they become project intent, except for
+either an explicitly invoked small change completed through the project's fast-loop workflow or an
+explicitly invoked delivery of a completed normal lifecycle. The fast-loop exception applies only
+when deterministic preflight and evidence establish all of the following:
 
 - every affected feature already has durable required behavior, an accepted realization, and no
   active attempt;
@@ -148,11 +148,25 @@ exception unavailable and requires the normal reviewed lifecycle. A passing arch
 NOT be presented as proof that the implementation is correct; structural validity and behavioral
 evidence remain distinct.
 
+The delivery exception applies only when one selected feature or immediate sub-feature has a real
+active attempt with at least one recognizable task, every task and existing checklist item is
+complete and well formed, applicable deterministic validation has passed, and the maintainer
+explicitly invokes the delivery command. That invocation authorizes the agent to generate and apply
+one current digest-bound proposal without a second approval interaction. The proposal may replace
+only the selected feature's accepted implementation, may amend only the providing level's module
+design reference with attempt-developed implementation detail or rationale, and must remove exactly
+the selected complete attempt. Safe canonical paths, candidate-content checks, centralized
+reflection ownership, stale-source rejection, atomic promotion, rollback, and exact result reporting
+remain mandatory. Delivery cannot change feature behavior, module summaries, responsibilities,
+boundaries, contracts, level views, dependency direction, or another lifecycle root. Ineligibility,
+ambiguity, a stale digest, an unsafe target, or failed validation prevents mutation rather than
+falling back to implied authority.
+
 Rationale: AI-assisted changes are trustworthy when authority is bounded, impact is explicit, and
 evidence is reproducible. Human review remains mandatory for structural, directional, ambiguous, or
-project-policy changes, while an explicitly requested and deterministically verified fast loop avoids
-a redundant second approval for small architecture corrections. Generated artifacts earn no
-authority by existing.
+project-policy changes. Explicit fast-loop and delivery invocations avoid redundant approval
+interactions inside their distinct deterministic boundaries. Generated artifacts earn no authority
+by existing.
 
 ## Part B: Project Principles
 
@@ -248,4 +262,4 @@ of implementation agreement without evidence. Exceptions are temporary records, 
 Maintainers MUST review this constitution at least once per major release and whenever recurring
 exceptions indicate a rule no longer serves the project's goals.
 
-**Version**: 3.0.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-08-31
+**Version**: 4.0.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-01

@@ -4,14 +4,14 @@
 
 **Surface**: `speckit.fast-loop` (rendered as the active integration's skill or slash-command form)
 
-**Representation**: agent-followed command Markdown plus Feature Workspace Protocol v8 selection
+**Representation**: agent-followed command Markdown plus Feature Workspace Protocol v9 selection
 
 ## Intent
 
 Complete one explicitly requested, small modification beginning from an existing selected anchor
 feature by directly reconciling code, proportional tests, every affected existing feature, and
 related maintained documentation. Do not create or invoke a planning, task, implementation,
-convergence, or acceptance workflow.
+convergence, or delivery workflow.
 
 ## Input
 
@@ -25,7 +25,7 @@ An empty change description is rejected without reading or writing project artif
 ## Workspace Resolution
 
 Before hooks, preflight, or artifact access, the installed command invokes the extension-relative
-workspace adapter with `--phase fast-loop`. A successful Protocol v8 response returns the selected
+workspace adapter with `--phase fast-loop`. A successful Protocol v9 response returns the selected
 anchor root as `phase_root` and includes the durable trio, providing module references, bounded
 parent/sibling summaries, attempt path/state, and project reflection log. After bounded impact
 discovery, the command reruns the same adapter with `--feature-directory <affected-root> --phase
@@ -111,7 +111,7 @@ A successful report includes:
 
 An otherwise eligible architecture-source change may complete after its exact diff, hashes, and
 applicable deterministic evidence validate. It requires no separate post-edit human review and
-creates no attempt or implementation-acceptance artifact.
+creates no attempt or implementation-delivery artifact.
 
 ## Failures
 
