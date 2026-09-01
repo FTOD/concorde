@@ -44,6 +44,17 @@ class ExecuteReconcileContractTests(unittest.TestCase):
             "protected-authority",
             "SHA-256",
             "failed verification",
+            "setup-file inspection as read-only by default",
+            "one dependency-ready executable task",
+            "stable task ID",
+            "requirement, acceptance-outcome, or named plan-section trace token",
+            "detected tool",
+            "exact project-relative setup file being changed",
+            "action authorizing the required creation or edit",
+            "cannot independently authorize a setup mutation",
+            "Repository/tool detection alone MUST NOT authorize a write",
+            "preserve every setup file byte-for-byte",
+            "Never synthesize authorization from repository detection",
         ):
             self.assertIn(invariant, content, invariant)
 
@@ -74,8 +85,22 @@ class ExecuteReconcileContractTests(unittest.TestCase):
             "byte-for-byte unchanged",
             "no empty Convergence header",
             "workspace.reflections",
+            "implementation-owned diagram source/evidence",
+            "missing required diagram declaration",
+            "incorrect core role/kind",
+            "prose/contract authority disagreement",
+            "specification or architecture review",
+            "never append a task that edits feature `design.md`",
+            "maintained JSON that is already authorized, validation, delivery, automatic embedding",
+            "truthful visual-review evidence, and freshness",
         ):
             self.assertIn(invariant, content, invariant)
+        self.assertNotIn(
+            "Append work for `diagrams/` placement, declaration in `design.md`, maintained Archify "
+            "JSON, prose alignment, contract references, delivery, automatic feature-page "
+            "embedding, truthful visual-review evidence, and freshness",
+            content,
+        )
 
     def test_shared_contract_defines_execute_and_reconcile_handoff(self):
         content = " ".join(WORKFLOW_CONTRACT.read_text(encoding="utf-8").split())

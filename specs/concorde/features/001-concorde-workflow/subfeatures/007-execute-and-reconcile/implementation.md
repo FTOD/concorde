@@ -20,7 +20,7 @@ The inherited `contract.concorde.workflow` defines the Execute and Reconcile han
 
 ### Execute tasks with evidence
 
-The implementation surface validates every checklist, parses task dependencies, and works phase by phase. Before a task changes to `[X]`, `attempt/validation.md` records its task/requirement trace, verification command or check, outcome, relevant artifact, and material limitation. Missing evidence, a skipped required check, or failed verification leaves the task unchecked. Pre/post SHA-256 evidence covers the selected durable trio, returned parent trio, module summary/reference, and canonical bounded sibling-summary JSON; unexpected drift stops execution and becomes a centralized problem record. Project setup mutations are allowed only when the selected plan or executable task puts the detected tool in scope.
+The implementation surface validates every checklist, parses task dependencies, and works phase by phase. Before a task changes to `[X]`, `attempt/validation.md` records its task/requirement trace, verification command or check, outcome, relevant artifact, and material limitation. Missing evidence, a skipped required check, or failed verification leaves the task unchecked. Pre/post SHA-256 evidence covers the selected durable trio, returned parent trio, module summary/reference, and canonical bounded sibling-summary JSON; unexpected drift stops execution and becomes a centralized problem record. Repository and tool detection is read-only by default. A setup write requires one dependency-ready executable task to name its stable task ID, trace token, detected tool, exact project-relative setup target, and authorized creation or edit. Plan relevance and repository detection alone never authorize mutation; without a qualifying task, setup files remain byte-for-byte unchanged and the missing coverage is reported.
 
 ### Analyze without repairing
 
@@ -34,6 +34,8 @@ The convergence surface compares current code and attempt evidence with the spec
 
 - Protocol v9 remains the sole deterministic routing mechanism; arbitrary implementation and semantic reconciliation remain agent-followed.
 - Task completion is evidence-backed. Test existence or intent alone never authorizes `[X]`; the selected attempt persists the actual check and its limitation.
+- Setup mutation is task-bound. A plan may explain tool relevance, but only a dependency-ready task
+  with stable identity, trace, detected tool, exact target, and explicit action authorizes the write.
 - Protected-authority hashes make the phase's negative write boundary observable without opening sibling bodies.
 - Analysis is read-only except for genuine centralized reflection recording. Its exact taxonomy keeps absence, disagreement, ambiguity, duplication, and coverage distinct.
 - Analysis hooks participate in the same mutation budget and are refused before invocation when their maintained contract is incompatible.

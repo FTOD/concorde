@@ -138,27 +138,40 @@ For `checklist`, resolve `checklist-template` separately through the same public
      excluded.
 
 4. **Project Setup Verification**:
-   - **REQUIRED**: Create/verify ignore files based on actual project setup:
+   - **REQUIRED**: Treat repository/tool detection and setup-file inspection as read-only by
+     default. Before creating or extending an ignore file or changing tool configuration, identify
+     one dependency-ready executable task that explicitly supplies all of:
+     - its stable task ID;
+     - its requirement, acceptance-outcome, or named plan-section trace token;
+     - the detected tool;
+     - the exact project-relative setup file being changed; and
+     - an action authorizing the required creation or edit.
+   - Plan content may explain why a tool is relevant but cannot independently authorize a setup
+     mutation. Repository/tool detection alone MUST NOT authorize a write. When no qualifying task
+     exists, preserve every setup file byte-for-byte, report the missing task coverage, and continue
+     or stop according to whether the dependency-ready task can proceed without that setup. Never
+     synthesize authorization from repository detection.
 
-   **Detection & Creation Logic**:
-   - Check if the following command succeeds to determine if the repository is a git repo (create/verify .gitignore if so):
+   **Read-Only Detection & Authorized Mutation Logic**:
+   - Check if the following command succeeds to determine if the repository is a git repo (inspect
+     `.gitignore` if so; mutate it only through the task-bound gate above):
 
      ```sh
      git rev-parse --git-dir 2>/dev/null
      ```
 
-   - Check if Dockerfile* exists or Docker in plan.md → create/verify .dockerignore
-   - Check if .eslintrc* exists → create/verify .eslintignore
-   - Check if eslint.config.* exists → ensure the config's `ignores` entries cover required patterns
-   - Check if .prettierrc* exists → create/verify .prettierignore
-   - Check if .npmrc or package.json exists → create/verify .npmignore (if publishing)
-   - Check if terraform files (*.tf) exist → create/verify .terraformignore
-   - Check if .helmignore needed (helm charts present) → create/verify .helmignore
+   - Check if Dockerfile* exists or Docker is named in plan.md → inspect `.dockerignore`
+   - Check if .eslintrc* exists → inspect `.eslintignore`
+   - Check if eslint.config.* exists → inspect the config's `ignores` entries
+   - Check if .prettierrc* exists → inspect `.prettierignore`
+   - Check if .npmrc or package.json exists → inspect `.npmignore` when publishing is in scope
+   - Check if terraform files (*.tf) exist → inspect `.terraformignore`
+   - Check if helm charts are present → inspect `.helmignore`
 
-   **If ignore file already exists**: Verify it contains essential patterns; append a missing critical
-   pattern only when the plan or an executable task puts that detected tool in scope
-   **If ignore file missing**: Create it only when the plan or an executable task requires the
-   detected tool; otherwise keep project setup verification read-only
+   **If the setup file already exists**: Inspect it for essential patterns; append a missing critical
+   pattern only when the qualifying executable task names that exact target and authorizes the edit
+   **If the setup file is missing**: Create it only when the qualifying executable task names that
+   exact target and authorizes creation; otherwise preserve project setup byte-for-byte
 
    **Common Patterns by Technology** (from plan.md tech stack):
    - **Node.js/JavaScript/TypeScript**: `node_modules/`, `dist/`, `build/`, `*.log`, `.env*`
