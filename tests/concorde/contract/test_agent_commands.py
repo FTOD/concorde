@@ -1,359 +1,151 @@
-import os
-import json
-import subprocess
-import sys
-import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.paths import REPOSITORY_ROOT, VALID_PROJECT
+from tests.concorde.support.paths import REPOSITORY_ROOT
+
+
+PRESET_COMMANDS = REPOSITORY_ROOT / "presets/concorde/commands"
+EXTENSION_COMMANDS = REPOSITORY_ROOT / "extensions/concorde/commands"
+
+
+def read(directory: Path, name: str) -> str:
+    return (directory / name).read_text(encoding="utf-8")
 
 
 class AgentCommandContractTests(unittest.TestCase):
-    def test_analyze_writes_only_required_reflection_records(self):
-        surfaces = (
-            REPOSITORY_ROOT / "presets/concorde/commands/speckit.analyze.md",
-            REPOSITORY_ROOT / ".agents/skills/speckit-analyze/SKILL.md",
-        )
-        for path in surfaces:
-            content = path.read_text(encoding="utf-8")
-            for invariant in (
-                "READ-ONLY EXCEPT REFLECTION RECORDING",
-                "workspace.reflections",
-                "only file that may persist",
-                "Every other file MUST remain byte-identical",
-                "no recordable problem MUST make zero filesystem changes",
-            ):
-                self.assertIn(invariant, content, path.as_posix())
-            self.assertNotIn("**STRICTLY READ-ONLY**", content, path.as_posix())
+    def test_every_phase_resolves_protocol12_before_path_sensitive_work(self):
+        for path in sorted(PRESET_COMMANDS.glob("*.md")):
+            with self.subTest(path=path.name):
+                body = path.read_text(encoding="utf-8")
+                self.assertIn("Protocol 12", body)
+                self.assertIn("workspace.py --phase", body)
 
-    def test_task_and_abstract_guidance_respect_durable_and_published_boundaries(self):
-        tasks = (
-            REPOSITORY_ROOT / "presets/concorde/templates/tasks-template.md"
-        ).read_text(encoding="utf-8")
-        abstract = (
-            REPOSITORY_ROOT / "presets/concorde/templates/abstract-template.md"
-        ).read_text(encoding="utf-8")
-        specify = (
-            REPOSITORY_ROOT / "presets/concorde/commands/speckit.specify.md"
-        ).read_text(encoding="utf-8")
-
-        self.assertNotIn("module registrations, boundary contract", tasks)
-        self.assertIn("Do not turn a required module registration", tasks)
-        self.assertIn("maintainer-reviewed architecture edit or an eligible fast-loop", tasks)
-        for source in (abstract, specify):
-            self.assertIn("published module boundary contracts", source)
-            self.assertIn("code", source)
-        self.assertNotIn("[contracts/](contracts/)", abstract)
-        self.assertIn(
-            "Every declared scenario identifier resolves in the providing module's current-level view",
-            specify,
-        )
-
-    def test_specification_and_planning_require_valid_unique_diagram_outputs(self):
-        specify = (
-            REPOSITORY_ROOT / "presets/concorde/commands/speckit.specify.md"
-        ).read_text(encoding="utf-8")
-        plan = (
-            REPOSITORY_ROOT / "presets/concorde/commands/speckit.plan.md"
-        ).read_text(encoding="utf-8")
-        normalized_specify = " ".join(specify.split())
-        normalized_plan = " ".join(plan.split())
-
-        for invariant in (
-            "normalized project-relative `.html` path beneath `generated/`",
-            "diagram-relative `meta.output`",
-            "resolves to that same project-relative target",
-            "unique across all maintained diagram declarations",
-            "correct the invalid declaration before reporting specification readiness",
-        ):
-            self.assertIn(invariant, normalized_specify, invariant)
-        for invariant in (
-            "validate every existing diagram declaration",
-            "diagram-relative `meta.output`",
-            "same unique target beneath `generated/`",
-            "stop planning and route the invalid durable declaration back to specification authority",
-            "MUST NOT repair `design.md`",
-            "Only after every declaration passes",
-        ):
-            self.assertIn(invariant, normalized_plan, invariant)
-
-    def test_fast_loop_direct_edit_surface_has_bounded_no_attempt_contract(self):
-        command = REPOSITORY_ROOT / "presets/concorde/commands/speckit.fast-loop.md"
-        contract = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/contracts/fast-loop-command.md"
-        command_content = command.read_text(encoding="utf-8")
-        contract_content = contract.read_text(encoding="utf-8")
-        for invariant in (
-            "$ARGUMENTS",
-            "--phase fast-loop",
-            "workspace.feature_directory",
-            "workspace.feature_design",
-            "workspace.feature_implementation",
-            "attempt_state",
-            "directly",
-            "proportional tests",
-            "related",
-            "No attempt",
-            "No delivery",
-            "changed files",
-            "Reflections added:",
-        ):
-            self.assertIn(invariant, command_content, invariant)
-        for forbidden in (
-            "speckit.plan`",
-            "speckit.tasks`",
-            "speckit.implement`",
-            "speckit.converge`",
-            "speckit.concorde.deliver`",
-        ):
-            self.assertNotIn(f"invoke `{forbidden}", command_content)
-        self.assertIn("Presentation Parity", contract_content)
-        self.assertIn("No presentation embeds an absolute Concorde checkout path", contract_content)
-        self.assertNotIn(str(REPOSITORY_ROOT), command_content)
-
-    def test_fast_loop_supports_pure_renames_and_rejects_other_ineligible_classes_before_mutation(self):
-        command = (
-            REPOSITORY_ROOT / "presets/concorde/commands/speckit.fast-loop.md"
-        ).read_text(encoding="utf-8")
-        contract = (
-            REPOSITORY_ROOT
-            / "specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/contracts/fast-loop-command.md"
-        ).read_text(encoding="utf-8")
-        normalized_command = " ".join(command.split())
-        normalized_contract = " ".join(contract.split())
-        for invariant in (
-            "| Condition | Eligible when | Redirect |",
-            "anchor feature",
-            "affected feature set",
-            "--feature-directory",
-            "Every affected feature",
-            "placeholder",
-            "attempt_state",
-            "module responsibility",
-            "dependency direction",
-            "users of the whole project",
-            "inter-module contract",
-            "maintained diagram",
-            "Pure rename",
-            "old-to-new mapping",
-            "referential-only",
-            "stale-name",
-            "architecture evidence state",
-            "no separate post-edit human review",
-            "reflection log as maintained docs/specs",
-            "preserving every exact `R-NNN` identifier",
-            "materially ambiguous",
-            "overlap",
-            "zero fast-loop edits",
-            "Expected ineligibility",
-            "not itself a reflection-log problem",
-            "preserve unrelated pre-existing changes",
-        ):
-            self.assertIn(invariant, normalized_command, invariant)
-        for invariant in (
-            "anchor feature",
-            "affected feature",
-            "module responsibility",
-            "dependency direction",
-            "users of the whole project",
-            "inter-module contracts",
-            "pure naming migration",
-            "old-to-new mapping",
-            "referential-only",
-            "stale-name",
-            "architecture evidence state",
-            "no separate post-edit human review",
-        ):
-            self.assertIn(invariant, normalized_contract, invariant)
-        self.assertNotIn("review_pending", normalized_command)
-        self.assertNotIn("review_pending", normalized_contract)
-        for obsolete in (
-            "Exactly one existing canonical feature root",
-            "No module responsibility, dependency, maintained diagram, or contract changes",
-            "No behavioral authority in another feature must change",
-            "No compatibility or migration policy changes",
-        ):
-            self.assertNotIn(obsolete, command, obsolete)
-
-
-    def test_four_operations_have_launchers_and_ask_is_agent_only(self):
-        commands = REPOSITORY_ROOT / "extensions/concorde/commands"
-        expected = {
-            "speckit.concorde.init.md",
-            "speckit.concorde.deliver.md",
-            "speckit.concorde.context.md",
-            "speckit.concorde.validate.md",
-            "speckit.concorde.ask.md",
-        }
-        self.assertEqual({path.name for path in commands.glob("*.md")}, expected)
-        ask = commands / "speckit.concorde.ask.md"
-        runtime_commands = expected - {ask.name}
-        for filename in runtime_commands:
-            path = commands / filename
-            content = path.read_text()
-            self.assertIn(".specify/extensions/concorde/scripts/", content)
-            self.assertNotIn(str(REPOSITORY_ROOT), content)
-        ask_content = ask.read_text(encoding="utf-8")
-        for invariant in (
-            "$ARGUMENTS",
-            ".specify/extensions/concorde/",
-            ".specify/presets/concorde/",
-            "project-relative",
-            "citation",
-            "bounded",
-            "clarification",
-            "uncertainty",
-            "read-only",
-        ):
-            self.assertIn(invariant, ask_content)
-        for executable in ("concorde.sh", "concorde.ps1", "concorde.py", "workspace.py"):
-            self.assertNotIn(executable, ask_content)
-        self.assertNotIn(str(REPOSITORY_ROOT), ask_content)
-
-        init_content = (commands / "speckit.concorde.init.md").read_text(encoding="utf-8")
-        for invariant in (
-            "interaction_model",
-            "Skills",
-            "Scripts",
-            "Workspace Files",
-            "attempt/",
-            "status is `unchanged`",
-            "do not invent product modules",
-        ):
-            self.assertIn(invariant, init_content)
-
-    def test_distribution_handoff_names_nine_normal_and_five_concorde_intents(self):
-        contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts"
-        command_contract = (contracts / "agent-commands.md").read_text(encoding="utf-8")
-        schema = json.loads((contracts / "feature-workspace.schema.json").read_text(encoding="utf-8"))
-        for command in (
-            "specify",
-            "clarify",
-            "checklist",
-            "plan",
-            "tasks",
-            "implement",
-            "analyze",
-            "converge",
-            "taskstoissues",
-        ):
-            self.assertIn(command, command_contract)
-        for command in ("init", "deliver", "context", "validate", "ask"):
-            self.assertIn(command, command_contract)
-        self.assertEqual(schema["$defs"]["workspacePaths"]["required"], [
-            "workspace_kind",
-            "feature_id",
-            "providing_module",
-            "parent_context",
-            "siblings",
-            "feature_directory",
-            "feature_abstract",
-            "feature_design",
-            "feature_implementation",
-            "module_summary",
-            "module_design",
-            "contracts_dir",
-            "checklists_dir",
-            "diagrams_dir",
+    def test_phase_guidance_uses_feature_path_architecture_attempt_and_executable_context(self):
+        combined = "\n".join(path.read_text(encoding="utf-8") for path in PRESET_COMMANDS.glob("*.md"))
+        for value in (
+            "feature_path",
+            "module_architecture",
+            "module_ancestry",
+            "related_features",
+            "executable_context",
             "attempt_dir",
             "attempt_state",
-            "plan",
-            "research",
-            "data_model",
-            "quickstart",
-            "tasks",
-            "validation",
-        ])
-        self.assertIn("Workflow Distribution Handoff", command_contract)
+            "checklists_dir",
+            "reflections",
+        ):
+            self.assertIn(value, combined, value)
+        for removed in (
+            "feature_" + "directory",
+            "feature_" + "design",
+            "feature_" + "abstract",
+            "feature_" + "implementation",
+            "module_" + "summary",
+            "module_" + "design",
+            "contracts_" + "dir",
+            "parent_" + "context",
+            "workspace_" + "kind",
+        ):
+            self.assertNotIn(removed, combined, removed)
 
-    def test_checklist_surfaces_use_only_temporal_checklist_path(self):
-        package_surfaces = [
-            REPOSITORY_ROOT / "presets/concorde/commands" / f"speckit.{name}.md"
-            for name in ("specify", "clarify", "checklist", "implement")
-        ]
-        local_surfaces = [
-            REPOSITORY_ROOT / ".agents/skills" / f"speckit-{name}" / "SKILL.md"
-            for name in ("specify", "clarify", "checklist", "implement")
-        ]
-        for path in package_surfaces:
-            content = path.read_text(encoding="utf-8")
-            self.assertNotIn("FEATURE_DIR/checklists", content, path.as_posix())
-            self.assertIn("CHECKLISTS_DIR", content, path.as_posix())
-        for path in local_surfaces:
-            content = path.read_text(encoding="utf-8")
-            self.assertNotIn("FEATURE_DIR/checklists", content, path.as_posix())
-            self.assertTrue(
-                "attempt/checklists" in content
-                or "ATTEMPT_DIR/checklists" in content
-                or "CHECKLISTS_DIR" in content,
-                path.as_posix(),
-            )
+    def test_specify_authors_one_direct_feature_file_with_embedded_interfaces(self):
+        body = read(PRESET_COMMANDS, "speckit.specify.md")
+        normalized = " ".join(body.split())
+        for value in (
+            "complete durable feature file",
+            "never a hierarchy container",
+            "direct `features/<NNN-name>.md` file",
+            "one `## Interfaces` section",
+            "one `## Architecture Zoom`",
+            "Existing `contract.*` identifiers may remain as interface identities",
+            "Do not create a separate interface document or directory",
+            "reconcile only the providing architecture's immediate feature inventory",
+            "attempt_state: unresolved",
+            "run `{SCRIPT}` again",
+            ".concorde/attempts/<stable-feature-id>/",
+        ):
+            self.assertIn(value, normalized, value)
 
-    def test_delivery_surfaces_require_checklists_and_apply_without_second_prompt(self):
-        surfaces = (
-            REPOSITORY_ROOT / "extensions/concorde/commands/speckit.concorde.deliver.md",
-            REPOSITORY_ROOT / ".agents/skills/speckit-concorde-deliver/SKILL.md",
-        )
-        for path in surfaces:
-            content = path.read_text(encoding="utf-8")
-            normalized = " ".join(content.lower().split())
-            self.assertIn("attempt/checklists", content, path.as_posix())
-            self.assertIn("proposal_path", content, path.as_posix())
-            self.assertIn("task_summary", content, path.as_posix())
-            self.assertIn("checklist_summary", content, path.as_posix())
-            self.assertIn("sole persisted reflection-record authority", content, path.as_posix())
-            self.assertIn("CONCORDE-DELIVER-012", content, path.as_posix())
-            self.assertIn("Never copy or cite an entry identifier", content, path.as_posix())
-            self.assertIn("invocation is authorization", normalized, path.as_posix())
-            self.assertIn("without asking", normalized, path.as_posix())
-            self.assertNotIn("ask for explicit approval", normalized, path.as_posix())
-            self.assertNotIn("only after the maintainer's explicit yes", normalized, path.as_posix())
-            self.assertNotIn("while one is uncited", content, path.as_posix())
+    def test_source_only_diagram_checks_survive_as_module_architecture_checks(self):
+        specify = " ".join(read(PRESET_COMMANDS, "speckit.specify.md").split())
+        plan = " ".join(read(PRESET_COMMANDS, "speckit.plan.md").split())
+        for body in (specify, plan):
+            self.assertIn("normalized project-relative `.html`", body)
+            self.assertIn("`meta.output`", body)
+            self.assertIn("same unique target", body)
+            self.assertIn("`meta.legend.mode`", body)
+        self.assertIn("Route an invalid module declaration to architecture work", specify)
+        self.assertIn("Invalid declarations must return to architecture authority", plan)
 
-    def test_planning_guidance_emits_runnable_quickstarts_and_resolved_task_paths(self):
-        plan = (REPOSITORY_ROOT / "presets/concorde/commands/speckit.plan.md").read_text(
-            encoding="utf-8"
-        )
-        tasks = (REPOSITORY_ROOT / "presets/concorde/commands/speckit.tasks.md").read_text(
-            encoding="utf-8"
-        )
-        task_template = (
-            REPOSITORY_ROOT / "presets/concorde/templates/tasks-template.md"
-        ).read_text(encoding="utf-8")
+    def test_plan_and_tasks_cover_complete_authority_delta_without_durable_planning_writes(self):
+        plan = " ".join(read(PRESET_COMMANDS, "speckit.plan.md").split())
+        tasks = " ".join(read(PRESET_COMMANDS, "speckit.tasks.md").split())
+        self.assertIn("current source code and executable tests", plan)
+        self.assertIn("must leave durable sources byte-identical", plan)
+        self.assertIn("There is no prose implementation baseline", plan)
+        self.assertIn("writes only temporal", plan)
+        self.assertIn("module architecture, feature file/interfaces, code, tests, and projections", tasks)
+        self.assertIn("Tests precede their implementation work", tasks)
+        self.assertIn("stable task ID", tasks)
+        self.assertIn("requirement or acceptance-outcome trace", tasks)
+        self.assertIn("Architecture/feature-file edits are valid implementation tasks", tasks)
 
-        self.assertIn("concorde.py --project-root . validate", plan)
-        self.assertIn(".venv/bin/python -m unittest discover -s tests/concorde -t .", plan)
-        self.assertIn(
-            'test-command = ".venv/bin/python -m unittest discover -s tests/concorde -t . -p test_*.py"',
-            (REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8"),
-        )
-        self.assertIn("rg --files", tasks)
-        self.assertIn("implementation code, tests, generated projections, and public guides", task_template)
-        self.assertNotIn("every task path must remain beneath that child root", task_template)
+    def test_implementation_requires_task_authority_and_passed_attempt_evidence(self):
+        body = " ".join(read(PRESET_COMMANDS, "speckit.implement.md").split())
+        for value in (
+            "Code is implementation authority",
+            "tests and deterministic checks are evidence",
+            "every before/after change must match an executable task and its trace",
+            "Do not make an unplanned durable edit",
+            "Before checking any task, append compact Attempt Evidence",
+            "Only a proportionate passed check permits `[X]`",
+            "unexpected change stops completion marking",
+            "confirm the selected attempt still exists for explicit delivery",
+        ):
+            self.assertIn(value, body, value)
 
-    def test_python_launcher_preserves_exit_and_handles_quoted_root(self):
-        launcher = REPOSITORY_ROOT / "extensions/concorde/scripts/python/concorde.py"
-        result = subprocess.run(
-            [sys.executable, str(launcher), "--project-root", str(VALID_PROJECT), "validate", "--format", "json"],
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn('"operation":"validate"', result.stdout)
-        self.assertGreaterEqual(sys.version_info, (3, 11))
+    def test_analysis_convergence_and_reflections_preserve_boundaries(self):
+        analyze = " ".join(read(PRESET_COMMANDS, "speckit.analyze.md").split())
+        converge = " ".join(read(PRESET_COMMANDS, "speckit.converge.md").split())
+        implement = " ".join(read(PRESET_COMMANDS, "speckit.implement.md").split())
+        self.assertIn("read-only semantic audit", analyze.lower())
+        self.assertIn("only permitted write is a centralized reflection entry", analyze)
+        self.assertIn("appends only genuinely remaining executable work", converge)
+        self.assertIn("Preserve every existing task ID, text, marker, phase, and evidence entry", converge)
+        for body in (implement, converge):
+            self.assertIn("provisional", body)
+            self.assertIn("reflection", body)
 
-    @unittest.skipUnless(os.name != "nt", "POSIX launcher test")
-    def test_posix_launcher_is_relative_and_executable(self):
-        launcher = REPOSITORY_ROOT / "extensions/concorde/scripts/bash/concorde.sh"
-        self.assertTrue(os.access(launcher, os.X_OK))
-        result = subprocess.run([str(launcher), "--help"], capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stderr)
+    def test_fast_loop_is_direct_bounded_and_never_creates_attempt_memory(self):
+        body = " ".join(read(PRESET_COMMANDS, "speckit.fast-loop.md").split())
+        self.assertIn("direct, no-attempt path", body)
+        self.assertIn("Reject fast-loop when an attempt already exists", body)
+        self.assertIn("Never create `.concorde/attempts/<stable-feature-id>/` artifacts", body)
+        self.assertIn("one selected feature and one providing module", body)
+        self.assertIn("no new module, feature, entity type, cross-module relationship", body)
+        self.assertIn("recommend specification/clarification followed by plan, tasks, implementation, and delivery", body)
 
-    def test_powershell_launcher_uses_join_path_and_propagates_exit(self):
-        content = (REPOSITORY_ROOT / "extensions/concorde/scripts/powershell/concorde.ps1").read_text()
-        self.assertIn("Join-Path $PSScriptRoot", content)
-        self.assertIn("@args", content)
-        self.assertIn("exit $LASTEXITCODE", content)
+    def test_extension_commands_expose_profile7_context_validation_and_cleanup_delivery(self):
+        init = " ".join(read(EXTENSION_COMMANDS, "speckit.concorde.init.md").split())
+        context = " ".join(read(EXTENSION_COMMANDS, "speckit.concorde.context.md").split())
+        validate = " ".join(read(EXTENSION_COMMANDS, "speckit.concorde.validate.md").split())
+        deliver = " ".join(read(EXTENSION_COMMANDS, "speckit.concorde.deliver.md").split())
+        ask = " ".join(read(EXTENSION_COMMANDS, "speckit.concorde.ask.md").split())
+        self.assertIn("Architecture Source Profile 7", init)
+        self.assertIn("Initialization Proposal 2", init)
+        self.assertIn(".concorde/reflections/log.md", init)
+        self.assertIn("Do not invent product modules", init)
+        self.assertIn("typed current-level entities", context)
+        self.assertIn("Never expand a child module's internal inventory", context)
+        self.assertIn("recursive acyclic module tree", validate)
+        self.assertIn("complete embedded interface semantics", validate)
+        self.assertIn("Delivery Proposal 8", deliver)
+        self.assertIn("Delivery is cleanup-only", deliver)
+        self.assertIn("removes only the selected attempt", deliver)
+        self.assertIn("Protocol 12", deliver)
+        self.assertIn("writes no durable specification or implementation narrative", deliver)
+        self.assertIn("strictly read-only", ask)
+        self.assertIn("Basis", ask)
+        self.assertIn("Sources", ask)
 
 
 if __name__ == "__main__":

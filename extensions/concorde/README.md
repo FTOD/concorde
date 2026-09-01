@@ -1,74 +1,53 @@
 # Concorde extension
 
-The extension registers five integration-neutral command surfaces:
+The extension registers five integration-neutral commands around Architecture Source Profile 7 and
+Feature Workspace Protocol 12:
 
-- `speckit.concorde.init` exposes the Skills → Scripts → Workspace Files interaction model, proposes
-  a minimal product-specific root without guessing product modules, writes only after explicit
-  acceptance of an exact proposal, and reports an existing configured hierarchy as unchanged rather
-  than comparing it with starter text.
-- `speckit.concorde.deliver` verifies task completion, generates a digest-bound proposal for
-  durable feature `implementation.md` (optionally amending the `design.md` of the module at which the
-  feature is specified), presents attributed entries transiently while keeping `reflections.md` as
-  their sole persisted authority, rejects copied `R-NNN` identifiers (`CONCORDE-DELIVER-012`), and
-  under the user's invocation immediately promotes the proposal atomically without a second approval
-  question and removes the temporal attempt;
-  the reflection log is left byte-identical.
-- `speckit.concorde.context` returns one bounded architectural level, including the module's
-  `diagrams` list (every diagram beneath its `architecture/diagrams/`) and the project reflection
-  log's path and the open entry count per feature when the log exists.
-- `speckit.concorde.validate` deterministically validates the configured hierarchy, including the
-  module `architecture/` layout (`CONCORDE-LAYOUT-010`/`-011`), module diagram references
-  (`CONCORDE-VIEW-006`), hidden legends on maintained module and feature diagrams
-  (`CONCORDE-VIEW-007`), and the shape of the project reflection log (`CONCORDE-REFLECT-001` to
-  `-004`).
-- `speckit.concorde.ask` tells the coding agent how to answer a Concorde workflow or framework
-  question from cited installed guidance and bounded project sources without changing the workspace.
+- `speckit.concorde.init` proposes, then explicitly applies, a root module with one
+  `architecture.md`; it never guesses product modules.
+- `speckit.concorde.context` returns exactly one bounded module or design-only feature context.
+- `speckit.concorde.validate` deterministically checks module hierarchy, typed entities, directed
+  relationships/interactions, flat features, embedded interfaces, Architecture Zoom references,
+  attempts, diagrams, reflections, and path safety.
+- `speckit.concorde.deliver` produces Delivery Proposal 8, revalidates a completed attempt, and
+  atomically removes only that temporal directory. Durable design/architecture and code/tests are
+  retained byte-identically.
+- `speckit.concorde.ask` answers from cited installed guidance and bounded project sources without
+  mutation.
 
-Features are created and selected through standard Spec Kit mechanisms rather than Concorde
-commands. The normal `speckit.specify` phase creates a feature root at its canonical path inside the
-hierarchy when `SPECIFY_FEATURE_DIRECTORY` names `<module directory>/features/NNN-<short-name>` or
-`<parent feature root>/subfeatures/NNN-<short-name>`; Spec Kit persists that root in
-`.specify/feature.json`, which is the only selection record. `speckit.concorde.validate` enforces
-registration, canonical paths, and two-level containment afterwards.
+Features are created and selected through normal Spec Kit mechanisms. Each feature is one direct
+`<module>/features/<NNN-name>.md` file; stable related-feature IDs express composition or
+dependency. `.specify/feature.json` remains the only selection record.
 
-The extension also provides the Protocol v9 selected-workspace adapter used by the preset's nine
-normal command modifications. It resolves and validates the selected root before every
-phase-sensitive step and reports its kind, durable and temporal paths, parent context, sibling
-summaries, the `module.md` and `design.md` of the module at which the feature is specified
-(`providing_module`) as navigation references, and `attempt_state`. The four operational
-surfaces invoke the installed, standard-library Python runtime through project-relative paths.
-`ask` is agent-followed Markdown and deliberately invokes no launcher or runtime verb. Target
-projects need Python 3.11 or newer for operational surfaces; they do not need `uv` or third-party
-Python packages.
+Protocol 12 resolves:
 
-A selected sub-feature uses its own durable/temporal paths and receives its parent's durable
-`abstract.md`/`design.md`/`implementation.md` only as read-only aggregate context plus concise sibling summaries. Feature
-containment remains distinct from adjacent-module `refines` links.
+- selected feature identity, `feature_path`, and providing module;
+- the providing module's `architecture.md`, bounded module ancestry, and bounded related-feature
+  summaries;
+- stable-ID-derived `.concorde/attempts/<feature-id>/` paths/state plus
+  `.concorde/reflections/log.md` process state; and
+- deterministic source/test discovery context.
+
+It does not synthesize an implementation summary or expand another feature/attempt. Source code is
+implementation authority, tests/checks are evidence, and generated pages/diagrams are projections.
+Target projects need Python 3.11+ for runtime-backed surfaces and no third-party Python dependency.
 
 ## Reflection triage agent assets
 
-The extension also carries the canonical `reflection-triage/v1` orchestration body, model-neutral
-investigator and implementer roles, a safe default configuration, thin Claude/Codex wrappers, and
-the deterministic `scripts/python/reflections_queue.py` helper. These are support assets for Feature
-005, not a sixth `speckit.concorde.*` command.
+The extension also carries the canonical `reflection-triage/v2` orchestrator, model-neutral
+investigator/implementer roles, safe default configuration, Claude/Codex wrappers, and deterministic
+queue helper. These support reflection maintenance and are not a sixth command.
 
-`concorde agent-assets preview|sync|verify|remove --integration <claude|codex>` renders and
-reconciles the native project surfaces. Claude receives
-`.claude/skills/reflections-triage/SKILL.md` and two `.claude/agents/*.md` roles; Codex receives
-`.agents/skills/reflections-triage/SKILL.md` and two `.codex/agents/*.toml` roles. The generated
-files share canonical bodies and contain no mandatory model or Concorde-checkout path.
+`concorde agent-assets preview|sync|verify|remove --integration <claude|codex>` reconciles native
+project surfaces. Claude receives one skill and two role documents; Codex receives one skill and two
+agent TOML files. Generated files contain no mandatory model or checkout path.
 
-Shared maintainer state lives under `.concorde/reflections/`: version-controlled `config.json`,
-ignored plans, and ignored worktrees. The installer-owned
-`.specify/concorde-agent-assets.json` receipt contains hashes only for generated projections.
-Projection updates or removal touch a listed path only while its observed hash matches the receipt;
-modified, legacy, inactive-integration, unrelated, and permission-policy files are preserved and
-reported as conflicts when necessary.
+Shared maintainer state lives under `.concorde/reflections/`: `log.md` is tracked authority,
+`config.json` configures triage, and plans/worktrees remain disposable. The installer receipt at
+`.specify/concorde-agent-assets.json` hashes only generated projections. Update/removal touches a
+listed path only while its digest matches the receipt; modified, legacy, inactive-integration,
+unrelated, and policy-protected files are preserved and reported.
 
-Investigators are read-only and return complete plans to the parent. Implementers receive full plan
-text and an explicit assigned worktree; the parent owns plan persistence, metadata, merge, and every
-reflection status or note. Claude may also use native worktree isolation. Codex uses an explicit Git
-worktree because its project custom-agent TOML has no per-agent worktree-isolation field.
-
-Feature 005 owns these semantics and the deterministic operation. Feature 003 owns when installation
-preview, apply, update, remove, release building, and self-hosting invoke and verify that operation.
+Investigators are read-only and return evidence-backed plans. Implementers receive one explicit
+worktree and file ownership. The parent owns plan persistence, merge, and reflection status/note
+decisions.

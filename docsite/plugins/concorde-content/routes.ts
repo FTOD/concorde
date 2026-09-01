@@ -1,7 +1,5 @@
 const normalizeRoute = (route: string) => route === '/' ? route : route.replace(/\/$/, '');
 
-const featureRouteBase = '/features';
-
 export function canonicalRoute(route: string, baseUrl: string): string {
   const normalizedRoute = normalizeRoute(route);
   const normalizedBase = normalizeRoute(baseUrl);
@@ -12,43 +10,24 @@ export function canonicalRoute(route: string, baseUrl: string): string {
     : normalizedRoute;
 }
 
-/**
- * The published projection of a specs-relative path. A module package keeps its submodules and boundary
- * contracts beneath `architecture/` (`<module>/architecture/modules/<child>/`, `<module>/architecture/contracts/<id>/`);
- * the site drops that grouping segment so routes read `<module>/modules/<child>/` and `<module>/contracts/<id>/`.
- */
-export function projectedSpecPath(relativeSpecPath: string): string {
-  return relativeSpecPath.replace(/(^|\/)architecture\/(modules|contracts)\//g, '$1$2/');
+function identitySegment(id: string): string {
+  return encodeURIComponent(id);
 }
 
-/** A URL/filesystem-safe segment derived from the globally unique stable feature ID. */
-function featureIdentitySegment(featureId: string): string {
-  return encodeURIComponent(featureId);
+export function moduleRoute(moduleId: string): string {
+  return `/architecture/${identitySegment(moduleId)}`;
 }
 
-/**
- * Public/staged feature routes: stable top-level feature identity and explicit subfeature containment
- * determine URLs. The separately generated sidebar groups these routes by owning module hierarchy.
- */
-export function semanticFeaturePath(featureId: string, parentSemanticPath?: string): string {
-  const segment = featureIdentitySegment(featureId);
-  return parentSemanticPath ? `${parentSemanticPath}/${segment}` : segment;
+export function featureRoute(featureId: string): string {
+  return `/features/${identitySegment(featureId)}`;
 }
 
-export function semanticFeatureRoutes(semanticPath: string): {
-  landing: string;
-  design: string;
-  implementation: string;
-} {
-  const landing = `${featureRouteBase}/${semanticPath}`;
-  return {landing, design: `${landing}/design`, implementation: `${landing}/implementation`};
+export function moduleStagedPath(moduleId: string): string {
+  return `${identitySegment(moduleId)}/architecture.md`;
 }
 
-export function semanticFeatureStagedPath(
-  semanticPath: string,
-  page: 'abstract' | 'design' | 'implementation',
-): string {
-  return `${semanticPath}/${page}.md`;
+export function featureStagedPath(featureId: string): string {
+  return `${identitySegment(featureId)}.md`;
 }
 
 export {normalizeRoute};

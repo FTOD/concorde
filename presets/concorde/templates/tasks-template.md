@@ -1,44 +1,95 @@
+# Tasks: [FEATURE]
+
+**Input**: selected direct feature file, providing module `architecture.md`, source code and executable
+tests/checks, and the returned stable-ID project-control attempt artifacts where present.
+
+**Tests**: Include test-first tasks whenever the design or maintainer requires executable evidence.
 
 ## Concorde Task Coverage
 
-When applicable, include dependency-ordered tasks to update module-owned feature specifications,
-boundary contract definitions and custom schemas/examples under the module's
-`architecture/contracts/`, the level's diagrams under `architecture/diagrams/`, deterministic Concorde validation, implementation/test traceability, and generated
-output freshness. Mark evidence only after the producing command passes; retain `unknown` when no
-implementation evidence exists.
+Every task has at least one explicit trace: a requirement ID or acceptance-outcome trace,
+architecture entity/relationship/interaction, embedded interface, named plan section, or
+deterministic evidence gate.
 
-Do not turn a required module registration or other `module.md` reconciliation into an attempt task.
-Identify it in the Concorde Architecture Gate and route the exact summary change through a separate
-maintainer-reviewed architecture edit or an eligible fast-loop.
+Before finalizing, cover every affected:
 
-First verify that the feature has at most one `role: core` diagram and that it uses Archify
-`architecture` to show stable components and interactions; dynamic diagram kinds must be
-`role: supplemental`. For each required feature-owned diagram, include tasks for the explanatory prose, descriptive Archify
-JSON source under `diagrams/`, declaration in `design.md`, contract/scenario traceability, showcase
-validation, explicit `meta.legend.mode: hidden`, generated HTML delivery, automatic feature-page
-embedding, visual evidence when available, and freshness checks. Do not treat generated HTML or
-screenshots as maintained intent.
+- module `architecture.md` entity, relationship, interaction, inventory, decision, or diagram;
+- selected or explicitly related direct feature file outcome, usage, interface, requirement, failure,
+  Architecture Zoom, or relation;
+- source-code and executable test path;
+- executable interface fixture kept with source/tests;
+- generated documentation/package/projection and freshness receipt; and
+- migration, compatibility, user guide, reflection-path, and cleanup-only delivery readiness consequence.
 
-Execution records the problems it meets in the project reflection log (`workspace.reflections`), not
-in task text; a problem concerning another feature is recorded there and never fixed in that
-feature's sources; and no task edits a maintainer-set status or note in the log.
+For architecture-owned diagrams, include the textual architecture update, maintained JSON,
+`meta.legend.mode: hidden`, unique normalized generated output, validation/delivery, freshness,
+publication, and truthful visual-review result. Never create a diagram source inside a feature.
 
-Write the task list to `attempt/tasks.md` inside the selected feature workspace. Treat it as
-work for the active delivery attempt, not as durable feature intent, and do not create a root-level
-copy or symlink. Generate tasks against both feature `design.md` and accepted `implementation.md`
-(a placeholder means no accepted baseline), but do
-not generate a task that edits `abstract.md`, feature `design.md`, feature `implementation.md`, any
-module `module.md` or `design.md`, or removes `attempt/`; after every task is complete,
-the user may invoke the separate Concorde delivery command.
+## Required Checklist Format
 
-Give every task an explicit requirement ID or acceptance-outcome trace token (a named plan section
-is sufficient only for setup mechanics). When `attempt/contracts/` contains a proposed contract
-delta, include dependency-ordered tasks that reconcile the durable contract, compatibility policy,
-schema/examples, code, tests, evidence, and documentation during implementation; planning does not
-promote that proposal.
+```text
+- [ ] T001 [P?] [US?] Action with exact project-relative path [trace]
+```
 
-For a selected sub-feature, feature-workspace artifacts must remain beneath that child root, while
-tasks may name the implementation code, tests, generated projections, and public guides from the
-approved plan wherever those realizing files live in the project. Do not generate tasks that mutate
-or deliver a parent/sibling feature root, read a parent/sibling attempt implicitly, or create another
-`subfeatures/` directory beneath the child.
+- IDs are sequential in dependency order.
+- `[P]` appears only when files and incomplete dependencies do not overlap.
+- `[USN]` appears on user-story phase tasks, not setup/foundational/polish tasks.
+- Every description names an exact existing path or an intentional new path whose parent exists.
+- Never create a task that edits generated output as intent.
+
+## Phase 1: Setup and Protected Baseline
+
+- [ ] T001 Record protected feature/architecture/related-summary digests and initial inventory in the returned `validation` file [Plan:Risk Controls]
+- [ ] T002 [P] Add or migrate test fixtures in `[exact test paths]` [requirement trace]
+
+## Phase 2: Foundational Work
+
+**Goal**: Complete shared prerequisites that block every story.
+
+- [ ] T003 [P] Write failing shared contract/unit tests in `[exact paths]` [requirement trace]
+- [ ] T004 Implement shared model/runtime/configuration in `[exact paths]` [requirement trace]
+- [ ] T005 Run focused foundational checks and record evidence in the returned `validation` file [plan gate]
+
+## Phase 3: User Story 1 — [Title] (P1)
+
+**Goal**: [Observable independently useful outcome.]
+
+**Independent Test**: [Exact runnable scenario and expected result.]
+
+- [ ] T006 [P] [US1] Write the failing story test in `[exact path]` [requirement]
+- [ ] T007 [US1] Implement the story in `[exact source path]` [requirement]
+- [ ] T008 [US1] Reconcile architecture/feature/interface/projection owners in `[exact paths]` [requirement]
+- [ ] T009 [US1] Run the independent check and record evidence in the returned `validation` file [acceptance outcome]
+
+## Phase 4+: Additional User Stories
+
+Repeat the same goal, independent-test, test-first, implementation, authority reconciliation, and
+evidence pattern for each priority. Keep stories independent after foundational work whenever the
+design permits.
+
+## Final Phase: Cross-Cutting Validation and Delivery Readiness
+
+- [ ] TXXX Run full behavioral, architecture, interface, package, docs, and freshness checks [success criteria]
+- [ ] TXXX Scan for legacy/stale authority references and unresolved reflection paths [migration]
+- [ ] TXXX Record final protected digests, task/checklist completeness, limitations, and exact delivery remove path in the returned `validation` file [delivery]
+
+## Evidence Before Completion
+
+Before changing a task to `[X]`, the returned `validation` file names its ID/trace, actual command or check,
+outcome (`passed` only authorizes completion), evidence path, and material limitation. A skipped,
+failed, or missing required check leaves the task unchecked.
+
+## Dependencies and Parallel Opportunities
+
+- Setup precedes foundational work.
+- Foundational work blocks all user stories.
+- Story tests precede implementation; same-file tasks are sequential.
+- Independent stories/files may run in parallel after shared prerequisites.
+- Cross-cutting/full validation follows every desired story.
+- Cleanup-only delivery is invoked only after every task/checklist/evidence item is complete.
+
+## Implementation Strategy
+
+Deliver the smallest independently useful story first, then add later stories without breaking prior
+ones. A milestone is not deliverable while any declared architecture/feature/code/test/projection
+authority disagrees or while required evidence is absent.

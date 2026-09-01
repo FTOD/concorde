@@ -1,10 +1,11 @@
+import {lstat} from 'node:fs/promises';
 import {dirname, posix, relative, resolve} from 'node:path';
 
 import {unified} from 'unified';
 import remarkParse from 'remark-parse';
 import {visit} from 'unist-util-visit';
 
-import type {ArchitectureSource, CollectionId, ContentRegistry, FeatureDesign, LinkReference, SourceDocument, ValidationFinding} from './types';
+import type {CollectionId, ContentRegistry, LinkReference, ModuleArchitecture, SourceDocument, ValidationFinding} from './types';
 
 interface MarkdownLinkNode {
   type: 'link';
@@ -13,6 +14,7 @@ interface MarkdownLinkNode {
 }
 
 const externalPattern = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
+const controlStatePattern = /^\.concorde(?:\/|$)/;
 const posixPath = (value: string) => value.split('\\').join('/');
 
 function splitTarget(rawTarget: string): {path: string; suffix: string; fragment?: string} {
@@ -30,14 +32,35 @@ export function resolveContentLink(
   if (rawTarget.startsWith('#')) return {reference: {rawTarget, kind: 'anchor', fragment: rawTarget.slice(1)}};
   if (externalPattern.test(rawTarget)) return {reference: {rawTarget, kind: 'external'}};
   const {path, suffix, fragment} = splitTarget(rawTarget);
-  if (!/\.md$/i.test(path)) {
-    const diagramReference = resolveDiagramLink(rawTarget, path, suffix, fragment, source, registry);
-    return diagramReference ?? {reference: {rawTarget, kind: 'asset', fragment}};
-  }
-
   const sourceRelativeTarget = path.startsWith('/')
     ? posix.normalize(path.slice(1))
     : posix.normalize(posix.join(posix.dirname(source.sourcePath), path));
+  if (controlStatePattern.test(sourceRelativeTarget)) return {
+    reference: {rawTarget, kind: 'excluded-source', targetSourcePath: sourceRelativeTarget, fragment},
+    finding: {
+      ruleId: 'link.target.excluded', severity: 'error', sourcePath: source.sourcePath,
+      message: `Link "${rawTarget}" targets an excluded Concorde control artifact.`,
+      remediation: 'Link to a published architecture.md or a direct feature file, or describe the control workflow without linking internal state.',
+    },
+  };
+  if (!/\.md$/i.test(path)) {
+    const diagramReference = resolveDiagramLink(rawTarget, path, suffix, fragment, source, registry);
+    if (diagramReference) return diagramReference;
+    const assetSourcePath = sourceRelativeTarget;
+    if (assetSourcePath === '..' || assetSourcePath.startsWith('../')) return {
+      reference: {rawTarget, kind: 'excluded-source', targetSourcePath: assetSourcePath, fragment},
+      finding: {
+        ruleId: 'link.target.outside-root', severity: 'error', sourcePath: source.sourcePath,
+        message: `Asset link "${rawTarget}" escapes the project root.`,
+        remediation: 'Link only to content or assets inside the project repository.',
+      },
+    };
+    return {reference: {
+      rawTarget, kind: 'asset', targetSourcePath: assetSourcePath,
+      targetRoute: `/${assetSourcePath}${suffix}`, fragment,
+    }};
+  }
+
   if (sourceRelativeTarget === '..' || sourceRelativeTarget.startsWith('../')) {
     return {
       reference: {rawTarget, kind: 'excluded-source', targetSourcePath: sourceRelativeTarget, fragment},
@@ -62,19 +85,18 @@ export function resolveContentLink(
     finding: {
       ruleId, severity: 'error', sourcePath: source.sourcePath,
       message: excluded
-        ? `Markdown link "${rawTarget}" targets an excluded Spec Kit artifact.`
+        ? `Markdown link "${rawTarget}" targets an excluded publication-root artifact.`
         : `Markdown link "${rawTarget}" does not resolve to included content.`,
       remediation: excluded
-        ? 'Link to a published canonical source (abstract.md, feature design.md, implementation.md, module.md, module design.md, or contract.md) or treat the target as a repository asset.'
+        ? 'Link to a published architecture.md or a direct feature file, or treat the target as a repository asset.'
         : 'Correct the relative path or add the referenced Markdown source.',
     },
   };
 }
 
 /**
- * Maintained Markdown links Archify JSON by path: a module summary or design reference links a diagram beneath
- * the module's `architecture/diagrams/`; feature and custom documentation pages may link declared diagrams
- * beneath their adjacent `diagrams/`. Spelled relative to the document or to the repository root, the link
+ * Maintained Markdown links Archify JSON by path: a module architecture links a diagram beneath
+ * the module's adjacent `diagrams/`. Spelled relative to the document or to the repository root, the link
  * resolves to the delivered view route, so the published page never carries a dead link.
  */
 function resolveDiagramLink(
@@ -91,10 +113,7 @@ function resolveDiagramLink(
     posix.normalize(posix.join(posix.dirname(source.sourcePath), path)),
   ]);
   for (const document of registry.documents) {
-    const diagrams = [
-      ...((document as ArchitectureSource).architectureDiagrams ?? []),
-      ...((document as FeatureDesign).diagrams ?? []),
-    ];
+    const diagrams = (document as ModuleArchitecture).architectureDiagrams ?? [];
     const diagram = diagrams.find((candidate) => candidates.has(candidate.source));
     if (!diagram) continue;
     return {reference: {rawTarget, kind: 'included-source', targetSourcePath: diagram.source, targetRoute: `${diagram.route}${suffix}`, fragment}};
@@ -154,9 +173,16 @@ export function remarkConcordeLinks(options: {
             : document.sourcePath.startsWith(`${options.canonicalSourceBase ?? 'specs'}/`)))
       : registry.documents.find((document) => document.sourcePath === posixPath(relative(projectRoot, filePath)));
     if (!source) return;
+    const materializedAssets = new Set<string>();
+    for (const link of source.links.filter((link) => link.kind === 'asset' && link.targetSourcePath)) {
+      try {
+        if ((await lstat(resolve(projectRoot, link.targetSourcePath!))).isFile()) materializedAssets.add(link.targetSourcePath!);
+      } catch { /* Docusaurus reports a missing raw asset. */ }
+    }
     visit(tree as Parameters<typeof visit>[0], 'link', (node: MarkdownLinkNode) => {
       const {reference} = resolveContentLink(node.url, source, registry);
-      if (reference.kind === 'included-source' && reference.targetRoute) {
+      const materializedAsset = reference.kind === 'asset' && Boolean(reference.targetSourcePath && materializedAssets.has(reference.targetSourcePath));
+      if ((reference.kind === 'included-source' || materializedAsset) && reference.targetRoute) {
         // Delivered views are static files under generated/; `pathname://` keeps them out of the router
         // (and its route-only broken-link check) exactly like the raw anchors module pages already use.
         node.url = /\.html(?:[?#]|$)/.test(reference.targetRoute) ? `pathname://${reference.targetRoute}` : reference.targetRoute;

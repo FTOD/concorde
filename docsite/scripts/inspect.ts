@@ -15,14 +15,12 @@ async function main() {
   const registry = await buildRegistry(root);
   const findings = validateRegistry(registry);
   const summary = {
+    profile: 7,
     projectRoot: '.',
     counts: {
       architecture: registry.documents.filter((document) => document.collectionId === 'architecture').length,
       docs: registry.documents.filter((document) => document.collectionId === 'docs').length,
-      abstracts: registry.documents.filter((document) => document.collectionId === 'feature-abstracts').length,
-      specifications: registry.documents.filter((document) => document.collectionId === 'features').length,
-      implementations: registry.documents.filter((document) => document.collectionId === 'feature-implementations').length,
-      moduleDesigns: registry.documents.filter((document) => document.contentKind === 'module-design').length,
+      features: registry.documents.filter((document) => document.collectionId === 'features').length,
       excluded: registry.excludedSources.length,
       findings: findings.length,
     },

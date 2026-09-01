@@ -5,118 +5,72 @@ sidebar_position: 2
 
 # Contributing to the Docsite
 
-The docsite is a read-only publication system, not a content-authoring authority. It consumes the
-root `README.md` plus the maintained `docs/` and `specs/` trees, then presents one shared homepage
-and three navigation families: Documentation, Architecture, and Features.
+The docsite is a read-only projection, never a content-authoring authority. It publishes root
+`README.md`, maintained `docs/`, module `architecture.md` sources, direct `features/*.md` sources,
+and module-owned diagrams with provenance.
 
-The complete publication behavior is specified by
-[Feature 002](../../specs/concorde/features/002-auto-docsite/design.md).
+## Eligible sources
 
-## Know which sources are eligible
-
-| Published collection | Maintained inputs | Public route family |
+| Collection | Maintained inputs | Route family |
 |---|---|---|
 | Home | Root `README.md` | `/` |
-| Documentation | Every regular `docs/**/*.md` file | `/docs` |
-| Architecture | Every `specs/**/module.md` (module summary; the module-owned diagrams under `specs/**/architecture/diagrams/*.json`, discovered from that folder rather than declared, are embedded on its page), its adjacent `design.md` (module design reference, published as a separately linked page), and `specs/**/architecture/contracts/**/contract.md` | `/architecture` |
-| Feature abstracts | Every `specs/**/abstract.md` beside a canonical `design.md`; the page each feature opens on | `/features/<feature-id>` or `/features/<parent-feature-id>/<sub-feature-id>` |
-| Feature designs | Every canonical feature-root `design.md` | The feature abstract route plus `/design` |
-| Feature implementations | Every feature-root `implementation.md` beside `design.md` | The feature abstract route plus `/implementation` |
+| Documentation | Regular `docs/**/*.md` | `/docs` |
+| Architecture | Every configured module `architecture.md` | `/architecture/<module-id>` |
+| Features | Every direct module `features/<NNN-name>.md` | `/features/<feature-id>` |
 
-The build manifest names these collections `home`, `docs`, `architecture`, `feature-abstracts`,
-`features`, and `feature-implementations`. Module and feature `design.md` files are distinguished by whether
-`module.md` is adjacent. A feature `design.md` without `abstract.md` or `implementation.md` is an
-error. Symbolic links are not followed. Plans, tasks,
-requirements checklists, research, technical models, quick-start evidence, and other files below
-`attempt/` are intentionally excluded from the Features collection. Their presence under
-`specs/` does not make them permanent project intent.
+Attempt artifacts under `.concorde/attempts/<stable-feature-id>/`, the canonical
+`.concorde/reflections/log.md`, other `.concorde/**` control state, code/test fixtures, generated
+HTML, and package receipts are outside publication discovery. They are neither pages nor broad
+Build Manifest exclusions. Links into `.concorde/**` are diagnosed as excluded control artifacts.
+Symbolic links are not followed.
+Architecture navigation mirrors recursive module containment. Feature navigation uses providing
+module and stable related-feature links; features never form a containment tree.
 
-The two `specs/` projections do not share a public hierarchy. Architecture navigation mirrors
-declared module containment. Features navigation is generated from stable feature IDs and explicit
-parent/sub-feature containment, regardless of which module package physically contains a feature.
-Providing modules and adjacent-level refinement remain metadata and cross-links. Do not add manual
-sidebar entries to compensate for source placement; the registry and disposable feature category
-metadata own that projection.
+Do not copy canonical content into `docsite/`. Components, formatting, registry/routing, and build
+logic live there; publishable prose stays in root/docs/specs, while workflow control prose stays
+under `.concorde/`.
 
-Do not copy canonical content into `docsite/`. Docusaurus configuration, components, formatting, and
-build logic live there; the project introduction lives in root `README.md`, deeper explanations live
-in `docs/`, and architecture and feature authorities live in `specs/`.
+## Build pipeline
 
-## How a build works
+1. Discover configured Profile 7 module architectures and direct feature files while keeping the
+   `.concorde/**` control plane outside content and provenance discovery.
+2. Validate identities, module hierarchy, embedded interfaces, Architecture Zoom references, source
+   links, safe routes, and publication-root exclusions; legacy `specs/**/attempts/**` and
+   `specs/**/reflections.md` stop the build.
+3. Discover diagrams only from each module's declared `diagrams/` sources, validate their textual
+   architecture link, hidden legend, safe unique output, and provenance, then deliver a fresh ignored
+   generated set.
+4. Materialize disposable Home, Architecture, and Feature page trees under
+   `docsite/.generated/content/`.
+5. Render a Docusaurus candidate.
+6. Validate pages, routes, navigation/relations, links, provenance, diagram freshness, and Build
+   Manifest 10.
+7. Promote only a successful candidate to `docsite/build/`.
 
-A preview and a production build use the same inclusion, routing, and validation rules:
-
-1. Module `architecture/diagrams/` folders and feature diagram declarations identify the complete
-   Archify source set.
-2. The build verifies the installed project-local Archify 2.16 skill, validates every source, and atomically delivers a fresh,
-   complete ignored `generated/` set.
-3. The source registry maps `README.md` uniquely to `/`, discovers other eligible files and deliberate
-   exclusions, derives Architecture routes from module containment, and derives Features routes from
-   stable IDs plus explicit feature containment.
-4. Independent disposable Home, Architecture, and Features trees are materialized under
-   `docsite/.generated/content/`; the Home projection adds only route metadata, while generated
-   Features category metadata supplies human-readable titles.
-5. Docusaurus renders a candidate site.
-6. Candidate pages, routes, links, provenance, and the build manifest (Build Manifest v9) are
-   validated. The manifest schema is compiled in AJV strict mode, so a strict-mode diagnostic in the
-   schema fails the build instead of printing a warning.
-7. Only a successful candidate is promoted to `docsite/build/`.
-
-Because generated diagrams, Architecture/Features pages, and site output are projections, never edit
-files under `generated/`, `docsite/.generated/`, or `docsite/build/`. Correct the maintained source
+Never edit `generated/`, `docsite/.generated/`, or `docsite/build/`. Correct the maintained source
 and rebuild.
 
-## Author a documentation page
+## Author documentation
 
-Edit root `README.md` to change the repository and generated-site homepage. Keep it portable
-GitHub-flavored Markdown: the site projection owns its `/` route metadata and rewrites supported
-repository-relative links. The opening should continue to present the project, key features, and all
-Concorde-specific commands before status and detailed setup material.
+Edit root `README.md` for the shared repository/site homepage. Add deeper public guidance under
+`docs/`; every page needs YAML `title` or one H1. Use repository-relative links. Cross-collection
+links should target canonical architecture/feature sources; the registry rewrites them to public
+routes and preserves fragments.
 
-Add ordinary Markdown under `docs/`; no per-page registration in the Docusaurus configuration is
-required. Every page needs either a YAML `title` or a level-one heading. Optional
-`sidebar_position`, `sidebar_label`, and `slug` fields control presentation.
+When a guide summarizes normative behavior, link its owning architecture or feature file and make
+the source/projection distinction clear.
 
-Use source-relative Markdown links. Links may cross collections—for example, from a guide to the
-[root architecture](../../specs/concorde/module.md), or from a module summary to its adjacent
-`design.md`—and fragments are preserved when the registry maps source paths to published routes.
-A link to a deliberately excluded implementation artifact is an error because the generated site
-could not honor it.
+## Publish an architecture diagram
 
-When a guide summarizes normative behavior, link to the relevant module or feature authority and do
-not present the summary as stronger or more current than that source.
+A diagram source belongs to the module whose structure or interaction it explains. Keep JSON under
+that module's `diagrams/`, declare/link it from `architecture.md`, and provide a complete textual
+counterpart. Every source sets `meta.legend.mode: hidden`; its normalized generated `.html` target is
+unique repository-wide. Dynamic workflow/sequence/data-flow/lifecycle views are explanatory and do
+not replace the entity/relationship tables.
 
-## Publish a diagram
-
-A module owns any number of Archify JSON diagrams under its `architecture/diagrams/`. They are
-discovered from that folder, never declared in front matter, and each must be linked from the level's
-`module.md`, `design.md`, or reflection log; the module page embeds every one of them. Feature
-Markdown declares its maintained Archify JSON; a declaration identifies the source, role, kind,
-explained scenarios, and generated output. The generated page embeds the delivered HTML in a sandbox
-and provides source provenance plus a standalone-view link; for a feature, that page is its
-abstract. A Markdown link to a diagram JSON from `module.md`, `design.md`, or an abstract is
-rewritten to the delivered HTML route.
-
-Custom Markdown beneath `docs/` uses the same declaration shape for supplemental diagrams. Keep the
-JSON directly beneath an adjacent `diagrams/` directory, declare it in the page's front matter with
-`source`, `role: supplemental`, `kind`, `scenarios`, and `output`, and link the JSON from the page.
-Auto-Docs delivers and embeds the view with documentation-specific wording and records its source
-hash and standalone route in the build manifest.
-
-For feature diagrams:
-
-- keep maintained JSON directly under the feature's `diagrams/` directory;
-- declare no more than one `core` diagram, and make it an architecture/component-interaction view;
-- classify sequence, workflow, data-flow, and lifecycle views as `supplemental`;
-- provide an equivalent textual explanation; and
-- keep the generated delivery fresh and provenance-bearing.
-
-A missing, invalid, escaping, duplicate, stale, or unpublishable diagram—declared by a feature or
-custom documentation page, or
-discovered under a module's `architecture/diagrams/` (`architecture.diagram.unpublishable`)—stops
-the build.
-Edit the JSON source and rerun preview/build; delivery is now part of that operation, so never patch
-or commit the HTML output.
+Feature files may link a relevant module diagram but own no diagram source. Generated HTML is
+sandboxed and linked with source provenance. A missing, invalid, escaping, duplicate, unlinked,
+stale, or unpublishable diagram stops the build.
 
 ## Validate changes
 
@@ -132,31 +86,14 @@ npm run build
 npm run check
 ```
 
-- `inspect` reports discovered and deliberately excluded sources.
-- `validate` checks identity, metadata, routes, links, module diagram folders, feature and docs diagram
-  declarations, and source-to-page
-  mappings without mutating maintained sources.
-- `render-diagrams` verifies the installed `.agents/skills/archify` package and replaces the complete disposable
-  delivery set only after every module diagram and feature or documentation declaration passes.
-- `start` delivers and validates before opening a local preview.
-- `build` delivers diagrams, renders the site, and verifies a candidate before atomic promotion.
-- `check` runs types, tests, validation, and the production build gate.
+`check` runs types, tests, source validation, diagram delivery/freshness, and production build.
+Repeated builds over identical sources must produce the same page inventory, relations, and
+source-to-page mapping without an LLM call.
 
-Repeated builds over identical sources must produce the same page inventory, navigation
-relationships, and source-to-page mapping without an LLM call.
+Browser visual checks remain explicit review because they require Chrome/Chromium and capture
+inspection. Their HTML/JSON/images/contact sheets are disposable.
 
-Browser-based `visual-check` remains an explicit review step because it requires Chrome/Chromium and
-human inspection of its captures. Its HTML, JSON, image, and contact-sheet evidence is disposable and
-must not be committed.
-
-## Diagnose a failure
-
-Publication diagnostics identify a rule, source path, reason, and remediation. Typical failures are
-unreadable Markdown, invalid front matter, duplicate stable IDs, route collisions, unresolved or
-excluded-source links, invalid diagram declarations, unreferenced or unpublishable module
-diagrams, and stale generated deliveries.
-
-Fix the canonical source named by the diagnostic and rebuild. A failed candidate must not be
-reported as the current complete site, and it must not overwrite the previous successful build.
+Publication diagnostics identify rule, source path, reason, and remediation. Fix the canonical
+source named by a failure. A failed candidate never replaces the previous successful build.
 
 Return to the [documentation overview](../index.md).

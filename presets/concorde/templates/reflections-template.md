@@ -1,16 +1,18 @@
 # Reflections: [PROJECT NAME]
 
+**Canonical path**: `.concorde/reflections/log.md`
+
 The project's one reflection log: every difficulty or problem a coding agent met while planning or
 implementing any feature, attributed to the feature that was being worked on and naming the source
-the problem concerns (any feature, module, contract, guidance, tool, or file in the project).
+the problem concerns (any feature, module architecture, interface, guidance, tool, or file).
 Ordinary recording appends entries and occurrences. Explicit rename/documentation reconciliation may
 rewrite entry text and references like other maintained docs/specs while preserving every stable,
 unique `R-NNN` identifier, required structure, maintainer decision, and problem meaning; maintainers
 may remove closed entries without renumbering or reusing IDs. This file is the sole persisted
 authority for entry identity, status, notes, occurrences, and prose; no attempt artifact,
-feature/module document, contract, diagram, code, or test copies or cites that reflection content.
+feature file, module architecture, interface, diagram, code, or test copies or cites that content.
 Delivery presents entries transiently and rejects copied `R-NNN` identifiers; no operation removes
-this file.
+this tracked control-state file.
 
 <!--
   Grammar (Concorde Reflection Log v1). One H3 per entry, sequential identifiers, never reused:
@@ -18,7 +20,7 @@ this file.
   ### R-NNN · <short title>
   - **Phase**: plan | tasks | implement | analyze | converge      (phase that first recorded it)
   - **Date**: YYYY-MM-DD
-  - **Feature**: <stable ID of the feature or sub-feature selected when recorded>
+  - **Feature**: <stable ID of the selected feature>
   - **Kind**: specification | architecture | guidance | tooling | environment | implementation
   - **Concerns**: <stable ID or project-relative path, optional #fragment or :line>
   - **Expected**: <what the concerned source says should hold>
@@ -31,9 +33,9 @@ this file.
   - **Occurrences**:                                                 (optional; on re-encounter, never a new entry)
     - <phase> <date> <feature-id> — <context>
 
-  Rules: record in the phase the problem is met; never edit abstract.md, feature design.md,
-  implementation.md, any module design.md, module.md, a contract, a view, a diagram, or another
-  feature's code in response — record instead;
+  Rules: record in the phase the problem is met; do not silently repair a protected or out-of-scope
+  feature file, module architecture, interface, diagram, or another feature's code — record the
+  problem and route an explicit owning task instead;
   never copy an entry identifier, status, note, occurrence, or prose into another persisted artifact;
   update an existing entry rather than duplicate it; never delete, renumber, or reverse a
   maintainer's Status or Note; cite evidence paths instead of pasting secrets or bulk output; keep

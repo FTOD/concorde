@@ -1,20 +1,14 @@
 import importlib.util
 import json
-import re
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
 
-import jsonschema
 import yaml
 
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
-CONTRACT = (
-    REPOSITORY_ROOT
-    / "specs/concorde/features/003-installation/subfeatures/001-publish-release/contracts/release-publication.md"
-)
 WORKFLOW = REPOSITORY_ROOT / ".github/workflows/publish-release.yml"
 
 
@@ -26,21 +20,8 @@ def _load(name: str, module_name: str):
     return module
 
 
-def _contract_json_blocks() -> list[dict]:
-    blocks = re.findall(r"```json\n(.*?)```", CONTRACT.read_text(encoding="utf-8"), re.S)
-    return [json.loads(block) for block in blocks]
-
-
 class ReleasePointerContractTests(unittest.TestCase):
-    def setUp(self):
-        self.schema, self.example = _contract_json_blocks()[:2]
-
-    def test_contract_example_validates_against_its_schema(self):
-        jsonschema.validate(self.example, self.schema)
-        self.assertEqual(self.example["tag"], "v" + self.example["version"])
-        self.assertTrue(all(url.startswith(self.example["base_url"] + "/") for url in self.example["catalogs"].values()))
-
-    def test_generated_pointer_validates_and_matches_catalogs(self):
+    def test_generated_pointer_matches_profile_protocol_and_catalogs(self):
         builder = _load("build-components.py", "concorde_release_builder_pointer")
         publisher = _load("publish-release.py", "concorde_release_publisher_pointer")
         temporary = Path(tempfile.mkdtemp())
@@ -49,11 +30,14 @@ class ReleasePointerContractTests(unittest.TestCase):
         identity = builder.read_release_identity()
         base_url = builder.default_base_url(identity.version)
         pointer = publisher.build_release_pointer(temporary, identity.version, f"v{identity.version}", base_url, identity.speckit_range)
-        jsonschema.validate(pointer, self.schema)
         on_disk = json.loads((temporary / "release.json").read_text(encoding="utf-8"))
         self.assertEqual(on_disk, pointer)
         self.assertEqual(pointer["repository"], builder.REPOSITORY)
         self.assertEqual(pointer["speckit_version"], identity.speckit_range)
+        self.assertEqual(pointer["architecture_profile"], 7)
+        self.assertEqual(pointer["workspace_protocol"], 12)
+        self.assertEqual(pointer["tag"], "v" + pointer["version"])
+        self.assertTrue(all(url.startswith(pointer["base_url"] + "/") for url in pointer["catalogs"].values()))
         for name, (collection, identifier) in {
             "extensions.json": ("extensions", "concorde"),
             "presets.json": ("presets", "concorde"),

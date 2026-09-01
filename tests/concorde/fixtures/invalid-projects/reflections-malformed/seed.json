@@ -1,1 +1,1 @@
-{"base":"valid-project","mutation":"overlay specs/example/reflections.md holding one breach per CONCORDE-REFLECT rule"}
+{"base":"valid-project","mutation":"overlay .concorde/reflections/log.md holding one breach per CONCORDE-REFLECT rule"}

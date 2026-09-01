@@ -4,6 +4,7 @@ import {resolve} from 'node:path';
 
 import Ajv2020 from 'ajv/dist/2020';
 
+import {validateBuildManifest} from '../plugins/concorde-content/manifest';
 import {preparePublication} from './prepare-publication';
 
 const siteDir = resolve(__dirname, '..');
@@ -46,11 +47,13 @@ async function runDocusaurus(candidate: string): Promise<void> {
 
 async function validateGeneratedManifest(candidate: string): Promise<void> {
   const [schemaText, manifestText] = await Promise.all([
-    readFile(resolve(projectRoot, 'specs/concorde/features/002-auto-docsite/contracts/build-manifest.schema.json'), 'utf8'),
+    readFile(resolve(siteDir, 'tests/fixtures/interfaces/build-manifest.schema.json'), 'utf8'),
     readFile(resolve(candidate, 'build-manifest.json'), 'utf8'),
   ]);
+  const manifest = JSON.parse(manifestText) as unknown;
+  validateBuildManifest(manifest);
   const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(JSON.parse(schemaText));
-  if (!validate(JSON.parse(manifestText))) throw new Error(`Generated manifest violates its schema: ${JSON.stringify(validate.errors)}`);
+  if (!validate(manifest)) throw new Error(`Generated manifest violates Build Manifest 10 schema: ${JSON.stringify(validate.errors)}`);
 }
 
 export async function buildSite(): Promise<void> {

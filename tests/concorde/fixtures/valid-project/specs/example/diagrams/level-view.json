@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {"title": "Example", "output": "../../../generated/architecture/example.html", "legend": {"mode": "hidden"}, "views": []},
+  "components": [],
+  "connections": []
+}

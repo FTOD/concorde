@@ -1,9 +1,8 @@
-"""Reusable one-level projections from maintained Concorde sources."""
+"""Reusable bounded projections from Profile 7 architecture and feature sources."""
 
 from __future__ import annotations
 
 import re
-from pathlib import PurePosixPath
 from typing import Any
 
 from .model import SourceDocument
@@ -14,98 +13,87 @@ def markdown_section(body: str, heading: str) -> str:
     return match.group(1).strip() if match else ""
 
 
-def contract_records(package: Any, identifiers: list[str], role: str) -> list[dict[str, Any]]:
-    records: list[dict[str, Any]] = []
-    for identifier in identifiers:
-        matches = package.by_id.get(identifier, ())
-        source = matches[0] if len(matches) == 1 and matches[0].kind == "contract" else None
-        metadata = source.metadata if source else {}
-        counterparties = metadata.get("counterparties", [])
-        records.append(
-            {
-                "id": identifier,
-                "role": metadata.get("role", role),
-                "flow": metadata.get("flow", "unknown"),
-                "counterparties": counterparties if isinstance(counterparties, list) else [],
-            }
-        )
-    return records
-
-
 def module_projection(package: Any, module: SourceDocument, include_text: bool) -> dict[str, Any]:
-    metadata = module.metadata
-    contracts = metadata.get("contracts", {}) if isinstance(metadata.get("contracts"), dict) else {}
+    normalized = package.modules[module.identifier]
     result: dict[str, Any] = {
         "id": module.identifier,
-        "contracts": {
-            "provided": contract_records(package, list(contracts.get("provided", [])), "provided"),
-            "required": contract_records(package, list(contracts.get("required", [])), "required"),
-        },
+        "architecture": module.path,
         "organization": (
-            {"parent": metadata.get("parent"), "children": list(metadata.get("children", []))}
+            {"parent": normalized.parent, "modules": list(normalized.modules)}
             if include_text
-            else {"parent": metadata.get("parent"), "position": "immediate-child"}
+            else {"parent": normalized.parent, "position": "immediate-child"}
         ),
+        "responsibility": normalized.responsibility,
+        "boundary": normalized.boundary,
     }
     if include_text:
-        module_dir = PurePosixPath(module.path).parent.as_posix()
-        result["summary"] = module.path
-        result["design_reference"] = f"{module_dir}/design.md"
-        result["diagrams"] = sorted(package.module_diagrams(module))
-        result["features"] = list(metadata.get("features", []))
-        result["responsibility"] = markdown_section(module.body, "Responsibility")
-        result["boundary"] = markdown_section(module.body, "Boundary")
+        result.update(
+            {
+                "features": list(normalized.features),
+                "diagrams": list(normalized.diagrams),
+                "entities": [
+                    {
+                        "id": entity.identifier,
+                        "type": entity.entity_type,
+                        "definition": entity.definition,
+                        "locator": entity.locator,
+                        "roles": list(entity.roles),
+                    }
+                    for entity in package.entities.values()
+                    if entity.owner == module.identifier
+                ],
+                "relationships": [
+                    {
+                        "source": relationship.source_entity,
+                        "predicate": relationship.predicate,
+                        "target": relationship.target_entity,
+                        "description": relationship.description,
+                        "interface": relationship.interface,
+                    }
+                    for relationship in normalized.relationships
+                ],
+                "interactions": [
+                    {
+                        "id": interaction.identifier,
+                        "trigger": interaction.trigger,
+                        "steps": list(interaction.steps),
+                        "result": interaction.result,
+                        "interfaces": list(interaction.interfaces),
+                    }
+                    for identifier in normalized.interactions
+                    if (interaction := package.interactions.get(identifier)) is not None
+                ],
+            }
+        )
     return result
 
 
-def scenario_projections(view: dict[str, Any]) -> list[dict[str, Any]]:
-    components = {
-        item.get("id"): item.get("module_id")
-        or (item.get("tag") if str(item.get("tag", "")).startswith(("module.", "feature.")) else None)
-        or item.get("stable_id")
-        or f"external.{item.get('id')}"
-        for item in view.get("components", [])
-        if isinstance(item, dict) and item.get("id")
+def feature_summary(package: Any, feature: SourceDocument) -> dict[str, Any]:
+    normalized = package.features[feature.identifier]
+    title = next((line[2:].strip() for line in feature.body.splitlines() if line.startswith("# ")), feature.identifier)
+    return {
+        "feature_id": feature.identifier,
+        "title": re.sub(r"^Feature Design:\s*", "", title),
+        "module": normalized.module,
+        "feature_path": feature.path,
+        "outcome": " ".join(normalized.outcome.split()),
+        "evidence_status": normalized.evidence_status,
     }
-    connections = [item for item in view.get("connections", []) if isinstance(item, dict)]
-    scenarios: list[dict[str, Any]] = []
-    for scenario in view.get("meta", {}).get("views", []):
-        if not isinstance(scenario, dict) or not scenario.get("id"):
-            continue
-        focus = [item for item in scenario.get("focus", []) if item in components]
-        focus_set = set(focus)
-        interactions = []
-        for connection in connections:
-            endpoints = {connection.get("from"), connection.get("to")}
-            if focus_set and not endpoints.issubset(focus_set):
-                continue
-            interactions.append(
-                {
-                    "id": connection.get("id"),
-                    "from": components.get(connection.get("from"), connection.get("from")),
-                    "to": components.get(connection.get("to"), connection.get("to")),
-                    "description": connection.get("label", ""),
-                    "contract": contract_reference(connection),
-                }
-            )
-        scenarios.append(
-            {
-                "id": scenario["id"],
-                "participants": [components[item] for item in focus],
-                "interactions": interactions,
-            }
-        )
-    return sorted(scenarios, key=lambda item: item["id"])
+
+
+def scenario_projections(view: dict[str, Any]) -> list[dict[str, Any]]:
+    """Keep optional diagram-view summaries as generated navigation, never architecture authority."""
+    result: list[dict[str, Any]] = []
+    for item in view.get("meta", {}).get("views", []):
+        if isinstance(item, dict) and isinstance(item.get("id"), str):
+            result.append({"id": item["id"], "participants": list(item.get("focus", [])), "interactions": []})
+    return sorted(result, key=lambda item: item["id"])
 
 
 def contract_reference(connection: dict[str, Any]) -> str | None:
-    explicit = connection.get("contract")
+    """Compatibility helper: diagram links may preserve a contract.* interface identity."""
+    explicit = connection.get("interface", connection.get("contract"))
     if isinstance(explicit, str):
         return explicit
-    match = re.search(r"\b(contract\.[a-z0-9.-]+)\b", str(connection.get("label", "")))
-    if match:
-        return match.group(1)
-    identifier = connection.get("id")
-    if isinstance(identifier, str) and identifier.startswith("contract_"):
-        return identifier.split("__", 1)[0].replace("_", ".")
-    return None
+    match = re.search(r"\b((?:contract|interface)\.[a-z0-9.-]+)\b", str(connection.get("label", "")))
+    return match.group(1) if match else None

@@ -1,40 +1,16 @@
+import {moduleRoute} from './routes';
 import type {
-  ArchitectureSource, BuildManifest, ContentPage, ContentRegistry, FeatureImplementation, FeaturePageContext, FeatureDesign, FeatureAbstract,
-  ModuleDesign, ProjectDocument, SourceDocument,
+  BuildManifest, ContentPage, ContentRegistry, FeatureDesign, ModuleArchitecture, SourceDocument,
 } from './types';
 
-const isFeature = (document: SourceDocument): document is FeatureDesign => document.collectionId === 'features';
-const isFeatureAbstract = (document: SourceDocument): document is FeatureAbstract => document.collectionId === 'feature-abstracts';
-const isFeatureImplementation = (document: SourceDocument): document is FeatureImplementation => document.collectionId === 'feature-implementations';
-const isArchitecture = (document: SourceDocument): document is ArchitectureSource => document.contentKind === 'architecture-source';
-const isModuleDesign = (document: SourceDocument): document is ModuleDesign => document.contentKind === 'module-design';
-const isProjectDocument = (document: SourceDocument): document is ProjectDocument => document.contentKind === 'project-document';
-
-/** The identity and abstract-routed navigation every feature page carries. */
-function featureContext(document: FeaturePageContext) {
-  return {
-    featureId: document.featureId,
-    moduleId: document.moduleId,
-    moduleRoute: document.moduleRoute,
-    featureLevel: document.featureLevel,
-    parentFeatureId: document.parentFeatureId,
-    parentFeatureRoute: document.parentFeatureRoute,
-    subfeatures: document.subfeatures,
-    siblings: document.siblings,
-    refinements: document.refinements,
-  };
-}
+const isFeature = (document: SourceDocument): document is FeatureDesign => document.contentKind === 'feature-design';
+const isModule = (document: SourceDocument): document is ModuleArchitecture => document.contentKind === 'module-architecture';
 
 function navigationFor(document: SourceDocument) {
   const section = document.collectionId === 'home' || document.collectionId === 'docs'
     ? 'Documentation' as const
-    : document.collectionId === 'architecture'
-      ? 'Architecture' as const
-      : 'Features' as const;
-  // Sub-feature pages nest beneath their parent feature abstract; module design nests beside its module page.
-  const parentRoute = isFeature(document) || isFeatureAbstract(document) || isFeatureImplementation(document)
-    ? document.parentFeatureRoute
-    : isModuleDesign(document) ? document.moduleRoute : undefined;
+    : document.collectionId === 'architecture' ? 'Architecture' as const : 'Features' as const;
+  const parentRoute = isModule(document) && document.parentId ? moduleRoute(document.parentId) : undefined;
   return {section, label: document.sidebarLabel || document.title, ...(parentRoute ? {parentRoute} : {})};
 }
 
@@ -49,59 +25,95 @@ export function pageFromDocument(document: SourceDocument): ContentPage {
     links: document.links
       .filter((link) => link.targetSourcePath && link.targetRoute)
       .map((link) => ({targetSourcePath: link.targetSourcePath!, targetRoute: link.targetRoute!}))
-      .sort((a, b) => `${a.targetSourcePath}\0${a.targetRoute}`.localeCompare(`${b.targetSourcePath}\0${b.targetRoute}`)),
-    ...(isProjectDocument(document) && document.diagrams?.length ? {diagrams: document.diagrams} : {}),
-    ...(isFeatureAbstract(document) ? {
-      ...featureContext(document),
-      status: document.status,
-      diagrams: document.diagrams,
-      designRoute: document.designRoute,
-      implementationRoute: document.implementationRoute,
+      .sort((left, right) => `${left.targetSourcePath}\0${left.targetRoute}`.localeCompare(`${right.targetSourcePath}\0${right.targetRoute}`)),
+    ...(isModule(document) ? {
+      moduleId: document.moduleId,
+      ...(document.parentId ? {parentId: document.parentId} : {}),
+      architectureDiagrams: document.architectureDiagrams,
     } : {}),
     ...(isFeature(document) ? {
-      ...featureContext(document),
+      featureId: document.featureId,
+      moduleId: document.moduleId,
+      ...(document.moduleRoute ? {moduleRoute: document.moduleRoute} : {}),
       status: document.status,
-      diagrams: document.diagrams,
-      abstractRoute: document.abstractRoute,
-      implementationRoute: document.implementationRoute,
-    } : {}),
-    ...(isFeatureImplementation(document) ? {
-      ...featureContext(document),
-      abstractRoute: document.abstractRoute,
-      designRoute: document.designRoute,
-    } : {}),
-    ...(isArchitecture(document) ? {
-      architectureId: document.architectureId,
-      architectureKind: document.architectureKind,
-      moduleId: document.moduleId,
-      parentId: document.parentId,
-      ...(document.architectureDiagrams ? {architectureDiagrams: document.architectureDiagrams} : {}),
-      designReferenceRoute: document.designReferenceRoute,
-    } : {}),
-    ...(isModuleDesign(document) ? {
-      moduleId: document.moduleId,
-      moduleRoute: document.moduleRoute,
+      relatedFeatures: document.relatedFeatures,
     } : {}),
   };
 }
 
+function isRelativePath(value: string): boolean {
+  return Boolean(value) && !value.startsWith('/') && !value.startsWith('\\') && !/^[A-Za-z]:[\\/]/.test(value) &&
+    value !== '..' && !value.startsWith('../');
+}
+
+function assertSorted(values: string[], subject: string): void {
+  if (new Set(values).size !== values.length || values.some((value, index) => index > 0 && values[index - 1] > value)) {
+    throw new Error(`${subject} must be unique and sorted.`);
+  }
+}
+
+/** Runtime boundary validation for the custom Build Manifest 10 JSON interface. */
+export function validateBuildManifest(value: unknown): asserts value is BuildManifest {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Build Manifest 10 must be an object.');
+  const manifest = value as Partial<BuildManifest>;
+  if (manifest.schemaVersion !== 10) throw new Error('Build Manifest requires schemaVersion 10.');
+  if (manifest.generator?.name !== 'concorde-docsite' || typeof manifest.generator.version !== 'string' ||
+      typeof manifest.generator.docusaurusVersion !== 'string') throw new Error('Build Manifest generator identity is incomplete.');
+  const collectionIds = manifest.collections?.map((collection) => collection.id);
+  if (JSON.stringify(collectionIds) !== JSON.stringify(['home', 'architecture', 'docs', 'features'])) {
+    throw new Error('Build Manifest collections must be home, architecture, docs, and features in canonical order.');
+  }
+  if (!Array.isArray(manifest.pages)) throw new Error('Build Manifest pages must be an array.');
+  const pageKinds = new Set(['module-architecture', 'project-document', 'feature-design']);
+  for (const page of manifest.pages) {
+    if (!pageKinds.has(page.kind)) throw new Error(`Build Manifest page kind "${page.kind}" is unsupported.`);
+    if (!isRelativePath(page.sourcePath)) throw new Error(`Build Manifest sourcePath "${page.sourcePath}" must be project-relative.`);
+    if (!/^[a-f0-9]{64}$/.test(page.sourceSha256)) throw new Error(`${page.sourcePath}: sourceSha256 must be lowercase SHA-256.`);
+    if (!page.route.startsWith('/')) throw new Error(`${page.sourcePath}: route must be root-relative.`);
+    if (page.kind === 'module-architecture') {
+      if (!page.moduleId || !Array.isArray(page.architectureDiagrams)) throw new Error(`${page.sourcePath}: module page metadata is incomplete.`);
+      for (const diagram of page.architectureDiagrams) if (!isRelativePath(diagram.source)) {
+        throw new Error(`${page.sourcePath}: diagram source must be project-relative.`);
+      }
+    }
+    if (page.kind === 'feature-design' && (!page.featureId || !page.moduleId || !page.moduleRoute ||
+        typeof page.status !== 'string' || !Array.isArray(page.relatedFeatures))) {
+      throw new Error(`${page.sourcePath}: feature page metadata is incomplete.`);
+    }
+  }
+  assertSorted(manifest.pages.map((page) => page.sourcePath), 'Build Manifest pages');
+  if (!Array.isArray(manifest.excludedSources) || manifest.excludedSources.some((source) => !isRelativePath(source.sourcePath))) {
+    throw new Error('Build Manifest excluded source paths must be project-relative.');
+  }
+  assertSorted(manifest.excludedSources.map((source) => source.sourcePath), 'Build Manifest excludedSources');
+  if (!Array.isArray(manifest.routeInventory)) throw new Error('Build Manifest routeInventory must be an array.');
+  assertSorted(manifest.routeInventory, 'Build Manifest routeInventory');
+  if (manifest.pages.some((page) => !manifest.routeInventory!.includes(page.route))) {
+    throw new Error('Build Manifest routeInventory must include every page route.');
+  }
+  if (manifest.validation?.status !== 'passed' || !manifest.validation.checks?.every((check) => check.status === 'passed')) {
+    throw new Error('Build Manifest validation checks must all pass.');
+  }
+}
+
 export function createManifest(registry: ContentRegistry, routeInventory?: string[]): BuildManifest {
-  const pages = registry.documents.map(pageFromDocument).sort((a, b) =>
-    a.sourcePath < b.sourcePath ? -1 : a.sourcePath > b.sourcePath ? 1 : 0);
-  return {
-    schemaVersion: 9,
-    generator: {name: 'concorde-docsite', version: '0.3.0', docusaurusVersion: '3.10.2'},
+  const pages = registry.documents.map(pageFromDocument).sort((left, right) => left.sourcePath < right.sourcePath ? -1 : left.sourcePath > right.sourcePath ? 1 : 0);
+  const manifest: BuildManifest = {
+    schemaVersion: 10,
+    generator: {name: 'concorde-docsite', version: '0.6.0', docusaurusVersion: '3.10.2'},
     collections: registry.collections.map(({id, sourceBase, routeBase, include}) => ({id, sourceBase, routeBase, include})),
     pages,
-    excludedSources: [...registry.excludedSources].sort((a, b) => a.sourcePath.localeCompare(b.sourcePath)),
+    excludedSources: [...registry.excludedSources].sort((left, right) => left.sourcePath < right.sourcePath ? -1 : left.sourcePath > right.sourcePath ? 1 : 0),
     routeInventory: [...new Set(routeInventory ?? ['/', ...pages.map((page) => page.route)])].sort(),
     validation: {
       status: 'passed',
       checks: [
-        {name: 'source-contracts', status: 'passed'},
-        {name: 'identity-and-routes', status: 'passed'},
+        {name: 'profile-7-sources', status: 'passed'},
+        {name: 'identity-relations-and-routes', status: 'passed'},
         {name: 'rendered-route-inventory', status: 'passed'},
       ],
     },
   };
+  validateBuildManifest(manifest);
+  return manifest;
 }

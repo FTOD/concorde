@@ -1,9 +1,9 @@
-"""Parser for the project reflection log (``<specification_root>/reflections.md``).
+"""Parser for the project reflection log (``.concorde/reflections/log.md``).
 
 The log is the one maintained file in which coding agents record every difficulty or problem met
 during the plan, tasks, implement, analyze, and converge phases of any attempt. Its grammar is
-normative in Feature 005's ``contracts/reflection-log.md``; this module is shared by validation,
-bounded context, the workspace adapter, and implementation acceptance so that every consumer parses the log
+normative in Feature 005's embedded reflection interface inside its direct feature file; this module
+is shared by validation, bounded context, the workspace adapter, and cleanup-only delivery so every consumer parses the log
 identically. It never writes the log.
 """
 
@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass
 from typing import Mapping
 
-LOG_NAME = "reflections.md"
+LOG_PATH = ".concorde/reflections/log.md"
 REQUIRED_FIELDS = (
     "Phase",
     "Date",
@@ -42,9 +42,9 @@ FENCE = re.compile(r"^(```|~~~)")
 REFERENCE_SUFFIX = re.compile(r"(#[^\s]*|:\d+)$")
 
 
-def log_path(specification_root: str) -> str:
+def log_path() -> str:
     """Project-relative path of the one project reflection log."""
-    return f"{specification_root.rstrip('/')}/{LOG_NAME}"
+    return LOG_PATH
 
 
 @dataclass(frozen=True)

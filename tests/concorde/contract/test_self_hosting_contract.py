@@ -3,10 +3,12 @@ import re
 import unittest
 from pathlib import Path
 
+from jsonschema import Draft202012Validator
+
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-CONTRACT = REPOSITORY_ROOT / "specs/concorde/features/004-self-host/contracts"
+CONTRACT = REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/self-host"
 
 
 class SelfHostingContractTests(unittest.TestCase):
@@ -15,17 +17,19 @@ class SelfHostingContractTests(unittest.TestCase):
         cls.schema = json.loads((CONTRACT / "self-hosting.schema.json").read_text())
 
     def test_examples_select_exactly_one_protocol_branch(self):
+        validator = Draft202012Validator(self.schema)
         examples = {
             "proposal.json": ("proposal_version", "self-host.apply"),
             "applied-result.json": ("schema_version", "self-host.apply"),
             "status-current.json": ("schema_version", "self-host.status"),
         }
         for name, (version_field, operation) in examples.items():
-            value = json.loads((CONTRACT / "examples" / name).read_text())
+            value = json.loads((CONTRACT / name).read_text())
             self.assertEqual(value[version_field], 1)
             self.assertEqual(value["operation"], operation)
             self.assertEqual(value["target"], "feature.concorde.self-host-framework")
             self.assertRegex(value["source_digest"], r"^sha256:[0-9a-f]{64}$")
+            self.assertEqual(list(validator.iter_errors(value)), [], name)
 
     def test_custom_schema_is_closed_and_defines_all_evidence_dimensions(self):
         definitions = self.schema["$defs"]
@@ -33,6 +37,9 @@ class SelfHostingContractTests(unittest.TestCase):
             self.assertFalse(definitions[branch]["additionalProperties"])
         dimensions = definitions["status"]["properties"]["dimensions"]
         self.assertEqual(set(dimensions["required"]), {"source", "installed", "registry", "surfaces", "activation"})
+        statuses = set(definitions["dimension"]["properties"]["status"]["enum"])
+        self.assertIn("obsolete_templates", statuses)
+        self.assertIn("stale_protocol", statuses)
 
     def test_safe_path_schema_rejects_escape_forms(self):
         patterns = [re.compile(item["pattern"]) for item in self.schema["$defs"]["safePath"]["not"]["anyOf"]]

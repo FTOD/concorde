@@ -24,11 +24,11 @@ describe('documentation authoring', () => {
   it('reflects terminology table edits without a parallel registry', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'concorde-terminology-')); roots.push(root);
     await cp(resolve(__dirname, '../fixtures/valid-project'), root, {recursive: true});
-    const design = resolve(root, 'specs/001-alpha/design.md');
-    const original = await readFile(design, 'utf8');
-    await writeFile(design, `${original}\n\n## Terminology\n\n| Term | Meaning | Relationships |\n|---|---|---|\n| \`Alpha input\` | One prepared input. | None |\n`, 'utf8');
+    const featurePath = resolve(root, 'specs/example/features/001-alpha.md');
+    const original = await readFile(featurePath, 'utf8');
+    await writeFile(featurePath, `${original}\n\n## Terminology\n\n| Term | Meaning | Relationships |\n|---|---|---|\n| \`Alpha input\` | One prepared input. | None |\n`, 'utf8');
     const registry = await buildRegistry(root);
-    const feature = registry.documents.find((item) => item.sourcePath === 'specs/001-alpha/design.md');
+    const feature = registry.documents.find((item) => item.sourcePath === 'specs/example/features/001-alpha.md');
     expect(feature?.content).toContain('## Terminology');
     expect(feature?.content).toContain('`Alpha input`');
   });

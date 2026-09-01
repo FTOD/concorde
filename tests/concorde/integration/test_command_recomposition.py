@@ -30,17 +30,17 @@ class CommandRecompositionTests(unittest.TestCase):
                 self.assert_all_winners(root, "LOWER_LAYER_MARKER", NORMAL_PHASES)
                 project.register_catalogs(server.base_url)
                 project.run("bundle", "install", "concorde-bundle")
-                self.assert_all_winners(root, "Concorde Installed Workspace Gate")
+                self.assert_all_winners(root, "## Workspace gate")
 
                 project.run("preset", "disable", "concorde")
-                self.assert_all_winners(root, "Concorde Installed Workspace Gate")
+                self.assert_all_winners(root, "## Workspace gate")
                 project.run("preset", "enable", "concorde")
-                self.assert_all_winners(root, "Concorde Installed Workspace Gate")
+                self.assert_all_winners(root, "## Workspace gate")
 
                 project.run("preset", "set-priority", "concorde", "30")
-                self.assert_all_winners(root, "Concorde Installed Workspace Gate")
+                self.assert_all_winners(root, "## Workspace gate")
                 project.run("preset", "set-priority", "concorde", "5")
-                self.assert_all_winners(root, "Concorde Installed Workspace Gate")
+                self.assert_all_winners(root, "## Workspace gate")
 
                 project.run("bundle", "remove", "concorde-bundle")
                 self.assert_all_winners(root, "LOWER_LAYER_MARKER", NORMAL_PHASES)

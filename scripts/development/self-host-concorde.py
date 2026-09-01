@@ -33,6 +33,7 @@ PRESET_ID = "concorde"
 EXTENSION_ID = "concorde"
 BUNDLE_ID = "concorde-bundle"
 PRIORITY = 10
+WORKSPACE_PROTOCOL_VERSION = 12
 
 PRESET_COMMANDS = (
     "speckit.specify",
@@ -58,9 +59,15 @@ TEMPLATE_SURFACES = (
     ".specify/templates/plan-template.md",
     ".specify/templates/tasks-template.md",
 )
+REMOVED_TEMPLATE_SURFACES = (
+    ".specify/presets/concorde/templates/abstract-template.md",
+    ".specify/presets/concorde/templates/implementation-template.md",
+    ".specify/templates/abstract-template.md",
+    ".specify/templates/implementation-template.md",
+)
 PRESERVED = (
-    "project-authored .concorde configuration",
-    "feature abstracts, designs, implementations, contracts, diagrams, and temporal attempt work",
+    "project-authored .concorde configuration, stable-ID attempts, tracked reflection log, and triage state",
+    "module architectures, direct feature files, embedded interfaces, and diagrams",
     "documentation, source code, tests, and generated evidence",
     "unrelated integration and agent assets",
     "authoritative preset, extension, and bundle sources",
@@ -392,6 +399,19 @@ def component_model(root: Path) -> tuple[list[dict[str, object]], str, str]:
         ("extension", source_files(root, "extensions/concorde")),
         ("bundle", source_files(root, "bundles/concorde-bundle")),
     ]
+    for relative in (
+        "presets/concorde/templates/abstract-template.md",
+        "presets/concorde/templates/implementation-template.md",
+    ):
+        path = resolve_project_path(root, relative, reject_symlink=False)
+        if path.exists() or path.is_symlink():
+            raise SelfHostError(
+                "CONCORDE-SELF-HOST-024",
+                "source",
+                relative,
+                "Removed feature-document template remains in the Profile 7 preset source.",
+                "Delete the obsolete template and keep only design, plan, tasks, and reflections templates.",
+            )
     return components, inventory_digest(root, groups), integration
 
 
@@ -473,7 +493,7 @@ def owned_paths(integration: str = "codex") -> tuple[str, ...]:
 
 
 def preserved_inactive_paths(integration: str) -> tuple[str, ...]:
-    """Concorde surfaces of every inactive protocol v1 integration.
+    """Concorde surfaces of every inactive self-host integration.
 
     Spec Kit's ``preset remove`` and forced ``extension add`` unregister every agent recorded in
     the registry, not only the active one, so a refresh under one integration would delete or
@@ -599,7 +619,7 @@ def propose(root: Path) -> dict[str, object]:
 def run_specify(root: Path, arguments: Sequence[str]) -> subprocess.CompletedProcess[str]:
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)
-    environment.pop("SPECIFY_FEATURE_DIRECTORY", None)
+    environment.pop("SPECIFY_FEATURE_PATH", None)
     environment["PYTHONNOUSERSITE"] = "1"
     completed = subprocess.run(
         ["specify", *arguments],
@@ -749,6 +769,36 @@ def extra_owned_surfaces(root: Path, integration: str = "codex") -> list[str]:
     )
 
 
+def removed_template_residue(root: Path) -> list[str]:
+    """Return obsolete projected feature templates that Profile 7 must remove."""
+    return [
+        relative
+        for relative in REMOVED_TEMPLATE_SURFACES
+        if (resolve_project_path(root, relative, reject_symlink=False).exists()
+            or resolve_project_path(root, relative, reject_symlink=False).is_symlink())
+    ]
+
+
+def protocol_freshness(root: Path, integration: str = "codex") -> list[str]:
+    """Return installed guidance paths that do not advertise the Profile 7 protocol."""
+    stale: list[str] = []
+    marker = f"Protocol {WORKSPACE_PROTOCOL_VERSION}"
+    for command in PRESET_COMMANDS:
+        relative = skill_path(command, integration)
+        path = resolve_project_path(root, relative, reject_symlink=False)
+        if not path.is_file() or marker not in path.read_text(encoding="utf-8"):
+            stale.append(relative)
+    delivery = skill_path("speckit.concorde.deliver", integration)
+    delivery_path = resolve_project_path(root, delivery, reject_symlink=False)
+    if not delivery_path.is_file() or "Delivery Proposal 8" not in delivery_path.read_text(encoding="utf-8"):
+        stale.append(delivery)
+    readme = ".specify/extensions/concorde/README.md"
+    readme_path = resolve_project_path(root, readme, reject_symlink=False)
+    if not readme_path.is_file() or marker not in readme_path.read_text(encoding="utf-8"):
+        stale.append(readme)
+    return sorted(set(stale))
+
+
 def verify_materialization(root: Path, expected_source: Path | None = None) -> tuple[str, str, str, list[dict[str, str]]]:
     components, _, integration = component_model(expected_source or root)
     installed = copy_source_digest(root, expected_source)
@@ -778,6 +828,24 @@ def verify_materialization(root: Path, expected_source: Path | None = None) -> t
             missing[0],
             f"Expected materialized surfaces are missing: {', '.join(missing)}",
             "Re-run the public Spec Kit materialization after resolving integration errors.",
+        )
+    residue = removed_template_residue(root)
+    if residue:
+        raise SelfHostError(
+            "CONCORDE-SELF-HOST-024",
+            "verify",
+            residue[0],
+            f"Removed feature-document templates remain installed: {', '.join(residue)}",
+            "Refresh the preset through the public Spec Kit lifecycle so removed sources are pruned.",
+        )
+    stale_protocol = protocol_freshness(root, integration)
+    if stale_protocol:
+        raise SelfHostError(
+            "CONCORDE-SELF-HOST-025",
+            "verify",
+            stale_protocol[0],
+            f"Installed guidance is not current for Protocol {WORKSPACE_PROTOCOL_VERSION}: {', '.join(stale_protocol)}",
+            "Recompose the canonical Profile 7 package and regenerate the active integration surfaces.",
         )
     installed_digest = installed
     registry_digest = digest_bytes(canonical_json(registry).encode())
@@ -855,7 +923,7 @@ def refresh_agent_assets(root: Path, integration: str, version: str) -> None:
     for operation in ("sync", "verify"):
         environment = os.environ.copy()
         environment.pop("PYTHONPATH", None)
-        environment.pop("SPECIFY_FEATURE_DIRECTORY", None)
+        environment.pop("SPECIFY_FEATURE_PATH", None)
         environment["PYTHONNOUSERSITE"] = "1"
         completed = subprocess.run(
             [
@@ -938,9 +1006,18 @@ def status(root: Path) -> dict[str, object]:
     registry_ok = registry == expected_registry(components) and registry_digest == receipt.get("registry_digest")
     surfaces, missing = surface_inventory(root, integration)
     extras = extra_owned_surfaces(root, integration)
+    residue = removed_template_residue(root)
+    stale_protocol = protocol_freshness(root, integration)
     surface_digest = digest_bytes(canonical_json(surfaces).encode())
     integration_ok = receipt.get("integration") == integration
-    surface_ok = integration_ok and not missing and not extras and surface_digest == receipt.get("surface_digest")
+    surface_ok = (
+        integration_ok
+        and not missing
+        and not extras
+        and not residue
+        and not stale_protocol
+        and surface_digest == receipt.get("surface_digest")
+    )
     for ok, code, stage, path, message in (
         (source_ok, "CONCORDE-SELF-HOST-014", "source", "presets/concorde", "Authoritative framework sources changed after the accepted receipt."),
         (installed_ok, "CONCORDE-SELF-HOST-015", "verify", ".specify", "Installed component copies differ from authoritative sources or receipt."),
@@ -953,7 +1030,16 @@ def status(root: Path) -> dict[str, object]:
         "source": {"status": "matching" if source_ok else "changed", "message": "Authoritative source digest compared with receipt."},
         "installed": {"status": "matching" if installed_ok else ("missing" if installed_digest is None else "drift"), "message": "Installed component bytes compared with source and receipt."},
         "registry": {"status": "matching" if registry_ok else ("missing" if registry is None else "drift"), "message": "Normalized Spec Kit registrations compared with expected ownership."},
-        "surfaces": {"status": "matching" if surface_ok else ("extra_owned" if extras else ("missing" if missing else "drift")), "message": "Declared active-integration surfaces compared with receipt."},
+        "surfaces": {
+            "status": "matching" if surface_ok else (
+                "obsolete_templates" if residue else (
+                    "stale_protocol" if stale_protocol else (
+                        "extra_owned" if extras else ("missing" if missing else "drift")
+                    )
+                )
+            ),
+            "message": f"Declared active-integration surfaces compared with receipt and Protocol {WORKSPACE_PROTOCOL_VERSION}.",
+        },
         "activation": {"status": "reload_required", "message": "On-disk equality does not prove that the running agent reloaded these instructions."},
     }
     return {

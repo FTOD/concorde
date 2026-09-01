@@ -18,6 +18,9 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, TWO_LEVEL_PROJECT
 from tests.concorde.support.specify_project import SpecifyProject
 
 
+FEATURE = "specs/example/features/003-authorize-payment.md"
+
+
 class InstalledSlashWorkflowTests(unittest.TestCase):
     def test_gemini_surfaces_match_workspace_and_runtime_semantics(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -34,7 +37,7 @@ class InstalledSlashWorkflowTests(unittest.TestCase):
                 shutil.copytree(TWO_LEVEL_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
                 shutil.copytree(TWO_LEVEL_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
                 (root / ".specify/feature.json").write_text(
-                    json.dumps({"feature_directory": "specs/example/features/001-checkout/subfeatures/001-authorize-payment"}, separators=(",", ":")) + "\n",
+                    json.dumps({"feature_path": FEATURE}, separators=(",", ":")) + "\n",
                     encoding="utf-8",
                 )
                 self.assertEqual(
@@ -42,28 +45,21 @@ class InstalledSlashWorkflowTests(unittest.TestCase):
                     5,
                 )
                 ask = registered_artifact(root, "gemini", "speckit.concorde.ask").read_text(encoding="utf-8")
-                for requirement in ("{{args}}", "citation", "uncertainty", "read-only"):
-                    self.assertIn(requirement, ask)
+                for requirement in ("{{args}}", "sources", "uncertainty", "read-only"):
+                    self.assertIn(requirement, ask.lower())
                 for executable in ("concorde.sh", "concorde.ps1", "concorde.py", "workspace.py"):
                     self.assertNotIn(executable, ask)
                 fast_loop = registered_artifact(root, "gemini", "speckit.fast-loop").read_text(encoding="utf-8")
                 for requirement in (
-                    "anchor feature",
-                    "affected feature set",
-                    "Every affected feature",
-                    "inter-module contract",
-                    "module responsibility",
-                    "dependency direction",
-                    "users of the whole project",
-                    "Pure rename",
-                    "old-to-new mapping",
-                    "referential-only",
-                    "stale-name",
-                    "architecture evidence state",
-                    "needs no separate post-edit",
+                    "one selected feature",
+                    "one providing module",
+                    "affected architecture entities",
+                    "cross-module relationship",
+                    "external compatibility policy",
+                    "every affected durable/source path",
+                    "no attempt was created",
                 ):
-                    self.assertIn(requirement, fast_loop)
-                self.assertNotIn("review_pending", fast_loop)
+                    self.assertIn(requirement, fast_loop.lower())
                 for command, phase in PRESET_COMMANDS.items():
                     receipt = execute_workspace_surface(
                         root,
@@ -74,8 +70,13 @@ class InstalledSlashWorkflowTests(unittest.TestCase):
                     )
                     self.assertEqual(receipt.exit_status, 0)
                     self.assertEqual(receipt.checkout_reads, ())
-                    self.assertEqual(receipt.workspace["workspace_kind"], "subfeature")
-                    self.assertEqual(receipt.workspace["parent_context"]["feature_id"], "feature.example.checkout")
+                    self.assertEqual(receipt.workspace["feature_id"], "feature.example.checkout.authorize")
+                    self.assertEqual(receipt.workspace["feature_path"], FEATURE)
+                    self.assertEqual(receipt.workspace["module_architecture"], "specs/example/architecture.md")
+                    self.assertNotIn("workspace_kind", receipt.workspace)
+                    self.assertNotIn("parent_context", receipt.workspace)
+                    self.assertNotIn("feature_directory", receipt.workspace)
+                    self.assertNotIn("feature_design", receipt.workspace)
                 launcher = root / ".specify/extensions/concorde/scripts/python/concorde.py"
                 result = subprocess.run(
                     [sys.executable, str(launcher), "--project-root", str(root), "validate"],

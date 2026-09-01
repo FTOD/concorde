@@ -1,0 +1,61 @@
+---
+id: feature.concorde.workflow.initialize-architecture
+kind: feature
+module: module.concorde
+related_features:
+  - feature.concorde.workflow
+interfaces:
+  provided:
+    - interface.concorde.initialize
+  required:
+    - contract.concorde.workflow
+evidence_status: partial
+---
+
+# Feature Design: Initialize Architecture
+
+## Outcome and Scope
+
+A maintainer can inspect and explicitly apply a minimal Profile 7 root architecture/control-state scaffold without scripts
+inventing product structure or overwriting an existing configured hierarchy.
+
+## Architecture Zoom
+
+| Entity ID | Role |
+|---|---|
+| `entity.concorde.cli` | Routes reviewed initialize propose/apply operations. |
+| `entity.concorde.runtime` | Generates, validates, and atomically promotes the root `architecture.md` proposal. |
+| `entity.concorde.specification` | Receives the root architecture scaffold only. |
+| `entity.concorde.control-state` | Receives Profile 7 configuration and `.concorde/reflections/log.md`. |
+
+## Interfaces
+
+### `interface.concorde.initialize` — Initialize root architecture
+
+- **Consumer**: Maintainer establishing Concorde in a project.
+- **Direction**: Bidirectional command/result.
+- **Entry points**: `speckit.concorde.init` and the runtime `init` operation.
+- **Inputs**: Project root, proposed root module ID, responsibility, boundary, and optional initial modules/features.
+- **Outputs**: Digest-bearing proposal or an applied/unchanged structured result with exact artifacts and findings.
+- **Obligations**: Preview and apply use the same proposal; existing targets are never silently overwritten.
+- **Failures**: Unsafe paths, conflicts, invalid entities/relations, stale proposals, or filesystem failure preserve the project.
+- **Compatibility**: Initialization Proposal 2 contains exactly Profile 7 configuration, one root architecture, and `.concorde/reflections/log.md`; older/mixed initialization is rejected.
+- **Implementing entities**: `entity.concorde.cli`, `entity.concorde.runtime`.
+
+## Usage Scenarios
+
+1. Inspect an unconfigured project and generate a minimal root architecture proposal.
+2. Review exact configuration/architecture/reflection files, then explicitly apply the current digest-bound proposal.
+3. Run again against an already configured valid project and receive `unchanged` without a blank proposal.
+
+## Requirements
+
+- **FR-001**: Initialization MUST propose Profile 7 configuration, one valid root `architecture.md` with entity/relation/interaction scaffold, and one Reflection Log v1 authority at `.concorde/reflections/log.md`.
+- **FR-002**: It MUST NOT invent child modules/features/interfaces or create any feature artifact.
+- **FR-003**: Apply MUST accept only a current safe Initialization Proposal 2 and atomically promote exactly its three declared files.
+- **FR-004**: Existing configured/partial/conflicting state MUST be diagnosed and never overwritten implicitly.
+
+## Edge Cases
+
+- Configuration exists but the root architecture is missing or malformed.
+- The root ID is valid but the target path is a symlink or already owned by unrelated content.

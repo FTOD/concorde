@@ -7,98 +7,38 @@ import {buildRegistry} from '../../plugins/concorde-content/registry';
 
 const fixture = resolve(__dirname, '../fixtures/valid-project');
 
-describe('module diagram links', () => {
-  it('resolves a summary or design-reference link to a module diagram, spelled root-relative or document-relative', async () => {
-    const registry = await buildRegistry(resolve(__dirname, '../../..'));
-    const root = registry.documents.find((item) => item.sourcePath === 'specs/concorde/module.md')!;
-    const design = registry.documents.find((item) => item.sourcePath === 'specs/concorde/design.md')!;
-    expect(resolveContentLink('specs/concorde/architecture/diagrams/level-view.json', root, registry).reference.targetRoute)
-      .toBe('/architecture/concorde-interaction-architecture.html');
-    expect(resolveContentLink('architecture/diagrams/level-view.json', root, registry).reference.targetRoute)
-      .toBe('/architecture/concorde-interaction-architecture.html');
-    expect(resolveContentLink('architecture/diagrams/level-view.json', design, registry).reference.targetRoute)
-      .toBe('/architecture/concorde-interaction-architecture.html');
-    expect(resolveContentLink('architecture/diagrams/missing-view.json', root, registry).reference.kind).toBe('asset');
-  });
-
-  it('resolves a custom documentation diagram to its delivered route', async () => {
-    const registry = await buildRegistry(resolve(__dirname, '../../..'));
-    const workflow = registry.documents.find((item) => item.sourcePath === 'docs/concorde-workflow.md')!;
-    expect(resolveContentLink('diagrams/concorde-command-workspace-file-flow.json', workflow, registry).reference)
-      .toMatchObject({
-        kind: 'included-source',
-        targetSourcePath: 'docs/diagrams/concorde-command-workspace-file-flow.json',
-        targetRoute: '/architecture/concorde-command-workspace-file-flow.html',
-      });
-  });
-
-  it('publishes module and contract pages at routes without the architecture/ grouping segment', async () => {
-    const registry = await buildRegistry(resolve(__dirname, '../../..'));
-    const byPath = (sourcePath: string) => registry.documents.find((item) => item.sourcePath === sourcePath)!;
-    expect(byPath('specs/concorde/architecture/modules/auto-docs/module.md').route)
-      .toBe('/architecture/concorde/modules/auto-docs/module.concorde.auto-docs');
-    expect(byPath('specs/concorde/architecture/contracts/concorde-workflow/contract.md').route)
-      .toBe('/architecture/concorde/contracts/concorde-workflow/contract.concorde.workflow');
-    expect(byPath('specs/concorde/architecture/modules/auto-docs/features/001-publish-project-docsite/abstract.md').route)
-      .toBe('/features/feature.auto-docs.publish-project-docsite');
-    expect(byPath('specs/concorde/architecture/modules/auto-docs/features/001-publish-project-docsite/abstract.md').stagedPath)
-      .toBe('feature.auto-docs.publish-project-docsite/abstract.md');
-    expect(byPath('specs/concorde/architecture/modules/auto-docs/module.md').stagedPath)
-      .toBe('concorde/modules/auto-docs/module.md');
-    expect(resolveContentLink('architecture/modules/auto-docs/module.md', byPath('specs/concorde/module.md'), registry).reference.targetRoute)
-      .toBe('/architecture/concorde/modules/auto-docs/module.concorde.auto-docs');
-  });
-});
-
-describe('repository-relative links', () => {
-  it('maps README links into every published collection and delivered diagrams', async () => {
+describe('Profile 7 source links', () => {
+  it('maps repository-relative links into architecture, feature, docs, and diagram routes', async () => {
     const registry = await buildRegistry(fixture);
     const readme = registry.documents.find((item) => item.sourcePath === 'README.md')!;
     expect(resolveContentLink('docs/index.md', readme, registry).reference.targetRoute).toBe('/docs');
-    expect(resolveContentLink('specs/example/module.md', readme, registry).reference.targetRoute)
-      .toBe('/architecture/example/module.fixture');
-    expect(resolveContentLink('specs/001-alpha/abstract.md', readme, registry).reference.targetRoute)
+    expect(resolveContentLink('specs/example/architecture.md', readme, registry).reference.targetRoute)
+      .toBe('/architecture/module.fixture');
+    expect(resolveContentLink('specs/example/features/001-alpha.md', readme, registry).reference.targetRoute)
       .toBe('/features/feature.fixture.alpha');
-    expect(resolveContentLink('specs/001-alpha/diagrams/alpha-components.json', readme, registry).reference.targetRoute)
-      .toBe('/architecture/fixture-alpha-components.html');
+    expect(resolveContentLink('specs/example/diagrams/fixture-level-view.json', readme, registry).reference.targetRoute)
+      .toBe('/architecture/fixture-level-view.html');
   });
 
-  it('maps same-collection and cross-collection Markdown while preserving fragments', async () => {
+  it('preserves fragments across collection boundaries', async () => {
     const registry = await buildRegistry(fixture);
-    const home = registry.documents.find((item) => item.sourcePath === 'docs/index.md')!;
-    expect(resolveContentLink('guide/intro.md', home, registry).reference.targetRoute).toBe('/docs/guide/intro');
-    expect(resolveContentLink('../specs/001-alpha/design.md#requirements', home, registry).reference.targetRoute)
-      .toBe('/features/feature.fixture.alpha/design#requirements');
-    expect(resolveContentLink('../specs/001-alpha/abstract.md', home, registry).reference.targetRoute)
-      .toBe('/features/feature.fixture.alpha');
+    const docs = registry.documents.find((item) => item.sourcePath === 'docs/index.md')!;
+    expect(resolveContentLink('../specs/example/features/001-alpha.md#requirements', docs, registry).reference.targetRoute)
+      .toBe('/features/feature.fixture.alpha#requirements');
   });
 
-  it('resolves the three feature pages to each other as included sources', async () => {
+  it('reports missing, control-state, and escaping targets with Profile 7 remediation', async () => {
     const registry = await buildRegistry(fixture);
-    const byPath = (sourcePath: string) => registry.documents.find((item) => item.sourcePath === sourcePath)!;
-    const abstract = byPath('specs/001-alpha/subfeatures/001-prepare/abstract.md');
-    const design = byPath('specs/001-alpha/subfeatures/001-prepare/design.md');
-    const implementation = byPath('specs/001-alpha/subfeatures/001-prepare/implementation.md');
-    expect(resolveContentLink('design.md', abstract, registry).reference)
-      .toMatchObject({kind: 'included-source', targetRoute: '/features/feature.fixture.alpha/feature.fixture.alpha.prepare/design'});
-    expect(resolveContentLink('implementation.md', abstract, registry).reference)
-      .toMatchObject({kind: 'included-source', targetRoute: '/features/feature.fixture.alpha/feature.fixture.alpha.prepare/implementation'});
-    expect(resolveContentLink('abstract.md', design, registry).reference)
-      .toMatchObject({kind: 'included-source', targetRoute: '/features/feature.fixture.alpha/feature.fixture.alpha.prepare'});
-    expect(resolveContentLink('abstract.md', implementation, registry).reference)
-      .toMatchObject({kind: 'included-source', targetRoute: '/features/feature.fixture.alpha/feature.fixture.alpha.prepare'});
-    expect(resolveContentLink('../../abstract.md', abstract, registry).reference)
-      .toMatchObject({kind: 'included-source', targetRoute: '/features/feature.fixture.alpha'});
-    expect(resolveContentLink('../002-finish/abstract.md', abstract, registry).finding).toBeUndefined();
-  });
-
-  it('reports missing, excluded, and escaping targets with distinct rules', async () => {
-    const registry = await buildRegistry(fixture);
-    const home = registry.documents.find((item) => item.sourcePath === 'docs/index.md')!;
-    expect(resolveContentLink('missing.md', home, registry).finding?.ruleId).toBe('link.target.missing');
-    const excluded = resolveContentLink('../specs/001-alpha/plan.md', home, registry).finding;
+    const docs = registry.documents.find((item) => item.sourcePath === 'docs/index.md')!;
+    expect(resolveContentLink('missing.md', docs, registry).finding?.ruleId).toBe('link.target.missing');
+    const excluded = resolveContentLink('../.concorde/attempts/feature.fixture.alpha/plan.md', docs, registry).finding;
     expect(excluded?.ruleId).toBe('link.target.excluded');
-    expect(excluded?.remediation).toContain('abstract.md, feature design.md, implementation.md');
-    expect(resolveContentLink('../../outside.md', home, registry).finding?.ruleId).toBe('link.target.outside-root');
+    expect(excluded?.message).toContain('Concorde control artifact');
+    expect(excluded?.remediation).toContain('architecture.md or a direct feature file');
+    expect(resolveContentLink('../.concorde/reflections/log.md', docs, registry).finding)
+      .toMatchObject({ruleId: 'link.target.excluded'});
+    expect(resolveContentLink('../.concorde/config.json', docs, registry).finding)
+      .toMatchObject({ruleId: 'link.target.excluded'});
+    expect(resolveContentLink('../../outside.md', docs, registry).finding?.ruleId).toBe('link.target.outside-root');
   });
 });

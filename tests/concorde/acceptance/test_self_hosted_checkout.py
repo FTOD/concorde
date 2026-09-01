@@ -48,23 +48,20 @@ class SelfHostedCheckoutAcceptanceTests(unittest.TestCase):
                 fast_loop_content = fast_loop.read_text(encoding="utf-8")
                 for requirement in (
                     "--phase fast-loop",
-                    "anchor feature",
-                    "affected feature set",
-                    "Every affected feature",
-                    "inter-module contract",
-                    "module responsibility",
-                    "dependency direction",
-                    "users of the whole project",
-                    "Pure rename",
-                    "old-to-new mapping",
-                    "referential-only",
-                    "stale-name",
-                    "architecture evidence state",
-                    "needs no separate post-edit",
-                    "No attempt: yes",
+                    "Protocol 12",
+                    "direct, no-attempt path",
+                    "one selected feature and one providing module",
+                    "affected architecture entities, interface semantics",
+                    "no new module, feature, entity type, cross-module relationship",
+                    "no migration, destructive operation, release, multi-feature coordination",
+                    "user request authorizes every affected durable/source path",
+                    "selected feature file, relevant providing architecture sections, and current code/tests",
+                    "Reconcile code and tests plus the selected feature file or",
+                    "Run focused tests and deterministic validation",
+                    "no attempt was created",
                 ):
                     self.assertIn(requirement, fast_loop_content)
-                self.assertNotIn("review_pending", fast_loop_content)
+                self.assertNotIn("workspace_kind", fast_loop_content)
                 self.assertEqual(before, hash_paths(root, tuple(sentinels)))
                 _, current = run_cli(root, "status")
                 self.assertEqual(current["status"], "current")

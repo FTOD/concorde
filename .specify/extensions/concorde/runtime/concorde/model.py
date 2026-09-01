@@ -1,4 +1,4 @@
-"""Immutable entities shared by Concorde operations."""
+"""Immutable entities shared by Concorde Source Profile 7 operations."""
 
 from __future__ import annotations
 
@@ -7,9 +7,8 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 
 
-MODULE_DIAGRAMS_DIRECTORY = "architecture/diagrams"
-MODULE_CONTRACTS_DIRECTORY = "architecture/contracts"
-MODULE_CHILDREN_DIRECTORY = "architecture/modules"
+MODULE_DIAGRAMS_DIRECTORY = "diagrams"
+MODULE_CHILDREN_DIRECTORY = "modules"
 
 
 @dataclass(frozen=True)
@@ -22,58 +21,83 @@ class SourceDocument:
 
 
 @dataclass(frozen=True)
+class ArchitectureEntity:
+    identifier: str
+    entity_type: str
+    definition: str
+    locator: str
+    owner: str
+    roles: tuple[str, ...] = ()
+    source: str = ""
+
+
+@dataclass(frozen=True)
+class EntityRelationship:
+    source_entity: str
+    predicate: str
+    target_entity: str
+    description: str
+    owner: str
+    interface: str | None = None
+    source: str = ""
+
+
+@dataclass(frozen=True)
+class Interaction:
+    identifier: str
+    trigger: str
+    steps: tuple[str, ...]
+    result: str
+    owner: str
+    interfaces: tuple[str, ...] = ()
+    source: str = ""
+
+
+@dataclass(frozen=True)
+class FeatureInterface:
+    identifier: str
+    owner: str
+    consumer: str
+    direction: str
+    entry_points: tuple[str, ...]
+    inputs: str
+    outputs: str
+    obligations: str
+    failures: str
+    compatibility: str
+    implementing_entities: tuple[str, ...]
+    example: str | None = None
+    role: str = "provided"
+    provider: str | None = None
+    source: str = ""
+
+
+@dataclass(frozen=True)
 class Module:
     identifier: str
     parent: str | None
+    path: str
     responsibility: str
     boundary: str
-    children: tuple[str, ...]
+    modules: tuple[str, ...]
     features: tuple[str, ...]
-    provided_contracts: tuple[str, ...]
-    required_contracts: tuple[str, ...]
-    view: str | None = None
+    entities: tuple[str, ...]
+    relationships: tuple[EntityRelationship, ...]
+    interactions: tuple[str, ...]
+    diagrams: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class Feature:
     identifier: str
     module: str
-    outcome: str
-    refines: tuple[str, ...]
-    scenarios: tuple[str, ...]
-    provided_contracts: tuple[str, ...]
-    required_contracts: tuple[str, ...]
-    evidence_status: str
-    canonical_design: str
-
-
-@dataclass(frozen=True)
-class Contract:
-    identifier: str
-    module: str
-    role: str
-    flow: str
-    counterparties: tuple[str, ...]
-    representation: Mapping[str, Any]
-    evidence_status: str
-
-
-@dataclass(frozen=True)
-class Scenario:
-    identifier: str
-    module: str
-    participants: tuple[str, ...]
-    interactions: tuple[Mapping[str, Any], ...]
-    prose_only: bool = False
-
-
-@dataclass(frozen=True)
-class ArchitectureView:
     path: str
-    current_module: str
-    components: tuple[Mapping[str, Any], ...]
-    connections: tuple[Mapping[str, Any], ...]
-    scenarios: tuple[str, ...]
+    outcome: str
+    related_features: tuple[str, ...]
+    provided_interfaces: tuple[str, ...]
+    required_interfaces: tuple[str, ...]
+    architecture_zoom: tuple[str, ...]
+    evidence_status: str
 
 
 @dataclass(frozen=True)
@@ -81,9 +105,7 @@ class BoundedContext:
     requested_id: str
     current_module: Mapping[str, Any]
     children: tuple[Mapping[str, Any], ...]
-    externals: tuple[str, ...]
-    scenarios: tuple[str, ...]
-    refinement_links: tuple[Mapping[str, str], ...]
+    related_features: tuple[Mapping[str, Any], ...]
     deeper_references: tuple[str, ...]
 
 
@@ -100,18 +122,35 @@ class ArchitecturePackage:
     source_digest: str
     auxiliary: Mapping[str, str]
     receipts: Mapping[str, Mapping[str, Any]]
+    modules: Mapping[str, Module] = field(default_factory=dict)
+    features: Mapping[str, Feature] = field(default_factory=dict)
+    entities: Mapping[str, ArchitectureEntity] = field(default_factory=dict)
+    entities_by_id: Mapping[str, tuple[ArchitectureEntity, ...]] = field(default_factory=dict)
+    relationships: tuple[EntityRelationship, ...] = ()
+    interactions: Mapping[str, Interaction] = field(default_factory=dict)
+    interactions_by_id: Mapping[str, tuple[Interaction, ...]] = field(default_factory=dict)
+    interfaces: Mapping[str, FeatureInterface] = field(default_factory=dict)
+    interfaces_by_id: Mapping[str, tuple[FeatureInterface, ...]] = field(default_factory=dict)
+    required_interface_declarations: tuple[FeatureInterface, ...] = ()
 
     def documents(self, kind: str) -> tuple[SourceDocument, ...]:
         return tuple(source for source in self.sources if source.kind == kind)
 
     def module_diagrams(self, module: SourceDocument) -> dict[str, Mapping[str, Any]]:
-        """Every module-owned Archify diagram under `<module>/architecture/diagrams/`, keyed by path."""
+        """Architecture-owned diagrams directly below ``<module>/diagrams/``."""
         directory = PurePosixPath(module.path).parent / MODULE_DIAGRAMS_DIRECTORY
-        return {path: value for path, value in sorted(self.views.items()) if PurePosixPath(path).parent == directory}
+        return {
+            path: value
+            for path, value in sorted(self.diagrams.items())
+            if PurePosixPath(path).parent == directory
+        }
 
     def module_views(self, module: SourceDocument) -> dict[str, Mapping[str, Any]]:
-        """The module's level views: its `architecture`-kind diagrams, keyed by path."""
-        return {path: value for path, value in self.module_diagrams(module).items() if value.get("diagram_type") == "architecture"}
+        return {
+            path: value
+            for path, value in self.module_diagrams(module).items()
+            if value.get("diagram_type") == "architecture"
+        }
 
 
 @dataclass(frozen=True)
@@ -139,8 +178,6 @@ class InitializationProposal:
     project_root_id: str
     responsibility: str
     boundary: str
-    provided_contracts: tuple[str, ...] = ()
-    required_contracts: tuple[str, ...] = ()
     children: tuple[Mapping[str, Any], ...] = ()
     files: tuple[ProposalFile, ...] = ()
     conflicts: tuple[Mapping[str, Any], ...] = ()

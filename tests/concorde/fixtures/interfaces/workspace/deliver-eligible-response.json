@@ -1,0 +1,65 @@
+{
+  "schema_version": 12,
+  "operation": "deliver",
+  "target": "feature.example.api.health-check",
+  "status": "eligible",
+  "workspace": {
+    "feature_id": "feature.example.api.health-check",
+    "providing_module": "module.example.api",
+    "feature_path": "specs/example/modules/api/features/002-add-health-check.md",
+    "module_architecture": "specs/example/modules/api/architecture.md",
+    "module_ancestry": [
+      {
+        "module_id": "module.example",
+        "architecture": "specs/example/architecture.md",
+        "responsibility": "Deliver the example workflow.",
+        "boundary": "Own orchestration, not API internals."
+      }
+    ],
+    "related_features": [],
+    "executable_context": {
+      "source_roots": ["src"],
+      "test_roots": ["tests"]
+    },
+    "checklists_dir": ".concorde/attempts/feature.example.api.health-check/checklists",
+    "attempt_dir": ".concorde/attempts/feature.example.api.health-check",
+    "attempt_state": "complete",
+    "plan": ".concorde/attempts/feature.example.api.health-check/plan.md",
+    "research": ".concorde/attempts/feature.example.api.health-check/research.md",
+    "data_model": ".concorde/attempts/feature.example.api.health-check/data-model.md",
+    "quickstart": ".concorde/attempts/feature.example.api.health-check/quickstart.md",
+    "tasks": ".concorde/attempts/feature.example.api.health-check/tasks.md",
+    "validation": ".concorde/attempts/feature.example.api.health-check/validation.md",
+    "reflections": ".concorde/reflections/log.md",
+    "reflections_open": 1
+  },
+  "changes": [
+    {
+      "path": ".concorde/attempts/feature.example.api.health-check",
+      "action": "delete",
+      "meaning": "Remove the complete temporal attempt; retain every durable and executable authority."
+    }
+  ],
+  "artifacts": [
+    ".concorde/attempts/feature.example.api.health-check/tasks.md",
+    ".concorde/attempts/feature.example.api.health-check/validation.md",
+    ".concorde/reflections/log.md",
+    "specs/example/modules/api/architecture.md",
+    "specs/example/modules/api/features/002-add-health-check.md"
+  ],
+  "findings": [],
+  "source_digest": "sha256:3a4b8170a27c10f664308295149c300ef5e98323214b90c2ea365dad061e0f00",
+  "proposal_version": 8,
+  "proposal_path": ".concorde/attempts/feature.example.api.health-check/deliver-proposal.json",
+  "task_summary": {"complete": 27, "incomplete": 0, "malformed": 0},
+  "checklist_summary": {"files": 1, "complete": 22, "incomplete": 0, "malformed": 0},
+  "evidence_summary": {"passed": 27, "missing": 0},
+  "retained_digests": {
+    ".concorde/reflections/log.md": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "executable_context": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "specs/example/architecture.md": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "specs/example/modules/api/architecture.md": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "specs/example/modules/api/features/002-add-health-check.md": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "reflection_summary": {"entries": 2, "open": 1, "resolved": 1, "dismissed": 0}
+}

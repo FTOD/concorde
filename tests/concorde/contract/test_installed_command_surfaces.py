@@ -61,7 +61,7 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
                 "--integration",
                 integration,
                 "--concorde-version",
-                "0.6.0",
+                "0.8.0",
             ],
             cwd=root,
             check=True,
@@ -71,7 +71,7 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
         shutil.copytree(CONTEXT_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
         shutil.copytree(CONTEXT_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
         (root / ".specify/feature.json").write_text(
-            json.dumps({"feature_directory": "specs/example/features/001-deliver"}, separators=(",", ":")) + "\n",
+            json.dumps({"feature_path": "specs/example/features/001-deliver.md"}, separators=(",", ":")) + "\n",
             encoding="utf-8",
         )
         return root
@@ -94,35 +94,30 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
             for requirement in (
                 "$ARGUMENTS",
                 "--phase fast-loop",
-                "Eligibility Preflight",
-                "anchor feature",
-                "affected feature set",
-                "Every affected feature",
-                "inter-module contract",
-                "module responsibility",
-                "dependency direction",
-                "users of the whole project",
-                "Pure rename",
-                "old-to-new mapping",
-                "referential-only",
-                "stale-name",
-                "architecture evidence state",
-                "needs no separate post-edit",
-                "No attempt: yes",
-                "No delivery: yes",
+                "Protocol 12",
+                "direct, no-attempt path",
+                "one selected feature and one providing module",
+                "affected architecture entities, interface semantics",
+                "no new module, feature, entity type, cross-module relationship",
+                "no migration, destructive operation, release, multi-feature coordination",
+                "user request authorizes every affected durable/source path",
+                "selected feature file, relevant providing architecture sections, and current code/tests",
+                "Reconcile code and tests plus the selected feature file or",
+                "Run focused tests and deterministic validation",
+                "no attempt was created",
             ):
                 self.assertIn(requirement, fast_content)
-            self.assertNotIn("review_pending", fast_content)
+            self.assertNotIn("workspace_kind", fast_content)
             self.assertNotIn(str(REPOSITORY_ROOT), fast_content)
             ask = registered_artifact(root, "codex", "speckit.concorde.ask")
             content = ask.read_text(encoding="utf-8")
-            for requirement in ("$ARGUMENTS", "citation", "uncertainty", "read-only"):
+            for requirement in ("$ARGUMENTS", "cite", "uncertainty", "read-only"):
                 self.assertIn(requirement, content)
             for executable in ("concorde.sh", "concorde.ps1", "concorde.py", "workspace.py"):
                 self.assertNotIn(executable, content)
             self.assertNotIn(str(REPOSITORY_ROOT), content)
             triage = (root / ".agents/skills/reflections-triage/SKILL.md").read_text(encoding="utf-8")
-            self.assertIn("reflection-triage/v1", triage)
+            self.assertIn("reflection-triage/v2", triage)
             self.assertNotIn(str(REPOSITORY_ROOT), triage)
 
     def test_every_preset_winner_executes_the_installed_workspace_bootstrap(self):
@@ -140,16 +135,17 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
                 )
                 receipts.append(receipt)
                 self.assertEqual(receipt.exit_status, 0)
-                expected = receipt.workspace["feature_directory"] if phase in {"specify", "clarify", "checklist", "fast-loop"} else receipt.workspace["attempt_dir"]
+                expected = receipt.workspace["feature_path"] if phase in {"specify", "clarify", "checklist", "fast-loop"} else receipt.workspace["attempt_dir"]
                 self.assertEqual(receipt.phase_root, expected)
                 self.assertEqual(
                     receipt.workspace["checklists_dir"],
                     receipt.workspace["attempt_dir"] + "/checklists",
                 )
+                content = artifact.read_text(encoding="utf-8")
+                self.assertNotIn("FEATURE_DIR/checklists", content)
                 if phase in {"specify", "clarify", "checklist", "implement"}:
-                    content = artifact.read_text(encoding="utf-8")
-                    self.assertNotIn("FEATURE_DIR/checklists", content)
-                    self.assertIn("CHECKLISTS_DIR", content)
+                    self.assertIn("checklists_dir", content)
+                self.assertIn("Protocol 12", content)
                 self.assertEqual(receipt.checkout_reads, ())
             self.assertEqual(len({item.handoff_digest for item in receipts}), 1)
 

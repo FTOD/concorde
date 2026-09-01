@@ -6,89 +6,40 @@ import {buildRegistry} from '../../plugins/concorde-content/registry';
 import type {FeatureDesign} from '../../plugins/concorde-content/types';
 import {validateRegistry} from '../../plugins/concorde-content/validation';
 
-describe('feature designs', () => {
-  it('extracts stable identity, owner, lifecycle status, and nested directory', async () => {
-    const registry = await buildRegistry(resolve(__dirname, '../fixtures/valid-project'));
+const fixtures = resolve(__dirname, '../fixtures');
+
+describe('single-file feature publication', () => {
+  it('extracts stable identity, owner, status, outcome, and direct source path', async () => {
+    const registry = await buildRegistry(resolve(fixtures, 'valid-project'));
     const features = registry.documents.filter((item): item is FeatureDesign => item.collectionId === 'features');
-    expect(features.map((item) => [item.featureId, item.moduleId, item.status, item.featureDirectory])).toEqual([
-      ['feature.fixture.alpha', 'module.fixture', 'Draft', 'specs/001-alpha'],
-      ['feature.fixture.alpha.prepare', 'module.fixture', 'Ready', 'specs/001-alpha/subfeatures/001-prepare'],
-      ['feature.fixture.alpha.finish', 'module.fixture', 'Planned', 'specs/001-alpha/subfeatures/002-finish'],
-      ['feature.fixture.beta', 'module.fixture', 'Approved', 'specs/example/architecture/modules/nested/features/002-beta'],
+    expect(features.map((item) => [item.featureId, item.moduleId, item.status, item.sourcePath])).toEqual([
+      ['feature.fixture.alpha', 'module.fixture', 'Draft', 'specs/example/features/001-alpha.md'],
+      ['feature.fixture.beta', 'module.fixture.nested', 'Approved', 'specs/example/modules/nested/features/002-beta.md'],
     ]);
     expect(features.map((item) => item.route)).toEqual([
-      '/features/feature.fixture.alpha/design',
-      '/features/feature.fixture.alpha/feature.fixture.alpha.prepare/design',
-      '/features/feature.fixture.alpha/feature.fixture.alpha.finish/design',
-      '/features/feature.fixture.beta/design',
+      '/features/feature.fixture.alpha', '/features/feature.fixture.beta',
     ]);
-    const parent = features[0];
-    expect(parent.landingRoute).toBe('/features/feature.fixture.alpha');
-    expect(parent.abstractRoute).toBe(parent.landingRoute);
-    expect(parent.implementationRoute).toBe('/features/feature.fixture.alpha/implementation');
-    expect(parent.subfeatures.map((item) => item.featureId)).toEqual([
-      'feature.fixture.alpha.prepare', 'feature.fixture.alpha.finish',
-    ]);
-    expect(features[1].parentFeatureRoute).toBe(parent.landingRoute);
-    expect(features[1].siblings.map((item) => item.featureId)).toEqual(['feature.fixture.alpha.finish']);
   });
 
-  it('points parent, sub-feature, and sibling navigation at abstract landing routes', async () => {
-    const registry = await buildRegistry(resolve(__dirname, '../fixtures/valid-project'));
+  it('resolves related_features as flat cross-links rather than containment', async () => {
+    const registry = await buildRegistry(resolve(fixtures, 'valid-project'));
     const features = registry.documents.filter((item): item is FeatureDesign => item.collectionId === 'features');
-    expect(features[0].subfeatures.map((item) => item.route)).toEqual([
-      '/features/feature.fixture.alpha/feature.fixture.alpha.prepare',
-      '/features/feature.fixture.alpha/feature.fixture.alpha.finish',
-    ]);
-    expect(features[1].siblings.map((item) => item.route)).toEqual([
-      '/features/feature.fixture.alpha/feature.fixture.alpha.finish',
-    ]);
-    expect(features[0].subfeatures.map((item) => [item.title, item.outcome, item.status])).toEqual([
-      ['Prepare Alpha', 'Alpha inputs are prepared.', 'Ready'],
-      ['Finish Alpha', 'Alpha produces its final result.', 'Planned'],
-    ]);
+    expect(features[0].relatedFeatures).toEqual([{
+      featureId: 'feature.fixture.beta', title: 'Beta', outcome: 'Beta links to the documentation home.',
+      status: 'Approved', route: '/features/feature.fixture.beta',
+    }]);
+    expect(features[1].relatedFeatures[0].featureId).toBe('feature.fixture.alpha');
+    expect(JSON.stringify(features)).not.toMatch(/parentFeature|subfeatures|siblings|refinements/);
   });
 
-  it('rejects duplicate feature IDs deterministically', async () => {
-    const registry = await buildRegistry(resolve(__dirname, '../fixtures/invalid-projects/duplicate-id'));
-    const ruleIds = validateRegistry(registry).map((finding) => finding.ruleId);
-    expect(ruleIds.filter((ruleId) => ruleId === 'feature.id.duplicate')).toHaveLength(2);
-    expect(ruleIds.filter((ruleId) => ruleId === 'content.route.duplicate')).toHaveLength(6);
-  });
+  it('rejects duplicate IDs, nested features, and feature-owned diagrams deterministically', async () => {
+    const duplicate = await buildRegistry(resolve(fixtures, 'invalid-projects/duplicate-id'));
+    expect(validateRegistry(duplicate).filter((item) => item.ruleId === 'feature.id.duplicate')).toHaveLength(2);
 
-  it('rejects disagreeing parent and child registration', async () => {
-    const registry = await buildRegistry(resolve(__dirname, '../fixtures/invalid-projects/subfeature-registration'));
-    expect(validateRegistry(registry).map((finding) => finding.ruleId)).toContain('feature.containment.registration');
-  });
+    const nested = await buildRegistry(resolve(fixtures, 'invalid-projects/nested-feature'));
+    expect(validateRegistry(nested).map((item) => item.ruleId)).toContain('feature.hierarchy.forbidden');
 
-  it('maps declared feature diagrams without requiring delivered HTML', async () => {
-    const registry = await buildRegistry(resolve(__dirname, '../../..'));
-    const features = registry.documents.filter((item): item is FeatureDesign => item.collectionId === 'features');
-    const diagrams = features.flatMap((feature) => feature.diagrams);
-    expect(diagrams).toHaveLength(8);
-    expect(diagrams.find((diagram) => diagram.source.includes('project-docsite-publication-flow'))).toMatchObject({
-      kind: 'sequence',
-      role: 'supplemental',
-      route: '/architecture/project-docsite-publication-flow.html',
-    });
-    expect(diagrams.find((diagram) => diagram.source.includes('alignment-explorer-components'))).toMatchObject({
-      kind: 'architecture',
-      role: 'core',
-      route: '/architecture/alignment-explorer-components.html',
-    });
-    expect(diagrams.find((diagram) => diagram.source.includes('concorde-ontology-model'))).toMatchObject({
-      kind: 'architecture',
-      role: 'core',
-      route: '/architecture/concorde-ontology-model.html',
-    });
-  });
-
-  it('preserves level-local terminology tables as maintained feature content', async () => {
-    const registry = await buildRegistry(resolve(__dirname, '../../..'));
-    const features = registry.documents.filter((item): item is FeatureDesign => item.collectionId === 'features');
-    const feature = features.find((item) => item.featureId === 'feature.concorde.define-project-ontology');
-    expect(feature?.content).toContain('## Terminology');
-    expect(feature?.content).toContain('| Term | Meaning | Relationships |');
-    expect(feature?.content).toContain('`Terminology inheritance`');
+    const diagram = await buildRegistry(resolve(fixtures, 'invalid-projects/feature-diagram'));
+    expect(validateRegistry(diagram).map((item) => item.ruleId)).toContain('feature.diagram.forbidden');
   });
 });

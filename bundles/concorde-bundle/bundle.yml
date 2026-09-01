@@ -3,9 +3,9 @@ schema_version: "1.0"
 bundle:
   id: "concorde-bundle"
   name: "Concorde Bundle"
-  version: "0.6.0"
+  version: "0.8.0"
   role: "developer"
-  description: "Pinned Concorde preset and extension installation recipe for Spec Kit"
+  description: "Pinned Profile 7 and Protocol 12 Concorde component set for Spec Kit"
   author: "Concorde maintainers"
   license: "MIT"
 
@@ -17,13 +17,13 @@ requires:
 provides:
   extensions:
     - id: "concorde"
-      version: "0.6.0"
+      version: "0.8.0"
   presets:
     - id: "concorde"
-      version: "0.6.0"
+      version: "0.8.0"
       priority: 10
       strategy: "append"
   steps: []
   workflows: []
 
-tags: ["architecture", "context", "validation", "spec-driven-development"]
+tags: ["architecture", "interfaces", "modules", "context", "validation", "spec-driven-development"]

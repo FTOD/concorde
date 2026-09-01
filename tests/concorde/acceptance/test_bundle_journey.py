@@ -53,7 +53,7 @@ class StarterJourneyAcceptance(unittest.TestCase):
                 self.assertEqual(validations[0], validations[1])
                 self.assertEqual(validations[1], validations[2])
                 self.assertEqual(json.loads(validations[0])["status"], "success")
-                module = project_root / "specs/sample/module.md"
+                module = project_root / "specs/sample/architecture.md"
                 module.write_text(module.read_text().replace("features: []", "features:\n  - feature.sample.missing"))
                 invalid = runtime("validate", "--format", "json", check=False)
                 self.assertEqual(invalid.returncode, 1)

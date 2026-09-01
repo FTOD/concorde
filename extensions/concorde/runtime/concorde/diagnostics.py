@@ -61,7 +61,7 @@ def envelope(
 def operation_envelope(value: OperationResult) -> dict[str, Any]:
     if value.operation == "deliver":
         return {
-            "schema_version": 9,
+            "schema_version": 12,
             "operation": value.operation,
             "target": value.target,
             "status": value.status,
@@ -74,14 +74,13 @@ def operation_envelope(value: OperationResult) -> dict[str, Any]:
                 key: value.result[key]
                 for key in (
                     "proposal_path",
+                    "proposal_version",
                     "task_summary",
                     "checklist_summary",
-                    "implementation_digest_before",
-                    "implementation_digest_after",
-                    "module_design_digest_before",
-                    "module_design_digest_after",
+                    "evidence_summary",
                     "removed_artifacts",
                     "retained_artifacts",
+                    "retained_digests",
                     "reflection_summary",
                 )
                 if key in value.result

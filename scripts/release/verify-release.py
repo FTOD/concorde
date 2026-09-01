@@ -20,6 +20,8 @@ _BUILDER_SPEC.loader.exec_module(_BUILDER)
 build_release = _BUILDER.build_release
 read_release_identity = _BUILDER.read_release_identity
 REPOSITORY = _BUILDER.REPOSITORY
+ARCHITECTURE_PROFILE = _BUILDER.ARCHITECTURE_PROFILE
+WORKSPACE_PROTOCOL = _BUILDER.WORKSPACE_PROTOCOL
 
 CATALOGS = ("extensions.json", "presets.json", "bundles.json")
 
@@ -66,6 +68,10 @@ def verify_release(
             raise ValueError(f"{catalog_name}: repository {entry.get('repository')!r} is not {REPOSITORY}")
         if entry.get("requires", {}).get("speckit_version") != identity.speckit_range:
             raise ValueError(f"{catalog_name}: Spec Kit range does not match {identity.speckit_range}")
+        if entry.get("architecture_profile") != ARCHITECTURE_PROFILE:
+            raise ValueError(f"{catalog_name}: Architecture Source Profile must be {ARCHITECTURE_PROFILE}")
+        if entry.get("workspace_protocol") != WORKSPACE_PROTOCOL:
+            raise ValueError(f"{catalog_name}: Feature Workspace Protocol must be {WORKSPACE_PROTOCOL}")
         if expect_base_url is not None:
             expected_download = f"{expect_base_url}/{archive_name}"
             expected_catalog = f"{expect_base_url}/{catalog_name}"

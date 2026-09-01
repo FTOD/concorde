@@ -1,4 +1,5 @@
-import json
+"""Standalone specification contracts are replaced by embedded feature interfaces."""
+
 import shutil
 import sys
 import tempfile
@@ -9,43 +10,26 @@ from tests.concorde.support.paths import RUNTIME_ROOT, VALID_PROJECT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.validate import validate_project  # noqa: E402
+from concorde.repository import ProjectRepository  # noqa: E402
+from concorde.validate import FOCUSED_VALIDATORS, validate_project  # noqa: E402
 
 
-class ContractValidationTests(unittest.TestCase):
-    def custom_project(self, temporary: str, value: object) -> Path:
-        root = Path(temporary) / "project"
-        shutil.copytree(VALID_PROJECT, root)
-        contract = root / "specs/example/architecture/contracts/workflow/contract.md"
-        text = contract.read_text()
-        text = text.replace("kind: standard", "kind: custom")
-        text = text.replace("format: HTTP", "format: JSON")
-        text = text.replace("version: \"1.1\"", "version: \"1\"")
-        text = text.replace(
-            "definition: https://www.rfc-editor.org/rfc/rfc9110",
-            "definition: specs/example/architecture/contracts/workflow/schema.json\nexamples:\n  - specs/example/architecture/contracts/workflow/example.json",
-        )
-        contract.write_text(text)
-        (contract.parent / "schema.json").write_text(json.dumps({
-            "type": "object",
-            "required": ["message"],
-            "properties": {"message": {"type": "string"}},
-            "additionalProperties": False,
-        }))
-        (contract.parent / "example.json").write_text(json.dumps(value))
-        return root
+class ContractRemovalTests(unittest.TestCase):
+    def test_standalone_contract_validator_is_inactive_and_interface_is_normalized_from_design(self):
+        self.assertNotIn("validate_contracts", {validator.__name__ for validator in FOCUSED_VALIDATORS})
+        package = ProjectRepository(VALID_PROJECT).load()
+        self.assertEqual(package.interfaces["contract.example.workflow"].owner, "feature.example.deliver")
 
-    def test_custom_json_example_conforms_to_supported_schema_subset(self):
+    def test_contract_directory_and_document_are_legacy_residue(self):
         with tempfile.TemporaryDirectory() as temporary:
-            result = validate_project(self.custom_project(temporary, {"message": "ok"}))
-            self.assertNotIn("CONCORDE-CONFORMANCE-001", {item.rule_id for item in result.findings})
-
-    def test_custom_json_example_mismatch_is_actionable(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            result = validate_project(self.custom_project(temporary, {"message": 42}))
-            finding = next(item for item in result.findings if item.rule_id == "CONCORDE-CONFORMANCE-001")
-            self.assertIn("example.json", finding.message)
-            self.assertTrue(finding.remediation)
+            root = Path(temporary) / "project"
+            shutil.copytree(VALID_PROJECT, root)
+            directory = root / "specs/example/contracts/workflow"
+            directory.mkdir(parents=True)
+            (directory / "contract.md").write_text("legacy", encoding="utf-8")
+            findings = validate_project(root).findings
+            self.assertTrue(any(item.rule_id == "CONCORDE-LAYOUT-LEGACY" and item.source.endswith("contracts") for item in findings))
+            self.assertTrue(any(item.rule_id == "CONCORDE-LAYOUT-LEGACY" and item.source.endswith("contract.md") for item in findings))
 
 
 if __name__ == "__main__":

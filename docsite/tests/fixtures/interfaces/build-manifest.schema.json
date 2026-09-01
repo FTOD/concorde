@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://concorde.dev/interfaces/documentation/build-manifest-v10.schema.json",
+  "title": "Concorde Documentation Build Manifest 10",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generator", "collections", "pages", "excludedSources", "routeInventory", "validation"],
+  "properties": {
+    "schemaVersion": {"const": 10},
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "docusaurusVersion"],
+      "properties": {
+        "name": {"const": "concorde-docsite"},
+        "version": {"type": "string", "minLength": 1},
+        "docusaurusVersion": {"type": "string", "minLength": 1}
+      }
+    },
+    "collections": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "sourceBase", "routeBase", "include"],
+        "properties": {
+          "id": {"enum": ["home", "architecture", "docs", "features"]},
+          "sourceBase": {"enum": [".", "docs", "specs"]},
+          "routeBase": {"enum": ["/", "/architecture", "/docs", "/features"]},
+          "include": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "pages": {"type": "array", "items": {"$ref": "#/$defs/page"}},
+    "excludedSources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sourcePath", "reason"],
+        "properties": {
+          "sourcePath": {"$ref": "#/$defs/sourcePath"},
+          "reason": {"enum": ["temporal-attempt", "non-publication-source", "legacy-source-profile"]}
+        }
+      }
+    },
+    "routeInventory": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/route"}},
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "checks"],
+      "properties": {
+        "status": {"const": "passed"},
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "status"],
+            "properties": {"name": {"type": "string", "minLength": 1}, "status": {"const": "passed"}}
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sourcePath": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$"},
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "route": {"type": "string", "pattern": "^/"},
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetSourcePath", "targetRoute"],
+      "properties": {"targetSourcePath": {"$ref": "#/$defs/sourcePath"}, "targetRoute": {"$ref": "#/$defs/route"}}
+    },
+    "navigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["section", "label"],
+      "properties": {
+        "section": {"enum": ["Architecture", "Documentation", "Features"]},
+        "label": {"type": "string", "minLength": 1},
+        "parentRoute": {"$ref": "#/$defs/route"}
+      }
+    },
+    "featureRelation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["featureId", "title", "outcome", "status", "route"],
+      "properties": {
+        "featureId": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "outcome": {"type": "string", "minLength": 1},
+        "status": {"type": "string", "minLength": 1},
+        "route": {"$ref": "#/$defs/route"}
+      }
+    },
+    "moduleDiagram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "sourceSha256", "kind", "title", "route"],
+      "properties": {
+        "source": {"$ref": "#/$defs/sourcePath"},
+        "sourceSha256": {"$ref": "#/$defs/sha256"},
+        "kind": {"enum": ["architecture", "workflow", "sequence", "dataflow", "lifecycle"]},
+        "title": {"type": "string", "minLength": 1},
+        "route": {"$ref": "#/$defs/route"}
+      }
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "sourcePath", "sourceSha256", "route", "title", "navigation", "links"],
+      "properties": {
+        "kind": {"enum": ["module-architecture", "project-document", "feature-design"]},
+        "sourcePath": {"$ref": "#/$defs/sourcePath"},
+        "sourceSha256": {"$ref": "#/$defs/sha256"},
+        "route": {"$ref": "#/$defs/route"},
+        "title": {"type": "string", "minLength": 1},
+        "navigation": {"$ref": "#/$defs/navigation"},
+        "links": {"type": "array", "items": {"$ref": "#/$defs/link"}},
+        "moduleId": {"type": "string", "minLength": 1},
+        "parentId": {"type": "string", "minLength": 1},
+        "architectureDiagrams": {"type": "array", "items": {"$ref": "#/$defs/moduleDiagram"}},
+        "featureId": {"type": "string", "minLength": 1},
+        "moduleRoute": {"$ref": "#/$defs/route"},
+        "status": {"type": "string", "minLength": 1},
+        "relatedFeatures": {"type": "array", "items": {"$ref": "#/$defs/featureRelation"}}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "module-architecture"}}, "required": ["kind"]},
+          "then": {"required": ["moduleId", "architectureDiagrams"], "not": {"anyOf": [{"required": ["featureId"]}, {"required": ["moduleRoute"]}, {"required": ["status"]}, {"required": ["relatedFeatures"]}]}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "feature-design"}}, "required": ["kind"]},
+          "then": {"required": ["featureId", "moduleId", "moduleRoute", "status", "relatedFeatures"], "not": {"anyOf": [{"required": ["parentId"]}, {"required": ["architectureDiagrams"]}]}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "project-document"}}, "required": ["kind"]},
+          "then": {"not": {"anyOf": [{"required": ["moduleId"]}, {"required": ["parentId"]}, {"required": ["architectureDiagrams"]}, {"required": ["featureId"]}, {"required": ["moduleRoute"]}, {"required": ["status"]}, {"required": ["relatedFeatures"]}]}}
+        }
+      ]
+    }
+  }
+}

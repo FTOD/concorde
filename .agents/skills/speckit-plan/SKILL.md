@@ -1,6 +1,6 @@
 ---
 name: speckit-plan
-description: Execute implementation planning for the selected Concorde feature workspace.
+description: Plan one Concorde feature change against architecture, code, and tests.
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
@@ -15,269 +15,91 @@ metadata:
 $ARGUMENTS
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
+# Plan a Concorde Feature Change
 
-## Concorde Installed Workspace Gate
+Planning converts the selected feature file into a technical delta against the providing module
+architecture, current source code, and executable evidence. All planning outputs are temporal.
 
-Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase plan` from the target
-project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_abstract`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
-`workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
-Require Protocol v9 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
-`workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
-`workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
-only where a phase names it as bounded context, and open the module `design.md` only for a specific
-recorded detail and cite it. When `workspace_kind` is `subfeature`, read
-`parent_context.feature_abstract`, `parent_context.feature_design`, and
-`parent_context.feature_implementation` only as aggregate durable context. Never load a
-sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
-write only through the selected sub-feature's returned paths.
+## Workspace gate
 
-Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
-step says to run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase plan`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
-by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
-`attempt_dir` when absent and seed a missing artifact from the active `plan-template` or
-`tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
-For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
+Before hooks, setup checks, template resolution, or artifact reads, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase plan`. Require Protocol 12
+with `resolved` or `selected` status. Use the returned paths as the only authority:
 
-## Pre-Execution Checks
+- `feature_path` and `module_architecture`;
+- bounded `module_ancestry` and `related_features` summaries;
+- `attempt_dir`, `attempt_state`, `plan`, `tasks`, `checklists_dir`, `research`, `data_model`,
+  `quickstart`, and `validation`;
+- `reflections` and its open count; and
+- `executable_context` source/test roots or inventory hints.
 
-**Check for extension hooks (before planning)**:
-- Check if `.specify/extensions.yml` exists in the project root.
-- If it exists, read it and look for entries under the `hooks.before_plan` key
-- If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
-- Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
-- For each remaining hook, do **not** attempt to interpret or evaluate hook `condition` expressions:
-  - If the hook has no `condition` field, or it is null/empty, treat the hook as executable
-  - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the HookExecutor implementation
-- When constructing command invocations from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `$speckit-git-commit`.
-- For each executable hook, output the following based on its `optional` flag:
-  - **Optional hook** (`optional: true`):
-    ```
-    ## Extension Hooks
+Do not resolve a root-level compatibility plan. Do not implicitly load another feature body or any
+other attempt. If the returned attempt is absent, create exactly that directory and seed its plan by
+resolving `plan-template` through the public preset resolver.
 
-    **Optional Pre-Hook**: {extension}
-    Command: `/{command}`
-    Description: {description}
+## Pre-plan hooks
 
-    Prompt: {prompt}
-    To execute: `/{command}`
-    ```
-  - **Mandatory hook** (`optional: false`):
-    ```
-    ## Extension Hooks
+Inspect `.specify/extensions.yml`. Run enabled unconditional mandatory `before_plan` hooks before
+continuing; present enabled unconditional optional hooks; skip hooks with conditions for the hook
+executor. Stop on a failed mandatory hook.
 
-    **Automatic Pre-Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
+## Inputs and authority
 
-    Wait for the result of the hook command before proceeding to the Outline.
-    ```
-    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
-- If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
+Read the constitution, complete selected feature file, providing module architecture, current
+source code and executable tests named by executable context, and existing attempt planning artifacts.
+There is no prose implementation baseline. Open a related
+feature file only for an explicitly relevant interface dependency and cite why. Generated pages
+and diagrams are evidence/projections, not behavior or structure authority.
 
-## Outline
+Hash the selected feature file, providing architecture, bounded ancestry references, and canonical
+related-feature-summary JSON at plan start and completion. Record comparisons in the attempt
+validation log. Planning writes only temporal attempt artifacts. Planning must leave durable sources
+byte-identical.
 
-1. **Setup**: Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase plan` from repo root and parse JSON for FEATURE_ABSTRACT, FEATURE_DESIGN, FEATURE_IMPLEMENTATION, IMPL_PLAN, ATTEMPT_DIR, SPECS_DIR, BRANCH. `FEATURE_ABSTRACT`, `FEATURE_DESIGN`, `FEATURE_IMPLEMENTATION` (the returned `workspace.feature_implementation`), and feature contracts are durable sources at the feature root; `IMPL_PLAN` and the other plan-phase artifacts belong to the temporal `ATTEMPT_DIR`. After delivery, planning creates a fresh `attempt/` beneath the same root and never a root-level copy. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+## Planning workflow
 
-2. **Load context**: Read FEATURE_ABSTRACT for orientation only, then read FEATURE_DESIGN,
-   FEATURE_IMPLEMENTATION, and `.specify/memory/constitution.md`. Treat
-   FEATURE_IMPLEMENTATION as the accepted realization baseline and plan the current attempt as an explicit
-   delta from it; do not update the accepted realization during planning. When it still holds the
-   placeholder ("No implementation realization has been accepted yet."), there is NO baseline: the
-   plan's realization-delta section states "no accepted baseline" rather than inventing one. Read the
-   level's `module.md` (`workspace.module_summary`) as bounded architecture context. Consult the
-   module `design.md` (`workspace.module_design`) only for a specific recorded detail and cite it.
-   Load IMPL_PLAN template (already
-   copied). Also read every feature-owned Archify JSON source referenced by the specification; keep it
-   distinct from the providing module's level views under `architecture/diagrams/`.
+1. Resolve Technical Context. Mark unknowns, research them, and write decisions plus alternatives to
+   returned `research` path. Record provisional or imperfect prototype choices in the project reflection
+   log rather than stopping when a safe bounded assumption allows progress.
+2. Execute the Constitution Check before research and after the technical design. Explain any justified exception.
+3. Build the Concorde Architecture Gate:
 
-3. **Execute plan workflow**: Follow the structure in IMPL_PLAN template to:
-   - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
-   - Fill Constitution Check section from constitution
-   - Evaluate gates (ERROR if violations unjustified)
-   - Phase 0: Generate `ATTEMPT_DIR/research.md` (resolve all NEEDS CLARIFICATION)
-   - Phase 1: Generate `ATTEMPT_DIR/data-model.md`, proposed contract deltas under
-     `ATTEMPT_DIR/contracts/` when applicable, and `ATTEMPT_DIR/quickstart.md`
-   - Define the feature-diagram strategy in two layers. First define at most one `role: core`
-     Archify `architecture` view for stable components, responsibilities, interactions, and
-     governing contracts, or preserve an explicit sufficiency rationale. Then define any
-     `role: supplemental` workflow, sequence, data-flow, or lifecycle views needed for narrower
-     dynamic questions. A sequence diagram cannot be the core view. For every maintained JSON, name
-     its textual counterpart, generated delivery, showcase validation, truthful visual-review
-     evidence, freshness check, and explicit `meta.legend.mode: hidden` presentation policy.
-   - Re-evaluate Constitution Check post-design
-   - Record every specification, architecture, cross-feature, or guidance problem planning cannot
-     resolve as an entry in the project reflection log (see Reflection Recording below) and list
-     those entries in the plan's Concorde Architecture Gate; never resolve them by editing a
-     durable document or another feature's sources
-   - Identify which accepted `implementation.md` sections remain unchanged and which implementation decisions the
-     current attempt proposes to replace or extend (or state "no accepted baseline" when the
-     placeholder is present), so a later delivery can compact the result.
+   - resolve every feature interface and Architecture Zoom entity;
+   - identify affected architecture entities, directed relationships, interactions, modules, feature
+     files, code paths, tests, external systems, and projections;
+   - state whether each durable source needs an explicit implementation task;
+   - compare desired behavior directly with code/tests; and
+   - name bounded related features whose interfaces must be reconciled.
 
-## Reflection Recording
+4. Generate only useful Phase 1 artifacts: data model, research, and runnable quickstart. Readable
+   interface promises remain embedded in feature files. Executed schemas/examples go under source
+   or test fixture paths through later tasks.
+5. Plan architecture-owned diagrams only when stable structure or a dynamic interaction materially
+   benefits from a view. Keep source in the owning module's `diagrams/`, textual explanation in
+   `architecture.md`; require `meta.legend.mode` to be `hidden`. Before planning diagram work, verify each
+   declaration's output is a normalized project-relative `.html` path under `generated/`, its
+   source-relative `meta.output` resolves to that same unique target, and no declaration duplicates
+   the target. Invalid declarations must return to architecture authority before planning proceeds.
+6. Define test-first phases and exact source structure. Include deterministic validation, package or
+   doc projection freshness, and cleanup-only delivery readiness proportional to scope.
+7. Keep ignore/tool setup inspection read-only unless one dependency-ready task explicitly names a
+   trace token, detected tool, exact setup file, and authorized edit.
 
-Every phase after specification records the difficulties and problems it meets in the project's one
-reflection log: the maintained file returned as `workspace.reflections`
-(`<specification_root>/reflections.md`). It is never per feature or per attempt, and no operation
-removes it.
+## Reflection recording
 
-- **When**: whenever this phase cannot follow the specification, the accepted design reference, an
-  existing implementation it depends on, the installed guidance, the level's architecture, or the
-  plan as written, or must assume, work around, defer, or stop — record it in this phase, before the
-  completion report, not later. A problem met and solved within the phase is still recorded.
-- **Where**: ordinary recording writes only `workspace.reflections`. If the file does not exist,
-  create it first from the template resolved by `specify preset resolve reflections-template`.
-  Append a new entry or matching occurrence; never change or reuse an existing `R-NNN` identifier,
-  delete an entry, or reverse a maintainer-set status or note as part of ordinary recording.
-- **Centralized authority**: `workspace.reflections` is the only file that may persist a
-  reflection entry or its `R-NNN` identity, status, note, or occurrences. Never copy or cite that
-  reflection identity or entry content into attempt artifacts, feature/module documents, contracts,
-  diagrams, code, or tests; those artifacts may state independently verified facts without
-  reflection identity. Triage plans and completion reports may refer to an identifier for transient
-  coordination, but they never become a second reflection record.
-- **What**: one `### R-NNN · <short title>` entry (the next unused identifier) with the fields, in
-  order, `Phase` (this phase), `Date`, `Feature` (`workspace.feature_id`), `Kind`
-  (`specification`, `architecture`, `guidance`, `tooling`, `environment`, or `implementation`),
-  `Concerns` (a stable ID or project-relative path anywhere in the project — another feature, its
-  design reference or code, a module, a contract, an instruction, a tool), `Expected`, `Observed`,
-  `Effect` (`assumed`, `worked-around`, `deferred`, or `blocked`), `Action`, `Improvement`, and
-  `Status: open`. The grammar is fixed by the log template and checked by
-  `speckit.concorde.validate` (`CONCORDE-REFLECT-001` to `-004`).
-- **Never fix in place**: a problem with `abstract.md`, feature `design.md`, feature `implementation.md`, any `module.md`, a
-  contract, a view, a diagram, or another feature's code or tests is recorded, not edited; the
-  owning phase or the maintainer changes that source later.
-- **Update, don't duplicate**: when ordinary recording finds the same problem — recorded by any phase
-  on any feature — add a line under its `- **Occurrences**:` list
-  (`<phase> <date> <feature-id> — <context>`) instead of a new entry. Never change a `Status` or
-  `Note` a maintainer set.
-- **Maintained reconciliation**: `workspace.reflections` is maintained docs/specs. An explicitly
-  requested rename or documentation correction MAY rewrite existing entry text and references, but
-  MUST preserve each exact `R-NNN` identifier, identifier uniqueness, required field structure,
-  maintainer-owned status decision, occurrence identity, and problem meaning; renamed `Feature` and
-  `Concerns` values MUST resolve, and the complete log MUST pass `speckit.concorde.validate`.
-  Ordinary problem recording does not implicitly authorize this reconciliation.
-- **Bounded**: recording never requires opening another root's `attempt/`; cite the other
-  feature by stable ID or path.
-- **Hygiene**: no secrets, credentials, or bulk output — cite the evidence path instead; keep
-  `Expected`, `Observed`, and `Action` under about 150 words together.
-- **Report**: end the completion report with `Reflections added: <identifiers or none> · open for
-  this feature: <count>` (`workspace.reflections_open` at phase start plus the open entries added).
+Whenever planning must assume, work around, defer, or stop because feature intent, architecture, related
+interfaces, code/tests, guidance, or tooling disagree, append or update the project-wide reflection
+log at `workspace.reflections`. Use the next stable `R-NNN`, fixed field grammar, `Phase: plan`, and
+`Status: open`; add an occurrence instead of duplicating the same problem. This includes design
+choices that are knowingly provisional for the prototype. Never copy reflection identity or prose
+into attempt or durable artifacts. Continue with a bounded prototype whenever a safe explicit
+assumption permits useful progress.
 
-## Mandatory Post-Execution Hooks
+## Completion gate
 
-**You MUST complete this section before reporting completion to the user.**
+Verify that planning wrote only returned attempt paths plus any required reflection occurrence; all
+unknowns are resolved or explicit bounded assumptions; every affected durable/interface/code/test
+surface has a task-ready path; diagram checks passed; and protected hashes show no unexpected change.
 
-Check if `.specify/extensions.yml` exists in the project root.
-- If it does not exist, or no hooks are registered under `hooks.after_plan`, skip to the Completion Report.
-- If it exists, read it and look for entries under the `hooks.after_plan` key.
-- If the YAML cannot be parsed or is invalid, skip hook checking silently and continue to the Completion Report.
-- Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
-- For each remaining hook, do **not** attempt to interpret or evaluate hook `condition` expressions:
-  - If the hook has no `condition` field, or it is null/empty, treat the hook as executable
-  - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the HookExecutor implementation
-- When constructing command invocations from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `$speckit-git-commit`.
-- For each executable hook, output the following based on its `optional` flag:
-  - **Mandatory hook** (`optional: false`) — **You MUST emit `EXECUTE_COMMAND:` for each mandatory hook**:
-    ```
-    ## Extension Hooks
-
-    **Automatic Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
-    ```
-    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
-  - **Optional hook** (`optional: true`):
-    ```
-    ## Extension Hooks
-
-    **Optional Hook**: {extension}
-    Command: `/{command}`
-    Description: {description}
-
-    Prompt: {prompt}
-    To execute: `/{command}`
-    ```
-
-## Completion Report
-
-Command ends after Phase 1 design. Report branch, IMPL_PLAN path, and generated artifacts, then the
-line `Reflections added: <identifiers or none> · open for this feature: <count>`.
-
-## Phases
-
-### Phase 0: Outline & Research
-
-1. **Extract unknowns from Technical Context** above:
-   - For each NEEDS CLARIFICATION → research task
-   - For each dependency → best practices task
-   - For each integration → patterns task
-
-2. **Generate and dispatch research agents**:
-
-   ```text
-   For each unknown in Technical Context:
-     Task: "Research {unknown} for {feature context}"
-   For each technology choice:
-     Task: "Find best practices for {tech} in {domain}"
-   ```
-
-3. **Consolidate findings** in `ATTEMPT_DIR/research.md` using format:
-   - Decision: [what was chosen]
-   - Rationale: [why chosen]
-   - Alternatives considered: [what else evaluated]
-
-**Output**: `ATTEMPT_DIR/research.md` with all NEEDS CLARIFICATION resolved
-
-### Phase 1: Design & Contracts
-
-**Prerequisites:** `ATTEMPT_DIR/research.md` complete
-
-1. **Extract entities from feature spec** → `ATTEMPT_DIR/data-model.md`:
-   - Entity name, fields, relationships
-   - Validation rules from requirements
-   - State transitions if applicable
-
-2. **Define proposed contract deltas** (if the feature changes an external interface) →
-   `ATTEMPT_DIR/contracts/`:
-   - Read the existing feature-root contract only through the returned durable contract path
-   - Identify what interfaces the project exposes to users or other systems
-   - Document the proposed contract format or delta appropriate for the project type
-   - Examples: public APIs for libraries, command schemas for CLI tools, endpoints for web services, grammars for parsers, UI contracts for applications
-   - Record compatibility, migration, schema/example, and evidence consequences
-   - Ensure `tasks.md` later contains an implementation task that applies the reviewed contract delta
-     together with code, tests, examples, and documentation
-   - Skip if project is purely internal (build scripts, one-off tools, etc.) or no contract changes
-     are required
-
-3. **Create quickstart validation guide** → `ATTEMPT_DIR/quickstart.md`:
-   - Document runnable validation scenarios that prove the feature works end-to-end
-   - Include prerequisites, setup commands, test/run commands, and expected outcomes
-   - Put Concorde's global `--project-root` option before the operation verb (for example,
-     `concorde.py --project-root . validate`)
-   - For Python `unittest` discovery below `tests/`, preserve the repository root as the import top
-     level with `-t .` and use the repository-declared interpreter (for this checkout,
-     `.venv/bin/python -m unittest discover -s tests/concorde -t .` from `[tool.concorde]`)
-   - Use links or references to contracts and data model details instead of duplicating them
-   - Do not include full implementation code, model/service/controller bodies, migrations, or complete test suites
-   - Keep this artifact as a validation/run guide; implementation details belong in `tasks.md` and the implementation phase
-
-**Output**: `ATTEMPT_DIR/data-model.md`, optional `ATTEMPT_DIR/contracts/*` proposed contract
-deltas, `ATTEMPT_DIR/quickstart.md`
-
-## Key rules
-
-- Use absolute paths for filesystem operations; use project-relative paths for references in documentation
-- ERROR on gate failures or unresolved clarifications
-- Planning MUST NOT update a feature-root contract or any other durable source. A proposed contract
-  remains temporal until an explicit implementation task reconciles the durable contract, code,
-  examples, evidence, and documentation.
-
-## Done When
-
-- [ ] Plan workflow executed and design artifacts generated
-- [ ] Durable feature `implementation.md` was used as the accepted baseline (or recorded as no accepted baseline) and remained byte-for-byte unchanged; `abstract.md`, feature `design.md`, and every module `module.md`/`design.md` were not edited
-- [ ] Required feature diagrams or explicit sufficiency rationales are covered by the plan; diagram
-      sources remain under `diagrams/` and their automatic feature-page publication is verified
-- [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
-- [ ] Completion reported to user with branch, plan path, and generated artifacts
+Run enabled unconditional mandatory `after_plan` hooks, present optional ones, and leave conditional
+hooks to the executor. Report the feature ID, module architecture, plan path, generated artifacts,
+architecture/interface delta, code/test baseline examined, and reflections added.

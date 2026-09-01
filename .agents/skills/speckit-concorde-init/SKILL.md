@@ -1,6 +1,6 @@
 ---
 name: speckit-concorde-init
-description: Propose and explicitly apply a root Concorde specification hierarchy
+description: Propose and explicitly apply a root module-centered Concorde hierarchy
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
@@ -9,30 +9,30 @@ metadata:
 
 # Initialize Concorde
 
-Treat `$ARGUMENTS` as optional `--module-id` and `--name` values. Run the installed launcher relative
-to the project:
+Treat `$ARGUMENTS` as optional `--module-id` and `--name` values. Invoke the installed launcher from
+the target project:
 
 - POSIX: `.specify/extensions/concorde/scripts/bash/concorde.sh init --propose $ARGUMENTS`
 - PowerShell: `.specify/extensions/concorde/scripts/powershell/concorde.ps1 init --propose $ARGUMENTS`
 
-Treat the skill as the maintainer-facing interface, the launcher/runtime as supporting Scripts, and
-the proposed or existing project sources as Workspace Files. Explain the returned `interaction_model`:
-durable module and feature sources stay outside `attempt/`, current delivery memory stays below the
-selected feature's `attempt/`, and generated projections never become source authority. These are
-workflow roles; do not invent product modules named Skills, Scripts, or Workspace Files unless the
-project itself provides those product responsibilities.
+The Initialization Proposal 2 must select Architecture Source Profile 7 and create exactly
+`.concorde/config.json`, `.concorde/reflections/log.md`, and one root `architecture.md`. The
+architecture seed defines the root responsibility/boundary, immediate module and feature inventories,
+typed entity vocabulary, directed relationship vocabulary, representative interactions, and any
+external/conceptual locators. Do not invent product modules from Concorde's own implementation roles.
 
-The proposed seed level view explicitly sets `meta.legend.mode` to `hidden`, matching the Concorde
-policy for every maintained Archify diagram. Treat a proposal that omits that setting as invalid.
-The proposed module `design.md` also contains the exact `## Terminology` table profile and defines
-the seeded Skills, Scripts, Workspace Files, and Attempt concepts with typed relationships. Treat a
-proposal with a missing/malformed terminology declaration or unresolved relationship target as invalid.
-The root has no inherited level; later child modules and features inherit these definitions without copying them.
+Any maintained diagram seed belongs to the module's `diagrams/`, has a textual counterpart in
+`architecture.md`, uses `meta.legend.mode: hidden`, and declares one normalized unique generated
+output. Initialization creates no attempt. A later feature is one direct `features/<NNN-name>.md`
+file with embedded interface and Architecture Zoom sections. Only after its stable front-matter ID
+exists may temporal work map to `.concorde/attempts/<stable-feature-id>/`; never infer the ID from
+its filename.
 
-If the status is `unchanged`, report the existing `architecture` paths, children, features, and
-contracts. Do not present a new starter proposal or overwrite the configured hierarchy. If the status
-is `proposal`, present the complete JSON proposal, exact files, hashes, and conflicts. Do not
-interpret silence as approval. After the maintainer explicitly accepts and the exact proposal JSON
-has been saved at a project-relative path, invoke `init --apply --proposal <path>`. Never edit
-maintained architecture outside that accepted operation. Report every finding and preserve the
-runtime status.
+If status is `unchanged`, report the existing profile, root architecture, immediate modules,
+features, and findings; do not compare the project with starter prose or overwrite it. If status is
+`proposal`, present exact files, digests, conflicts, and the complete JSON proposal. Silence is not
+approval. After the maintainer explicitly accepts and saves that exact proposal at a safe
+project-relative path, invoke `init --apply --proposal <path>`.
+
+Never edit maintained architecture outside the accepted runtime operation. Preserve exit status and
+report all findings, created paths, retained project files, and resulting source digest.

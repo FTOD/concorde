@@ -30,9 +30,9 @@ class CleanPhaseMatrixTests(unittest.TestCase):
                 project.run("bundle", "install", "concorde-bundle")
                 shutil.copytree(TWO_LEVEL_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
                 shutil.copytree(TWO_LEVEL_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
-                selected = "specs/example/features/001-checkout/subfeatures/001-authorize-payment"
+                selected = "specs/example/features/003-authorize-payment.md"
                 (root / ".specify/feature.json").write_text(
-                    json.dumps({"feature_directory": selected}, separators=(",", ":")) + "\n",
+                    json.dumps({"feature_path": selected}, separators=(",", ":")) + "\n",
                     encoding="utf-8",
                 )
                 runs = []
@@ -47,15 +47,20 @@ class CleanPhaseMatrixTests(unittest.TestCase):
                             REPOSITORY_ROOT,
                         )
                         receipts.append(json.dumps(receipt.to_dict(), sort_keys=True, separators=(",", ":")))
-                        self.assertEqual(receipt.workspace["workspace_kind"], "subfeature")
-                        self.assertEqual(receipt.workspace["parent_context"]["feature_id"], "feature.example.checkout")
+                        self.assertEqual(receipt.workspace["feature_id"], "feature.example.checkout.authorize")
+                        self.assertEqual(receipt.workspace["module_architecture"], "specs/example/architecture.md")
+                        self.assertEqual(
+                            [item["feature_id"] for item in receipt.workspace["related_features"]],
+                            ["feature.example.checkout", "feature.example.checkout.confirm"],
+                        )
+                        self.assertNotIn("workspace_kind", receipt.workspace)
+                        self.assertNotIn("parent_context", receipt.workspace)
                     runs.append(receipts)
                 self.assertEqual(runs[0], runs[1])
                 self.assertEqual(runs[1], runs[2])
                 feature = root / selected
-                self.assertFalse((feature / "plan.md").exists())
-                self.assertFalse((feature / "tasks.md").exists())
-                self.assertFalse((feature / "implementation").is_symlink())
+                self.assertTrue(feature.is_file())
+                self.assertFalse((root / ".concorde/attempts/feature.example.checkout.authorize/implementation").is_symlink())
 
 
 if __name__ == "__main__":

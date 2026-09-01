@@ -22,23 +22,16 @@ from concorde.reflections import (  # noqa: E402
 
 
 class ReflectionParserTests(unittest.TestCase):
-    def test_accepted_implementations_do_not_persist_concrete_reflection_identifiers(self):
-        pattern = re.compile(r"\bR-\d{3,}\b")
+    def test_feature_implementation_narratives_are_absent_from_profile_seven_specs(self):
         implementations = sorted((REPOSITORY_ROOT / "specs").rglob("implementation.md"))
-        self.assertGreater(len(implementations), 0)
-        for path in implementations:
-            with self.subTest(path=path.relative_to(REPOSITORY_ROOT)):
-                self.assertIsNone(pattern.search(path.read_text(encoding="utf-8")))
+        self.assertEqual(implementations, [])
 
-    def test_contract_example_and_project_log_parse_without_problems(self):
-        for relative in (
-            "specs/concorde/features/005-auto-reflections/contracts/examples/reflections.md",
-            "specs/concorde/reflections.md",
-        ):
+    def test_contract_example_parses_without_problems(self):
+        for relative in ("tests/concorde/fixtures/interfaces/reflections/reflections.md",):
             with self.subTest(log=relative):
                 parsed = parse_reflection_log((REPOSITORY_ROOT / relative).read_text(encoding="utf-8"))
                 self.assertEqual(parsed.problems, ())
-                if "/examples/" in relative:
+                if "/interfaces/reflections/" in relative:
                     self.assertGreaterEqual(len(parsed.entries), 2)
                 for entry in parsed.entries:
                     self.assertTrue(all(entry.fields.get(name) for name in REQUIRED_FIELDS), entry.identifier)
@@ -48,7 +41,7 @@ class ReflectionParserTests(unittest.TestCase):
         self.assertEqual(EFFECTS, {"assumed", "worked-around", "deferred", "blocked"})
         self.assertEqual(STATUSES, {"open", "resolved", "dismissed"})
         self.assertIn("fast-loop", PHASES)
-        self.assertEqual(log_path("specs/example/"), "specs/example/reflections.md")
+        self.assertEqual(log_path(), ".concorde/reflections/log.md")
         self.assertEqual(strip_reference_suffix("specs/x/design.md#functional-requirements"), "specs/x/design.md")
         self.assertEqual(strip_reference_suffix("src/api/invoke.py:42"), "src/api/invoke.py")
         self.assertEqual(strip_reference_suffix("feature.example.deliver"), "feature.example.deliver")
@@ -98,7 +91,7 @@ class ReflectionParserTests(unittest.TestCase):
         text = (
             "# Reflections: X\n\nPreamble with a fence:\n\n```text\n### R-999 · not an entry\n```\n\n"
             "## Archive\n\n### R-001 · Archived\n\n- **Phase**: plan\n- **Date**: 2026-01-01\n- **Feature**: feature.example.deliver\n"
-            "- **Kind**: guidance\n- **Concerns**: specs/example/module.md\n- **Expected**: One line\n  continued on the next.\n"
+            "- **Kind**: guidance\n- **Concerns**: specs/example/architecture.md\n- **Expected**: One line\n  continued on the next.\n"
             "- **Observed**: Seen.\n- **Effect**: assumed\n- **Action**: Done.\n- **Improvement**: None.\n- **Status**: dismissed\n- **Note**: Old.\n"
         )
         parsed = parse_reflection_log(text)
@@ -116,7 +109,7 @@ class ReflectionParserTests(unittest.TestCase):
             rewritten = (
                 log.read_text(encoding="utf-8")
                 .replace("feature.example.deliver", "feature.example.api.invoke")
-                .replace("contract.example.workflow", "specs/example/module.md")
+                .replace("specs/example/architecture.md", "specs/example/features/001-deliver.md")
                 .replace("Fixture problem", "Renamed fixture problem")
             )
             after = parse_reflection_log(rewritten)

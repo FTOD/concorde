@@ -9,9 +9,7 @@ import type OriginalLayoutType from '@theme/DocItem/Layout';
 import type {ContentPage} from '../../../../plugins/concorde-content/types';
 import {canonicalRoute, normalizeRoute} from '../../../../plugins/concorde-content/routes';
 import ArchitectureView from '../../../components/ArchitectureView';
-import CompanionLinks from '../../../components/CompanionLinks';
 import ContentProvenance from '../../../components/ContentProvenance';
-import FeatureDiagrams from '../../../components/FeatureDiagrams';
 import FeatureRelations from '../../../components/FeatureRelations';
 
 type Props = WrapperProps<typeof OriginalLayoutType>;
@@ -25,10 +23,8 @@ export default function LayoutWrapper(props: Props) {
   const page = data.pages.find((candidate) => normalizeRoute(candidate.route) === normalizeRoute(pathname));
   return <>
     {page && <div className="provenanceShell"><ContentProvenance page={page} /></div>}
-    {page && <div className="companionLinksShell"><CompanionLinks page={page} /></div>}
-    {page && <div className="featureRelationsShell"><FeatureRelations page={page} /></div>}
+    {page?.relatedFeatures?.length ? <div className="featureRelationsShell"><FeatureRelations page={page} /></div> : null}
     {page?.architectureDiagrams?.length ? <div className="architectureViewShell"><ArchitectureView page={page} /></div> : null}
-    {page?.diagrams?.length ? <div className="featureDiagramsShell"><FeatureDiagrams page={page} /></div> : null}
     <OriginalLayout {...props} />
   </>;
 }

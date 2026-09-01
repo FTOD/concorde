@@ -11,25 +11,25 @@ from tests.concorde.support.paths import CONTEXT_PROJECT, REPOSITORY_ROOT
 
 
 class ConcordeWorkflowAcceptance(unittest.TestCase):
-    def test_standard_selection_routes_nested_feature_without_root_aliases(self):
+    def test_standard_selection_routes_direct_feature_to_stable_id_control_attempt(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(CONTEXT_PROJECT, root)
             adapter = REPOSITORY_ROOT / "extensions/concorde/scripts/python/workspace.py"
             selected = subprocess.run(
-                [sys.executable, str(adapter), "--project-root", str(root), "--feature-directory", "specs/example/features/001-deliver", "--persist", "--phase", "plan"],
+                [sys.executable, str(adapter), "--project-root", str(root), "--feature-path", "specs/example/features/001-deliver.md", "--persist", "--phase", "plan"],
                 check=True,
                 text=True,
                 capture_output=True,
             )
             payload = json.loads(selected.stdout)
             self.assertEqual(payload["status"], "selected")
-            self.assertEqual(payload["phase_root"], "specs/example/features/001-deliver/attempt")
-            self.assertTrue(payload["workspace"]["plan"].endswith("/attempt/plan.md"))
-            self.assertEqual(json.loads((root / ".specify/feature.json").read_text())["feature_directory"], "specs/example/features/001-deliver")
-            feature_root = root / payload["workspace"]["feature_directory"]
-            self.assertFalse((feature_root / "plan.md").exists())
-            self.assertFalse((feature_root / "tasks.md").exists())
+            self.assertEqual(payload["phase_root"], ".concorde/attempts/feature.example.deliver")
+            self.assertEqual(payload["workspace"]["plan"], ".concorde/attempts/feature.example.deliver/plan.md")
+            self.assertEqual(json.loads((root / ".specify/feature.json").read_text())["feature_path"], "specs/example/features/001-deliver.md")
+            feature_path = root / payload["workspace"]["feature_path"]
+            self.assertTrue(feature_path.is_file())
+            self.assertFalse((feature_path.parent / feature_path.stem).exists())
             resolved = subprocess.run(
                 [sys.executable, str(adapter), "--project-root", str(root), "--phase", "specify"],
                 check=True,

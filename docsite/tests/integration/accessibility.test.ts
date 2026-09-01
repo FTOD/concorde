@@ -7,12 +7,11 @@ const siteDir = resolve(__dirname, '../..');
 
 describe('accessible presentation contract', () => {
   it('provides semantic landmarks and named provenance', async () => {
-    const [readme, config, provenance, architectureView, featureDiagrams] = await Promise.all([
+    const [readme, config, provenance, architectureView] = await Promise.all([
       readFile(resolve(siteDir, '../README.md'), 'utf8'),
       readFile(resolve(siteDir, 'docusaurus.config.ts'), 'utf8'),
       readFile(resolve(siteDir, 'src/components/ContentProvenance.tsx'), 'utf8'),
       readFile(resolve(siteDir, 'src/components/ArchitectureView.tsx'), 'utf8'),
-      readFile(resolve(siteDir, 'src/components/FeatureDiagrams.tsx'), 'utf8'),
     ]);
     expect(readme).toMatch(/^# Concorde/m);
     expect(config).toContain("id: 'home'");
@@ -20,10 +19,7 @@ describe('accessible presentation contract', () => {
     expect(provenance).toContain('aria-label="Content provenance"');
     expect(architectureView).toContain('title={`Interactive architecture view for ${page.title}: ${diagram.title}`}');
     expect(architectureView).toContain('sandbox="allow-downloads allow-scripts"');
-    expect(featureDiagrams).toContain("const headingId = documentation ? 'documentation-diagrams-heading' : 'feature-diagrams-heading'");
-    expect(featureDiagrams).toContain("'Documentation diagrams'");
-    expect(featureDiagrams).toContain('sandbox="allow-downloads allow-scripts"');
-    expect(featureDiagrams).toContain('Source: <code>{diagram.source}</code>');
+    expect(architectureView).toContain('Structural source: <code>{diagram.source}</code>');
   });
 
   it('keeps visible keyboard focus and a narrow-layout breakpoint', async () => {

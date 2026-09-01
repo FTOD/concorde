@@ -1,39 +1,38 @@
 # Concorde preset
 
-This preset keeps the normal Spec Kit specification, planning, and task workflow while adding
-Concorde's hierarchical architecture controls. It does not create another feature document.
+This preset composes the normal Spec Kit lifecycle with Concorde's module-centered specification
+profile.
 
-At priority 10, its three spec/plan/tasks template contributions use `append`, while its Concorde-only
-`abstract-template` and `implementation-template` feature documents and the project-wide `reflections-template`
-(the reflection log seeded at the specification root and appended to by every phase after
-specification) use `replace`. The preset modifies the installed instructions for nine normal
-lifecycle commands and adds one fast-loop command. The normal-command contributions use
-`strategy: replace` so each complete layer can preserve the corresponding Spec Kit
-0.16.4 phase while resolving Concorde's selected feature and durable/temporal paths before any
-path-sensitive work. Fast-loop resolves an existing selected root, rejects out-of-bound work before
-mutation, and directly reconciles an eligible small change without an attempt. The installed extension supplies that workspace adapter and five
-Concorde-specific surfaces: four runtime-backed operations, including task-complete feature
-delivery, plus the agent-only, read-only `ask` procedure.
+At priority 10 it contributes four templates: the appended feature-design, plan, and tasks layers,
+plus the project-wide reflection-log template. It replaces the installed instructions for nine
+normal lifecycle commands and adds `speckit.fast-loop`. Complete command layers resolve Protocol 12
+before any path-sensitive work.
 
-A feature keeps the canonical durable trio `abstract.md`, `design.md`, and `implementation.md` at
-`features/<number-name>/`; it may own one level of immediate sub-features at
-`subfeatures/<number-name>/`, each with the same focused durable trio and no children. The abstract is
-the self-contained page read first (purpose, functionality, structure, logic; under 15 minutes),
-feature `design.md` defines behavior, `implementation.md` records the accepted realization (a
-placeholder until the first delivery), and scenarios remain representative examples. The
-`module.md` of the module at which the feature is specified is the summary read first; its
-`design.md` is a design reference opened only for a specific recorded detail and cited. A
-temporal work lives only in `attempt/`. The preset encourages
-descriptively named, text-backed feature-owned Archify diagrams when component interaction,
-invocation, boundary crossings, state, or data flow benefit from visual explanation. A
-cross-component feature requires one `role: core` Archify architecture view or a concise rationale
-that prose and the module's level views are sufficient. Dynamic views are `role: supplemental`; a
-sequence diagram can never be the core view. Maintained JSON lives under the feature's `diagrams/`
-directory, is declared by feature `design.md`, and is embedded
-automatically by the project docsite. Every maintained Concorde Archify source explicitly sets
-`meta.legend.mode` to `hidden`; generated HTML never becomes specification authority.
+Every module recursively owns one `architecture.md`. It defines that level's responsibility,
+boundary, immediate module/feature inventory, typed architecture entities, directed relationships,
+representative interactions, and optional architecture-owned diagrams. Child modules live directly
+under `modules/<name>/` and repeat the same shape.
 
-Parent specifications own aggregate outcomes and shared constraints; sub-feature specifications own
-focused behavior and inherit the parent module. Protocol v9 routes normal phases to exactly one
-selected root, routes fast-loop to that root rather than `attempt/`, and exposes parent durable
-context read-only without sibling bodies or attempts.
+Every level-local feature is one direct `features/<NNN-name>.md` file. That file is the complete
+capability specification: outcome, scope, usage, scenarios,
+requirements, embedded provided/required interfaces, failures, related-feature semantics, and an
+Architecture Zoom over entity IDs from the providing module or its ancestry. Features relate by
+stable IDs; they never contain other features. Existing `contract.*` IDs may remain interface
+identities, but no separate interface document is created.
+
+Source code is implementation authority. Tests and deterministic checks are evidence. Planning,
+research, tasks, checklists, and validation evidence live only in the project-control workspace
+`.concorde/attempts/<stable-feature-id>/`. The tracked process-memory authority is
+`.concorde/reflections/log.md`; reflection-triage configuration shares that directory while its plans
+and worktrees remain disposable. Implementation tasks may reconcile architecture/feature intent alongside code/tests when the
+task explicitly owns and traces that change. Successful Concorde delivery validates the completed
+state and removes exactly the selected attempt; it authors no durable narrative.
+
+Maintained diagram sources belong to modules under `diagrams/`, have complete textual counterparts
+in `architecture.md`, and remain explanatory. Every source uses `meta.legend.mode: hidden`; declared
+outputs resolve uniquely below `generated/`. Generated pages and diagram outputs are reproducible
+projections, never specification authority.
+
+The installed Concorde extension supplies the Protocol 12 workspace adapter and five
+framework-specific commands for initialization, context, validation, delivery, and grounded
+questions. Normal Spec Kit selection remains the only feature-selection record.

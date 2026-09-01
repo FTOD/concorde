@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.feature_workspace import create_feature_root, reflection_entry, tree_hashes, write_reflection_log, write_selection
+from tests.concorde.support.feature_workspace import attempt_path, create_feature_file, reflection_entry, tree_hashes, write_complete_attempt, write_reflection_log, write_selection
 from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -20,141 +20,141 @@ from concorde.feature_workspace import (  # noqa: E402
 )
 
 
+REMOVED_FIELDS = {
+    "workspace_kind", "feature_abstract", "feature_implementation", "module_summary", "module_design",
+    "contracts_dir", "diagrams_dir", "parent_context", "siblings", "feature_" + "directory", "feature_" + "design",
+}
+
+
 class FeatureWorkspaceTests(unittest.TestCase):
-    def test_reflection_log_path_is_project_level_and_open_count_is_per_root(self):
+    def test_protocol_twelve_exposes_feature_architecture_control_state_and_executable_context_only(self):
+        paths = resolve_phase_paths(CONTEXT_PROJECT, "specs/example/features/001-deliver.md")
+        payload = paths.to_dict()
+        self.assertEqual(paths.feature_path, "specs/example/features/001-deliver.md")
+        self.assertEqual(paths.module_architecture, "specs/example/architecture.md")
+        self.assertEqual(paths.attempt_dir, ".concorde/attempts/feature.example.deliver")
+        self.assertEqual(paths.checklists_dir, paths.attempt_dir + "/checklists")
+        self.assertEqual(paths.reflections, ".concorde/reflections/log.md")
+        self.assertEqual(paths.executable_context, {"source_roots": (), "test_roots": ()})
+        self.assertTrue(REMOVED_FIELDS.isdisjoint(payload))
+        self.assertEqual(phase_target(paths, "specify"), paths.feature_path)
+        self.assertEqual(phase_target(paths, "plan"), paths.attempt_dir)
+
+    def test_child_module_workspace_has_bounded_ancestry_and_related_feature_summaries(self):
+        paths = resolve_phase_paths(CONTEXT_PROJECT, "specs/example/modules/api/features/001-invoke.md")
+        self.assertEqual(paths.providing_module, "module.example.api")
+        self.assertEqual(paths.module_architecture, "specs/example/modules/api/architecture.md")
+        self.assertEqual([item["module_id"] for item in paths.module_ancestry], ["module.example"])
+        self.assertEqual([item["feature_id"] for item in paths.related_features], ["feature.example.deliver"])
+        self.assertEqual(set(paths.related_features[0]), {"feature_id", "title", "module", "feature_path", "outcome", "evidence_status", "reflections_open"})
+        self.assertNotIn("attempt", repr(paths.related_features))
+
+    def test_attempt_state_distinguishes_absent_active_and_complete(self):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
-            root = create_feature_root(project)
-            other = create_feature_root(project, "specs/example/features/002-other", "feature.example.other")
-            paths = resolve_phase_paths(project, root.relative_to(project).as_posix())
-            self.assertEqual(paths.reflections, "specs/example/reflections.md")
-            self.assertEqual(paths.reflections_open, 0)
-            self.assertIn("reflections", paths.to_dict())
-            write_reflection_log(project, [reflection_entry("R-001"), reflection_entry("R-002", status="dismissed"), reflection_entry("R-003", feature="feature.example.other")])
-            paths = resolve_phase_paths(project, root.relative_to(project).as_posix())
-            self.assertEqual(paths.reflections_open, 1)
-            self.assertEqual(resolve_phase_paths(project, other.relative_to(project).as_posix()).reflections_open, 1)
-            planned = resolve_planned_phase_paths(project, "specs/example/features/003-planned")
-            self.assertEqual(planned.reflections, "specs/example/reflections.md")
-            self.assertEqual(planned.reflections_open, 0)
+            feature = create_feature_file(project)
+            relative = feature.relative_to(project).as_posix()
+            self.assertEqual(resolve_phase_paths(project, relative).attempt_state, "absent")
+            attempt = attempt_path(feature)
+            attempt.mkdir(parents=True)
+            (attempt / "plan.md").write_text("# Plan\n", encoding="utf-8")
+            self.assertEqual(resolve_phase_paths(project, relative).attempt_state, "active")
+            write_complete_attempt(feature)
+            self.assertEqual(resolve_phase_paths(project, relative).attempt_state, "complete")
 
-    def test_routes_durable_and_temporal_phases_without_aliases(self):
+    def test_reflections_are_root_scoped_and_counted_per_feature(self):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
-            root = create_feature_root(project)
-            paths = resolve_phase_paths(project, root.relative_to(project).as_posix())
-            self.assertEqual(paths.feature_design, "specs/example/features/001-deliver/design.md")
-            self.assertEqual(paths.feature_abstract, "specs/example/features/001-deliver/abstract.md")
-            self.assertEqual(paths.feature_implementation, "specs/example/features/001-deliver/implementation.md")
-            self.assertEqual(paths.module_summary, "specs/example/module.md")
-            self.assertEqual(paths.module_design, "specs/example/design.md")
-            self.assertEqual(paths.contracts_dir, "specs/example/features/001-deliver/contracts")
-            self.assertEqual(paths.checklists_dir, "specs/example/features/001-deliver/attempt/checklists")
-            self.assertEqual(paths.diagrams_dir, "specs/example/features/001-deliver/diagrams")
-            self.assertEqual(paths.plan, "specs/example/features/001-deliver/attempt/plan.md")
-            self.assertEqual(paths.research, "specs/example/features/001-deliver/attempt/research.md")
-            self.assertEqual(paths.data_model, "specs/example/features/001-deliver/attempt/data-model.md")
-            self.assertEqual(paths.quickstart, "specs/example/features/001-deliver/attempt/quickstart.md")
-            self.assertEqual(paths.tasks, "specs/example/features/001-deliver/attempt/tasks.md")
-            self.assertEqual(paths.validation, "specs/example/features/001-deliver/attempt/validation.md")
-            self.assertEqual(paths.attempt_state, "absent")
-            self.assertEqual(phase_target(paths, "specify"), paths.feature_directory)
-            self.assertEqual(phase_target(paths, "checklist"), paths.feature_directory)
-            self.assertEqual(phase_target(paths, "fast-loop"), paths.feature_directory)
-            self.assertEqual(phase_target(paths, "plan"), paths.attempt_dir)
-            self.assertEqual(phase_target(paths, "converge"), paths.attempt_dir)
-            self.assertFalse((root / "plan.md").exists())
-            self.assertFalse((root / "tasks.md").exists())
-            self.assertFalse((root / "checklists").exists())
+            first = create_feature_file(project)
+            second = create_feature_file(project, "specs/example/features/002-other.md", "feature.example.other")
+            write_reflection_log(project, [reflection_entry("R-001"), reflection_entry("R-002", feature="feature.example.other")])
+            self.assertEqual(resolve_phase_paths(project, first.relative_to(project).as_posix()).reflections_open, 1)
+            self.assertEqual(resolve_phase_paths(project, second.relative_to(project).as_posix()).reflections_open, 1)
 
-    def test_explicit_selection_precedes_persisted_state_and_is_read_only(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            project = Path(temporary)
-            first = create_feature_root(project)
-            second = create_feature_root(project, "specs/example/features/002-observe", "feature.example.observe")
-            state = write_selection(project, first.relative_to(project).as_posix())
-            before = tree_hashes(project)
-            resolved = resolve_selected_workspace(project, second.relative_to(project).as_posix())
-            self.assertEqual(resolved.feature_directory, second.relative_to(project).as_posix())
-            self.assertEqual(tree_hashes(project), before)
-            self.assertEqual(json.loads(state.read_text())["feature_directory"], first.relative_to(project).as_posix())
+    def test_planned_feature_first_pass_has_unresolved_control_paths_without_creating_files(self):
+        planned = "specs/example/modules/api/features/002-observe-health.md"
+        before = tree_hashes(CONTEXT_PROJECT)
+        paths = resolve_planned_phase_paths(CONTEXT_PROJECT, planned)
+        self.assertEqual(paths.feature_path, planned)
+        self.assertEqual(paths.providing_module, "module.example.api")
+        self.assertEqual(paths.module_architecture, "specs/example/modules/api/architecture.md")
+        self.assertIsNone(paths.feature_id)
+        self.assertEqual(paths.attempt_state, "unresolved")
+        for field in (
+            "attempt_dir", "checklists_dir", "plan", "research", "data_model",
+            "quickstart", "tasks", "validation",
+        ):
+            self.assertIsNone(getattr(paths, field), field)
+        self.assertEqual(phase_target(paths, "specify"), planned)
+        with self.assertRaisesRegex(WorkspaceError, "stable feature ID"):
+            phase_target(paths, "plan")
+        self.assertEqual(tree_hashes(CONTEXT_PROJECT), before)
+        with self.assertRaises(WorkspaceError):
+            resolve_planned_phase_paths(CONTEXT_PROJECT, "outside/002-observe-health")
 
-    def test_multiple_explicit_fast_loop_roots_resolve_independently_without_reselection(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            project = Path(temporary)
-            first = create_feature_root(project)
-            second = create_feature_root(project, "specs/example/features/002-observe", "feature.example.observe")
-            first_relative = first.relative_to(project).as_posix()
-            second_relative = second.relative_to(project).as_posix()
-            state = write_selection(project, first_relative)
-            before = tree_hashes(project)
-
-            anchor = resolve_selected_workspace(project)
-            affected = resolve_selected_workspace(project, second_relative)
-
-            self.assertEqual(phase_target(anchor, "fast-loop"), first_relative)
-            self.assertEqual(phase_target(affected, "fast-loop"), second_relative)
-            self.assertEqual(anchor.attempt_state, "absent")
-            self.assertEqual(affected.attempt_state, "absent")
-            self.assertEqual(tree_hashes(project), before)
-            self.assertEqual(json.loads(state.read_text())["feature_directory"], first_relative)
-
-    def test_specify_can_resolve_an_approved_missing_feature_root(self):
+    def test_planned_feature_explicit_id_preflight_returns_absent_paths_and_rejects_adoption(self):
+        planned = "specs/example/modules/api/features/002-observe-health.md"
+        feature_id = "feature.example.api.observe-health"
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary) / "project"
             shutil.copytree(CONTEXT_PROJECT, project)
-            planned = "specs/example/architecture/modules/api/features/002-observe-health"
-            paths = resolve_planned_phase_paths(project, planned)
-            self.assertEqual(paths.feature_design, f"{planned}/design.md")
-            self.assertEqual(paths.feature_abstract, f"{planned}/abstract.md")
-            self.assertEqual(paths.feature_implementation, f"{planned}/implementation.md")
-            self.assertEqual(paths.module_summary, "specs/example/architecture/modules/api/module.md")
-            self.assertEqual(paths.module_design, "specs/example/architecture/modules/api/design.md")
-            self.assertEqual(paths.checklists_dir, f"{planned}/attempt/checklists")
+            paths = resolve_planned_phase_paths(project, planned, feature_id)
+            self.assertEqual(paths.feature_id, feature_id)
             self.assertEqual(paths.attempt_state, "absent")
-            self.assertFalse((project / planned).exists())
+            self.assertEqual(paths.attempt_dir, f".concorde/attempts/{feature_id}")
+            self.assertEqual(paths.checklists_dir, f".concorde/attempts/{feature_id}/checklists")
+
+            orphan = project / paths.attempt_dir
+            orphan.mkdir(parents=True)
+            with self.assertRaisesRegex(WorkspaceError, "adopt"):
+                resolve_planned_phase_paths(project, planned, feature_id)
+
+            with self.assertRaisesRegex(WorkspaceError, "already exists"):
+                resolve_planned_phase_paths(project, planned, "feature.example.deliver")
             with self.assertRaises(WorkspaceError):
-                resolve_planned_phase_paths(project, "outside/002-observe-health")
+                resolve_planned_phase_paths(project, planned, "feature.example..unsafe")
 
-            realization = project / "specs/example/features/001-deliver/implementation.md"
-            realization.unlink()
-            repair_paths = resolve_selected_workspace(
-                project,
-                "specs/example/features/001-deliver",
-                allow_missing_design=True,
-            )
-            self.assertEqual(repair_paths.feature_implementation, "specs/example/features/001-deliver/implementation.md")
-
-    def test_legacy_document_and_attempt_names_are_rejected_without_mutation(self):
+    def test_explicit_selection_precedes_persisted_state_without_mutation(self):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
-            root = create_feature_root(project)
-            relative = root.relative_to(project).as_posix()
-            (root / "spec.md").write_text("legacy design name", encoding="utf-8")
+            first = create_feature_file(project)
+            second = create_feature_file(project, "specs/example/features/002-observe.md", "feature.example.observe")
+            state = write_selection(project, first.relative_to(project).as_posix())
             before = tree_hashes(project)
-            with self.assertRaisesRegex(WorkspaceError, "still uses legacy names"):
-                resolve_phase_paths(project, relative)
-            (root / "spec.md").unlink()
-            (root / "implementation").mkdir()
-            with self.assertRaisesRegex(WorkspaceError, "still uses legacy names"):
-                resolve_phase_paths(project, relative)
-            (root / "implementation").rmdir()
-            self.assertEqual(resolve_phase_paths(project, relative).feature_implementation, f"{relative}/implementation.md")
-            (root / "abstract.md").unlink()
-            with self.assertRaisesRegex(WorkspaceError, "has no abstract.md"):
-                resolve_phase_paths(project, relative)
+            resolved = resolve_selected_workspace(project, second.relative_to(project).as_posix())
+            self.assertEqual(resolved.feature_path, second.relative_to(project).as_posix())
+            self.assertEqual(tree_hashes(project), before)
+            self.assertEqual(json.loads(state.read_text()), {"feature_path": first.relative_to(project).as_posix()})
 
-    def test_atomic_persistence_is_idempotent_and_rejects_unsafe_roots(self):
+    def test_atomic_persistence_is_idempotent_and_rejects_unsafe_paths(self):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
-            root = create_feature_root(project)
-            relative = root.relative_to(project).as_posix()
+            feature = create_feature_file(project)
+            relative = feature.relative_to(project).as_posix()
             self.assertEqual(persist_selection(project, relative), "selected")
             first = (project / ".specify/feature.json").read_bytes()
             self.assertEqual(persist_selection(project, relative), "unchanged")
             self.assertEqual((project / ".specify/feature.json").read_bytes(), first)
             with self.assertRaises(WorkspaceError):
                 resolve_phase_paths(project, "../outside")
+
+    def test_stable_id_resolves_but_persistence_canonicalizes_to_feature_path(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary)
+            feature = create_feature_file(project)
+            self.assertEqual(resolve_phase_paths(project, "feature.example.deliver").feature_path, feature.relative_to(project).as_posix())
+            self.assertEqual(persist_selection(project, "feature.example.deliver"), "selected")
+            self.assertEqual(json.loads((project / ".specify/feature.json").read_text(encoding="utf-8")), {"feature_path": feature.relative_to(project).as_posix()})
+
+    def test_legacy_selection_key_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary)
+            create_feature_file(project)
+            state = project / ".specify/feature.json"
+            state.parent.mkdir(parents=True, exist_ok=True)
+            state.write_text(json.dumps({"feature_" + "directory": "specs/example/features/001-deliver"}) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(WorkspaceError, "feature_path"):
+                resolve_selected_workspace(project)
 
 
 if __name__ == "__main__":

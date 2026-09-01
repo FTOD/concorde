@@ -11,7 +11,7 @@ const sidebars: SidebarsConfig = {
   featuresSidebar: [{
     type: 'category',
     label: 'Features',
-    link: {type: 'generated-index', slug: '/', description: 'Features grouped by their owning module hierarchy, with explicit subfeatures beneath their parent feature.'},
+    link: {type: 'generated-index', slug: '/', description: 'Direct feature files grouped by their owning module hierarchy.'},
     items: moduleFeatureHierarchy,
   }],
 };

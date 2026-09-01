@@ -26,20 +26,17 @@ async function writeModuleDiagram(
   diagramType = 'architecture',
 ): Promise<void> {
   const directory = resolve(root, 'specs', moduleName);
-  await mkdir(resolve(directory, 'architecture/diagrams'), {recursive: true});
-  await writeFile(resolve(directory, 'module.md'), `---
+  await mkdir(resolve(directory, 'diagrams'), {recursive: true});
+  await writeFile(resolve(directory, 'architecture.md'), `---
 id: module.${moduleName}
 kind: module
 parent: null
-children: []
+modules: []
 features: []
-contracts:
-  provided: []
-  required: []
 ---
 # ${moduleName}
 `, 'utf8');
-  await writeFile(resolve(directory, 'architecture/diagrams/level-view.json'), `${JSON.stringify({
+  await writeFile(resolve(directory, 'diagrams/level-view.json'), `${JSON.stringify({
     schema_version: 1,
     diagram_type: diagramType,
     meta: {title: moduleName, output, quality_profile: 'showcase', legend: {mode: 'hidden'}},
@@ -48,44 +45,45 @@ contracts:
 }
 
 describe('diagram declaration discovery', () => {
-  it('discovers the twelve real declarations in stable source order without generated HTML', async () => {
+  it('discovers the real tree as an empty architecture-owned declaration set', async () => {
     const projectRoot = resolve(__dirname, '../../..');
     const declarations = await discoverDiagramDeclarations(projectRoot);
-    expect(declarations).toHaveLength(12);
+    expect(declarations).toEqual([]);
+    expect(declarations.every((item) => item.ownerPath.endsWith('/architecture.md'))).toBe(true);
     expect(declarations.map((item) => item.sourcePath)).toEqual(
       [...declarations.map((item) => item.sourcePath)].sort(),
     );
-    expect(new Set(declarations.map((item) => item.outputPath)).size).toBe(12);
+    expect(new Set(declarations.map((item) => item.outputPath)).size).toBe(declarations.length);
     expect(declarations.every((item) => item.outputPath.startsWith('generated/architecture/'))).toBe(true);
   });
 
   it('rejects duplicate normalized outputs before delivery', async () => {
     const root = await temporaryRoot('concorde-diagram-duplicate-');
-    await writeModuleDiagram(root, 'one', '../../../../generated/architecture/shared.html');
-    await writeModuleDiagram(root, 'two', '../../../../generated/architecture/shared.html');
+    await writeModuleDiagram(root, 'one', '../../../generated/architecture/shared.html');
+    await writeModuleDiagram(root, 'two', '../../../generated/architecture/shared.html');
     await expect(discoverDiagramDeclarations(root)).rejects.toThrow(/duplicate output.*shared\.html/i);
   });
 
-  it('accepts every supported diagram kind beneath architecture/diagrams/ and rejects unsupported kinds or escaping outputs', async () => {
+  it('accepts every supported diagram kind beneath diagrams/ and rejects unsupported kinds or escaping outputs', async () => {
     const kindRoot = await temporaryRoot('concorde-diagram-kind-');
-    await writeModuleDiagram(kindRoot, 'kind', '../../../../generated/architecture/kind.html', 'sequence');
+    await writeModuleDiagram(kindRoot, 'kind', '../../../generated/architecture/kind.html', 'sequence');
     expect((await discoverDiagramDeclarations(kindRoot)).map((item) => [item.sourcePath, item.kind])).toEqual([
-      ['specs/kind/architecture/diagrams/level-view.json', 'sequence'],
+      ['specs/kind/diagrams/level-view.json', 'sequence'],
     ]);
 
     const unsupportedRoot = await temporaryRoot('concorde-diagram-unsupported-');
-    await writeModuleDiagram(unsupportedRoot, 'odd', '../../../../generated/architecture/odd.html', 'mindmap');
-    await expect(discoverDiagramDeclarations(unsupportedRoot)).rejects.toThrow(/specs\/odd\/architecture\/diagrams\/level-view\.json.*diagram_type/i);
+    await writeModuleDiagram(unsupportedRoot, 'odd', '../../../generated/architecture/odd.html', 'mindmap');
+    await expect(discoverDiagramDeclarations(unsupportedRoot)).rejects.toThrow(/specs\/odd\/diagrams\/level-view\.json.*diagram_type/i);
 
     const escapeRoot = await temporaryRoot('concorde-diagram-escape-');
-    await writeModuleDiagram(escapeRoot, 'escape', '../../../../../outside.html');
-    await expect(discoverDiagramDeclarations(escapeRoot)).rejects.toThrow(/specs\/escape\/architecture\/diagrams\/level-view\.json.*generated/i);
+    await writeModuleDiagram(escapeRoot, 'escape', '../../../../outside.html');
+    await expect(discoverDiagramDeclarations(escapeRoot)).rejects.toThrow(/specs\/escape\/diagrams\/level-view\.json.*generated/i);
   });
 
   it('rejects a maintained diagram whose legend is not explicitly hidden', async () => {
     const root = await temporaryRoot('concorde-diagram-legend-');
-    await writeModuleDiagram(root, 'legend', '../../../../generated/architecture/legend.html');
-    const source = resolve(root, 'specs/legend/architecture/diagrams/level-view.json');
+    await writeModuleDiagram(root, 'legend', '../../../generated/architecture/legend.html');
+    const source = resolve(root, 'specs/legend/diagrams/level-view.json');
     const diagram = JSON.parse(await readFile(source, 'utf8')) as {meta: {legend?: unknown}};
     delete diagram.meta.legend;
     await writeFile(source, `${JSON.stringify(diagram, null, 2)}\n`, 'utf8');

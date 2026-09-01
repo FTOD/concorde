@@ -19,25 +19,22 @@ async function fixtureRoot(): Promise<string> {
   roots.push(project);
   for (const name of ['one', 'two']) {
     const sourceDirectory = resolve(project, 'specs', name);
-    await mkdir(resolve(sourceDirectory, 'architecture/diagrams'), {recursive: true});
-    await writeFile(resolve(sourceDirectory, 'module.md'), `---
+    await mkdir(resolve(sourceDirectory, 'diagrams'), {recursive: true});
+    await writeFile(resolve(sourceDirectory, 'architecture.md'), `---
 id: module.${name}
 kind: module
 parent: null
-children: []
+modules: []
 features: []
-contracts:
-  provided: []
-  required: []
 ---
 # ${name}
 `, 'utf8');
-    await writeFile(resolve(sourceDirectory, 'architecture/diagrams/level-view.json'), `${JSON.stringify({
+    await writeFile(resolve(sourceDirectory, 'diagrams/level-view.json'), `${JSON.stringify({
       schema_version: 1,
       diagram_type: 'architecture',
       meta: {
         title: name,
-        output: `../../../../generated/architecture/${name}.html`,
+        output: `../../../generated/architecture/${name}.html`,
         quality_profile: 'showcase',
         legend: {mode: 'hidden'},
       },
@@ -119,15 +116,15 @@ describe('complete diagram delivery set', () => {
   it('promotes all current outputs together and removes stale orphans', async () => {
     const project = await fixtureRoot();
     const sourceBefore = await Promise.all(['one', 'two'].map((name) =>
-      readFile(resolve(project, `specs/${name}/architecture/diagrams/level-view.json`), 'utf8')));
+      readFile(resolve(project, `specs/${name}/diagrams/level-view.json`), 'utf8')));
     const result = await renderDeclaredDiagrams(project, {runner: runner(false)});
     expect(result.receipts.map((receipt) => receipt.sourcePath)).toEqual([
-      'specs/one/architecture/diagrams/level-view.json', 'specs/two/architecture/diagrams/level-view.json',
+      'specs/one/diagrams/level-view.json', 'specs/two/diagrams/level-view.json',
     ]);
     expect(await readFile(resolve(project, 'generated/architecture/one.html'), 'utf8')).toContain('archify 2.16.0-dev.0');
     expect(await readFile(resolve(project, 'generated/architecture/two.html'), 'utf8')).toContain('archify 2.16.0-dev.0');
     await expect(readFile(resolve(project, 'generated/architecture/previous.html'), 'utf8')).rejects.toThrow();
     expect(await Promise.all(['one', 'two'].map((name) =>
-      readFile(resolve(project, `specs/${name}/architecture/diagrams/level-view.json`), 'utf8')))).toEqual(sourceBefore);
+      readFile(resolve(project, `specs/${name}/diagrams/level-view.json`), 'utf8')))).toEqual(sourceBefore);
   });
 });

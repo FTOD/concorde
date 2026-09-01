@@ -3,24 +3,30 @@ import {readdir, readFile, rm} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 
-import Ajv2020 from 'ajv/dist/2020';
 import {beforeAll, describe, expect, it} from 'vitest';
+
+import {validateBuildManifest} from '../../plugins/concorde-content/manifest';
+import type {BuildManifest} from '../../plugins/concorde-content/types';
 
 const siteDir = resolve(__dirname, '../..');
 const buildDir = resolve(siteDir, 'build');
-let firstManifest = '';
+let firstManifestText = '';
 let firstDiagramHashes: Record<string, string> = {};
 
 async function diagramHashes(): Promise<Record<string, string>> {
   const directory = resolve(siteDir, '../generated/architecture');
-  const names = (await readdir(directory)).filter((name) => name.endsWith('.html')).sort();
+  let names: string[];
+  try {
+    names = (await readdir(directory)).filter((name) => name.endsWith('.html')).sort();
+  } catch {
+    names = [];
+  }
   return Object.fromEntries(await Promise.all(names.map(async (name) => [
-    name,
-    createHash('sha256').update(await readFile(resolve(directory, name))).digest('hex'),
+    name, createHash('sha256').update(await readFile(resolve(directory, name))).digest('hex'),
   ])));
 }
 
-function build() {
+function build(): void {
   const result = spawnSync(process.execPath, [resolve(siteDir, 'node_modules/tsx/dist/cli.mjs'), 'scripts/build.ts'], {
     cwd: siteDir, encoding: 'utf8', timeout: 120_000,
   });
@@ -30,181 +36,60 @@ function build() {
 beforeAll(async () => {
   await rm(resolve(siteDir, '../generated'), {recursive: true, force: true});
   build();
-  firstManifest = await readFile(resolve(buildDir, 'build-manifest.json'), 'utf8');
+  firstManifestText = await readFile(resolve(buildDir, 'build-manifest.json'), 'utf8');
   firstDiagramHashes = await diagramHashes();
 }, 120_000);
 
-describe('production build', () => {
-  it('publishes landing, three-part navigation, provenance, diagrams, local search, and all manifest routes', async () => {
-    const manifest = JSON.parse(firstManifest);
-    expect(manifest.schemaVersion).toBe(9);
-    const schema = JSON.parse(await readFile(resolve(siteDir, '../specs/concorde/features/002-auto-docsite/contracts/build-manifest.schema.json'), 'utf8'));
-    expect(new Ajv2020({strictTypes: true, strictTuples: true}).compile(schema)(manifest)).toBe(true);
+describe('Profile 7 production build', () => {
+  it('publishes architecture and design landing pages with provenance and architecture-owned diagrams', async () => {
+    const manifest = JSON.parse(firstManifestText) as BuildManifest;
+    expect(() => validateBuildManifest(manifest)).not.toThrow();
+    expect(manifest.schemaVersion).toBe(10);
+    expect(new Set(manifest.pages.map((page) => page.kind))).toEqual(new Set([
+      'module-architecture', 'project-document', 'feature-design',
+    ]));
+    expect(firstManifestText).not.toMatch(/feature-abstract|feature-implementation|module-design|abstractRoute|implementationRoute/);
+    expect(manifest.pages.some((page) => page.sourcePath.startsWith('.concorde/'))).toBe(false);
+    expect(manifest.excludedSources.some((source) => source.sourcePath.startsWith('.concorde/'))).toBe(false);
+
     const homepage = await readFile(resolve(buildDir, 'index.html'), 'utf8');
-    expect(homepage).toContain('Key features');
-    expect(homepage).toContain('Concorde commands');
     expect(homepage).toContain('README.md');
-    expect(manifest.pages.filter((page: {sourcePath: string; route: string}) =>
-      page.sourcePath === 'README.md' && page.route === '/')).toHaveLength(1);
-    const searchIndex = await readFile(resolve(buildDir, 'search-index.json'), 'utf8');
-    expect(searchIndex).toContain('Create Unified Project Docsite');
-    expect(searchIndex).toContain('Project Ontology and Terminology');
-    expect(searchIndex).toContain('Scripts');
-    expect(await readFile(resolve(buildDir, 'architecture/concorde-interaction-architecture.html'), 'utf8')).toContain('Concorde Interaction Architecture');
-    expect(await readFile(resolve(buildDir, 'architecture/concorde-skill-workspace-file-flow.html'), 'utf8'))
-      .toContain('Concorde Skills: Architecture and Feature Workspaces');
-    expect(await readFile(resolve(buildDir, 'architecture/concorde-spec-kit-component-model.html'), 'utf8'))
-      .toContain('How Concorde Commands Reach a Clean Project');
-    expect(await readFile(resolve(buildDir, 'architecture/concorde-bundle-installation-flow.html'), 'utf8'))
-      .toContain('Install, Materialize, and Prove Concorde');
-    expect(await readFile(resolve(buildDir, 'architecture/concorde-workflow-components.html'), 'utf8'))
-      .toContain('Concorde Workflow — Installed Surfaces, Runtime, and Workspace');
-    expect(await readFile(resolve(buildDir, 'architecture/concorde-self-hosting-components.html'), 'utf8'))
-      .toContain('Concorde Self-Hosting Components');
-    expect(await readFile(resolve(buildDir, 'architecture/project-docsite-publication-flow.html'), 'utf8'))
-      .toContain('Project Docsite — Publication Invocation');
-    expect(await readFile(resolve(buildDir, 'architecture/concorde-command-workspace-file-flow.html'), 'utf8'))
-      .toContain('Concorde Commands and Workspace Files');
-    expect(await readFile(resolve(buildDir, 'architecture/alignment-explorer-components.html'), 'utf8'))
-      .toContain('Concorde Alignment Explorer Components');
-    expect(await readFile(resolve(buildDir, 'architecture/concorde-ontology-model.html'), 'utf8'))
-      .toContain('Concorde Ontology Model');
-    expect(Object.keys(firstDiagramHashes)).toHaveLength(12);
-    expect((await readdir(resolve(siteDir, '../generated/architecture'))).every((name) => name.endsWith('.html'))).toBe(true);
-    const concordeFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.workflow');
-    const docsiteFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.publish-project-docsite');
-    const selfHostingFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.self-host-framework');
-    const alignmentFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) => page.kind === 'feature-abstract' && page.featureId === 'feature.concorde.explore-alignment');
-    const documentationFeature = manifest.pages.find((page: {featureId?: string; kind?: string}) =>
-      page.kind === 'feature-abstract' && page.featureId === 'feature.auto-docs.publish-project-docsite');
-    if (!concordeFeature || !docsiteFeature || !selfHostingFeature || !alignmentFeature) throw new Error('Expected the abstract landing pages of Features 001, 002, 004, and 006 in the build manifest.');
-    expect(documentationFeature?.route).toBe('/features/feature.auto-docs.publish-project-docsite');
-    for (const page of manifest.pages.filter((candidate: {kind: string}) => candidate.kind.startsWith('feature-'))) {
-      expect(page.route.slice('/features/'.length)).not.toMatch(/(?:^|\/)(?:architecture|modules|features)(?:\/|$)/);
-    }
-    const stagedFeaturePaths = await readdir(resolve(siteDir, '.generated/content/features'), {recursive: true});
-    expect(stagedFeaturePaths).toContain('feature.auto-docs.publish-project-docsite/_category_.json');
-    expect(stagedFeaturePaths.every((path) => !/(?:^|\/)(?:architecture|modules|features)(?:\/|$)/.test(path))).toBe(true);
+    expect(manifest.pages.filter((page) => page.sourcePath === 'README.md' && page.route === '/')).toHaveLength(1);
+
+    const rootModule = manifest.pages.find((page) => page.kind === 'module-architecture' && page.moduleId === 'module.concorde');
+    expect(rootModule).toMatchObject({
+      sourcePath: 'specs/concorde/architecture.md', route: '/architecture/module.concorde',
+    });
+    const rootFeature = manifest.pages.find((page) => page.kind === 'feature-design' && page.featureId === 'feature.concorde.workflow');
+    const autoDocsFeature = manifest.pages.find((page) =>
+      page.kind === 'feature-design' && page.featureId === 'feature.auto-docs.publish-project-docsite');
+    expect(rootFeature).toMatchObject({route: '/features/feature.concorde.workflow', moduleRoute: '/architecture/module.concorde'});
+    expect(autoDocsFeature).toMatchObject({moduleRoute: '/architecture/module.concorde.auto-docs'});
+
+    const diagrams = manifest.pages.flatMap((page) => page.architectureDiagrams ?? []);
+    expect(diagrams).toEqual([]);
+    expect(firstDiagramHashes).toEqual({});
+    expect(manifest.pages.filter((page) => page.kind !== 'module-architecture')
+      .every((page) => page.architectureDiagrams === undefined)).toBe(true);
+
+    const stagedFeatures = await readdir(resolve(siteDir, '.generated/content/features'), {recursive: true});
+    expect(stagedFeatures).toContain('feature.auto-docs.publish-project-docsite.md');
+    expect(stagedFeatures.every((path) => !/(?:^|\/)(?:modules|features|subfeatures)(?:\/|$)/.test(path))).toBe(true);
     const featureSidebar = JSON.parse(await readFile(resolve(siteDir, '.generated/features-sidebar.json'), 'utf8'));
-    expect(featureSidebar).toHaveLength(1);
-    expect(featureSidebar[0]).toMatchObject({type: 'category', label: 'Concorde', collapsed: false});
-    const rootFeatureIds = [
-      'feature.concorde.workflow',
-      'feature.concorde.publish-project-docsite',
-      'feature.concorde.install-with-spec-kit',
-      'feature.concorde.self-host-framework',
-      'feature.concorde.record-workflow-reflections',
-      'feature.concorde.explore-alignment',
-      'feature.concorde.define-project-ontology',
-    ];
-    const rootFeatureItems = featureSidebar[0].items.slice(0, rootFeatureIds.length);
-    expect(rootFeatureItems.map((item: {link: {id: string}}) => item.link.id.replace(/\/abstract$/, '')))
-      .toEqual(rootFeatureIds);
-    const featureTitles = new Map(manifest.pages
-      .filter((page: {featureId?: string; kind: string}) => page.kind === 'feature-abstract' && page.featureId)
-      .map((page: {featureId: string; title: string}) => [page.featureId, page.title]));
-    expect(rootFeatureItems.map((item: {label: string}) => item.label))
-      .toEqual(rootFeatureIds.map((featureId) => featureTitles.get(featureId)));
-    expect(featureSidebar[0].items.slice(rootFeatureIds.length).map((item: {label: string}) => item.label)).toEqual([
-      'Skills', 'Scripts', 'Workspace Files', 'Distribution', 'Auto-Docs',
-    ]);
-    expect(concordeFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
-      source: 'specs/concorde/features/001-concorde-workflow/diagrams/concorde-workflow-components.json',
-      role: 'core',
-      kind: 'architecture',
-      route: '/architecture/concorde-workflow-components.html',
-    })]));
-    expect(docsiteFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
-      source: 'specs/concorde/features/002-auto-docsite/diagrams/project-docsite-publication-flow.json',
-      route: '/architecture/project-docsite-publication-flow.html',
-    })]));
-    expect(selfHostingFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
-      source: 'specs/concorde/features/004-self-host/diagrams/concorde-self-hosting-components.json',
-      role: 'core',
-      kind: 'architecture',
-      route: '/architecture/concorde-self-hosting-components.html',
-    })]));
-    expect(alignmentFeature.diagrams).toEqual(expect.arrayContaining([expect.objectContaining({
-      source: 'specs/concorde/features/006-alignment-explorer/diagrams/alignment-explorer-components.json',
-      role: 'core',
-      kind: 'architecture',
-      route: '/architecture/alignment-explorer-components.html',
-    })]));
-    expect(manifest.pages.find((page: {sourcePath: string}) => page.sourcePath === 'docs/ontology.md')?.route)
-      .toBe('/docs/ontology');
-    const workflowGuide = manifest.pages.find((page: {sourcePath: string}) => page.sourcePath === 'docs/concorde-workflow.md');
-    expect(workflowGuide.diagrams).toEqual([expect.objectContaining({
-      source: 'docs/diagrams/concorde-command-workspace-file-flow.json',
-      role: 'supplemental',
-      kind: 'dataflow',
-      route: '/architecture/concorde-command-workspace-file-flow.html',
-    })]);
-    const concordeFeatureHtml = await readFile(resolve(buildDir, `${concordeFeature.route.slice(1)}.html`), 'utf8');
-    const docsiteFeatureHtml = await readFile(resolve(buildDir, `${docsiteFeature.route.slice(1)}.html`), 'utf8');
-    const selfHostingFeatureHtml = await readFile(resolve(buildDir, `${selfHostingFeature.route.slice(1)}.html`), 'utf8');
-    expect(concordeFeatureHtml).toContain('Feature diagrams');
-    expect(concordeFeatureHtml).toContain('Concorde Workflow — Installed Surfaces, Runtime, and Workspace');
-    expect(concordeFeatureHtml).toContain('/architecture/concorde-workflow-components.html');
-    expect(docsiteFeatureHtml).toContain('Feature diagrams');
-    expect(docsiteFeatureHtml).toContain('Project Docsite — Publication Invocation');
-    expect(docsiteFeatureHtml).toContain('/architecture/project-docsite-publication-flow.html');
-    expect(docsiteFeatureHtml).not.toMatch(/>modules<\/a>/i);
-    const documentationFeatureHtml = await readFile(resolve(buildDir, `${documentationFeature.route.slice(1)}.html`), 'utf8');
-    expect(documentationFeatureHtml).toContain('/architecture/concorde/modules/auto-docs/module.concorde.auto-docs');
-    expect(documentationFeatureHtml).toContain('/features/feature.concorde.publish-project-docsite');
-    expect(selfHostingFeatureHtml).toContain('Feature diagrams');
-    expect(selfHostingFeatureHtml).toContain('Concorde Self-Hosting Components');
-    expect(selfHostingFeatureHtml).toContain('/architecture/concorde-self-hosting-components.html');
-    const workflowGuideHtml = await readFile(resolve(buildDir, 'docs/concorde-workflow.html'), 'utf8');
-    expect(workflowGuideHtml).toContain('Documentation diagrams');
-    expect(workflowGuideHtml).toContain('Concorde Commands and Workspace Files');
-    expect(workflowGuideHtml).toContain('/architecture/concorde-command-workspace-file-flow.html');
-    // The landing page links design and implementation; each links back to the abstract.
-    for (const landing of [concordeFeature, docsiteFeature, selfHostingFeature, alignmentFeature]) {
-      const html = await readFile(resolve(buildDir, `${landing.route.slice(1)}.html`), 'utf8');
-      expect(html).toContain(`${landing.designRoute}"`);
-      expect(html).toContain(`${landing.implementationRoute}"`);
-      for (const companionRoute of [landing.designRoute, landing.implementationRoute]) {
-        expect(await readFile(resolve(buildDir, `${companionRoute.slice(1)}.html`), 'utf8')).toContain(`${landing.route}"`);
-      }
-    }
-    const rootModule = await readFile(resolve(buildDir, 'architecture/concorde/module.concorde.html'), 'utf8');
-    expect(rootModule).toContain('Interactive architecture view for Concorde');
-    expect(rootModule).toContain('/architecture/concorde-interaction-architecture.html');
-    expect(rootModule).toContain('/architecture/concorde-skill-workspace-file-flow.html');
-    expect(rootModule).toContain('specs/concorde/architecture/diagrams/level-view.json');
-    const rootPage = manifest.pages.find((page: {sourcePath: string}) => page.sourcePath === 'specs/concorde/module.md');
-    expect(rootPage.architectureDiagrams).toEqual([
-      expect.objectContaining({
-        source: 'specs/concorde/architecture/diagrams/level-view.json', kind: 'architecture', route: '/architecture/concorde-interaction-architecture.html',
-      }),
-      expect.objectContaining({
-        source: 'specs/concorde/architecture/diagrams/skill-workspace-file-flow.json', kind: 'dataflow', route: '/architecture/concorde-skill-workspace-file-flow.html',
-      }),
-    ]);
-    expect(rootPage.links).toEqual(expect.arrayContaining([
-      {targetSourcePath: 'specs/concorde/architecture/diagrams/level-view.json', targetRoute: '/architecture/concorde-interaction-architecture.html'},
-    ]));
-    const rootDesign = manifest.pages.find((page: {sourcePath: string}) => page.sourcePath === 'specs/concorde/design.md');
-    expect(rootDesign.links).toEqual(expect.arrayContaining([
-      {targetSourcePath: 'specs/concorde/architecture/diagrams/skill-workspace-file-flow.json', targetRoute: '/architecture/concorde-skill-workspace-file-flow.html'},
-    ]));
-    const documentationModule = await readFile(
-      resolve(buildDir, 'architecture/concorde/modules/auto-docs/module.concorde.auto-docs.html'),
-      'utf8',
-    );
-    expect(documentationModule).toContain('Interactive architecture view for Auto-Docs');
-    expect(documentationModule).toContain('/architecture/auto-docs.html');
+    const sidebarDocIds = (items: Array<{type: string; id?: string; items?: unknown[]}>): string[] => items.flatMap((item) =>
+      item.type === 'doc' && item.id ? [item.id] : sidebarDocIds((item.items ?? []) as Array<{type: string; id?: string; items?: unknown[]}>));
+    expect(sidebarDocIds(featureSidebar).sort()).toEqual(manifest.pages
+      .filter((candidate) => candidate.kind === 'feature-design')
+      .map((page) => page.featureId!).sort());
+
     for (const page of manifest.pages) {
-      const route = page.route === '/' ? '/index' : page.route.replace(/\/$/, '');
-      const target = `${route}.html`;
-      const html = await readFile(resolve(buildDir, target.slice(1)), 'utf8');
-      expect(html).toContain(page.sourcePath);
+      const output = page.route === '/' ? 'index.html' : `${page.route.slice(1)}.html`;
+      expect(await readFile(resolve(buildDir, output), 'utf8')).toContain(page.sourcePath);
     }
   });
 
-  it('emits an identical manifest on an unchanged second build', async () => {
-    const beforeHash = createHash('sha256').update(firstManifest).digest('hex');
+  it('emits an identical manifest and diagram set on an unchanged second build', async () => {
+    const beforeHash = createHash('sha256').update(firstManifestText).digest('hex');
     build();
     const second = await readFile(resolve(buildDir, 'build-manifest.json'), 'utf8');
     expect(createHash('sha256').update(second).digest('hex')).toBe(beforeHash);

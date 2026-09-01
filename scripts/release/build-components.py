@@ -22,7 +22,9 @@ import yaml
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 REPOSITORY = "https://github.com/FTOD/concorde"
 FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
-CATALOG_UPDATED_AT = "2026-08-20T00:00:00Z"
+CATALOG_UPDATED_AT = "2026-09-01T00:00:00Z"
+ARCHITECTURE_PROFILE = 7
+WORKSPACE_PROTOCOL = 12
 
 BUNDLE_MANIFEST = "bundles/concorde-bundle/bundle.yml"
 PRESET_MANIFEST = "presets/concorde/preset.yml"
@@ -239,6 +241,8 @@ def build_release(output: Path, base_url: str | None = None, version: str | None
         "author": "Concorde maintainers",
         "license": "MIT",
         "repository": identity.repository,
+        "architecture_profile": ARCHITECTURE_PROFILE,
+        "workspace_protocol": WORKSPACE_PROTOCOL,
         "requires": {"speckit_version": identity.speckit_range},
         "verified": False,
     }
@@ -254,12 +258,12 @@ def build_release(output: Path, base_url: str | None = None, version: str | None
                     "id": "concorde",
                     "name": "Concorde Architecture Workflow",
                     "version": version,
-                    "description": "Initialize, retrieve, validate, deliver, and explain bounded hierarchical feature work",
+                    "description": "Initialize, retrieve, validate, deliver, and explain module-centered architecture and features",
                     "effect": "read-write",
                     "download_url": f"{base_url}/concorde-extension-{version}.zip",
                     "sha256": f"sha256:{digests[f'concorde-extension-{version}.zip']}",
                     "provides": extension_capabilities,
-                    "tags": ["architecture", "context", "validation"],
+                    "tags": ["architecture", "interfaces", "modules", "context", "validation"],
                 }
             },
         },
@@ -276,11 +280,11 @@ def build_release(output: Path, base_url: str | None = None, version: str | None
                     "id": "concorde",
                     "name": "Concorde",
                     "version": version,
-                    "description": "Architecture guidance plus authoritative nested-workspace routing for the Spec Kit lifecycle",
+                    "description": "Module architecture and design-only feature guidance for the Spec Kit lifecycle",
                     "download_url": f"{base_url}/concorde-preset-{version}.zip",
                     "sha256": f"sha256:{digests[f'concorde-preset-{version}.zip']}",
                     "provides": preset_capabilities,
-                    "tags": ["architecture", "contracts", "spec-driven-development"],
+                    "tags": ["architecture", "interfaces", "modules", "spec-driven-development"],
                 }
             },
         },
@@ -298,11 +302,11 @@ def build_release(output: Path, base_url: str | None = None, version: str | None
                     "name": "Concorde Bundle",
                     "version": version,
                     "role": "developer",
-                    "description": "Pinned Concorde preset and extension installation recipe for Spec Kit",
+                    "description": "Pinned Profile 7 and Protocol 12 Concorde component set for Spec Kit",
                     "download_url": f"{base_url}/concorde-bundle-{version}.zip",
                     "sha256": f"sha256:{digests[f'concorde-bundle-{version}.zip']}",
                     "provides": {"extensions": 1, "presets": 1, "steps": 0, "workflows": 0},
-                    "tags": ["architecture", "context", "validation", "spec-driven-development"],
+                    "tags": ["architecture", "interfaces", "modules", "context", "validation", "spec-driven-development"],
                 }
             },
         },

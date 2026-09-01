@@ -9,5 +9,6 @@ This fixture exercises the generated project homepage.
 
 ## Concorde commands
 
-See the [documentation](docs/index.md), [architecture](specs/example/module.md),
-[feature](specs/001-alpha/abstract.md), and [diagram](specs/001-alpha/diagrams/alpha-components.json).
+See the [documentation](docs/index.md), [architecture](specs/example/architecture.md),
+[feature](specs/example/features/001-alpha.md), and
+[diagram](specs/example/diagrams/fixture-level-view.json).

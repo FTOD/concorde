@@ -18,7 +18,7 @@ async function main() {
     process.stderr.write(`${findings.map(formatFinding).join('\n')}\n`);
     process.exitCode = 1;
   } else {
-    process.stdout.write(`Validated ${registry.documents.length} pages (${registry.excludedSources.length} excluded sources); 0 errors.\n`);
+    process.stdout.write(`Validated Profile 7: ${registry.documents.length} pages (${registry.excludedSources.length} excluded sources); 0 errors.\n`);
   }
 }
 

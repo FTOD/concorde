@@ -8,6 +8,7 @@ from pathlib import Path
 
 from tests.concorde.contract.test_installed_command_surfaces import _builder
 from tests.concorde.support.catalog_server import CatalogServer
+from tests.concorde.support.feature_workspace import write_complete_attempt
 from tests.concorde.support.installed_command_surface import (
     CONCORDE_COMMANDS,
     CONCORDE_RUNTIME_COMMANDS,
@@ -17,8 +18,12 @@ from tests.concorde.support.paths import TWO_LEVEL_PROJECT
 from tests.concorde.support.specify_project import SpecifyProject
 
 
+FEATURE = "specs/example/features/003-authorize-payment.md"
+ATTEMPT = ".concorde/attempts/feature.example.checkout.authorize"
+
+
 class InstalledCodexWorkflowTests(unittest.TestCase):
-    def test_five_surfaces_preserve_four_runtime_operations_and_acceptance(self):
+    def test_five_surfaces_preserve_four_runtime_operations_and_cleanup_delivery(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
             dist = base / "dist"
@@ -33,14 +38,16 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 shutil.copytree(TWO_LEVEL_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
                 shutil.copytree(TWO_LEVEL_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
                 (root / ".specify/feature.json").write_text(
-                    json.dumps({"feature_directory": "specs/example/features/001-checkout/subfeatures/001-authorize-payment"}, separators=(",", ":")) + "\n",
+                    json.dumps({"feature_path": FEATURE}, separators=(",", ":")) + "\n",
                     encoding="utf-8",
                 )
+
                 self.assertEqual(
                     len({registered_artifact(root, "codex", command) for command in CONCORDE_COMMANDS}),
                     5,
                 )
                 self.assertEqual(len(CONCORDE_RUNTIME_COMMANDS), 4)
+
                 workspace_adapter = root / ".specify/extensions/concorde/scripts/python/workspace.py"
                 checklist_paths = subprocess.run(
                     [sys.executable, str(workspace_adapter), "--project-root", str(root), "--phase", "checklist"],
@@ -49,40 +56,22 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                     capture_output=True,
                     check=True,
                 )
-                checklist_payload = json.loads(checklist_paths.stdout)
-                self.assertEqual(checklist_payload["schema_version"], 9)
-                workspace_payload = checklist_payload["workspace"]
-                self.assertEqual(workspace_payload["workspace_kind"], "subfeature")
-                self.assertEqual(workspace_payload["parent_context"]["feature_id"], "feature.example.checkout")
-                self.assertEqual(
-                    workspace_payload["parent_context"]["feature_implementation"],
-                    "specs/example/features/001-checkout/implementation.md",
-                )
-                self.assertEqual(
-                    workspace_payload["parent_context"]["feature_abstract"],
-                    "specs/example/features/001-checkout/abstract.md",
-                )
-                self.assertEqual(
-                    workspace_payload["feature_implementation"],
-                    "specs/example/features/001-checkout/subfeatures/001-authorize-payment/implementation.md",
-                )
-                self.assertEqual(
-                    workspace_payload["feature_abstract"],
-                    "specs/example/features/001-checkout/subfeatures/001-authorize-payment/abstract.md",
-                )
-                self.assertEqual(workspace_payload["module_summary"], "specs/example/module.md")
-                self.assertEqual(workspace_payload["module_design"], "specs/example/design.md")
-                self.assertIn("feature_implementation", workspace_payload)
-                self.assertEqual(
-                    workspace_payload["checklists_dir"],
-                    workspace_payload["attempt_dir"] + "/checklists",
-                )
+                payload = json.loads(checklist_paths.stdout)
+                self.assertEqual(payload["schema_version"], 12)
+                workspace = payload["workspace"]
+                self.assertEqual(workspace["feature_id"], "feature.example.checkout.authorize")
+                self.assertEqual(workspace["feature_path"], FEATURE)
+                self.assertEqual(workspace["module_architecture"], "specs/example/architecture.md")
+                self.assertEqual(workspace["module_ancestry"], [])
+                self.assertEqual(workspace["checklists_dir"], workspace["attempt_dir"] + "/checklists")
+                for removed in (
+                    "feature_directory", "feature_design", "workspace_kind", "feature_abstract",
+                    "feature_implementation", "module_summary", "module_design", "contracts_dir", "parent_context",
+                ):
+                    self.assertNotIn(removed, workspace)
+
                 launcher = root / ".specify/extensions/concorde/scripts/python/concorde.py"
-                operations = (
-                    (["validate"], {"success"}),
-                    (["context", "module.example"], {"success"}),
-                )
-                for arguments, statuses in operations:
+                for arguments in (("validate",), ("context", "module.example")):
                     result = subprocess.run(
                         [sys.executable, str(launcher), "--project-root", str(root), *arguments],
                         cwd=root,
@@ -90,78 +79,53 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                         capture_output=True,
                     )
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                    self.assertIn(json.loads(result.stdout)["status"], statuses)
-                attempt = root / "specs/example/features/001-checkout/subfeatures/001-authorize-payment/attempt"
-                attempt.mkdir(exist_ok=True)
-                (attempt / "tasks.md").write_text("# Tasks\n\n- [X] T001 Complete installed fixture\n", encoding="utf-8")
-                delivery = subprocess.run(
+                    self.assertEqual(json.loads(result.stdout)["status"], "success")
+
+                feature_path = root / FEATURE
+                attempt = write_complete_attempt(feature_path)
+                design = feature_path
+                architecture = root / "specs/example/architecture.md"
+                retained_before = {path: path.read_bytes() for path in (design, architecture)}
+
+                proposed = subprocess.run(
                     [sys.executable, str(launcher), "--project-root", str(root), "deliver", "--propose"],
                     cwd=root,
                     text=True,
                     capture_output=True,
                 )
-                self.assertEqual(delivery.returncode, 0, delivery.stdout + delivery.stderr)
-                delivery_payload = json.loads(delivery.stdout)
-                self.assertEqual(delivery_payload["status"], "eligible")
-                self.assertEqual(
-                    delivery_payload["proposal_path"],
-                    delivery_payload["workspace"]["attempt_dir"] + "/deliver-proposal.json",
-                )
-                self.assertEqual(delivery_payload["task_summary"], {"complete": 1, "incomplete": 0, "malformed": 0})
-                self.assertEqual(
-                    delivery_payload["checklist_summary"],
-                    {"files": 0, "complete": 0, "incomplete": 0, "malformed": 0},
-                )
-                self.assertEqual(delivery_payload["schema_version"], 9)
-                self.assertEqual(delivery_payload["workspace"]["module_design"], "specs/example/design.md")
-                self.assertIn("specs/example/design.md", delivery_payload["artifacts"])
-                # Proposal v7 retains the read-only runtime boundary; the agent command applies it
-                # automatically under the original invocation.
-                before = {
-                    path.relative_to(root): path.read_bytes()
-                    for path in (root / "specs").rglob("*")
-                    if path.is_file()
-                }
-                candidate = (
-                    "# Feature Implementation: Authorize Payment\n\n**Realization status**: Accepted in the installed fixture.\n\n"
-                    "## Realization Overview\n\nInstalled.\n\n## Module and Feature Collaboration\n\nInstalled.\n\n"
-                    "## Scenario Realization\n\nInstalled.\n\n## Durable Implementation Decisions\n\nInstalled.\n\n"
-                    "## Traceability and Evidence\n\nInstalled.\n\n## Known Limitations\n\nNone.\n"
-                )
-                amendment = "# Design Reference: Example Commerce\n\n## Decision Log\n\n- Accepted authorize-payment in the installed fixture.\n"
-                proposal_path = root / delivery_payload["proposal_path"]
+                self.assertEqual(proposed.returncode, 0, proposed.stdout + proposed.stderr)
+                delivery = json.loads(proposed.stdout)
+                self.assertEqual(delivery["status"], "eligible")
+                self.assertEqual(delivery["proposal_version"], 8)
+                self.assertEqual(delivery["schema_version"], 12)
+                self.assertEqual(delivery["task_summary"], {"complete": 1, "incomplete": 0, "malformed": 0})
+                self.assertEqual(delivery["evidence_summary"], {"passed": 1, "missing": 0})
+                self.assertNotIn("feature_implementation", delivery["workspace"])
+
+                proposal_path = root / delivery["proposal_path"]
                 proposal_path.write_text(
                     json.dumps(
                         {
-                            "proposal_version": 7,
+                            "proposal_version": 8,
                             "operation": "deliver",
-                            "target": delivery_payload["target"],
-                            "source_digest": delivery_payload["source_digest"],
-                            "implementation": {"path": delivery_payload["workspace"]["feature_implementation"], "content": candidate},
-                            "module_design": {"path": delivery_payload["workspace"]["module_design"], "content": amendment},
-                            "remove": [delivery_payload["workspace"]["attempt_dir"]],
+                            "target": delivery["target"],
+                            "source_digest": delivery["source_digest"],
+                            "remove": [delivery["workspace"]["attempt_dir"]],
                         }
                     )
                     + "\n",
                     encoding="utf-8",
                 )
-                reviewed = subprocess.run(
-                    [sys.executable, str(launcher), "--project-root", str(root), "deliver", "--propose"],
-                    cwd=root,
-                    text=True,
-                    capture_output=True,
-                )
-                self.assertEqual(reviewed.returncode, 0, reviewed.stdout + reviewed.stderr)
-                after_review = {
-                    path.relative_to(root): path.read_bytes()
-                    for path in (root / "specs").rglob("*")
-                    if path.is_file() and path.name != "deliver-proposal.json"
-                }
-                self.assertEqual({k: v for k, v in before.items() if k.name != "deliver-proposal.json"}, after_review)
                 applied = subprocess.run(
                     [
-                        sys.executable, str(launcher), "--project-root", str(root),
-                        "deliver", "--apply", "--proposal", delivery_payload["proposal_path"],
+                        sys.executable,
+                        str(launcher),
+                        "--project-root",
+                        str(root),
+                        "deliver",
+                        "--apply",
+                        "--proposal",
+                        delivery["proposal_path"],
                     ],
                     cwd=root,
                     text=True,
@@ -170,17 +134,16 @@ class InstalledCodexWorkflowTests(unittest.TestCase):
                 self.assertEqual(applied.returncode, 0, applied.stdout + applied.stderr)
                 applied_payload = json.loads(applied.stdout)
                 self.assertEqual(applied_payload["status"], "delivered")
-                self.assertRegex(applied_payload["module_design_digest_after"], r"^sha256:[0-9a-f]{64}$")
-                self.assertEqual((root / "specs/example/design.md").read_text(encoding="utf-8"), amendment)
-                self.assertEqual(
-                    (root / "specs/example/features/001-checkout/subfeatures/001-authorize-payment/implementation.md").read_text(encoding="utf-8"),
-                    candidate,
-                )
                 self.assertFalse(attempt.exists())
-                adapter = workspace_adapter
-                adapter.unlink()
+                self.assertTrue(feature_path.is_file())
+                self.assertEqual(retained_before, {path: path.read_bytes() for path in retained_before})
+                self.assertTrue(applied_payload["removed_artifacts"])
+                self.assertTrue(all(path.startswith(ATTEMPT + "/") for path in applied_payload["removed_artifacts"]))
+                self.assertIn(ATTEMPT + "/tasks.md", applied_payload["removed_artifacts"])
+
+                workspace_adapter.unlink()
                 missing = subprocess.run(
-                    [sys.executable, str(adapter), "--project-root", str(root), "--phase", "plan"],
+                    [sys.executable, str(workspace_adapter), "--project-root", str(root), "--phase", "plan"],
                     cwd=root,
                     text=True,
                     capture_output=True,

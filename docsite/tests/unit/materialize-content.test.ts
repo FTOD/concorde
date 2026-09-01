@@ -5,52 +5,46 @@ import {describe, expect, it} from 'vitest';
 import {buildRegistry} from '../../plugins/concorde-content/registry';
 import type {FeatureDesign, ProjectDocument} from '../../plugins/concorde-content/types';
 import {
-  featureCategoryMetadata, featureCategoryPath, featureSidebarItems, stageHomepageDocument,
+  architectureSidebarItems, featureSidebarItems, stageFeatureDocument, stageHomepageDocument,
 } from '../../scripts/materialize-content';
 
-describe('homepage materialization', () => {
-  it('adds disposable root-route metadata without changing the maintained README body', async () => {
-    const registry = await buildRegistry(resolve(__dirname, '../fixtures/valid-project'));
+const fixture = resolve(__dirname, '../fixtures/valid-project');
+
+describe('content materialization', () => {
+  it('adds renderer-only route metadata without changing canonical bodies', async () => {
+    const registry = await buildRegistry(fixture);
     const homepage = registry.documents.find((item): item is ProjectDocument => item.collectionId === 'home')!;
-    const staged = stageHomepageDocument(homepage);
-    expect(staged).toContain('slug: /');
-    expect(staged).toContain('# Fixture Project');
-    expect(staged).toContain(homepage.content.trim());
-    expect(homepage.frontMatter.slug).toBeUndefined();
-  });
-});
-
-describe('feature content materialization', () => {
-  it('derives human-readable categories from the semantic feature tree', async () => {
-    const registry = await buildRegistry(resolve(__dirname, '../fixtures/valid-project'));
-    const features = registry.documents.filter((item): item is FeatureDesign => item.collectionId === 'features');
-    const parent = features.find((item) => item.featureId === 'feature.fixture.alpha')!;
-    const child = features.find((item) => item.featureId === 'feature.fixture.alpha.prepare')!;
-    const nestedSource = features.find((item) => item.featureId === 'feature.fixture.beta')!;
-
-    expect(featureCategoryPath(parent)).toBe('feature.fixture.alpha/_category_.json');
-    expect(featureCategoryMetadata(parent)).toEqual({
-      label: 'Alpha',
-      link: {type: 'doc', id: 'feature.fixture.alpha/abstract'},
-    });
-    expect(featureCategoryPath(child)).toBe('feature.fixture.alpha/feature.fixture.alpha.prepare/_category_.json');
-    expect(featureCategoryMetadata(child).link.id)
-      .toBe('feature.fixture.alpha/feature.fixture.alpha.prepare/abstract');
-    expect(featureCategoryPath(nestedSource)).toBe('feature.fixture.beta/_category_.json');
-    expect(features.map((item) => item.stagedPath).join('\n')).not.toMatch(/(?:^|\/)modules\//);
-    expect(features.map((item) => item.stagedPath).join('\n')).not.toMatch(/(?:^|\/)architecture\//);
+    const feature = registry.documents.find((item): item is FeatureDesign => item.collectionId === 'features')!;
+    expect(stageHomepageDocument(homepage)).toContain('slug: /');
+    const staged = stageFeatureDocument(feature);
+    expect(staged).toContain('slug: /feature.fixture.alpha');
+    expect(staged).toContain(feature.content.trim());
+    expect(feature.frontMatter.slug).toBeUndefined();
   });
 
-  it('groups feature categories by module registration while retaining explicit subfeatures', async () => {
-    const registry = await buildRegistry(resolve(__dirname, '../fixtures/valid-project'));
+  it('builds architecture navigation from module containment', async () => {
+    const registry = await buildRegistry(fixture);
+    expect(architectureSidebarItems(registry)).toEqual([{
+      type: 'category', label: 'Fixture Architecture',
+      link: {type: 'doc', id: 'module.fixture/architecture'}, collapsed: false,
+      items: [{
+        type: 'category', label: 'Nested Fixture Architecture',
+        link: {type: 'doc', id: 'module.fixture.nested/architecture'}, collapsed: true, items: [],
+      }],
+    }]);
+  });
+
+  it('groups each direct feature file once under its providing module', async () => {
+    const registry = await buildRegistry(fixture);
     const sidebar = featureSidebarItems(registry);
     expect(sidebar).toHaveLength(1);
     expect(sidebar[0]).toMatchObject({type: 'category', label: 'Fixture Architecture', collapsed: false});
-    expect(sidebar[0].items?.map((item) => item.label)).toEqual(['Alpha', 'Beta']);
-    const alpha = sidebar[0].items?.[0];
-    expect(alpha?.items?.map((item) => item.label)).toEqual([
-      'Design', 'Implementation', 'Prepare Alpha', 'Finish Alpha',
-    ]);
-    expect(alpha?.items?.[0]).toMatchObject({type: 'doc', id: 'feature.fixture.alpha/feature.fixture.alpha'});
+    expect(sidebar[0].items?.map((item) => item.label)).toEqual(['Alpha', 'Nested Fixture Architecture']);
+    expect(sidebar[0].items?.[0]).toEqual({
+      type: 'doc', id: 'feature.fixture.alpha', label: 'Alpha',
+    });
+    expect(sidebar[0].items?.[1].items?.[0]).toEqual({
+      type: 'doc', id: 'feature.fixture.beta', label: 'Beta',
+    });
   });
 });

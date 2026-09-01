@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "operation": "context",
+  "target": "module.example",
+  "status": "success",
+  "artifacts": [
+    ".concorde/reflections/log.md",
+    "specs/example/architecture.md",
+    "specs/example/diagrams/level-view.json",
+    "specs/example/modules/api/architecture.md"
+  ],
+  "findings": [],
+  "result": {
+    "context": {
+      "requested_id": "module.example",
+      "current_module": {
+        "id": "module.example",
+        "architecture": "specs/example/architecture.md",
+        "organization": {
+          "parent": null,
+          "modules": ["module.example.api"]
+        },
+        "responsibility": "Deliver the example workflow.",
+        "boundary": "Own orchestration, not API internals.",
+        "features": ["feature.example.deliver-workflow"],
+        "diagrams": ["specs/example/diagrams/level-view.json"],
+        "entities": [
+          {
+            "id": "entity.example.workflow",
+            "type": "program",
+            "definition": "Orchestrates the example workflow.",
+            "locator": "src/example/workflow.py",
+            "roles": ["orchestrator"]
+          }
+        ],
+        "relationships": [
+          {
+            "source": "entity.example.workflow",
+            "predicate": "calls",
+            "target": "entity.example.api",
+            "description": "Invokes the API boundary.",
+            "interface": "contract.example.workflow"
+          }
+        ],
+        "interactions": [
+          {
+            "id": "interaction.example.deliver",
+            "trigger": "A maintainer requests delivery.",
+            "steps": ["entity.example.workflow calls entity.example.api"],
+            "result": "The API returns the workflow result.",
+            "interfaces": ["contract.example.workflow"]
+          }
+        ]
+      },
+      "children": [
+        {
+          "id": "module.example.api",
+          "architecture": "specs/example/modules/api/architecture.md",
+          "organization": {"parent": "module.example", "position": "immediate-child"},
+          "responsibility": "Expose API commands.",
+          "boundary": "Own API internals only."
+        }
+      ],
+      "module_ancestry": [],
+      "related_features": [
+        {
+          "feature_id": "feature.example.deliver-workflow",
+          "title": "Deliver Workflow",
+          "module": "module.example",
+          "feature_path": "specs/example/features/001-deliver-workflow.md",
+          "outcome": "A maintainer can deliver the example workflow.",
+          "evidence_status": "verified"
+        }
+      ],
+      "externals": [],
+      "deeper_references": ["module.example.api"],
+      "feature_workspace": null,
+      "architecture_readiness": null,
+      "reflections": {
+        "path": ".concorde/reflections/log.md",
+        "open": {"feature.example.deliver-workflow": 1}
+      }
+    }
+  }
+}

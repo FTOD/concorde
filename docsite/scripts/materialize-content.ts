@@ -1,119 +1,118 @@
-import {copyFile, mkdir, rm, writeFile} from 'node:fs/promises';
-import {dirname, posix, relative, resolve} from 'node:path';
+import {copyFile, lstat, mkdir, rm, writeFile} from 'node:fs/promises';
+import {dirname, relative, resolve, sep} from 'node:path';
 
 import matter from 'gray-matter';
 
 import {buildRegistry} from '../plugins/concorde-content/registry';
 import type {
-  ArchitectureSource, CollectionId, ContentRegistry, FeatureDesign, ProjectDocument, SourceDocument,
+  ContentRegistry, FeatureDesign, ModuleArchitecture, ProjectDocument, SourceDocument,
 } from '../plugins/concorde-content/types';
 import {assertValidRegistry} from '../plugins/concorde-content/validation';
 
 const siteDir = resolve(__dirname, '..');
 const projectRoot = resolve(siteDir, '..');
 export const generatedContentRoot = resolve(siteDir, '.generated/content');
+export const generatedStaticRoot = resolve(siteDir, '.generated/static');
 export const generatedFeatureSidebarPath = resolve(siteDir, '.generated/features-sidebar.json');
+export const generatedArchitectureSidebarPath = resolve(siteDir, '.generated/architecture-sidebar.json');
 
-/** The three pages of a feature root are staged together beneath the Features root. */
-const featureCollections = new Set<CollectionId>(['feature-abstracts', 'features', 'feature-implementations']);
-/** Sidebar order inside one feature root: abstract, design, then implementation. */
-const featureSidebarPositions = {'feature-abstract': 1, 'feature-design': 2, 'feature-implementation': 3} as const;
+function rendererFrontMatter(document: SourceDocument): Record<string, unknown> {
+  const {id: _canonicalId, slug: _canonicalSlug, sidebar_label: _label, sidebar_position: _position, ...rest} = document.frontMatter;
+  return rest;
+}
 
-/**
- * A feature page is staged with the route the registry assigned it, so Docusaurus renders the abstract at
- * `/features/<root>` and the specification and design reference one segment below it instead of deriving
- * routes from the specification's front matter id. The staged copy is a renderer projection only.
- */
-export function stageFeatureDocument(document: SourceDocument): string {
-  const contentKind = document.contentKind as keyof typeof featureSidebarPositions;
+/** Stage one direct feature source as one flat renderer file at its stable feature-ID route. */
+export function stageFeatureDocument(document: FeatureDesign): string {
   return matter.stringify(document.content, {
-    ...document.frontMatter,
-    slug: document.route.slice('/features'.length),
+    ...rendererFrontMatter(document), slug: document.route.slice('/features'.length),
     sidebar_label: document.sidebarLabel ?? document.title,
-    sidebar_position: featureSidebarPositions[contentKind],
   });
 }
 
-/** Add renderer-only route metadata while preserving the maintained README body and front matter. */
+/** Stage architecture.md as the module's stable module-ID landing page. */
+export function stageArchitectureDocument(document: ModuleArchitecture): string {
+  return matter.stringify(document.content, {
+    ...rendererFrontMatter(document), slug: document.route.slice('/architecture'.length),
+    sidebar_label: document.sidebarLabel ?? document.title,
+  });
+}
+
+/** Add renderer-only root-route metadata while preserving the maintained README body. */
 export function stageHomepageDocument(document: ProjectDocument): string {
   return matter.stringify(document.content, {
-    ...document.frontMatter,
-    slug: '/',
-    sidebar_label: document.sidebarLabel ?? document.title,
+    ...rendererFrontMatter(document), slug: '/', sidebar_label: document.sidebarLabel ?? document.title,
   });
 }
 
-export function featureCategoryPath(document: FeatureDesign): string {
-  if (!document.stagedPath) throw new Error(`Feature "${document.featureId}" has no semantic staged path.`);
-  return posix.join(posix.dirname(document.stagedPath), '_category_.json');
-}
-
-export function featureCategoryMetadata(document: FeatureDesign): {
-  label: string;
-  link: {type: 'doc'; id: string};
-} {
-  if (!document.stagedPath) throw new Error(`Feature "${document.featureId}" has no semantic staged path.`);
-  const directory = posix.dirname(document.stagedPath);
-  return {label: document.title, link: {type: 'doc', id: posix.join(directory, 'abstract')}};
-}
-
-type FeatureSidebarItem = {
+export type SidebarItem = {
   type: 'category' | 'doc';
   label: string;
   id?: string;
   link?: {type: 'doc'; id: string};
-  items?: FeatureSidebarItem[];
+  items?: SidebarItem[];
   collapsed?: boolean;
 };
 
-function stringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+function publicationModel(registry: ContentRegistry) {
+  const modules = registry.documents.filter((document): document is ModuleArchitecture => document.contentKind === 'module-architecture');
+  const features = registry.documents.filter((document): document is FeatureDesign => document.contentKind === 'feature-design');
+  return {
+    modules,
+    features,
+    modulesById: new Map(modules.map((module) => [module.moduleId, module])),
+    featuresById: new Map(features.map((feature) => [feature.featureId, feature])),
+  };
 }
 
-/** Build Features navigation from module containment while keeping stable identity-derived feature routes. */
-export function featureSidebarItems(registry: ContentRegistry): FeatureSidebarItem[] {
-  const modules = registry.documents.filter((document): document is ArchitectureSource =>
-    document.contentKind === 'architecture-source' && (document as ArchitectureSource).architectureKind === 'module');
-  const features = registry.documents.filter((document): document is FeatureDesign => document.collectionId === 'features');
-  const modulesById = new Map(modules.map((module) => [module.architectureId, module]));
-  const featuresById = new Map(features.map((feature) => [feature.featureId, feature]));
+/** Build Architecture navigation from the declared recursive module hierarchy. */
+export function architectureSidebarItems(registry: ContentRegistry): SidebarItem[] {
+  const {modules, modulesById} = publicationModel(registry);
+  const included = new Set<string>();
+  const moduleItem = (moduleId: string, root = false): SidebarItem => {
+    const module = modulesById.get(moduleId);
+    if (!module?.stagedPath) throw new Error(`Architecture sidebar cannot resolve module "${moduleId}".`);
+    if (included.has(moduleId)) throw new Error(`Architecture sidebar includes module "${moduleId}" more than once.`);
+    included.add(moduleId);
+    return {
+      type: 'category', label: module.title,
+      link: {type: 'doc', id: module.stagedPath.replace(/\.md$/, '')},
+      items: module.moduleIds.map((childId) => moduleItem(childId)), collapsed: !root,
+    };
+  };
+  const result = modules.filter((module) => !module.parentId).map((module) => moduleItem(module.moduleId, true));
+  const missing = modules.map((module) => module.moduleId).filter((id) => !included.has(id));
+  if (missing.length) throw new Error(`Architecture sidebar omits modules: ${missing.join(', ')}.`);
+  return result;
+}
+
+/** Build Features navigation from module containment; features themselves remain flat doc items. */
+export function featureSidebarItems(registry: ContentRegistry): SidebarItem[] {
+  const {modules, features, modulesById, featuresById} = publicationModel(registry);
   const includedModules = new Set<string>();
   const includedFeatures = new Set<string>();
-
-  const featureItem = (featureId: string): FeatureSidebarItem => {
+  const featureItem = (featureId: string): SidebarItem => {
     const feature = featuresById.get(featureId);
     if (!feature?.stagedPath) throw new Error(`Feature sidebar cannot resolve registered feature "${featureId}".`);
     if (includedFeatures.has(featureId)) throw new Error(`Feature sidebar includes "${featureId}" more than once.`);
     includedFeatures.add(featureId);
-    const directory = posix.dirname(feature.stagedPath);
-    return {
-      type: 'category', label: feature.title, link: {type: 'doc', id: posix.join(directory, 'abstract')},
-      items: [
-        {type: 'doc', id: posix.join(directory, feature.featureId), label: 'Design'},
-        {type: 'doc', id: posix.join(directory, 'implementation'), label: 'Implementation'},
-        ...feature.subfeatureIds.map(featureItem),
-      ],
-      collapsed: true,
-    };
+    return {type: 'doc', id: feature.stagedPath.replace(/\.md$/, ''), label: feature.title};
   };
-
-  const moduleItem = (moduleId: string, root = false): FeatureSidebarItem => {
+  const moduleItem = (moduleId: string, root = false): SidebarItem => {
     const module = modulesById.get(moduleId);
-    if (!module) throw new Error(`Feature sidebar cannot resolve registered module "${moduleId}".`);
+    if (!module) throw new Error(`Feature sidebar cannot resolve module "${moduleId}".`);
     if (includedModules.has(moduleId)) throw new Error(`Feature sidebar includes module "${moduleId}" more than once.`);
     includedModules.add(moduleId);
     return {
       type: 'category', label: module.title,
       items: [
-        ...stringList(module.frontMatter.features).map(featureItem),
-        ...stringList(module.frontMatter.children).map((childId) => moduleItem(childId)),
+        ...module.featureIds.map(featureItem),
+        ...module.moduleIds.map((childId) => moduleItem(childId)),
       ],
       collapsed: !root,
     };
   };
-
-  const result = modules.filter((module) => module.parentId == null).map((module) => moduleItem(module.architectureId, true));
-  const missingModules = modules.map((module) => module.architectureId).filter((id) => !includedModules.has(id));
+  const result = modules.filter((module) => !module.parentId).map((module) => moduleItem(module.moduleId, true));
+  const missingModules = modules.map((module) => module.moduleId).filter((id) => !includedModules.has(id));
   const missingFeatures = features.map((feature) => feature.featureId).filter((id) => !includedFeatures.has(id));
   if (missingModules.length || missingFeatures.length) {
     throw new Error(`Feature sidebar omits registered sources: ${[...missingModules, ...missingFeatures].join(', ')}.`);
@@ -123,37 +122,43 @@ export function featureSidebarItems(registry: ContentRegistry): FeatureSidebarIt
 
 export async function materializeContent(providedRegistry?: ContentRegistry): Promise<void> {
   const registry = providedRegistry ?? assertValidRegistry(await buildRegistry(projectRoot));
-  await rm(generatedContentRoot, {recursive: true, force: true});
+  await Promise.all([
+    rm(generatedContentRoot, {recursive: true, force: true}),
+    rm(generatedStaticRoot, {recursive: true, force: true}),
+  ]);
 
   for (const document of registry.documents) {
-    if (document.collectionId === 'home') {
-      const destination = resolve(generatedContentRoot, 'home', document.stagedPath ?? 'README.md');
-      await mkdir(dirname(destination), {recursive: true});
-      await writeFile(destination, stageHomepageDocument(document as ProjectDocument), 'utf8');
+    if (document.collectionId === 'docs') continue;
+    const collectionDirectory = document.collectionId === 'home' ? 'home' : document.collectionId;
+    const destination = resolve(generatedContentRoot, collectionDirectory, document.stagedPath ?? 'README.md');
+    await mkdir(dirname(destination), {recursive: true});
+    const staged = document.collectionId === 'home'
+      ? stageHomepageDocument(document as ProjectDocument)
+      : document.contentKind === 'module-architecture'
+        ? stageArchitectureDocument(document as ModuleArchitecture)
+        : stageFeatureDocument(document as FeatureDesign);
+    await writeFile(destination, staged, 'utf8');
+  }
+  const copiedAssets = new Set<string>();
+  for (const link of registry.documents.flatMap((document) => document.links).filter((link) => link.kind === 'asset')) {
+    if (!link.targetSourcePath || copiedAssets.has(link.targetSourcePath)) continue;
+    const source = resolve(registry.projectRoot, link.targetSourcePath);
+    const fromRoot = relative(resolve(registry.projectRoot), source);
+    if (fromRoot === '..' || fromRoot.startsWith(`..${sep}`)) continue;
+    try {
+      if (!(await lstat(source)).isFile()) continue;
+    } catch {
       continue;
     }
-    const isFeaturePage = featureCollections.has(document.collectionId);
-    if (document.collectionId !== 'architecture' && !isFeaturePage) continue;
-    // Pages are staged at their projected path (the `architecture/` grouping segment dropped), which is the
-    // path Docusaurus derives their sidebar position and, for architecture pages, their route from.
-    const relativeSpecPath = document.stagedPath ?? relative(resolve(projectRoot, 'specs'), resolve(projectRoot, document.sourcePath));
-    // Abstracts, designs, and implementations are staged beside each other under the Features root; module
-    // design references belong to the architecture collection and land beside their module.md.
-    const destination = resolve(generatedContentRoot, isFeaturePage ? 'features' : document.collectionId, relativeSpecPath);
+    const destination = resolve(generatedStaticRoot, link.targetSourcePath);
     await mkdir(dirname(destination), {recursive: true});
-    if (isFeaturePage) {
-      await writeFile(destination, stageFeatureDocument(document), 'utf8');
-      if (document.collectionId === 'features') {
-        const feature = document as FeatureDesign;
-        const categoryDestination = resolve(generatedContentRoot, 'features', featureCategoryPath(feature));
-        await mkdir(dirname(categoryDestination), {recursive: true});
-        await writeFile(categoryDestination, `${JSON.stringify(featureCategoryMetadata(feature), null, 2)}\n`, 'utf8');
-      }
-    } else {
-      await copyFile(document.realPath, destination);
-    }
+    await copyFile(source, destination);
+    copiedAssets.add(link.targetSourcePath);
   }
-  await writeFile(generatedFeatureSidebarPath, `${JSON.stringify(featureSidebarItems(registry), null, 2)}\n`, 'utf8');
+  await Promise.all([
+    writeFile(generatedArchitectureSidebarPath, `${JSON.stringify(architectureSidebarItems(registry), null, 2)}\n`, 'utf8'),
+    writeFile(generatedFeatureSidebarPath, `${JSON.stringify(featureSidebarItems(registry), null, 2)}\n`, 'utf8'),
+  ]);
 }
 
 if (require.main === module) {

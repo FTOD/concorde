@@ -26,13 +26,15 @@ class PresetWorkflowAcceptance(unittest.TestCase):
             environment = os.environ.copy()
             environment.pop("VIRTUAL_ENV", None)
             environment["PATH"] = "/usr/local/bin:/usr/bin:/bin"
-            workspace = root / "specs/example/architecture/modules/api/features/001-add-endpoint"
-            implementation = workspace / "implementation"
-            implementation.mkdir(parents=True)
+            module = root / "specs/example/modules/api"
+            feature = module / "features/001-add-endpoint.md"
+            attempt = root / ".concorde/attempts/feature.example.api.add-endpoint"
+            feature.parent.mkdir(parents=True)
+            attempt.mkdir(parents=True)
             for artifact, template in (
-                (workspace / "design.md", "spec-template"),
-                (implementation / "plan.md", "plan-template"),
-                (implementation / "tasks.md", "tasks-template"),
+                (feature, "spec-template"),
+                (attempt / "plan.md", "plan-template"),
+                (attempt / "tasks.md", "tasks-template"),
             ):
                 result = subprocess.run(
                     [str(root / ".specify/scripts/bash/resolve-template.sh"), template],
@@ -43,23 +45,23 @@ class PresetWorkflowAcceptance(unittest.TestCase):
                     text=True,
                 )
                 artifact.write_text(result.stdout)
-            self.assertEqual(list(workspace.glob("design.md")), [workspace / "design.md"])
-            self.assertIn("Concorde Architecture Alignment", (workspace / "design.md").read_text())
-            self.assertIn("Core feature diagram", (workspace / "design.md").read_text())
-            self.assertIn("Concorde Architecture Gate", (implementation / "plan.md").read_text())
-            self.assertIn("Evaluate feature-owned diagrams", (implementation / "plan.md").read_text())
-            self.assertIn("Concorde Task Coverage", (implementation / "tasks.md").read_text())
-            self.assertIn("For each required feature-owned diagram", (implementation / "tasks.md").read_text())
-            for artifact in (workspace / "design.md", implementation / "plan.md", implementation / "tasks.md"):
+            self.assertEqual(list((module / "features").glob("*.md")), [feature])
+            self.assertIn("Concorde Feature Profile", feature.read_text())
+            self.assertIn("Architecture Zoom", feature.read_text())
+            self.assertIn("Concorde Architecture Gate", (attempt / "plan.md").read_text())
+            self.assertIn("architecture-owned diagram", (attempt / "plan.md").read_text())
+            self.assertIn("Concorde Task Coverage", (attempt / "tasks.md").read_text())
+            self.assertIn("architecture-owned diagrams", (attempt / "tasks.md").read_text())
+            for artifact in (feature, attempt / "plan.md", attempt / "tasks.md"):
                 self.assertIn("meta.legend.mode", artifact.read_text(encoding="utf-8"))
-            self.assertFalse((workspace / "plan.md").exists())
-            self.assertFalse((workspace / "tasks.md").exists())
-            self.assertFalse((workspace / "checklists").exists())
+            self.assertFalse((module / "features/001-add-endpoint").exists())
+            self.assertFalse((module / "attempts/001-add-endpoint").exists())
+            self.assertFalse((module / "attempt/plan.md").exists())
             self.assertFalse((root / "architecture").exists())
             for skill in ("speckit-specify", "speckit-clarify", "speckit-checklist", "speckit-implement"):
                 content = (root / ".agents/skills" / skill / "SKILL.md").read_text(encoding="utf-8")
                 self.assertNotIn("FEATURE_DIR/checklists", content)
-                self.assertIn("CHECKLISTS_DIR", content)
+                self.assertIn("checklists_dir", content.lower())
             for skill in ("speckit-specify", "speckit-plan", "speckit-tasks", "speckit-implement"):
                 content = (root / ".agents/skills" / skill / "SKILL.md").read_text(encoding="utf-8")
                 self.assertIn("meta.legend.mode", content)

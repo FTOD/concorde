@@ -9,6 +9,7 @@ const siteDir = resolve(__dirname, '../..');
 describe('build interface', () => {
   it('exposes every stable command', async () => {
     const packageJson = JSON.parse(await readFile(resolve(siteDir, 'package.json'), 'utf8'));
+    expect(packageJson.version).toBe('0.6.0');
     expect(Object.keys(packageJson.scripts)).toEqual(expect.arrayContaining([
       'inspect', 'validate', 'render-diagrams', 'start', 'test', 'build', 'typecheck', 'check',
     ]));
@@ -16,6 +17,8 @@ describe('build interface', () => {
     expect(packageJson.scripts['render-diagrams']).toBe('tsx scripts/render-diagrams.ts');
     expect(await readFile(resolve(siteDir, 'scripts/start.ts'), 'utf8')).toContain('preparePublication(projectRoot)');
     expect(await readFile(resolve(siteDir, 'scripts/build.ts'), 'utf8')).toContain('preparePublication(projectRoot)');
+    expect(await readFile(resolve(siteDir, 'scripts/build.ts'), 'utf8'))
+      .toContain('tests/fixtures/interfaces/build-manifest.schema.json');
     const preparation = await readFile(resolve(siteDir, 'scripts/prepare-publication.ts'), 'utf8');
     expect(preparation).toContain("rm(resolve(__dirname, '../.docusaurus'), {recursive: true, force: true})");
     expect(preparation).toContain("rm(resolve(__dirname, '../node_modules/.cache'), {recursive: true, force: true})");

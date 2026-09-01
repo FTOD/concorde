@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "protocol": "reflection-triage/v1",
+  "protocol": "reflection-triage/v2",
   "integrations": {
     "claude": {
       "outputs": [

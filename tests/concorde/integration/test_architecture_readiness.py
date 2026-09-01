@@ -1,11 +1,10 @@
-import json
 import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.paths import CONTEXT_PROJECT, REPOSITORY_ROOT, RUNTIME_ROOT
+from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
@@ -13,46 +12,31 @@ from concorde.readiness import architecture_readiness  # noqa: E402
 
 
 class ArchitectureReadinessTests(unittest.TestCase):
-    def test_cross_boundary_feature_is_incomplete_then_ready(self):
+    def test_valid_feature_is_ready_with_entities_interfaces_and_digest(self):
+        ready = architecture_readiness(CONTEXT_PROJECT, "feature.example.api.invoke")
+        self.assertEqual(ready["status"], "ready", ready["findings"])
+        self.assertEqual(ready["providing_module"], "module.example.api")
+        self.assertEqual(ready["module_architecture"], "specs/example/modules/api/architecture.md")
+        self.assertIn("entity.example.api.handler", ready["participating_entities"])
+        self.assertEqual(ready["interfaces"]["provided"], ["contract.example.api"])
+        self.assertRegex(ready["source_digest"], r"^sha256:[0-9a-f]{64}$")
+
+    def test_unresolved_zoom_entity_makes_readiness_incomplete(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(CONTEXT_PROJECT, root)
-            view_path = root / "specs/example/architecture/diagrams/level-view.json"
-            view = json.loads(view_path.read_text())
-            contract = view["connections"][0].pop("contract")
-            view_path.write_text(json.dumps(view))
-            incomplete = architecture_readiness(root, "feature.example.deliver")
-            self.assertEqual(incomplete["status"], "incomplete")
-            self.assertIn("contract", " ".join(item["message"] for item in incomplete["findings"]).lower())
-            view["connections"][0]["contract"] = contract
-            view_path.write_text(json.dumps(view))
-            ready = architecture_readiness(root, "feature.example.deliver")
-            self.assertEqual(ready["status"], "ready")
-            self.assertEqual(ready["providing_module"], "module.example")
-            self.assertEqual(ready["source_digest"].split(":", 1)[0], "sha256")
+            feature = root / "specs/example/modules/api/features/001-invoke.md"
+            feature.write_text(feature.read_text(encoding="utf-8").replace("entity.example.api.handler", "entity.example.api.missing"), encoding="utf-8")
+            readiness = architecture_readiness(root, "feature.example.api.invoke")
+            self.assertEqual(readiness["status"], "incomplete")
+            self.assertIn("CONCORDE-ZOOM-002", {item["rule_id"] for item in readiness["findings"]})
 
-    def test_question_contract_preserves_source_authority_and_bounded_context(self):
-        contract = (
-            REPOSITORY_ROOT
-            / "specs/concorde/features/001-concorde-workflow/contracts/agent-commands.md"
-        ).read_text(encoding="utf-8")
-        question = contract.split("## `speckit.concorde.ask`", 1)[1].split(
-            "## `speckit.concorde.validate`", 1
-        )[0]
-        normalized_question = " ".join(question.split())
-        for requirement in (
-            "natural-language question",
-            "project-relative source citations",
-            "general framework rules",
-            "project-specific observations",
-            "agent inference",
-            "unresolved uncertainty",
-            "smallest bounded set",
-            "does not write files",
-        ):
-            self.assertIn(requirement, normalized_question)
-        self.assertNotIn("Architecture Service Protocol", question)
-        self.assertNotIn("normative JSON", question)
+    def test_unknown_feature_is_incomplete_without_mutation(self):
+        before = {path.relative_to(CONTEXT_PROJECT): path.read_bytes() for path in CONTEXT_PROJECT.rglob("*") if path.is_file()}
+        readiness = architecture_readiness(CONTEXT_PROJECT, "feature.example.missing")
+        self.assertEqual(readiness["status"], "incomplete")
+        self.assertEqual(readiness["findings"][0]["rule_id"], "CONCORDE-READY-002")
+        self.assertEqual(before, {path.relative_to(CONTEXT_PROJECT): path.read_bytes() for path in CONTEXT_PROJECT.rglob("*") if path.is_file()})
 
 
 if __name__ == "__main__":

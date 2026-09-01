@@ -1,6 +1,6 @@
 # reflections-malformed
 
-Overlay `specs/example/reflections.md` onto a copy of `valid-project`. Validation must report exactly
+Overlay `.concorde/reflections/log.md` onto a copy of `valid-project`. Validation must report exactly
 one finding per rule and leave every file byte-identical:
 
 | Entry | Breach | Rule |

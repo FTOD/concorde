@@ -40,43 +40,48 @@ class StructuredResultTests(unittest.TestCase):
             "feature.example.deliver",
             "eligible",
             result={
-                "workspace": {"attempt_dir": "specs/example/features/001-deliver/attempt"},
+                "workspace": {"attempt_dir": ".concorde/attempts/feature.example.deliver"},
                 "source_digest": "sha256:" + "1" * 64,
-                "proposal_path": "specs/example/features/001-deliver/attempt/deliver-proposal.json",
+                "proposal_path": ".concorde/attempts/feature.example.deliver/deliver-proposal.json",
+                "proposal_version": 8,
                 "task_summary": {"complete": 1, "incomplete": 0, "malformed": 0},
                 "checklist_summary": {"files": 1, "complete": 2, "incomplete": 0, "malformed": 0},
+                "evidence_summary": {"passed": 1, "missing": 0},
             },
         )
         payload = operation_envelope(result)
         self.assertEqual(payload["proposal_path"], result.result["proposal_path"])
         self.assertEqual(payload["task_summary"], result.result["task_summary"])
         self.assertEqual(payload["checklist_summary"], result.result["checklist_summary"])
+        self.assertEqual(payload["proposal_version"], 8)
+        self.assertEqual(payload["schema_version"], 12)
 
     def test_checked_in_examples_have_safe_paths(self):
-        examples = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples"
-        for path in examples.glob("*.json"):
+        examples = REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/workspace"
+        for name in ("deliver-proposal.json", "deliver-eligible-response.json", "context-response.json", "validation-response.json"):
+            path = examples / name
             payload = json.loads(path.read_text())
             if "schema_version" not in payload:
-                self.assertEqual(payload["proposal_version"], 7)
+                self.assertEqual(payload["proposal_version"], 8)
                 self.assertEqual(payload["operation"], "deliver")
-                proposal_paths = [payload["implementation"]["path"], *payload["remove"]]
-                if "module_design" in payload:
-                    proposal_paths.append(payload["module_design"]["path"])
+                proposal_paths = payload["remove"]
                 self.assertFalse(any(Path(item).is_absolute() or "\\" in item for item in proposal_paths))
                 continue
-            expected_version = 9 if payload["operation"] == "deliver" else 1
+            expected_version = 12 if payload["operation"] == "deliver" else 1
             self.assertEqual(payload["schema_version"], expected_version)
             self.assertFalse(any(Path(item).is_absolute() or "\\" in item for item in payload["artifacts"]))
 
     def test_context_example_tracks_runtime_projection_shape(self):
         example = json.loads(
-            (REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples/context-response.json").read_text()
+            (REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/workspace/context-response.json").read_text()
         )
         actual = bounded_context(VALID_PROJECT, "module.example")
         context = actual.result["context"]
         self.assertEqual(set(context), set(example["result"]["context"]))
-        self.assertEqual(set(context["current_module"]["contracts"]), {"provided", "required"})
-        self.assertEqual(set(context["children"][0]["contracts"]["provided"][0]), {"id", "role", "flow", "counterparties"})
+        self.assertIn("entities", context["current_module"])
+        self.assertIn("relationships", context["current_module"])
+        self.assertIn("interactions", context["current_module"])
+        self.assertTrue(context["current_module"]["architecture"].endswith("architecture.md"))
 
     def test_validation_result_matches_normative_envelope_fields(self):
         actual = validate_project(VALID_PROJECT)

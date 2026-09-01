@@ -5,6 +5,5 @@ slug: /
 
 # Fixture Documentation
 
-Read the [alpha feature](../specs/001-alpha/design.md#requirements) or the
+Read the [alpha feature](../specs/example/features/001-alpha.md#requirements) or the
 [nested guide](guide/intro.md).
-

@@ -59,7 +59,8 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
         for text in (claude_skill, codex_skill):
             for action in ("status", "investigate", "implement", "merge"):
                 self.assertIn(f"`{action}`", text)
-            self.assertIn("reflection-triage/v1", text)
+            self.assertIn("reflection-triage/v2", text)
+            self.assertIn(".concorde/reflections/log.md", text)
             self.assertIn(".concorde/reflections/config.json", text)
             self.assertIn(".specify/extensions/concorde/scripts/python/reflections_queue.py", text)
             self.assertNotIn(str(Path.cwd()), text)

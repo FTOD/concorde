@@ -6,107 +6,47 @@ import {describe, expect, it} from 'vitest';
 
 import {buildRegistry} from '../../plugins/concorde-content/registry';
 import {validateRegistry} from '../../plugins/concorde-content/validation';
-import type {ArchitectureSource} from '../../plugins/concorde-content/types';
+import type {ModuleArchitecture} from '../../plugins/concorde-content/types';
 
-describe('architecture source publication', () => {
-  it('publishes the real hierarchy with stable identities and delivered views', async () => {
-    const projectRoot = resolve(__dirname, '../../..');
-    const registry = await buildRegistry(projectRoot);
-    const sources = registry.documents.filter(
-      (document): document is ArchitectureSource => document.contentKind === 'architecture-source',
+describe('module architecture publication', () => {
+  it('uses each architecture.md as its module landing page and diagram owner', async () => {
+    const registry = await buildRegistry(resolve(__dirname, '../fixtures/valid-project'));
+    const modules = registry.documents.filter(
+      (document): document is ModuleArchitecture => document.contentKind === 'module-architecture',
     );
     expect(validateRegistry(registry)).toEqual([]);
-    expect(sources).toHaveLength(28);
-    expect(new Set(sources.map((source) => source.architectureId)).size).toBe(sources.length);
-    expect(sources.find((source) => source.architectureId === 'module.concorde')).toMatchObject({
-      architectureKind: 'module',
-      route: '/architecture/concorde/module.concorde',
-      architectureDiagrams: [
-        expect.objectContaining({
-          source: 'specs/concorde/architecture/diagrams/level-view.json',
-          kind: 'architecture',
-          route: '/architecture/concorde-interaction-architecture.html',
-        }),
-        expect.objectContaining({
-          source: 'specs/concorde/architecture/diagrams/skill-workspace-file-flow.json',
-          kind: 'dataflow',
-          route: '/architecture/concorde-skill-workspace-file-flow.html',
-        }),
-      ],
-    });
-    expect(sources.find((source) => source.architectureId === 'module.concorde.auto-docs')).toMatchObject({
-      parentId: 'module.concorde',
-      sourcePath: 'specs/concorde/architecture/modules/auto-docs/module.md',
-      route: '/architecture/concorde/modules/auto-docs/module.concorde.auto-docs',
-      architectureDiagrams: [expect.objectContaining({route: '/architecture/auto-docs.html'})],
-    });
-    expect(sources.find((source) => source.architectureId === 'contract.workspace-files.feature-workspace')).toMatchObject({
-      architectureKind: 'contract',
-      moduleId: 'module.concorde.workspace-files',
-    });
-    expect(sources.find((source) => source.architectureId === 'contract.concorde.alignment-explorer')).toMatchObject({
-      architectureKind: 'contract',
-      moduleId: 'module.concorde',
-    });
-    expect(sources.find((source) => source.architectureId === 'contract.understand-anything.knowledge-graph')).toMatchObject({
-      architectureKind: 'contract',
-      moduleId: 'module.concorde',
+    expect(modules.map((module) => module.moduleId)).toEqual(['module.fixture', 'module.fixture.nested']);
+    expect(modules[0]).toMatchObject({
+      route: '/architecture/module.fixture', moduleIds: ['module.fixture.nested'],
+      featureIds: ['feature.fixture.alpha'],
+      architectureDiagrams: [expect.objectContaining({
+        source: 'specs/example/diagrams/fixture-level-view.json',
+        route: '/architecture/fixture-level-view.html',
+      })],
     });
   });
 
-  it('publishes logical routes for every module diagram without requiring pre-generated HTML', async () => {
-    const projectRoot = await mkdtemp(resolve(tmpdir(), 'concorde-architecture-'));
+  it('discovers every architecture-owned diagram directly beneath the module diagrams directory', async () => {
+    const root = await mkdtemp(resolve(tmpdir(), 'concorde-architecture-'));
     try {
-      await mkdir(resolve(projectRoot, 'specs/example/architecture/diagrams'), {recursive: true});
-      await writeFile(resolve(projectRoot, 'README.md'), '# Example Project\n', 'utf8');
-      await writeFile(resolve(projectRoot, 'specs/example/module.md'), `---
-id: module.example
-kind: module
-parent: null
-children: []
-features: []
-contracts:
-  provided: []
-  required: []
----
-
-# Example
-
-## Responsibility
-
-Exercise declared-view validation.
-
-## Boundary
-
-No child modules.
-
-## Structure
-
-The level view is [level-view.json](architecture/diagrams/level-view.json); the
-[release flow](architecture/diagrams/release-flow.json) explains publication order.
-`, 'utf8');
-      await writeFile(resolve(projectRoot, 'specs/example/design.md'), '# Design Reference: Example\n\n## Implementation Notes\n\nSeed.\n', 'utf8');
-      await writeFile(resolve(projectRoot, 'specs/example/architecture/diagrams/level-view.json'), JSON.stringify({
-        diagram_type: 'architecture',
-        meta: {title: 'Example', output: '../../../../generated/architecture/example.html'},
-      }), 'utf8');
-      await writeFile(resolve(projectRoot, 'specs/example/architecture/diagrams/release-flow.json'), JSON.stringify({
-        diagram_type: 'sequence',
-        meta: {title: 'Release flow', output: '../../../../generated/architecture/example-release-flow.html'},
-      }), 'utf8');
-      const registry = await buildRegistry(projectRoot);
+      await mkdir(resolve(root, 'specs/example/diagrams'), {recursive: true});
+      await writeFile(resolve(root, 'README.md'), '# Example\n');
+      await writeFile(resolve(root, 'specs/example/architecture.md'), `---\nid: module.example\nkind: module\nparent: null\nmodules: []\nfeatures: []\n---\n# Example\n\n[View](diagrams/view.json)\n`);
+      await writeFile(resolve(root, 'specs/example/diagrams/view.json'), JSON.stringify({
+        schema_version: 1, diagram_type: 'architecture',
+        meta: {title: 'Example View', output: '../../../generated/architecture/example.html', quality_profile: 'showcase', legend: {mode: 'hidden'}},
+      }));
+      const registry = await buildRegistry(root);
       expect(validateRegistry(registry)).toEqual([]);
-      const source = registry.documents.find((document) => document.contentKind === 'architecture-source') as ArchitectureSource;
-      expect(source.architectureDiagrams).toEqual([
-        expect.objectContaining({source: 'specs/example/architecture/diagrams/level-view.json', kind: 'architecture', route: '/architecture/example.html'}),
-        expect.objectContaining({source: 'specs/example/architecture/diagrams/release-flow.json', kind: 'sequence', route: '/architecture/example-release-flow.html'}),
-      ]);
-      expect(source.links.filter((link) => link.kind === 'included-source').map((link) => link.targetRoute)).toEqual([
-        '/architecture/example.html', '/architecture/example-release-flow.html',
-      ]);
-      expect(source.designReferenceRoute).toBe('/architecture/example/design');
+      const module = registry.documents.find((item) => item.contentKind === 'module-architecture') as ModuleArchitecture;
+      expect(module.architectureDiagrams).toEqual([expect.objectContaining({
+        source: 'specs/example/diagrams/view.json', route: '/architecture/example.html',
+      })]);
+      expect(module.links).toContainEqual(expect.objectContaining({
+        targetSourcePath: 'specs/example/diagrams/view.json', targetRoute: '/architecture/example.html',
+      }));
     } finally {
-      await rm(projectRoot, {recursive: true, force: true});
+      await rm(root, {recursive: true, force: true});
     }
   });
 });

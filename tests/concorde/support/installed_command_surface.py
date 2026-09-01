@@ -129,7 +129,7 @@ def execute_workspace_surface(
         raise AssertionError(f"{artifact} does not expose the expected {phase} installed bootstrap")
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)
-    environment.pop("SPECIFY_FEATURE_DIRECTORY", None)
+    environment.pop("SPECIFY_FEATURE_PATH", None)
     adapter = project_root / ".specify/extensions/concorde/scripts/python/workspace.py"
     completed = subprocess.run(
         [sys.executable, str(adapter), "--project-root", str(project_root), "--phase", phase],

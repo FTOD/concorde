@@ -1,55 +1,114 @@
+# Implementation Plan: [FEATURE]
+
+**Branch**: `[branch-or-worktree]` | **Date**: [DATE] | **Feature**: [direct feature-file link]
+
+**Input**: The selected direct feature file, the providing module's `architecture.md`, current source code,
+executable tests/checks, Constitution, bounded related-feature summaries, and reflection log.
+
+## Summary
+
+[State the requested feature/interface outcome and the technical delta against current code/tests.]
+
+## Technical Context
+
+**Language/Version**: [declared project/runtime versions]
+
+**Primary Dependencies**: [frameworks/tools/external systems]
+
+**Storage/State**: [persistent/shared state or N/A]
+
+**Testing**: [repository-declared test frameworks and commands]
+
+**Target Platform**: [platform/runtime/install target]
+
+**Project Type**: [library/CLI/service/site/etc.]
+
+**Performance Goals**: [measurable relevant goals]
+
+**Constraints**: [safety, compatibility, authority, environment]
+
+**Scale/Scope**: [affected modules/features/entities/files/tests]
+
+## Constitution Check
+
+*GATE: pass before research and re-check after technical design.*
+
+| Principle | Plan evidence | Status |
+|---|---|---|
+| [Constitution principle] | [How the plan satisfies it or explicit justified exception] | [Pass/Exception] |
 
 ## Concorde Architecture Gate
 
-Before the plan is complete, review the providing module's responsibility and boundary, its current
-features and I/O contracts, every immediate submodule and its I/O contracts, relevant externals, and
-their current-level organization. Identify affected module Markdown, contract definitions under
-`architecture/contracts/`, the level's diagrams under `architecture/diagrams/`, adjacent child
-feature refinements, and evidence. Keep deeper implementation details
-behind stable navigation references.
+Plan from four authorities: selected direct feature file, providing module architecture, current source
+code, and executable evidence. The workspace resolver supplies bounded module ancestry and related-
+feature summaries; open another feature body only when the requested change depends on its interface.
 
-Evaluate feature-owned diagrams explicitly. First preserve or plan at most one `role: core` Archify
-`architecture` view when stable component participation and interaction would be materially clearer
-visually. A sequence diagram cannot be the core view. Then preserve or plan `role: supplemental`
-workflow, sequence, data-flow, or lifecycle views when narrower order, state, or movement questions
-need them. Plan each descriptive Archify JSON source under the feature's
-`diagrams/` directory, its declaration in `design.md`, complete textual counterpart, governing contract
-references, automatic feature-page embedding, deterministic validation/delivery, and generated-output
-freshness. Require `meta.legend.mode: hidden` in every maintained source so renderer-owned generic
-legend categories never substitute for the diagram's domain wording. Feature diagrams remain
-explanatory and must not overload the module's level views under `architecture/diagrams/` or become
-behavioral authority.
+1. Resolve every architecture entity named by the feature's interfaces and Architecture Zoom.
+2. Identify every affected entity, directed relationship, interaction, embedded interface, source
+   path, test surface, projection, package, and public guide.
+3. Compare requested behavior directly with code/tests. Do not create a prose realization baseline.
+4. Name an explicit task to reconcile each affected module architecture or feature-file authority.
+   Planning itself writes only under the returned `attempt_dir`, plus the centralized reflection log
+   when required.
+5. Keep executable schemas/examples with code/tests; readable promises remain in feature files.
+6. For every affected architecture-owned diagram, plan its textual counterpart, maintained JSON,
+   deterministic validation, generated freshness, publication, and truthful visual-review status.
+   Require one normalized unique output below `generated/` and `meta.legend.mode: hidden`.
+7. Record conflicts, workarounds, assumptions, and provisional prototype choices in the returned
+   `.concorde/reflections/log.md` authority.
 
-Authority remains split by artifact meaning: `abstract.md` orients (a self-contained summary that never
-defines); feature `design.md` owns behavior; feature `implementation.md` records the accepted realization; module `module.md` (summary) and `design.md` (design reference) plus
-contract Markdown own architecture prose; Archify JSON owns
-view structure; code owns implementation; and tests own executable evidence.
+## Source Structure
 
-Record every specification, architecture, cross-feature, or guidance problem planning cannot resolve
-as an entry in the project reflection log (`workspace.reflections`, the one maintained file a phase
-may append to) and list those entries in this gate; never resolve them by editing a durable document
-or another feature's sources.
+```text
+[real project source directories and architecture-significant files]
 
-Read root `implementation.md` as the accepted baseline and identify the proposed realization delta;
-when it still holds the placeholder, record "no accepted baseline" rather than inventing one. Read the
-providing module's `module.md` as bounded context and open its `design.md` only for a specific
-recorded detail, citing it. Never
-update `abstract.md`, feature `design.md`, feature `implementation.md`, or a module `design.md` during
-planning or implementation; only the explicit Concorde delivery command may promote a task-complete,
-invocation-authorized milestone. Keep durable feature sources (`abstract.md`, `design.md`,
-`implementation.md`, `contracts/`, and feature-owned `diagrams/`) at the feature root. Keep every
-requirements-quality checklist under `attempt/checklists/`. Write this plan and its research,
-data model, runnable validation guide, and delivery evidence under the feature's `attempt/`
-directory. That directory represents one temporal delivery attempt and must not be mirrored by
-compatibility copies beside `design.md`.
+tests/
+└── [real test/evidence paths]
+```
 
-When interface work is needed, read durable feature-root contracts as accepted input and write each
-proposed contract delta beneath `attempt/contracts/`. Planning never writes a feature-root contract.
-The plan and later tasks identify compatibility, schema/example, evidence, code, test, and
-documentation work needed to apply the proposed contract during implementation.
+**Structure Decision**: [Why this existing/new organization fits the module entity graph.]
 
-When the selected root is an immediate sub-feature, also read the Protocol v9 parent `abstract.md`,
-`design.md`, and `implementation.md` only as aggregate context. Plan and write exclusively beneath the selected child root.
-Sibling summaries are navigation context; sibling bodies and all parent/sibling attempts are out of
-scope unless the maintainer explicitly selects them in a separate lifecycle operation. Reject any
-plan that creates a third feature level or duplicates a parent-owned invariant as child authority.
+## Attempt Artifacts
+
+```text
+<project>/
+├── <providing-module>/features/<NNN-name>.md
+└── .concorde/attempts/<stable-feature-id>/
+    ├── checklists/
+    ├── plan.md
+    ├── research.md
+    ├── data-model.md
+    ├── quickstart.md
+    ├── tasks.md
+    └── validation.md
+```
+
+No attempt file is stored in the specification hierarchy or mirrored beside the direct feature file.
+Feature interfaces are embedded there; module entities/relationships/interactions stay in
+architecture; implementation is source code.
+
+## Research Decisions
+
+For each material unknown, record:
+
+- **Decision**: [chosen approach]
+- **Rationale**: [evidence/tradeoff]
+- **Alternatives considered**: [rejected options and why]
+
+## Implementation Phases
+
+1. Test/fixture setup that establishes the intended failing behavior.
+2. Foundational shared entity/interface/runtime changes.
+3. Independently testable user-story slices in priority order.
+4. Cross-cutting architecture/feature/docs/projection reconciliation.
+5. Focused, full, package, publication, freshness, and cleanup-only delivery evidence.
+
+## Risk Controls
+
+| Risk | Control | Verification |
+|---|---|---|
+| [risk] | [bounded plan/task/rollback control] | [exact command/check] |
+
+## Post-Design Constitution Re-check
+
+[Confirm gates after research/data/interface/task structure is concrete.]

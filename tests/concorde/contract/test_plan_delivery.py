@@ -1,127 +1,64 @@
+import json
 import unittest
 
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-COMMANDS = REPOSITORY_ROOT / "presets/concorde/commands"
-TEMPLATES = REPOSITORY_ROOT / "presets/concorde/templates"
-WORKFLOW_CONTRACT = (
-    REPOSITORY_ROOT
-    / "specs/concorde/features/001-concorde-workflow/contracts/agent-commands.md"
-)
+PRESET = REPOSITORY_ROOT / "presets/concorde"
+WORKSPACE_FIXTURES = REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/workspace"
 
 
 class PlanDeliveryContractTests(unittest.TestCase):
-    def command(self, name: str) -> str:
-        return (COMMANDS / f"speckit.{name}.md").read_text(encoding="utf-8")
-
-    def test_plan_separates_orientation_behavior_baseline_and_bounded_context(self):
-        plan = self.command("plan")
-        normalized = " ".join(plan.split())
-        for invariant in (
-            "workspace.feature_abstract",
-            "orientation only",
-            "workspace.feature_design",
-            "workspace.feature_implementation",
-            "no accepted baseline",
-            "workspace.module_summary",
-            "workspace.module_design",
-            "parent_context.feature_abstract",
-            "parent_context.feature_design",
-            "parent_context.feature_implementation",
-            "sibling design/implementation body",
-            "cite",
+    def test_plan_uses_feature_architecture_code_and_tests_as_inputs(self):
+        body = (PRESET / "commands/speckit.plan.md").read_text(encoding="utf-8")
+        normalized = " ".join(body.split())
+        for value in (
+            "complete selected feature file",
+            "providing module architecture",
+            "current source code and executable tests",
+            "executable_context",
+            "compare desired behavior directly with code/tests",
+            "Planning must leave durable sources byte-identical",
         ):
-            self.assertIn(invariant, normalized, invariant)
+            self.assertIn(value, normalized, value)
+        self.assertNotIn("attempt/contracts/", body)
 
-    def test_plan_stages_contract_proposals_and_forbids_durable_phase_writes(self):
-        plan = self.command("plan")
-        normalized = " ".join(plan.split())
-        for invariant in (
-            "ATTEMPT_DIR/contracts/",
-            "proposed contract",
-            "compatibility",
-            "implementation task",
-            "MUST NOT update",
-            "feature-root contract",
+    def test_plan_template_requires_explicit_durable_reconciliation_tasks(self):
+        body = " ".join((PRESET / "templates/plan-template.md").read_text(encoding="utf-8").split())
+        self.assertIn("selected direct feature file", body)
+        self.assertIn("providing module's `architecture.md`", body)
+        self.assertIn("current source code", body)
+        self.assertIn("explicit task to reconcile", body)
+        self.assertIn("Planning itself writes only under the returned `attempt_dir`", body)
+        self.assertIn("cleanup-only delivery", body)
+
+    def test_task_template_traces_architecture_feature_code_tests_and_delivery(self):
+        body = " ".join((PRESET / "templates/tasks-template.md").read_text(encoding="utf-8").split())
+        for value in (
+            "module `architecture.md`",
+            "direct feature file",
+            "source code and executable tests/checks",
+            "requirement ID or acceptance-outcome trace",
+            "returned `validation` file",
+            "cleanup-only delivery readiness",
         ):
-            self.assertIn(invariant, normalized, invariant)
-        self.assertNotIn("feature-root `/contracts/*`", plan)
+            self.assertIn(value, body, value)
 
-    def test_plan_validates_diagram_outputs_before_naming_delivery_work(self):
-        plan = self.command("plan")
-        normalized = " ".join(plan.split())
-        for invariant in (
-            "validate every existing diagram declaration",
-            "normalized project-relative `.html` declaration output beneath `generated/`",
-            "diagram-relative `meta.output`",
-            "resolves to the same unique target beneath `generated/`",
-            "stop planning and route the invalid durable declaration back to specification authority",
-            "MUST NOT repair `design.md`",
-            "Only after every declaration passes",
-            "generated delivery, validation, freshness, and evidence work",
-        ):
-            self.assertIn(invariant, normalized, invariant)
+    def test_delivery_proposal8_is_cleanup_only_and_exactly_one_attempt(self):
+        proposal = json.loads((WORKSPACE_FIXTURES / "deliver-proposal.json").read_text(encoding="utf-8"))
+        self.assertEqual(proposal["proposal_version"], 8)
+        self.assertEqual(set(proposal), {"proposal_version", "operation", "target", "source_digest", "remove"})
+        self.assertEqual(len(proposal["remove"]), 1)
+        self.assertTrue(proposal["remove"][0].startswith(".concorde/attempts/feature."))
 
-    def test_tasks_require_traceable_complete_dependency_ordered_work(self):
-        tasks = self.command("tasks")
-        normalized = " ".join(tasks.split())
-        for invariant in (
-            "requirement ID or acceptance-outcome",
-            "dependency graph",
-            "architecture",
-            "contract",
-            "validation",
-            "documentation",
-            "evidence",
-            "ATTEMPT_DIR/contracts/",
-            "parent_context.feature_abstract",
-            "sibling design/implementation body",
-        ):
-            self.assertIn(invariant, normalized, invariant)
-
-    def test_issue_projection_preserves_identity_order_dependencies_and_scope(self):
-        issues = self.command("taskstoissues")
-        normalized = " ".join(issues.split())
-        for invariant in (
-            "Invocation authorization",
-            "matching GitHub remote",
-            "task-file order",
-            "selected feature",
-            "source task path",
-            "story or phase",
-            "scope",
-            "prerequisite task IDs",
-            "issue links",
-            "open and closed",
-            "MUST NOT modify",
-            "task checkbox",
-            "attempt/tasks.md remains authoritative",
-        ):
-            self.assertIn(invariant, normalized, invariant)
-
-    def test_templates_preserve_temporal_contract_and_task_trace_models(self):
-        plan_template = (TEMPLATES / "plan-template.md").read_text(encoding="utf-8")
-        tasks_template = (TEMPLATES / "tasks-template.md").read_text(encoding="utf-8")
-        self.assertIn("attempt/contracts/", plan_template)
-        self.assertIn("proposed contract", plan_template)
-        self.assertIn("requirement ID or acceptance-outcome", tasks_template)
-        self.assertIn("attempt/contracts/", tasks_template)
-
-    def test_workflow_contract_defines_the_plan_delivery_handoff(self):
-        contract = WORKFLOW_CONTRACT.read_text(encoding="utf-8")
-        normalized = " ".join(contract.split())
-        for invariant in (
-            "Plan Delivery Handoff",
-            "Implementation plan",
-            "Task list",
-            "Issue projection",
-            "task identity",
-            "dependency",
-            "separate invocation",
-            "attempt/tasks.md",
-        ):
-            self.assertIn(invariant, normalized, invariant)
+    def test_delivery_guidance_never_authors_content(self):
+        body = (REPOSITORY_ROOT / "extensions/concorde/commands/speckit.concorde.deliver.md").read_text(encoding="utf-8")
+        normalized = " ".join(body.split())
+        self.assertIn("Delivery is cleanup-only", normalized)
+        self.assertIn("writes no durable specification or implementation narrative", normalized)
+        self.assertIn("`remove` must contain exactly", normalized)
+        self.assertIn("do not draft content", normalized.lower())
+        self.assertIn("never changes module architecture, the direct feature file, code, tests", normalized.lower())
 
 
 if __name__ == "__main__":

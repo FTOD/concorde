@@ -1,3 +1,4 @@
+# `log.md` and `config.json` are tracked control authorities; only triage scratch is ignored.
 plans/
 worktrees/
 legacy-*

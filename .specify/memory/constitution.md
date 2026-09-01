@@ -1,265 +1,247 @@
 <!--
 Sync Impact Report
-- Version change: 3.0.0 -> 4.0.0 (MAJOR: a completed normal lifecycle may be delivered under one
-  explicit invocation without a separate exact-proposal approval interaction)
+- Version change: 5.1.0 -> 5.2.0 (MINOR: moves workflow-only attempts and reflections out of the
+  recursive specification hierarchy into one project-control namespace)
 - Modified principles:
-  - A.V Deterministic Validation, Risk-Proportional Review: adds a second narrow authorization
-    route. An explicit delivery invocation after the normal task/checklist lifecycle MAY authorize
-    the generated digest-bound realization and providing-module design amendment without a second
-    exact-proposal approval; initialization and other AI-authored architecture changes retain their
-    existing review rules.
-- Added sections: none. Removed sections: none.
-- Motivation: requesting delivery already follows specification, planning, dependency-ordered
-  tasks, implementation, checklist completion, and deterministic validation. Requiring another
-  yes/no response after the agent generates the delivery candidate duplicates authorization while
-  leaving the technical safety boundary unchanged.
-- Compatibility impact: governance-breaking. A user may now invoke delivery once and have the
-  eligible current proposal applied automatically. Eligibility, target restriction, source digest,
-  candidate validation, atomic promotion, rollback, and complete evidence reporting remain
-  mandatory. Initialization and changes outside delivery or the existing fast-loop exception still
-  require their prior review behavior.
-- Templates and guides reconciled after this amendment: Deliver Milestone required behavior,
-  command guidance, runtime/protocol contracts, package inventories, user guides, tests, and
-  maintained workflow diagrams implement the one-invocation rule.
-- Follow-up TODOs (owner: Concorde maintainers):
-  - Reconcile `feature.concorde.workflow.specify-behavior`, its command/template quality checks,
-    workflow guidance, tests, and generated projections so they apply risk-proportional review rather
-    than requiring human review for every AI-authored architecture edit.
-  - Update the constitution version citation in `docs/framework-overview.md`.
-  - Reconcile preset/extension guidance that cites old principle numerals (I-VII) with the
-    A.I-A.V / B.I-B.II identifiers.
-  - The feature path layout and Protocol v6 `providing_module` field still reflect the former
-    one-providing-module assumption and remain to be aligned with A.III.
+  - A.I Fast Human Comprehension at Every Module: module trees now contain only durable architecture,
+    features, child modules, and optional explanatory diagrams.
+  - A.II Complete Architecture, Real Implementation: temporal attempts and process reflections are
+    explicitly project control state, not specification artifacts.
+  - A.V Deterministic Validation, Risk-Proportional Review: delivery removes the stable-ID control
+    attempt and retains the centralized reflection log.
+- Modified standards: attempts live at `.concorde/attempts/<stable-feature-id>/`; reflection authority
+  lives at `.concorde/reflections/log.md`; Protocol 12 never infers a feature ID from its filename.
+- Motivation: process state should not appear as module ontology, and active work should follow stable
+  feature identity across file/module moves.
+- Compatibility impact: breaking Architecture Source Profile 7, Feature Workspace Protocol 12,
+  Initialization Proposal 2, and reflection-triage/v2 migration; Delivery Proposal 8 and Build
+  Manifest 10 semantics remain compatible.
+- Required migration: active attempt/log, runtime, validation, initialization, reflection triage,
+  guidance, publication, self-hosting, release artifacts, fixtures, tests, and links.
+- Prototype decisions to reassess are recorded only in the project reflection log.
 -->
 # Concorde Constitution
 
-Concorde exists because AI now writes most code. The programmer's problem has shifted from writing
-implementation to staying oriented: understanding what a project does, how it is structured, and
-what its parts promise each other, without reading every line of code. This constitution has two parts.
-Part A states the principles of the Concorde workflow, which every project adopting Concorde
-follows. Part B states the principles of the Concorde project itself, whose job is to make Part A
-practical through tooling. Part A is the purpose; Part B is the means.
+Concorde exists because AI now writes most code. The programmer's problem has shifted from typing the
+implementation to staying oriented: understanding what a project does, how it is structured, and how
+its parts collaborate, without reading every line. Part A states the workflow principles every
+Concorde project follows. Part B states the principles of the Concorde project that makes that
+workflow practical.
 
 ## Part A: Workflow Principles
 
-### A.I Fast Human Comprehension at Every Level
-The specification MUST be a hierarchy with a stopping point at every level. A reader MUST be able
-to stop at any module, understand what it does and how its visible parts interact, and go no
-deeper. Each level MUST be understandable in minutes, not hours: it MUST combine a diagram (structure
-and interaction), tables (inventories such as features, contracts, and submodules), and short prose
-(responsibility, rationale, representative scenario). Long narrative documents are prohibited at the
-level a human is expected to read; depth is reached by descending, not by scrolling.
+### A.I Fast Human Comprehension at Every Module
 
-Rationale: nobody reads long documents. The programmer who no longer writes the code still needs to
-own the project, and ownership requires a representation that can be absorbed fast at the altitude
-where the current question lives.
+The specification MUST be a recursive module hierarchy with a useful stopping point at every module.
+A reader MUST be able to open that module's single `architecture.md`, understand its responsibility,
+boundary, significant entities, immediate child modules, level-local features, and important
+interactions, and stop without opening descendants or source code.
 
-### A.II Complete Beneath the Surface
-Although a human rarely reads the whole specification, the whole specification MUST exist. Every fact
-needed to understand, extend, or verify the system MUST be recorded exactly once in a maintained,
-version-controlled, machine-readable source, and MUST be reachable from the hierarchy by stable ID.
-A human or agent starting at the root MUST be able to locate almost any necessary detail by
-descending; a detail that can only be found by reading code is an incomplete specification.
+Each feature at that module MUST be understandable from its single durable
+`features/<NNN-name>.md`: what the
+module provides, how a consumer uses it, what can fail, and which architecture entities collaborate.
+Diagrams and generated pages MAY improve orientation, but they never replace the textual entity,
+relationship, interface, and usage definitions. Depth is reached by descending modules or following
+stable entity/feature references, not by reconciling parallel summaries.
 
-Each kind of fact has one authority: prose intent in Markdown, structural and interaction models in
-architecture JSON, contract shapes in their normative schema or standard definition, actual behavior
-in code, and executable evidence in tests. Rendered diagrams, sites, indexes, and reports are
-generated projections and MUST NOT be edited as sources. When sources disagree, tooling MUST expose
-the disagreement rather than pick a winner; missing evidence MUST be reported as unknown.
+Rationale: one architectural entry point and one feature entry point at each level minimize both
+reading time and disagreement. The reader should choose an altitude, not a document role.
 
-Rationale: fast comprehension at the top is only trustworthy if the detail underneath is complete
-and unambiguous. Completeness serves the agent, which reads everything; single authority serves both.
+### A.II Complete Architecture, Real Implementation
 
-### A.III Architecture-Driven, Not Only Feature-Driven
-Development MUST be driven by architecture as well as by features. A feature says what the project
-or a module can do; the architecture says how the project is composed to do it. The project MUST be
-modeled as a module hierarchy rooted at the project module. Every module MUST have one clear
-responsibility, an explicit boundary, and declared immediate submodules that are each
-architecturally meaningful. The purpose of every level is a good abstraction: the modules visible at
-that level, their responsibilities, and their interactions MUST be chosen so that the level can be
-understood on its own terms and reasoned about without the levels below.
+The maintained specification MUST completely describe the abstractions needed to understand,
+extend, and safely change the system: module boundaries; architecturally significant entities;
+stable identities and locators; structural, dependency, control, and data relationships; feature
+interfaces; requirements; failures; and representative usage. A fact has one owning module or
+feature and MUST be reachable by stable ID.
 
-Every level MUST keep two distinguishable parts of one package: the features specified at that level,
-which say what the level can do, and its architecture, which says how the level is composed — the
-diagrams that show its parts and their interactions, the contracts that govern its boundaries, and
-its immediate submodules. A level MAY be described by more than one maintained diagram; every diagram
-a level maintains MUST be reachable from that level's documents, and none may redefine what the
-level's prose and contracts own.
+The specification MUST NOT duplicate the implementation. Source code at the checked-out revision is
+the authority for actual algorithms, private helpers, and implementation detail. Tests and
+deterministic checks are the evidence for bounded claims about that code. A module architecture
+inventories modules plus exported, boundary-visible, entry-point, orchestration, schema, shared-state,
+or otherwise architecture-significant entities; it need not list every private symbol or call.
 
-Features are realized through modules. Every feature MUST have a stable ID, an observable outcome,
-and exactly one place in the hierarchy where it is specified: the level at which every module it
-uses is visible. A feature MAY be realized by a single module or by combining several modules and
-lower-level features; it need not be owned by any one module. Where a feature is refined by features
-at the next level down, the refinement links MUST connect adjacent levels and MUST be acyclic.
+Generated diagrams, sites, indexes, knowledge graphs, reports, and delivery results are disposable
+projections. Temporal plans, tasks, checklists, research, and validation logs live only in the active
+feature attempt. When specification, code, tests, or projections disagree, tooling exposes the
+disagreement instead of manufacturing another narrative authority.
 
-A level's views show the current module, its features and boundary contracts, its immediate
-submodules with their features and boundary contracts, the relevant external actors, and the
-interactions among them. They SHOULD NOT descend further: grandchildren and implementation detail
-belong to the levels below, and selecting a submodule produces the same kind of views with that
-submodule as the current module. A level MAY show selected detail from below when that makes the
-level clearer, provided the detail remains authoritative at its own level. This bounded view is what
-makes A.I possible for humans and gives agents a bounded context for every task.
+Rationale: completeness means the architecture's concepts and promises are explicit, while the code
+remains the most precise account of implementation. Rewriting code in prose creates stale truth.
 
-Rationale: the central task of architecture is making a good abstraction at each level. A list of
-features does not tell a human how the system hangs together, and it does not tell an agent where
-new behavior belongs; structure and interaction must be first-class.
+### A.III Architecture Is a Typed Entity and Relationship Model
 
-### A.IV Contracts Are Human-Readable Promises
-Every module boundary MUST be governed by explicit contracts, and every module MUST declare its
-provided and required contracts (an explicit empty set is a valid declaration). A contract MUST be
-presentable to a human without reading the implementation: it MUST state who provides and who
-consumes it, the direction of flow, the data structure exchanged and what information that structure
-encodes, the obligations of each side, and what happens on failure. Every feature MUST name the
-provided contract(s) through which it is reachable and the required contracts on which it depends.
-Every scenario interaction that crosses a module boundary MUST reference its governing contract.
+The project MUST be modeled as an acyclic tree of modules rooted at the configured project module.
+Every module has exactly one parent except the root, one clear responsibility, one explicit boundary,
+one `architecture.md`, zero or more immediate child modules, and zero or more level-local features.
+Modules are the only hierarchical specification unit.
 
-A contract MUST use either a commonly adopted format (named, versioned, linked to its authoritative
-definition, with a summary of the information exchanged) or a custom format with a normative schema
-or grammar, field semantics, and at least one conforming example. Opaque or undocumented payloads are
-prohibited. Every contract change MUST be evaluated as a potential feature and compatibility change.
-Human review is mandatory unless the change satisfies the fast-loop exception in A.V.
+Each module architecture MUST define its architecturally significant entities and state what each
+entity is. Preferred types include module, directory, file, script, program, function or method,
+class, interface or type, configuration, schema, endpoint or command, service, pipeline, resource,
+data store, test surface, document, external system, and explicitly defined project-specific types.
+Each entity has a stable identity distinct from its mutable code locator, one owning module, a
+non-circular definition, and important typed relationships.
 
-Rationale: contracts are the promises other modules rely on. If a human cannot read what a boundary
-carries, the human cannot judge whether a change is safe, and the architecture view is decoration.
+Relationships MUST be directed and semantically named. The vocabulary SHOULD reuse clear code and
+system relationships such as contains, declares, imports, exports, calls, inherits, implements,
+depends on, provides, requires, routes to, reads from, writes to, transforms, validates, triggers,
+configures, documents, tested by, generates, and realizes. Project-specific predicates MUST define
+their direction and meaning. Interactions explain ordered or conditional collaborations over those
+entities and relationships.
+
+A parent architecture exposes each immediate child module as one bounded entity and MUST NOT copy
+the child's internal inventory. Supporting views show only what is useful at the current level;
+grandchildren and child internals remain owned below.
+
+Rationale: architecture is not a folder list or a feature catalog. Its core is the identity and type
+of the parts plus the relationships that make those parts a system.
+
+### A.IV Feature Interfaces Are Human-Readable Promises
+
+A feature is one module-level functionality or interface specified exactly once in
+`features/<NNN-name>.md`. Features MUST NOT contain features. Composition, refinement, or
+dependency among features is expressed through stable related-feature references and MUST remain
+acyclic where directional.
+
+Every externally meaningful entry point or promise MUST be defined inside the feature design that
+exposes it. The interface definition states the consumer and provider, direction, entry point,
+inputs and the information they encode, outputs, obligations, failure behavior, compatibility, and
+implementing architecture entity references. A commonly adopted machine format MAY be linked by
+name and version; custom serialized behavior MUST still have readable field semantics and at least
+one conforming example in the design. Opaque payloads are prohibited.
+
+Each feature design MUST include an architecture zoom: the visible entities it uses and how they
+collaborate for representative usage. The feature may add behavioral detail but MUST NOT redefine an
+entity's identity, type, ownership, or architecture-level relationship. If a needed entity does not
+exist, its owning module architecture changes in the same reviewed lifecycle.
+
+Rationale: an interface belongs beside the functionality a consumer chooses. Separating promises
+into architecture contract inventories obscures how the module is actually used.
 
 ### A.V Deterministic Validation, Risk-Proportional Review
-Validation, rendering, documentation builds, freshness checks, and cross-reference checks MUST be
-deterministic and MUST NOT require an LLM. Architecture changes proposed or authored by an AI MUST
-receive human review and pass applicable validation before they become project intent, except for
-either an explicitly invoked small change completed through the project's fast-loop workflow or an
-explicitly invoked delivery of a completed normal lifecycle. The fast-loop exception applies only
-when deterministic preflight and evidence establish all of the following:
 
-- every affected feature already has durable required behavior, an accepted realization, and no
-  active attempt;
-- the change creates or restructures no module or feature, changes no module responsibility or
-  dependency direction, and changes no project-level compatibility or migration policy;
-- the affected set and architectural impact are bounded and unambiguous, and every affected feature,
-  contract, maintained diagram, implementation, test, and user-facing source is reconciled;
-- proportional behavioral, contract, hierarchy, reference, freshness, and documentation checks pass;
-  and
-- the completion report discloses the exact changed sources, affected features, and verification
-  results without claiming that structural validation proves implementation correctness.
+Validation, rendering, documentation builds, freshness checks, cross-reference checks, workspace
+resolution, and delivery eligibility MUST be deterministic and MUST NOT require an LLM. AI-authored
+architecture or feature changes require explicit maintainer direction and applicable validation.
+An explicitly invoked fast loop or completed normal delivery may apply within its bounded authority
+without a redundant second approval.
 
-When every condition holds, the maintainer's explicit fast-loop invocation authorizes the verified
-architecture edits to become project intent without a separate post-edit human review. "Small" is
-defined by these ownership and risk conditions, not by line count. Failure of any condition makes the
-exception unavailable and requires the normal reviewed lifecycle. A passing architecture check MUST
-NOT be presented as proof that the implementation is correct; structural validity and behavioral
-evidence remain distinct.
+The fast-loop exception applies only when deterministic preflight establishes all of the following:
 
-The delivery exception applies only when one selected feature or immediate sub-feature has a real
-active attempt with at least one recognizable task, every task and existing checklist item is
-complete and well formed, applicable deterministic validation has passed, and the maintainer
-explicitly invokes the delivery command. That invocation authorizes the agent to generate and apply
-one current digest-bound proposal without a second approval interaction. The proposal may replace
-only the selected feature's accepted implementation, may amend only the providing level's module
-design reference with attempt-developed implementation detail or rationale, and must remove exactly
-the selected complete attempt. Safe canonical paths, candidate-content checks, centralized
-reflection ownership, stale-source rejection, atomic promotion, rollback, and exact result reporting
-remain mandatory. Delivery cannot change feature behavior, module summaries, responsibilities,
-boundaries, contracts, level views, dependency direction, or another lifecycle root. Ineligibility,
-ambiguity, a stale digest, an unsafe target, or failed validation prevents mutation rather than
-falling back to implied authority.
+- every affected feature has durable required behavior and no active attempt;
+- the change creates or restructures no module or feature, changes no responsibility, entity
+  ownership, dependency direction, public interface, or project-level compatibility policy;
+- affected architecture, feature designs, code, tests, and generated projections are bounded and
+  reconciled; and
+- proportionate behavioral, hierarchy, entity-reference, interface, freshness, and documentation
+  checks pass.
 
-Rationale: AI-assisted changes are trustworthy when authority is bounded, impact is explicit, and
-evidence is reproducible. Human review remains mandatory for structural, directional, ambiguous, or
-project-policy changes. Explicit fast-loop and delivery invocations avoid redundant approval
-interactions inside their distinct deterministic boundaries. Generated artifacts earn no authority
-by existing.
+The delivery exception applies only when one selected feature has a real active attempt with at
+least one recognizable task, every task and existing checklist item is complete and well formed,
+applicable validation has passed, and the maintainer explicitly invokes delivery. Delivery verifies
+a current digest and safe canonical paths, removes exactly that selected stable-ID control attempt,
+and leaves module architecture, feature files, `.concorde/reflections/log.md`, source code, tests,
+and other feature attempts
+byte-identical. It MUST NOT create an implementation narrative or amend architectural intent.
+Ineligibility, ambiguity, unsafe paths, failed validation, or stale inputs preserves the full attempt.
+
+Rationale: authority is trustworthy when scope and evidence are explicit. Removing completed working
+memory is a lifecycle transition, not a reason to create another version of implementation truth.
 
 ## Part B: Project Principles
 
 ### B.I Concorde Ships a Usable Workflow
+
 Concorde's product MUST be a repeatable, installable, end-to-end workflow that lets a project live by
-Part A: establishing the root, finding the owning level, creating and selecting features, retrieving
-bounded context, validating architecture, and publishing comprehensible views. A reference document,
-a diagram set, or a bespoke demonstration alone is insufficient. Every distributable part MUST declare
-its responsibility, version, dependencies, and compatibility expectations, and every operation MUST
-have deterministic inputs, outputs, and failure behavior even when an agent assists with authoring.
+Part A: initialize a root architecture, find a feature's module, retrieve bounded context, specify a
+feature and its interface, plan and execute against code reality, validate the entity model, deliver
+the attempt, and publish comprehensible views. Every distributable part MUST declare responsibility,
+version, dependencies, compatibility, deterministic inputs, outputs, and failure behavior.
 
 ### B.II Concorde Develops Itself with Concorde
-Concorde MUST develop itself under Part A using its own tooling. When an unfinished capability cannot
-yet enforce a required rule, maintainers MUST apply the rule manually, record the gap as planned
-work, and migrate the affected artifact once the capability exists. A milestone MUST NOT be declared
-complete while a bootstrap gap needed to demonstrate it remains unresolved. Self-application is the
-acceptance test that the workflow is practical rather than aspirational.
+
+Concorde MUST develop itself under Part A using its own tooling. When a capability cannot yet enforce
+the new profile, maintainers apply the rule manually, record the bootstrap compromise in the one
+project reflection log, and migrate the artifact in the same prototype milestone. Self-application
+is the acceptance test that the workflow is practical rather than aspirational.
 
 ## Project Constraints
 
-- Concorde currently integrates with Spec Kit as its host lifecycle: Spec Kit remains authoritative
-  for feature specification, clarification, planning, tasks, implementation, and convergence, while
-  Concorde owns module and feature hierarchy, boundary contracts, level views, traceability, and
-  publication. How that integration is mechanically achieved (presets, extensions, bundles, supported
-  versions) is a feature and architectural-decision concern, not a constitutional one, but any change
-  MUST preserve the ownership split above and MUST fail with actionable diagnostics rather than
-  produce partially composed artifacts.
-- Rendering and publication tools (currently Archify for diagrams and Docusaurus for the site) are
-  generated read models of maintained sources. Replacing a tool is permitted; making a generated
-  output a source is not.
+- Concorde integrates with Spec Kit as its host lifecycle. Spec Kit remains authoritative for the
+  generic specification, clarification, planning, tasks, implementation, and convergence phases;
+  Concorde owns recursive module architecture, feature placement and interfaces, bounded context,
+  entity/reference validation, delivery cleanup, and publication.
+- Rendering and publication tools (currently Archify and Docusaurus) are generated read models.
+  Replacing a tool is permitted; making a generated output a source is not.
+- Understand Anything may supply adapter types and relationships for exploration, but Concorde's
+  recursive modules, stable entity identities, feature ownership, and authority boundaries remain
+  normative. A UA layer or path-derived node ID is not a Concorde module or durable entity identity.
 
 ## Workflow Standards
 
-- Every module, feature, scenario, and contract MUST have a unique, stable ID, and all references
-  MUST resolve. Module containment and feature-refinement graphs MUST be acyclic.
-- Architecture sources MUST mirror the declared hierarchy directly or through an explicit
-  deterministic path mapping. They MUST NOT require a document per class, function, or call edge;
-  architecture documents responsibilities, boundaries, contracts, and representative behavior, not
-  a duplicate inventory of the implementation.
-- Every non-leaf module MUST maintain at least one valid level view, and every diagram a level
-  maintains MUST be referenced from that level's documents; an unreferenced diagram is a defect, not
-  an extra. A scenario SHOULD use only the current module, its immediate submodules, and permitted
-  external actors as participants; deeper participants MUST be justified by clarity at that level.
-- Every feature MUST include a representative scenario unless it records why an example would not
-  improve understanding. A feature MAY own additional explanatory diagrams; at most one is its core
-  component-interaction view, every diagram MUST have a complete textual counterpart, and no diagram
-  may redefine behavior, ownership, or boundary obligations stated in the specification.
-- Custom contract examples MUST validate against their schema. Contract format, semantics, examples,
-  affected feature references, and evidence MUST change together.
-- Generated pages and diagrams MUST carry source provenance and generator version, provide a
-  textual representation, and be reproducible from maintained sources.
+- Every module, architecture entity, feature, interface, scenario, and reflection MUST have a stable
+  identity in its owning scope, and every reference MUST resolve. Module containment and directional
+  feature relationships MUST be acyclic.
+- Canonical module paths are `<module>/architecture.md` and `<module>/modules/<child>/`; canonical
+  feature paths are `<module>/features/<NNN-name>.md`. A module contains no workflow-control child.
+  Temporal work lives at `.concorde/attempts/<stable-feature-id>/` and is absent when that feature has
+  no active attempt; the tracked process log lives at `.concorde/reflections/log.md`.
+- Stable feature IDs, not filenames or module paths, key attempts and MUST use a safe lowercase
+  qualified grammar. A planned feature with no authored ID exposes no attempt path; specification
+  reruns workspace resolution after front matter before creating its checklist.
+- A module architecture MUST declare its immediate module and feature inventory, directly owned
+  entity inventory, typed directed relationships, and representative interactions. Entity locators
+  resolve to real project paths/symbols or state why the entity is external or conceptual.
+- A feature design MUST state outcome, scope, related features, representative usage, requirements,
+  edge/failure behavior, embedded interfaces, and its architecture zoom.
+- Architecture-owned diagrams are optional maintained explanations, MUST be referenced by the owning
+  `architecture.md`, and MUST carry textual counterparts and reproducible output provenance. A
+  diagram never defines an entity, relationship, feature requirement, or interface independently.
+- Interface format, semantics, examples, affected feature references, implementing entity links, and
+  evidence change together.
+- Generated pages and diagrams carry source provenance and generator version, provide a textual
+  representation, and are reproducible from maintained sources.
+- Structural conformance is not implementation proof. Completion claims name the executable tests
+  or checks and the exact scope each result establishes.
 
 ## Development Workflow and Quality Gates
 
-Every material change MUST proceed through the host lifecycle augmented by the Concorde workflow
-available at that revision. The author MUST first identify the level at which the feature is
-specified and the modules that realize it; unclear placement or boundary effects MUST be resolved
-before the implementation plan is approved. The feature specification MUST record parent refinement links, immediate participants,
-governing contracts, representative scenarios, and expected source and test evidence. Affected module
-views and contract definitions MUST be updated before implementation is treated as
-architecture-complete.
+Every material change proceeds through the host lifecycle augmented by Concorde. Specification first
+identifies the feature's module, related features, affected architecture entities, interface changes,
+representative usage, and expected source/test evidence. Architecture changes are written in the
+owning module; feature behavior and interfaces are written in the owning feature design.
 
-Planning and review MUST use only the bounded context required for the affected levels. Review MUST
-verify behavior, placement, abstraction level, dependency direction, boundary contracts, bounded
-visibility, traceability, implementation evidence, and stale generated artifacts. Any deliberate
-exception to a principle or standard MUST be documented with its scope, rationale, owner, expiry or
-reassessment condition, and migration path.
+Planning and review use the selected feature design, bounded module architecture and ancestry,
+bounded related-feature summaries, current code/tests, and the selected temporal attempt. They MUST
+NOT depend on feature abstracts, accepted-realization prose, module summary/design pairs, nested
+subfeature workspaces, or specification-owned contract directories.
 
-Before merge, all applicable deterministic validation, contract and behavioral tests, reference
-checks, and documentation freshness checks MUST pass, and generated outputs MUST be rebuilt
-reproducibly in CI. A change is not complete while maintained sources, implementation, tests, and
-generated projections contain an unreported disagreement.
+Tasks explicitly reconcile every affected architecture, feature interface, code path, test, and
+generated projection. Implementation records compact evidence in the attempt before completing each
+task. Deliberate compromises or difficult choices are appended to `.concorde/reflections/log.md` with their
+scope, observed limitation, current action, and improvement path; they do not block a prototype when
+a safe bounded assumption permits progress.
+
+Before delivery, all applicable deterministic hierarchy, layout, entity/reference, interface,
+behavioral, package, documentation, and freshness checks pass. Delivery removes the complete attempt
+and changes nothing else. A milestone is incomplete while maintained specifications, executable
+reality, tests, and generated projections contain an unreported disagreement.
 
 ## Governance
 
-This constitution is the highest-authority governance document for Concorde. Feature
-specifications, plans, tasks, implementation choices, review conventions, and generated guidance MUST
-comply with it; where another project document conflicts, this constitution prevails until amended.
+This constitution is Concorde's highest-authority governance document. Feature designs, plans, tasks,
+implementation choices, review conventions, and generated guidance MUST comply with it; where
+another project document conflicts, this constitution prevails until reconciled.
 
-An amendment MUST be proposed as a reviewed change to this file describing motivation, affected
-principles, compatibility impact, required migration work, and the semantic version bump. Approval
-requires explicit maintainer acceptance. Amendments take effect when merged; affected templates and
-artifacts MUST be reconciled in the same change or tracked by named follow-up work with an owner.
+An amendment MUST describe motivation, affected principles, compatibility impact, required migration,
+and the semantic version bump. Explicit maintainer direction for the change constitutes review; all
+affected templates and artifacts are reconciled in the same milestone or named in the reflection log
+with a concrete improvement path.
 
-Versions follow semantic versioning: MAJOR removes or incompatibly redefines a principle or
-governance obligation, MINOR adds a principle or materially expands mandatory guidance, PATCH
-clarifies wording. The ratification date records first adoption; the last-amended date changes
-whenever normative content changes.
+Versions follow semantic versioning. MAJOR removes or incompatibly redefines a principle, MINOR adds
+or materially expands a mandatory obligation, and PATCH clarifies wording. Every feature and
+architecture review includes a constitution check. Reviewers reject unexplained violations,
+invisible boundary changes, duplicated canonical intent, and implementation claims without evidence.
 
-Every feature and architecture review MUST include a constitution compliance check. Reviewers MUST
-reject unexplained violations, invisible boundary changes, duplicated canonical intent, and claims
-of implementation agreement without evidence. Exceptions are temporary records, not precedent.
-Maintainers MUST review this constitution at least once per major release and whenever recurring
-exceptions indicate a rule no longer serves the project's goals.
-
-**Version**: 4.0.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-01
+**Version**: 5.2.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-01

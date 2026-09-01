@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Publish a verified Concorde release as immutable GitHub release assets.
 
-Decision table (see the publish-release sub-feature data model):
+Decision table for the publish-release feature:
 
     tag != manifest version        -> version-mismatch     (exit 1, nothing touched)
     verification fails             -> verification-failed  (exit 1, nothing touched)
@@ -45,6 +45,8 @@ CATALOGS = ("extensions.json", "presets.json", "bundles.json")
 POINTER = "release.json"
 BUNDLE_ID = "concorde-bundle"
 POINTER_SCHEMA_VERSION = "1.0"
+ARCHITECTURE_PROFILE = _BUILDER.ARCHITECTURE_PROFILE
+WORKSPACE_PROTOCOL = _BUILDER.WORKSPACE_PROTOCOL
 
 EXIT_OK = 0
 EXIT_REJECTED = 1
@@ -92,7 +94,7 @@ def build_release_pointer(
     speckit_range: str,
     prerelease: bool = False,
 ) -> dict[str, Any]:
-    """Write ``dist/release.json`` per ``contracts/release-publication.md`` and return it."""
+    """Write the release feature's embedded-interface payload and return it."""
     pointer: dict[str, Any] = {
         "schema_version": POINTER_SCHEMA_VERSION,
         "version": version,
@@ -101,6 +103,8 @@ def build_release_pointer(
         "base_url": base_url,
         "speckit_version": speckit_range,
         "bundle_id": BUNDLE_ID,
+        "architecture_profile": ARCHITECTURE_PROFILE,
+        "workspace_protocol": WORKSPACE_PROTOCOL,
         "catalogs": {
             "extensions": f"{base_url}/extensions.json",
             "presets": f"{base_url}/presets.json",
@@ -127,6 +131,7 @@ def render_notes(version: str, speckit_range: str, base_url: str, archives: dict
         f"| `concorde` | extension | `extension:concorde@{version}` |",
         "",
         f"Supported Spec Kit range: `{speckit_range}`",
+        f"Concorde architecture profile / workspace protocol: `{ARCHITECTURE_PROFILE}` / `{WORKSPACE_PROTOCOL}`",
         "",
         "## Archive digests",
         "",
@@ -234,7 +239,13 @@ def compare_with_published(dist: Path, version: str, tag: str, host: ReleaseHost
             local = json.loads((dist / name).read_text(encoding="utf-8"))
             remote = json.loads(remote_path.read_text(encoding="utf-8"))
             if name == POINTER:
-                fields = {"version": None, "base_url": None, "archives": None}
+                fields = {
+                    "version": None,
+                    "base_url": None,
+                    "architecture_profile": None,
+                    "workspace_protocol": None,
+                    "archives": None,
+                }
                 changed = {field: {"published": remote.get(field), "local": local.get(field)} for field in fields if remote.get(field) != local.get(field)}
             else:
                 collection, identifier = _CATALOG_ENTRIES[name]

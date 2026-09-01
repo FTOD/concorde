@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic queue and plan-state helper for reflection-triage/v1."""
+"""Deterministic queue and plan-state helper for reflection-triage/v2."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ EXTENSION_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(EXTENSION_ROOT / "runtime"))
 
 from concorde.frontmatter import FrontMatterError, parse_document  # noqa: E402
-from concorde.reflections import ReflectionEntry, parse_reflection_log, strip_reference_suffix  # noqa: E402
+from concorde.reflections import ReflectionEntry, log_path, parse_reflection_log, strip_reference_suffix  # noqa: E402
 
 
 ROUTES = frozenset({"fast-loop", "specify", "dismiss", "blocked"})
@@ -137,7 +137,9 @@ def _entry_text(text: str, entry: ReflectionEntry) -> str:
 
 def _load_entries(root: Path) -> tuple[list[ReflectionEntry], str, dict[str, str]]:
     _, specification_root = _specification_root(root)
-    path = specification_root / "reflections.md"
+    path = root / log_path()
+    if path.is_symlink():
+        raise QueueError(f"reflection log may not be a symlink: {log_path()}")
     if not path.is_file():
         return [], "", _document_map(specification_root, root)
     text = path.read_text(encoding="utf-8")
@@ -194,7 +196,7 @@ def _enrich(
         "title": entry.title,
         "text": _entry_text(text, entry),
         **{key.lower(): value for key, value in entry.fields.items()},
-        "feature_directory": str(PurePosixPath(documents[feature_id]).parent) if feature_id in documents else None,
+        "feature_path": documents.get(feature_id),
         "concerns_path": concern_path,
         "plan": plans.get(entry.identifier),
     }

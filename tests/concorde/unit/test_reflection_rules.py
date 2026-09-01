@@ -13,7 +13,7 @@ from concorde.diagnostics import canonical_json, operation_envelope  # noqa: E40
 from concorde.reflections import parse_reflection_log  # noqa: E402
 from concorde.validate import validate_project  # noqa: E402
 
-EXAMPLE_LOG = REPOSITORY_ROOT / "specs/concorde/features/005-auto-reflections/contracts/examples/reflections.md"
+EXAMPLE_LOG = REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/reflections/reflections.md"
 
 
 def reflect_rules(result) -> list[str]:
@@ -30,9 +30,10 @@ class ReflectionRuleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             project = self.project(temporary)
             self.assertEqual(reflect_rules(validate_project(project)), [])
-            log = project / "specs/example/reflections.md"
+            log = project / ".concorde/reflections/log.md"
+            log.parent.mkdir(parents=True, exist_ok=True)
             log.write_text(EXAMPLE_LOG.read_text(encoding="utf-8").replace("feature.example.api.health-check", "feature.example.deliver").replace(
-                "specs/example/architecture/modules/api/features/002-add-health-check/design.md#functional-requirements", "specs/example/features/001-deliver/design.md#requirements"), encoding="utf-8")
+                "specs/example/modules/api/features/002-add-health-check.md#functional-requirements", "specs/example/features/001-deliver.md#requirements"), encoding="utf-8")
             result = validate_project(project)
             self.assertEqual(reflect_rules(result), [], [item.message for item in result.findings])
             self.assertEqual(result.status, "success")
@@ -51,14 +52,14 @@ class ReflectionRuleTests(unittest.TestCase):
                 result = validate_project(project)
                 self.assertEqual(reflect_rules(result), [rule])
                 finding = next(item for item in result.findings if item.rule_id == rule)
-                self.assertEqual(finding.source, "specs/example/reflections.md")
+                self.assertEqual(finding.source, ".concorde/reflections/log.md")
                 self.assertEqual(finding.severity, "error")
                 self.assertTrue(finding.remediation)
                 self.assertEqual(result.status, "invalid")
 
     def test_feature_and_concerns_references(self):
-        accepted = ["module.example.api", "feature.example.api.invoke", "contract.example.workflow", "scenario.example.deliver",
-                    "specs/example/module.md#structure", "specs/example/architecture/diagrams/level-view.json:3", "specs/example/features/001-deliver/design.md"]
+        accepted = ["module.example.api", "feature.example.api.invoke", "contract.example.workflow", "interaction.example.deliver",
+                    "specs/example/architecture.md#relationships", "specs/example/diagrams/level-view.json:3", "specs/example/features/001-deliver.md"]
         with tempfile.TemporaryDirectory() as temporary:
             project = self.project(temporary)
             write_reflection_log(project, [reflection_entry(f"R-{index:03d}", Concerns=value) for index, value in enumerate(accepted, start=1)])
@@ -84,7 +85,7 @@ class ReflectionRuleTests(unittest.TestCase):
             log.write_text(
                 log.read_text(encoding="utf-8")
                 .replace("feature.example.deliver", "feature.example.api.invoke")
-                .replace("contract.example.workflow", "specs/example/module.md")
+                .replace("specs/example/architecture.md", "specs/example/features/001-deliver.md")
                 .replace("Fixture problem", "Renamed fixture problem"),
                 encoding="utf-8",
             )
@@ -97,7 +98,7 @@ class ReflectionRuleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             project = self.project(temporary)
             log = write_reflection_log(project, [reflection_entry("R-001")])
-            log.write_text(log.read_text(encoding="utf-8") + "\n## Archive\n\n### R-002 · Old\n\n- **Phase**: plan\n- **Date**: 2026-01-01\n- **Feature**: feature.example.deliver\n- **Kind**: nonsense\n- **Concerns**: specs/example/module.md\n- **Expected**: a\n- **Observed**: b\n- **Effect**: assumed\n- **Action**: c\n- **Improvement**: d\n- **Status**: dismissed\n- **Note**: e\n", encoding="utf-8")
+            log.write_text(log.read_text(encoding="utf-8") + "\n## Archive\n\n### R-002 · Old\n\n- **Phase**: plan\n- **Date**: 2026-01-01\n- **Feature**: feature.example.deliver\n- **Kind**: nonsense\n- **Concerns**: specs/example/architecture.md\n- **Expected**: a\n- **Observed**: b\n- **Effect**: assumed\n- **Action**: c\n- **Improvement**: d\n- **Status**: dismissed\n- **Note**: e\n", encoding="utf-8")
             before = tree_hashes(project)
             outputs = [canonical_json(operation_envelope(validate_project(project))) for _ in range(3)]
             self.assertEqual(outputs[0], outputs[1])
@@ -110,7 +111,9 @@ class ReflectionRuleTests(unittest.TestCase):
             project = self.project(temporary)
             target = Path(temporary) / "outside.md"
             target.write_text("# Reflections: X\n", encoding="utf-8")
-            (project / "specs/example/reflections.md").symlink_to(target)
+            log = project / ".concorde/reflections/log.md"
+            log.parent.mkdir(parents=True, exist_ok=True)
+            log.symlink_to(target)
             result = validate_project(project)
             self.assertEqual(result.status, "invalid")
             self.assertEqual([item.rule_id for item in result.findings], ["CONCORDE-SOURCE-001"])

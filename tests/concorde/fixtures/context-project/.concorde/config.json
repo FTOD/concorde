@@ -1,5 +1,5 @@
 {
-  "profile_version": 4,
+  "profile_version": 7,
   "specification_root": "specs/example",
   "root_module_id": "module.example"
 }

@@ -1,31 +1,34 @@
 {
-  "catalog_url": "https://github.com/FTOD/concorde/releases/download/v0.6.0/presets.json",
+  "catalog_url": "https://github.com/FTOD/concorde/releases/download/v0.8.0/presets.json",
   "presets": {
     "concorde": {
+      "architecture_profile": 7,
       "author": "Concorde maintainers",
-      "description": "Architecture guidance plus authoritative nested-workspace routing for the Spec Kit lifecycle",
-      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.6.0/concorde-preset-0.6.0.zip",
+      "description": "Module architecture and design-only feature guidance for the Spec Kit lifecycle",
+      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.8.0/concorde-preset-0.8.0.zip",
       "id": "concorde",
       "license": "MIT",
       "name": "Concorde",
       "provides": {
         "commands": 10,
-        "templates": 6
+        "templates": 4
       },
       "repository": "https://github.com/FTOD/concorde",
       "requires": {
         "speckit_version": ">=0.16.4,<0.16.5"
       },
-      "sha256": "sha256:3c5ee6304da3f02e292b42799d5d86a65235e36399974b57ecadcac4c9f60173",
+      "sha256": "sha256:3a01510127cf8782b662e1e2426729de31e429457b6ed8270b6b24bf6ddfbe02",
       "tags": [
         "architecture",
-        "contracts",
+        "interfaces",
+        "modules",
         "spec-driven-development"
       ],
       "verified": false,
-      "version": "0.6.0"
+      "version": "0.8.0",
+      "workspace_protocol": 12
     }
   },
   "schema_version": "1.0",
-  "updated_at": "2026-08-20T00:00:00Z"
+  "updated_at": "2026-09-01T00:00:00Z"
 }

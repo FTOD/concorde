@@ -31,6 +31,8 @@ class ReflectionsQueueTests(unittest.TestCase):
     def test_status_next_entry_and_plans_are_repeatable_and_read_only(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = create_triage_project(Path(temporary))
+            self.assertTrue((root / ".concorde/reflections/log.md").is_file())
+            self.assertFalse((root / "specs/example/reflections.md").exists())
             write_plan(root, "R-003")
             before = tree_hashes(root)
 
@@ -43,8 +45,8 @@ class ReflectionsQueueTests(unittest.TestCase):
             self.assertEqual(first, second)
             self.assertEqual([item["id"] for item in first["entries"]], ["R-003", "R-002", "R-001"])
             self.assertEqual([item["id"] for item in pending], ["R-002", "R-001"])
-            self.assertEqual(entry["feature_directory"], "specs/example/features/001-deliver")
-            self.assertEqual(entry["concerns_path"], "specs/example/architecture/contracts/workflow/contract.md")
+            self.assertEqual(entry["feature_path"], "specs/example/features/001-deliver.md")
+            self.assertEqual(entry["concerns_path"], "specs/example/architecture.md")
             self.assertEqual(plans["R-003"]["route"], "fast-loop")
             self.assertEqual(tree_hashes(root), before)
 

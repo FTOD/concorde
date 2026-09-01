@@ -27,6 +27,8 @@ import yaml
 SPECIFY_VERSION = "0.16.4"
 BUNDLE_ID = "concorde-bundle"
 MANAGED_CATALOG = "concorde"
+ARCHITECTURE_PROFILE = 7
+WORKSPACE_PROTOCOL = 12
 CURRENT_RELEASE_URL = "https://github.com/FTOD/concorde/releases/latest/download/release.json"
 
 EXIT_OK = 0
@@ -58,6 +60,8 @@ class ReleaseDescriptor(NamedTuple):
     tag: str
     speckit_version: str
     bundle_id: str
+    architecture_profile: int
+    workspace_protocol: int
     catalogs: dict[str, str]
     source: str
 
@@ -79,7 +83,7 @@ def normalize_version(value: str) -> str:
             EXIT_REQUEST,
             "request-validation",
             f"Invalid Concorde version: {value!r}.",
-            "Pass a release version such as 0.6.0.",
+            "Pass a release version such as 0.8.0.",
         )
     return normalized
 
@@ -96,7 +100,7 @@ def _release_error(message: str) -> InstallationError:
         EXIT_RELEASE,
         "release-validation",
         message,
-        "Select a published Concorde release whose release.json follows schema 1.x and supports Spec Kit 0.16.4.",
+        "Select a published Concorde release whose release.json follows schema 1.x, supports Spec Kit 0.16.4, and declares Profile 7 / Protocol 12.",
     )
 
 
@@ -141,6 +145,13 @@ def validate_release_pointer(
         raise _release_error(
             f"release.json names bundle {bundle_id or '<missing>'!r}; expected {BUNDLE_ID!r}."
         )
+    architecture_profile = payload.get("architecture_profile")
+    workspace_protocol = payload.get("workspace_protocol")
+    if architecture_profile != ARCHITECTURE_PROFILE or workspace_protocol != WORKSPACE_PROTOCOL:
+        raise _release_error(
+            "release.json must declare Architecture Source Profile "
+            f"{ARCHITECTURE_PROFILE} and Feature Workspace Protocol {WORKSPACE_PROTOCOL}."
+        )
     speckit_version = str(payload.get("speckit_version", "")).replace(" ", "")
     if speckit_version != ">=0.16.4,<0.16.5":
         raise _release_error(
@@ -163,6 +174,8 @@ def validate_release_pointer(
         tag=tag,
         speckit_version=speckit_version,
         bundle_id=bundle_id,
+        architecture_profile=architecture_profile,
+        workspace_protocol=workspace_protocol,
         catalogs=catalogs,
         source=source,
     )
@@ -291,7 +304,7 @@ class SpecifyRunner:
         check: bool = True,
     ) -> subprocess.CompletedProcess[str]:
         environment = os.environ.copy()
-        environment.pop("SPECIFY_FEATURE_DIRECTORY", None)
+        environment.pop("SPECIFY_FEATURE_PATH", None)
         environment.pop("PYTHONPATH", None)
         environment["PYTHONNOUSERSITE"] = "1"
         result = subprocess.run(
@@ -317,7 +330,7 @@ class SpecifyRunner:
 
     def json(self, *arguments: str, cwd: Path, stage: str) -> Any:
         environment = os.environ.copy()
-        environment.pop("SPECIFY_FEATURE_DIRECTORY", None)
+        environment.pop("SPECIFY_FEATURE_PATH", None)
         environment.pop("PYTHONPATH", None)
         environment["PYTHONNOUSERSITE"] = "1"
         result = subprocess.run(
@@ -556,6 +569,10 @@ def _print_plan(
     print("\nConcorde installation plan")
     print(f"  release: {release.version} ({release.source})")
     print(f"  Spec Kit: {SPECIFY_VERSION} ({release.speckit_version})")
+    print(
+        f"  Concorde source profile/protocol: "
+        f"{release.architecture_profile}/{release.workspace_protocol}"
+    )
     print(f"  integration: {integration}")
     for kind in ("extension", "preset", "bundle"):
         print(f"  {kind} catalog: {catalog_plan[kind]}")
@@ -655,7 +672,7 @@ def run_agent_assets(
             ]
         )
     environment = os.environ.copy()
-    environment.pop("SPECIFY_FEATURE_DIRECTORY", None)
+    environment.pop("SPECIFY_FEATURE_PATH", None)
     environment.pop("PYTHONPATH", None)
     environment["PYTHONNOUSERSITE"] = "1"
     completed = subprocess.run(
@@ -872,7 +889,7 @@ class LoopbackCatalogServer:
 
 def _run_release_script(checkout: Path, script: Path, *arguments: str, stage: str) -> None:
     environment = os.environ.copy()
-    environment.pop("SPECIFY_FEATURE_DIRECTORY", None)
+    environment.pop("SPECIFY_FEATURE_PATH", None)
     environment.pop("PYTHONPATH", None)
     environment["PYTHONNOUSERSITE"] = "1"
     result = subprocess.run(
@@ -938,6 +955,8 @@ def local_release(checkout_value: str):
                 bundle = bundle_catalog["bundles"][BUNDLE_ID]
                 version = str(bundle["version"])
                 speckit_version = str(bundle["requires"]["speckit_version"])
+                architecture_profile = bundle["architecture_profile"]
+                workspace_protocol = bundle["workspace_protocol"]
             except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError) as error:
                 raise InstallationError(
                     EXIT_RELEASE,
@@ -952,6 +971,8 @@ def local_release(checkout_value: str):
                     "tag": f"v{version}",
                     "speckit_version": speckit_version,
                     "bundle_id": BUNDLE_ID,
+                    "architecture_profile": architecture_profile,
+                    "workspace_protocol": workspace_protocol,
                     "catalogs": {
                         "extensions": f"{server.base_url}/extensions.json",
                         "presets": f"{server.base_url}/presets.json",
@@ -1020,7 +1041,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--integration", help="Coding-agent integration; required for a fresh target")
     result.add_argument("--integration-options", help="Options forwarded to `specify init`")
     source = result.add_mutually_exclusive_group()
-    source.add_argument("--version", help="Published Concorde version (for example 0.6.0)")
+    source.add_argument("--version", help="Published Concorde version (for example 0.8.0)")
     source.add_argument("--checkout", help="Local Concorde checkout to build, verify, and install")
     result.add_argument("--preview", action="store_true", help="Print the exact plan without changing the target")
     return result

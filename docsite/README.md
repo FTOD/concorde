@@ -1,82 +1,64 @@
 # Concorde Project Docsite
 
-This private package builds the read-only Concorde project website. Canonical content remains outside
-this package:
+This private package builds a read-only projection of the Concorde project. Canonical content stays
+outside `docsite/`:
 
-- `../README.md` owns the repository introduction and generated `/` homepage. The build adds only
-  disposable route metadata; the maintained README remains ordinary GitHub-flavored Markdown.
+- `../README.md` owns the repository introduction and the generated `/` homepage.
 - `../docs/**/*.md` owns project documentation.
-- Feature-root `design.md` owns required behavior. Sibling `abstract.md` is the landing page and
-  sibling `implementation.md` owns the accepted realization; the three publish at `<root>`,
-  `<root>/design`, and `<root>/implementation` with abstract-routed feature relationships. Missing
-  companions and the former `tldr.md`, `spec.md`, and `implementation/` names are validation errors.
-  Temporal `attempt/` workspaces are never published.
-- `../specs/**/module.md` (module summary), its sibling `design.md` (module design reference, published
-  as a separately linked Architecture page), and `../specs/**/architecture/contracts/**/contract.md` own
-  architecture intent. A `design.md` beside `module.md` is a module design reference; elsewhere a
-  canonical feature `design.md` is the behavioral authority.
-- `../specs/**/architecture/diagrams/*.json` owns module-level architecture diagrams: any number per
-  module, discovered from that folder rather than declared, each embedded on its module page. The
-  build creates their ignored, disposable standalone Archify projections beneath
-  `../generated/architecture/`.
-- `../specs/**/features/*/diagrams/*.json` owns feature scenario explanations declared by feature
-  `design.md`; each fresh generated view is embedded automatically on the feature abstract.
+- Every `../specs/**/architecture.md` is its module's Architecture landing page.
+- Every direct `../specs/**/features/*.md` is its feature's only Features page and landing page.
+- Every `../specs/**/diagrams/*.json` belongs to the adjacent module `architecture.md`; generated
+  Archify HTML beneath `../generated/architecture/` is disposable.
 
-Before preview or build, the package classifies the root README and unified `specs/` tree and writes
-disposable Home, Architecture, and Features inputs beneath `.generated/content/`. These are semantic
-projections even though their sources share module packages: Architecture staging follows module
-containment, while Features staging follows stable feature identity and explicit parent/sub-feature
-containment. A feature's module placement and `refines` relationships remain page metadata and links;
-`architecture/`, `modules/`, and module-local `features/` wrappers never become Features sidebar
-categories or route parents. Feature pages are staged with the registry-assigned stable-ID route and
-generated category metadata, so each category uses the feature title and opens on its abstract.
-All provenance, validation, and edits continue to reference the canonical root README, `../docs/`,
-and `../specs/` files.
+The adapter publishes four collections: Home, Architecture, Documentation, and Features. Public
+module and feature routes use stable IDs (`/architecture/<module-id>` and
+`/features/<feature-id>`). Generated sidebars follow declared module containment, while features
+remain flat capabilities grouped beneath their providing modules. `related_features` become
+cross-links, never navigation containment.
+
+Feature abstracts, accepted implementation narratives, module summary/design pairs, standalone
+specification contracts, nested feature hierarchies, and feature-owned diagrams are rejected as
+legacy residue. `.concorde/attempts/<stable-feature-id>/`, `.concorde/reflections/log.md`, and all
+other `.concorde/**` control state are outside publication discovery and Manifest provenance.
 
 ## Prerequisites
 
 - Node.js 20 or newer
 - npm with lockfile support
-- the officially installed Archify 2.16 project-local skill at `../.agents/skills/archify`
+- the pinned project-local Archify 2.16 skill at `../.agents/skills/archify`
 
-Install dependencies with `npm ci`. Generated directories (`node_modules/`, `.docusaurus/`,
-`.generated/`, `../generated/`, `coverage/`, and `build/`) are ignored and disposable. The
-project-local Archify skill must contain `package.json` and `bin/archify.mjs`; builds verify its
-exact identity and `skills-lock.json` snapshot, then run its doctor check instead of probing
-environment variables, global tools, or agent-home installation directories.
+Install dependencies with `npm ci`. `node_modules/`, `.docusaurus/`, `.generated/`,
+`../generated/`, `coverage/`, and `build/` are disposable.
 
 ## Commands
 
-Run all commands from `docsite/`:
+Run commands from `docsite/`:
 
 | Command | Purpose |
 |---|---|
-| `npm run inspect` | Print sorted source-to-route mappings, exclusions, and finding counts. |
-| `npm run validate` | Validate sources, metadata, identities, routes, and links without rendering. |
-| `npm run render-diagrams` | Validate and atomically deliver every module-owned and feature-declared Archify diagram. |
-| `npm run start` | Deliver diagrams, validate, and start the local Docusaurus preview. |
-| `npm test` | Run unit, contract, fixture integration, atomicity, and production tests. |
-| `npm run build` | Deliver diagrams, render a clean candidate, verify it, and atomically promote `build/`. |
-| `npm run typecheck` | Check all maintained TypeScript. |
-| `npm run check` | Run type checks, tests, validation, and a verified production build. |
+| `npm run inspect` | Print stable source-to-route mappings, exclusions, and finding counts. |
+| `npm run validate` | Validate Profile 7 sources, identities, relations, routes, provenance, and links. |
+| `npm run render-diagrams` | Validate and atomically deliver all architecture-owned diagrams. |
+| `npm run start` | Prepare current content and diagrams, then start Docusaurus preview. |
+| `npm test` | Run unit, contract, fixture, integration, and production evidence. |
+| `npm run build` | Build, validate, and atomically promote the verified site. |
+| `npm run typecheck` | Type-check maintained TypeScript. |
+| `npm run check` | Run typechecking, all tests, source validation, and a production build. |
 
-Validation diagnostics use a stable rule ID, project-relative source, reason, and remediation. A
-failed candidate is removed and never replaces the last verified `build/`. Successful builds emit
-`build/build-manifest.json` (Build Manifest v9), including actual routes, SHA-256 source provenance,
-and each module page's `architectureDiagrams`.
-The manifest schema is compiled with AJV `strictTypes` and `strictTuples` errors enabled, so a schema
-authoring slip fails `npm run build` and `npm test` rather than logging a warning.
+Successful builds emit deterministic `build/build-manifest.json` using Build Manifest 10. It records
+the four collections, one page per source authority, stable routes and relations, SHA-256 source
+provenance, architecture diagrams, publication-root exclusions, and passed checks. The build
+validates that custom JSON boundary directly; it no longer depends on a specification-owned schema
+file.
 
-Ordinary builds do not run Archify `visual-check`: it requires Chrome/Chromium and produces captures
-for human inspection. Run it explicitly when perceptual evidence is required, and never treat an
-automated receipt as completed human review.
+A failed candidate is removed and never replaces the last verified `build/`. Ordinary builds do not
+run Archify `visual-check`; perceptual review remains an explicit human-evidence step.
 
-The complete authoring and troubleshooting workflow is in
+The authoring and troubleshooting guide is
 [`../docs/contributing/docsite.md`](../docs/contributing/docsite.md).
 
 ## Concorde repository deployment
 
-This package does not define deployment behavior for projects that adopt Concorde. For this
-repository only, `.github/workflows/deploy-docsite.yml` consumes the checked-in project-local Archify
-skill, runs the verified build on every push to `main`, and deploys `build/` to
-`https://ftod.github.io/concorde/` with GitHub Pages. The workflow can also be run manually.
+For this repository, `.github/workflows/deploy-docsite.yml` runs the verified build on `main` and
+deploys `build/` to `https://ftod.github.io/concorde/`. This package does not prescribe deployment
+for other Concorde projects.

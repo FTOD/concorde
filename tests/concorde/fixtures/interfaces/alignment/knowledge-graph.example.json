@@ -1,0 +1,137 @@
+{
+  "version": "1.0.0",
+  "kind": "codebase",
+  "project": {
+    "name": "Concorde Example",
+    "languages": ["Python", "Markdown"],
+    "frameworks": [],
+    "description": "Minimal graph showing a Concorde feature and implementation evidence.",
+    "analyzedAt": "2026-08-31T00:00:00Z",
+    "gitCommitHash": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "nodes": [
+    {
+      "id": "concorde:module.concorde",
+      "type": "module",
+      "name": "Concorde",
+      "summary": "The root Concorde architecture level.",
+      "tags": ["concorde"],
+      "complexity": "moderate",
+      "concordeMeta": {
+        "kind": "module",
+        "stableId": "module.concorde",
+        "sourcePath": "specs/concorde/module.md",
+        "authorityClass": "maintained-architecture",
+        "lifecycle": "durable",
+        "moduleId": "module.concorde",
+        "ontologySource": "docs/ontology.md",
+        "ontologyVersion": "1.1.0-draft"
+      }
+    },
+    {
+      "id": "concorde:feature.concorde.explore-alignment",
+      "type": "concept",
+      "name": "Alignment Explorer",
+      "summary": "Browse architecture and inspect evidence-qualified alignment.",
+      "tags": ["feature", "alignment"],
+      "complexity": "complex",
+      "concordeMeta": {
+        "kind": "feature",
+        "stableId": "feature.concorde.explore-alignment",
+        "sourcePath": "specs/concorde/features/006-alignment-explorer.md",
+        "authorityClass": "durable-feature-intent",
+        "lifecycle": "durable",
+        "moduleId": "module.concorde",
+        "featureId": "feature.concorde.explore-alignment",
+        "ontologySource": "docs/ontology.md",
+        "ontologyVersion": "1.1.0-draft"
+      }
+    },
+    {
+      "id": "concorde:command:speckit.concorde.explore",
+      "type": "endpoint",
+      "name": "speckit.concorde.explore",
+      "summary": "Canonical Alignment Explorer command intent.",
+      "tags": ["command", "concorde-explore"],
+      "complexity": "simple",
+      "concordeMeta": {
+        "kind": "command",
+        "stableId": "speckit.concorde.explore",
+        "sourcePath": "specs/concorde/features/006-alignment-explorer.md",
+        "authorityClass": "durable-feature-intent",
+        "lifecycle": "durable",
+        "moduleId": "module.concorde",
+        "featureId": "feature.concorde.explore-alignment",
+        "ontologySource": "docs/ontology.md",
+        "ontologyVersion": "1.1.0-draft"
+      }
+    },
+    {
+      "id": "file:src/alignment-projector.ts",
+      "type": "file",
+      "name": "alignment-projector.ts",
+      "filePath": "src/alignment-projector.ts",
+      "summary": "Example implementation projection entry point.",
+      "tags": ["implementation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:tests/alignment-projector.test.ts",
+      "type": "file",
+      "name": "alignment-projector.test.ts",
+      "filePath": "tests/alignment-projector.test.ts",
+      "summary": "Example executable evidence for projection behavior.",
+      "tags": ["test"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "concorde:module.concorde",
+      "target": "concorde:feature.concorde.explore-alignment",
+      "type": "contains",
+      "direction": "forward",
+      "description": "module registers project-level feature",
+      "weight": 1
+    },
+    {
+      "source": "concorde:command:speckit.concorde.explore",
+      "target": "concorde:feature.concorde.explore-alignment",
+      "type": "serves",
+      "direction": "forward",
+      "description": "canonical command exposes the feature outcome",
+      "weight": 1
+    },
+    {
+      "source": "file:src/alignment-projector.ts",
+      "target": "concorde:feature.concorde.explore-alignment",
+      "type": "implements",
+      "direction": "forward",
+      "description": "explicit implementation mapping",
+      "weight": 1
+    },
+    {
+      "source": "file:src/alignment-projector.ts",
+      "target": "file:tests/alignment-projector.test.ts",
+      "type": "tested_by",
+      "direction": "forward",
+      "description": "executable evidence",
+      "weight": 1
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:alignment",
+      "name": "Alignment Explorer",
+      "description": "Specification and implementation projection example.",
+      "nodeIds": [
+        "concorde:module.concorde",
+        "concorde:feature.concorde.explore-alignment",
+        "concorde:command:speckit.concorde.explore",
+        "file:src/alignment-projector.ts",
+        "file:tests/alignment-projector.test.ts"
+      ]
+    }
+  ],
+  "tour": []
+}

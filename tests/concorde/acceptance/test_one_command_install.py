@@ -32,7 +32,7 @@ builder = importlib.util.module_from_spec(BUILDER_SPEC)
 BUILDER_SPEC.loader.exec_module(builder)
 
 
-def _release(server: CatalogServer, version: str = "0.6.0") -> installer.ReleaseDescriptor:
+def _release(server: CatalogServer, version: str = "0.8.0") -> installer.ReleaseDescriptor:
     return installer.validate_release_pointer(
         {
             "schema_version": "1.0",
@@ -40,6 +40,8 @@ def _release(server: CatalogServer, version: str = "0.6.0") -> installer.Release
             "tag": f"v{version}",
             "speckit_version": ">=0.16.4,<0.16.5",
             "bundle_id": "concorde-bundle",
+            "architecture_profile": 7,
+            "workspace_protocol": 12,
             "catalogs": {
                 "extensions": f"{server.base_url}/extensions.json",
                 "presets": f"{server.base_url}/presets.json",
@@ -251,7 +253,7 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
                         installer.EXIT_OK,
                     )
                 snapshot = _installed_snapshot(target)
-                self.assertEqual(snapshot["bundles"][0]["version"], "0.6.0")
+                self.assertEqual(snapshot["bundles"][0]["version"], "0.8.0")
                 self.assertEqual(hashlib.sha256(authored.read_bytes()).hexdigest(), authored_digest)
                 self.assertEqual(hashlib.sha256(config.read_bytes()).hexdigest(), config_digest)
                 self.assertEqual(hashlib.sha256(plan.read_bytes()).hexdigest(), plan_digest)
@@ -325,7 +327,7 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
                             )
                     self.assertEqual(result, installer.EXIT_OK)
                     self.assertIn('"id": "concorde-bundle"', output.getvalue())
-                    self.assertIn('"version": "0.6.0"', output.getvalue())
+                    self.assertIn('"version": "0.8.0"', output.getvalue())
                     self.assertIn('"operation": "agent-assets.preview"', output.getvalue())
                     self.assertIn("reflection_investigator.toml", output.getvalue())
                     if target == empty:
@@ -358,7 +360,7 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
                 components = _installed_snapshot(target)["bundles"][0]["components"]
                 self.assertEqual(
                     components,
-                    [("extensions", "concorde", "0.6.0"), ("presets", "concorde", "0.6.0")],
+                    [("extensions", "concorde", "0.8.0"), ("presets", "concorde", "0.8.0")],
                 )
 
     def test_checkout_mode_builds_installs_repeats_and_releases_server(self):
@@ -375,7 +377,7 @@ class OneCommandInstallAcceptanceTests(unittest.TestCase):
                     ]
                 )
             self.assertEqual(result, installer.EXIT_OK, output.getvalue())
-            self.assertEqual(_installed_snapshot(target)["bundles"][0]["version"], "0.6.0")
+            self.assertEqual(_installed_snapshot(target)["bundles"][0]["version"], "0.8.0")
             match = re.search(r"http://127\.0\.0\.1:(\d+)", output.getvalue())
             self.assertIsNotNone(match, output.getvalue())
             port = int(match.group(1))

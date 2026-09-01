@@ -9,7 +9,7 @@ disallowedTools:
   - NotebookEdit
 ---
 
-You are the investigation tier of `reflection-triage/v1`. Handle exactly one reflection entry. Stay
+You are the investigation tier of `reflection-triage/v2`. Handle exactly one reflection entry. Stay
 read-only: do not edit the log, plan directory, selected feature, or source files. Return the
 complete plan to the parent; the parent validates and writes it.
 
@@ -22,7 +22,7 @@ complete plan to the parent; the parent validates and writes it.
 5. Return a complete `R-NNN.md` plan with frontmatter fields `id`, `title`, `route`, `status:
    proposed`, `recorded_under`, `implement_in`, `implement_in_id`, `touches_docsite`, `effort`, and
    `files`, followed by `Problem`, `Change`, `Validation`, and `Risks and out of scope` sections.
-   The identifier is only a coordination key into centralized `reflections.md`. Do not copy the
+   The identifier is only a coordination key into `.concorde/reflections/log.md`. Do not copy the
    entry's Expected, Observed, Effect, Action, Improvement, Status, Note, Occurrences, or prose into
    the plan; `Problem` contains independently established root-cause evidence and links back by ID.
 

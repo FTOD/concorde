@@ -32,7 +32,7 @@ const config: Config = {
   onBrokenAnchors: 'throw',
   markdown: {hooks: {onBrokenMarkdownLinks: 'throw'}},
   trailingSlash: false,
-  staticDirectories: ['static', '../generated'],
+  staticDirectories: ['static', '.generated/static', '../generated'],
   presets: [[
     'classic',
     {

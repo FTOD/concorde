@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from tests.concorde.support.feature_workspace import (
-    create_feature_root,
+    create_feature_file,
     reflection_entry,
     write_reflection_log,
 )
@@ -41,7 +41,7 @@ def tree_hashes(root: Path) -> dict[str, str]:
 
 def create_triage_project(root: Path, *, entry_count: int = 3) -> Path:
     """Create a minimal Concorde project with open reflections and shared config."""
-    create_feature_root(root)
+    create_feature_file(root)
     entries = [reflection_entry(f"R-{number:03d}") for number in range(1, entry_count + 1)]
     write_reflection_log(root, entries)
     write_config(root)
@@ -62,7 +62,7 @@ def write_plan(
     *,
     route: str = "fast-loop",
     status: str = "proposed",
-    implement_in: str = "specs/example/features/001-deliver",
+    implement_in: str = "specs/example/features/001-deliver.md",
 ) -> Path:
     path = root / ".concorde" / "reflections" / "plans" / f"{identifier}.md"
     path.parent.mkdir(parents=True, exist_ok=True)

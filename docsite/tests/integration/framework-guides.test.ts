@@ -27,22 +27,22 @@ const learningGuides = [...baseline.keys()].filter(
 );
 
 describe('maintained Concorde framework guides', () => {
-  it('opens the shared README with key features and all five Concorde commands before project status', async () => {
+  it('opens the shared README with the module model and complete workflow before installation', async () => {
     const registry = await buildRegistry(projectRoot);
     const readme = registry.documents.find((document) => document.sourcePath === 'README.md');
     if (!readme) throw new Error('Expected root README.md in the content registry.');
-    const features = readme.content.indexOf('## Key features');
-    const commands = readme.content.indexOf('## Concorde commands');
-    const status = readme.content.indexOf('## Project status');
-    expect(features).toBeGreaterThan(-1);
-    expect(commands).toBeGreaterThan(features);
-    expect(status).toBeGreaterThan(commands);
+    const model = readme.content.indexOf('## The model');
+    const workflow = readme.content.indexOf('## Workflow');
+    const install = readme.content.indexOf('## Install');
+    expect(model).toBeGreaterThan(-1);
+    expect(workflow).toBeGreaterThan(model);
+    expect(install).toBeGreaterThan(workflow);
     for (const command of ['init', 'context', 'ask', 'validate', 'deliver']) {
       expect(readme.content).toContain(`$speckit-concorde-${command}`);
     }
     expect(readme.links.some((link) => link.targetSourcePath === 'docs/commands.md')).toBe(true);
     const homepageTargets = new Set(readme.links.map((link) => link.targetRoute));
-    for (const route of ['/architecture/concorde/module.concorde', '/docs', '/features/feature.concorde.workflow']) {
+    for (const route of ['/architecture/module.concorde', '/docs/ontology', '/docs/concorde-workflow']) {
       expect(homepageTargets).toContain(route);
     }
   });
@@ -61,7 +61,7 @@ describe('maintained Concorde framework guides', () => {
     }
   });
 
-  it('links the landing journey to every learning guide and each guide to canonical authority', async () => {
+  it('links the landing journey to every learning guide and collectively explains each authority', async () => {
     const manifest = createManifest(await buildRegistry(projectRoot));
     const landing = manifest.pages.find((page) => page.sourcePath === 'docs/index.md');
     if (!landing) throw new Error('Expected docs/index.md in the build manifest.');
@@ -69,36 +69,32 @@ describe('maintained Concorde framework guides', () => {
     const landingTargets = new Set(landing.links.map((link) => link.targetSourcePath));
     for (const sourcePath of learningGuides) expect(landingTargets).toContain(sourcePath);
 
-    for (const sourcePath of learningGuides) {
-      const guide = manifest.pages.find((page) => page.sourcePath === sourcePath);
-      if (!guide) throw new Error(`Expected ${sourcePath} in the build manifest.`);
-      expect(guide.links.some((link) =>
-        link.targetSourcePath.startsWith('specs/') &&
-        /\/(abstract|design|implementation|module|contract)\.md$/.test(link.targetSourcePath),
-      )).toBe(true);
+    const guideText = learningGuides.map((sourcePath) =>
+      manifest.pages.find((page) => page.sourcePath === sourcePath)?.sourcePath ?? '').join('\n');
+    expect(guideText).toContain('docs/specification-model.md');
+    const maintainedText = (await buildRegistry(projectRoot)).documents
+      .filter((document) => learningGuides.includes(document.sourcePath))
+      .map((document) => document.content).join('\n');
+    for (const authority of [
+      'architecture.md', 'features/', '.concorde/attempts/', '.concorde/reflections/log.md', 'source code', 'tests',
+    ]) {
+      expect(maintainedText.toLowerCase()).toContain(authority);
     }
   });
 
   it('does not present temporal implementation artifacts as permanent guide authority', async () => {
     const manifest = createManifest(await buildRegistry(projectRoot));
-    expect(manifest.pages.some((page) => page.sourcePath.includes('/attempt/'))).toBe(false);
+    expect(manifest.pages.some((page) => page.sourcePath.startsWith('.concorde/'))).toBe(false);
+    expect(manifest.excludedSources.some((source) => source.sourcePath.startsWith('.concorde/'))).toBe(false);
   });
 
-  it('publishes a docs-owned Archify diagram on the Concorde workflow guide', async () => {
+  it('keeps the current no-diagram prototype explicit on every module architecture', async () => {
     const registry = await buildRegistry(projectRoot);
-    const workflow = registry.documents.find((document) => document.sourcePath === 'docs/concorde-workflow.md');
-    expect(workflow).toMatchObject({
-      diagrams: [expect.objectContaining({
-        source: 'docs/diagrams/concorde-command-workspace-file-flow.json',
-        role: 'supplemental',
-        kind: 'dataflow',
-        route: '/architecture/concorde-command-workspace-file-flow.html',
-      })],
-    });
-    expect(workflow?.links).toContainEqual(expect.objectContaining({
-      targetSourcePath: 'docs/diagrams/concorde-command-workspace-file-flow.json',
-      targetRoute: '/architecture/concorde-command-workspace-file-flow.html',
-    }));
+    const architecturePages = registry.documents.filter((document) => document.contentKind === 'module-architecture');
+    expect(architecturePages.flatMap((document) =>
+      'architectureDiagrams' in document ? document.architectureDiagrams ?? [] : [])).toEqual([]);
+    expect(registry.documents.filter((document) => document.contentKind !== 'module-architecture')
+      .every((document) => !('architectureDiagrams' in document))).toBe(true);
   });
 
   it('documents ask as a cited read-only agent surface rather than a runtime operation', async () => {
@@ -106,11 +102,9 @@ describe('maintained Concorde framework guides', () => {
     const commands = registry.documents.find((document) => document.sourcePath === 'docs/commands.md');
     if (!commands) throw new Error('Expected docs/commands.md in the documentation registry.');
     const text = commands.content.toLowerCase();
-    expect(text).toContain('speckit-concorde-ask');
-    expect(text).toContain('project-relative');
+    expect(text).toContain('speckit.concorde.ask');
     expect(text).toContain('read-only');
-    expect(text).toContain('no launcher or python runtime');
-    expect(text).toContain('six');
-    expect(text).toContain('five');
+    expect(text).toContain('never invokes another command');
+    expect(text).toContain('protocol 12');
   });
 });

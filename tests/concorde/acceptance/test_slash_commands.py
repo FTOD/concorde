@@ -30,16 +30,17 @@ class SlashCommandAcceptance(unittest.TestCase):
             self.assertIn("$ARGUMENTS", source)
             self.assertIn("{{args}}", installed)
             for semantic in (
-                "smallest relevant set",
+                "smallest bounded project context",
                 ".specify/extensions/concorde/",
                 ".specify/presets/concorde/",
-                "project-relative citation",
-                "focused clarification",
-                "strictly read-only",
-                "do not silently normalize",
+                "project-relative paths",
+                "agent inference",
+                "strictly",
+                "read-only",
+                "when sources disagree",
             ):
-                self.assertIn(semantic, source)
-                self.assertIn(semantic, installed)
+                self.assertIn(semantic, source.lower())
+                self.assertIn(semantic, installed.lower())
             launcher = root / ".specify/extensions/concorde/scripts/bash/concorde.sh"
             result = subprocess.run([str(launcher), "init", "--propose", "--module-id", "module.slash"], cwd=root, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

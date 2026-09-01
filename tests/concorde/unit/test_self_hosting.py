@@ -112,6 +112,41 @@ class SelfHostingUnitTests(unittest.TestCase):
             self_host.component_model(self.root)
         self.assertEqual(raised.exception.finding["code"], "CONCORDE-SELF-HOST-002")
 
+    def test_profile7_source_rejects_removed_feature_templates(self):
+        obsolete = self.root / "presets/concorde/templates/abstract-template.md"
+        obsolete.write_text("obsolete\n", encoding="utf-8")
+        with self.assertRaises(self_host.SelfHostError) as raised:
+            self_host.component_model(self.root)
+        self.assertEqual(raised.exception.finding["code"], "CONCORDE-SELF-HOST-024")
+
+    def test_removed_template_residue_covers_component_and_composed_paths(self):
+        self.assertEqual(self_host.removed_template_residue(self.root), [])
+        for relative in self_host.REMOVED_TEMPLATE_SURFACES:
+            path = self.root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("obsolete\n", encoding="utf-8")
+        self.assertEqual(
+            self_host.removed_template_residue(self.root),
+            list(self_host.REMOVED_TEMPLATE_SURFACES),
+        )
+
+    def test_protocol_freshness_checks_every_phase_and_delivery_projection(self):
+        for command in self_host.PRESET_COMMANDS:
+            path = self.root / self_host.skill_path(command, "codex")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("Feature Workspace Protocol 12\n", encoding="utf-8")
+        delivery = self.root / self_host.skill_path("speckit.concorde.deliver", "codex")
+        delivery.parent.mkdir(parents=True, exist_ok=True)
+        delivery.write_text("Delivery Proposal 8\n", encoding="utf-8")
+        readme = self.root / ".specify/extensions/concorde/README.md"
+        readme.parent.mkdir(parents=True, exist_ok=True)
+        readme.write_text("Feature Workspace Protocol 12\n", encoding="utf-8")
+        self.assertEqual(self_host.protocol_freshness(self.root, "codex"), [])
+
+        stale = self.root / self_host.skill_path("speckit.plan", "codex")
+        stale.write_text("stale\n", encoding="utf-8")
+        self.assertEqual(self_host.protocol_freshness(self.root, "codex"), [stale.relative_to(self.root).as_posix()])
+
     def test_unsupported_host_and_integration_are_actionable(self):
         path = self.root / ".specify/integration.json"
         data = json.loads(path.read_text())
@@ -163,12 +198,11 @@ class PreservedFixtureTests(unittest.TestCase):
 
     REQUIRED_SENTINELS = frozenset(
         {
-            "specs/example/abstract.md",
-            "specs/example/design.md",
-            "specs/example/implementation.md",
-            "specs/example/architecture/contracts/io/contract.md",
+            "specs/example/architecture.md",
+            "specs/example/features/001-capability.md",
+            ".concorde/attempts/feature.example.capability/tasks.md",
+            ".concorde/reflections/log.md",
             "specs/example/diagrams/components.json",
-            "specs/example/attempt/tasks.md",
             "docs/user.md",
             "src/user.py",
             "tests/user.txt",
@@ -182,23 +216,20 @@ class PreservedFixtureTests(unittest.TestCase):
         sentinels = preserved_sentinels()
         self.assertLessEqual(self.REQUIRED_SENTINELS, set(sentinels))
         self.assertTrue(all(content for content in sentinels.values()))
-        self.assertEqual(
-            len({sentinels[path] for path in ("specs/example/abstract.md", "specs/example/design.md", "specs/example/implementation.md")}),
-            3,
-        )
+        self.assertIn("Embedded interface", sentinels["specs/example/features/001-capability.md"])
 
     def test_fixture_loader_rejects_repeated_paths_and_non_string_content(self):
-        repeated = '{"specs/example/design.md": "# a\\n", "specs/example/design.md": "# b\\n"}'
-        self.assertEqual(json.loads(repeated), {"specs/example/design.md": "# b\n"})
+        repeated = '{"specs/example/architecture.md": "# a\\n", "specs/example/architecture.md": "# b\\n"}'
+        self.assertEqual(json.loads(repeated), {"specs/example/architecture.md": "# b\n"})
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Path(temporary) / "preserved-files.json"
             fixture.write_text(repeated, encoding="utf-8")
-            with self.assertRaisesRegex(AssertionError, "repeats 'specs/example/design.md'"):
+            with self.assertRaisesRegex(AssertionError, "repeats 'specs/example/architecture.md'"):
                 load_preserved_fixture(fixture)
-            fixture.write_text('{"specs/example/design.md": 1}', encoding="utf-8")
+            fixture.write_text('{"specs/example/architecture.md": 1}', encoding="utf-8")
             with self.assertRaisesRegex(AssertionError, "string-to-string"):
                 load_preserved_fixture(fixture)
-            fixture.write_text('["specs/example/design.md"]', encoding="utf-8")
+            fixture.write_text('["specs/example/architecture.md"]', encoding="utf-8")
             with self.assertRaisesRegex(AssertionError, "string-to-string"):
                 load_preserved_fixture(fixture)
 

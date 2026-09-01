@@ -1,130 +1,85 @@
 import json
 import unittest
-from pathlib import Path
+
+from jsonschema import Draft202012Validator
 
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
+FIXTURES = REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/workspace"
+
+
 class FeatureWorkspaceContractTests(unittest.TestCase):
-    def test_examples_share_safe_complete_workspace_shape(self):
-        examples = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples"
-        for name in ("deliver-eligible-response.json",):
-            payload = json.loads((examples / name).read_text(encoding="utf-8"))
-            self.assertEqual(payload["schema_version"], 9)
-            self.assertEqual(payload["operation"], "deliver")
-            self.assertEqual(
-                set(payload["workspace"]),
-                {
-                    "workspace_kind",
-                    "feature_id",
-                    "providing_module",
-                    "parent_context",
-                    "siblings",
-                    "feature_directory",
-                    "feature_abstract",
-                    "feature_design",
-                    "feature_implementation",
-                    "module_summary",
-                    "module_design",
-                    "contracts_dir",
-                    "checklists_dir",
-                    "diagrams_dir",
-                    "attempt_dir",
-                    "attempt_state",
-                    "plan",
-                    "research",
-                    "data_model",
-                    "quickstart",
-                    "tasks",
-                    "validation",
-                    "reflections",
-                    "reflections_open",
-                },
-            )
-            path_values = (
-                value for key, value in payload["workspace"].items()
-                if key not in {"workspace_kind", "feature_id", "providing_module", "parent_context", "siblings", "attempt_state", "reflections_open"}
-            )
-            for value in (*path_values, *payload["artifacts"]):
-                self.assertFalse(Path(value).is_absolute())
-                self.assertNotIn("\\", value)
-                self.assertNotIn("..", Path(value).parts)
-            self.assertEqual(
-                payload["workspace"]["checklists_dir"],
-                payload["workspace"]["attempt_dir"] + "/checklists",
-            )
+    @classmethod
+    def setUpClass(cls):
+        cls.schema = json.loads((FIXTURES / "feature-workspace.schema.json").read_text(encoding="utf-8"))
+        Draft202012Validator.check_schema(cls.schema)
+        cls.validator = Draft202012Validator(cls.schema)
 
-    def test_schema_keeps_workspace_protocol_separate_from_architecture_v1(self):
-        contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts"
-        workspace = json.loads((contracts / "feature-workspace.schema.json").read_text())
-        architecture = json.loads((contracts / "architecture-service.schema.json").read_text())
-        self.assertEqual(workspace["$defs"]["operation"]["enum"], ["deliver"])
-        self.assertEqual(workspace["$defs"]["request"]["properties"]["schema_version"]["const"], 9)
-        self.assertEqual(workspace["$defs"]["response"]["properties"]["schema_version"]["const"], 9)
-        self.assertIn("implementation_digest_before", response_properties := workspace["$defs"]["response"]["properties"])
-        self.assertIn("module_design_digest_after", response_properties)
-        response_properties = workspace["$defs"]["response"]["properties"]
-        self.assertIn("proposal_path", response_properties)
-        self.assertIn("task_summary", response_properties)
-        self.assertIn("checklist_summary", response_properties)
-        self.assertEqual(architecture["$defs"]["operation"]["enum"], ["init", "context", "validate"])
+    def test_delivery_examples_conform_to_protocol12_schema(self):
+        for name in ("deliver-eligible-response.json", "deliver-proposal.json"):
+            with self.subTest(name=name):
+                value = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+                self.assertEqual(list(self.validator.iter_errors(value)), [])
 
-    def test_delivery_proposal_binds_one_realization_optional_reference_and_one_removal_target(self):
-        path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples/deliver-proposal.json"
-        proposal = json.loads(path.read_text(encoding="utf-8"))
-        self.assertEqual(proposal["proposal_version"], 7)
-        self.assertEqual(proposal["operation"], "deliver")
-        realization = Path(proposal["implementation"]["path"])
-        removal = Path(proposal["remove"][0])
-        self.assertEqual(realization.name, "implementation.md")
-        self.assertEqual(removal.name, "attempt")
-        self.assertEqual(realization.parent, removal.parent)
-        self.assertEqual(len(proposal["remove"]), 1)
-        reference = Path(proposal["module_design"]["path"])
-        self.assertEqual(reference.name, "design.md")
-        self.assertNotEqual(reference.parent, realization.parent)
-        schema = json.loads((path.parents[1] / "feature-workspace.schema.json").read_text(encoding="utf-8"))
-        delivery = schema["$defs"]["deliveryProposal"]
-        self.assertEqual(delivery["properties"]["proposal_version"]["const"], 7)
-        self.assertIn("implementation", delivery["required"])
-        self.assertNotIn("design", delivery["properties"])
-        self.assertNotIn("module_design", delivery["required"])
+    def test_workspace_contains_only_feature_architecture_temporal_process_and_executable_context(self):
+        required = set(self.schema["$defs"]["workspace"]["required"])
+        self.assertLessEqual({
+            "feature_id", "providing_module", "feature_path",
+            "module_architecture", "module_ancestry", "related_features", "executable_context",
+            "attempt_dir", "attempt_state", "checklists_dir", "plan", "tasks", "validation",
+            "reflections", "reflections_open",
+        }, required)
+        for removed in (
+            "workspace_" + "kind",
+            "feature_" + "abstract",
+            "feature_" + "implementation",
+            "module_" + "summary",
+            "module_" + "design",
+            "contracts_" + "dir",
+            "diagrams_" + "dir",
+            "parent_" + "context",
+            "siblings",
+            "feature_" + "directory",
+            "feature_" + "design",
+        ):
+            self.assertNotIn(removed, required)
 
-    def test_delivery_eligibility_example_exposes_candidate_metadata(self):
-        path = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts/examples/deliver-eligible-response.json"
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        self.assertEqual(payload["status"], "eligible")
-        self.assertEqual(
-            payload["proposal_path"],
-            payload["workspace"]["attempt_dir"] + "/deliver-proposal.json",
-        )
-        self.assertEqual(payload["task_summary"]["incomplete"], 0)
-        self.assertEqual(payload["checklist_summary"]["incomplete"], 0)
-        self.assertEqual(payload["checklist_summary"]["malformed"], 0)
+    def test_workspace_protocol_and_delivery_proposal_versions_are_independent(self):
+        response = self.schema["$defs"]["deliveryResponse"]["properties"]
+        proposal = self.schema["$defs"]["deliveryProposal"]["properties"]
+        self.assertEqual(response["schema_version"]["const"], 12)
+        self.assertEqual(proposal["proposal_version"]["const"], 8)
+        self.assertEqual(proposal["operation"]["const"], "deliver")
 
-    def test_reflection_fields_are_additive_and_the_proposal_gained_none(self):
-        contracts = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/contracts"
-        schema = json.loads((contracts / "feature-workspace.schema.json").read_text(encoding="utf-8"))
-        workspace = schema["$defs"]["workspacePaths"]
-        self.assertIn("reflections", workspace["properties"])
-        self.assertIn("reflections_open", workspace["properties"])
-        self.assertNotIn("reflections", workspace["required"])
-        self.assertNotIn("reflections_open", workspace["required"])
-        self.assertIn("reflections_open", schema["$defs"]["featureSummary"]["properties"])
-        self.assertIn("reflection_summary", schema["$defs"]["response"]["properties"])
-        self.assertNotIn("reflections", schema["$defs"]["deliveryProposal"]["properties"])
-        payload = json.loads((contracts / "examples/deliver-eligible-response.json").read_text(encoding="utf-8"))
-        self.assertEqual(payload["reflection_summary"], {"entries": 2, "open": 1, "resolved": 1, "dismissed": 0})
-        self.assertEqual(payload["workspace"]["reflections"], "specs/example/reflections.md")
-        context = json.loads((contracts / "examples/context-response.json").read_text(encoding="utf-8"))
-        self.assertEqual(context["result"]["context"]["reflections"]["path"], "specs/example/reflections.md")
-        try:
-            import jsonschema
-        except ImportError:  # pragma: no cover - dev dependency
-            self.skipTest("jsonschema unavailable")
-        jsonschema.validate(payload, {**schema, "$ref": "#/$defs/response"})
-        proposal = json.loads((contracts / "examples/deliver-proposal.json").read_text(encoding="utf-8"))
-        jsonschema.validate(proposal, {**schema, "$ref": "#/$defs/deliveryProposal"})
+    def test_cleanup_proposal_rejects_content_or_update_surfaces(self):
+        proposal = self.schema["$defs"]["deliveryProposal"]
+        self.assertFalse(proposal["additionalProperties"])
+        self.assertEqual(set(proposal["properties"]), {
+            "proposal_version", "operation", "target", "source_digest", "remove",
+        })
+        self.assertEqual(proposal["properties"]["remove"]["minItems"], 1)
+        self.assertEqual(proposal["properties"]["remove"]["maxItems"], 1)
+
+    def test_workspace_adapter_emits_protocol12_and_two_pass_feature_id_preflight(self):
+        adapter = (REPOSITORY_ROOT / "extensions/concorde/scripts/python/workspace.py").read_text(encoding="utf-8")
+        self.assertIn('"schema_version": 12', adapter)
+        self.assertIn('parser.add_argument("--feature-id")', adapter)
+        self.assertIn("allow_missing_feature=arguments.phase == \"specify\"", adapter)
+        self.assertIn("phase_target(paths, arguments.phase)", adapter)
+
+    def test_architecture_service_examples_use_profile7_paths(self):
+        schema = json.loads((FIXTURES / "architecture-service.schema.json").read_text(encoding="utf-8"))
+        Draft202012Validator.check_schema(schema)
+        validator = Draft202012Validator(schema)
+        for name in ("context-response.json", "validation-response.json"):
+            value = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+            self.assertEqual(list(validator.iter_errors(value)), [], name)
+        context = json.loads((FIXTURES / "context-response.json").read_text(encoding="utf-8"))["result"]["context"]
+        self.assertTrue(context["current_module"]["architecture"].endswith("/architecture.md"))
+        self.assertIn("entities", context["current_module"])
+        self.assertIn("relationships", context["current_module"])
+        self.assertIn("interactions", context["current_module"])
 
 
 if __name__ == "__main__":

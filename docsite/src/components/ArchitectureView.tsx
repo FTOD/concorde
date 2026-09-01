@@ -2,7 +2,7 @@ import {useBaseUrlUtils} from '@docusaurus/useBaseUrl';
 
 import type {ContentPage} from '../../plugins/concorde-content/types';
 
-/** The module's own Archify diagrams (`<module>/architecture/diagrams/*.json`), embedded in stable source order. */
+/** The module's own Archify diagrams (`<module>/diagrams/*.json`), embedded in stable source order. */
 export default function ArchitectureView({page}: {page: ContentPage}) {
   const {withBaseUrl} = useBaseUrlUtils();
   if (!page.architectureDiagrams?.length) return null;

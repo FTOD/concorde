@@ -27,21 +27,15 @@ export default function concordeContentPlugin(
         pages: content.documents.map(pageFromDocument),
         counts: {
           architecture: content.documents.filter((document) => document.collectionId === 'architecture').length,
-          moduleDesigns: content.documents.filter((document) => document.contentKind === 'module-design').length,
           docs: content.documents.filter((document) => document.collectionId === 'docs').length,
-          // Each feature opens on its abstract; design and implementation sit beneath it.
-          features: content.documents.filter((document) => document.collectionId === 'feature-abstracts').length,
-          designs: content.documents.filter((document) => document.collectionId === 'features').length,
-          implementations: content.documents.filter((document) => document.collectionId === 'feature-implementations').length,
+          features: content.documents.filter((document) => document.collectionId === 'features').length,
         },
       });
     },
     getPathsToWatch() {
       return [
-        resolve(projectRoot, 'specs/**/*.md'), resolve(projectRoot, 'specs/**/architecture/diagrams/*.json'),
-        resolve(projectRoot, 'specs/**/features/*/diagrams/*.json'),
-        resolve(projectRoot, 'specs/**/features/*/subfeatures/*/diagrams/*.json'),
-        resolve(projectRoot, 'docs/**/*.md'), resolve(projectRoot, 'docs/**/diagrams/*.json'),
+        resolve(projectRoot, 'specs/**/*.md'), resolve(projectRoot, 'specs/**/diagrams/*.json'),
+        resolve(projectRoot, 'docs/**/*.md'),
         resolve(projectRoot, 'README.md'),
       ];
     },

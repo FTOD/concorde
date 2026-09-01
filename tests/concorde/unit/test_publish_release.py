@@ -169,6 +169,16 @@ class PublishReleaseTests(unittest.TestCase):
         self.assertIn("sha256", record["compared"]["differences"]["presets.json"])
         self.assertEqual(self._mutating(host), [])
 
+    def test_published_pointer_profile_or_protocol_drift_is_divergent(self):
+        files = self._published_files()
+        files["release.json"] = files["release.json"].replace('"workspace_protocol": 12', '"workspace_protocol": 11')
+        host = FakeHost(existing={"isDraft": False, "assets": []}, published_files=files)
+        record, code = publisher.publish(self.dist, self.tag, host)
+        self.assertEqual(code, 2)
+        self.assertEqual(record["outcome"], "divergent")
+        self.assertIn("workspace_protocol", record["compared"]["differences"]["release.json"])
+        self.assertEqual(self._mutating(host), [])
+
     def test_missing_published_asset_counts_as_divergent(self):
         files = self._published_files()
         del files["release.json"]
@@ -201,6 +211,8 @@ class PublishReleaseTests(unittest.TestCase):
         pointer = json.loads((self.dist / "release.json").read_text(encoding="utf-8"))
         self.assertEqual(pointer["schema_version"], "1.0")
         self.assertEqual(pointer["tag"], self.tag)
+        self.assertEqual(pointer["architecture_profile"], 7)
+        self.assertEqual(pointer["workspace_protocol"], 12)
         self.assertNotIn("published_at", pointer)
         self.assertNotIn("updated_at", pointer)
         for name, (collection, identifier) in {
@@ -215,7 +227,7 @@ class PublishReleaseTests(unittest.TestCase):
 
     def test_render_notes_names_components_range_and_registration_commands(self):
         notes = publisher.render_notes("0.1.0", ">=0.16.4,<0.16.5", "https://github.com/FTOD/concorde/releases/download/v0.1.0", {"concorde-extension-0.1.0.zip": "sha256:ab"})
-        for needle in ("preset:concorde@0.1.0", "extension:concorde@0.1.0", "concorde-bundle@0.1.0", ">=0.16.4,<0.16.5", "specify bundle install concorde-bundle", "releases/latest/download/release.json"):
+        for needle in ("preset:concorde@0.1.0", "extension:concorde@0.1.0", "concorde-bundle@0.1.0", ">=0.16.4,<0.16.5", "`7` / `12`", "specify bundle install concorde-bundle", "releases/latest/download/release.json"):
             self.assertIn(needle, notes)
 
     def test_cli_dry_run_prints_record_and_exit_code(self):

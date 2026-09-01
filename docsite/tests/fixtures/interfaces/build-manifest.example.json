@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 10,
+  "generator": {"name": "concorde-docsite", "version": "0.6.0", "docusaurusVersion": "3.10.2"},
+  "collections": [
+    {"id": "home", "sourceBase": ".", "routeBase": "/", "include": ["README.md"]},
+    {"id": "architecture", "sourceBase": "specs", "routeBase": "/architecture", "include": ["**/architecture.md"]},
+    {"id": "docs", "sourceBase": "docs", "routeBase": "/docs", "include": ["**/*.md"]},
+    {"id": "features", "sourceBase": "specs", "routeBase": "/features", "include": ["**/features/*.md"]}
+  ],
+  "pages": [
+    {
+      "kind": "project-document",
+      "sourcePath": "README.md",
+      "sourceSha256": "9999999999999999999999999999999999999999999999999999999999999999",
+      "route": "/",
+      "title": "Example Project",
+      "navigation": {"section": "Documentation", "label": "Example Project"},
+      "links": [{"targetSourcePath": "specs/example/architecture.md", "targetRoute": "/architecture/module.example"}]
+    },
+    {
+      "kind": "module-architecture",
+      "sourcePath": "specs/example/architecture.md",
+      "sourceSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "route": "/architecture/module.example",
+      "title": "Example Architecture",
+      "navigation": {"section": "Architecture", "label": "Example Architecture"},
+      "links": [{"targetSourcePath": "specs/example/diagrams/components.json", "targetRoute": "/architecture/example-components.html"}],
+      "moduleId": "module.example",
+      "architectureDiagrams": [{
+        "source": "specs/example/diagrams/components.json",
+        "sourceSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "kind": "architecture",
+        "title": "Example Components",
+        "route": "/architecture/example-components.html"
+      }]
+    },
+    {
+      "kind": "project-document",
+      "sourcePath": "docs/index.md",
+      "sourceSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "route": "/docs",
+      "title": "Documentation",
+      "navigation": {"section": "Documentation", "label": "Documentation"},
+      "links": []
+    },
+    {
+      "kind": "feature-design",
+      "sourcePath": "specs/example/features/001-publish.md",
+      "sourceSha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "route": "/features/feature.example.publish",
+      "title": "Publish Example",
+      "navigation": {"section": "Features", "label": "Publish Example"},
+      "links": [],
+      "featureId": "feature.example.publish",
+      "moduleId": "module.example",
+      "moduleRoute": "/architecture/module.example",
+      "status": "Approved",
+      "relatedFeatures": [{
+        "featureId": "feature.example.validate",
+        "title": "Validate Example",
+        "outcome": "The example is validated.",
+        "status": "Approved",
+        "route": "/features/feature.example.validate"
+      }]
+    }
+  ],
+  "excludedSources": [],
+  "routeInventory": ["/", "/architecture/example-components.html", "/architecture/module.example", "/docs", "/features/feature.example.publish"],
+  "validation": {
+    "status": "passed",
+    "checks": [
+      {"name": "profile-7-sources", "status": "passed"},
+      {"name": "identity-relations-and-routes", "status": "passed"},
+      {"name": "rendered-route-inventory", "status": "passed"}
+    ]
+  }
+}

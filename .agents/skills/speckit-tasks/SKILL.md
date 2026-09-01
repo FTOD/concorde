@@ -1,6 +1,6 @@
 ---
 name: speckit-tasks
-description: Generate dependency-ordered tasks in the selected attempt workspace.
+description: Generate dependency-ordered tasks for one Concorde attempt.
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
@@ -15,294 +15,69 @@ metadata:
 $ARGUMENTS
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
+# Generate Concorde Tasks
 
-## Concorde Installed Workspace Gate
+Turn the selected plan into an executable, dependency-ordered, test-first checklist that reconciles
+module architecture, feature file/interfaces, code, tests, and projections before delivery.
 
-Before any hook, setup step, prerequisite check, or artifact access, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase tasks` from the target
-project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_abstract`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
-`workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
-Require Protocol v9 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
-`workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
-`workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
-only where a phase names it as bounded context, and open the module `design.md` only for a specific
-recorded detail and cite it. When `workspace_kind` is `subfeature`, read
-`parent_context.feature_abstract`, `parent_context.feature_design`, and
-`parent_context.feature_implementation` only as aggregate durable context. Never load a
-sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
-write only through the selected sub-feature's returned paths.
+## Workspace gate
 
-Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
-step says to run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase tasks`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
-by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
-`attempt_dir` when absent and seed a missing artifact from the active `plan-template` or
-`tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
-For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
+Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase tasks` first. Require Protocol 12 and a canonical selected feature. Use only returned
+`feature_path`, `module_architecture`, bounded ancestry/related summaries, `executable_context`,
+`attempt_dir`, `plan`, `tasks`, `research`, `data_model`, `quickstart`, `validation`,
+`checklists_dir`, and `reflections`. Seed a missing returned tasks file through
+`specify preset resolve tasks-template`; never create a copy beside the feature file.
 
-## Pre-Execution Checks
+Read the complete feature file, module architecture, implementation plan, research/data model/
+quickstart when present, and current code/test inventory. Related-feature summaries are navigation;
+open a related feature file only when the plan names its interface as affected. Never inspect another
+attempt.
 
-**Check for extension hooks (before tasks generation)**:
-- Check if `.specify/extensions.yml` exists in the project root.
-- If it exists, read it and look for entries under the `hooks.before_tasks` key
-- If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
-- Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
-- For each remaining hook, do **not** attempt to interpret or evaluate hook `condition` expressions:
-  - If the hook has no `condition` field, or it is null/empty, treat the hook as executable
-  - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the HookExecutor implementation
-- When constructing command invocations from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `$speckit-git-commit`.
-- For each executable hook, output the following based on its `optional` flag:
-  - **Optional hook** (`optional: true`):
-    ```
-    ## Extension Hooks
+## Task generation
 
-    **Optional Pre-Hook**: {extension}
-    Command: `/{command}`
-    Description: {description}
+1. Extract user stories/priorities, requirements, interface obligations, architecture entities and
+   interactions, planned decisions, source/test paths, and runnable acceptance journeys.
+2. Organize phases as Setup, Foundational, one phase per independently testable user story,
+   Integration, and Polish/Delivery Readiness. Tests precede their implementation work.
+3. Give every task one stable task ID and one requirement or acceptance-outcome trace, then use the
+   exact format:
 
-    Prompt: {prompt}
-    To execute: `/{command}`
-    ```
-  - **Mandatory hook** (`optional: false`):
-    ```
-    ## Extension Hooks
+   ```text
+   - [ ] T001 [P?] [US?] Action with exact project-relative path [FR-NNN or acceptance trace]
+   ```
 
-    **Automatic Pre-Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
+4. Mark `[P]` only when tasks touch different files and have no unmet dependency. Use story labels
+   only inside story phases. Every task must be executable without rereading the conversation.
+5. Include explicit tasks when the change affects:
 
-    Wait for the result of the hook command before proceeding to the Outline.
-    ```
-    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
-- If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
+   - a module architecture entity/type/locator, relationship, interaction, immediate module/feature
+     inventory, or architecture-owned diagram;
+   - a selected or named related feature's outcome, usage, embedded interface, failure behavior,
+     requirements, or Architecture Zoom;
+   - code and executable tests/evidence;
+   - source/test interface fixtures, generated projections, public docs, manifests, or package
+     freshness; or
+   - deterministic validation and cleanup-only delivery eligibility.
 
-## Outline
+6. Do not create standalone interface documents, feature wrapper directories, diagram sources beside a
+   feature file, or prose implementation records. Architecture/feature-file edits are valid implementation
+   tasks only when the plan names the owning change and the task carries its trace and tests.
+7. For each architecture diagram include textual architecture parity, maintained source, normalized
+   unique output check, `meta.legend.mode: hidden`, delivery/freshness, and publication evidence.
+8. A setup mutation task must name its requirement/acceptance trace, detected tool, exact setup file,
+   and authorized action. Detection alone is never a write authorization.
+9. End each phase with a proportionate verification task where useful. Every completion task must
+   require compact evidence in the returned `validation` file: task/trace, actual check, passed outcome,
+   evidence path, scope, and limitation.
 
-1. **Setup**: Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase tasks` from repo root and parse FEATURE_DIR, ATTEMPT_DIR, FEATURE_DESIGN, FEATURE_IMPLEMENTATION, IMPL_PLAN, TASKS, TASKS_TEMPLATE_CONTENT, TASKS_TEMPLATE, and AVAILABLE_DOCS. Path fields must be absolute when provided. `AVAILABLE_DOCS` contains feature-root-relative paths such as `implementation.md`, `attempt/research.md`, and `contracts/`. After delivery, the task list lives in the fresh `attempt/` beneath the same root, never in a root-level copy. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+## Consistency and reflections
 
-2. **Load design documents** using the returned paths:
-   - **Required**: IMPL_PLAN (proposed tech stack, libraries, structure), FEATURE_DESIGN (user stories with priorities), FEATURE_IMPLEMENTATION (accepted realization baseline; the placeholder means no accepted baseline)
-   - **Optional**: `ATTEMPT_DIR/data-model.md` (entities), `FEATURE_DIR/contracts/` (durable interface contracts), `ATTEMPT_DIR/contracts/` (proposed contract deltas), `ATTEMPT_DIR/research.md` (decisions), `ATTEMPT_DIR/quickstart.md` (test scenarios)
-   - **IF REFERENCED**: Load feature-owned Archify JSON beside `FEATURE_DESIGN` as durable explanatory
-     sources; do not confuse them with the module's diagrams under `architecture/diagrams/` or generated HTML.
-   - **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints
-   - Note: Not all projects have all documents. Generate tasks based on what's available.
+Check every requirement/interface/architecture change has task coverage, every task path is within
+the user-authorized scope, dependencies are acyclic, and independently testable stories remain
+independent. Record contradictions, missing path authority, workarounds, or provisional choices in
+the project reflection log with `Phase: tasks`; update an existing occurrence rather than duplicate
+it. Do not silently rewrite the feature file, architecture, plan, or code during task generation.
 
-3. **Execute task generation workflow**:
-   - Load plan.md and extract tech stack, libraries, project structure
-   - Load design.md and extract user stories with their priorities (P1, P2, P3, etc.)
-   - Load the feature design.md and distinguish retained accepted realization from changes proposed by plan.md; when it is the placeholder, treat every planned decision as new work against no accepted baseline
-   - Read the level's `module.md` as bounded architecture context; consult a module `design.md` only for a specific recorded detail and cite it
-   - If data-model.md exists: Extract entities and map to user stories
-   - If durable or proposed contracts exist: Map interface contracts and their compatibility/evidence
-     work to user stories; a proposed contract delta requires an implementation task that reconciles
-     the durable contract, code, schemas/examples, tests, and documentation
-   - If research.md exists: Extract decisions for setup tasks
-   - Generate tasks organized by user story (see Task Generation Rules below)
-   - Give every task at least one explicit requirement ID or acceptance-outcome trace token; setup
-     mechanics may trace to the named plan section that requires them
-   - Generate dependency graph showing user story completion order
-   - Create parallel execution examples per user story
-   - Validate task completeness (each user story has all needed tasks, independently testable)
-   - First generate a task that verifies any `role: core` diagram is the feature's single stable
-     component-interaction view and uses Archify `architecture`; a sequence diagram can never satisfy
-     that task. For every required core or `role: supplemental` diagram, generate tasks for aligned
-     prose, scenario/contract traceability, maintained Archify JSON, showcase validation, HTML
-     delivery, explicit `meta.legend.mode: hidden`, truthful visual-review status, freshness, and
-     automatic embedding on the canonical feature page. Require its source under the feature's
-     `diagrams/` directory. Do not create a task that edits generated HTML as intent.
-
-4. **Generate TASKS (`ATTEMPT_DIR/tasks.md`)**: Use TASKS_TEMPLATE_CONTENT (from the JSON output above) as the structure. For compatibility with older setup scripts that omit TASKS_TEMPLATE_CONTENT, read TASKS_TEMPLATE instead. Fill with:
-   - Correct feature name from plan.md
-   - Phase 1: Setup tasks (project initialization)
-   - Phase 2: Foundational tasks (blocking prerequisites for all user stories)
-   - Phase 3+: One phase per user story (in priority order from design.md)
-   - Each phase includes: story goal, independent test criteria, tests (if requested), implementation tasks
-   - Final Phase: Polish & cross-cutting concerns
-   - All tasks must follow the strict checklist format (see Task Generation Rules below)
-   - Clear file paths for each task
-   - Before finalizing, verify every path to an existing file against the repository file inventory
-     (for example, `rg --files`) and verify that every proposed new path has the intended existing
-     parent directory; do not invent a test module, source file, or delivery target from memory
-   - Dependencies section showing story completion order
-   - Parallel execution examples per story
-   - Implementation strategy section (MVP first, incremental delivery)
-
-## Reflection Recording
-
-Every phase after specification records the difficulties and problems it meets in the project's one
-reflection log: the maintained file returned as `workspace.reflections`
-(`<specification_root>/reflections.md`). It is never per feature or per attempt, and no operation
-removes it.
-
-- **When**: whenever this phase cannot follow the specification, the accepted design reference, an
-  existing implementation it depends on, the installed guidance, the level's architecture, or the
-  plan as written, or must assume, work around, defer, or stop — record it in this phase, before the
-  completion report, not later. A problem met and solved within the phase is still recorded.
-- **Where**: ordinary recording writes only `workspace.reflections`. If the file does not exist,
-  create it first from the template resolved by `specify preset resolve reflections-template`.
-  Append a new entry or matching occurrence; never change or reuse an existing `R-NNN` identifier,
-  delete an entry, or reverse a maintainer-set status or note as part of ordinary recording.
-- **Centralized authority**: `workspace.reflections` is the only file that may persist a
-  reflection entry or its `R-NNN` identity, status, note, or occurrences. Never copy or cite that
-  reflection identity or entry content into attempt artifacts, feature/module documents, contracts,
-  diagrams, code, or tests; those artifacts may state independently verified facts without
-  reflection identity. Triage plans and completion reports may refer to an identifier for transient
-  coordination, but they never become a second reflection record.
-- **What**: one `### R-NNN · <short title>` entry (the next unused identifier) with the fields, in
-  order, `Phase` (this phase), `Date`, `Feature` (`workspace.feature_id`), `Kind`
-  (`specification`, `architecture`, `guidance`, `tooling`, `environment`, or `implementation`),
-  `Concerns` (a stable ID or project-relative path anywhere in the project — another feature, its
-  design reference or code, a module, a contract, an instruction, a tool), `Expected`, `Observed`,
-  `Effect` (`assumed`, `worked-around`, `deferred`, or `blocked`), `Action`, `Improvement`, and
-  `Status: open`. The grammar is fixed by the log template and checked by
-  `speckit.concorde.validate` (`CONCORDE-REFLECT-001` to `-004`).
-- **Never fix in place**: a problem with `abstract.md`, feature `design.md`, feature `implementation.md`, any `module.md`, a
-  contract, a view, a diagram, or another feature's code or tests is recorded, not edited; the
-  owning phase or the maintainer changes that source later.
-- **Update, don't duplicate**: when ordinary recording finds the same problem — recorded by any phase
-  on any feature — add a line under its `- **Occurrences**:` list
-  (`<phase> <date> <feature-id> — <context>`) instead of a new entry. Never change a `Status` or
-  `Note` a maintainer set.
-- **Maintained reconciliation**: `workspace.reflections` is maintained docs/specs. An explicitly
-  requested rename or documentation correction MAY rewrite existing entry text and references, but
-  MUST preserve each exact `R-NNN` identifier, identifier uniqueness, required field structure,
-  maintainer-owned status decision, occurrence identity, and problem meaning; renamed `Feature` and
-  `Concerns` values MUST resolve, and the complete log MUST pass `speckit.concorde.validate`.
-  Ordinary problem recording does not implicitly authorize this reconciliation.
-- **Bounded**: recording never requires opening another root's `attempt/`; cite the other
-  feature by stable ID or path.
-- **Hygiene**: no secrets, credentials, or bulk output — cite the evidence path instead; keep
-  `Expected`, `Observed`, and `Action` under about 150 words together.
-- **Report**: end the completion report with `Reflections added: <identifiers or none> · open for
-  this feature: <count>` (`workspace.reflections_open` at phase start plus the open entries added).
-
-## Mandatory Post-Execution Hooks
-
-**You MUST complete this section before reporting completion to the user.**
-
-Check if `.specify/extensions.yml` exists in the project root.
-- If it does not exist, or no hooks are registered under `hooks.after_tasks`, skip to the Completion Report.
-- If it exists, read it and look for entries under the `hooks.after_tasks` key.
-- If the YAML cannot be parsed or is invalid, skip hook checking silently and continue to the Completion Report.
-- Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
-- For each remaining hook, do **not** attempt to interpret or evaluate hook `condition` expressions:
-  - If the hook has no `condition` field, or it is null/empty, treat the hook as executable
-  - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the HookExecutor implementation
-- When constructing command invocations from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `$speckit-git-commit`.
-- For each executable hook, output the following based on its `optional` flag:
-  - **Mandatory hook** (`optional: false`) — **You MUST emit `EXECUTE_COMMAND:` for each mandatory hook**:
-    ```
-    ## Extension Hooks
-
-    **Automatic Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
-    ```
-    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
-  - **Optional hook** (`optional: true`):
-    ```
-    ## Extension Hooks
-
-    **Optional Hook**: {extension}
-    Command: `/{command}`
-    Description: {description}
-
-    Prompt: {prompt}
-    To execute: `/{command}`
-    ```
-
-## Completion Report
-
-Output the generated TASKS path and summary:
-- Total task count
-- Task count per user story
-- Parallel opportunities identified
-- Independent test criteria for each story
-- Suggested MVP scope (typically just User Story 1)
-- Format validation: Confirm ALL tasks follow the checklist format (checkbox, ID, labels, file paths)
-- `Reflections added: <identifiers or none> · open for this feature: <count>` (see Reflection Recording)
-
-Context for task generation: $ARGUMENTS
-
-The tasks.md should be immediately executable - each task must be specific enough that an LLM can complete it without additional context.
-
-## Task Generation Rules
-
-**CRITICAL**: Tasks MUST be organized by user story to enable independent implementation and testing.
-
-**Tests are OPTIONAL**: Only generate test tasks if explicitly requested in the feature specification or if user requests TDD approach.
-
-### Checklist Format (REQUIRED)
-
-Every task MUST strictly follow this format:
-
-```text
-- [ ] [TaskID] [P?] [Story?] Description with file path
-```
-
-**Format Components**:
-
-1. **Checkbox**: ALWAYS start with `- [ ]` (markdown checkbox)
-2. **Task ID**: Sequential number (T001, T002, T003...) in execution order
-3. **[P] marker**: Include ONLY if task is parallelizable (different files, no dependencies on incomplete tasks)
-4. **[Story] label**: REQUIRED for user story phase tasks only
-   - Format: [US1], [US2], [US3], etc. (maps to user stories from design.md)
-   - Setup phase: NO story label
-   - Foundational phase: NO story label
-   - User Story phases: MUST have story label
-   - Polish phase: NO story label
-5. **Description**: Clear action with exact file path
-
-**Examples**:
-
-- ✅ CORRECT: `- [ ] T001 Create project structure per implementation plan`
-- ✅ CORRECT: `- [ ] T005 [P] Implement authentication middleware in src/middleware/auth.py`
-- ✅ CORRECT: `- [ ] T012 [P] [US1] Create User model in src/models/user.py`
-- ✅ CORRECT: `- [ ] T014 [US1] Implement UserService in src/services/user_service.py`
-- ❌ WRONG: `- [ ] Create User model` (missing ID and Story label)
-- ❌ WRONG: `T001 [US1] Create model` (missing checkbox)
-- ❌ WRONG: `- [ ] [US1] Create User model` (missing Task ID)
-- ❌ WRONG: `- [ ] T001 [US1] Create model` (missing file path)
-
-### Task Organization
-
-1. **From User Stories (design.md)** - PRIMARY ORGANIZATION:
-   - Each user story (P1, P2, P3...) gets its own phase
-   - Map all related components to their story:
-     - Models needed for that story
-     - Services needed for that story
-     - Interfaces/UI needed for that story
-     - If tests requested: Tests specific to that story
-   - Mark story dependencies (most stories should be independent)
-
-2. **From Contracts**:
-   - Map each interface contract → to the user story it serves
-   - If tests requested: Each interface contract → contract test task [P] before implementation in that story's phase
-
-3. **From Data Model**:
-   - Map each entity to the user story(ies) that need it
-   - If entity serves multiple stories: Put in earliest story or Setup phase
-   - Relationships → service layer tasks in appropriate story phase
-
-4. **From Setup/Infrastructure**:
-   - Shared infrastructure → Setup phase (Phase 1)
-   - Foundational/blocking tasks → Foundational phase (Phase 2)
-   - Story-specific setup → within that story's phase
-
-### Phase Structure
-
-- **Phase 1**: Setup (project initialization)
-- **Phase 2**: Foundational (blocking prerequisites - MUST complete before user stories)
-- **Phase 3+**: User Stories in priority order (P1, P2, P3...)
-  - Within each story: Tests (if requested) → Models → Services → Endpoints → Integration
-  - Each phase should be a complete, independently testable increment
-- **Final Phase**: Polish & Cross-Cutting Concerns
-
-## Done When
-
-- [ ] tasks.md generated with all phases, task IDs, and file paths
-- [ ] Tasks implement the planned delta from durable feature `implementation.md` and do not edit that file, `abstract.md`, feature `design.md`, any module `module.md`, or any module `design.md` directly
-- [ ] Every required feature diagram has complete source, validation, delivery, and freshness tasks
-- [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
-- [ ] Completion reported to user with task count, story breakdown, and MVP scope
+Process enabled unconditional `after_tasks` hooks: run mandatory hooks, present optional hooks, and
+leave conditional hooks to the executor. Report total tasks by phase/story, parallel opportunities,
+independent test criteria, MVP scope, and reflections added.

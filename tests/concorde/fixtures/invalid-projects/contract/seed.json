@@ -1,1 +1,1 @@
-{"base":"valid-project","mutation":"remove contract counterparties and representation version"}
+{"base":"valid-project","mutation":"remove embedded interface consumer and compatibility fields"}

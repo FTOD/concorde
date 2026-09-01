@@ -1,5 +1,5 @@
 ---
-description: "Create or update the feature specification from a natural language feature description."
+description: "Create or update one direct module-level feature file."
 scripts:
   py: .specify/extensions/concorde/scripts/python/workspace.py --phase specify
 ---
@@ -10,431 +10,110 @@ scripts:
 $ARGUMENTS
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
-
-## Concorde Installed Workspace Gate
-
-Before any hook, setup step, prerequisite check, or artifact access, run `{SCRIPT}` from the target
-project root and parse its canonical JSON. Stop on any status other than `resolved` or `selected`. Use
-the returned `workspace.feature_directory`, `workspace.feature_design`, `workspace.feature_implementation`, durable `workspace.*_dir` fields,
-`workspace.attempt_dir`, plan-phase paths, and `workspace.attempt_state` as the sole path authority.
-Require Protocol v9 `workspace.workspace_kind`, `workspace.feature_id`, `workspace.providing_module`,
-`workspace.parent_context`, and bounded `workspace.siblings`. Treat `workspace.module_summary` and
-`workspace.module_design` as navigation references that are never loaded implicitly: read `module.md`
-only where a phase names it as bounded context, and open the module `design.md` only for a specific
-recorded detail and cite it. When `workspace_kind` is `subfeature`,
-read the parent `feature_design` and `feature_implementation` only as aggregate durable context. Never load a
-sibling design/implementation body or any parent/sibling `attempt/` artifact implicitly, and
-write only through the selected sub-feature's returned paths.
-Bind `CHECKLISTS_DIR` to the returned `workspace.checklists_dir`; never derive it from `FEATURE_DIR`.
-
-Do not execute a later core helper that would re-resolve a root-level plan or task path. When a later
-step says to run `{SCRIPT}`, reuse or refresh this installed-adapter result. Derive `AVAILABLE_DOCS`
-by checking the returned durable and temporal paths. For `plan` or `tasks`, create the returned
-`attempt_dir` when absent and seed a missing artifact from the active `plan-template` or
-`tasks-template` resolved by `specify preset resolve`; never create a feature-root compatibility copy.
-For `checklist`, resolve `checklist-template` separately through the same public preset resolver.
-
-## Pre-Execution Checks
-
-**Check for extension hooks (before specification)**:
-- Check if `.specify/extensions.yml` exists in the project root.
-- If it exists, read it and look for entries under the `hooks.before_specify` key
-- If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
-- Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
-- For each remaining hook, do **not** attempt to interpret or evaluate hook `condition` expressions:
-  - If the hook has no `condition` field, or it is null/empty, treat the hook as executable
-  - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the HookExecutor implementation
-- When constructing command invocations from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `$speckit-git-commit`.
-- For each executable hook, output the following based on its `optional` flag:
-  - **Optional hook** (`optional: true`):
-    ```
-    ## Extension Hooks
-
-    **Optional Pre-Hook**: {extension}
-    Command: `/{command}`
-    Description: {description}
-
-    Prompt: {prompt}
-    To execute: `/{command}`
-    ```
-  - **Mandatory hook** (`optional: false`):
-    ```
-    ## Extension Hooks
-
-    **Automatic Pre-Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
-
-    Wait for the result of the hook command before proceeding to the Outline.
-    ```
-    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
-- If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
-
-## Outline
-
-The text the user typed after `$speckit-specify` in the triggering message **is** the feature description. Assume you always have it available in this conversation even if `$ARGUMENTS` appears literally below. Do not ask the user to repeat it unless they provided an empty command.
-
-Given that feature description, do this:
-
-1. **Generate a concise short name** (2-4 words) for the feature:
-   - Analyze the feature description and extract the most meaningful keywords
-   - Create a 2-4 word short name that captures the essence of the feature
-   - Use action-noun format when possible (e.g., "add-user-auth", "fix-payment-bug")
-   - Preserve technical terms and acronyms (OAuth2, API, JWT, etc.)
-   - Keep it concise but descriptive enough to understand the feature at a glance
-   - Examples:
-     - "I want to add user authentication" → "user-auth"
-     - "Implement OAuth2 integration for the API" → "oauth2-api-integration"
-     - "Create a dashboard for analytics" → "analytics-dashboard"
-     - "Fix payment processing timeout bug" → "fix-payment-timeout"
-
-2. **Branch creation** (optional, via hook):
-
-   If a `before_specify` hook ran successfully in the Pre-Execution Checks above, it will have created/switched to a git branch and output JSON containing `BRANCH_NAME` and `FEATURE_NUM`. Note these values for reference, but the branch name does **not** dictate the spec directory name.
-
-   If the user explicitly provided `GIT_BRANCH_NAME`, pass it through to the hook so the branch script uses the exact value as the branch name (bypassing all prefix/suffix generation).
-
-3. **Create the spec feature directory**:
-
-   Specs live under the default `specs/` directory unless the user explicitly provides `SPECIFY_FEATURE_DIRECTORY`.
-
-   **Concorde canonical placement**: in a Concorde project a new feature root MUST live inside the
-   architecture hierarchy, not in a flat `specs/NNN-name` directory. Before resolving the directory,
-   confirm with the user the level at which the feature is specified (use `speckit.concorde.context`
-   when unsure) and set `SPECIFY_FEATURE_DIRECTORY` to the canonical root:
-   - `<module directory>/features/NNN-<short-name>` for a top-level feature of that module, or
-   - `<parent feature root>/subfeatures/NNN-<short-name>` for one immediate sub-feature (a
-     sub-feature cannot have children).
-   Allocate `NNN` as the next zero-padded number among that directory's existing siblings. After
-   writing the specification, record the stable `id`, `module`, and (for a sub-feature)
-   `parent_feature` in the spec front matter, register the feature in the module's `features` list
-   or the parent's `subfeatures` list, and tell the user to run `speckit.concorde.validate`. Do not
-   silently invent ownership; if placement is unclear, stop and ask.
-
-   **Resolution order for `SPECIFY_FEATURE_DIRECTORY`**:
-   1. If the user explicitly provided `SPECIFY_FEATURE_DIRECTORY` (e.g., via environment variable, argument, or configuration), use it as-is
-   2. Otherwise, in a Concorde project, derive it from the confirmed canonical placement above
-   3. Otherwise, auto-generate it under `specs/`:
-      - Check `.specify/init-options.json` for `feature_numbering` (preferred) or `branch_numbering` (deprecated, migration only — will be removed in a future release)
-      - If `"timestamp"`: prefix is `YYYYMMDD-HHMMSS` (current timestamp)
-      - If `"sequential"` or absent: prefix is `NNN` (next available 3-digit number after scanning existing directories in `specs/`)
-      - Construct the directory name: `<prefix>-<short-name>` (e.g., `003-user-auth` or `20260319-143022-user-auth`)
-      - Set `SPECIFY_FEATURE_DIRECTORY` to `specs/<directory-name>`
-      - If `branch_numbering` was used (and `feature_numbering` was absent), emit a one-line warning: "⚠️ `branch_numbering` in init-options.json is deprecated. Rename to `feature_numbering`."
-
-   **Create the directory and feature design file**:
-   - `mkdir -p SPECIFY_FEATURE_DIRECTORY`
-   - Resolve the active `spec-template` through the Spec Kit preset/template resolution stack (equivalent to `specify preset resolve spec-template`)
-   - Copy the resolved `spec-template` file to `SPECIFY_FEATURE_DIRECTORY/design.md` as the starting point
-   - Set `SPEC_FILE` to `SPECIFY_FEATURE_DIRECTORY/design.md`
-   - Resolve `abstract-template` and `implementation-template` through the same public preset/template stack
-     (`specify preset resolve abstract-template`, `specify preset resolve implementation-template`)
-   - Set `ABSTRACT_FILE` to `SPECIFY_FEATURE_DIRECTORY/abstract.md`; if it does not exist, copy the resolved
-     `abstract-template` to that path as the starting point of the abstract this command authors (step 7)
-   - If `SPECIFY_FEATURE_DIRECTORY/implementation.md` does not exist, copy the resolved
-     `implementation-template` to that path and set `IMPLEMENTATION_FILE` accordingly. If it already
-     exists, preserve it byte-for-byte; design revision never updates the accepted implementation.
-   - Persist the resolved path to `.specify/feature.json`:
-     ```json
-     {
-       "feature_directory": "<resolved feature dir>"
-     }
-     ```
-     Write the actual resolved directory path value (for example, `specs/003-user-auth`), not the literal string `SPECIFY_FEATURE_DIRECTORY`.
-     This allows downstream commands (`$speckit-plan`, `$speckit-tasks`, etc.) to locate the feature directory without relying on git branch name conventions.
-
-   **IMPORTANT**:
-   - You must only create one feature per `$speckit-specify` invocation
-   - The spec directory name and the git branch name are independent — they may be the same but that is the user's choice
-   - The spec directory and file are always created by this command, never by the hook
-
-4. Load the resolved active `spec-template` file to understand required sections. Treat the adjacent
-   `implementation.md` as read-only accepted realization context when it is relevant (its placeholder
-   means no realization has been accepted yet); do not move implementation details into `design.md`
-   and do not update `implementation.md` from this command.
-
-5. **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints.
-
-6. Follow this execution flow:
-    1. Parse user description from arguments
-       If empty: ERROR "No feature description provided"
-    2. Extract key concepts from description
-       Identify: actors, actions, data, constraints
-    3. For unclear aspects:
-       - Make informed guesses based on context and industry standards
-       - Only mark with [NEEDS CLARIFICATION: specific question] if:
-         - The choice significantly impacts feature scope or user experience
-         - Multiple reasonable interpretations exist with different implications
-         - No reasonable default exists
-       - **LIMIT: Maximum 3 [NEEDS CLARIFICATION] markers total**
-       - Prioritize clarifications by impact: scope > security/privacy > user experience > technical details
-    4. Fill User Scenarios & Testing section
-       If no clear user flow: ERROR "Cannot determine user scenarios"
-       Evaluate the feature's stable component model before its scenario timing. For a
-       cross-component feature, create one text-backed core Archify `architecture` diagram in the
-       feature's `diagrams/` directory, or record why prose and the bounded module view are
-       sufficient. The core view shows participating components, responsibilities, interactions,
-       and contract crossings; declare it with `role: core`. Only after that, add
-       `role: supplemental` workflow, sequence, data-flow, or lifecycle diagrams when individual
-       scenarios need order, timing, state, or data-movement detail. A sequence diagram MUST NOT be
-       the feature's core diagram. Use descriptive filenames other than `architecture.json` and
-       declare every diagram in `design.md` so Documentation can embed it automatically. Every
-       declaration's `output` MUST be a normalized project-relative `.html` path beneath
-       `generated/`. The maintained JSON uses a diagram-relative `meta.output`, interpreted relative
-       to that JSON source, which MUST resolve to that same project-relative target. The resolved
-       target MUST be unique across all maintained diagram declarations. Diagrams supplement the
-       textual feature and contracts; they do not define new behavior or low-level class/function
-       inventories. Every maintained Concorde Archify source MUST set
-       `meta.legend.mode` to `hidden`; domain labels and the textual counterpart explain the view,
-       not Archify's renderer-owned generic legend categories.
-    5. Author the level-local `## Terminology` declaration
-       - Read terminology from the permitted ancestor module chain and, for a sub-feature, its immediate parent feature
-       - Define every important concept or expression introduced by this level exactly once in the `Term`, `Meaning`, and `Relationships` table
-       - Do not copy unchanged inherited rows; when there are no local concepts, use the exact inherited-only declaration from the template
-       - Use backticked preferred terms/aliases and typed `` `predicate` → `Target term` `` relationships whose targets resolve locally or through ancestors
-    6. Generate Functional Requirements
-       Each requirement must be testable
-       Use reasonable defaults for unspecified details (document assumptions in Assumptions section)
-    7. Define Success Criteria
-       Create measurable, technology-agnostic outcomes
-       Include both quantitative metrics (time, performance, volume) and qualitative measures (user satisfaction, task completion)
-       Each criterion must be verifiable without implementation details
-    8. Identify Key Entities (if data involved)
-    9. Return: SUCCESS (spec ready for planning)
-
-7. Write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (arguments) while preserving section order and headings.
-
-   Then author `ABSTRACT_FILE` from the same description and the finished specification: a self-contained
-   quick understanding of the feature with exactly the five H2 sections `Purpose`, `Functionality`,
-   `Structure` (link the declared core diagram, or the parent's core view or level view, or add a
-   ```text sketch), `Logic` (the main flow, then \"**Rules the implementation must keep**\" bullets, each
-   ending with the `FR-NNN` IDs it summarizes — every ID must exist in `SPEC_FILE`), and `Read Next`
-   (links to `design.md`, `implementation.md`, published module boundary contracts, the module
-   summary, and any parent or sub-features). Feature-local contracts, examples, the project reflection
-   log, and any other sources excluded from publication are named as code-formatted paths instead of
-   Markdown links.
-   Keep it under 3,000 body words and never let it state something `SPEC_FILE` does not.
-
-8. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
-
-   a. **Create Spec Quality Checklist**: Generate a checklist file at `CHECKLISTS_DIR/requirements.md` using the checklist template structure with these validation items:
-
-      ```markdown
-      # Specification Quality Checklist: [FEATURE NAME]
-
-      **Purpose**: Validate specification completeness and quality before proceeding to planning
-      **Created**: [DATE]
-      **Feature**: [Link to design.md]
-
-      ## Content Quality
-
-      - [ ] No implementation details (languages, frameworks, APIs)
-      - [ ] Focused on user value and business needs
-      - [ ] Written for non-technical stakeholders
-      - [ ] All mandatory sections completed
-
-      ## Requirement Completeness
-
-      - [ ] No [NEEDS CLARIFICATION] markers remain
-      - [ ] Requirements are testable and unambiguous
-      - [ ] Success criteria are measurable
-      - [ ] Success criteria are technology-agnostic (no implementation details)
-      - [ ] All acceptance scenarios are defined
-      - [ ] Every declared scenario identifier resolves in the providing module's current-level view
-      - [ ] Edge cases are identified
-      - [ ] Scope is clearly bounded
-      - [ ] Dependencies and assumptions identified
-
-      ## Feature Readiness
-
-      - [ ] All functional requirements have clear acceptance criteria
-      - [ ] User scenarios cover primary flows
-      - [ ] Cross-component features have one core component-interaction architecture diagram or a clear sufficiency rationale
-      - [ ] The abstract has exactly the five sections Purpose, Functionality, Structure, Logic, Read Next, in order, and stays under 3,000 body words
-      - [ ] Every rule in the abstract's Logic section cites FR-NNN identifiers that design.md defines
-      - [ ] The abstract is self-contained and states no requirement, scope boundary, or success criterion that design.md does not state
-      - [ ] Dynamic scenario views are supplemental and no sequence diagram is designated as core
-      - [ ] Every maintained Archify source explicitly sets `meta.legend.mode` to `hidden`
-      - [ ] Every diagram declaration has a normalized project-relative `.html` output beneath `generated/`, and every diagram-relative `meta.output` resolves to that same project-relative target
-      - [ ] Diagram declaration validation passes, including target uniqueness across all maintained diagram declarations
-      - [ ] `## Terminology` defines every important local concept or uses the exact inherited-only declaration
-      - [ ] Terminology rows use the exact Term, Meaning, Relationships profile without copying inherited rows
-      - [ ] Every alias and typed relationship target resolves locally or through the permitted ancestor chain
-      - [ ] Feature meets measurable outcomes defined in Success Criteria
-      - [ ] No implementation details leak into specification
-
-      ## Notes
-
-      - Items marked incomplete require spec updates before `$speckit-clarify` or `$speckit-plan`
-      ```
-
-   b. **Run Validation Check**: Review the spec against each checklist item:
-      - For each item, determine if it passes or fails
-      - Document specific issues found (quote relevant spec sections)
-
-   c. **Handle Validation Results**:
-
-      A failed diagram declaration check is not a readiness warning: correct the invalid declaration
-      before reporting specification readiness. Do not mark either diagram-output checklist item
-      complete until the output boundary, JSON resolution, and repository-wide uniqueness all pass.
-
-      - **If all items pass**: Mark checklist complete and proceed to the Mandatory Post-Execution Hooks section
-
-      - **If items fail (excluding [NEEDS CLARIFICATION])**:
-        1. List the failing items and specific issues
-        2. Update the spec to address each issue
-        3. Re-run validation until all items pass (max 3 iterations)
-        4. If still failing after 3 iterations, document remaining issues in checklist notes and warn user
-
-      - **If [NEEDS CLARIFICATION] markers remain**:
-        1. Extract all [NEEDS CLARIFICATION: ...] markers from the spec
-        2. **LIMIT CHECK**: If more than 3 markers exist, keep only the 3 most critical (by scope/security/UX impact) and make informed guesses for the rest
-        3. For each clarification needed (max 3), present options to user in this format:
-
-           ```markdown
-           ## Question [N]: [Topic]
-
-           **Context**: [Quote relevant spec section]
-
-           **What we need to know**: [Specific question from NEEDS CLARIFICATION marker]
-
-           **Suggested Answers**:
-
-           | Option | Answer | Implications |
-           |--------|--------|--------------|
-           | A      | [First suggested answer] | [What this means for the feature] |
-           | B      | [Second suggested answer] | [What this means for the feature] |
-           | C      | [Third suggested answer] | [What this means for the feature] |
-           | Custom | Provide your own answer | [Explain how to provide custom input] |
-
-           **Your choice**: _[Wait for user response]_
-           ```
-
-        4. **CRITICAL - Table Formatting**: Ensure markdown tables are properly formatted:
-           - Use consistent spacing with pipes aligned
-           - Each cell should have spaces around content: `| Content |` not `|Content|`
-           - Header separator must have at least 3 dashes: `|--------|`
-           - Test that the table renders correctly in markdown preview
-        5. Number questions sequentially (Q1, Q2, Q3 - max 3 total)
-        6. Present all questions together before waiting for responses
-        7. Wait for user to respond with their choices for all questions (e.g., "Q1: A, Q2: Custom - [details], Q3: B")
-        8. Update the spec by replacing each [NEEDS CLARIFICATION] marker with the user's selected or provided answer
-        9. Re-run validation after all clarifications are resolved
-
-   d. **Update Checklist**: After each validation iteration, update the checklist file with current pass/fail status
-
-## Mandatory Post-Execution Hooks
-
-**You MUST complete this section before reporting completion to the user.**
-
-Check if `.specify/extensions.yml` exists in the project root.
-- If it does not exist, or no hooks are registered under `hooks.after_specify`, skip to the Completion Report.
-- If it exists, read it and look for entries under the `hooks.after_specify` key.
-- If the YAML cannot be parsed or is invalid, skip hook checking silently and continue to the Completion Report.
-- Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
-- For each remaining hook, do **not** attempt to interpret or evaluate hook `condition` expressions:
-  - If the hook has no `condition` field, or it is null/empty, treat the hook as executable
-  - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the HookExecutor implementation
-- When constructing command invocations from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `$speckit-git-commit`.
-- For each executable hook, output the following based on its `optional` flag:
-  - **Mandatory hook** (`optional: false`) — **You MUST emit `EXECUTE_COMMAND:` for each mandatory hook**:
-    ```
-    ## Extension Hooks
-
-    **Automatic Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
-    ```
-    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
-  - **Optional hook** (`optional: true`):
-    ```
-    ## Extension Hooks
-
-    **Optional Hook**: {extension}
-    Command: `/{command}`
-    Description: {description}
-
-    Prompt: {prompt}
-    To execute: `/{command}`
-    ```
-
-## Completion Report
-
-Report completion to the user with:
-- `SPECIFY_FEATURE_DIRECTORY` — the feature directory path
-- `SPEC_FILE` — the spec file path
-- `DESIGN_FILE` — the durable implementation path and whether it was created or preserved
-- Checklist results summary
-- Readiness for the next phase (`$speckit-clarify` or `$speckit-plan`)
-
-**NOTE:** Branch creation is handled by the `before_specify` hook (git extension). Spec directory and file creation are always handled by this core command.
-
-## Quick Guidelines
-
-- Focus on **WHAT** users need and **WHY**.
-- Avoid HOW to implement (no tech stack, APIs, code structure).
-- Written for business stakeholders, not developers.
-- DO NOT create any checklists that are embedded in the spec. That will be a separate command.
-
-### Section Requirements
-
-- **Mandatory sections**: Must be completed for every feature
-- **Optional sections**: Include only when relevant to the feature
-- When a section doesn't apply, remove it entirely (don't leave as "N/A")
-
-### For AI Generation
-
-When creating this spec from a user prompt:
-
-1. **Make informed guesses**: Use context, industry standards, and common patterns to fill gaps
-2. **Document assumptions**: Record reasonable defaults in the Assumptions section
-3. **Limit clarifications**: Maximum 3 [NEEDS CLARIFICATION] markers - use only for critical decisions that:
-   - Significantly impact feature scope or user experience
-   - Have multiple reasonable interpretations with different implications
-   - Lack any reasonable default
-4. **Prioritize clarifications**: scope > security/privacy > user experience > technical details
-5. **Think like a tester**: Every vague requirement should fail the "testable and unambiguous" checklist item
-6. **Common areas needing clarification** (only if no reasonable default exists):
-   - Feature scope and boundaries (include/exclude specific use cases)
-   - User types and permissions (if multiple conflicting interpretations possible)
-   - Security/compliance requirements (when legally/financially significant)
-
-**Examples of reasonable defaults** (don't ask about these):
-
-- Data retention: Industry-standard practices for the domain
-- Performance targets: Standard web/mobile app expectations unless specified
-- Error handling: User-friendly messages with appropriate fallbacks
-- Authentication method: Standard session-based or OAuth2 for web apps
-- Integration patterns: Use project-appropriate patterns (REST/GraphQL for web services, function calls for libraries, CLI args for tools, etc.)
-
-### Success Criteria Guidelines
-
-Success criteria must be:
-
-1. **Measurable**: Include specific metrics (time, percentage, count, rate)
-2. **Technology-agnostic**: No mention of frameworks, languages, databases, or tools
-3. **User-focused**: Describe outcomes from user/business perspective, not system internals
-4. **Verifiable**: Can be tested/validated without knowing implementation details
-
-**Good examples**:
-
-- "Users can complete checkout in under 3 minutes"
-- "System supports 10,000 concurrent users"
-- "95% of searches return results in under 1 second"
-- "Task completion rate improves by 40%"
-
-**Bad examples** (implementation-focused):
-
-- "API response time is under 200ms" (too technical, use "Users see results instantly")
-- "Database can handle 1000 TPS" (implementation detail, use user-facing metric)
-- "React components render efficiently" (framework-specific)
-- "Redis cache hit rate above 80%" (technology-specific)
-
-## Done When
-
-- [ ] Specification written to `SPEC_FILE` and validated against quality checklist
-- [ ] `ABSTRACT_FILE` authored: self-contained, exactly the five sections `Purpose`, `Functionality`, `Structure`, `Logic`, `Read Next` in order, a structure link or text sketch, every `Logic` rule citing `FR-NNN` IDs defined in `SPEC_FILE`, under 3,000 body words, and nothing `SPEC_FILE` does not state
-- [ ] Durable `DESIGN_FILE` exists, any pre-existing realization was preserved byte-for-byte, and no feature-root `implementation.md` was created
-- [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
-- [ ] Completion reported to user with feature directory, spec file path, and checklist results
+# Specify a Concorde Feature
+
+Create or revise exactly one complete durable feature file. A feature is a level-local
+capability of one module, never a hierarchy container. Its purpose, usage, requirements, embedded
+interfaces, failures, and Architecture Zoom all belong in that one document.
+
+## Workspace gate
+
+Before resolving templates, reading feature artifacts, or writing anything, run `{SCRIPT}` from the
+project root. Require a successful Protocol 12 result (`schema_version: 12`) whose status is
+`resolved` or `selected`. Treat returned paths as the sole authority:
+
+- identity: `feature_id`, `feature_path`, and `providing_module`;
+- durable context: `feature_path`, `module_architecture`, bounded `module_ancestry`, and bounded
+  `related_features` summaries;
+- temporal context for an existing feature: stable-ID-derived `attempt_dir`, `attempt_state`,
+  `checklists_dir`, and returned attempt paths;
+- process context: `reflections` and its open count; and
+- executable context: deterministic source/test roots or inventory hints.
+
+For a missing feature, require `feature_id: null`, `attempt_state: unresolved`, and null temporal
+paths. `phase_root` remains `feature_path`. Those nulls are a safety boundary, not paths to derive or
+replace locally.
+
+Do not derive alternate roots. Related-feature summaries and module ancestry are navigation only;
+do not load another feature body or attempt unless the user's requested relationship makes that body
+an explicit dependency. Reject a selected path outside the providing module's direct
+`features/<NNN-name>.md` file.
+
+## Authoring workflow
+
+1. Consider `$ARGUMENTS` as the complete feature description. If it is empty, stop and ask for the
+   intended capability.
+2. Read the providing module's `architecture.md` as bounded structural authority. Confirm the
+   module responsibility and boundary, immediate feature inventory, and all entities/interfaces the
+   proposed feature will reference. Do not descend into child modules merely because they exist.
+3. Resolve `spec-template` through `specify preset resolve`. Use the returned `feature_path`;
+   create its `features/` parent only when Protocol 12 identifies a new canonical feature selection.
+   A missing feature has no trustworthy attempt key until its front-matter stable ID exists: do not
+   derive an ID from its filename or module, and do not create a provisional attempt.
+4. Write one self-contained design with:
+
+   - front matter containing stable `id`, `kind: feature`, `module`, `related_features`, provided and
+     required interface IDs, and `evidence_status`;
+   - observable Outcome and Scope;
+   - representative success, edge, and failure Usage;
+   - User Scenarios & Testing, testable Requirements, assumptions, and measurable Success Criteria;
+   - one `## Interfaces` section defining every meaningful entry point's consumer/direction, inputs,
+     outputs, obligations, failures, compatibility, example, and implementing architecture entities;
+   - one `## Architecture Zoom` that references visible entity IDs and explains their collaboration
+     without redefining entity identity, type, locator, or ownership; and
+   - stable related-feature IDs with explicit composition, refinement, or dependency meaning.
+
+5. Existing `contract.*` identifiers may remain as interface identities, but their semantics live in
+   this design. Do not create a separate interface document or directory. Executed schemas/examples
+   belong with source or tests, not beside the direct feature file.
+6. The feature owns no diagram source. It may link an architecture-owned explanatory view declared
+   by the providing module. When such a view is referenced, verify that its declaration has a
+   normalized project-relative `.html` output below `generated/`, its source-relative `meta.output`
+   resolves to that same unique target, and `meta.legend.mode` is `hidden`. Route an invalid module
+   declaration to architecture work; do not repair it silently during feature specification.
+7. For a newly created feature, reconcile only the providing architecture's immediate feature
+   inventory entry after the design is ready. Any needed entity, relationship, interaction, or
+   diagram change is an architecture change: surface it explicitly for review rather than inventing
+   structural facts in the feature.
+8. After writing a new feature and reconciling its module inventory, run `{SCRIPT}` again. Require
+   Protocol 12 to resolve the exact non-null stable feature ID and return
+   `.concorde/attempts/<stable-feature-id>/`; reject any basename-derived, module-local, or mismatched
+   attempt path.
+9. Create or re-evaluate the built-in requirements-quality checklist only at the second response's
+   returned `checklists_dir/requirements.md`. Checklist marks judge the quality of requirements, not
+   product completion. Never create a compatibility copy beside the direct feature file.
+10. Persist normal Spec Kit selection in `.specify/feature.json`; it is control state, not design
+   authority.
+
+## Quality gate
+
+Before reporting readiness, verify:
+
+- one canonical direct feature file exists and there is no feature wrapper directory;
+- the feature ID and providing module resolve uniquely;
+- every interface named in front matter is defined or explicitly external-required;
+- each interface covers consumer/direction, entry points, inputs, outputs, obligations, failures,
+  compatibility, examples where needed, and implementing entities;
+- every Architecture Zoom entity resolves in the providing module or permitted ancestry;
+- no architecture entity is redefined by the feature;
+- related feature IDs resolve and their relationship meaning is explicit;
+- requirements are testable and scenarios cover success plus material failures;
+- any referenced architecture diagram passes output-boundary, source resolution, target uniqueness,
+  and hidden-legend checks; and
+- every requirements checklist item is truthfully evaluated.
+
+Resolve at most three high-impact ambiguities by asking concise questions. Record unresolved matters
+inside the design's Assumptions without inventing product facts. Specification does not modify code,
+tests, generated projections, or another feature.
+
+## Extension hooks
+
+After the quality gate, inspect `.specify/extensions.yml`. Run each enabled unconditional mandatory
+`after_specify` hook and report its command/result; present enabled unconditional optional hooks
+without running them. Leave conditional hooks to the hook executor. A failed mandatory hook prevents
+a readiness claim.
+
+## Completion report
+
+Report the stable feature ID, providing module, `feature_path`, checklist status, architecture inventory
+change if any, assumptions, and validation result.
