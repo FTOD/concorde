@@ -7,6 +7,20 @@ from pathlib import Path
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
+OBSOLETE_LAYOUT_SUBSTRINGS_BY_TEMPLATE = {
+    "plan-template": (
+        "/specs/[###-feature-name]/spec.md",
+        "specs/[###-feature]/",
+        "contracts/",
+    ),
+    "tasks-template": (
+        "/specs/[###-feature-name]/",
+        "spec.md",
+        "contracts/",
+    ),
+}
+
+
 class PresetWorkflowAcceptance(unittest.TestCase):
     def test_nested_module_workspace_uses_composed_single_spec(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -31,6 +45,7 @@ class PresetWorkflowAcceptance(unittest.TestCase):
             attempt = root / ".concorde/attempts/feature.example.api.add-endpoint"
             feature.parent.mkdir(parents=True)
             attempt.mkdir(parents=True)
+            resolved_templates = {}
             for artifact, template in (
                 (feature, "spec-template"),
                 (attempt / "plan.md", "plan-template"),
@@ -44,6 +59,7 @@ class PresetWorkflowAcceptance(unittest.TestCase):
                     capture_output=True,
                     text=True,
                 )
+                resolved_templates[template] = result.stdout
                 artifact.write_text(result.stdout)
             self.assertEqual(list((module / "features").glob("*.md")), [feature])
             self.assertIn("Concorde Feature Profile", feature.read_text())
@@ -52,6 +68,10 @@ class PresetWorkflowAcceptance(unittest.TestCase):
             self.assertIn("architecture-owned diagram", (attempt / "plan.md").read_text())
             self.assertIn("Concorde Task Coverage", (attempt / "tasks.md").read_text())
             self.assertIn("architecture-owned diagrams", (attempt / "tasks.md").read_text())
+            for template, obsolete_substrings in OBSOLETE_LAYOUT_SUBSTRINGS_BY_TEMPLATE.items():
+                for substring in obsolete_substrings:
+                    with self.subTest(template=template, obsolete_layout=substring):
+                        self.assertNotIn(substring, resolved_templates[template])
             for artifact in (feature, attempt / "plan.md", attempt / "tasks.md"):
                 self.assertIn("meta.legend.mode", artifact.read_text(encoding="utf-8"))
             self.assertFalse((module / "features/001-add-endpoint").exists())
