@@ -50,6 +50,34 @@ class AgentCommandContractTests(unittest.TestCase):
             specify,
         )
 
+    def test_specification_and_planning_require_valid_unique_diagram_outputs(self):
+        specify = (
+            REPOSITORY_ROOT / "presets/concorde/commands/speckit.specify.md"
+        ).read_text(encoding="utf-8")
+        plan = (
+            REPOSITORY_ROOT / "presets/concorde/commands/speckit.plan.md"
+        ).read_text(encoding="utf-8")
+        normalized_specify = " ".join(specify.split())
+        normalized_plan = " ".join(plan.split())
+
+        for invariant in (
+            "normalized project-relative `.html` path beneath `generated/`",
+            "diagram-relative `meta.output`",
+            "resolves to that same project-relative target",
+            "unique across all maintained diagram declarations",
+            "correct the invalid declaration before reporting specification readiness",
+        ):
+            self.assertIn(invariant, normalized_specify, invariant)
+        for invariant in (
+            "validate every existing diagram declaration",
+            "diagram-relative `meta.output`",
+            "same unique target beneath `generated/`",
+            "stop planning and route the invalid durable declaration back to specification authority",
+            "MUST NOT repair `design.md`",
+            "Only after every declaration passes",
+        ):
+            self.assertIn(invariant, normalized_plan, invariant)
+
     def test_fast_loop_direct_edit_surface_has_bounded_no_attempt_contract(self):
         command = REPOSITORY_ROOT / "presets/concorde/commands/speckit.fast-loop.md"
         contract = REPOSITORY_ROOT / "specs/concorde/features/001-concorde-workflow/subfeatures/010-fast-loop/contracts/fast-loop-command.md"

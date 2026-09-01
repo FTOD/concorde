@@ -48,6 +48,21 @@ class PlanDeliveryContractTests(unittest.TestCase):
             self.assertIn(invariant, normalized, invariant)
         self.assertNotIn("feature-root `/contracts/*`", plan)
 
+    def test_plan_validates_diagram_outputs_before_naming_delivery_work(self):
+        plan = self.command("plan")
+        normalized = " ".join(plan.split())
+        for invariant in (
+            "validate every existing diagram declaration",
+            "normalized project-relative `.html` declaration output beneath `generated/`",
+            "diagram-relative `meta.output`",
+            "resolves to the same unique target beneath `generated/`",
+            "stop planning and route the invalid durable declaration back to specification authority",
+            "MUST NOT repair `design.md`",
+            "Only after every declaration passes",
+            "generated delivery, validation, freshness, and evidence work",
+        ):
+            self.assertIn(invariant, normalized, invariant)
+
     def test_tasks_require_traceable_complete_dependency_ordered_work(self):
         tasks = self.command("tasks")
         normalized = " ".join(tasks.split())
