@@ -74,8 +74,22 @@ class ExecuteReconcileContractTests(unittest.TestCase):
             "byte-for-byte unchanged",
             "no empty Convergence header",
             "workspace.reflections",
+            "implementation-owned diagram source/evidence",
+            "missing required diagram declaration",
+            "incorrect core role/kind",
+            "prose/contract authority disagreement",
+            "specification or architecture review",
+            "never append a task that edits feature `design.md`",
+            "maintained JSON that is already authorized, validation, delivery, automatic embedding",
+            "truthful visual-review evidence, and freshness",
         ):
             self.assertIn(invariant, content, invariant)
+        self.assertNotIn(
+            "Append work for `diagrams/` placement, declaration in `design.md`, maintained Archify "
+            "JSON, prose alignment, contract references, delivery, automatic feature-page "
+            "embedding, truthful visual-review evidence, and freshness",
+            content,
+        )
 
     def test_shared_contract_defines_execute_and_reconcile_handoff(self):
         content = " ".join(WORKFLOW_CONTRACT.read_text(encoding="utf-8").split())

@@ -87,6 +87,7 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                 execute_surface = registered_artifact(root, integration, "speckit.implement").read_text(encoding="utf-8")
                 analyze_surface = registered_artifact(root, integration, "speckit.analyze").read_text(encoding="utf-8")
                 converge_surface = registered_artifact(root, integration, "speckit.converge").read_text(encoding="utf-8")
+                converge_content = " ".join(converge_surface.split())
                 for surface in (execute_surface, analyze_surface, converge_surface):
                     self.assertIn("workspace.feature_abstract", surface)
                     self.assertIn("parent_context.feature_abstract", surface)
@@ -108,8 +109,22 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                     "semantic duplicate",
                     "preserve completed tasks",
                     "no empty Convergence header",
+                    "implementation-owned diagram source/evidence",
+                    "missing required diagram declaration",
+                    "incorrect core role/kind",
+                    "prose/contract authority disagreement",
+                    "specification or architecture review",
+                    "never append a task that edits feature `design.md`",
+                    "maintained JSON that is already authorized, validation, delivery, automatic embedding",
+                    "truthful visual-review evidence, and freshness",
                 ):
-                    self.assertIn(invariant, converge_surface, invariant)
+                    self.assertIn(invariant, converge_content, invariant)
+                self.assertNotIn(
+                    "Append work for `diagrams/` placement, declaration in `design.md`, maintained "
+                    "Archify JSON, prose alignment, contract references, delivery, automatic "
+                    "feature-page embedding, truthful visual-review evidence, and freshness",
+                    converge_content,
+                )
                 resolved = subprocess.run(["specify", "preset", "resolve", "reflections-template"], cwd=root, check=True, capture_output=True, text=True)
                 self.assertIn("reflections-template.md", resolved.stdout.replace("\n", ""))
                 surfaces = {registered_artifact(root, integration, command) for command in CONCORDE_COMMANDS}
