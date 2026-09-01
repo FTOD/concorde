@@ -87,6 +87,7 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                 execute_surface = registered_artifact(root, integration, "speckit.implement").read_text(encoding="utf-8")
                 analyze_surface = registered_artifact(root, integration, "speckit.analyze").read_text(encoding="utf-8")
                 converge_surface = registered_artifact(root, integration, "speckit.converge").read_text(encoding="utf-8")
+                execute_content = " ".join(execute_surface.split())
                 converge_content = " ".join(converge_surface.split())
                 for surface in (execute_surface, analyze_surface, converge_surface):
                     self.assertIn("workspace.feature_abstract", surface)
@@ -96,8 +97,17 @@ class WorkspaceCompositionAcceptance(unittest.TestCase):
                     "ATTEMPT_DIR/validation.md",
                     "MUST remain unchecked",
                     "protected-authority",
+                    "setup-file inspection as read-only by default",
+                    "one dependency-ready executable task",
+                    "stable task ID",
+                    "requirement, acceptance-outcome, or named plan-section trace token",
+                    "detected tool",
+                    "exact project-relative setup file being changed",
+                    "cannot independently authorize a setup mutation",
+                    "Repository/tool detection alone MUST NOT authorize a write",
+                    "preserve every setup file byte-for-byte",
                 ):
-                    self.assertIn(invariant, execute_surface, invariant)
+                    self.assertIn(invariant, execute_content, invariant)
                 for invariant in (
                     "absent evidence",
                     "prevailing `design.md` requirement",

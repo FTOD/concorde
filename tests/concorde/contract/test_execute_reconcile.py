@@ -44,6 +44,17 @@ class ExecuteReconcileContractTests(unittest.TestCase):
             "protected-authority",
             "SHA-256",
             "failed verification",
+            "setup-file inspection as read-only by default",
+            "one dependency-ready executable task",
+            "stable task ID",
+            "requirement, acceptance-outcome, or named plan-section trace token",
+            "detected tool",
+            "exact project-relative setup file being changed",
+            "action authorizing the required creation or edit",
+            "cannot independently authorize a setup mutation",
+            "Repository/tool detection alone MUST NOT authorize a write",
+            "preserve every setup file byte-for-byte",
+            "Never synthesize authorization from repository detection",
         ):
             self.assertIn(invariant, content, invariant)
 
