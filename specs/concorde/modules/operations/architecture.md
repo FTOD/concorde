@@ -5,6 +5,7 @@ parent: module.concorde
 modules: []
 features:
   - feature.operations.standard-development-loop
+  - feature.operations.permission-bounded-planning
 diagrams:
   - source: diagrams/system-overview.json
     kind: architecture
@@ -73,6 +74,7 @@ None.
 | Feature | Outcome |
 |---|---|
 | `feature.operations.standard-development-loop` | Run specify, plan, tasks/implement, and validate/deliver as one controlled four-stage LangGraph over canonical leaf Skills. |
+| `feature.operations.permission-bounded-planning` | Enforce least-privilege Codex/Claude launch policies for every Operation and plan through published dependency feature specifications. |
 
 ## Decisions
 
