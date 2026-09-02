@@ -12,7 +12,11 @@ from pathlib import Path
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE_ROOT / "src"))
 
-from concorde.skill_assets import SkillAssetError, render_capabilities  # noqa: E402
+from concorde.skill_assets import (  # noqa: E402
+    SkillAssetError,
+    capability_projection_roles,
+    render_capabilities,
+)
 
 
 def main() -> int:
@@ -28,6 +32,13 @@ def main() -> int:
         rendered = render_capabilities(
             package_root, arguments.integration, arguments.framework_prefix
         )
+        roles = capability_projection_roles(
+            package_root, arguments.integration, arguments.framework_prefix
+        )
+        if set(rendered) != set(roles) or len(rendered) != 18:
+            raise SkillAssetError(
+                "Concorde 2.1.0 must render exactly 18 public capabilities with owned roles"
+            )
     except SkillAssetError as error:
         parser.error(str(error))
     for relative, content in rendered.items():

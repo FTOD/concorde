@@ -2,31 +2,44 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Operations System Overview",
+    "title": "Permission-Bounded Operations",
     "output": "../../../../../generated/architecture/concorde-operations-system-overview.html",
     "quality_profile": "showcase",
     "legend": {"mode": "hidden"},
-    "viewBox": [1360, 640]
+    "viewBox": [1380, 760]
   },
   "components": [
-    {"id": "user", "type": "external", "label": "Maintainer", "sublabel": "Invokes Operation skill", "pos": [40, 270], "size": [160, 68]},
-    {"id": "operation_skill", "type": "frontend", "label": "Operation Skill", "sublabel": "Paired Markdown", "pos": [260, 270], "size": [170, 68]},
-    {"id": "operation_graph", "type": "backend", "label": "operation.py", "sublabel": "Stage topology", "pos": [500, 270], "size": [170, 68]},
-    {"id": "runtime", "type": "backend", "label": "Operation Runtime", "sublabel": "State + executor", "pos": [750, 270], "size": [180, 68]},
-    {"id": "langgraph", "type": "external", "label": "LangGraph 1.x", "sublabel": "Graph scheduler", "pos": [1010, 270], "size": [170, 68]},
-    {"id": "executor", "type": "external", "label": "Coding Agent", "sublabel": "Skill executor", "pos": [1210, 270], "size": [130, 68]},
-    {"id": "skills", "type": "frontend", "label": "Leaf Skills", "sublabel": "Canonical prompts", "pos": [750, 80], "size": [180, 68]},
-    {"id": "state", "type": "database", "label": "Operation State", "sublabel": "Ordered results", "pos": [1010, 470], "size": [170, 68]},
-    {"id": "validator", "type": "security", "label": "Pair Validator", "sublabel": "Python + Markdown", "pos": [500, 470], "size": [170, 68]}
+    {"id": "maintainer", "type": "external", "label": "Maintainer", "sublabel": "Invokes public Operation", "pos": [30, 330], "size": [140, 68]},
+    {"id": "operation_pairs", "type": "frontend", "label": "Operation Pairs", "sublabel": "Three public graphs", "pos": [220, 330], "size": [180, 68]},
+    {"id": "nested_plan", "type": "backend", "label": "Nested Planner", "sublabel": "Context → author", "pos": [220, 90], "size": [180, 68]},
+    {"id": "permission_context", "type": "security", "label": "Planning Context", "sublabel": "Paths + interface reasons", "pos": [480, 90], "size": [190, 68]},
+    {"id": "runtime", "type": "backend", "label": "Operation Runtime", "sublabel": "Occurrences + prior results", "pos": [480, 330], "size": [190, 68]},
+    {"id": "skills", "type": "frontend", "label": "Canonical Skills", "sublabel": "Exposure + effects", "pos": [750, 90], "size": [180, 68]},
+    {"id": "policy_compiler", "type": "security", "label": "Policy Compiler", "sublabel": "Normalized + native", "pos": [750, 330], "size": [190, 68]},
+    {"id": "process_launcher", "type": "backend", "label": "Process Launcher", "sublabel": "Version + digest preflight", "pos": [990, 330], "size": [190, 68]},
+    {"id": "coding_agent", "type": "external", "label": "Codex / Claude", "sublabel": "Native or outer sandbox", "pos": [1220, 330], "size": [140, 68]},
+    {"id": "langgraph", "type": "external", "label": "LangGraph 1.x", "sublabel": "Lazy scheduler", "pos": [480, 560], "size": [190, 68]},
+    {"id": "state", "type": "database", "label": "Results + Receipts", "sublabel": "Append-only state", "pos": [750, 560], "size": [190, 68]},
+    {"id": "validator", "type": "security", "label": "Capability Validator", "sublabel": "Pairs + bindings + cycles", "pos": [220, 560], "size": [190, 68]}
   ],
   "connections": [
-    {"id": "user-invokes-operation", "from": "user", "to": "operation_skill", "label": "invokes", "variant": "emphasis"},
-    {"id": "skill-invokes-graph", "from": "operation_skill", "to": "operation_graph", "label": "paired entrypoint", "labelAt": [465, 352]},
-    {"id": "graph-calls-runtime", "from": "operation_graph", "to": "runtime", "label": "builds stages"},
-    {"id": "runtime-calls-langgraph", "from": "runtime", "to": "langgraph", "label": "compiles"},
-    {"id": "langgraph-schedules-executor", "from": "langgraph", "to": "executor", "label": "schedules Skills", "labelAt": [1195, 352]},
-    {"id": "skills-feed-runtime", "from": "skills", "to": "runtime", "label": "complete prompts", "fromSide": "bottom", "toSide": "top", "labelAt": [840, 162]},
-    {"id": "runtime-updates-state", "from": "runtime", "to": "state", "label": "appends results", "fromSide": "right", "toSide": "left"},
-    {"id": "validator-checks-graph", "from": "validator", "to": "operation_graph", "label": "checks pair", "fromSide": "top", "toSide": "bottom"}
+    {"id": "maintainer_invokes", "from": "maintainer", "to": "operation_pairs", "label": "invokes", "variant": "emphasis"},
+    {"id": "pairs_call_runtime", "from": "operation_pairs", "to": "runtime", "label": "direct capabilities", "labelDy": 65},
+    {"id": "pairs_compose_plan", "from": "operation_pairs", "to": "nested_plan", "label": "public concorde-plan"},
+    {"id": "plan_resolves_context", "from": "nested_plan", "to": "permission_context", "label": "resolve context"},
+    {"id": "context_supplies_runtime", "from": "permission_context", "to": "runtime", "label": "concrete role paths", "fromSide": "bottom", "toSide": "top", "labelDy": 42},
+    {"id": "skills_supply_runtime", "from": "skills", "to": "runtime", "label": "canonical bodies"},
+    {"id": "skills_supply_policy", "from": "skills", "to": "policy_compiler", "label": "leaf effects", "fromSide": "bottom", "toSide": "top"},
+    {"id": "runtime_compiles_policy", "from": "runtime", "to": "policy_compiler", "label": "one binding per leaf", "labelDy": 58},
+    {"id": "runtime_compiles_graph", "from": "runtime", "to": "langgraph", "label": "lazy compile", "fromSide": "bottom", "toSide": "top", "labelDy": 32},
+    {"id": "policy_configures_launcher", "from": "policy_compiler", "to": "process_launcher", "label": "native launch config", "variant": "security", "labelDy": 58},
+    {"id": "launcher_starts_agent", "from": "process_launcher", "to": "coding_agent", "label": "codex exec / claude -p", "variant": "emphasis", "labelDy": -21},
+    {"id": "agent_returns_receipt", "from": "coding_agent", "to": "state", "label": "result + receipt"},
+    {"id": "validator_checks_pairs", "from": "validator", "to": "operation_pairs", "label": "pair + literal parity", "fromSide": "top", "toSide": "bottom"}
+  ],
+  "cards": [
+    {"dot": "violet", "title": "Nested abstraction", "items": ["Parents see only public Operation identity and result", "Internal planner leaves remain packaged but unprojected"]},
+    {"dot": "rose", "title": "Fail-closed enforcement", "items": ["Every leaf gets one narrowing immutable policy", "Unsafe paths, widening, missing sandbox, or stale receipt stop"]},
+    {"dot": "emerald", "title": "Parity evidence", "items": ["Codex and Claude expose equal effective path sets", "Injected process tests make no live model calls"]}
   ]
 }

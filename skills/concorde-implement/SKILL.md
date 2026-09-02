@@ -1,6 +1,32 @@
 ---
 name: concorde-implement
 description: "Execute every task in one selected Concorde attempt."
+exposure: public
+effects:
+  reads:
+    - selected-feature
+    - module-architecture
+    - module-ancestry
+    - related-summaries
+    - required-feature-specs
+    - owned-implementation
+    - task-authorized
+    - attempt
+    - checklists
+    - constitution
+    - reflections
+    - framework
+    - templates
+    - reflection-worktrees
+    - generated-projections
+  writes:
+    - task-authorized
+    - attempt
+    - reflections
+    - reflection-worktrees
+    - generated-projections
+  network: false
+  credentials: none
 scripts:
   py: scripts/workspace.py --phase implement
 ---

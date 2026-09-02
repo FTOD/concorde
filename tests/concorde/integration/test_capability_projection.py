@@ -23,29 +23,26 @@ class CapabilityProjectionIntegrationTests(unittest.TestCase):
         for integration in ("codex", "claude"):
             with self.subTest(integration=integration):
                 rendered = render_capabilities(REPOSITORY_ROOT, integration, "")
-                self.assertEqual(
-                    len(rendered), len(manifest["skills"]) + len(manifest["operations"])
-                )
+                self.assertEqual(len(rendered), 18)
                 self.assertTrue(
                     all('author: "concorde"' in content for content in rendered.values())
                 )
                 self.assertEqual(
                     sum('kind: "operation"' in content for content in rendered.values()),
-                    2,
+                    3,
                 )
+                self.assertFalse(any("concorde-plan-context" in path or "concorde-plan-author" in path for path in rendered))
                 self.assertTrue(all(".specify/" not in content for content in rendered.values()))
 
     def test_source_and_installed_prefixes_change_paths_not_skill_intent(self):
-        skill = REPOSITORY_ROOT / "skills/concorde-plan/SKILL.md"
-        source = render_skill(skill, "codex", "")
-        installed = render_skill(skill, "codex", ".concorde/framework")
-        self.assertIn("python3 scripts/workspace.py --phase plan", source)
+        skill = REPOSITORY_ROOT / "operations/concorde-plan/SKILL.md"
+        source = render_skill(skill, "codex", "", kind="operation")
+        installed = render_skill(skill, "codex", ".concorde/framework", kind="operation")
+        self.assertIn("python3 operations/concorde-plan/operation.py", source)
         self.assertIn(
-            "python3 .concorde/framework/scripts/workspace.py --phase plan", installed
+            "python3 .concorde/framework/operations/concorde-plan/operation.py", installed
         )
-        self.assertIn("./templates/plan-template.md", source)
-        self.assertIn(".concorde/framework/templates/plan-template.md", installed)
-        for marker in ("Protocol 13", "Concorde Architecture Gate", "Completion gate"):
+        for marker in ("context", "author", "permission"):
             self.assertIn(marker, source)
             self.assertIn(marker, installed)
 
@@ -102,7 +99,7 @@ class CapabilityProjectionIntegrationTests(unittest.TestCase):
                 render_skill(missing_heading, "codex")
             missing_heading.write_text(
                 "---\nname: concorde-invalid\ndescription: Invalid\n"
-                "operation: graph.py\nskills: [\"concorde-plan\", \"concorde-tasks\"]\n"
+                "operation: graph.py\ncapabilities: [\"concorde-plan\", \"concorde-tasks\"]\n"
                 "---\n\n# Invalid\n\nRun {OPERATION}.\n"
             )
             with self.assertRaisesRegex(SkillAssetError, "operation: operation.py"):

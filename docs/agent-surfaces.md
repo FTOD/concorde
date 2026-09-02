@@ -20,10 +20,12 @@ Generated checkout projections:
 - `.agents/skills/concorde-*/SKILL.md`
 - `.agents/skills/concorde-standard-dev-loop/SKILL.md`
 - `.agents/skills/concorde-reflections-triage/SKILL.md`
+- `.agents/skills/concorde-plan/SKILL.md`
 - `.codex/agents/reflection_*.toml`
 - `.claude/skills/concorde-*/SKILL.md`
 - `.claude/skills/concorde-standard-dev-loop/SKILL.md`
 - `.claude/skills/concorde-reflections-triage/SKILL.md`
+- `.claude/skills/concorde-plan/SKILL.md`
 - `.claude/agents/reflection-*.md`
 
 The framework repository does not copy its package under `.concorde/framework`; root sources are
@@ -37,15 +39,21 @@ python3 scripts/development/sync-agent-surfaces.py status --format json
 python3 scripts/development/sync-agent-surfaces.py apply --format json
 ```
 
-Status renders every leaf/Operation Skill and internal reflection-agent output for both integrations and classifies each desired path
+Status packages 17 leaves/three pairs, filters two internal planner leaves, renders exactly 18 public
+capabilities per integration plus four reflection-agent outputs (40 total), and classifies each desired path
 as `current`, `create`, `update`, `replace-symlink`, or `conflict`. It does not write. Apply refreshes
 only those exact generated paths, then reports their current state.
 
-Capability rendering validates names/front matter, exact Operation pairs, safe package-relative
-entry points, supported integration metadata, output uniqueness, and resolution of
+Capability rendering validates names/front matter, public/internal exposure, leaf effects, exact
+Operation pairs/capabilities/bindings/cycles, safe package-relative entry points, target→kind role
+ownership, output uniqueness, and resolution of
 `{SCRIPT}`/`{FRAMEWORK}`/`{OPERATION}` tokens. Source
 checkout surfaces use root `scripts/` and `templates/`; installed surfaces use
 `.concorde/framework/scripts/` and `.concorde/framework/templates/`.
+
+The stable public `concorde-plan` path now has `kind: operation` and points to the paired framework
+graph. `concorde-plan-context` and `concorde-plan-author` have no `.agents/skills` or `.claude/skills`
+target. Native policy/configuration is attached at graph execution, not asserted by projection prose.
 
 ## Preservation and failure behavior
 

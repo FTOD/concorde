@@ -5,6 +5,7 @@ module: module.concorde
 related_features:
   - feature.skills.project-workflow
   - feature.operations.standard-development-loop
+  - feature.operations.permission-bounded-planning
   - feature.concorde.install
 interfaces:
   provided:
@@ -17,8 +18,9 @@ evidence_status: verified
 
 ## Outcome and Scope
 
-A Concorde maintainer can check or refresh this repository's generated Codex and Claude leaf Skill,
-Operation skill, and internal reflection-agent surfaces directly from canonical sources. The checkout
+A Concorde maintainer can check or refresh this repository's generated Codex and Claude public-leaf,
+Operation, and internal reflection-agent surfaces directly from canonical sources while both internal
+planner leaves remain package-only. The checkout
 does not install a duplicate framework copy into itself.
 
 ## Usage
@@ -52,23 +54,25 @@ without source mutation.
 - **Consumer**: Concorde maintainer and CI.
 - **Direction**: Root package sources to checkout agent projections and freshness status.
 - **Entry points**: `scripts/development/sync-agent-surfaces.py status|apply [--format json]`.
-- **Inputs**: Root leaf Skill sources, paired Operations, reflection assets, both integration renderers,
+- **Inputs**: Root 17-leaf sources with exposure/effects, three paired Operations, reflection assets, both integration renderers,
   and observed generated paths.
 - **Outputs**: Capability-surface status schema 2 with `tool`, output count, and sorted
   action/path/digest entries; refreshed regular files on apply.
-- **Obligations**: Render both integrations from the same sources, use source-checkout runtime paths, replace legacy generated symlinks, and never modify canonical inputs.
+- **Obligations**: Render both integrations from the same sources, filter internal leaves, preserve
+  target→kind ownership (including plan Skill→Operation transition), use checkout runtime paths,
+  replace legacy generated symlinks, and never modify canonical inputs.
 - **Failures**: Invalid Skill/Operation/asset source, missing pair, output collision, or non-file target
   conflict returns failure without a false current status.
 - **Compatibility**: Package Manifest 2 uses stable `concorde-*` capability names and distinguishes
   `kind: skill` from `kind: operation`; retired dotted identities are not aliases.
-- **Example**: Status reports every declared capability and internal agent projection current after apply.
+- **Example**: Status reports 40 outputs: 18 public capabilities per integration plus four specialist agents.
 - **Implementing entities**: `entity.concorde.agent-surface-sync`, `entity.concorde.skills`, `entity.concorde.agent-assets`.
 
 ## Architecture Zoom
 
 | Entity ID | Role in this feature | Interaction |
 |---|---|---|
-| `entity.concorde.skills` | Canonical leaf lifecycle prose. | Projector renders one Skill per leaf source. |
+| `entity.concorde.skills` | Canonical public/internal leaf lifecycle prose/effects. | Projector renders only public leaf sources. |
 | `entity.concorde.operations` | Canonical Python/Markdown graph pairs. | Projector renders associated Markdown as a Skill and records its paired entry point. |
 | `entity.concorde.agent-assets` | Canonical reflection roles/templates. | Projector renders integration-specific agents. |
 | `entity.concorde.agent-surface-sync` | Checkout drift/apply driver. | Compares desired and observed bytes for both integrations. |
@@ -86,11 +90,14 @@ without source mutation.
 - **FR-003**: Apply MUST write regular files for both integrations and remove no unrelated agent asset.
 - **FR-004**: Generated skills MUST contain no unresolved package tokens or host-owned paths.
 - **FR-005**: A second status after apply MUST be `current`.
+- **FR-006**: Internal leaves MUST have no desired output and the public `concorde-plan` target MUST
+  carry `kind: operation`/entry-point provenance in both integrations.
 
 ## Success Criteria
 
 - **SC-001**: Both integration projections are reproducible from root sources in one shell invocation.
 - **SC-002**: No canonical package directory is duplicated beneath `.concorde` in this checkout.
+- **SC-003**: Each integration has exactly 18 public capabilities; total maintained checkout output is 40.
 
 ## Edge Cases
 

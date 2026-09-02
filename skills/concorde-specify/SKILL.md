@@ -1,6 +1,28 @@
 ---
 name: concorde-specify
 description: "Create or update one direct module-level feature file."
+exposure: public
+effects:
+  reads:
+    - selected-feature
+    - module-architecture
+    - module-ancestry
+    - related-summaries
+    - required-feature-specs
+    - attempt
+    - checklists
+    - constitution
+    - reflections
+    - framework
+    - templates
+  writes:
+    - selected-feature
+    - module-architecture
+    - attempt
+    - checklists
+    - reflections
+  network: false
+  credentials: none
 scripts:
   py: scripts/workspace.py --phase specify
 ---

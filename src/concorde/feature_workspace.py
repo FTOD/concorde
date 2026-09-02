@@ -59,6 +59,27 @@ ROOT_PHASES = frozenset({"specify", "clarify", "checklist", "fast-loop"})
 ATTEMPT_PHASES = frozenset({"plan", "tasks", "implement", "analyze", "converge", "taskstoissues", "validation"})
 _TASK = re.compile(r"^\s*-\s+\[([ xX])\]\s+T\d{3,}\b")
 _CHECK = re.compile(r"^\s*-\s+\[([ xX])\]")
+_TASK_PATH = re.compile(r"`([^`]+)`")
+_TASK_PATH_PREFIXES = (
+    ".agents/",
+    ".claude/",
+    ".codex/",
+    ".concorde/",
+    "agent-assets/",
+    "docs/",
+    "docsite/",
+    "generated/",
+    "operations/",
+    "scripts/",
+    "skills/",
+    "specs/",
+    "src/",
+    "templates/",
+    "tests/",
+)
+_TASK_ROOT_FILES = frozenset(
+    {"README.md", "concorde.json", "pyproject.toml", "package.json", "uv.lock"}
+)
 
 
 def _attempt_state(attempt: Path) -> str:
@@ -409,3 +430,143 @@ def phase_target(paths: WorkspacePaths, phase: str) -> str:
             )
         return paths.attempt_dir
     raise WorkspaceError(f"unsupported Concorde phase: {phase}")
+
+
+def checked_project_path(
+    project_root: str | Path,
+    relative: str,
+    *,
+    allow_missing: bool = False,
+) -> str:
+    """Validate one concrete project-relative path without following a symlink boundary."""
+
+    project_input = Path(project_root)
+    if project_input.is_symlink():
+        raise WorkspaceError(f"project root may not be a symlink: {project_input}")
+    project = project_input.resolve()
+    try:
+        normalized = safe_relative_path(relative.rstrip("/"))
+    except RepositoryError as error:
+        raise WorkspaceError(str(error)) from error
+    candidate = project / normalized
+    current = candidate
+    while current != project:
+        if current.is_symlink():
+            raise WorkspaceError(f"project path may not contain a symlink: {normalized}")
+        current = current.parent
+    resolved = candidate.resolve(strict=False)
+    try:
+        resolved.relative_to(project)
+    except ValueError as error:
+        raise WorkspaceError(f"project path escapes root: {normalized}") from error
+    if candidate.exists():
+        if not (candidate.is_file() or candidate.is_dir()):
+            raise WorkspaceError(f"project path is not a regular file or directory: {normalized}")
+    elif not allow_missing:
+        raise WorkspaceError(f"project path does not exist: {normalized}")
+    else:
+        ancestor = candidate.parent
+        while ancestor != project and not ancestor.exists():
+            if ancestor.is_symlink():
+                raise WorkspaceError(f"project path may not contain a symlink: {normalized}")
+            ancestor = ancestor.parent
+        if ancestor.is_symlink() or not ancestor.is_dir():
+            raise WorkspaceError(f"creation parent is missing or unsafe: {normalized}")
+    return normalized
+
+
+def locator_project_path(
+    project_root: str | Path,
+    locator: str,
+    *,
+    allow_missing: bool = False,
+) -> str | None:
+    """Resolve one filesystem locator, ignoring explicitly external/conceptual identities."""
+
+    if not isinstance(locator, str) or not locator.strip():
+        raise WorkspaceError("architecture locator must be a non-empty string")
+    value = locator.strip()
+    if value.startswith(("external:", "concept:", "http://", "https://")):
+        return None
+    relative = value.split("#", 1)[0]
+    return checked_project_path(project_root, relative, allow_missing=allow_missing)
+
+
+def task_declared_paths(
+    project_root: str | Path,
+    tasks_path: str | None,
+) -> tuple[str, ...]:
+    """Return exact path-shaped Markdown tokens declared by the selected task list."""
+
+    if tasks_path is None:
+        return ()
+    project = Path(project_root).resolve()
+    normalized_tasks = checked_project_path(project, tasks_path, allow_missing=True)
+    path = project / normalized_tasks
+    if not path.exists():
+        return ()
+    if not path.is_file() or path.is_symlink():
+        raise WorkspaceError(f"task source is missing or unsafe: {normalized_tasks}")
+    result: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if _TASK.match(line) is None:
+            continue
+        for raw in _TASK_PATH.findall(line):
+            token = raw.strip()
+            if token.endswith("/"):
+                token = token.rstrip("/")
+            if not (token in _TASK_ROOT_FILES or token.startswith(_TASK_PATH_PREFIXES)):
+                continue
+            resolved = checked_project_path(project, token, allow_missing=True)
+            if resolved not in result:
+                result.append(resolved)
+    return tuple(result)
+
+
+def workspace_role_paths(
+    project_root: str | Path,
+    paths: WorkspacePaths,
+) -> dict[str, tuple[str, ...]]:
+    """Resolve Protocol 13 durable/control/task roles to concrete safe project paths."""
+
+    project = Path(project_root).resolve()
+
+    def existing(relative: str | None, *, creation: bool = False) -> tuple[str, ...]:
+        if relative is None:
+            return ()
+        return (checked_project_path(project, relative, allow_missing=creation),)
+
+    ancestry = tuple(
+        checked_project_path(project, item["architecture"])
+        for item in paths.module_ancestry
+        if isinstance(item.get("architecture"), str)
+    )
+    tasks = task_declared_paths(project, paths.tasks)
+    constitution = existing(".concorde/constitution.md") if (project / ".concorde/constitution.md").is_file() else ()
+    framework = existing(".concorde/framework") if (project / ".concorde/framework").is_dir() else ()
+    templates = existing("templates") if (project / "templates").is_dir() else ()
+    generated = existing("generated") if (project / "generated").is_dir() else ()
+    reflections_root = project / ".concorde/reflections"
+    return {
+        "selected-feature": existing(paths.feature_path),
+        "module-architecture": existing(paths.module_architecture),
+        "module-ancestry": ancestry,
+        "related-summaries": (),
+        "required-feature-specs": (),
+        "owned-implementation": (),
+        "task-authorized": tasks,
+        "attempt": existing(paths.attempt_dir, creation=True),
+        "checklists": existing(paths.checklists_dir, creation=True),
+        "constitution": constitution,
+        "reflections": existing(paths.reflections, creation=True),
+        "framework": framework,
+        "templates": templates,
+        "reflection-queue": existing(".concorde/reflections/log.md", creation=True),
+        "reflection-plans": existing(".concorde/reflections/plans", creation=True)
+        if reflections_root.is_dir()
+        else (),
+        "reflection-worktrees": existing(".concorde/reflections/worktrees", creation=True)
+        if reflections_root.is_dir()
+        else (),
+        "generated-projections": generated,
+    }

@@ -39,16 +39,16 @@ class EcosystemExplanationContractTests(unittest.TestCase):
     def test_manifest_counts_match_documented_capability_and_template_counts(self):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
         readme = (REPOSITORY_ROOT / "README.md").read_text()
-        self.assertEqual(len(manifest["skills"]), 16)
-        self.assertEqual(len(manifest["operations"]), 2)
+        self.assertEqual(len(manifest["skills"]), 17)
+        self.assertEqual(len(manifest["operations"]), 3)
         self.assertEqual(len(manifest["templates"]), 6)
         for skill in manifest["skills"]:
             self.assertTrue((REPOSITORY_ROOT / f"skills/{skill}/SKILL.md").is_file())
         for operation in manifest["operations"]:
             self.assertTrue((REPOSITORY_ROOT / f"operations/{operation}/SKILL.md").is_file())
             self.assertTrue((REPOSITORY_ROOT / f"operations/{operation}/operation.py").is_file())
-        self.assertIn("16 leaf", (REPOSITORY_ROOT / "specs/concorde/features/003-installation.md").read_text())
-        self.assertIn("16 leaf", (REPOSITORY_ROOT / "specs/concorde/modules/skills/features/001-project-workflow.md").read_text())
+        self.assertIn("17 packaged", (REPOSITORY_ROOT / "specs/concorde/features/003-installation.md").read_text())
+        self.assertIn("17 packaged", (REPOSITORY_ROOT / "specs/concorde/modules/skills/features/001-project-workflow.md").read_text())
         self.assertIn("$concorde-constitution", readme)
 
 

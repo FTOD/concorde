@@ -13,7 +13,7 @@ class NativeIdentityContractTests(unittest.TestCase):
     def test_single_manifest_owns_one_concorde_identity(self):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
         self.assertEqual(manifest["name"], "concorde")
-        self.assertEqual(manifest["version"], "2.0.0")
+        self.assertEqual(manifest["version"], "2.1.0")
         self.assertEqual(manifest["skill_namespace"], "concorde")
         self.assertIn("Concorde owns", manifest["format_lineage"])
 
@@ -35,8 +35,8 @@ class NativeIdentityContractTests(unittest.TestCase):
 
     def test_capability_names_resolve_to_structural_root_pairs(self):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
-        self.assertEqual(len(manifest["skills"]), 16)
-        self.assertEqual(len(manifest["operations"]), 2)
+        self.assertEqual(len(manifest["skills"]), 17)
+        self.assertEqual(len(manifest["operations"]), 3)
         self.assertTrue(all(name.startswith("concorde-") for name in manifest["skills"]))
         self.assertTrue(all((REPOSITORY_ROOT / "skills" / name / "SKILL.md").is_file() for name in manifest["skills"]))
         self.assertTrue(all((REPOSITORY_ROOT / "operations" / name / "SKILL.md").is_file() for name in manifest["operations"]))

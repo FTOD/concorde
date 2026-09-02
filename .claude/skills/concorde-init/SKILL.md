@@ -7,6 +7,7 @@ metadata:
   author: "concorde"
   source: "skills/concorde-init/SKILL.md"
   kind: "skill"
+  exposure: "public"
 user-invocable: true
 disable-model-invocation: false
 ---

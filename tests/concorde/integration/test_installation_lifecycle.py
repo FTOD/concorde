@@ -64,7 +64,7 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         _, applied = self.run_install("--integration", "codex", "--apply")
         self.assertEqual(applied["status"], "installed")
         receipt = json.loads((self.root / ".concorde/install.json").read_text())
-        self.assertEqual(receipt["concorde_version"], "2.0.0")
+        self.assertEqual(receipt["concorde_version"], "2.1.0")
         self.assertEqual(receipt["architecture_profile"], 7)
         self.assertEqual(receipt["workspace_protocol"], 13)
         before = self.tree_digest()
@@ -78,7 +78,7 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         unrelated.write_text("maintainer\n")
         updated = self.package_copy("updated")
         manifest = json.loads((updated / "concorde.json").read_text())
-        manifest["version"] = "2.0.0"
+        manifest["version"] = "2.1.0"
         (updated / "concorde.json").write_text(json.dumps(manifest, indent=2) + "\n")
         skill = updated / "skills/concorde-ask/SKILL.md"
         skill.write_text(skill.read_text() + "\nUpdate marker.\n")
@@ -86,7 +86,7 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         self.assertTrue(any(item["action"] == "update" for item in preview["actions"]))
         self.run_install("--integration", "codex", "--apply", checkout=updated)
         receipt = json.loads((self.root / ".concorde/install.json").read_text())
-        self.assertEqual(receipt["concorde_version"], "2.0.0")
+        self.assertEqual(receipt["concorde_version"], "2.1.0")
         self.assertEqual(unrelated.read_text(), "maintainer\n")
         self.assertIn("Update marker", (self.root / ".agents/skills/concorde-ask/SKILL.md").read_text())
 

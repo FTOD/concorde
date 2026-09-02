@@ -6,6 +6,7 @@ related_features:
   - feature.concorde.workflow
   - feature.concorde.record-workflow-reflections
   - feature.concorde.publish-project-docsite
+  - feature.operations.permission-bounded-planning
 interfaces:
   provided:
     - contract.workspace.feature-workspace
@@ -18,8 +19,10 @@ evidence_status: partial
 
 ## Outcome and Scope
 
-Every Concorde phase receives one authoritative direct feature file with its module architecture/
-ancestry, related summaries, stable-ID project-control attempt, reflection log, and executable roots.
+Every Concorde phase receives one authoritative direct feature with module architecture/ancestry,
+related summaries, stable-ID attempt, reflection log, and executable roots. Trusted Operation code
+can validate those authorities, owned entity locators, exact task tokens, and required-interface
+owners into concrete permission paths without granting the untrusted agent ambient discovery.
 
 ## Architecture Zoom
 
@@ -30,6 +33,8 @@ ancestry, related summaries, stable-ID project-control attempt, reflection log, 
 | `entity.workspace.module-architecture` | Supplies typed structure/relationships for the providing level. |
 | `entity.workspace.attempt` | Holds one phase's plan/tasks/checklists/evidence under `.concorde/attempts/<stable-feature-id>/` while active. |
 | `entity.workspace.protocol13` | Serializes one `feature_path` plus bounded durable, control, process, and executable context using Tool terminology. |
+| `entity.workspace.source-code` | Supplies only providing-module owned or explicitly task-authorized executable paths after trusted validation. |
+| `entity.workspace.tests` | Supplies bounded executable evidence paths without exposing dependency-module tests to planning. |
 
 ## Interfaces
 
@@ -39,13 +44,19 @@ ancestry, related summaries, stable-ID project-control attempt, reflection log, 
 - **Direction**: Project/phase/selection input to canonical path/context JSON.
 - **Entry points**: Installed `workspace.py` adapter and runtime resolver.
 - **Inputs**: Project root, phase, and explicit or selected `feature_path`.
-- **Outputs**: Feature/module identity, direct feature path, architecture/ancestry, related feature paths, stable-ID attempt paths/state, `.concorde/reflections/log.md`, and source/test roots; planned features expose unavailable attempt fields until their ID exists.
-- **Obligations**: Resolve only real project-contained direct features and control paths, bind attempts by validated stable ID, bound relation bodies, rerun after new front matter, and never create future artifacts implicitly.
+- **Outputs**: Feature/module identity, direct feature path, architecture/ancestry, related summaries,
+  stable-ID attempt paths/state, `.concorde/reflections/log.md`, and source/test roots; trusted helpers
+  may derive concrete task/control roles and Operations may add exact required-interface owner specs.
+- **Obligations**: Resolve only real project-contained direct features/control paths, bind attempts by
+  validated stable ID, keep relation bodies bounded, validate concrete roles without symlinks/escapes,
+  rerun after new front matter, and never let an agent resolve or create future authority implicitly.
 - **Failures**: Missing/legacy/ambiguous/unsafe/symlinked features or control roots, malformed IDs, orphan/colliding attempts, or attempted orphan adoption stop resolution.
 - **Compatibility**: `schema_version: 13`; the result envelope uses `tool`; module-local attempts,
   specification-root reflections, `feature_directory`, `feature_design`, and all earlier removed
   authority fields are forbidden.
-- **Implementing entities**: `entity.workspace.selection`, `entity.workspace.protocol13`, `entity.workspace.feature-design`, `entity.workspace.module-architecture`.
+- **Implementing entities**: `entity.workspace.selection`, `entity.workspace.protocol13`,
+  `entity.workspace.feature-design`, `entity.workspace.module-architecture`,
+  `entity.workspace.source-code`, and `entity.workspace.tests`.
 - **Example**: A plan-phase result names `feature_path: specs/example/features/001-change.md`, feature ID `feature.example.change`, its module architecture/relations, and `attempt_dir: .concorde/attempts/feature.example.change`.
 
 ### `contract.workspace.records` — Authority and lifecycle records
@@ -69,7 +80,9 @@ feature file, selection, architecture, and code remain.
 ## Requirements
 
 - **FR-001**: Every feature MUST have one canonical direct `feature_path`, one providing module, and no wrapper directory.
-- **FR-002**: Protocol 13 MUST expose bounded ancestry/relations, a stable-ID-derived attempt path, and the centralized reflection path without unrelated feature bodies.
+- **FR-002**: Protocol 13 MUST expose bounded ancestry/relations, stable-ID attempt/reflection paths,
+  and executable hints without unrelated bodies; trusted role resolution MUST reject escapes,
+  symlinks, unknown tokens, dependency internals, and every other attempt.
 - **FR-003**: Delivery Proposal 9 MUST transition one complete control attempt to absent without moving
   or rewriting the feature file or reflection log.
 - **FR-004**: A not-yet-authored feature MUST receive unavailable attempt fields until valid stable-ID front matter exists and the specify gate reruns.
@@ -80,3 +93,5 @@ feature file, selection, architecture, and code remain.
 - Related features form a cycle in a non-directional relationship versus a forbidden directional refinement cycle.
 - A stable feature ID is unsafe, duplicated, case-variant, or changed while its former attempt remains.
 - A planned feature path exists only as selection and therefore cannot yet name an attempt.
+- One related provider owns several interfaces; the permission context includes its feature body once
+  with every exact required-interface reason and excludes its architecture/source/tests.

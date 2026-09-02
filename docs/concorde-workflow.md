@@ -53,21 +53,25 @@ Custom checklists remain reviewer-owned.
 
 ## 3. Plan
 
-`concorde-plan` runs Workspace Protocol 13 and reads:
+Public Operation `concorde-plan` first launches internal read-only `concorde-plan-context`, then
+passes its immutable result to `concorde-plan-author`. Trusted code resolves:
 
 - the complete selected feature file;
 - the providing module architecture and bounded ancestry;
-- explicitly relevant related-feature interfaces;
+- only feature bodies that uniquely own an exact `interfaces.required` ID, with that ID as reason;
 - the constitution;
-- current source code and tests; and
+- providing-module owned source code/tests (never dependency internals); and
 - existing selected attempt artifacts.
 
-It writes plan/research/data model/quickstart under the returned `attempt_dir`. There is no prose
+The author writes plan/research/data model/quickstart only under the returned `attempt_dir` plus an
+authorized central reflection occurrence. There is no prose
 implementation baseline: requested behavior is compared directly with code and tests. Planning
 names every required module architecture, feature/interface, code, test, fixture, projection,
 package, and public-guide reconciliation.
 
-Planning does not edit durable sources. It records conflicts, workarounds, and provisional prototype
+Each leaf receives a distinct default-deny Codex permission profile or Claude restricted strict
+sandbox configuration. Missing/widened/unsafe/unenforceable policy stops before launch; LangGraph and
+prompts do not enforce files. Planning does not edit durable sources. It records conflicts, workarounds, and provisional prototype
 choices in `.concorde/reflections/log.md` and keeps going when a safe bounded assumption is possible.
 New entries reserve their ID atomically through the installed reflection helper. The separate
 reflection-triage/v4 merge workflow removes only validated merged `small` `fast-loop` entries and
@@ -124,9 +128,9 @@ evidence. Otherwise use the full lifecycle.
 
 ## LangGraph Operations
 
-The Markdown files under `skills/` are complete canonical leaf capabilities. Agent projections wrap
-those Skills for Codex or Claude; Operation graphs resolve the same bodies through
-`concorde.skill_assets.load_skill_prompt`. Generated skills are never prompt authority.
+The 17 Markdown files under `skills/` are complete canonical public/internal leaves with exposure and
+effects. Agent projections expose only 15 public leaves; Operation graphs may load the two internal
+planner leaves through `concorde.skill_assets.load_skill_prompt`. Generated skills are never prompt authority.
 
 `operations/concorde-standard-dev-loop/operation.py` uses the shared Operation runtime and LangGraph's public `StateGraph`, `START`, `END`,
 `compile()`, and `invoke()` APIs to build this topology:
@@ -135,19 +139,21 @@ those Skills for Codex or Claude; Operation graphs resolve the same bodies throu
 START → specify → plan → tasks → deliver → END
 ```
 
-Stages are ordered Skill bundles rather than copied or merged fragments:
+Stages are ordered direct capability bundles rather than copied or flattened fragments:
 
-| Stage | Canonical Skills |
+| Stage | Direct capabilities |
 |---|---|
 | specify | `concorde-specify` |
-| plan | `concorde-plan` |
+| plan | public nested Operation `concorde-plan` |
 | tasks | `concorde-tasks`, then `concorde-implement` |
 | deliver | `concorde-validate`, then `concorde-deliver` |
 
-The graph receives an injected executor. Each invocation contains the user request, immutable stage
-definition and Skills, and all prior successful stage results. The executor decides how an
-authorized agent or model consumes those Skills; the deterministic CLI only records them. An executor
-exception remains visible and prevents downstream nodes.
+The graph receives an injected executor/optional nested dispatcher. Each direct leaf invocation
+contains request, occurrence binding, canonical prompt/effects, exact prior capability results, and
+an immutable normalized/native launch specification. A real injectable boundary can call `codex exec`
+or `claude -p` and return a digest-bound receipt; tests inject recorders and never call a live model.
+Nested planner internals resolve only inside its graph. Any policy/executor/nested exception remains
+visible and prevents downstream occurrences; same-stage leaves never share their permission union.
 
 LangGraph is optional and constrained to `langgraph>=1.2,<2`. It is a development dependency in this
 checkout and imported only when a graph is built, so ordinary Concorde imports and the offline base
@@ -155,7 +161,7 @@ installer remain dependency-free. Installed workflow hosts must provide that opt
 their Python environment. Run the real graph without credentials or network calls:
 
 ```bash
-uv run python operations/concorde-standard-dev-loop/operation.py "Add audit logging"
+uv run python operations/concorde-standard-dev-loop/operation.py "Add audit logging" --describe-policy
 ```
 
 ## Reflections
@@ -164,3 +170,8 @@ Planning, tasks, implementation, analysis, and convergence record problems when 
 work around, defer, or stop. This includes choices that may be suboptimal but are acceptable for a
 prototype. Repeated problems add occurrences rather than duplicate entries. Maintainers alone decide
 resolved/dismissed status and notes.
+
+The reflection-triage Operation is conditional before model launch: `status` launches none,
+`investigate` launches only a zero-write analyzer, and `implement` selects exactly `fast-loop` or the
+public nested planner route. Implementer policies are restricted to isolated reflection worktrees and
+the central reflection record.

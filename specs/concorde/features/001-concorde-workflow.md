@@ -14,6 +14,7 @@ related_features:
   - feature.concorde.workflow.accept-milestone
   - feature.concorde.workflow.fast-loop
   - feature.operations.standard-development-loop
+  - feature.operations.permission-bounded-planning
   - feature.skills.project-workflow
 interfaces:
   provided:
@@ -27,7 +28,7 @@ evidence_status: partial
 
 ## Outcome and Scope
 
-A maintainer can direct one feature from its complete direct file through bounded planning, dependency-
+A maintainer can direct one feature from its complete direct file through permission-bounded planning, dependency-
 ordered implementation/evidence, deterministic validation, and cleanup-only delivery using installed
 skills as the sole conversational surface.
 
@@ -35,8 +36,8 @@ skills as the sole conversational surface.
 
 | Entity ID | Role |
 |---|---|
-| `module.concorde.skills` | Presents independently invocable leaf lifecycle capabilities. |
-| `module.concorde.operations` | Composes leaf Skills into paired LangGraph loops with explicit controls. |
+| `module.concorde.skills` | Presents public leaves and package-only internal effect-declared leaves. |
+| `module.concorde.operations` | Composes acyclic Skill/Operation graphs and enforces one native/outer policy per leaf. |
 | `module.concorde.runtime` | Resolves workspaces and performs deterministic init/context/validate/deliver Tools. |
 | `module.concorde.workspace` | Defines durable specification paths plus stable-ID attempts and reflections in project control state. |
 | `entity.concorde.coding-agent` | Authors design/plan/tasks/code/tests and follows evidence/authority rules. |
@@ -47,11 +48,13 @@ skills as the sole conversational surface.
 
 - **Consumer**: Maintainer and supported coding-agent integration.
 - **Direction**: Maintainer intent to leaf or multi-Skill result, with structured deterministic Tool crossings.
-- **Entry points**: Installed specify/clarify/checklist/plan/tasks/implement/analyze/converge/fast-loop and Concorde init/context/validate/deliver/ask skills.
+- **Entry points**: Installed public lifecycle leaves plus paired `concorde-plan`, standard-loop, and
+  reflection-triage Operations; internal planner leaves are not entry points.
 - **Inputs**: Selected `feature_path`, providing module architecture, related feature paths, code/tests, constitution, `.concorde/reflections/log.md`, and optional corresponding stable-ID control attempt.
 - **Outputs**: Revised durable intent/architecture when authorized, temporal planning/evidence, reconciled code/tests/projections, findings, and delivery cleanup result.
-- **Obligations**: Keep each fact in one authority, resolve Protocol 13 paths first, trace every task,
-  validate deterministically, disclose evidence limits, and never let an Operation bypass a leaf Skill gate.
+- **Obligations**: Keep each fact in one authority, resolve Protocol 13/concrete paths first, trace
+  every task, validate deterministically, disclose evidence limits, keep nested Operations opaque,
+  and never launch a leaf without an exact narrowing enforced policy/receipt.
 - **Failures**: Invalid placement/authority, incomplete checklist/task, failed check, stale/unsafe delivery, or ambiguous impact stops the affected phase without implied authorization.
 - **Compatibility**: Profile 7 features are direct Markdown files; Protocol 13 rejects specification-local control state/redundant feature fields, while Delivery 9 retains cleanup-only semantics.
 - **Implementing entities**: `module.concorde.skills`, `module.concorde.operations`,
@@ -65,18 +68,21 @@ skills as the sole conversational surface.
 - **Direction**: Installed Skill files and user invocation to an agent turn that follows the declared
   leaf phase or paired LangGraph workflow.
 - **Entry points**: `.agents/skills/**` and `.codex/agents/**`, or `.claude/skills/**` and `.claude/agents/**`.
-- **Inputs**: Regular rendered Markdown/TOML files, project root, user arguments, and granted filesystem/tool authority.
-- **Outputs**: Conversational phase or Operation result plus only the file/Tool effects authorized by
-  the invoked Concorde capability.
-- **Obligations**: Load project-local Skill metadata/body, invoke paired Operation Python when declared,
-  preserve project containment, surface Tool/graph failures, and keep `concorde-*` identity consistent.
+- **Inputs**: Regular rendered Markdown/TOML, project root, user arguments, concrete normalized path
+  policy, integration-native Codex/Claude or approved outer configuration, and prior results.
+- **Outputs**: Conversational phase/Operation result plus only authorized file/Tool effects and, for
+  Operation leaves, a digest-bound enforcement receipt.
+- **Obligations**: Load project-local metadata/body, invoke paired Python when declared, enforce
+  default-deny paths/network/credentials outside LangGraph, prohibit unsandboxed retry, surface
+  Tool/graph/policy failures, and keep `concorde-*` identity consistent.
 - **Failures**: Missing/unsupported integration assets, invalid capability metadata or pairing,
   unavailable Tools/dependencies, or denied permissions stop execution without hidden fallback behavior.
-- **Compatibility**: Concorde 2.0.0 Package Manifest 2 supports Codex and Claude with 16 leaf Skills
-  and declared paired Operations in one global namespace.
+- **Compatibility**: Concorde 2.1.0 Package Manifest 2 packages 17 leaves/three pairs and exposes the
+  same 15 public leaves plus three Operations in Codex and Claude.
 - **Implementing entities**: `entity.concorde.coding-agent`, `entity.concorde.skills`,
   `entity.concorde.operations`, and `entity.concorde.agent-assets`.
-- **Example**: Codex loads `.agents/skills/concorde-plan/SKILL.md`, which invokes Concorde's native workspace adapter.
+- **Example**: Codex loads `.agents/skills/concorde-plan/SKILL.md`, whose Operation runs bounded
+  context → author with two distinct permission profiles.
 
 ## Usage Scenarios
 
@@ -87,8 +93,9 @@ skills as the sole conversational surface.
 
 ## Requirements
 
-- **FR-001**: Every path-sensitive leaf Skill or Operation stage MUST resolve one Protocol 13 feature
-  workspace and respect its declared read/write boundary.
+- **FR-001**: Every path-sensitive direct leaf occurrence MUST resolve one Protocol 13 feature
+  workspace into concrete safe roles and receive one enforceable narrowing policy; prompts and graph
+  topology alone MUST NOT claim filesystem enforcement.
 - **FR-002**: Specification/architecture/code/test/projection facts MUST remain in their single authority and be reconciled together when affected.
 - **FR-003**: Every executable task MUST have a requirement trace, exact path, dependency state, passed check, artifact, and stated evidence limitation before completion.
 - **FR-004**: Validation/read-only failures MUST be non-mutating; reviewed initialization, eligible fast loop, and cleanup delivery MUST be atomic within their explicit authority.

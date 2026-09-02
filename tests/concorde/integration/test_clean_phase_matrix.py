@@ -60,7 +60,13 @@ class CleanPhaseMatrixIntegrationTests(unittest.TestCase):
             path = REPOSITORY_ROOT / ".agents/skills" / f"concorde-{phase}/SKILL.md"
             with self.subTest(phase=phase):
                 self.assertTrue(path.is_file())
-                self.assertIn(f"scripts/workspace.py --phase {phase}", path.read_text())
+                body = path.read_text()
+                if phase == "plan":
+                    self.assertIn('kind: "operation"', body)
+                    self.assertIn("operations/concorde-plan/operation.py", body)
+                    self.assertNotIn("scripts/workspace.py --phase plan", body)
+                else:
+                    self.assertIn(f"scripts/workspace.py --phase {phase}", body)
 
 
 if __name__ == "__main__":

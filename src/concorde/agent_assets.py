@@ -102,12 +102,19 @@ def render_projection(asset_root: Path, integration: str) -> dict[str, str]:
     return dict(sorted(rendered.items()))
 
 
-def _roles(asset_root: Path, integration: str) -> dict[str, str]:
+def projection_roles(asset_root: Path, integration: str) -> dict[str, str]:
+    """Return exact owned target→specialist-role transitions for one integration."""
+
     manifest = _manifest(asset_root)
-    return {
+    roles = {
         _safe_relative(str(item["target"]), "projection target"): str(item["role"])
         for item in manifest["integrations"][integration]["outputs"]
     }
+    if set(roles.values()) != {"investigator", "implementer"}:
+        raise AgentAssetError(
+            f"{integration} reflection projection must retain investigator/implementer roles"
+        )
+    return roles
 
 
 def _empty_receipt() -> dict[str, Any]:
@@ -301,7 +308,7 @@ def sync_agent_assets(
         ignore_created = True
 
     receipt = _load_receipt(project_root)
-    roles = _roles(asset_root, integration)
+    roles = projection_roles(asset_root, integration)
     receipt["integrations"][integration] = {
         "concorde_version": concorde_version,
         "source_digest": source_digest(asset_root),

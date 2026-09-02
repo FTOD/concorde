@@ -1,6 +1,26 @@
 ---
 name: concorde-tasks
 description: "Generate dependency-ordered tasks for one Concorde attempt."
+exposure: public
+effects:
+  reads:
+    - selected-feature
+    - module-architecture
+    - module-ancestry
+    - related-summaries
+    - required-feature-specs
+    - owned-implementation
+    - attempt
+    - checklists
+    - constitution
+    - reflections
+    - framework
+    - templates
+  writes:
+    - attempt
+    - reflections
+  network: false
+  credentials: none
 scripts:
   py: scripts/workspace.py --phase tasks
 ---

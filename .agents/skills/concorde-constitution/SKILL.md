@@ -6,6 +6,7 @@ metadata:
   author: "concorde"
   source: "skills/concorde-constitution/SKILL.md"
   kind: "skill"
+  exposure: "public"
 ---
 ## User Input
 

@@ -1,6 +1,32 @@
 ---
 name: concorde-fast-loop
 description: "Complete one eligible small change directly across feature intent, architecture, code, and tests."
+exposure: public
+effects:
+  reads:
+    - selected-feature
+    - module-architecture
+    - module-ancestry
+    - related-summaries
+    - required-feature-specs
+    - owned-implementation
+    - task-authorized
+    - constitution
+    - reflections
+    - framework
+    - templates
+    - reflection-worktrees
+    - generated-projections
+  writes:
+    - selected-feature
+    - module-architecture
+    - owned-implementation
+    - task-authorized
+    - reflections
+    - reflection-worktrees
+    - generated-projections
+  network: false
+  credentials: none
 scripts:
   py: scripts/workspace.py --phase fast-loop
 ---

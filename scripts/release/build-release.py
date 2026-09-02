@@ -17,6 +17,31 @@ REPOSITORY = "https://github.com/FTOD/concorde"
 FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 ARCHITECTURE_PROFILE = 7
 WORKSPACE_PROTOCOL = 13
+EXPECTED_VERSION = "2.1.0"
+EXPECTED_SKILLS = (
+    "concorde-analyze",
+    "concorde-checklist",
+    "concorde-clarify",
+    "concorde-ask",
+    "concorde-context",
+    "concorde-deliver",
+    "concorde-init",
+    "concorde-validate",
+    "concorde-constitution",
+    "concorde-converge",
+    "concorde-fast-loop",
+    "concorde-implement",
+    "concorde-plan-context",
+    "concorde-plan-author",
+    "concorde-specify",
+    "concorde-tasks",
+    "concorde-taskstoissues",
+)
+EXPECTED_OPERATIONS = (
+    "concorde-standard-dev-loop",
+    "concorde-reflections-triage",
+    "concorde-plan",
+)
 
 
 class ReleaseIdentityError(ValueError):
@@ -45,6 +70,10 @@ def read_release_identity(root: Path = REPOSITORY_ROOT) -> ReleaseIdentity:
     version = manifest.get("version")
     if not isinstance(version, str) or not version or version.startswith("v"):
         raise ReleaseIdentityError("concorde.json version must be an unprefixed release version")
+    if version != EXPECTED_VERSION:
+        raise ReleaseIdentityError(
+            f"concorde.json must declare the current package version {EXPECTED_VERSION}"
+        )
     if manifest.get("repository") != REPOSITORY:
         raise ReleaseIdentityError(
             f"concorde.json repository {manifest.get('repository')!r} does not match {REPOSITORY}"
@@ -53,6 +82,12 @@ def read_release_identity(root: Path = REPOSITORY_ROOT) -> ReleaseIdentity:
         raise ReleaseIdentityError(f"concorde.json must declare Architecture Profile {ARCHITECTURE_PROFILE}")
     if manifest.get("workspace_protocol") != WORKSPACE_PROTOCOL:
         raise ReleaseIdentityError(f"concorde.json must declare Workspace Protocol {WORKSPACE_PROTOCOL}")
+    if tuple(manifest.get("skills", ())) != EXPECTED_SKILLS:
+        raise ReleaseIdentityError("concorde.json must declare the exact 17-leaf package inventory")
+    if tuple(manifest.get("operations", ())) != EXPECTED_OPERATIONS:
+        raise ReleaseIdentityError("concorde.json must declare the exact three-Operation package inventory")
+    if set(EXPECTED_SKILLS) & set(EXPECTED_OPERATIONS):
+        raise ReleaseIdentityError("concorde.json capability inventories collide")
     return ReleaseIdentity(version, REPOSITORY)
 
 

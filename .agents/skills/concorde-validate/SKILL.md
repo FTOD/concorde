@@ -6,6 +6,7 @@ metadata:
   author: "concorde"
   source: "skills/concorde-validate/SKILL.md"
   kind: "skill"
+  exposure: "public"
 ---
 # Validate Concorde
 

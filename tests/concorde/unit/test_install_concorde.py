@@ -31,11 +31,11 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertEqual(arguments.checkout, str(REPOSITORY_ROOT))
 
     def test_manifest_is_single_profile_and_inventory_authority(self):
-        self.assertEqual(self.package.version, "2.0.0")
+        self.assertEqual(self.package.version, "2.1.0")
         self.assertEqual(self.package.manifest["architecture_profile"], 7)
         self.assertEqual(self.package.manifest["workspace_protocol"], 13)
-        self.assertEqual(len(self.package.manifest["skills"]), 16)
-        self.assertEqual(len(self.package.manifest["operations"]), 2)
+        self.assertEqual(len(self.package.manifest["skills"]), 17)
+        self.assertEqual(len(self.package.manifest["operations"]), 3)
         self.assertEqual(len(self.package.manifest["templates"]), 6)
 
     def test_desired_codex_outputs_use_native_paths_only(self):
@@ -50,14 +50,17 @@ class NativeInstallerTests(unittest.TestCase):
         )
         self.assertIn(".codex/agents/reflection_implementer.toml", outputs)
         plan = outputs[".agents/skills/concorde-plan/SKILL.md"][0].decode()
-        self.assertIn(".concorde/framework/scripts/workspace.py --phase plan", plan)
+        self.assertIn(".concorde/framework/operations/concorde-plan/operation.py", plan)
+        self.assertIn('kind: "operation"', plan)
+        self.assertNotIn("concorde-plan-context", outputs)
+        self.assertNotIn("concorde-plan-author", outputs)
         self.assertNotIn(".specify", plan)
         operation = outputs[".agents/skills/concorde-standard-dev-loop/SKILL.md"][0].decode()
         self.assertIn(
             ".concorde/framework/operations/concorde-standard-dev-loop/operation.py",
             operation,
         )
-        self.assertEqual(outputs[".agents/skills/concorde-plan/SKILL.md"][1], "skill")
+        self.assertEqual(outputs[".agents/skills/concorde-plan/SKILL.md"][1], "operation")
         self.assertEqual(
             outputs[".agents/skills/concorde-standard-dev-loop/SKILL.md"][1],
             "operation",

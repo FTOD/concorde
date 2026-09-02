@@ -1,20 +1,21 @@
 <!--
 Sync Impact Report
-- Version change: 6.0.0 -> 7.0.0 (MAJOR: canonical capabilities become a structural Tool -> leaf
-  Skill -> paired LangGraph Operation hierarchy, replacing flat prompt and example authorities)
+- Version change: 7.0.0 -> 7.1.0 (MINOR: the canonical hierarchy gains public/internal Skill
+  exposure, leaf-owned effects, acyclic nested Operations, and permission-bounded per-leaf launches)
 - Modified principles:
-  - B.I Concorde Ships a Usable Workflow: one Concorde package owns deterministic Tools, leaf Skills,
-    paired Operations, templates, installation, and agent projection end to end.
+  - B.I Concorde Ships a Usable Workflow: one Concorde package owns deterministic Tools,
+    effect-declared public/internal leaf Skills, acyclic paired Operations, templates, installation,
+    permission enforcement, and public agent projection end to end.
   - B.II Concorde Develops Itself with Concorde: the repository self-applies the same capability
     structure it installs.
-- Modified constraints: canonical roots are `scripts/`, `skills/`, and `operations/`; every Operation
-  Python graph has one associated Markdown skill and both leaf and Operation skills install to users.
-- Modified standards: Operation is reserved for LangGraph composition; bounded deterministic runtime
-  actions are Tools; Workspace Protocol 13 and Delivery Proposal 9 expose `tool` discriminators.
-- Compatibility impact: the former flat prompt root, maintained example-loop root, and command/workflow
-  implementation shims are rejected rather than read through a compatibility layer.
-- Required migration: move every leaf prompt to its canonical Skill directory, move every maintained
-  LangGraph to a paired Operation directory, update Package Manifest 2, and reinstall Concorde 2.0.0.
+- Modified constraints: every Operation declares ordered Skill/Operation capabilities and exact
+  occurrence policies; composition is acyclic; internal leaves remain packaged but unprojected.
+- Modified standards: Workspace Protocol 13 roles compile to immutable normalized/native policies;
+  prompts and LangGraph remain control intent, while supported native/outer sandboxes enforce access.
+- Compatibility impact: `concorde-plan` changes kind from a leaf Skill to a public paired Operation;
+  no alias, leaf-only reader, or legacy sandbox/profile mixing is retained.
+- Required migration: install Concorde 2.1.0, regenerate public surfaces, and launch every Operation
+  leaf through a policy/configuration/receipt boundary.
 -->
 # Concorde Constitution
 
@@ -153,16 +154,21 @@ Concorde's product MUST be a repeatable, installable, end-to-end workflow that l
 Part A: initialize a root architecture, find a feature's module, retrieve bounded context, specify a
 feature and its interface, plan and execute against code reality, validate the entity model, deliver
 the attempt, and publish comprehensible views. Its capability structure MUST have three explicit
-levels: Scripts expose bounded deterministic Tools; canonical leaf Skills invoke Tools; and paired
-LangGraph Operations compose two or more leaf Skills with state, ordering, branching, retries, gates,
-or other controls. Every distributable part MUST declare responsibility, version, dependencies,
+levels: Scripts expose bounded deterministic Tools; canonical leaf Skills invoke Tools and declare
+exposure plus integration-neutral effects; and paired LangGraph Operations compose two or more
+ordered direct Skills or public Operations with state, ordering, branching, retries, gates, or other
+controls. Operation composition MUST be acyclic and nested Operations MUST remain opaque to parents.
+Every distributable part MUST declare responsibility, version, dependencies,
 compatibility, deterministic inputs, outputs, and failure behavior.
 
-Each leaf Skill MUST have exactly one canonical `skills/<name>/SKILL.md` authority and MUST remain
-independently invocable without embedding a multi-Skill loop. Each Operation MUST have exactly one
+Each leaf Skill MUST have exactly one canonical `skills/<name>/SKILL.md` authority, MUST embed no
+multi-Skill loop, and MUST declare public/internal exposure plus exact read/write/network/credential
+effects whenever an Operation composes it. Public leaves remain independently invocable; internal
+leaves are package/runtime implementation capabilities and MUST NOT project to users. Each Operation MUST have exactly one
 `operations/<name>/operation.py` execution authority and one associated `SKILL.md` invocation and
-behavioral contract. Installation MUST project both leaf Skills and Operation skills into the user's
-agent Skill namespace while retaining the paired Python graph in the installed framework.
+behavioral contract and MUST be public. Installation MUST project public leaf Skills and Operation
+skills into the user's agent Skill namespace while retaining every packaged leaf and paired Python
+graph in the installed framework.
 
 ### B.II Concorde Develops Itself with Concorde
 
@@ -180,7 +186,8 @@ is the acceptance test that the workflow is practical rather than aspirational.
 - Canonical distributable sources are root `scripts/`, `skills/`, `operations/`, `templates/`,
   `src/concorde/`, and `agent-assets/` plus Package Manifest 2 in `concorde.json`. Generated
   Codex/Claude surfaces are projections.
-- Operation is reserved for a LangGraph that composes at least two leaf Skills. Initialization,
+- Operation is reserved for a LangGraph that composes at least two ordered direct capabilities, each
+  a canonical leaf Skill or another public paired Operation. Composition cycles are invalid. Initialization,
   context retrieval, exploration, validation, delivery, and other bounded deterministic runtime
   actions are Tools, even when invoked through a CLI subcommand or Skill.
 - A maintained Operation Python file without its associated Markdown skill, a leaf Skill that embeds
@@ -218,8 +225,10 @@ is the acceptance test that the workflow is practical rather than aspirational.
 - Generated pages and diagrams carry source provenance and generator version, provide a textual
   representation, and are reproducible from maintained sources.
 - Package Manifest 2 MUST inventory leaf Skills and paired Operations separately, require globally
-  unique safe names across both sets, and bind each Operation's Markdown declaration to its Python
-  entry point and composed leaf Skills without importing arbitrary graph code during validation.
+  unique safe names across both sets, and bind each Operation's Markdown `capabilities` declaration
+  to its Python entry point, literal ordered topology, and exact per-occurrence policies without
+  importing arbitrary graph code during validation. Internal leaves remain in the leaf inventory but
+  are absent from public projections.
 - Workspace Protocol 13, Delivery Proposal 9, Tool result envelopes, capability-surface status schema
   2, and reflection-triage/v4 MUST use `tool` for bounded deterministic actions. Operation metadata is
   reserved for paired LangGraph execution.
@@ -239,9 +248,13 @@ NOT depend on feature abstracts, accepted-realization prose, module summary/desi
 subfeature workspaces, or specification-owned contract directories.
 
 Leaf Skills and Operations MUST resolve only the context their contracts authorize. An Operation
-MUST load canonical leaf Skill bodies rather than duplicate them, preserve declared stage and Skill
-order, make state/control transitions inspectable, and stop or route failures as its paired skill
-documents. Tool failures MUST remain explicit and MUST NOT silently fall through to another source.
+MUST load canonical direct capability bodies rather than duplicate or flatten them, preserve declared
+stage/capability order and nested boundaries, make state/control transitions inspectable, and stop or
+route failures as its paired skill documents. Before every direct leaf launch, trusted code MUST
+resolve concrete non-symlink paths, prove the Operation binding narrows the leaf's effects, render a
+supported native or equivalently narrow outer sandbox configuration, and require a matching receipt.
+Multi-leaf stages MUST NOT share the union of their effects. Missing, widened, unsafe, or unenforceable
+policy and Tool failures remain explicit and MUST NOT silently fall through to another source.
 
 Tasks explicitly reconcile every affected architecture, feature interface, code path, test, and
 generated projection. Implementation records compact evidence in the attempt before completing each
@@ -270,4 +283,4 @@ or materially expands a mandatory obligation, and PATCH clarifies wording. Every
 architecture review includes a constitution check. Reviewers reject unexplained violations,
 invisible boundary changes, duplicated canonical intent, and implementation claims without evidence.
 
-**Version**: 7.0.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-02
+**Version**: 7.1.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-02

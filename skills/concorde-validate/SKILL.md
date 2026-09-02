@@ -1,6 +1,24 @@
 ---
 name: concorde-validate
 description: "Deterministically validate module-centered Concorde sources"
+exposure: public
+effects:
+  reads:
+    - selected-feature
+    - module-architecture
+    - module-ancestry
+    - related-summaries
+    - required-feature-specs
+    - owned-implementation
+    - attempt
+    - checklists
+    - constitution
+    - reflections
+    - framework
+    - generated-projections
+  writes: []
+  network: false
+  credentials: none
 scripts:
   py: scripts/concorde.py validate
 ---

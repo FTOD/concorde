@@ -15,12 +15,12 @@ diagrams:
 
 ## Responsibility
 
-Define the complete leaf capabilities through which users ask an agent to perform one bounded
-Concorde phase, and project those capabilities consistently to supported coding-agent integrations.
+Define public/internal leaf capabilities and their machine-readable effects, then project only the
+public capabilities consistently to supported coding-agent integrations.
 
 ## Boundary
 
-Skills owns canonical `skills/<name>/SKILL.md` prompts, stable `concorde-*` names, leaf metadata,
+Skills owns canonical `skills/<name>/SKILL.md` prompts, stable `concorde-*` names, exposure/effect metadata,
 complete Markdown format references, capability parsing, and checkout projection. A leaf Skill may
 invoke deterministic Tools but contains no multi-Skill loop or LangGraph topology. This module does
 not own Tool implementation, Operation control graphs, project specifications, agent execution, or
@@ -31,15 +31,15 @@ integration-specific product internals.
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
 | `entity.skills.manifest` | configuration | Package Manifest 2 declares the exact leaf Skill inventory and globally shared capability namespace. | `concorde.json` |
-| `entity.skills.sources` | directory | Canonical directories containing exactly one independently invocable leaf `SKILL.md` each. | `skills` |
-| `entity.skills.skill-prompt` | document | One complete leaf capability prompt that may invoke Tools but does not orchestrate multiple Skills. | `concept:skills/<name>/SKILL.md` |
+| `entity.skills.sources` | directory | Canonical directories containing exactly one public or internal leaf `SKILL.md` each. | `skills` |
+| `entity.skills.skill-prompt` | document | One complete leaf prompt with public/internal exposure and, when composed, exact read/write/network/credential effects; it may invoke Tools but never orchestrates Skills. | `concept:skills/<name>/SKILL.md` |
 | `entity.skills.feature-template` | document | Complete direct-feature format with outcome, usage, scenarios, interfaces, architecture zoom, requirements, and criteria. | `templates/feature-template.md` |
 | `entity.skills.plan-template` | document | Temporal planning format grounded in feature, architecture, code, tests, risks, and evidence. | `templates/plan-template.md` |
 | `entity.skills.tasks-template` | document | Dependency-ordered traced task format with test-first and evidence gates. | `templates/tasks-template.md` |
 | `entity.skills.checklist-template` | document | Reviewer-owned requirements-quality checklist format. | `templates/checklist-template.md` |
 | `entity.skills.constitution-template` | document | Governance-document format reference. | `templates/constitution-template.md` |
 | `entity.skills.reflection-template` | document | Project reflection-log grammar. | `templates/reflections-template.md` |
-| `entity.skills.projector` | program | Parses leaf and Operation skill metadata, resolves package tokens, and renders Codex/Claude Skill files. | `src/concorde/skill_assets.py` |
+| `entity.skills.projector` | program | Parses leaf exposure/effects and mixed Operation capabilities, resolves tokens, filters internal leaves, and renders public Codex/Claude Skill files with owned kind provenance. | `src/concorde/skill_assets.py` |
 | `entity.skills.reflection-assets` | directory | Internal reflection investigator/implementer roles and integration templates. | `agent-assets/reflections` |
 | `entity.skills.checkout-sync` | program | Compares and refreshes this repository's generated agent capability surfaces. | `scripts/development/sync-agent-surfaces.py` |
 | `entity.skills.coding-agent` | external-system | Executes one installed Skill within its declared authority boundary. | `external:coding-agent` |
@@ -54,7 +54,7 @@ integration-specific product internals.
 | `entity.skills.manifest` | `declares` | `entity.skills.plan-template` | Includes the temporal plan format. |
 | `entity.skills.manifest` | `declares` | `entity.skills.tasks-template` | Includes the temporal task format. |
 | `entity.skills.projector` | `reads_from` | `entity.skills.sources` | Loads leaf Skills without composing or rewriting their prompt semantics. |
-| `entity.skills.projector` | `transforms` | `entity.skills.skill-prompt` | Produces one integration-native Skill from each canonical leaf Skill. |
+| `entity.skills.projector` | `transforms` | `entity.skills.skill-prompt` | Produces one integration-native Skill from each public leaf and keeps internal leaves package-only. |
 | `entity.skills.checkout-sync` | `calls` | `entity.skills.projector` | Regenerates checkout projections for both supported integrations. |
 | `entity.skills.skill-prompt` | `calls` | `module.concorde.runtime` | Invokes deterministic workspace and lifecycle Tools when required. |
 | `entity.skills.skill-prompt` | `reads_from` | `module.concorde.workspace` | Uses one selected feature's bounded durable, temporal, and executable context. |
@@ -65,7 +65,7 @@ integration-specific product internals.
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.skills.project` | Installer or checkout sync requests an integration. | Validate Package Manifest 2; parse each canonical leaf or paired Operation skill; resolve installed entry points; add provenance; compare owned outputs. | Codex or Claude receives one globally unique Skill per declared capability. | `contract.skills.agent-surface` |
+| `interaction.skills.project` | Installer or checkout sync requests an integration. | Validate 17 packaged leaves/three pairs, exposure/effects/capabilities, cycles, and roles; omit two internal leaves; resolve entry points/provenance; compare owned outputs. | Codex or Claude receives the same 15 public leaves plus three Operation skills. | `contract.skills.agent-surface` |
 | `interaction.skills.execute` | Maintainer or Operation invokes a leaf Skill. | Resolve Protocol 13 when path-sensitive; read only bounded authorities; perform the declared phase; invoke deterministic Tools as needed; report checks and limitations. | One independently invocable phase completes or stops without crossing its authority boundary. | `contract.skills.workflow-guidance`, `contract.runtime.tools`, `contract.workspace.feature-workspace` |
 
 ## Modules
@@ -86,7 +86,8 @@ None.
   generated projections.
 - Leaf Skills may invoke Tools but never embed a multi-Skill LangGraph or duplicate another Skill's
   prompt body.
-- Leaf and Operation capabilities share one global `concorde-*` installed namespace.
+- Public leaf and Operation capabilities share one global `concorde-*` installed namespace; internal
+  leaves remain packaged/loadable but never project.
 - Templates remain readable format references, not fragments merged into Skill prompts.
 - Reflection role assets are internal support for the paired reflection-triage Operation, not
   additional user-facing leaf capabilities.

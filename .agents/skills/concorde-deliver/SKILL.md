@@ -6,6 +6,7 @@ metadata:
   author: "concorde"
   source: "skills/concorde-deliver/SKILL.md"
   kind: "skill"
+  exposure: "public"
 ---
 ## User Input
 

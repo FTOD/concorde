@@ -10,14 +10,14 @@ WORKSPACE_FIXTURES = REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/works
 
 class PlanDeliveryContractTests(unittest.TestCase):
     def test_plan_uses_feature_architecture_code_and_tests_as_inputs(self):
-        body = (PACKAGE / "skills/concorde-plan/SKILL.md").read_text(encoding="utf-8")
+        body = (PACKAGE / "skills/concorde-plan-author/SKILL.md").read_text(encoding="utf-8")
         normalized = " ".join(body.split())
         for value in (
             "complete selected feature file",
             "providing module architecture",
-            "current source code and executable tests",
-            "executable_context",
-            "compare desired behavior directly with code/tests",
+            "current source code and executable tests in the owned locators",
+            "concorde-plan-context",
+            "exact admitted provider feature specifications",
             "Planning must leave durable sources byte-identical",
         ):
             self.assertIn(value, normalized, value)

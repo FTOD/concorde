@@ -57,7 +57,7 @@ a draft transaction. A published identical release is a no-op; different publish
   and publication outcome.
 - **Obligations**: Use one version authority; normalize archive metadata; verify safe members, identity, digest, isolated install, and byte-equivalent rebuild; publish via draft; never clobber published bytes.
 - **Failures**: Identity/tag mismatch, missing/unsafe/non-installable/non-reproducible assets, host failure, or divergent published content returns a non-success outcome with residual draft state when relevant.
-- **Compatibility**: Concorde 2.0.0 uses Package Manifest 2; release pointer schema 1 binds
+- **Compatibility**: Concorde 2.1.0 uses Package Manifest 2; release pointer schema 1 binds
   Architecture Profile 7, Workspace Protocol 13, and Delivery Proposal 9.
 - **Example**: `python3 scripts/release/build-release.py --output dist` followed by `verify-release.py --dist dist`.
 - **Implementing entities**: `entity.concorde.release-tooling`, `entity.concorde.package-manifest`, `entity.concorde.installer`.
@@ -66,7 +66,7 @@ a draft transaction. A published identical release is a no-op; different publish
 
 | Entity ID | Role in this feature | Interaction |
 |---|---|---|
-| `entity.concorde.package-manifest` | Single release identity/inventory. | Supplies version, profile, protocol, leaf Skills, paired Operations, package roots, and templates. |
+| `entity.concorde.package-manifest` | Single release identity/inventory. | Supplies version, profile, protocol, 17 leaves, three pairs, package roots, and templates. |
 | `entity.concorde.release-tooling` | Build/verify/publish programs. | Produces two assets and proves installation/reproducibility. |
 | `entity.concorde.installer` | Behavioral verification boundary. | Installs the extracted archive into an isolated target. |
 
@@ -80,7 +80,7 @@ a draft transaction. A published identical release is a no-op; different publish
 - **FR-001**: `concorde.json` version, tag, archive filename, embedded manifest, and pointer MUST agree.
 - **FR-002**: Archive member order, timestamps, modes, paths, and content MUST be reproducible.
 - **FR-003**: Verification MUST perform an isolated native Codex installation from extracted bytes,
-  including all leaf Skills and exact Operation pairs/projections.
+  including all packaged leaves/exact pairs and exactly 18 public projections.
 - **FR-004**: Release assets MUST be exactly one archive and one pointer.
 - **FR-005**: Publication MUST never replace divergent published assets.
 

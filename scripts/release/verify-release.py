@@ -25,6 +25,8 @@ BUILDER_SPEC.loader.exec_module(BUILDER)
 ARCHITECTURE_PROFILE = BUILDER.ARCHITECTURE_PROFILE
 WORKSPACE_PROTOCOL = BUILDER.WORKSPACE_PROTOCOL
 REPOSITORY = BUILDER.REPOSITORY
+EXPECTED_SKILLS = BUILDER.EXPECTED_SKILLS
+EXPECTED_OPERATIONS = BUILDER.EXPECTED_OPERATIONS
 archive_name = BUILDER.archive_name
 build_release = BUILDER.build_release
 read_release_identity = BUILDER.read_release_identity
@@ -96,6 +98,10 @@ def verify_release(
             "concorde/operations/concorde-standard-dev-loop/operation.py",
             "concorde/operations/concorde-reflections-triage/SKILL.md",
             "concorde/operations/concorde-reflections-triage/operation.py",
+            "concorde/operations/concorde-plan/SKILL.md",
+            "concorde/operations/concorde-plan/operation.py",
+            "concorde/skills/concorde-plan-context/SKILL.md",
+            "concorde/skills/concorde-plan-author/SKILL.md",
         }
         missing = required - set(names)
         if missing:
@@ -113,6 +119,10 @@ def verify_release(
         manifest = json.loads(package.read("concorde/concorde.json"))
         if manifest.get("version") != version:
             raise ValueError(f"{expected_name} package manifest version does not match {version}")
+        if tuple(manifest.get("skills", ())) != EXPECTED_SKILLS:
+            raise ValueError(f"{expected_name} must contain the exact 17-leaf inventory")
+        if tuple(manifest.get("operations", ())) != EXPECTED_OPERATIONS:
+            raise ValueError(f"{expected_name} must contain the exact three-Operation inventory")
         skill_names = sorted(
             PurePosixPath(name).parts[2]
             for name in names

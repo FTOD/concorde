@@ -7,6 +7,7 @@ metadata:
   author: "concorde"
   source: "operations/concorde-standard-dev-loop/SKILL.md"
   kind: "operation"
+  exposure: "public"
   entrypoint: "operations/concorde-standard-dev-loop/operation.py"
 user-invocable: true
 disable-model-invocation: false
@@ -22,13 +23,16 @@ Before executing leaf Skills, run:
 python3 operations/concorde-standard-dev-loop/operation.py "$ARGUMENTS" --framework-prefix .
 ```
 
-Require the graph to report these ordered Skill bundles:
+Require the graph to report these ordered direct capability bundles:
 
 1. `specify`: `concorde-specify`
-2. `plan`: `concorde-plan`
+2. `plan`: public nested Operation `concorde-plan` (never its internal leaves)
 3. `tasks`: `concorde-tasks`, then `concorde-implement`
 4. `deliver`: `concorde-validate`, then `concorde-deliver`
 
-Execute each named leaf Skill faithfully in graph order, carrying forward its explicit result. Stop
-the Operation immediately when a Skill fails, blocks, or requests missing authority. Never treat the
-graph's deterministic recording output as evidence that a leaf Skill itself completed.
+Execute each named direct capability faithfully in graph order, carrying forward every explicit
+per-capability result. The outer host dispatches `concorde-plan` only through its public pair and sees
+one opaque nested result; the inner planner alone resolves context/author leaves and their policies.
+Every direct leaf receives its own immutable launch specification—never a stage-wide permission
+union. Stop immediately when any leaf or nested Operation fails, blocks, or requests missing
+authority. Never treat deterministic recording output as evidence that agent work completed.

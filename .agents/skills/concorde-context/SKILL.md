@@ -6,6 +6,7 @@ metadata:
   author: "concorde"
   source: "skills/concorde-context/SKILL.md"
   kind: "skill"
+  exposure: "public"
 ---
 # Retrieve Concorde Context
 

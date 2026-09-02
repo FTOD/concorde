@@ -18,17 +18,17 @@ class StandaloneReleaseJourneyAcceptance(unittest.TestCase):
             base = Path(temporary)
             dist = base / "dist"
             build = subprocess.run(
-                [sys.executable, str(REPOSITORY_ROOT / "scripts/release/build-release.py"), "--output", str(dist), "--base-url", "https://example.test/v2.0.0"],
+                [sys.executable, str(REPOSITORY_ROOT / "scripts/release/build-release.py"), "--output", str(dist), "--base-url", "https://example.test/v2.1.0"],
                 text=True, capture_output=True,
             )
             self.assertEqual(build.returncode, 0, build.stdout)
             verify = subprocess.run(
-                [sys.executable, str(REPOSITORY_ROOT / "scripts/release/verify-release.py"), "--dist", str(dist), "--expect-version", "2.0.0", "--expect-base-url", "https://example.test/v2.0.0"],
+                [sys.executable, str(REPOSITORY_ROOT / "scripts/release/verify-release.py"), "--dist", str(dist), "--expect-version", "2.1.0", "--expect-base-url", "https://example.test/v2.1.0"],
                 text=True, capture_output=True,
             )
             self.assertEqual(verify.returncode, 0, verify.stdout)
             extracted = base / "extracted"
-            with zipfile.ZipFile(dist / "concorde-2.0.0.zip") as archive:
+            with zipfile.ZipFile(dist / "concorde-2.1.0.zip") as archive:
                 archive.extractall(extracted)
             target = base / "project"
             install = subprocess.run(

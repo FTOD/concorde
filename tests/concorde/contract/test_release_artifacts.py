@@ -28,22 +28,22 @@ verifier = _load("verify-release.py", "concorde_release_verifier_contract")
 class ReleaseArtifactContractTests(unittest.TestCase):
     def test_build_is_byte_reproducible(self):
         with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
-            base = "https://example.test/releases/v2.0.0"
+            base = "https://example.test/releases/v2.1.0"
             one = builder.build_release(Path(first), base)
             two = builder.build_release(Path(second), base)
             self.assertEqual(one, two)
-            for name in ("concorde-2.0.0.zip", "release.json"):
+            for name in ("concorde-2.1.0.zip", "release.json"):
                 self.assertEqual((Path(first) / name).read_bytes(), (Path(second) / name).read_bytes())
 
     def test_release_pointer_binds_one_archive_identity_and_digest(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
-            builder.build_release(output, "https://example.test/v2.0.0")
+            builder.build_release(output, "https://example.test/v2.1.0")
             pointer = json.loads((output / "release.json").read_text())
             self.assertEqual(pointer["schema_version"], 1)
-            self.assertEqual((pointer["version"], pointer["tag"]), ("2.0.0", "v2.0.0"))
+            self.assertEqual((pointer["version"], pointer["tag"]), ("2.1.0", "v2.1.0"))
             self.assertEqual((pointer["architecture_profile"], pointer["workspace_protocol"]), (7, 13))
-            self.assertEqual(pointer["archive"]["name"], "concorde-2.0.0.zip")
+            self.assertEqual(pointer["archive"]["name"], "concorde-2.1.0.zip")
             digest = "sha256:" + hashlib.sha256((output / pointer["archive"]["name"]).read_bytes()).hexdigest()
             self.assertEqual(pointer["archive"]["sha256"], digest)
             for removed in ("catalogs", "bundle_id", "speckit_version"):
@@ -53,7 +53,7 @@ class ReleaseArtifactContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
             builder.build_release(output)
-            with zipfile.ZipFile(output / "concorde-2.0.0.zip") as archive:
+            with zipfile.ZipFile(output / "concorde-2.1.0.zip") as archive:
                 names = archive.namelist()
                 self.assertEqual(len(names), len(set(names)))
                 self.assertTrue(all(name.startswith("concorde/") for name in names))
@@ -83,7 +83,7 @@ class ReleaseArtifactContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
             builder.build_release(output)
-            with zipfile.ZipFile(output / "concorde-2.0.0.zip") as archive:
+            with zipfile.ZipFile(output / "concorde-2.1.0.zip") as archive:
                 manifest = json.loads(archive.read("concorde/concorde.json"))
                 skills = sorted(Path(name).parts[2] for name in archive.namelist() if name.startswith("concorde/skills/") and name.endswith("/SKILL.md"))
                 operations = sorted(Path(name).parts[2] for name in archive.namelist() if name.startswith("concorde/operations/") and name.endswith("/SKILL.md"))
@@ -97,27 +97,27 @@ class ReleaseArtifactContractTests(unittest.TestCase):
     def test_verifier_installs_and_rebuilds_release(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
-            base = "https://example.test/v2.0.0"
+            base = "https://example.test/v2.1.0"
             built = builder.build_release(output, base)
-            verified = verifier.verify_release(output, "2.0.0", base)
+            verified = verifier.verify_release(output, "2.1.0", base)
             self.assertEqual(verified, built)
 
     def test_verifier_rejects_digest_protocol_and_archive_corruption(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
-            base = "https://example.test/v2.0.0"
+            base = "https://example.test/v2.1.0"
             builder.build_release(output, base)
             pointer_path = output / "release.json"
             pointer = json.loads(pointer_path.read_text())
             pointer["workspace_protocol"] = 11
             pointer_path.write_text(json.dumps(pointer))
             with self.assertRaisesRegex(ValueError, "workspace_protocol"):
-                verifier.verify_release(output, "2.0.0", base)
+                verifier.verify_release(output, "2.1.0", base)
             builder.build_release(output, base)
-            archive = output / "concorde-2.0.0.zip"
+            archive = output / "concorde-2.1.0.zip"
             archive.write_bytes(archive.read_bytes() + b"corrupt")
             with self.assertRaisesRegex(ValueError, "digest"):
-                verifier.verify_release(output, "2.0.0", base)
+                verifier.verify_release(output, "2.1.0", base)
 
     def test_release_identity_rejects_wrong_repository_profile_or_protocol(self):
         original = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())

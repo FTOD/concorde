@@ -30,6 +30,8 @@ python3 scripts/install-concorde.py \
 
 Use `--integration claude` for Claude. Installed framework bytes live at `.concorde/framework/`;
 ownership lives at `.concorde/install.json`.
+Concorde 2.1.0 packages 17 leaves and three Operation pairs, but installs exactly 18 public agent
+skills: 15 public leaves plus the three Operations. Both internal planner leaves stay in the framework.
 
 ## 2. Initialize project architecture
 
@@ -55,7 +57,7 @@ Use `$concorde-clarify` for material ambiguity and `$concorde-checklist` for rev
 ## 4. Plan and implement
 
 ```text
-$concorde-plan
+$concorde-plan          # public context → author Operation
 $concorde-tasks
 $concorde-analyze
 $concorde-implement
@@ -65,6 +67,18 @@ $concorde-converge      # only when verified work remains
 Planning/task/evidence artifacts live at `.concorde/attempts/<stable-feature-id>/`. Implementation
 tasks explicitly reconcile every affected architecture, feature, source, test, documentation, and
 projection authority. A task is complete only after passing evidence is recorded.
+
+The planner reads provider feature bodies only for exact required-interface ownership and denies
+provider internals. Each internal leaf gets a distinct default-deny Codex/Claude policy before
+launch. Inspect without starting a model:
+
+```bash
+python3 .concorde/framework/operations/concorde-plan/operation.py \
+  "Plan the selected change" --integration codex --describe-policy
+```
+
+Use `--execute` only with a supported native permission profile/strict sandbox or a verified
+equivalent outer boundary. Tests inject process recorders; installation itself remains offline.
 
 ## 5. Explore alignment (optional)
 

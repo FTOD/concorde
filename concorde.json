@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "name": "concorde",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Standalone module-centered architecture and feature workflow",
   "license": "MIT",
   "license_file": "LICENSE",
@@ -24,14 +24,16 @@
     "concorde-converge",
     "concorde-fast-loop",
     "concorde-implement",
-    "concorde-plan",
+    "concorde-plan-context",
+    "concorde-plan-author",
     "concorde-specify",
     "concorde-tasks",
     "concorde-taskstoissues"
   ],
   "operations": [
     "concorde-standard-dev-loop",
-    "concorde-reflections-triage"
+    "concorde-reflections-triage",
+    "concorde-plan"
   ],
   "templates": [
     "checklist-template.md",

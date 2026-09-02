@@ -40,13 +40,13 @@ diagrams:
 ## Responsibility
 
 Provide a standalone, module-centered development system in which durable architecture and feature
-intent, executable reality, evidence, temporal work state, and a structural capability hierarchy have
-explicit, non-overlapping authority.
+intent, executable reality, evidence, temporal work state, and a permission-bounded structural
+capability hierarchy have explicit, non-overlapping authority.
 
 ## Boundary
 
-Concorde owns Scripts that expose deterministic Tools, independently invocable leaf Skills, paired
-LangGraph Operations, complete Markdown format references, project-control semantics, agent
+Concorde owns Scripts that expose deterministic Tools, public/internal effect-declared leaf Skills,
+acyclic paired LangGraph Operations, complete Markdown format references, project-control semantics, agent
 projection, direct installation, standalone release, evidence-qualified alignment exploration, and
 optional documentation projections. It does not own a coding-agent/model runtime, project product
 code, Archify rendering, Docusaurus internals, or Understand Anything graph semantics.
@@ -55,19 +55,19 @@ code, Archify rendering, Docusaurus internals, or Understand Anything graph sema
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
-| `module.concorde.skills` | module | Canonical leaf capability prompts, format references, capability parsing, and agent projection semantics. | `specs/concorde/modules/skills/architecture.md` |
-| `module.concorde.operations` | module | Paired LangGraph control graphs that compose multiple leaf Skills and install through associated Markdown skills. | `specs/concorde/modules/operations/architecture.md` |
+| `module.concorde.skills` | module | Canonical public/internal leaf prompts, effect/exposure metadata, format references, capability parsing, and public agent projection semantics. | `specs/concorde/modules/skills/architecture.md` |
+| `module.concorde.operations` | module | Paired LangGraph control graphs, nested public planning, and per-leaf Codex/Claude policy/process enforcement. | `specs/concorde/modules/operations/architecture.md` |
 | `module.concorde.runtime` | module | Deterministic Tools, repository loading, workspace routing, validation, reflection support, and delivery. | `specs/concorde/modules/runtime/architecture.md` |
 | `module.concorde.workspace` | module | Durable specification, project control, source/evidence, installed, and projection placement rules. | `specs/concorde/modules/workspace/architecture.md` |
 | `module.concorde.distribution` | module | One native package, owned installation, reproducible release, and immutable publication. | `specs/concorde/modules/distribution/architecture.md` |
 | `module.concorde.auto-docs` | module | Validation-gated publication of maintained architecture, feature, and documentation sources. | `specs/concorde/modules/auto-docs/architecture.md` |
-| `entity.concorde.package-manifest` | configuration | Package Manifest 2 identity and exact Script, Skill, Operation, template, runtime, protocol, and integration inventory. | `concorde.json` |
+| `entity.concorde.package-manifest` | configuration | Concorde 2.1.0 Package Manifest 2 identity and exact Script, 17-leaf, three-Operation, template, runtime, protocol, and integration inventory. | `concorde.json` |
 | `entity.concorde.scripts` | directory | Directly runnable entry points that expose bounded deterministic Tools and package automation. | `scripts` |
 | `entity.concorde.skills` | directory | Canonical leaf capability directories, each containing exactly one `SKILL.md`. | `skills` |
 | `entity.concorde.operations` | directory | Canonical LangGraph capability directories, each containing exactly `operation.py` and associated `SKILL.md`. | `operations` |
 | `entity.concorde.templates` | directory | Complete feature, plan, task, checklist, constitution, and reflection Markdown format references. | `templates` |
 | `entity.concorde.agent-assets` | directory | Internal reflection-triage roles and integration templates. | `agent-assets` |
-| `entity.concorde.runtime` | package | Standard-library implementation of Concorde source, Tool, workspace, and read-only alignment contracts plus lazy Operation support. | `src/concorde` |
+| `entity.concorde.runtime` | package | Standard-library implementation of Concorde source, Tool, workspace, capability validation, permission compilation/process handoff, and read-only alignment contracts plus lazy Operation support. | `src/concorde` |
 | `entity.concorde.cli` | program | Structured Tool dispatcher for initialization, context, exploration, validation, delivery, and agent assets. | `src/concorde/cli.py#create_parser` |
 | `entity.concorde.workspace-resolver` | program | Resolves one direct feature, its module/ancestry/relations, and stable-ID control paths through Protocol 13. | `src/concorde/feature_workspace.py#resolve_phase_paths` |
 | `entity.concorde.alignment-explorer` | program | Validates optional pinned graph/evidence and returns a bounded evidence-qualified read-only Tool result. | `src/concorde/alignment.py#explore_alignment` |
@@ -91,7 +91,7 @@ code, Archify rendering, Docusaurus internals, or Understand Anything graph sema
 | `entity.concorde.package-manifest` | `declares` | `entity.concorde.runtime` | Pins the runtime profile/protocol shipped in the native package. |
 | `module.concorde.skills` | `calls` | `module.concorde.runtime` | Leaf Skills request deterministic workspace and lifecycle Tools. |
 | `module.concorde.skills` | `reads_from` | `module.concorde.workspace` | Leaf Skills use bounded durable/control/executable paths for a selected feature. |
-| `module.concorde.operations` | `composes` | `module.concorde.skills` | LangGraphs sequence canonical leaf Skills without duplicating prompts. |
+| `module.concorde.operations` | `composes` | `module.concorde.skills` | LangGraphs sequence canonical leaf Skills by effect-declared occurrence without duplicating prompts. |
 | `module.concorde.operations` | `depends_on` | `module.concorde.runtime` | Uses shared package parsing and may cause Skills to invoke Tools. |
 | `module.concorde.runtime` | `validates` | `module.concorde.workspace` | Loads and checks the Profile 7 authority model used by every Tool. |
 | `module.concorde.distribution` | `reads_from` | `entity.concorde.package-manifest` | Builds one allowlisted archive from the native package identity. |
@@ -112,14 +112,14 @@ code, Archify rendering, Docusaurus internals, or Understand Anything graph sema
 
 | Predicate | Direction and meaning |
 |---|---|
-| `composes` | From a controlling Operation to the leaf Skills whose complete prompts it sequences without taking ownership. |
+| `composes` | From a controlling Operation to direct Skills or public Operations whose identities/results it sequences without taking ownership or flattening internals. |
 
 ## Interactions
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
 | `interaction.concorde.feature-work` | Maintainer invokes a leaf Skill or paired Operation skill. | Resolve Protocol 13; load bounded feature/module/code evidence; execute one phase or a declared LangGraph; invoke Tools explicitly; record attempt evidence. | Intent, architecture, implementation, tests, and temporal state remain reconciled at the completed boundary. | `contract.concorde.workflow`, `contract.skills.workflow-guidance`, `contract.operations.standard-development-loop` |
-| `interaction.concorde.install` | Maintainer previews and accepts a native installation. | Read Package Manifest 2; calculate owned create/adopt/update/remove actions; reject collisions/symlinks; atomically write framework, leaf and Operation skill projections, defaults, and receipt. | Idempotent Concorde 2.0.0 installation or exact conflict diagnostics. | `contract.concorde.installation` |
+| `interaction.concorde.install` | Maintainer previews and accepts a native installation. | Read Package Manifest 2; calculate owned create/adopt/update/remove actions; reject collisions/symlinks; atomically write framework, 18 public Skill/Operation projections, defaults, and receipt while retaining two internal leaves only in the framework. | Idempotent Concorde 2.1.0 installation or exact conflict diagnostics. | `contract.concorde.installation` |
 | `interaction.concorde.publish` | Maintainer or CI requests project documentation. | Load validated maintained sources; render declared diagrams; create Build Manifest 10; build a candidate; atomically promote it. | Searchable read model with source provenance. | `contract.auto-docs.architecture-site` |
 | `interaction.concorde.explore` | Maintainer invokes the exploration Tool for a stable subject. | Validate Profile 7; project bounded specification truth; validate optional graph/evidence; reduce absent/stale/invalid evidence to unknown; filter and serialize one Tool result. | Read-only specification and implementation subjects remain distinct with explicit provenance/freshness. | `contract.concorde.alignment-explorer`, `contract.runtime.tools` |
 | `interaction.concorde.deliver` | Maintainer invokes the delivery Tool for a complete selected attempt. | Revalidate Proposal 9 eligibility, digest, paths, tasks, checklists, and evidence; remove exactly that stable-ID attempt. | Durable sources remain authoritative with no active attempt or implementation narrative. | `contract.concorde.workflow`, `contract.runtime.tools` |
@@ -163,11 +163,12 @@ code, Archify rendering, Docusaurus internals, or Understand Anything graph sema
 
 - [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
   entities and directed relationships in this architecture.
-- Scripts expose deterministic Tools; leaf Skills invoke Tools; paired LangGraph Operations compose
-  multiple Skills with explicit controls.
+- Scripts expose deterministic Tools; public/internal leaf Skills invoke Tools and own effects;
+  paired LangGraph Operations compose ordered direct capabilities with explicit controls and
+  per-leaf enforced launches.
 - Every Operation Python has one associated Markdown skill, and both leaf and Operation skills are
   installed into one global `concorde-*` agent namespace.
-- Package Manifest 2, one archive, one installation receipt, and version 2.0.0 replace independently
+- Package Manifest 2, one archive, one installation receipt, and version 2.1.0 replace independently
   composed or mixed-layout capability sources; no compatibility shim remains.
 - Stable architecture identity remains separate from mutable file/symbol locators.
 - Understand Anything types remain adapter metadata; only explicit revision-current sidecar claims

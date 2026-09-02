@@ -1,6 +1,22 @@
 ---
 name: concorde-deliver
 description: "Validate and remove one completed temporal feature attempt"
+exposure: public
+effects:
+  reads:
+    - selected-feature
+    - module-architecture
+    - module-ancestry
+    - related-summaries
+    - attempt
+    - checklists
+    - constitution
+    - reflections
+    - framework
+  writes:
+    - attempt
+  network: false
+  credentials: none
 scripts:
   py: scripts/concorde.py deliver
 ---
