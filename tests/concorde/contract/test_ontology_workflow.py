@@ -1,6 +1,11 @@
+import sys
 import unittest
 
-from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
+
+sys.path.insert(0, str(RUNTIME_ROOT))
+
+from concorde.repository import ProjectRepository  # noqa: E402
 
 
 class OntologyWorkflowContractTests(unittest.TestCase):
@@ -32,7 +37,7 @@ class OntologyWorkflowContractTests(unittest.TestCase):
                 for phrase in required:
                     self.assertIn(phrase, text)
 
-    def test_runtime_declares_profile6_entity_and_feature_diagnostics(self):
+    def test_runtime_declares_profile7_entity_and_feature_diagnostics(self):
         entity_validator = (REPOSITORY_ROOT / "extensions/concorde/runtime/concorde/validation/entities.py").read_text(encoding="utf-8")
         feature_validator = (REPOSITORY_ROOT / "extensions/concorde/runtime/concorde/validation/features.py").read_text(encoding="utf-8")
         coordinator = (REPOSITORY_ROOT / "extensions/concorde/runtime/concorde/validate.py").read_text(encoding="utf-8")
@@ -46,14 +51,43 @@ class OntologyWorkflowContractTests(unittest.TestCase):
 
     def test_self_hosted_profile_uses_direct_feature_files_and_is_contract_free(self):
         root = REPOSITORY_ROOT / "specs/concorde"
-        self.assertEqual(len(list(root.rglob("architecture.md"))), 6)
-        self.assertEqual(len(list(root.glob("features/*.md"))) + len(list((root / "modules").glob("*/features/*.md"))), 24)
+        package = ProjectRepository(REPOSITORY_ROOT).load()
+        self.assertEqual(package.profile_version, 7)
+        self.assertEqual(package.specification_root, "specs/concorde")
+        self.assertEqual(package.root_module_id, "module.concorde")
+
+        root_module = package.modules[package.root_module_id]
+        ontology = package.features["feature.concorde.define-project-ontology"]
+        self.assertEqual(ontology.module, root_module.identifier)
+        self.assertIn(ontology.identifier, root_module.features)
+        self.assertEqual(
+            set(root_module.features),
+            {feature.identifier for feature in package.features.values() if feature.module == root_module.identifier},
+        )
+        self.assertEqual(ontology.provided_interfaces, ("contract.concorde.ontology",))
+        self.assertEqual(ontology.required_interfaces, ("contract.understand-anything.knowledge-graph",))
+
+        provided_interface = package.interfaces[ontology.provided_interfaces[0]]
+        self.assertEqual(provided_interface.owner, ontology.identifier)
+        for source, entity_ids in (
+            ("architecture zoom", ontology.architecture_zoom),
+            ("implementing entities", provided_interface.implementing_entities),
+        ):
+            self.assertTrue(entity_ids, source)
+            for entity_id in entity_ids:
+                with self.subTest(source=source, entity_id=entity_id):
+                    self.assertIn(entity_id, package.entities)
+
+        direct_features = {
+            path.relative_to(REPOSITORY_ROOT).as_posix()
+            for path in root.rglob("features/*.md")
+        }
+        self.assertEqual(direct_features, {feature.path for feature in package.features.values()})
         self.assertEqual([path for path in root.glob("**/features/*") if path.is_dir()], [])
         for obsolete in ("module.md", "abstract.md", "implementation.md", "contract.md"):
             self.assertEqual(list(root.rglob(obsolete)), [], obsolete)
         self.assertEqual([path for path in root.rglob("subfeatures") if path.is_dir()], [])
         self.assertEqual([path for path in root.rglob("contracts") if path.is_dir()], [])
-        self.assertEqual([path for path in root.rglob("diagrams") if path.is_dir()], [])
 
     def test_project_ontology_defines_module_entities_interfaces_and_ua_boundary(self):
         ontology = (REPOSITORY_ROOT / "docs/ontology.md").read_text(encoding="utf-8")
