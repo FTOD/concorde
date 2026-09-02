@@ -1,6 +1,6 @@
 # Reflections: Concorde
 
-<!-- concorde-reflection-high-water: R-044 -->
+<!-- concorde-reflection-high-water: R-045 -->
 
 The project's remaining open reflection log: unresolved difficulties, prototype choices, or problems
 coding agents met while planning or implementing a feature, attributed to that feature and naming the
@@ -89,7 +89,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.workflow.plan-delivery
 - **Kind**: guidance
-- **Concerns**: skills/concorde-plan/SKILL.md
+- **Concerns**: skills/concorde-plan-author/SKILL.md
 - **Expected**: Planning keeps proposed contract work in the selected attempt and schedules any durable contract mutation for implementation.
 - **Observed**: The plan command directs Phase 1 to write feature-root `contracts/`, although child FR-007 and parent FR-015 prohibit planning from updating durable sources and the module reference classifies `attempt/contracts/**` as temporal.
 - **Effect**: worked-around
@@ -198,7 +198,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.define-project-ontology
 - **Kind**: guidance
-- **Concerns**: skills/concorde-plan/SKILL.md
+- **Concerns**: operations/concorde-plan/SKILL.md
 - **Expected**: A selected feature attempt writes only inside one lifecycle root and treats other feature bodies as read-only authorities.
 - **Observed**: The requested source-profile migration is not coherent unless all twenty-four feature designs, six module packages, runtime, guidance, fixtures, and projections change together; a partial migration cannot be loaded or validated by either profile.
 - **Effect**: worked-around
@@ -232,19 +232,6 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Improvement**: Make clean-tree self-host freshness a deterministic pre-plan gate for framework source-profile migrations.
 - **Status**: open
 
-### R-022 · Delivery removes detailed attempt evidence without a narrative replacement
-- **Phase**: plan
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.define-project-ontology
-- **Kind**: architecture
-- **Concerns**: specs/concorde/features/007-project-ontology.md
-- **Expected**: Code and tests are sufficient implementation authority, while delivery removes temporal plans, tasks, and validation logs without creating `implementation.md`.
-- **Observed**: This deliberately makes Git history and executable tests the durable milestone record; compact task-level rationale and command output disappear with the attempt.
-- **Effect**: assumed
-- **Action**: Keeps lasting architectural rationale in `architecture.md`, behavioral/interface rationale in feature `design.md`, difficult choices in `reflections.md`, and relies on version control plus tests for implementation history.
-- **Improvement**: Consider an optional generated release receipt outside the specification hierarchy if maintainers later need durable evidence metadata without duplicating implementation prose.
-- **Status**: open
-
 ### R-023 · Existing diagrams encode the removed source profile
 - **Phase**: implement
 - **Date**: 2026-09-01
@@ -269,19 +256,6 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Effect**: assumed
 - **Action**: Auto-Docs reads a legacy body Status when present and otherwise maps `evidence_status` into Manifest 10 `status`, documenting the temporary semantic overlap.
 - **Improvement**: Rename/split the field in Manifest 11 after consumers can migrate to explicit lifecycle and evidence fields.
-- **Status**: open
-
-### R-026 · Attempt-directory cleanup cannot be crash-atomic on every filesystem
-- **Phase**: implement
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.define-project-ontology
-- **Kind**: implementation
-- **Concerns**: src/concorde/delivery.py
-- **Expected**: Delivery removes exactly one complete attempt atomically and restores it on any cleanup failure.
-- **Observed**: A recursive directory tree cannot be intrinsically transactionally deleted across filesystems; process crash or power loss can interrupt operations outside Python's rollback control.
-- **Effect**: worked-around
-- **Action**: Proposal 8 copies the complete attempt to an external temporary backup, atomically renames the target, restores on injected rename/removal failures, and binds all attempt bytes into the proposal digest.
-- **Improvement**: Evaluate filesystem-specific durable transaction/journal support if crash consistency becomes a required guarantee beyond current process-level rollback.
 - **Status**: open
 
 ### R-029 · Feature wrapper directory has no remaining durable meaning
@@ -407,4 +381,17 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Effect**: assumed
 - **Action**: Use a native `concorde explore` JSON operation plus a versioned, revision-bound alignment sidecar; keep it distinct from conversational `concorde-*` commands and prohibit name/similarity-derived verification.
 - **Improvement**: Reassess whether a browser projection or a broadly adopted alignment format should supplement the JSON operation after real project usage establishes stable query and evidence needs.
+- **Status**: open
+
+### R-045 · Stash-based worktree snapshot omitted untracked attempt sources
+- **Phase**: implement
+- **Date**: 2026-09-02
+- **Feature**: feature.operations.permission-bounded-planning
+- **Kind**: tooling
+- **Concerns**: operations/concorde-reflections-triage/SKILL.md
+- **Expected**: An isolated implementation worktree created from the authorized main-checkout snapshot contains both tracked edits and untracked selected feature/attempt sources before Protocol 13 runs.
+- **Observed**: Branching from the primary Git stash merge commit restored tracked edits but omitted the stash's untracked-file parent, so the implement workspace gate could not resolve the new feature or attempt.
+- **Effect**: worked-around
+- **Action**: Cherry-picked the exact untracked-files stash parent into the isolated feature branch, re-ran Protocol 13, and confirmed the requirements checklist was 28/28 before implementation continued.
+- **Improvement**: Add a deterministic isolated-worktree bootstrap helper that materializes and verifies the complete tracked-plus-untracked authorized snapshot, or require an explicit snapshot commit, before dispatching an implementer.
 - **Status**: open
