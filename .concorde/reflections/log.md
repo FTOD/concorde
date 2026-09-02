@@ -1,6 +1,6 @@
 # Reflections: Concorde
 
-<!-- concorde-reflection-high-water: R-045 -->
+<!-- concorde-reflection-high-water: R-047 -->
 
 The project's remaining open reflection log: unresolved difficulties, prototype choices, or problems
 coding agents met while planning or implementing a feature, attributed to that feature and naming the
@@ -395,3 +395,4 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Action**: Cherry-picked the exact untracked-files stash parent into the isolated feature branch, re-ran Protocol 13, and confirmed the requirements checklist was 28/28 before implementation continued.
 - **Improvement**: Add a deterministic isolated-worktree bootstrap helper that materializes and verifies the complete tracked-plus-untracked authorized snapshot, or require an explicit snapshot commit, before dispatching an implementer.
 - **Status**: open
+
