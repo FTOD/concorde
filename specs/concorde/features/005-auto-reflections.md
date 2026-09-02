@@ -4,7 +4,8 @@ kind: feature
 module: module.concorde
 related_features:
   - feature.concorde.workflow
-  - feature.commands.project-workflow
+  - feature.skills.project-workflow
+  - feature.operations.standard-development-loop
 interfaces:
   provided:
     - interface.concorde.reflections
@@ -26,8 +27,9 @@ retains explicit maintainer disposition without duplicating identity or silently
 
 | Entity ID | Role |
 |---|---|
-| `entity.concorde.agent-assets` | Supplies canonical reflection grammar, orchestrator, and roles. |
-| `entity.concorde.runtime` | Supplies deterministic queue, allocation, plan-state, and merged-removal behavior. |
+| `module.concorde.operations` | Supplies the paired reflection-triage LangGraph and installed Operation skill. |
+| `entity.concorde.agent-assets` | Supplies canonical reflection grammar and internal investigator/implementer roles. |
+| `entity.concorde.runtime` | Supplies deterministic queue, allocation, plan-state, and merged-removal Tools. |
 | `entity.concorde.coding-agent` | Records entries/occurrences during work and performs explicitly assigned triage. |
 | `entity.concorde.control-state` | Holds the sole tracked `.concorde/reflections/log.md` authority beside triage configuration/scratch state. |
 
@@ -38,8 +40,8 @@ retains explicit maintainer disposition without duplicating identity or silently
 - **Consumer**: Workflow phases, maintainer, and supported reflection investigator/implementer agents.
 - **Direction**: Encountered problem/choice to append-only record; explicit triage to plans/worktree
   commits/merge, deterministic removal for merged small fixes, or maintainer disposition for other routes.
-- **Entry points**: Phase reflection rules, `reflections-triage` skill, and installed
-  `reflections_queue.py --allocate-id` / `--remove-merged` helper operations.
+- **Entry points**: Leaf Skill reflection rules, installed `concorde-reflections-triage` Operation
+  skill and paired graph, and `reflections_queue.py --allocate-id` / `--remove-merged` Tools.
 - **Inputs**: Selected feature ID, phase/date/kind, stable concern path/ID, expected/observed/effect/action/improvement, and explicit triage request.
 - **Outputs**: Atomically allocated never-used ID, unique project-log entry/occurrence, validated queue/plan/worktree state, implementer
   commit, merge result, exact removed-entry manifest for eligible small fixes, and maintainer-owned
@@ -53,9 +55,10 @@ retains explicit maintainer disposition without duplicating identity or silently
   ineligible route/effort/status, unsafe worktree/merge, or verification failure preserves the complete
   log and sources.
 - **Compatibility**: Profile 7 control paths and Reflection Log v1 grammar remain stable;
-  reflection-triage/v3 adds durable ID allocation and removes eligible merged-small entries instead
-  of requiring maintainer closure.
-- **Implementing entities**: `entity.concorde.agent-assets`, `entity.concorde.runtime`, `entity.concorde.coding-agent`, `entity.concorde.control-state`.
+  reflection-triage/v4 reserves `tool` for queue helpers and exposes the multi-Skill workflow as an
+  exact Python/Markdown Operation pair.
+- **Implementing entities**: `module.concorde.operations`, `entity.concorde.agent-assets`,
+  `entity.concorde.runtime`, `entity.concorde.coding-agent`, and `entity.concorde.control-state`.
 
 ## Usage Scenarios
 
@@ -79,15 +82,18 @@ retains explicit maintainer disposition without duplicating identity or silently
 - **FR-005**: Reflection content MUST NOT be copied into architecture, feature designs, attempts, code, tests, diagrams, or generated releases.
 - **FR-006**: After validation and merge, a plan with `route: fast-loop`, `effort: small`,
   `status: merged`, a recorded commit reachable from current `HEAD`, and a matching open entry MUST be
-  eligible for one deterministic atomic log-removal operation without maintainer approval.
-- **FR-007**: The removal operation MUST validate every requested ID before mutation, remove only exact
+  eligible for one deterministic atomic log-removal Tool action without maintainer approval.
+- **FR-007**: The removal Tool MUST validate every requested ID before mutation, remove only exact
   eligible entry blocks, report removed IDs, and preserve the complete log on any ineligible, missing,
   malformed, stale, or write failure.
 - **FR-008**: Plans on `specify`, `dismiss`, or `blocked` routes and failed/unmerged/non-small plans
   MUST NOT remove their entries automatically.
 - **FR-009**: The tracked Reflection Log v1 preamble MUST persist a monotonic high-water ID greater
   than or equal to every current or previously used reflection ID; every new entry MUST obtain its ID
-  through one atomic `--allocate-id` operation, and removal MUST never lower or reuse that value.
+  through one atomic `--allocate-id` Tool action, and removal MUST never lower or reuse that value.
+- **FR-011**: Reflection triage MUST be installed as the associated Markdown skill for its paired
+  LangGraph; its Python graph MUST compose declared leaf Skills and retain internal specialist agents
+  as support rather than user-facing leaf capabilities.
 - **FR-010**: Allocation/removal MUST reject a missing, malformed, stale, or inconsistent high-water
   marker before mutation and preserve log bytes on failure.
 

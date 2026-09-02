@@ -9,7 +9,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .model import Finding, InitializationProposal, OperationResult, ProposalFile
+from .model import Finding, InitializationProposal, ProposalFile, ToolResult
 from .projection import markdown_section
 from .repository import PROFILE_VERSION, ProjectRepository, RepositoryError, safe_relative_path
 
@@ -40,7 +40,7 @@ def _interaction_model() -> dict[str, Any]:
     }
 
 
-def _configured_architecture(project_root: Path) -> OperationResult | None:
+def _configured_architecture(project_root: Path) -> ToolResult | None:
     config = project_root / ".concorde/config.json"
     if not config.exists():
         return None
@@ -52,8 +52,8 @@ def _configured_architecture(project_root: Path) -> OperationResult | None:
         module = roots[0]
     except RepositoryError as error:
         finding = Finding("CONCORDE-INIT-006", "error", ".concorde/config.json", f"A configured architecture exists but is incomplete: {error}", "Reconcile the existing Profile 7 configuration, root architecture, and control state; initialization never overwrites them.")
-        return OperationResult("init", ".", "conflict", findings=(finding,), result={"interaction_model": _interaction_model()})
-    return OperationResult(
+        return ToolResult("init", ".", "conflict", findings=(finding,), result={"interaction_model": _interaction_model()})
+    return ToolResult(
         "init",
         ".",
         "unchanged",
@@ -229,7 +229,7 @@ while changing a selected feature. Entries use the installed Concorde Reflection
     )
 
 
-def propose_initialization(project_root: str | Path, module_id: str | None = None, name: str | None = None) -> OperationResult:
+def propose_initialization(project_root: str | Path, module_id: str | None = None, name: str | None = None) -> ToolResult:
     root = Path(project_root).resolve()
     configured = _configured_architecture(root)
     if configured is not None:
@@ -238,11 +238,11 @@ def propose_initialization(project_root: str | Path, module_id: str | None = Non
         proposal = _create_proposal(root, module_id, name)
     except ValueError as error:
         finding = Finding("CONCORDE-INIT-002", "error", ".concorde/config.json", str(error), "Use a lowercase stable module.<namespace> ID.")
-        return OperationResult("init", ".", "invalid", findings=(finding,), result={"interaction_model": _interaction_model()})
+        return ToolResult("init", ".", "invalid", findings=(finding,), result={"interaction_model": _interaction_model()})
     exact = [(root / item.path).is_file() and (root / item.path).read_text(encoding="utf-8") == item.content for item in proposal.files]
     if all(exact):
-        return OperationResult("init", ".", "unchanged", tuple(item.path for item in proposal.files), result={"interaction_model": _interaction_model(), "proposal": _payload(proposal)})
-    return OperationResult("init", ".", "proposal", result={"interaction_model": _interaction_model(), "proposal": _payload(proposal)})
+        return ToolResult("init", ".", "unchanged", tuple(item.path for item in proposal.files), result={"interaction_model": _interaction_model(), "proposal": _payload(proposal)})
+    return ToolResult("init", ".", "proposal", result={"interaction_model": _interaction_model(), "proposal": _payload(proposal)})
 
 
 def _load_accepted(root: Path, proposal_path: str) -> InitializationProposal:
@@ -281,26 +281,26 @@ def _load_accepted(root: Path, proposal_path: str) -> InitializationProposal:
     )
 
 
-def apply_proposal(project_root: str | Path, proposal_path: str) -> OperationResult:
+def apply_proposal(project_root: str | Path, proposal_path: str) -> ToolResult:
     root = Path(project_root).resolve()
     try:
         proposal = _load_accepted(root, proposal_path)
     except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError, RepositoryError) as error:
         finding = Finding("CONCORDE-INIT-003", "error", ".concorde/config.json", f"Accepted proposal is invalid: {error}", "Save the exact proposal JSON at a safe project-relative path and retry.")
-        return OperationResult("init", ".", "invalid", findings=(finding,))
+        return ToolResult("init", ".", "invalid", findings=(finding,))
     expected = {item.path: item.content for item in proposal.files}
     states = {
         relative: "missing" if not (path := root / relative).exists() else "exact" if path.is_file() and path.read_text(encoding="utf-8") == content else "changed"
         for relative, content in expected.items()
     }
     if all(state == "exact" for state in states.values()):
-        return OperationResult("init", ".", "unchanged", tuple(sorted(expected)), result={"proposal": _payload(proposal)})
+        return ToolResult("init", ".", "unchanged", tuple(sorted(expected)), result={"proposal": _payload(proposal)})
     if any(state != "missing" for state in states.values()):
         findings = tuple(Finding("CONCORDE-INIT-004", "error", path, f"Target is {state}; exact accepted content cannot be promoted.", "Move or reconcile the existing source, then accept a fresh proposal.") for path, state in sorted(states.items()) if state != "missing")
-        return OperationResult("init", ".", "conflict", findings=findings, result={"conflicts": [path for path, state in sorted(states.items()) if state != "missing"]})
+        return ToolResult("init", ".", "conflict", findings=findings, result={"conflicts": [path for path, state in sorted(states.items()) if state != "missing"]})
     try:
         created = ProjectRepository(root).stage_and_promote(expected)
     except (OSError, RepositoryError) as error:
         finding = Finding("CONCORDE-INIT-005", "error", ".concorde/config.json", f"Staged promotion failed: {error}", "Resolve the filesystem failure and retry the accepted proposal.")
-        return OperationResult("init", ".", "failed", findings=(finding,))
-    return OperationResult("init", ".", "success", tuple(created), result={"created": created, "project_root_id": proposal.project_root_id})
+        return ToolResult("init", ".", "failed", findings=(finding,))
+    return ToolResult("init", ".", "success", tuple(created), result={"created": created, "project_root_id": proposal.project_root_id})

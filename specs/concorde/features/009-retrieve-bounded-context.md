@@ -33,8 +33,8 @@ relationships, interfaces, and navigation references, without reading descendant
 
 - **Consumer**: Maintainer or coding agent answering a scoped architecture/feature question.
 - **Direction**: Input target to read-only structured output.
-- **Entry points**: Canonical command `concorde.context` and native runtime `context` operation.
-- **Inputs**: Stable module/feature ID and optional depth/format choices allowed by the command.
+- **Entry points**: Leaf Skill `concorde-context` and native Runtime `context` Tool.
+- **Inputs**: Stable module/feature ID and optional depth/format choices allowed by the Skill/Tool.
 - **Outputs**: Current module, direct modules/features, visible entities/relations/interfaces, and deeper navigation references.
 - **Obligations**: Never load or return descendant internals, unrelated feature bodies, attempts, or generated truth implicitly.
 - **Failures**: Missing/ambiguous IDs, invalid hierarchy, or unsafe sources return findings and make no changes.

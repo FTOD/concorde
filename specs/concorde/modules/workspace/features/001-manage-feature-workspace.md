@@ -29,26 +29,28 @@ ancestry, related summaries, stable-ID project-control attempt, reflection log, 
 | `entity.workspace.feature-design` | Supplies sole durable behavior/interface authority. |
 | `entity.workspace.module-architecture` | Supplies typed structure/relationships for the providing level. |
 | `entity.workspace.attempt` | Holds one phase's plan/tasks/checklists/evidence under `.concorde/attempts/<stable-feature-id>/` while active. |
-| `entity.workspace.protocol12` | Serializes one `feature_path` plus bounded durable, control, process, and executable context. |
+| `entity.workspace.protocol13` | Serializes one `feature_path` plus bounded durable, control, process, and executable context using Tool terminology. |
 
 ## Interfaces
 
-### `contract.workspace.feature-workspace` — Feature Workspace Protocol 12
+### `contract.workspace.feature-workspace` — Feature Workspace Protocol 13
 
-- **Consumer**: Every path-sensitive Concorde phase and delivery.
+- **Consumer**: Every path-sensitive Concorde leaf Skill, Operation stage, and delivery Tool.
 - **Direction**: Project/phase/selection input to canonical path/context JSON.
 - **Entry points**: Installed `workspace.py` adapter and runtime resolver.
 - **Inputs**: Project root, phase, and explicit or selected `feature_path`.
 - **Outputs**: Feature/module identity, direct feature path, architecture/ancestry, related feature paths, stable-ID attempt paths/state, `.concorde/reflections/log.md`, and source/test roots; planned features expose unavailable attempt fields until their ID exists.
 - **Obligations**: Resolve only real project-contained direct features and control paths, bind attempts by validated stable ID, bound relation bodies, rerun after new front matter, and never create future artifacts implicitly.
 - **Failures**: Missing/legacy/ambiguous/unsafe/symlinked features or control roots, malformed IDs, orphan/colliding attempts, or attempted orphan adoption stop resolution.
-- **Compatibility**: `schema_version: 12`; module-local attempts, specification-root reflections, `feature_directory`, `feature_design`, and all earlier removed authority fields are forbidden.
-- **Implementing entities**: `entity.workspace.selection`, `entity.workspace.protocol12`, `entity.workspace.feature-design`, `entity.workspace.module-architecture`.
+- **Compatibility**: `schema_version: 13`; the result envelope uses `tool`; module-local attempts,
+  specification-root reflections, `feature_directory`, `feature_design`, and all earlier removed
+  authority fields are forbidden.
+- **Implementing entities**: `entity.workspace.selection`, `entity.workspace.protocol13`, `entity.workspace.feature-design`, `entity.workspace.module-architecture`.
 - **Example**: A plan-phase result names `feature_path: specs/example/features/001-change.md`, feature ID `feature.example.change`, its module architecture/relations, and `attempt_dir: .concorde/attempts/feature.example.change`.
 
 ### `contract.workspace.records` — Authority and lifecycle records
 
-- **Consumer**: Skills, runtime, Auto-Docs, reflection triage, and maintainers.
+- **Consumer**: Skills, Operations, Runtime Tools, Auto-Docs, reflection-triage/v4, and maintainers.
 - **Direction**: Maintained/temporal/executable/generated artifacts to role/lifecycle interpretation.
 - **Entry points**: Profile 7 path model and validation.
 - **Inputs**: Canonical architecture/direct-feature/control-attempt/reflection/code/test/installed/generated paths.
@@ -67,8 +69,9 @@ feature file, selection, architecture, and code remain.
 ## Requirements
 
 - **FR-001**: Every feature MUST have one canonical direct `feature_path`, one providing module, and no wrapper directory.
-- **FR-002**: Protocol 12 MUST expose bounded ancestry/relations, a stable-ID-derived attempt path, and the centralized reflection path without unrelated feature bodies.
-- **FR-003**: Delivery MUST transition one complete control attempt to absent without moving or rewriting the feature file or reflection log.
+- **FR-002**: Protocol 13 MUST expose bounded ancestry/relations, a stable-ID-derived attempt path, and the centralized reflection path without unrelated feature bodies.
+- **FR-003**: Delivery Proposal 9 MUST transition one complete control attempt to absent without moving
+  or rewriting the feature file or reflection log.
 - **FR-004**: A not-yet-authored feature MUST receive unavailable attempt fields until valid stable-ID front matter exists and the specify gate reruns.
 
 ## Edge Cases

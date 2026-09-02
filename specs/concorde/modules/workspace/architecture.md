@@ -31,21 +31,21 @@ implementation behavior, test truthfulness, version-control history, or generate
 |---|---|---|---|
 | `entity.workspace.config` | configuration | Selects Profile 7, specification root, and root module identity. | `.concorde/config.json` |
 | `entity.workspace.selection` | configuration | Native pointer containing exactly one canonical direct `feature_path`. | `.concorde/feature.json` |
-| `entity.workspace.constitution` | document | Optional project governance authority used by lifecycle commands. | `.concorde/constitution.md` |
+| `entity.workspace.constitution` | document | Optional project governance authority used by lifecycle Skills and Operations. | `.concorde/constitution.md` |
 | `entity.workspace.module-architecture` | document | One module's responsibility, boundary, entities, relations, interactions, children, features, and decisions. | `concept:<module>/architecture.md` |
 | `entity.workspace.feature-design` | document | One direct feature's outcome, usage, scenarios, interfaces, requirements, and architecture zoom. | `concept:<module>/features/<NNN-name>.md` |
 | `entity.workspace.module-directory` | directory | Immediate recursive child-module container. | `concept:<module>/modules/<child>` |
 | `entity.workspace.module-diagrams` | directory | Required Archify system overview plus optional maintained explanatory sources owned by one module architecture. | `concept:<module>/diagrams` |
 | `entity.workspace.control-state` | directory | Project-wide configuration, selection, governance, attempts, reflections, framework installation, and receipts. | `.concorde` |
-| `entity.workspace.framework` | directory | Installed projection of one standalone Concorde package. | `concept:installed-framework-projection` |
+| `entity.workspace.framework` | directory | Installed projection of one standalone package, including Tools, leaf Skills, and paired Operations. | `concept:.concorde/framework` |
 | `entity.workspace.install-receipt` | configuration | Digest/role ownership ledger for framework and agent outputs. | `concept:native-install-receipt` |
 | `entity.workspace.attempt` | directory | Temporary plan/tasks/research/checklists/validation memory keyed by exact stable feature ID. | `concept:.concorde/attempts/<stable-feature-id>` |
 | `entity.workspace.reflections` | document | Sole persisted project record for difficult choices/problems and stable reflection identities. | `.concorde/reflections/log.md` |
 | `entity.workspace.source-code` | directory | Checked-out implementation authority. | `src` |
 | `entity.workspace.tests` | test | Checked-out executable evidence and fixtures. | `tests` |
 | `entity.workspace.generated` | directory | Disposable documentation, diagram, and release projections with provenance. | `generated` |
-| `entity.workspace.protocol12` | schema | Structured phase context for one direct feature and its stable-ID attempt. | `concept:Feature Workspace Protocol 12` |
-| `entity.workspace.delivery8` | schema | Digest-bound proposal/result for removing one complete attempt. | `concept:Delivery Proposal 8` |
+| `entity.workspace.protocol13` | schema | Structured phase context for one direct feature and its stable-ID attempt. | `concept:Feature Workspace Protocol 13` |
+| `entity.workspace.delivery9` | schema | Digest-bound proposal/result for removing one complete attempt. | `concept:Delivery Proposal 9` |
 
 ## Relationships
 
@@ -60,22 +60,22 @@ implementation behavior, test truthfulness, version-control history, or generate
 | `entity.workspace.control-state` | `contains` | `entity.workspace.framework` | Holds an installed package projection separate from project-authored specifications. |
 | `entity.workspace.install-receipt` | `documents` | `entity.workspace.framework` | Records exact owned package and agent output digests. |
 | `entity.workspace.attempt` | `depends_on` | `entity.workspace.feature-design` | Stable feature identity relates temporal state to a mutable file locator. |
-| `entity.workspace.protocol12` | `documents` | `entity.workspace.feature-design` | Exposes canonical feature/module/ancestry/related context. |
-| `entity.workspace.protocol12` | `documents` | `entity.workspace.attempt` | Exposes stable-ID-derived phase paths without guessing identity. |
+| `entity.workspace.protocol13` | `documents` | `entity.workspace.feature-design` | Exposes canonical feature/module/ancestry/related context. |
+| `entity.workspace.protocol13` | `documents` | `entity.workspace.attempt` | Exposes stable-ID-derived phase paths without guessing identity. |
 | `entity.workspace.source-code` | `realizes` | `entity.workspace.feature-design` | Code is actual implementation, not a prose realization file. |
 | `entity.workspace.source-code` | `tested_by` | `entity.workspace.tests` | Tests provide bounded executable evidence. |
 | `entity.workspace.module-diagrams` | `generates` | `entity.workspace.generated` | Maintained views produce disposable provenance-bearing deliveries. |
-| `entity.workspace.delivery8` | `validates` | `entity.workspace.attempt` | Requires completeness/freshness before exact removal. |
+| `entity.workspace.delivery9` | `validates` | `entity.workspace.attempt` | Requires completeness/freshness before exact removal. |
 
 ## Interactions
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.workspace.resolve` | A phase starts with explicit or native-selected feature path. | Validate direct placement and stable ID; find module/ancestry; summarize related features; derive stable-ID attempt/reflection and executable paths. | Protocol 12 returns exactly one bounded workspace. | `contract.workspace.feature-workspace` |
+| `interaction.workspace.resolve` | A phase starts with explicit or native-selected feature path. | Validate direct placement and stable ID; find module/ancestry; summarize related features; derive stable-ID attempt/reflection and executable paths. | Protocol 13 returns exactly one bounded workspace. | `contract.workspace.feature-workspace` |
 | `interaction.workspace.attempt` | Planning starts with no matching attempt. | Create the returned `.concorde/attempts/<stable-feature-id>/`; seed referenced temporal formats; later phases update declared artifacts and product authorities; evidence precedes completion. | One active attempt contains all unfinished delivery memory. | `contract.workspace.records` |
-| `interaction.workspace.specify-new` | Specification selects a direct path not yet authored. | Return unavailable identity/attempt fields; author valid feature front matter; rerun Protocol 12; create only resolved attempt/checklist paths. | No stable identity is guessed from filename or module. | `contract.workspace.feature-workspace` |
-| `interaction.workspace.install` | Native installer applies an accepted plan. | Validate target parents/ownership; project package and agent files; preserve project-authored control/spec/code; write one receipt. | Framework files are reproducible and distinguishable from project authority. | `contract.distribution.native-installation` |
-| `interaction.workspace.cleanup` | Delivery applies an eligible proposal. | Verify safe attempt, digest, completion, evidence, findings, and rollback staging; remove exactly the attempt. | Feature returns to no-active-attempt state. | `contract.workspace.feature-workspace` |
+| `interaction.workspace.specify-new` | Specification selects a direct path not yet authored. | Return unavailable identity/attempt fields; author valid feature front matter; rerun Protocol 13; create only resolved attempt/checklist paths. | No stable identity is guessed from filename or module. | `contract.workspace.feature-workspace` |
+| `interaction.workspace.install` | Native installer applies an accepted plan. | Validate target parents/ownership; install Package Manifest 2 sources and exact Operation pairs; project leaf and Operation skills; preserve project-authored control/spec/code; write one receipt. | Framework files are reproducible and distinguishable from project authority. | `contract.distribution.native-installation` |
+| `interaction.workspace.cleanup` | Delivery Tool applies an eligible Proposal 9. | Verify safe attempt, digest, completion, evidence, findings, and rollback staging; remove exactly the attempt. | Feature returns to no-active-attempt state. | `contract.workspace.feature-workspace`, `contract.runtime.tools` |
 
 ## Modules
 
@@ -94,5 +94,7 @@ None.
 - Module containment is the only durable specification hierarchy; direct features never contain features.
 - `.concorde/feature.json` replaces host-owned selection and has no compatibility fallback.
 - `.concorde/framework` is installed package projection; `.concorde/config.json`, constitution, attempts, and reflections are project authority/control.
+- Installed `skills/<name>/SKILL.md` and `operations/<name>/{operation.py,SKILL.md}` remain framework
+  projection; their agent-facing Skill files remain generated projection rather than project intent.
 - Exact stable feature IDs key attempts across file/module moves; planned files expose no guessed attempt path.
 - Generated and installed projections never become specification or implementation authority.

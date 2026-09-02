@@ -5,36 +5,36 @@ from __future__ import annotations
 from pathlib import Path
 
 from .feature_workspace import WorkspaceError, reflections_open_count, resolve_phase_paths
-from .model import Finding, OperationResult
+from .model import Finding, ToolResult
 from .projection import feature_summary, module_projection
 from .reflections import log_path, parse_reflection_log
 from .repository import ProjectRepository, RepositoryError
 from .validation.entities import module_ancestry
 
 
-def bounded_context(project_root: str | Path, requested_id: str) -> OperationResult:
+def bounded_context(project_root: str | Path, requested_id: str) -> ToolResult:
     try:
         package = ProjectRepository(project_root).load()
     except RepositoryError as error:
         finding = Finding("CONCORDE-SOURCE-001", "error", ".concorde/config.json", str(error), "Correct the Profile 7 source hierarchy and project control state, then retry.")
-        return OperationResult("context", requested_id, "invalid", findings=(finding,))
+        return ToolResult("context", requested_id, "invalid", findings=(finding,))
     matches = package.by_id.get(requested_id, ())
     if len(matches) != 1 or matches[0].kind not in {"module", "feature"}:
         finding = Finding("CONCORDE-CONTEXT-001", "error", ".concorde/config.json", f"Target '{requested_id}' does not resolve to exactly one module or feature.", "Pass one unique stable module or feature ID.")
-        return OperationResult("context", requested_id, "invalid", tuple(source.path for source in package.sources), (finding,))
+        return ToolResult("context", requested_id, "invalid", tuple(source.path for source in package.sources), (finding,))
     target = matches[0]
     module_id = target.identifier if target.kind == "module" else str(target.metadata.get("module", ""))
     module_matches = package.by_id.get(module_id, ())
     if len(module_matches) != 1 or module_matches[0].kind != "module":
         finding = Finding("CONCORDE-CONTEXT-002", "error", target.path, f"Providing module '{module_id}' does not resolve exactly once.", "Correct feature ownership.", subject_id=target.identifier)
-        return OperationResult("context", requested_id, "invalid", findings=(finding,))
+        return ToolResult("context", requested_id, "invalid", findings=(finding,))
     module = module_matches[0]
     child_sources = []
     for child_id in package.modules[module_id].modules:
         child = package.by_id.get(child_id, ())
         if len(child) != 1 or child[0].kind != "module":
             finding = Finding("CONCORDE-CONTEXT-003", "error", module.path, f"Child module '{child_id}' does not resolve exactly once.", "Correct the module inventory before requesting context.", subject_id=module_id)
-            return OperationResult("context", requested_id, "invalid", findings=(finding,))
+            return ToolResult("context", requested_id, "invalid", findings=(finding,))
         child_sources.append(child[0])
 
     ancestry_ids = module_ancestry(package, module_id)
@@ -104,4 +104,4 @@ def bounded_context(project_root: str | Path, requested_id: str) -> OperationRes
             artifacts.update(attempt_artifacts)
         except WorkspaceError:
             context["feature_workspace"] = None
-    return OperationResult("context", requested_id, "success", tuple(sorted(artifacts)), result={"context": context})
+    return ToolResult("context", requested_id, "success", tuple(sorted(artifacts)), result={"context": context})

@@ -109,9 +109,9 @@ Planning reads feature file + architecture + code/tests and writes only temporal
 explicitly authorize architecture/feature reconciliation together with code/tests. An implementation
 task is complete only after a proportionate passed check is recorded.
 
-## Workspace Protocol 12
+## Workspace Protocol 13
 
-Protocol 12 returns:
+Protocol 13 returns:
 
 | Group | Fields |
 |---|---|
@@ -137,6 +137,6 @@ migration.
 ## Cleanup-only delivery
 
 Delivery requires complete tasks/checklists, passed proportionate evidence, current deterministic
-validation, and a digest-bound Proposal 8. Apply revalidates the digest and safe exact target, then
+validation, and a digest-bound Proposal 9. Apply revalidates the digest and safe exact target, then
 atomically removes the attempt. Failure preserves the complete attempt and every durable/executable
 authority.

@@ -4,10 +4,9 @@ description: "Clarify underspecified behavior in one direct feature file."
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.clarify.md"
+  source: "skills/concorde-clarify/SKILL.md"
+  kind: "skill"
 ---
-# Concorde Clarify
-
 ## User Input
 
 ```text
@@ -21,7 +20,7 @@ invent architecture, inspect unrelated attempts, or write code.
 
 ## Workspace gate
 
-Run `python3 scripts/workspace.py --phase clarify` first. Require Protocol 12 and `resolved`/`selected` status. Use only the returned
+Run `python3 scripts/workspace.py --phase clarify` first. Require Protocol 13 and `resolved`/`selected` status. Use only the returned
 `feature_path`, `module_architecture`, `feature_id`, `providing_module`, bounded
 `module_ancestry`, bounded `related_features`, `checklists_dir`, and process paths. Treat ancestry and
 related-feature summaries as navigation; open a related design only when the ambiguity directly

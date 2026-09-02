@@ -48,7 +48,7 @@ describe('diagram declaration discovery', () => {
   it('discovers one architecture-owned system overview per real module', async () => {
     const projectRoot = resolve(__dirname, '../../..');
     const declarations = await discoverDiagramDeclarations(projectRoot);
-    expect(declarations).toHaveLength(6);
+    expect(declarations).toHaveLength(7);
     expect(declarations.every((item) => item.sourcePath.endsWith('/diagrams/system-overview.json'))).toBe(true);
     expect(declarations.every((item) => item.kind === 'architecture')).toBe(true);
     expect(declarations.every((item) => item.ownerPath.endsWith('/architecture.md'))).toBe(true);

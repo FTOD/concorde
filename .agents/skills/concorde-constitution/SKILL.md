@@ -4,10 +4,9 @@ description: "Create or update the project constitution from provided principles
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.constitution.md"
+  source: "skills/concorde-constitution/SKILL.md"
+  kind: "skill"
 ---
-# Concorde Constitution
-
 ## User Input
 
 ```text
@@ -16,15 +15,14 @@ $ARGUMENTS
 
 # Maintain the Concorde Project Constitution
 
-The command name is retained for workflow compatibility. This command is implemented by Concorde
-and has no Spec Kit runtime dependency.
+This leaf Skill is implemented by Concorde and has no Spec Kit runtime dependency.
 
 ## Scope guard
 
-Limit this command to `.concorde/constitution.md`. Classify feature implementation, refactoring,
+Limit this Skill to `.concorde/constitution.md`. Classify feature implementation, refactoring,
 building, deployment, or other non-governance requests as deferred intents. Do not execute them.
 After the constitution update, report each deferred intent and suggest an appropriate follow-up
-Concorde command without invoking it.
+Concorde Skill without invoking it.
 
 ## Inputs
 
@@ -32,7 +30,7 @@ Concorde command without invoking it.
 2. If `.concorde/constitution.md` exists, treat it as the maintained authority and preserve still
    applicable project-specific content.
 3. Read only the minimum repository documentation needed to resolve missing project facts.
-4. Never modify the reference template during this command.
+4. Never modify the reference template while using this Skill.
 
 ## Workflow
 

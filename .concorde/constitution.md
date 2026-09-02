@@ -1,20 +1,20 @@
 <!--
 Sync Impact Report
-- Version change: 5.2.0 -> 6.0.0 (MAJOR: Concorde becomes a standalone workflow and removes its host
-  lifecycle, component composition, and host-owned control paths)
+- Version change: 6.0.0 -> 7.0.0 (MAJOR: canonical capabilities become a structural Tool -> leaf
+  Skill -> paired LangGraph Operation hierarchy, replacing flat prompt and example authorities)
 - Modified principles:
-  - B.I Concorde Ships a Usable Workflow: one Concorde package now owns commands, templates, runtime,
-    installation, and agent projection end to end.
-  - B.II Concorde Develops Itself with Concorde: root package sources precede generated agent surfaces,
-    without a duplicated host installation.
-- Modified constraints: no external specification framework owns a lifecycle phase; canonical
-  `concorde.*` IDs render as `concorde-*` skills.
-- Modified standards: selection and constitution move under `.concorde/`; root `commands/`,
-  `templates/`, `src/concorde/`, and `agent-assets/` are distribution authorities.
-- Compatibility impact: old preset, extension, bundle, catalog, and `.specify/` installations are not
-  read or updated by the native installer.
-- Required migration: install the standalone package, review its ownership plan, then remove any old
-  host-managed Concorde components separately.
+  - B.I Concorde Ships a Usable Workflow: one Concorde package owns deterministic Tools, leaf Skills,
+    paired Operations, templates, installation, and agent projection end to end.
+  - B.II Concorde Develops Itself with Concorde: the repository self-applies the same capability
+    structure it installs.
+- Modified constraints: canonical roots are `scripts/`, `skills/`, and `operations/`; every Operation
+  Python graph has one associated Markdown skill and both leaf and Operation skills install to users.
+- Modified standards: Operation is reserved for LangGraph composition; bounded deterministic runtime
+  actions are Tools; Workspace Protocol 13 and Delivery Proposal 9 expose `tool` discriminators.
+- Compatibility impact: the former flat prompt root, maintained example-loop root, and command/workflow
+  implementation shims are rejected rather than read through a compatibility layer.
+- Required migration: move every leaf prompt to its canonical Skill directory, move every maintained
+  LangGraph to a paired Operation directory, update Package Manifest 2, and reinstall Concorde 2.0.0.
 -->
 # Concorde Constitution
 
@@ -152,8 +152,17 @@ memory is a lifecycle transition, not a reason to create another version of impl
 Concorde's product MUST be a repeatable, installable, end-to-end workflow that lets a project live by
 Part A: initialize a root architecture, find a feature's module, retrieve bounded context, specify a
 feature and its interface, plan and execute against code reality, validate the entity model, deliver
-the attempt, and publish comprehensible views. Every distributable part MUST declare responsibility,
-version, dependencies, compatibility, deterministic inputs, outputs, and failure behavior.
+the attempt, and publish comprehensible views. Its capability structure MUST have three explicit
+levels: Scripts expose bounded deterministic Tools; canonical leaf Skills invoke Tools; and paired
+LangGraph Operations compose two or more leaf Skills with state, ordering, branching, retries, gates,
+or other controls. Every distributable part MUST declare responsibility, version, dependencies,
+compatibility, deterministic inputs, outputs, and failure behavior.
+
+Each leaf Skill MUST have exactly one canonical `skills/<name>/SKILL.md` authority and MUST remain
+independently invocable without embedding a multi-Skill loop. Each Operation MUST have exactly one
+`operations/<name>/operation.py` execution authority and one associated `SKILL.md` invocation and
+behavioral contract. Installation MUST project both leaf Skills and Operation skills into the user's
+agent Skill namespace while retaining the paired Python graph in the installed framework.
 
 ### B.II Concorde Develops Itself with Concorde
 
@@ -166,10 +175,18 @@ is the acceptance test that the workflow is practical rather than aspirational.
 
 - Concorde owns its complete lifecycle: constitution, specification, clarification, planning, tasks,
   implementation, convergence, bounded context, validation, delivery, installation, and publication.
-  No external specification framework is an authority or runtime dependency. Canonical `concorde.*`
-  command IDs render as `concorde-*` skills and MUST NOT imply external ownership.
-- Canonical distributable sources are the root `commands/`, `templates/`, `src/concorde/`, `scripts/`,
-  and `agent-assets/` paths plus `concorde.json`. Generated Codex/Claude surfaces are projections.
+  No external specification framework is an authority or runtime dependency. Canonical public
+  capability names use the `concorde-*` Skill namespace and MUST NOT imply external ownership.
+- Canonical distributable sources are root `scripts/`, `skills/`, `operations/`, `templates/`,
+  `src/concorde/`, and `agent-assets/` plus Package Manifest 2 in `concorde.json`. Generated
+  Codex/Claude surfaces are projections.
+- Operation is reserved for a LangGraph that composes at least two leaf Skills. Initialization,
+  context retrieval, exploration, validation, delivery, and other bounded deterministic runtime
+  actions are Tools, even when invoked through a CLI subcommand or Skill.
+- A maintained Operation Python file without its associated Markdown skill, a leaf Skill that embeds
+  multi-Skill graph topology, or a canonical capability retained in a legacy flat/example layout is
+  invalid. Concorde MUST NOT ship a compatibility reader, alias source, or implementation shim for the
+  retired layout.
 - Rendering and publication tools (currently Archify and Docusaurus) are generated read models.
   Replacing a tool is permitted; making a generated output a source is not.
 - Understand Anything may supply adapter types and relationships for exploration, but Concorde's
@@ -200,6 +217,12 @@ is the acceptance test that the workflow is practical rather than aspirational.
   evidence change together.
 - Generated pages and diagrams carry source provenance and generator version, provide a textual
   representation, and are reproducible from maintained sources.
+- Package Manifest 2 MUST inventory leaf Skills and paired Operations separately, require globally
+  unique safe names across both sets, and bind each Operation's Markdown declaration to its Python
+  entry point and composed leaf Skills without importing arbitrary graph code during validation.
+- Workspace Protocol 13, Delivery Proposal 9, Tool result envelopes, capability-surface status schema
+  2, and reflection-triage/v4 MUST use `tool` for bounded deterministic actions. Operation metadata is
+  reserved for paired LangGraph execution.
 - Structural conformance is not implementation proof. Completion claims name the executable tests
   or checks and the exact scope each result establishes.
 
@@ -214,6 +237,11 @@ Planning and review use the selected feature design, bounded module architecture
 bounded related-feature summaries, current code/tests, and the selected temporal attempt. They MUST
 NOT depend on feature abstracts, accepted-realization prose, module summary/design pairs, nested
 subfeature workspaces, or specification-owned contract directories.
+
+Leaf Skills and Operations MUST resolve only the context their contracts authorize. An Operation
+MUST load canonical leaf Skill bodies rather than duplicate them, preserve declared stage and Skill
+order, make state/control transitions inspectable, and stop or route failures as its paired skill
+documents. Tool failures MUST remain explicit and MUST NOT silently fall through to another source.
 
 Tasks explicitly reconcile every affected architecture, feature interface, code path, test, and
 generated projection. Implementation records compact evidence in the attempt before completing each
@@ -242,4 +270,4 @@ or materially expands a mandatory obligation, and PATCH clarifies wording. Every
 architecture review includes a constitution check. Reviewers reject unexplained violations,
 invisible boundary changes, duplicated canonical intent, and implementation claims without evidence.
 
-**Version**: 6.0.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-02
+**Version**: 7.0.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-02

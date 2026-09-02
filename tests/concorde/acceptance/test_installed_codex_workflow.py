@@ -39,8 +39,8 @@ class InstalledCodexWorkflowAcceptance(unittest.TestCase):
             self.assertEqual(payload["status"], "eligible")
             proposal_path = payload["proposal_path"]
             (root / proposal_path).write_text(json.dumps({
-                "proposal_version": 8,
-                "operation": "deliver",
+                "proposal_version": 9,
+                "tool": "deliver",
                 "target": payload["target"],
                 "source_digest": payload["source_digest"],
                 "remove": [payload["workspace"]["attempt_dir"]],

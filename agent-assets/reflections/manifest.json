@@ -1,15 +1,9 @@
 {
   "schema_version": 1,
-  "protocol": "reflection-triage/v3",
+  "protocol": "reflection-triage/v4",
   "integrations": {
     "claude": {
       "outputs": [
-        {
-          "target": ".claude/skills/reflections-triage/SKILL.md",
-          "template": "projections/claude/SKILL.md.tmpl",
-          "body": "orchestrator.md",
-          "role": "orchestrator"
-        },
         {
           "target": ".claude/agents/reflection-investigator.md",
           "template": "projections/claude/reflection-investigator.md.tmpl",
@@ -26,12 +20,6 @@
     },
     "codex": {
       "outputs": [
-        {
-          "target": ".agents/skills/reflections-triage/SKILL.md",
-          "template": "projections/codex/SKILL.md.tmpl",
-          "body": "orchestrator.md",
-          "role": "orchestrator"
-        },
         {
           "target": ".codex/agents/reflection_investigator.toml",
           "template": "projections/codex/reflection_investigator.toml.tmpl",

@@ -12,7 +12,7 @@ from tests.concorde.support.paths import CONTEXT_PROJECT, REPOSITORY_ROOT, RUNTI
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.alignment import explore_alignment  # noqa: E402
-from concorde.diagnostics import canonical_json, operation_envelope  # noqa: E402
+from concorde.diagnostics import canonical_json, tool_envelope  # noqa: E402
 
 
 ALIGNMENT_FIXTURES = REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/alignment"
@@ -64,12 +64,12 @@ class AlignmentExplorerIntegrationTests(unittest.TestCase):
             first = explore_alignment(root, "feature.example.deliver")
             second = explore_alignment(root, "feature.example.deliver")
             self.assertEqual(first.status, "success", first.findings)
-            self.assertEqual(first.operation, "explore")
+            self.assertEqual(first.tool, "explore")
             self.assertEqual(first.target, "feature.example.deliver")
             self.assertTrue(any(item.rule_id == "CONCORDE-ALIGN-005" for item in first.findings))
             self.assertEqual(
-                canonical_json(operation_envelope(first)),
-                canonical_json(operation_envelope(second)),
+                canonical_json(tool_envelope(first)),
+                canonical_json(tool_envelope(second)),
             )
             result = first.result
             self.assertEqual(result["alignment_schema_version"], 1)
@@ -367,7 +367,7 @@ class AlignmentExplorerIntegrationTests(unittest.TestCase):
             }
             first = explore_alignment(root, "feature.example.deliver", **options)
             second = explore_alignment(root, "feature.example.deliver", **options)
-            self.assertEqual(canonical_json(operation_envelope(first)), canonical_json(operation_envelope(second)))
+            self.assertEqual(canonical_json(tool_envelope(first)), canonical_json(tool_envelope(second)))
             subjects = [item["id"] for item in first.result["specification"]["subjects"]]
             records = [item["subject_id"] for item in first.result["alignment"]["records"]]
             nodes = [item["id"] for item in first.result["implementation"]["nodes"]]

@@ -9,6 +9,7 @@ interfaces:
     - contract.concorde.alignment-explorer
   required:
     - contract.understand-anything.knowledge-graph
+    - contract.runtime.tools
 evidence_status: verified
 evidence:
   - kind: implementation
@@ -29,7 +30,7 @@ evidence:
 
 ## Outcome and Scope
 
-A maintainer can use one deterministic read-only operation to browse bounded
+A maintainer can use one deterministic read-only Tool to browse bounded
 module/entity/feature/interface architecture beside optional Understand Anything implementation-graph
 subjects and inspect explicit evidence-qualified alignments, unknowns, and disagreements.
 
@@ -42,7 +43,7 @@ browser UI.
 | Entity ID | Role |
 |---|---|
 | `entity.concorde.cli` | Dispatches native `explore` target, graph, alignment, revision, query, and status options. |
-| `entity.concorde.alignment-explorer` | Validates inputs, projects bounded subjects, qualifies evidence, filters results, and serializes one canonical operation result. |
+| `entity.concorde.alignment-explorer` | Validates inputs, projects bounded subjects, qualifies evidence, filters results, and serializes one canonical Tool result. |
 | `entity.concorde.understand-anything` | Supplies the optional pinned implementation knowledge-graph nodes and directed edges. |
 | `entity.concorde.specification` | Supplies validated Profile 7 module architecture and direct feature-interface truth. |
 
@@ -54,10 +55,17 @@ browser UI.
 - **Direction**: Validated specification plus optional implementation graph and explicit alignment evidence to one bounded read-only JSON result.
 - **Entry points**: `scripts/concorde.py --project-root <root> explore [stable-id]`; importable `concorde.alignment.explore_alignment`.
 - **Inputs**: Optional safe project-relative `--graph` containing the pinned formal UA model; optional schema-1 `--alignment` sidecar containing `implementation_revision` and unique records with `subject_id`, requested status, basis, implementation/evidence node IDs, finding IDs, and rationale; optional expected `--revision`, case-insensitive `--query`, and repeatable effective `--status` filters. The target defaults to the configured root module.
-- **Outputs**: Canonical schema-1 operation envelope whose result carries Profile 7/source digest/target, pinned upstream and graph provenance, revision freshness, bounded specification subjects/relationships/interactions, mapped or text-matched UA nodes plus one-hop edges and filtered layers/tour, total/returned counts, and alignment records/summary in unknown, partial, verified, or disagrees states.
+- **Outputs**: Canonical architecture-service envelope 2 with a `tool` discriminator whose result
+  carries Profile 7/source digest/target, pinned upstream and graph provenance, revision freshness,
+  bounded specification subjects/relationships/interactions, mapped or text-matched UA nodes plus
+  one-hop edges and filtered layers/tour, total/returned counts, and Alignment Schema 1 records/summary
+  in unknown, partial, verified, or disagrees states.
 - **Obligations**: Preserve Concorde stable identity/ownership/path/Profile kind separately from UA adapter node/edge metadata; preserve accepted upstream IDs/types/directions; validate Profile 7 before projection; require explicit current evidence; never infer verification from names, paths, similarity, or adapter types; emit no output file or source mutation.
 - **Failures**: Invalid target, unsafe/symlinked/unreadable JSON, unsupported pinned type, malformed collection, duplicate/dangling ID, unknown subject/node, or malformed sidecar returns findings and an invalid result while keeping projected alignment unknown. Missing graph/sidecar, absent expected revision, revision mismatch, candidate-only basis, or insufficient evidence returns informational/warning findings and unknown effective state rather than invented agreement/disagreement.
-- **Compatibility**: Result and sidecar use Alignment Schema 1; source uses Profile 7; UA compatibility is pinned to `Egonex-AI/Understand-Anything@ba450c43425f3de6d43daf76526950ad8ca93536` with 27 node and 38 edge types. `explore` is a native runtime operation, not a new conversational `concorde-*` command.
+- **Compatibility**: Result and sidecar use Alignment Schema 1; the Tool envelope uses schema 2;
+  source uses Profile 7; UA compatibility is pinned to
+  `Egonex-AI/Understand-Anything@ba450c43425f3de6d43daf76526950ad8ca93536` with 27 node and 38 edge
+  types. `explore` is a native Runtime Tool, not a leaf Skill or LangGraph Operation.
 - **Implementing entities**: `entity.concorde.cli`, `entity.concorde.alignment-explorer`.
 - **Example**: `python3 scripts/concorde.py --project-root . explore feature.example.checkout --graph .ua/knowledge-graph.json --alignment evidence/alignment.json --revision <commit> --status verified` returns only effectively verified bounded subjects and their relevant implementation neighborhood.
 
@@ -88,7 +96,8 @@ browser UI.
 - **FR-003**: Alignments MUST name their evidence basis, implementation revision, freshness, bounded status, referenced nodes/findings, and rationale; names/similarity alone cannot verify.
 - **FR-004**: Missing, stale, unsafe, malformed, incompatible, ambiguous, or insufficient input MUST yield findings and unknown effective state rather than invented agreement or disagreement.
 - **FR-005**: Exploration MUST be read-only, deterministic, target-bounded, query-bounded, and reproducible from validated maintained/executable inputs with stable ordering and total/returned counts.
-- **FR-006**: Distribution MUST NOT advertise an explorer command until a concrete implementation and executable evidence exist; the implemented surface is the native `explore` operation and MUST NOT be represented as a conversational command.
+- **FR-006**: Distribution MUST expose the implemented `explore` surface as a native Tool and MUST NOT
+  classify it as a leaf Skill or Operation without adding the corresponding canonical capability.
 
 ## Edge Cases
 

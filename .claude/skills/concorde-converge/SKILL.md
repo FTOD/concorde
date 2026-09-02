@@ -1,16 +1,15 @@
 ---
 name: concorde-converge
 description: "Append remaining verified work to one active Concorde task list."
-argument-hint: "Optional command guidance"
+argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.converge.md"
+  source: "skills/concorde-converge/SKILL.md"
+  kind: "skill"
 user-invocable: true
 disable-model-invocation: false
 ---
-# Concorde Converge
-
 ## User Input
 
 ```text
@@ -25,7 +24,7 @@ the work or rewrite completed history.
 
 ## Workspace gate
 
-Run `python3 scripts/workspace.py --phase converge` first and require Protocol 12 plus an active attempt. Use only returned feature file,
+Run `python3 scripts/workspace.py --phase converge` first and require Protocol 13 plus an active attempt. Use only returned feature file,
 architecture, bounded context, executable context, plan, tasks, validation, checklist, and reflection
 paths. Never inspect another attempt.
 

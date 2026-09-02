@@ -34,7 +34,7 @@ ownership lives at `.concorde/install.json`.
 ## 2. Initialize project architecture
 
 Inside the target, invoke `$concorde-init` (Claude may present `/concorde-init`). The
-compatibility name now runs Concorde's native Profile 7 initializer. Initialization Proposal 3 creates:
+leaf Skill invokes Concorde's native Profile 7 initializer Tool. Initialization Proposal 3 creates:
 
 - `.concorde/config.json`
 - `.concorde/reflections/log.md`
@@ -46,8 +46,8 @@ It creates no feature or attempt.
 ## 3. Create/select a feature
 
 Choose a direct `features/<NNN-name>.md` beneath its providing module and invoke
-`$concorde-specify <description>`. The first Protocol 12 response for a new file intentionally has no
-stable feature/attempt ID. After the command writes valid front matter, it resolves again and persists
+`$concorde-specify <description>`. The first Protocol 13 response for a new file intentionally has no
+stable feature/attempt ID. After the Skill writes valid front matter, it resolves again and persists
 only `.concorde/feature.json` plus the returned requirements checklist path.
 
 Use `$concorde-clarify` for material ambiguity and `$concorde-checklist` for reviewer-focused quality.
@@ -90,8 +90,8 @@ python3 .concorde/framework/scripts/concorde.py \
   --status verified
 ```
 
-This operation is read-only and deterministic. It never infers verification from matching names or
-paths; missing/stale/invalid evidence becomes unknown. See [Command reference](commands.md#native-read-only-exploration)
+This Tool is read-only and deterministic. It never infers verification from matching names or
+paths; missing/stale/invalid evidence becomes unknown. See [Skill reference](skills.md#native-read-only-tool)
 and [Ontology](ontology.md#alignment-exploration).
 
 ## 6. Validate and deliver
@@ -103,7 +103,7 @@ python3 .concorde/framework/scripts/concorde.py --project-root . validate --form
 ```
 
 After tasks/checklists/evidence pass, invoke `$concorde-deliver`. It proposes and applies
-Delivery Proposal 8, removing exactly the selected attempt while leaving durable sources/reflections
+Delivery Proposal 9, removing exactly the selected attempt while leaving durable sources/reflections
 unchanged.
 
 ## 7. Update Concorde

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "cases": [
     {
-      "id": "general-command-timing",
+      "id": "general-skill-timing",
       "kind": "general",
       "question": "When should I use concorde-context instead of changing the selected feature?",
       "required_basis": ["framework-rule"],
@@ -44,7 +44,7 @@
     {
       "id": "conflicting-sources",
       "kind": "conflict",
-      "question": "Which Concorde commands are installed when the manifest and project documentation disagree?",
+      "question": "Which Concorde skills are installed when the manifest and project documentation disagree?",
       "required_basis": ["framework-rule", "project-observation", "uncertainty"],
       "requires_citations": true,
       "expected": "Expose the disagreement and source versions without silently choosing agreement."

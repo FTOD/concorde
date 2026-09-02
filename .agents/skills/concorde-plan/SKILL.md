@@ -4,10 +4,9 @@ description: "Plan one Concorde feature change against architecture, code, and t
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.plan.md"
+  source: "skills/concorde-plan/SKILL.md"
+  kind: "skill"
 ---
-# Concorde Plan
-
 ## User Input
 
 ```text
@@ -21,7 +20,7 @@ architecture, current source code, and executable evidence. All planning outputs
 
 ## Workspace gate
 
-Before setup checks, template reading, or artifact reads, run `python3 scripts/workspace.py --phase plan`. Require Protocol 12
+Before setup checks, template reading, or artifact reads, run `python3 scripts/workspace.py --phase plan`. Require Protocol 13
 with `resolved` or `selected` status. Use the returned paths as the only authority:
 
 - `feature_path` and `module_architecture`;

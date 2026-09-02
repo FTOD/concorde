@@ -44,12 +44,12 @@ def main() -> int:
             if arguments.persist
             else "resolved"
         )
-        payload = {"schema_version": 12, "status": status, "workspace": paths.to_dict()}
+        payload = {"schema_version": 13, "status": status, "workspace": paths.to_dict()}
         if arguments.phase:
             payload["phase"] = arguments.phase
             payload["phase_root"] = phase_target(paths, arguments.phase)
     except WorkspaceError as error:
-        payload = {"schema_version": 12, "status": "invalid", "error": str(error)}
+        payload = {"schema_version": 13, "status": "invalid", "error": str(error)}
         print(json.dumps(payload, sort_keys=True, separators=(",", ":")))
         return 1
     print(json.dumps(payload, sort_keys=True, separators=(",", ":")))

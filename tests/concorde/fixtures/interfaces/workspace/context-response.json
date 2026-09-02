@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "operation": "context",
+  "schema_version": 2,
+  "tool": "context",
   "target": "module.example",
   "status": "success",
   "artifacts": [

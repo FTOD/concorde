@@ -11,21 +11,23 @@ interfaces:
     - contract.concorde.ontology
   required:
     - contract.understand-anything.knowledge-graph
-evidence_status: partial
+evidence_status: verified
 ---
 
-# Feature Design: Adopt a Module-Centered Specification Ontology
+# Feature Design: Adopt a Module and Capability Ontology
 
 **Created**: 2026-08-31
 
-**Revised**: 2026-09-01
+**Revised**: 2026-09-02
 
-**Status**: Approved for control-state prototype refinement
+**Status**: Implemented; awaiting explicit Concorde delivery
 
-**Input**: Keep the module-centered durable specification, but move workflow-only state out of the
-specification tree. Store active work at `.concorde/attempts/<stable-feature-id>/` and the tracked
-reflection authority at `.concorde/reflections/log.md`, alongside reflection-triage control state.
-Migrate routing, delivery, validation, publication, guidance, fixtures, and maintained sources together.
+**Input**: Preserve the module-centered durable specification and replace the flat command/example
+concept with a structural capability hierarchy. Scripts are basic runnable tools; skills are leaf
+capabilities; operations are LangGraph control graphs that compose multiple skills. Every operation
+Python source has an associated Markdown skill and operations are installed as user-facing skills.
+Migrate ontology, architecture, package layout, installation, projection, validation, documentation,
+tests, and maintained sources together.
 
 ## Outcome and Scope
 
@@ -36,7 +38,9 @@ contains only durable architecture, feature intent, required Archify system over
 additional explanatory diagrams; project-level
 workflow state is isolated under `.concorde/`.
 
-This migration is repository-wide. It changes Concorde's source profile, runtime protocol, initialization, context retrieval, validation, planning, implementation, delivery, generated documentation, canonical and installed guidance, fixtures, and every maintained Concorde module and feature specification.
+This migration is repository-wide. It preserves the module-centered specification and control-state
+model while changing Concorde's capability vocabulary, package layout, agent projection, workflow
+runtime, installation, release, documentation, validation, fixtures, and maintained architecture.
 
 ## Target Specification Model
 
@@ -68,6 +72,37 @@ This migration is repository-wide. It changes Concorde's source profile, runtime
 - `.concorde/reflections/log.md` is tracked process memory. Triage configuration shares its directory, while plans and worktrees remain disposable and ignored.
 - Source code is the implementation. Tests and deterministic checks are evidence. Generated sites, diagrams, indexes, and delivery results are disposable projections.
 
+## Capability Source Model
+
+```text
+<project>/
+├── scripts/                              # basic deterministic runnable tools
+├── skills/
+│   └── <skill-name>/
+│       └── SKILL.md                      # one leaf capability prompt
+└── operations/
+    └── <operation-name>/
+        ├── operation.py                  # one LangGraph multi-skill control graph
+        └── SKILL.md                      # required user-facing operation skill
+```
+
+- A script is a basic runnable tool. It may parse inputs, inspect or mutate within its explicit
+  contract, and return deterministic results; it does not define a conversational capability graph.
+- A skill is a leaf capability whose canonical authority is one `skills/<skill-name>/SKILL.md`. It
+  may invoke scripts/tools, but it does not orchestrate multiple skills into a loop.
+- An operation is the next structural level above skills. Its `operation.py` uses LangGraph to
+  compose two or more leaf skills with ordering, state, branching, retries, review gates, or other
+  explicit controls.
+- Every operation has exactly one associated `SKILL.md` in the same directory. The Python graph is
+  execution authority; the Markdown file is its user-facing invocation and behavioral contract.
+- Installation projects both leaf `skills/*/SKILL.md` and operation `operations/*/SKILL.md` into the
+  selected agent's skill directory. Operation Python remains installed under the framework package
+  and is invoked by its projected skill.
+- `commands/` is obsolete because its Markdown files are skills, not commands. `examples/` is
+  obsolete for maintained LangGraph loops because those graphs are operations, not illustrative code.
+- A mixed layout is invalid: no canonical prompt may remain under `commands/`, and no maintained
+  operation Python may lack its paired Markdown skill.
+
 ## Terminology
 
 | Term | Meaning | Relationships |
@@ -78,6 +113,12 @@ This migration is repository-wide. It changes Concorde's source profile, runtime
 | `Entity type` | A preferred classification that tells a reader what an architecture entity is. Concorde adapts Understand Anything's code-oriented node vocabulary but permits project-defined types with an explicit meaning. | `classifies` → `Architecture entity` |
 | `Entity relationship` | A typed, directed structural or behavioral connection between architecture entities, such as contains, imports, calls, implements, exposes, reads, writes, produces, consumes, validates, renders, or depends on. | `connects` → `Architecture entity`; `governs` → `Interaction` |
 | `Interaction` | An ordered or conditional collaboration among architecture entities described at the current module level. | `uses` → `Entity relationship`; `supports` → `Feature` |
+| `Tool` | One basic deterministic runnable capability, normally exposed by a script or program entry point. It performs a bounded action but does not compose conversational skills. | `implemented by` → `Script`; `invoked by` → `Skill`; `returns` → `Tool result` |
+| `Script` | A directly runnable source entry point for one or more basic tools. Scripts are the lowest executable layer and contain no multi-skill LangGraph topology. | `implements` → `Tool`; `used by` → `Skill` |
+| `Skill` | One leaf user capability defined by a canonical `skills/<skill-name>/SKILL.md`. Its complete prompt may call tools but remains independently invocable and contains no multi-skill loop. | `invokes` → `Tool`; `composed by` → `Operation`; `projected to` → `Agent skill` |
+| `Operation` | A controlled LangGraph above the leaf layer that composes multiple skills into a stateful workflow. Its canonical directory contains exactly `operation.py` and its associated `SKILL.md`. | `composes` → `Skill`; `implemented by` → `operation.py`; `exposed by` → `Operation skill`; `uses` → `LangGraph` |
+| `Operation skill` | The required Markdown surface paired with an operation Python graph and installed to users as an agent skill. | `describes` → `Operation`; `invokes` → `operation.py`; `projected to` → `Agent skill` |
+| `Stage` | One named node or controlled step inside an operation, containing one or more ordered leaf skills plus explicit state/control semantics. | `part of` → `Operation`; `uses` → `Skill`; `transitions to` → `Stage` |
 | `Feature` | One module-level functionality or interface that a consumer can use, specified in one durable `features/<NNN-name>.md` file. | `belongs to` → `Module`; `exposes` → `Feature interface`; `zooms into` → `Architecture entity`; `relates to` → `Feature` |
 | `Feature file` | The direct Markdown authority for one feature; its filename supplies navigation while its front-matter `feature.*` ID supplies semantic identity. | `specifies` → `Feature`; `belongs to` → `Module`; `corresponds to` → `Attempt` |
 | `Feature interface` | The human-readable entry points, inputs, outputs, obligations, failures, and compatibility expectations through which a feature is used. Existing stable `contract.*` identifiers remain valid prototype interface identities. | `part of` → `Feature`; `implemented by` → `Architecture entity`; `replaces` → `Architecture contract` |
@@ -86,7 +127,7 @@ This migration is repository-wide. It changes Concorde's source profile, runtime
 | `Project control state` | Tracked or disposable workflow metadata below `<project>/.concorde/`; it is neither product specification nor generated publication. | `configures` → `Module`; `contains` → `Attempt`; `contains` → `Reflection log` |
 | `Attempt` | Temporary planning, task, research, checklist, and validation memory at `.concorde/attempts/<stable-feature-id>/`, corresponding to one selected feature identity. | `belongs to` → `Feature`; `changes` → `Source code`; `removed by` → `Delivery` |
 | `Reflection log` | The tracked project-wide record at `.concorde/reflections/log.md` for provisional choices, workarounds, and problems encountered during feature work. | `belongs to` → `Project control state`; `records` → `Feature work` |
-| `Delivery` | The terminal operation that proves a completed attempt is eligible and removes its temporal workspace; it does not author an implementation narrative. | `validates` → `Attempt`; `retains` → `Feature`; `retains` → `Source code` |
+| `Delivery` | The terminal cleanup tool that proves a completed attempt is eligible and removes its temporal workspace; it does not author an implementation narrative. | `validates` → `Attempt`; `retains` → `Feature`; `retains` → `Source code` |
 
 ## Architecture Zoom
 
@@ -95,9 +136,10 @@ This feature changes the following root-architecture entities; their final defin
 | Entity ID | Type | Role in this feature |
 |---|---|---|
 | `entity.concorde.runtime` | package | Discovers and models recursive `architecture.md` modules, direct feature files, typed entities/relations, interfaces, project-control attempts/reflections, evidence, and projections. |
-| `entity.concorde.workspace-resolver` | program | Returns one selected feature file, its providing module architecture, bounded ancestry/relations, and stable-ID control-state paths through Protocol 12. |
+| `entity.concorde.workspace-resolver` | program | Returns one selected feature file, its providing module architecture, bounded ancestry/relations, and stable-ID control-state paths through Protocol 13. |
 | `entity.concorde.cli` | program | Exposes validation and cleanup-only delivery over the new package model. |
-| `entity.concorde.commands` | directory | Teaches specification, planning, tasks, implementation, convergence, analysis, and fast loop using the new authorities. |
+| `entity.concorde.skills` | directory | Canonical leaf Skill sources, each with one complete independently invocable `SKILL.md`. |
+| `entity.concorde.operations` | directory | Paired LangGraph Operations, each with one `operation.py` and associated installed `SKILL.md`. |
 | `module.concorde.auto-docs` | module | Publishes module architecture and direct feature files without interpreting a wrapper directory or `design.md` basename. |
 | `entity.concorde.specification` | directory | Self-applies the new profile across five child modules and twenty-four features. |
 | `entity.concorde.control-state` | directory | Owns Profile 7 configuration, stable-ID attempts, tracked reflections, and triage state outside module specifications. |
@@ -108,10 +150,13 @@ The feature is cross-cutting because these entities share one source profile. Th
 
 ### `contract.concorde.ontology` — Module-centered specification profile
 
-- **Consumer**: Maintainers, coding agents, validators, installers, and documentation/exploration projections.
-- **Direction**: Profile sources and operation requests to validated bounded structure, guidance, and lifecycle results.
+- **Consumer**: Maintainers, coding agents, validators, installers, operation runtimes, and documentation/exploration projections.
+- **Direction**: Profile and capability sources plus tool/operation requests to validated bounded structure, installed skills, controlled graphs, and lifecycle results.
 
-- **Entry points**: A module's `architecture.md`; a direct `features/<NNN-name>.md`; Protocol 12 workspace JSON; deterministic initialization, context, validation, and delivery operations.
+- **Entry points**: A module's `architecture.md`; a direct `features/<NNN-name>.md`; Protocol 13
+  workspace JSON; `scripts/`; leaf `skills/*/SKILL.md`; paired
+  `operations/*/{operation.py,SKILL.md}`; deterministic initialization, context, validation, and
+  delivery tools.
 
 - **Inputs**:
 
@@ -120,24 +165,32 @@ The feature is cross-cutting because these entities share one source profile. Th
 - feature front matter, embedded interface definitions, architecture references, requirements, and usage scenarios;
 - optional project control state containing `.concorde/attempts/<stable-feature-id>/` and the tracked
   `.concorde/reflections/log.md`.
+- canonical leaf skill sources and paired operation Python/Markdown sources.
 
 - **Outputs**:
 
 - a bounded module or feature context with stable IDs and canonical paths;
 - deterministic findings for invalid structure or unresolved semantic references;
 - generated navigation and architecture views with source provenance;
+- installed leaf and operation skill surfaces with source provenance;
 - a delivery result that lists removed temporal artifacts and retained durable/code authorities.
 
-- **Obligations**: Producers define each architecture-significant entity once at its owning module, use stable IDs for every cross-reference, keep feature interfaces in the owning design, and distinguish code/test reality from prose/projections.
+- **Obligations**: Producers define each architecture-significant entity once at its owning module,
+  use stable IDs for every cross-reference, keep feature interfaces in the owning design, distinguish
+  code/test reality from prose/projections, keep Skills leaf-level, and pair every Operation Python
+  graph with the Markdown skill installed to users.
 
-- **Failures**: Resolution or validation fails on unsafe paths, duplicate IDs, cyclic module containment, untyped entities, unresolved relationships, missing interface semantics, legacy durable files, or ambiguous ownership; delivery failures preserve the complete attempt.
+- **Failures**: Resolution or validation fails on unsafe paths, duplicate IDs, cyclic module
+  containment, untyped entities, unresolved relationships, missing interface semantics, legacy
+  durable files, residual `commands/` or `examples/` capability sources, unpaired operation files,
+  non-leaf skills, or ambiguous ownership; delivery failures preserve the complete attempt.
 
-- **Compatibility**: Profile 7 / Protocol 12 are an intentional breaking control-state path revision
+- **Compatibility**: Profile 7 / Protocol 13 are an intentional breaking control-state path revision
   with no dual-layout mode. Initialization Proposal 3 adds the reflection log and required root system
   overview, while reflection-triage/v2
-  changes its canonical locator. Stable module/feature/interface IDs, Delivery Proposal 8 semantics,
+  changes its canonical locator. Stable module/feature/interface IDs, Delivery Proposal 9 semantics,
   and Build Manifest 10 semantics remain unchanged.
-- **Implementing entities**: `entity.concorde.runtime`, `entity.concorde.workspace-resolver`, `entity.concorde.cli`, `entity.concorde.commands`, `entity.concorde.specification`, `entity.concorde.control-state`.
+- **Implementing entities**: `entity.concorde.runtime`, `entity.concorde.workspace-resolver`, `entity.concorde.cli`, `entity.concorde.skills`, `entity.concorde.specification`, `entity.concorde.control-state`.
 - **Example**: A module `architecture.md` defines `entity.example.worker`; a feature design references it in Architecture Zoom and exposes an interface whose entry point and implementing entities include that stable ID.
 
 ### `contract.understand-anything.knowledge-graph` — Required vocabulary reference
@@ -198,7 +251,7 @@ and code/test paths without module-local attempts or removed authority fields.
 2. **Given** related features exist, **When** bounded context is resolved, **Then** concise relationship summaries are available without implicitly loading unrelated feature bodies or attempts.
 3. **Given** implementation changes an architecture entity or feature interface, **When** tasks execute, **Then** the owning architecture or feature design, code, tests, and generated projections are reconciled by explicit tasks in the same attempt.
 4. **Given** a planned feature path whose file does not yet exist, **When** the first specification
-   workspace gate runs, **Then** Protocol 12 returns no guessed feature ID or attempt path; after the
+   workspace gate runs, **Then** Protocol 13 returns no guessed feature ID or attempt path; after the
    feature is written with a valid stable ID, a required second resolution returns its exact control-state paths before checklist creation.
 
 ### User Story 4 - Validate and Deliver the Migrated Project (Priority: P2)
@@ -214,6 +267,31 @@ As a maintainer, I can validate that the entire project uses the new ontology an
    **Then** it removes exactly `.concorde/attempts/<stable-feature-id>/`, retains `architecture.md`,
    the direct feature file, source code, tests, and `.concorde/reflections/log.md`, and reports their digests.
 3. **Given** a delivery is ineligible or stale, **When** it is attempted, **Then** no durable source, code, test, or attempt artifact is changed.
+
+### User Story 5 - Compose and Install Structured Capabilities (Priority: P1)
+
+As a workflow author, I can discover basic tools under Scripts, independently invocable leaf
+capabilities under Skills, and controlled multi-skill LangGraphs under Operations without treating
+all Markdown prompts as flat commands.
+
+**Independent Test**: Install a package containing leaf Skills and one standard development
+Operation, then verify each leaf and operation appears as an agent skill, the operation's projected
+Markdown points to its installed Python graph, and deterministic validation rejects every missing or
+extra operation pair member.
+
+**Acceptance Scenarios**:
+
+1. **Given** a leaf capability, **When** its source is inspected, **Then** exactly one canonical
+   `skills/<name>/SKILL.md` owns its prompt and contains no multi-skill graph topology.
+2. **Given** a LangGraph that composes several skills, **When** its source is inspected, **Then** it
+   lives at `operations/<name>/operation.py` beside exactly one associated `SKILL.md` that exposes it
+   to users.
+3. **Given** an installation for Codex or Claude, **When** capabilities are projected, **Then** leaf
+   Skills and Operation skills share the agent's skill namespace while graph Python remains in the
+   installed framework.
+4. **Given** a basic deterministic runnable entry point, **When** it is classified, **Then** it remains
+   a Script/Tool and is not promoted to a Skill or Operation unless a corresponding user capability
+   or multi-skill graph actually exists.
 
 ### Edge Cases
 
@@ -231,6 +309,10 @@ As a maintainer, I can validate that the entire project uses the new ontology an
 - A planned feature file does not exist yet, so no stable ID can honestly name an attempt.
 - A legacy module-local attempt or specification-root `reflections.md` remains after migration.
 - Reflection triage plans/worktrees are ignored while the authoritative reflection log remains tracked.
+- A skill directory contains graph-control Python and therefore is not a leaf capability.
+- An operation contains `operation.py` but no `SKILL.md`, or contains a Markdown surface with no graph.
+- An operation skill is projected to an agent while its Python graph is absent from the installed framework.
+- Two operations compose the same leaf skill in different stage orders without changing that leaf's canonical prompt.
 
 ## Requirements
 
@@ -254,7 +336,7 @@ As a maintainer, I can validate that the entire project uses the new ontology an
 - **FR-014**: Source code MUST be the current implementation authority; tests and deterministic checks
   MUST be evidence; plans, tasks, research, checklists, and validation logs MUST live only under
   `.concorde/attempts/<stable-feature-id>/`.
-- **FR-015**: Protocol 12 MUST expose `feature_path`, providing module architecture, bounded module
+- **FR-015**: Protocol 13 MUST expose `feature_path`, providing module architecture, bounded module
   ancestry, bounded related-feature summaries, stable-ID-derived attempt paths/state,
   `.concorde/reflections/log.md`, and code/test discovery context without module-local control state or
   removed authority fields.
@@ -275,14 +357,33 @@ As a maintainer, I can validate that the entire project uses the new ontology an
 - **FR-020**: Delivery MUST require complete tasks and existing checklists plus current validation
   evidence, then remove exactly `.concorde/attempts/<stable-feature-id>/` without writing or moving the
   feature file or reflection log; ineligible, unsafe, ambiguous, or stale delivery MUST be non-mutating.
-- **FR-021**: Every maintained Concorde module and feature specification, fixture, schema/example reference, test, guide, manifest, and generated-source expectation MUST migrate in the same prototype milestone; mixed-profile operation is out of scope.
+- **FR-021**: Every maintained Concorde module and feature specification, fixture, schema/example reference, test, guide, manifest, and generated-source expectation MUST migrate in the same prototype milestone; mixed-profile support is out of scope.
 - **FR-022**: The full migrated repository MUST contain no stale semantic references that treat
   abstracts, accepted implementation narratives, module summaries/design references, nested
   subfeatures, architecture-owned contracts, module-local attempts, or specification-root reflections
   as current authorities.
-- **FR-023**: Protocol 12 MUST NOT derive a stable feature ID from a planned filename. Before a new
+- **FR-023**: Protocol 13 MUST NOT derive a stable feature ID from a planned filename. Before a new
   feature exists, specify-phase attempt fields MUST be explicitly unavailable; after the feature file
   declares a valid ID, specification MUST re-resolve the workspace before creating its checklist or attempt.
+- **FR-024**: Concorde capability sources MUST use exactly three structural layers: basic runnable
+  tools under `scripts/`, leaf capabilities under `skills/<skill-name>/SKILL.md`, and controlled
+  multi-skill LangGraphs under `operations/<operation-name>/`.
+- **FR-025**: Every canonical Skill MUST be one leaf `SKILL.md` that may invoke Scripts/Tools but MUST
+  NOT define a loop or graph that orchestrates multiple Skills.
+- **FR-026**: Every canonical Operation MUST contain exactly one `operation.py` LangGraph and exactly
+  one associated `SKILL.md`; either file without its pair MUST be invalid.
+- **FR-027**: An Operation MUST compose at least two canonical Skills and MUST define its stage order,
+  shared state, failure propagation, and any branching, retry, review, or authorization controls in
+  Python rather than duplicating leaf prompt bodies.
+- **FR-028**: Installation and release packaging MUST include every leaf Skill plus every complete
+  Operation pair, project both leaf and Operation Markdown surfaces into the selected agent skill
+  namespace, and keep Operation Python under the installed framework.
+- **FR-029**: The canonical capability layout MUST contain no `commands/` directory and no maintained
+  LangGraph under `examples/`; validation, tests, docs, and manifests MUST reject or omit those legacy
+  concepts after migration.
+- **FR-030**: Canonical Skill and Operation identities MUST be safe, unique, stable across source and
+  installed layouts, and traceable from projected agent skill back to its owning source and, for an
+  Operation, its paired graph.
 
 ## Success Criteria
 
@@ -290,7 +391,7 @@ As a maintainer, I can validate that the entire project uses the new ontology an
 - **SC-002**: 100% of maintained module architecture entity and relationship references and feature architecture-zoom/interface entity references resolve with zero validation findings.
 - **SC-003**: A maintainer can identify what any sampled architecture entity is, where it is realized, and how it relates to its neighbors in under three minutes from one module architecture.
 - **SC-004**: A maintainer can identify how to use any sampled feature, including inputs, outputs, failures, and participating entities, in under three minutes from its single design.
-- **SC-005**: Workspace JSON and all command/skill contracts contain `feature_path`, Protocol 12,
+- **SC-005**: Workspace JSON and all Skill/Operation contracts contain `feature_path`, Protocol 13,
   `.concorde/attempts/<stable-feature-id>/`, and `.concorde/reflections/log.md`, with zero module-local
   control-state or other deprecated authority fields.
 - **SC-006**: Complete Python, documentation-site, native package/release, agent-surface, and Concorde validation suites pass under the new source profile.
@@ -298,15 +399,27 @@ As a maintainer, I can validate that the entire project uses the new ontology an
   `.concorde/attempts/feature.concorde.define-project-ontology/`, that directory is absent afterward,
   and both `specs/concorde/features/007-project-ontology.md` and `.concorde/reflections/log.md` remain
   byte-identical through delivery.
-- **SC-008**: A planned-feature fixture receives no guessed attempt path on its first Protocol 12
+- **SC-008**: A planned-feature fixture receives no guessed attempt path on its first Protocol 13
   specify resolution and receives the exact stable-ID path only after its feature front matter exists.
+- **SC-009**: 100% of canonical leaf capabilities reside under `skills/*/SKILL.md`, with zero
+  canonical capability prompts under `commands/`.
+- **SC-010**: 100% of operation directories contain exactly one `operation.py` and one `SKILL.md`, and
+  the standard development loop composes its declared Skills without embedding their prompt bodies.
+- **SC-011**: Fresh Codex and Claude installations expose every leaf and Operation as agent skills and
+  include every paired Operation Python graph under `.concorde/framework/operations/`.
+- **SC-012**: Complete Python, installation, release, agent-surface, documentation, and validation
+  tests contain zero current terminology that classifies leaf prompts as commands or maintained
+  LangGraphs as examples.
 
 ## Assumptions
 
 - This is an intentionally breaking prototype source profile; no compatibility reader for the old layout is required after the repository itself migrates.
 - Architecture inventories include only entities significant to understanding structure, evolution, interfaces, or risk. Concorde does not require a duplicate row for every implementation symbol.
 - Understand Anything supplies a useful code-entity and relationship vocabulary, but Concorde remains authoritative for recursive modules, feature interfaces, attempts, evidence, and specification ownership.
-- Existing stable module and feature IDs remain unchanged. Existing `contract.*` IDs are preserved as interface identities for this prototype to keep external references recognizable.
+- Existing stable module and feature IDs unrelated to the capability taxonomy remain unchanged.
+  Legacy Commands-owned identities migrated to Skills/Operations identities as one intentional
+  breaking change. Existing `contract.*` IDs are preserved as interface identities unless their owning
+  capability changes.
 - Stable feature IDs are globally unique and restricted to a path-safe grammar. The exact stable ID
   deterministically names its `.concorde/attempts/` directory; renaming a feature file does not move
   active work, while changing the stable ID with active work is rejected rather than guessed.
@@ -327,6 +440,7 @@ As a maintainer, I can validate that the entire project uses the new ontology an
 - Supporting multiple concurrent attempts for one stable feature ID; separate branches/worktrees remain the prototype mechanism.
 - Renaming every preserved `contract.*` stable identity to `interface.*` during the prototype.
 - Replacing Archify, Docusaurus, or the supported coding-agent platforms.
+- Defining a general-purpose visual or declarative Operation DSL beyond the required Python/Markdown pair.
 
 ## Concorde Architecture Alignment
 

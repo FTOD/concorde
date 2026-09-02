@@ -13,8 +13,8 @@ class NativeIdentityContractTests(unittest.TestCase):
     def test_single_manifest_owns_one_concorde_identity(self):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
         self.assertEqual(manifest["name"], "concorde")
-        self.assertEqual(manifest["version"], "1.1.0")
-        self.assertEqual(manifest["command_namespace"], "concorde")
+        self.assertEqual(manifest["version"], "2.0.0")
+        self.assertEqual(manifest["skill_namespace"], "concorde")
         self.assertIn("Concorde owns", manifest["format_lineage"])
 
     def test_removed_host_package_paths_are_not_tracked(self):
@@ -33,11 +33,14 @@ class NativeIdentityContractTests(unittest.TestCase):
         self.assertNotIn("specify-cli", pyproject)
         self.assertNotIn('name = "specify-cli"', lock)
 
-    def test_compatibility_command_names_resolve_to_root_files(self):
+    def test_capability_names_resolve_to_structural_root_pairs(self):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
-        self.assertEqual(len(manifest["commands"]), 16)
-        self.assertTrue(all(name.startswith("concorde.") for name in manifest["commands"]))
-        self.assertTrue(all((REPOSITORY_ROOT / "commands" / f"{name}.md").is_file() for name in manifest["commands"]))
+        self.assertEqual(len(manifest["skills"]), 16)
+        self.assertEqual(len(manifest["operations"]), 2)
+        self.assertTrue(all(name.startswith("concorde-") for name in manifest["skills"]))
+        self.assertTrue(all((REPOSITORY_ROOT / "skills" / name / "SKILL.md").is_file() for name in manifest["skills"]))
+        self.assertTrue(all((REPOSITORY_ROOT / "operations" / name / "SKILL.md").is_file() for name in manifest["operations"]))
+        self.assertTrue(all((REPOSITORY_ROOT / "operations" / name / "operation.py").is_file() for name in manifest["operations"]))
 
 
 if __name__ == "__main__":

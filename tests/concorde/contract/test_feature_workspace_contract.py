@@ -16,7 +16,7 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         Draft202012Validator.check_schema(cls.schema)
         cls.validator = Draft202012Validator(cls.schema)
 
-    def test_delivery_examples_conform_to_protocol12_schema(self):
+    def test_delivery_examples_conform_to_protocol13_schema(self):
         for name in ("deliver-eligible-response.json", "deliver-proposal.json"):
             with self.subTest(name=name):
                 value = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
@@ -48,22 +48,27 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
     def test_workspace_protocol_and_delivery_proposal_versions_are_independent(self):
         response = self.schema["$defs"]["deliveryResponse"]["properties"]
         proposal = self.schema["$defs"]["deliveryProposal"]["properties"]
-        self.assertEqual(response["schema_version"]["const"], 12)
-        self.assertEqual(proposal["proposal_version"]["const"], 8)
-        self.assertEqual(proposal["operation"]["const"], "deliver")
+        self.assertEqual(response["schema_version"]["const"], 13)
+        self.assertEqual(proposal["proposal_version"]["const"], 9)
+        self.assertEqual(proposal["tool"]["const"], "deliver")
 
     def test_cleanup_proposal_rejects_content_or_update_surfaces(self):
         proposal = self.schema["$defs"]["deliveryProposal"]
         self.assertFalse(proposal["additionalProperties"])
         self.assertEqual(set(proposal["properties"]), {
-            "proposal_version", "operation", "target", "source_digest", "remove",
+            "proposal_version", "tool", "target", "source_digest", "remove",
         })
         self.assertEqual(proposal["properties"]["remove"]["minItems"], 1)
         self.assertEqual(proposal["properties"]["remove"]["maxItems"], 1)
 
-    def test_workspace_adapter_emits_protocol12_and_two_pass_feature_id_preflight(self):
+    def test_protocol13_rejects_the_legacy_operation_discriminator(self):
+        proposal = json.loads((FIXTURES / "deliver-proposal.json").read_text(encoding="utf-8"))
+        proposal["operation"] = proposal.pop("tool")
+        self.assertNotEqual(list(self.validator.iter_errors(proposal)), [])
+
+    def test_workspace_adapter_emits_protocol13_and_two_pass_feature_id_preflight(self):
         adapter = (REPOSITORY_ROOT / "scripts/workspace.py").read_text(encoding="utf-8")
-        self.assertIn('"schema_version": 12', adapter)
+        self.assertIn('"schema_version": 13', adapter)
         self.assertIn('parser.add_argument("--feature-id")', adapter)
         self.assertIn("allow_missing_feature=arguments.phase == \"specify\"", adapter)
         self.assertIn("phase_target(paths, arguments.phase)", adapter)

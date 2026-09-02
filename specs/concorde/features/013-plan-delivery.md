@@ -25,8 +25,8 @@ and known reflections into one technical plan and dependency-ordered temporal ta
 
 | Entity ID | Role |
 |---|---|
-| `entity.concorde.commands` | Supplies bounded planning/task-generation gates and templates. |
-| `entity.concorde.workspace-resolver` | Returns Protocol 12 durable, executable, related, and control-state paths. |
+| `entity.concorde.skills` | Supplies bounded planning/task-generation gates and templates. |
+| `entity.concorde.workspace-resolver` | Returns Protocol 13 durable, executable, related, and control-state paths. |
 | `entity.concorde.coding-agent` | Researches decisions and authors plan/tasks without changing product authorities. |
 
 ## Interfaces
@@ -35,13 +35,14 @@ and known reflections into one technical plan and dependency-ordered temporal ta
 
 - **Consumer**: Maintainer and coding agent preparing a reviewed feature change.
 - **Direction**: Durable feature/architecture/code context to a separate stable-ID control plan and tasks.
-- **Entry points**: `concorde.plan`, `concorde.tasks`, and optional `concorde.taskstoissues`.
+- **Entry points**: Leaf Skills `concorde-plan`, `concorde-tasks`, and optional
+  `concorde-taskstoissues`.
 - **Inputs**: `feature_path`, module ancestry, related feature paths, source/test inventory, constitution, reflections, and checklist state.
 - **Outputs**: `.concorde/attempts/<stable-feature-id>/plan.md`, research/data model/quickstart, and dependency-ordered tasks with exact traces/paths.
 - **Obligations**: Resolve unknowns, keep proposals temporal, map every affected authority/evidence path, and preserve durable sources during planning.
 - **Failures**: Constitution violations, unresolved clarifications, missing ownership, or incomplete trace coverage prevent implementation readiness.
 - **Compatibility**: Plans against code reality, never an accepted `implementation.md` baseline.
-- **Implementing entities**: `entity.concorde.commands`, `entity.concorde.workspace-resolver`, `entity.concorde.coding-agent`.
+- **Implementing entities**: `entity.concorde.skills`, `entity.concorde.workspace-resolver`, `entity.concorde.coding-agent`.
 
 ## Usage Scenarios
 

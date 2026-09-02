@@ -4,10 +4,9 @@ description: "Complete one eligible small change directly across feature intent,
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.fast-loop.md"
+  source: "skills/concorde-fast-loop/SKILL.md"
+  kind: "skill"
 ---
-# Concorde Fast Loop
-
 ## User Input
 
 ```text
@@ -22,7 +21,7 @@ module/feature ontology and evidence standard as the full workflow.
 
 ## Workspace gate
 
-Run `python3 scripts/workspace.py --phase fast-loop` first and require Protocol 12 for one existing selected feature. Use only the returned
+Run `python3 scripts/workspace.py --phase fast-loop` first and require Protocol 13 for one existing selected feature. Use only the returned
 `feature_path`, providing architecture, bounded summaries, executable context, and reflection path.
 Reject fast-loop when an attempt already exists. Never create
 `.concorde/attempts/<stable-feature-id>/` artifacts.
@@ -35,7 +34,7 @@ Proceed only when all conditions hold:
 - affected architecture entities, interface semantics, source paths, and tests are already known;
 - no new module, feature, entity type, cross-module relationship, or external compatibility policy
   is being invented;
-- no migration, destructive operation, release, multi-feature coordination, or broad setup change is
+- no migration, destructive action, release, multi-feature coordination, or broad setup change is
   required;
 - the change can be implemented and proportionately verified in one focused pass; and
 - the user request authorizes every affected durable/source path.

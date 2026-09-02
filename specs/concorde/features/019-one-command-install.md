@@ -54,9 +54,11 @@ package root.
 - **Outputs**: Human or JSON installation plan/result plus `.concorde/install.json` after apply.
 - **Obligations**: Require only Python 3.11+; preview by default; use exact package inventory/ownership semantics; preserve all unowned paths.
 - **Failures**: Invalid source, target, integration, inventory, ownership, symlink, or write failure produces non-zero status and actionable diagnostics.
-- **Compatibility**: Package schema 1; Profile 7; Protocol 12; Codex/Claude integrations.
+- **Compatibility**: Concorde 2.0.0; Package Manifest 2; Profile 7; Protocol 13; Delivery Proposal 9;
+  Codex/Claude integrations.
 - **Example**: `python3 scripts/install-concorde.py --target ../my-project --integration codex --apply`.
-- **Implementing entities**: `entity.concorde.installer`, `entity.concorde.package-manifest`, `entity.concorde.commands`, `entity.concorde.runtime`.
+- **Implementing entities**: `entity.concorde.installer`, `entity.concorde.package-manifest`,
+  `entity.concorde.skills`, `entity.concorde.operations`, and `entity.concorde.runtime`.
 
 ## Architecture Zoom
 
@@ -64,8 +66,9 @@ package root.
 |---|---|---|
 | `entity.concorde.installer` | Single entry command. | Loads package, plans ownership, and applies/rolls back. |
 | `entity.concorde.package-manifest` | Package discovery contract. | Makes checkout and extracted archive equivalent inputs. |
-| `entity.concorde.commands` | User-facing workflow surface. | Becomes integration-native skills during apply. |
-| `entity.concorde.runtime` | Installed deterministic operations. | Is copied beside scripts under the framework projection. |
+| `entity.concorde.skills` | Leaf user-facing workflow surface. | Becomes integration-native Skills during apply. |
+| `entity.concorde.operations` | Paired multi-Skill LangGraphs. | Retains Python/Markdown in the framework and projects Markdown as user Skills. |
+| `entity.concorde.runtime` | Installed deterministic Tools. | Is copied beside Scripts under the framework projection. |
 
 ## Related Features
 
@@ -82,7 +85,8 @@ package root.
 
 ## Success Criteria
 
-- **SC-001**: One command installs every declared command for Codex and Claude targets.
+- **SC-001**: One shell invocation installs every declared leaf and Operation skill plus every paired
+  Operation Python graph for Codex and Claude targets.
 - **SC-002**: A second identical apply is a zero-change `unchanged` result.
 
 ## Edge Cases

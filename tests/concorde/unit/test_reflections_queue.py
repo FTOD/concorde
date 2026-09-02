@@ -116,7 +116,8 @@ class ReflectionsQueueTests(unittest.TestCase):
             log.chmod(0o640)
             first = json.loads(run_queue(root, "--allocate-id").stdout)
             second = json.loads(run_queue(root, "--allocate-id").stdout)
-            self.assertEqual(first["operation"], "allocate-reflection-id")
+            self.assertEqual(first["tool"], "allocate-reflection-id")
+            self.assertNotIn("operation", first)
             self.assertEqual(first["status"], "allocated")
             self.assertEqual((first["previous_high_water"], first["allocated_id"], first["high_water"]), ("R-003", "R-004", "R-004"))
             self.assertEqual(second["allocated_id"], "R-005")
@@ -136,7 +137,8 @@ class ReflectionsQueueTests(unittest.TestCase):
 
             result = json.loads(run_queue(root, "--remove-merged", "R-002", "R-001").stdout)
 
-            self.assertEqual(result["operation"], "remove-merged-reflections")
+            self.assertEqual(result["tool"], "remove-merged-reflections")
+            self.assertNotIn("operation", result)
             self.assertEqual(result["status"], "removed")
             self.assertEqual(result["removed"], ["R-001", "R-002"])
             self.assertEqual((result["removed_count"], result["remaining_count"]), (2, 1))

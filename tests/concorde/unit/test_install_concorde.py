@@ -31,10 +31,11 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertEqual(arguments.checkout, str(REPOSITORY_ROOT))
 
     def test_manifest_is_single_profile_and_inventory_authority(self):
-        self.assertEqual(self.package.version, "1.1.0")
+        self.assertEqual(self.package.version, "2.0.0")
         self.assertEqual(self.package.manifest["architecture_profile"], 7)
-        self.assertEqual(self.package.manifest["workspace_protocol"], 12)
-        self.assertEqual(len(self.package.manifest["commands"]), 16)
+        self.assertEqual(self.package.manifest["workspace_protocol"], 13)
+        self.assertEqual(len(self.package.manifest["skills"]), 16)
+        self.assertEqual(len(self.package.manifest["operations"]), 2)
         self.assertEqual(len(self.package.manifest["templates"]), 6)
 
     def test_desired_codex_outputs_use_native_paths_only(self):
@@ -42,10 +43,25 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertIn(".concorde/framework/src/concorde/cli.py", outputs)
         self.assertIn(".concorde/framework/src/concorde/alignment.py", outputs)
         self.assertIn(".agents/skills/concorde-plan/SKILL.md", outputs)
+        self.assertIn(".agents/skills/concorde-standard-dev-loop/SKILL.md", outputs)
+        self.assertIn(
+            ".concorde/framework/operations/concorde-standard-dev-loop/operation.py",
+            outputs,
+        )
         self.assertIn(".codex/agents/reflection_implementer.toml", outputs)
         plan = outputs[".agents/skills/concorde-plan/SKILL.md"][0].decode()
         self.assertIn(".concorde/framework/scripts/workspace.py --phase plan", plan)
         self.assertNotIn(".specify", plan)
+        operation = outputs[".agents/skills/concorde-standard-dev-loop/SKILL.md"][0].decode()
+        self.assertIn(
+            ".concorde/framework/operations/concorde-standard-dev-loop/operation.py",
+            operation,
+        )
+        self.assertEqual(outputs[".agents/skills/concorde-plan/SKILL.md"][1], "skill")
+        self.assertEqual(
+            outputs[".agents/skills/concorde-standard-dev-loop/SKILL.md"][1],
+            "operation",
+        )
         self.assertTrue(all(not path.startswith(("presets/", "extensions/", "bundles/")) for path in outputs))
 
     def test_empty_target_preview_apply_and_repeat_are_idempotent(self):
@@ -111,6 +127,48 @@ class NativeInstallerTests(unittest.TestCase):
             installer.apply_plan(target, self.package, "claude", claude_actions, claude_desired)
             self.assertFalse((target / ".agents/skills/concorde-plan/SKILL.md").exists())
             self.assertTrue((target / ".claude/skills/concorde-plan/SKILL.md").is_file())
+
+    def test_update_removes_only_unchanged_owned_legacy_capability_paths(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary)
+            legacy = target / ".concorde/framework/commands/concorde.plan.md"
+            legacy.parent.mkdir(parents=True)
+            legacy.write_text("owned legacy\n")
+            examples = target / ".concorde/framework/examples/standard_dev_loop.py"
+            examples.parent.mkdir(parents=True)
+            examples.write_text("owned example\n")
+            receipt = {
+                "schema_version": 1,
+                "outputs": [
+                    {
+                        "path": legacy.relative_to(target).as_posix(),
+                        "role": "command",
+                        "sha256": installer._sha256(legacy.read_bytes()),
+                    },
+                    {
+                        "path": examples.relative_to(target).as_posix(),
+                        "role": "framework",
+                        "sha256": installer._sha256(examples.read_bytes()),
+                    },
+                ],
+            }
+            receipt_path = target / ".concorde/install.json"
+            receipt_path.parent.mkdir(exist_ok=True)
+            receipt_path.write_text(json.dumps(receipt))
+            actions, desired, _ = installer.installation_plan(target, self.package, "codex")
+            removed = {
+                item["path"] for item in actions if item["action"] == "remove"
+            }
+            self.assertEqual(
+                removed,
+                {
+                    ".concorde/framework/commands/concorde.plan.md",
+                    ".concorde/framework/examples/standard_dev_loop.py",
+                },
+            )
+            installer.apply_plan(target, self.package, "codex", actions, desired)
+            self.assertFalse(legacy.exists())
+            self.assertFalse(examples.exists())
 
     def test_safe_relative_rejects_escape_absolute_and_backslash(self):
         for value in ("../escape", "/absolute", "bad\\path"):

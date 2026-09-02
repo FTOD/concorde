@@ -15,8 +15,9 @@ diagrams:
 
 ## Responsibility
 
-Publish validated Profile 7 module architectures, direct feature designs, project documents, and
-architecture-owned diagrams as a hierarchical, searchable, accessible, provenance-preserving read model.
+Publish validated Profile 7 module architectures—including the structural Skills and Operations
+modules—direct feature designs, project documents, and architecture-owned diagrams as a hierarchical,
+searchable, accessible, provenance-preserving read model.
 
 ## Boundary
 
@@ -64,7 +65,7 @@ validator semantics, Archify rendering, Docusaurus internals, or user-authored s
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.auto-docs.publish` | Maintainer or CI invokes validate/build. | Discover four maintained collections; validate identity/hierarchy/links; render declared architecture views; emit Manifest 10; materialize content; build candidate; atomically promote. | Searchable site or preserved prior output with actionable diagnostics. | `contract.auto-docs.build-interface`, `contract.workspace.records`, `contract.auto-docs.archify-renderer`, `contract.auto-docs.build-manifest`, `contract.auto-docs.architecture-site` |
+| `interaction.auto-docs.publish` | Maintainer or CI invokes validate/build. | Discover four maintained collections, including every declared module; validate identity/hierarchy/links; render declared architecture views; emit Build Manifest 10; materialize content; build candidate; atomically promote. | Searchable site or preserved prior output with actionable diagnostics. | `contract.auto-docs.build-interface`, `contract.workspace.records`, `contract.auto-docs.archify-renderer`, `contract.auto-docs.build-manifest`, `contract.auto-docs.architecture-site` |
 
 ## Modules
 

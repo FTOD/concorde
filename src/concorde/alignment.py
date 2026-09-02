@@ -9,7 +9,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping
 
 from .diagnostics import digest_sources, finding_key
-from .model import ArchitecturePackage, Finding, OperationResult
+from .model import ArchitecturePackage, Finding, ToolResult
 from .projection import feature_summary
 from .repository import ProjectRepository, RepositoryError, safe_relative_path
 
@@ -1082,17 +1082,17 @@ def explore_alignment(
     expected_revision: str | None = None,
     query: str | None = None,
     statuses: Iterable[str] = (),
-) -> OperationResult:
+) -> ToolResult:
     """Return one deterministic read-only specification/alignment exploration result."""
     from .validate import validate_project
 
     root = Path(project_root).resolve()
     validation = validate_project(root)
-    operation_target = target or "."
+    tool_target = target or "."
     if validation.status != "success":
-        return OperationResult(
+        return ToolResult(
             "explore",
-            operation_target,
+            tool_target,
             "invalid",
             validation.artifacts,
             validation.findings,
@@ -1101,9 +1101,9 @@ def explore_alignment(
     try:
         package = ProjectRepository(root).load()
     except RepositoryError as error:
-        return OperationResult(
+        return ToolResult(
             "explore",
-            operation_target,
+            tool_target,
             "invalid",
             findings=(_finding(
                 "CONCORDE-ALIGN-001",
@@ -1116,7 +1116,7 @@ def explore_alignment(
     requested_statuses = tuple(sorted(set(statuses)))
     invalid_statuses = sorted(set(requested_statuses) - ALIGNMENT_STATUSES)
     if invalid_statuses:
-        return OperationResult(
+        return ToolResult(
             "explore",
             resolved_target,
             "invalid",
@@ -1130,7 +1130,7 @@ def explore_alignment(
     try:
         specification = project_specification(package, resolved_target)
     except KeyError:
-        return OperationResult(
+        return ToolResult(
             "explore",
             resolved_target,
             "invalid",
@@ -1250,7 +1250,7 @@ def explore_alignment(
                 artifacts.append(safe_relative_path(relative))
             except RepositoryError:
                 pass
-    return OperationResult(
+    return ToolResult(
         "explore",
         resolved_target,
         status,

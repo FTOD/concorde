@@ -21,16 +21,26 @@ class CodexSkillsAcceptance(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
             manifest = json.loads((root / ".concorde/framework/concorde.json").read_text())
             skills = sorted((root / ".agents/skills").glob("concorde-*/SKILL.md"))
-            self.assertEqual(len(skills), len(manifest["commands"]))
+            self.assertEqual(
+                len(skills), len(manifest["skills"]) + len(manifest["operations"])
+            )
             for phase in ("specify", "plan", "tasks", "implement", "fast-loop"):
                 body = (root / f".agents/skills/concorde-{phase}/SKILL.md").read_text()
-                self.assertIn("Protocol 12", body)
+                self.assertIn("Protocol 13", body)
                 self.assertIn(f"--phase {phase}", body)
                 self.assertIn('author: "concorde"', body)
             deliver = (root / ".agents/skills/concorde-deliver/SKILL.md").read_text()
-            self.assertIn("Delivery Proposal 8", deliver)
+            self.assertIn("Delivery Proposal 9", deliver)
             self.assertIn(".concorde/framework/scripts/concorde.py deliver", deliver)
             self.assertTrue((root / ".codex/agents/reflection_investigator.toml").is_file())
+            standard = (
+                root / ".agents/skills/concorde-standard-dev-loop/SKILL.md"
+            ).read_text()
+            self.assertIn('kind: "operation"', standard)
+            self.assertIn(
+                ".concorde/framework/operations/concorde-standard-dev-loop/operation.py",
+                standard,
+            )
             self.assertFalse((root / ".specify").exists())
 
 

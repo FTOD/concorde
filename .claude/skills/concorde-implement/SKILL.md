@@ -1,16 +1,15 @@
 ---
 name: concorde-implement
 description: "Execute every task in one selected Concorde attempt."
-argument-hint: "Optional command guidance"
+argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.implement.md"
+  source: "skills/concorde-implement/SKILL.md"
+  kind: "skill"
 user-invocable: true
 disable-model-invocation: false
 ---
-# Concorde Implement
-
 ## User Input
 
 ```text
@@ -21,11 +20,11 @@ $ARGUMENTS
 
 Execute the selected attempt against the direct feature file, providing module architecture, current
 source code, and tests. Code is implementation authority; tests and deterministic checks are
-evidence. Delivery is a later cleanup-only operation.
+evidence. Delivery is a later cleanup-only Tool.
 
 ## Workspace gate
 
-Before setup inspection or reads, run `python3 scripts/workspace.py --phase implement`. Require Protocol 12 with a canonical
+Before setup inspection or reads, run `python3 scripts/workspace.py --phase implement`. Require Protocol 13 with a canonical
 selected feature and an active attempt. Use only the returned durable, temporal, process, and
 executable paths. Never resolve another attempt or infer a compatibility root. Bounded ancestry and
 related-feature summaries are navigation; open another feature file only when an executable task names it.
@@ -104,5 +103,5 @@ After all tasks:
 Run the declared validation and reconciliation checks before reporting; there is no
 post-implementation extension-hook layer.
 
-Report completed/open tasks, changed architecture/feature/code/test/projection paths, commands and
+Report completed/open tasks, changed architecture/feature/code/test/projection paths, checks and
 results, limitations, and `Reflections added: <ids or none> · open for this feature: <count>`.

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.invalid/interfaces/feature-workspace-v12.schema.json",
-  "title": "Concorde Feature Workspace Protocol 12",
+  "$id": "https://concorde.invalid/interfaces/feature-workspace-v13.schema.json",
+  "title": "Concorde Feature Workspace Protocol 13",
   "oneOf": [
     {"$ref": "#/$defs/deliveryResponse"},
     {"$ref": "#/$defs/deliveryProposal"}
@@ -159,10 +159,10 @@
     "deliveryResponse": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "operation", "target", "status", "workspace", "changes", "artifacts", "findings", "source_digest"],
+      "required": ["schema_version", "tool", "target", "status", "workspace", "changes", "artifacts", "findings", "source_digest"],
       "properties": {
-        "schema_version": {"const": 12},
-        "operation": {"const": "deliver"},
+        "schema_version": {"const": 13},
+        "tool": {"const": "deliver"},
         "target": {"type": "string", "minLength": 1},
         "status": {"enum": ["eligible", "delivered", "invalid", "conflict", "failed"]},
         "workspace": {"oneOf": [{"$ref": "#/$defs/workspace"}, {"type": "null"}]},
@@ -170,7 +170,7 @@
         "artifacts": {"type": "array", "items": {"$ref": "#/$defs/safePath"}, "uniqueItems": true},
         "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
         "source_digest": {"$ref": "#/$defs/digest"},
-        "proposal_version": {"const": 8},
+        "proposal_version": {"const": 9},
         "proposal_path": {"$ref": "#/$defs/safePath"},
         "task_summary": {"$ref": "#/$defs/taskSummary"},
         "checklist_summary": {"$ref": "#/$defs/checklistSummary"},
@@ -184,10 +184,10 @@
     "deliveryProposal": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["proposal_version", "operation", "target", "source_digest", "remove"],
+      "required": ["proposal_version", "tool", "target", "source_digest", "remove"],
       "properties": {
-        "proposal_version": {"const": 8},
-        "operation": {"const": "deliver"},
+        "proposal_version": {"const": 9},
+        "tool": {"const": "deliver"},
         "target": {"type": "string", "pattern": "^feature\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$"},
         "source_digest": {"$ref": "#/$defs/digest"},
         "remove": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"$ref": "#/$defs/safePath"}, "uniqueItems": true}

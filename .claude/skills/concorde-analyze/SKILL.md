@@ -1,16 +1,15 @@
 ---
 name: concorde-analyze
 description: "Analyze one direct feature file, architecture context, and temporal attempt without mutation."
-argument-hint: "Optional command guidance"
+argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.analyze.md"
+  source: "skills/concorde-analyze/SKILL.md"
+  kind: "skill"
 user-invocable: true
 disable-model-invocation: false
 ---
-# Concorde Analyze
-
 ## User Input
 
 ```text
@@ -25,7 +24,7 @@ code/test surfaces. It never fixes them.
 
 ## Workspace gate and scope
 
-Run `python3 scripts/workspace.py --phase analyze` first and require Protocol 12. Use only returned paths. Read the selected feature file,
+Run `python3 scripts/workspace.py --phase analyze` first and require Protocol 13. Use only returned paths. Read the selected feature file,
 providing architecture, plan/tasks/research/validation when present, optional `.concorde/constitution.md`, checklist state,
 and source/test paths needed to verify task coverage. Related-feature summaries and module ancestry
 remain bounded navigation; open another feature file only for a named interface dependency, never another

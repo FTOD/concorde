@@ -35,7 +35,7 @@ class AttemptWorkspaceIntegration(unittest.TestCase):
             feature = "specs/example/modules/api/features/001-invoke.md"
             payload = self.run_adapter(root, "plan", feature)
             workspace = payload["workspace"]
-            self.assertEqual(payload["schema_version"], 12)
+            self.assertEqual(payload["schema_version"], 13)
             self.assertEqual(payload["phase_root"], ".concorde/attempts/feature.example.api.invoke")
             self.assertEqual(workspace["feature_path"], feature)
             self.assertEqual(workspace["module_architecture"], "specs/example/modules/api/architecture.md")

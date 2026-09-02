@@ -15,7 +15,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
 
 from concorde.agent_assets import AgentAssetError, render_projection  # noqa: E402
-from concorde.command_assets import CommandAssetError, render_commands  # noqa: E402
+from concorde.skill_assets import SkillAssetError, render_capabilities  # noqa: E402
 
 
 def _sha256(content: bytes) -> str:
@@ -25,7 +25,7 @@ def _sha256(content: bytes) -> str:
 def expected_outputs(root: Path) -> dict[str, bytes]:
     outputs: dict[str, bytes] = {}
     for integration in ("codex", "claude"):
-        rendered = render_commands(root, integration, "")
+        rendered = render_capabilities(root, integration, "")
         rendered.update(render_projection(root / "agent-assets/reflections", integration))
         for relative, content in rendered.items():
             encoded = content.encode("utf-8")
@@ -77,7 +77,7 @@ def apply(root: Path, desired: dict[str, bytes], actions: list[dict[str, str]]) 
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="sync-agent-surfaces")
-    parser.add_argument("operation", choices=["status", "apply"])
+    parser.add_argument("tool", choices=["status", "apply"])
     parser.add_argument("--project-root", default=str(REPOSITORY_ROOT))
     parser.add_argument("--format", choices=["text", "json"], default="text")
     arguments = parser.parse_args()
@@ -85,13 +85,13 @@ def main() -> int:
     try:
         desired = expected_outputs(root)
         actions = inspect(root, desired)
-        if arguments.operation == "apply":
+        if arguments.tool == "apply":
             apply(root, desired, actions)
             actions = inspect(root, desired)
         drift = [item for item in actions if item["action"] != "current"]
         result = {
-            "schema_version": 1,
-            "operation": arguments.operation,
+            "schema_version": 2,
+            "tool": arguments.tool,
             "status": "current" if not drift else "drift",
             "outputs": len(desired),
             "actions": actions,
@@ -102,8 +102,8 @@ def main() -> int:
             print(f"Concorde agent surfaces: {result['status']} ({len(desired)} outputs)")
             for item in drift:
                 print(f"  {item['action']}: {item['path']}")
-        return 0 if not drift or arguments.operation == "status" else 1
-    except (AgentAssetError, CommandAssetError, ValueError, OSError) as error:
+        return 0 if not drift or arguments.tool == "status" else 1
+    except (AgentAssetError, SkillAssetError, ValueError, OSError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
 

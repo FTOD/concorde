@@ -1,16 +1,15 @@
 ---
 name: concorde-init
 description: "Propose and explicitly apply a root module-centered Concorde hierarchy"
-argument-hint: "Optional command guidance"
+argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.init.md"
+  source: "skills/concorde-init/SKILL.md"
+  kind: "skill"
 user-invocable: true
 disable-model-invocation: false
 ---
-# Concorde Init
-
 # Initialize Concorde
 
 Treat `$ARGUMENTS` as optional `--module-id` and `--name` values. From the target project run
@@ -39,5 +38,5 @@ features, system overview, and findings; do not compare the project with starter
 approval. After the maintainer explicitly accepts and saves that exact proposal at a safe
 project-relative path, invoke `python3 scripts/concorde.py init --apply --proposal <path>`.
 
-Never edit maintained architecture outside the accepted runtime operation. Preserve exit status and
+Never edit maintained architecture outside the accepted Runtime Tool. Preserve exit status and
 report all findings, created paths, retained project files, and resulting source digest.

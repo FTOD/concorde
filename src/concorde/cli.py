@@ -1,4 +1,4 @@
-"""Stable command-line interface for installed Concorde operations."""
+"""Stable command-line interface for installed Concorde Tools."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-from .diagnostics import canonical_json, envelope, exit_code, operation_envelope
-from .model import Finding, OperationResult
+from .diagnostics import canonical_json, envelope, exit_code, tool_envelope
+from .model import Finding, ToolResult
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 
@@ -16,7 +16,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="concorde")
     parser.add_argument("--project-root", default=".")
-    subparsers = parser.add_subparsers(dest="operation", required=True)
+    subparsers = parser.add_subparsers(dest="tool", required=True)
 
     initialize = subparsers.add_parser("init")
     mode = initialize.add_mutually_exclusive_group(required=True)
@@ -58,9 +58,9 @@ def create_parser() -> argparse.ArgumentParser:
     deliver.add_argument("--format", choices=["json"], default="json")
 
     agent_assets = subparsers.add_parser("agent-assets")
-    asset_commands = agent_assets.add_subparsers(dest="agent_asset_operation", required=True)
+    asset_tools = agent_assets.add_subparsers(dest="agent_asset_tool", required=True)
     for name in ("preview", "sync", "verify", "remove"):
-        command = asset_commands.add_parser(name)
+        command = asset_tools.add_parser(name)
         command.add_argument("--integration", choices=["claude", "codex"], required=True)
         command.add_argument("--source-root")
         command.add_argument("--concorde-version", default="source")
@@ -68,14 +68,14 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def dispatch(arguments: argparse.Namespace) -> OperationResult:
+def dispatch(arguments: argparse.Namespace) -> ToolResult:
     root = Path(arguments.project_root)
-    if arguments.operation == "init":
+    if arguments.tool == "init":
         from .initialize import apply_proposal, propose_initialization
 
         if arguments.apply:
             if not arguments.proposal:
-                return OperationResult(
+                return ToolResult(
                     "init",
                     ".",
                     "invalid",
@@ -83,11 +83,11 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
                 )
             return apply_proposal(root, arguments.proposal)
         return propose_initialization(root, arguments.module_id, arguments.name)
-    if arguments.operation == "context":
+    if arguments.tool == "context":
         from .context import bounded_context
 
         return bounded_context(root, arguments.target)
-    if arguments.operation == "explore":
+    if arguments.tool == "explore":
         from .alignment import explore_alignment
 
         return explore_alignment(
@@ -99,12 +99,12 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
             query=arguments.query,
             statuses=arguments.status,
         )
-    if arguments.operation == "deliver":
+    if arguments.tool == "deliver":
         from .delivery import apply_delivery, propose_delivery
 
         if arguments.apply:
             if not arguments.proposal:
-                return OperationResult(
+                return ToolResult(
                     "deliver",
                     arguments.target or ".",
                     "invalid",
@@ -112,7 +112,7 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
                 )
             return apply_delivery(root, arguments.proposal)
         return propose_delivery(root, arguments.target)
-    if arguments.operation == "agent-assets":
+    if arguments.tool == "agent-assets":
         from .agent_assets import (
             preview_agent_assets,
             remove_agent_assets,
@@ -125,11 +125,11 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
             if arguments.source_root
             else PACKAGE_ROOT / "agent-assets/reflections"
         )
-        if arguments.agent_asset_operation == "preview":
+        if arguments.agent_asset_tool == "preview":
             return preview_agent_assets(root, source, arguments.integration, arguments.concorde_version)
-        if arguments.agent_asset_operation == "sync":
+        if arguments.agent_asset_tool == "sync":
             return sync_agent_assets(root, source, arguments.integration, arguments.concorde_version)
-        if arguments.agent_asset_operation == "verify":
+        if arguments.agent_asset_tool == "verify":
             return verify_agent_assets(root, source, arguments.integration)
         return remove_agent_assets(root, arguments.integration)
     from .validate import validate_project
@@ -141,12 +141,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = create_parser()
     try:
         result = dispatch(parser.parse_args(argv))
-        payload = operation_envelope(result)
+        payload = tool_envelope(result)
     except Exception as error:  # command boundary: always return the normative envelope
-        operation = argv[0] if argv else "validate"
+        tool = argv[0] if argv else "validate"
         payload = envelope(
-            operation
-            if operation in {"init", "context", "explore", "validate", "deliver", "agent-assets"}
+            tool
+            if tool in {"init", "context", "explore", "validate", "deliver", "agent-assets"}
             else "validate",
             ".",
             "failed",

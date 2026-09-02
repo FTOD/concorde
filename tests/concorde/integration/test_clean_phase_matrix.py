@@ -50,7 +50,7 @@ class CleanPhaseMatrixIntegrationTests(unittest.TestCase):
                     )
                     self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
                     value = json.loads(result.stdout)
-                    self.assertEqual(value["schema_version"], 12)
+                    self.assertEqual(value["schema_version"], 13)
                     self.assertEqual(value["workspace"]["feature_path"], feature.relative_to(root).as_posix())
                     expected = value["workspace"]["feature_path"] if root_kind == "feature" else value["workspace"]["attempt_dir"]
                     self.assertEqual(value["phase_root"], expected)

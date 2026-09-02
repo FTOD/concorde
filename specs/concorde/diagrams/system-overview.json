@@ -10,19 +10,23 @@
   },
   "components": [
     {"id": "maintainer", "type": "external", "label": "Maintainer", "sublabel": "Lifecycle consumer", "pos": [40, 270], "size": [140, 68]},
-    {"id": "commands", "type": "frontend", "label": "Commands", "sublabel": "Agent guidance", "pos": [250, 270], "size": [150, 68]},
-    {"id": "runtime", "type": "backend", "label": "Runtime", "sublabel": "Deterministic operations", "pos": [490, 270], "size": [170, 68]},
+    {"id": "skills", "type": "frontend", "label": "Leaf Skills", "sublabel": "Bounded capabilities", "pos": [260, 100], "size": [160, 68]},
+    {"id": "operations", "type": "backend", "label": "Operations", "sublabel": "Controlled LangGraphs", "pos": [260, 430], "size": [170, 68]},
+    {"id": "runtime", "type": "backend", "label": "Runtime Tools", "sublabel": "Deterministic actions", "pos": [520, 270], "size": [170, 68]},
     {"id": "workspace", "type": "database", "label": "Workspace", "sublabel": "Sources and control state", "pos": [760, 270], "size": [180, 68]},
     {"id": "distribution", "type": "cloud", "label": "Distribution", "sublabel": "Package and install", "pos": [1030, 110], "size": [170, 68]},
     {"id": "autodocs", "type": "frontend", "label": "Auto-Docs", "sublabel": "Validated read model", "pos": [1030, 430], "size": [170, 68]},
     {"id": "archify", "type": "external", "label": "Archify", "sublabel": "Diagram renderer", "pos": [1230, 430], "size": [120, 68]}
   ],
   "connections": [
-    {"id": "maintainer-invokes-commands", "from": "maintainer", "to": "commands", "label": "invokes", "variant": "emphasis"},
-    {"id": "commands-call-runtime", "from": "commands", "to": "runtime", "label": "calls"},
-    {"id": "commands-read-workspace", "from": "commands", "to": "workspace", "label": "reads bounded context", "variant": "dashed", "fromSide": "bottom", "toSide": "bottom"},
+    {"id": "maintainer-invokes-skills", "from": "maintainer", "to": "skills", "label": "invokes leaf", "variant": "emphasis"},
+    {"id": "maintainer-invokes-operations", "from": "maintainer", "to": "operations", "label": "invokes loop", "variant": "emphasis"},
+    {"id": "operations-compose-skills", "from": "operations", "to": "skills", "label": "composes", "fromSide": "top", "toSide": "bottom"},
+    {"id": "skills-call-runtime", "from": "skills", "to": "runtime", "label": "invoke Tools"},
+    {"id": "skills-read-workspace", "from": "skills", "to": "workspace", "label": "read bounded context", "variant": "dashed"},
+    {"id": "operations-use-runtime", "from": "operations", "to": "runtime", "label": "use graph support"},
     {"id": "runtime-accesses-workspace", "from": "runtime", "to": "workspace", "label": "validates and updates", "labelAt": [710, 352]},
-    {"id": "distribution-projects-commands", "from": "distribution", "to": "commands", "label": "projects", "fromSide": "left", "toSide": "top"},
+    {"id": "distribution-projects-skills", "from": "distribution", "to": "skills", "label": "projects user skills", "fromSide": "left", "toSide": "right"},
     {"id": "autodocs-read-workspace", "from": "workspace", "to": "autodocs", "label": "publishes validated sources", "fromSide": "right", "toSide": "left"},
     {"id": "autodocs-call-archify", "from": "autodocs", "to": "archify", "label": "renders views", "labelAt": [1215, 512]}
   ]

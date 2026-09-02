@@ -10,22 +10,22 @@ loading the entire repository.
 - typed architecture entities and directed relationships rather than an untyped prose inventory;
 - one complete direct Markdown file per level-local feature;
 - embedded feature interfaces with stable identities and usage/failure semantics;
-- bounded Protocol 12 context for planning and coding agents;
+- bounded Protocol 13 context for planning and coding agents;
 - deterministic validation of layout, identity, references, safety, and freshness;
 - temporary attempt workspaces with task/evidence discipline; and
 - digest-bound, cleanup-only delivery.
 
 ## Standalone lifecycle boundary
 
-Concorde owns the complete lifecycle. Root `commands/` and `templates/` are canonical human-readable
-instructions/formats; `src/concorde/` and `scripts/` own deterministic operations; `concorde.json`
+Concorde owns the complete lifecycle. Root `skills/`, `operations/`, and `templates/` are canonical
+capabilities/formats; `src/concorde/` and `scripts/` own deterministic Tools; `concorde.json`
 owns one package identity. The native installer projects those sources under `.concorde/framework/`
 and into Codex or Claude, recording only generated framework/agent outputs in
 `.concorde/install.json`. Project configuration, selection, constitution, attempts, reflections,
 specifications, code, and tests remain project-owned.
 
-The `concorde.*` command IDs are canonical and render as `concorde-*` skills. They do not delegate
-any phase or template behavior to another framework.
+Leaf and Operation capabilities share canonical `concorde-*` names. Operations compose complete leaf
+Skills through LangGraph; they never delegate specification authority to another framework.
 
 ## Authority map
 
@@ -46,7 +46,7 @@ any phase or template behavior to another framework.
 
 A module architecture shows immediate child modules as bounded entities; child internals stay in the
 child architecture. A feature may reference entities visible in its providing module or permitted
-ancestry. Related features are stable-ID relationships, not containment. Protocol 12 returns concise
+ancestry. Related features are stable-ID relationships, not containment. Protocol 13 returns concise
 ancestry and related-feature summaries, while another feature file is opened only for a specific
 interface dependency.
 
@@ -64,6 +64,6 @@ the repository is already reconciled and removes the attempt; it does not author
 Profile 7 is a breaking source profile. Concorde does not run a dual reader for older and current
 layouts. This keeps loaders, validators, agent guidance, fixtures, publication, and packages on one
 coherent ontology. Difficult tradeoffs and knowingly provisional choices are recorded in the
-project reflection log so the prototype can proceed and be revised later. Reflection-triage/v3
+project reflection log so the prototype can proceed and be revised later. Reflection-triage/v4
 automatically removes only validated merged-small fast-loop problems; every broader or unresolved
 entry remains for maintainer disposition.

@@ -60,17 +60,19 @@ class AlignmentExplorerContractTests(unittest.TestCase):
         self.assertEqual(tuple(edge_enum), UA_EDGE_TYPES)
         self.assertEqual((len(node_enum), len(edge_enum)), (27, 38))
 
-    def test_architecture_service_reserves_the_native_operation(self):
+    def test_architecture_service_reserves_the_native_tool(self):
         schema = json.loads(
             (REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/workspace/architecture-service.schema.json").read_text()
         )
-        self.assertIn("explore", schema["$defs"]["operation"]["enum"])
+        self.assertIn("explore", schema["$defs"]["tool"]["enum"])
+        self.assertEqual(schema["$defs"]["response"]["properties"]["schema_version"]["const"], 2)
+        self.assertNotIn("operation", schema["$defs"]["response"]["properties"])
 
-    def test_distribution_does_not_add_a_conversational_explorer_command(self):
+    def test_distribution_does_not_add_a_conversational_explorer_skill(self):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
-        self.assertEqual(len(manifest["commands"]), 16)
-        self.assertFalse(any("explore" in command for command in manifest["commands"]))
-        self.assertFalse((REPOSITORY_ROOT / "commands/concorde.explore.md").exists())
+        self.assertEqual(len(manifest["skills"]), 16)
+        self.assertFalse(any("explore" in skill for skill in manifest["skills"]))
+        self.assertFalse((REPOSITORY_ROOT / "skills/concorde-explore").exists())
 
     def test_alignment_input_has_no_similarity_or_confidence_escape_hatch(self):
         record = self.schemas["alignment-input.schema.json"]["$defs"]["record"]

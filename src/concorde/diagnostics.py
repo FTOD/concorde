@@ -8,7 +8,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Iterable
 
-from .model import Finding, OperationResult
+from .model import Finding, ToolResult
 
 
 STATUS_EXIT_CODES = {
@@ -40,7 +40,7 @@ def finding_dict(finding: Finding) -> dict[str, Any]:
 
 
 def envelope(
-    operation: str,
+    tool: str,
     target: str,
     status: str,
     artifacts: Iterable[str],
@@ -48,8 +48,8 @@ def envelope(
     result: dict[str, Any],
 ) -> dict[str, Any]:
     return {
-        "schema_version": 1,
-        "operation": operation,
+        "schema_version": 2,
+        "tool": tool,
         "target": target,
         "status": status,
         "artifacts": sorted(set(artifacts)),
@@ -58,11 +58,11 @@ def envelope(
     }
 
 
-def operation_envelope(value: OperationResult) -> dict[str, Any]:
-    if value.operation == "deliver":
+def tool_envelope(value: ToolResult) -> dict[str, Any]:
+    if value.tool == "deliver":
         return {
-            "schema_version": 12,
-            "operation": value.operation,
+            "schema_version": 13,
+            "tool": value.tool,
             "target": value.target,
             "status": value.status,
             "workspace": value.result.get("workspace"),
@@ -87,7 +87,7 @@ def operation_envelope(value: OperationResult) -> dict[str, Any]:
             },
         }
     return envelope(
-        value.operation,
+        value.tool,
         value.target,
         value.status,
         value.artifacts,

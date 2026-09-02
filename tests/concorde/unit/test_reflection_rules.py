@@ -9,7 +9,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT, VALID_PR
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.diagnostics import canonical_json, operation_envelope  # noqa: E402
+from concorde.diagnostics import canonical_json, tool_envelope  # noqa: E402
 from concorde.reflections import parse_reflection_log  # noqa: E402
 from concorde.validate import validate_project  # noqa: E402
 
@@ -100,7 +100,7 @@ class ReflectionRuleTests(unittest.TestCase):
             log = write_reflection_log(project, [reflection_entry("R-001")])
             log.write_text(log.read_text(encoding="utf-8") + "\n## Archive\n\n### R-002 · Old\n\n- **Phase**: plan\n- **Date**: 2026-01-01\n- **Feature**: feature.example.deliver\n- **Kind**: nonsense\n- **Concerns**: specs/example/architecture.md\n- **Expected**: a\n- **Observed**: b\n- **Effect**: assumed\n- **Action**: c\n- **Improvement**: d\n- **Status**: dismissed\n- **Note**: e\n", encoding="utf-8")
             before = tree_hashes(project)
-            outputs = [canonical_json(operation_envelope(validate_project(project))) for _ in range(3)]
+            outputs = [canonical_json(tool_envelope(validate_project(project))) for _ in range(3)]
             self.assertEqual(outputs[0], outputs[1])
             self.assertEqual(outputs[1], outputs[2])
             self.assertEqual(tree_hashes(project), before)

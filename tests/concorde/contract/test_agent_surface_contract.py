@@ -24,8 +24,8 @@ class AgentSurfaceContractTests(unittest.TestCase):
 
     def test_status_envelope_is_closed_current_and_sorted(self):
         value = self.status()
-        self.assertEqual(set(value), {"schema_version", "operation", "status", "outputs", "actions"})
-        self.assertEqual((value["schema_version"], value["operation"], value["status"]), (1, "status", "current"))
+        self.assertEqual(set(value), {"schema_version", "tool", "status", "outputs", "actions"})
+        self.assertEqual((value["schema_version"], value["tool"], value["status"]), (2, "status", "current"))
         self.assertEqual(value["outputs"], len(value["actions"]))
         self.assertEqual([item["path"] for item in value["actions"]], sorted(item["path"] for item in value["actions"]))
 
@@ -38,14 +38,16 @@ class AgentSurfaceContractTests(unittest.TestCase):
             self.assertEqual(item["action"], "current")
             self.assertRegex(item["sha256"], r"^sha256:[0-9a-f]{64}$")
 
-    def test_contract_covers_both_integration_commands_and_reflection_agents(self):
+    def test_contract_covers_both_integration_capabilities_and_reflection_agents(self):
         paths = {item["path"] for item in self.status()["actions"]}
-        self.assertEqual(len([path for path in paths if path.startswith(".agents/skills/concorde-")]), 16)
-        self.assertEqual(len([path for path in paths if path.startswith(".claude/skills/concorde-")]), 16)
+        self.assertEqual(len([path for path in paths if path.startswith(".agents/skills/concorde-")]), 18)
+        self.assertEqual(len([path for path in paths if path.startswith(".claude/skills/concorde-")]), 18)
         for required in (
-            ".agents/skills/reflections-triage/SKILL.md",
+            ".agents/skills/concorde-standard-dev-loop/SKILL.md",
+            ".agents/skills/concorde-reflections-triage/SKILL.md",
             ".codex/agents/reflection_investigator.toml",
-            ".claude/skills/reflections-triage/SKILL.md",
+            ".claude/skills/concorde-standard-dev-loop/SKILL.md",
+            ".claude/skills/concorde-reflections-triage/SKILL.md",
             ".claude/agents/reflection-investigator.md",
         ):
             self.assertIn(required, paths)

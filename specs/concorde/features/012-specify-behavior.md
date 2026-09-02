@@ -24,7 +24,7 @@ requirements, failures, related-feature links, and architecture zoom in its sole
 
 | Entity ID | Role |
 |---|---|
-| `entity.concorde.commands` | Supplies the design-only specification command and template. |
+| `entity.concorde.skills` | Supplies the design-only specification Skill and template. |
 | `entity.concorde.coding-agent` | Authors/reviews the bounded feature design and quality checklist. |
 | `entity.concorde.workspace-resolver` | Confirms the providing module and canonical flat feature path. |
 
@@ -34,20 +34,21 @@ requirements, failures, related-feature links, and architecture zoom in its sole
 
 - **Consumer**: Maintainer defining or changing a module capability.
 - **Direction**: Natural-language intent and bounded architecture to durable feature design/checklist.
-- **Entry points**: `concorde.specify`, optionally followed by `concorde.clarify` or checklist review.
+- **Entry points**: `concorde-specify`, optionally followed by `concorde-clarify` or
+  `concorde-checklist` review.
 - **Inputs**: Feature description, providing module architecture, related feature IDs, and existing design when revising.
 - **Outputs**: One validated `features/<NNN-name>.md`, `feature_path` selection pointer, and temporal requirements-quality checklist in the matching stable-ID control attempt after the post-front-matter workspace rerun.
 - **Obligations**: Define every interface and architecture reference, make requirements testable, and avoid implementation prose.
 - **Failures**: Unclear ownership, unresolved material ambiguity, or invalid entity/interface references block readiness.
 - **Compatibility**: Creates no abstract, implementation, feature contract directory, feature diagram, or nested subfeature.
-- **Implementing entities**: `entity.concorde.commands`, `entity.concorde.coding-agent`, `entity.concorde.workspace-resolver`.
+- **Implementing entities**: `entity.concorde.skills`, `entity.concorde.coding-agent`, `entity.concorde.workspace-resolver`.
 
 ## Usage Scenarios
 
 1. Place a new feature at the module where every participating child module/entity is visible.
 2. Author/revise outcome, embedded interfaces, representative usage, testable requirements, failures, relations, and architecture zoom.
 3. Validate a temporal requirements-quality checklist and resolve only material ambiguities before planning.
-4. For a new file, accept unavailable attempt fields on the first Protocol 12 gate, write valid stable-ID front matter, rerun the gate, then create only the returned checklist path.
+4. For a new file, accept unavailable attempt fields on the first Protocol 13 gate, write valid stable-ID front matter, rerun the gate, then create only the returned checklist path.
 
 ## Requirements
 
@@ -55,7 +56,7 @@ requirements, failures, related-feature links, and architecture zoom in its sole
 - **FR-002**: Every provided interface MUST define consumer/direction/entry points/inputs/outputs/obligations/failures/compatibility/implementing entities and example when custom serialized.
 - **FR-003**: Every architecture zoom entity MUST resolve visibly and MUST NOT be retyped/reowned by the feature.
 - **FR-004**: Requirements/scenarios MUST be independently testable, bounded, and free of implementation-detail authority.
-- **FR-005**: Specification MUST NOT infer a stable feature ID from a planned path or create an attempt/checklist before Protocol 12 resolves the authored ID.
+- **FR-005**: Specification MUST NOT infer a stable feature ID from a planned path or create an attempt/checklist before Protocol 13 resolves the authored ID.
 
 ## Edge Cases
 

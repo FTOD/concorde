@@ -1,4 +1,4 @@
-"""Digest-bound Delivery Proposal 8: validate and remove one complete attempt only."""
+"""Digest-bound Delivery Proposal 9: validate and remove one complete attempt only."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Any, Iterable
 
 from .diagnostics import digest_sources
 from .feature_workspace import WorkspaceError, _read_persisted_selection, _resolve_feature, resolve_phase_paths
-from .model import Finding, OperationResult, SourceDocument
+from .model import Finding, SourceDocument, ToolResult
 from .reflections import log_path, parse_reflection_log
 from .repository import ProjectRepository, RepositoryError, safe_relative_path
 
@@ -155,7 +155,7 @@ def _retained_digests(project: Path, package: Any, paths: Any) -> dict[str, str]
     return dict(sorted(result.items()))
 
 
-def propose_delivery(project_root: str | Path, target: str | None = None, ignored_proposal: str | None = None) -> OperationResult:
+def propose_delivery(project_root: str | Path, target: str | None = None, ignored_proposal: str | None = None) -> ToolResult:
     project = Path(project_root).resolve()
     try:
         package = ProjectRepository(project).load()
@@ -166,7 +166,7 @@ def propose_delivery(project_root: str | Path, target: str | None = None, ignore
         source_digest = _delivery_digest(project, package, paths, ignored_proposal)
         retained_digests = _retained_digests(project, package, paths)
     except (RepositoryError, WorkspaceError, OSError, UnicodeError) as error:
-        return OperationResult("deliver", target or ".", "invalid", findings=(_finding("CONCORDE-DELIVER-001", ".concorde/feature.json", str(error), "Select a valid direct feature with one active real .concorde/attempts/<stable-feature-id> directory."),))
+        return ToolResult("deliver", target or ".", "invalid", findings=(_finding("CONCORDE-DELIVER-001", ".concorde/feature.json", str(error), "Select a valid direct feature with one active real .concorde/attempts/<stable-feature-id> directory."),))
 
     findings: list[Finding] = []
     if incomplete:
@@ -188,7 +188,7 @@ def propose_delivery(project_root: str | Path, target: str | None = None, ignore
             findings.append(_finding("CONCORDE-DELIVER-011", paths.reflections, "The project reflection log is malformed: " + "; ".join(problem.message for problem in parsed.problems), "Repair the centralized log and re-propose."))
         reflection_summary = parsed.summary(feature.identifier)
     result = {
-        "proposal_version": 8,
+        "proposal_version": 9,
         "workspace": paths.protocol_paths(),
         "changes": [{"path": paths.attempt_dir, "action": "delete", "meaning": "Remove the complete temporal attempt; retain every durable and executable authority."}],
         "source_digest": source_digest,
@@ -202,7 +202,7 @@ def propose_delivery(project_root: str | Path, target: str | None = None, ignore
     artifacts = [paths.feature_path, paths.module_architecture, paths.tasks, paths.validation]
     if reflections_body is not None:
         artifacts.append(paths.reflections)
-    return OperationResult("deliver", feature.identifier, "eligible" if not findings else "invalid", tuple(artifacts), tuple(findings), result)
+    return ToolResult("deliver", feature.identifier, "eligible" if not findings else "invalid", tuple(artifacts), tuple(findings), result)
 
 
 def _load_proposal(project: Path, proposal_path: str) -> tuple[str, dict[str, Any]]:
@@ -217,12 +217,14 @@ def _load_proposal(project: Path, proposal_path: str) -> tuple[str, dict[str, An
     return relative, value
 
 
-def apply_delivery(project_root: str | Path, proposal_path: str) -> OperationResult:
+def apply_delivery(project_root: str | Path, proposal_path: str) -> ToolResult:
     project = Path(project_root).resolve()
     try:
         relative_proposal, proposal = _load_proposal(project, proposal_path)
-        if proposal.get("proposal_version") != 8 or proposal.get("operation") != "deliver":
-            raise WorkspaceError("unsupported delivery proposal; proposal_version 8 with operation deliver is required")
+        if "operation" in proposal:
+            raise WorkspaceError("legacy delivery proposal operation discriminator is unsupported; use tool")
+        if proposal.get("proposal_version") != 9 or proposal.get("tool") != "deliver":
+            raise WorkspaceError("unsupported delivery proposal; proposal_version 9 with tool deliver is required")
         forbidden = sorted(FORBIDDEN_PROPOSAL_KEYS & set(proposal))
         if forbidden:
             raise WorkspaceError("cleanup-only delivery proposal may not contain narrative/update keys: " + ", ".join(forbidden))
@@ -236,7 +238,7 @@ def apply_delivery(project_root: str | Path, proposal_path: str) -> OperationRes
         if relative_proposal != eligibility.result["proposal_path"]:
             raise WorkspaceError(f"proposal must be stored at {eligibility.result['proposal_path']}")
         if proposal.get("source_digest") != eligibility.result["source_digest"]:
-            return OperationResult("deliver", target, "conflict", findings=(_finding("CONCORDE-DELIVER-004", relative_proposal, "Delivery inputs changed after proposal.", "Regenerate the proposal against the current complete attempt."),), result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"]})
+            return ToolResult("deliver", target, "conflict", findings=(_finding("CONCORDE-DELIVER-004", relative_proposal, "Delivery inputs changed after proposal.", "Regenerate the proposal against the current complete attempt."),), result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"]})
         if proposal.get("remove") != [paths["attempt_dir"]]:
             raise WorkspaceError("proposal removal set must contain exactly the selected feature's stable-ID project-control attempt directory")
         repository = ProjectRepository(project)
@@ -250,7 +252,7 @@ def apply_delivery(project_root: str | Path, proposal_path: str) -> OperationRes
         removed_artifacts = _attempt_files(project, paths["attempt_dir"])
         retained_before = _retained_digests(project, package, resolve_phase_paths(project, paths["feature_path"]))
     except (RepositoryError, WorkspaceError, OSError, UnicodeError) as error:
-        return OperationResult("deliver", ".", "invalid", findings=(_finding("CONCORDE-DELIVER-005", proposal_path, str(error), "Correct and regenerate the cleanup-only proposal before applying it."),))
+        return ToolResult("deliver", ".", "invalid", findings=(_finding("CONCORDE-DELIVER-005", proposal_path, str(error), "Correct and regenerate the cleanup-only proposal before applying it."),))
 
     moved = False
     with tempfile.TemporaryDirectory(prefix="concorde-delivery-") as temporary:
@@ -275,9 +277,9 @@ def apply_delivery(project_root: str | Path, proposal_path: str) -> OperationRes
                     shutil.rmtree(tombstone)
             except OSError as rollback_error:
                 error = WorkspaceError(f"{error}; rollback also failed: {rollback_error}")
-            return OperationResult("deliver", target, "failed", findings=(_finding("CONCORDE-DELIVER-006", paths["feature_path"], f"Attempt cleanup failed: {error}", "Resolve the filesystem failure; the complete attempt was restored when possible."),), result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"]})
+            return ToolResult("deliver", target, "failed", findings=(_finding("CONCORDE-DELIVER-006", paths["feature_path"], f"Attempt cleanup failed: {error}", "Resolve the filesystem failure; the complete attempt was restored when possible."),), result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"]})
 
-    return OperationResult(
+    return ToolResult(
         "deliver",
         target,
         "delivered",

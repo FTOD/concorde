@@ -1,16 +1,15 @@
 ---
 name: concorde-validate
 description: "Deterministically validate module-centered Concorde sources"
-argument-hint: "Optional command guidance"
+argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.validate.md"
+  source: "skills/concorde-validate/SKILL.md"
+  kind: "skill"
 user-invocable: true
 disable-model-invocation: false
 ---
-# Concorde Validate
-
 # Validate Concorde
 
 Run `python3 scripts/concorde.py validate $ARGUMENTS --format json` from the project root.
@@ -39,7 +38,7 @@ Validation covers Architecture Source Profile 7:
   rejection of obsolete durable layout residue.
 
 For every finding, show stable code, severity, source path/field, message, and remediation. This
-command never repairs or migrates a project.
+Tool never repairs or migrates a project.
 
 After structural validation succeeds, run Archify showcase validation for every declared system
 overview. Require the nine artifact checks, zero composition errors, and zero warnings; a basic

@@ -14,7 +14,8 @@ class OntologyWorkflowContractTests(unittest.TestCase):
         self.assertIn("| Entity ID | Type | Definition | Locator |", architecture)
         self.assertIn("| Source | Predicate | Target | Description |", architecture)
         self.assertIn("| Interaction ID | Trigger | Steps | Result | Interfaces |", architecture)
-        self.assertIn("module.concorde.commands", architecture)
+        self.assertIn("module.concorde.skills", architecture)
+        self.assertIn("module.concorde.operations", architecture)
 
         design = (REPOSITORY_ROOT / "specs/concorde/features/007-project-ontology.md").read_text(encoding="utf-8")
         for heading in ("Outcome and Scope", "Architecture Zoom", "Interfaces", "Requirements", "Edge Cases"):
@@ -24,12 +25,12 @@ class OntologyWorkflowContractTests(unittest.TestCase):
 
         sources = {
             "templates/feature-template.md": ("architecture zoom", "interfaces", "source code"),
-            "commands/concorde.specify.md": ("architecture.md", "feature_path", "interfaces"),
-            "commands/concorde.plan.md": ("module architecture", "feature file", "source code"),
-            "commands/concorde.implement.md": ("module architecture", "feature file", "source code"),
-            "commands/concorde.fast-loop.md": ("providing architecture", "selected feature file", "code/tests"),
-            "commands/concorde.init.md": ("architecture.md", "typed entity vocabulary", "directed relationship vocabulary"),
-            "commands/concorde.deliver.md": ("module architecture", "feature file", "code"),
+            "skills/concorde-specify/SKILL.md": ("architecture.md", "feature_path", "interfaces"),
+            "skills/concorde-plan/SKILL.md": ("module architecture", "feature file", "source code"),
+            "skills/concorde-implement/SKILL.md": ("module architecture", "feature file", "source code"),
+            "skills/concorde-fast-loop/SKILL.md": ("providing architecture", "selected feature file", "code/tests"),
+            "skills/concorde-init/SKILL.md": ("architecture.md", "typed entity vocabulary", "directed relationship vocabulary"),
+            "skills/concorde-deliver/SKILL.md": ("module architecture", "feature file", "code"),
         }
         for relative, required in sources.items():
             text = (REPOSITORY_ROOT / relative).read_text(encoding="utf-8").lower()
@@ -48,6 +49,7 @@ class OntologyWorkflowContractTests(unittest.TestCase):
             self.assertIn(family, feature_validator)
         self.assertIn("validate_entities", coordinator)
         self.assertIn("validate_features", coordinator)
+        self.assertIn("validate_capabilities", coordinator)
 
     def test_source_profile_uses_direct_feature_files_and_is_contract_free(self):
         root = REPOSITORY_ROOT / "specs/concorde"

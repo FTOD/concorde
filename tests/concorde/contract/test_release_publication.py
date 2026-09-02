@@ -31,7 +31,7 @@ class ReleasePointerContractTests(unittest.TestCase):
             pointer = json.loads((output / "release.json").read_text())
             self.assertEqual(pointer["repository"], builder.REPOSITORY)
             self.assertEqual(pointer["architecture_profile"], 7)
-            self.assertEqual(pointer["workspace_protocol"], 12)
+            self.assertEqual(pointer["workspace_protocol"], 13)
             self.assertEqual(pointer["tag"], "v" + pointer["version"])
             self.assertTrue(pointer["archive"]["url"].endswith("/" + pointer["archive"]["name"]))
             self.assertEqual(pointer["archive"]["sha256"], first[pointer["archive"]["name"]])

@@ -1,6 +1,6 @@
 {
-  "proposal_version": 8,
-  "operation": "deliver",
+  "proposal_version": 9,
+  "tool": "deliver",
   "target": "feature.example.api.health-check",
   "source_digest": "sha256:3a4b8170a27c10f664308295149c300ef5e98323214b90c2ea365dad061e0f00",
   "remove": [

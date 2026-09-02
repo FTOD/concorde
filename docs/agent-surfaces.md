@@ -8,7 +8,8 @@ Codex/Claude surfaces in their normal project locations.
 Canonical:
 
 - `concorde.json`
-- `commands/`
+- `skills/`
+- `operations/`
 - `templates/`
 - `src/concorde/`
 - `scripts/`
@@ -17,10 +18,12 @@ Canonical:
 Generated checkout projections:
 
 - `.agents/skills/concorde-*/SKILL.md`
-- `.agents/skills/reflections-triage/SKILL.md`
+- `.agents/skills/concorde-standard-dev-loop/SKILL.md`
+- `.agents/skills/concorde-reflections-triage/SKILL.md`
 - `.codex/agents/reflection_*.toml`
 - `.claude/skills/concorde-*/SKILL.md`
-- `.claude/skills/reflections-triage/SKILL.md`
+- `.claude/skills/concorde-standard-dev-loop/SKILL.md`
+- `.claude/skills/concorde-reflections-triage/SKILL.md`
 - `.claude/agents/reflection-*.md`
 
 The framework repository does not copy its package under `.concorde/framework`; root sources are
@@ -34,12 +37,13 @@ python3 scripts/development/sync-agent-surfaces.py status --format json
 python3 scripts/development/sync-agent-surfaces.py apply --format json
 ```
 
-Status renders every command/reflection output for both integrations and classifies each desired path
+Status renders every leaf/Operation Skill and internal reflection-agent output for both integrations and classifies each desired path
 as `current`, `create`, `update`, `replace-symlink`, or `conflict`. It does not write. Apply refreshes
 only those exact generated paths, then reports their current state.
 
-Command rendering validates filenames/front matter, safe package-relative scripts, supported
-integration metadata, output uniqueness, and resolution of `{SCRIPT}`/`{FRAMEWORK}` tokens. Source
+Capability rendering validates names/front matter, exact Operation pairs, safe package-relative
+entry points, supported integration metadata, output uniqueness, and resolution of
+`{SCRIPT}`/`{FRAMEWORK}`/`{OPERATION}` tokens. Source
 checkout surfaces use root `scripts/` and `templates/`; installed surfaces use
 `.concorde/framework/scripts/` and `.concorde/framework/templates/`.
 

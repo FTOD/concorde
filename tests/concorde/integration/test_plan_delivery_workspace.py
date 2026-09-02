@@ -35,7 +35,7 @@ class PlanDeliveryWorkspaceIntegrationTests(unittest.TestCase):
             payloads = [run_phase(root, feature, phase) for phase in ("plan", "tasks", "taskstoissues")]
             self.assertEqual(hashes(root, authorities), before)
             for payload in payloads:
-                self.assertEqual(payload["schema_version"], 12)
+                self.assertEqual(payload["schema_version"], 13)
                 self.assertEqual(payload["phase_root"], ".concorde/attempts/feature.example.deliver")
                 self.assertEqual(payload["workspace"]["attempt_dir"], ".concorde/attempts/feature.example.deliver")
                 self.assertTrue(REMOVED.isdisjoint(payload["workspace"]))

@@ -23,7 +23,7 @@ inventing product structure or overwriting an existing configured hierarchy.
 
 | Entity ID | Role |
 |---|---|
-| `entity.concorde.cli` | Routes reviewed initialize propose/apply operations. |
+| `entity.concorde.cli` | Routes reviewed initialize propose/apply Tool actions. |
 | `entity.concorde.runtime` | Generates, validates, and atomically promotes the root `architecture.md` proposal. |
 | `entity.concorde.specification` | Receives the root architecture scaffold only. |
 | `entity.concorde.control-state` | Receives Profile 7 configuration and `.concorde/reflections/log.md`. |
@@ -33,8 +33,9 @@ inventing product structure or overwriting an existing configured hierarchy.
 ### `interface.concorde.initialize` — Initialize root architecture
 
 - **Consumer**: Maintainer establishing Concorde in a project.
-- **Direction**: Bidirectional command/result.
-- **Entry points**: Canonical command `concorde.init` and native `scripts/concorde.py init` operation in source/installed package layouts.
+- **Direction**: Skill/Tool request to reviewed proposal or apply result.
+- **Entry points**: Leaf Skill `concorde-init` and native `scripts/concorde.py init` Tool in
+  source/installed package layouts.
 - **Inputs**: Project root, proposed root module ID, responsibility, boundary, and optional initial modules/features.
 - **Outputs**: Digest-bearing proposal or an applied/unchanged structured result with exact artifacts and findings.
 - **Obligations**: Preview and apply use the same proposal; existing targets are never silently overwritten.

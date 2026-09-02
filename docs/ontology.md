@@ -3,6 +3,27 @@
 Concorde's core idea is that modules are the hierarchy. Architecture explains what exists inside one
 module and how it relates; features explain what that module provides and how a consumer uses it.
 
+## Capability hierarchy
+
+Concorde uses three structural capability levels:
+
+```text
+scripts/                              basic runnable Tools
+skills/<name>/SKILL.md                independently invocable leaf Skills
+operations/<name>/operation.py        controlled multi-Skill LangGraph
+operations/<name>/SKILL.md            paired user-facing Operation skill
+```
+
+A Script exposes one or more bounded deterministic Tools. A leaf Skill contains one complete prompt
+and may invoke Tools, but it does not orchestrate multiple Skills. An Operation is a LangGraph above
+the leaf layer: it defines stages, shared state, ordering, failure propagation, and other explicit
+controls while resolving complete canonical Skills without copying their bodies.
+
+Every Operation directory contains exactly one `operation.py` and one associated `SKILL.md`. The
+Markdown is installed into the same agent namespace as leaf Skills; Python stays under the installed
+framework as execution authority. Missing pairs, extra canonical files, unknown Skill dependencies,
+root `commands/`, and maintained root `examples/` graphs are invalid.
+
 ## Module
 
 A module is the recursive unit of specification ownership. It has:
@@ -73,7 +94,7 @@ changes Concorde ownership or turns a physical path into logical identity.
 
 ### Alignment exploration
 
-The native `concorde explore` operation projects one validated module, entity, feature, or interface
+The native `concorde explore` Tool projects one validated module, entity, feature, or interface
 altitude. An optional explicitly supplied UA graph stays implementation evidence: its original IDs,
 27 pinned node types, 38 pinned edge types, directions, project revision, layers, and tour remain
 visible but never redefine a Concorde subject.
@@ -97,7 +118,7 @@ unknown. Search is presentation filtering only: it never supplies an alignment b
 Returned specification subjects retain stable ID, Profile kind, owner/declarer, and canonical source
 path separately from an adapter type. Results include only the selected Profile altitude and mapped or
 text-matched implementation nodes plus one edge hop; total/returned counts make the bound explicit.
-The operation is deterministic and read-only and emits no persistent graph/index.
+The Tool is deterministic and read-only and emits no persistent graph/index.
 
 ### Entity relationship
 
@@ -178,7 +199,7 @@ absent → active → complete → absent after successful delivery
 
 ## Delivery
 
-Delivery Proposal 8 captures the selected target, current source/attempt digest, exact removal path,
+Delivery Proposal 9 captures the selected target, current source/attempt digest, exact removal path,
 completion/evidence summaries, and retained authority digests. Apply revalidates the proposal and
 atomically removes exactly one attempt. It changes no architecture, feature file, code, test,
 projection, reflection, or selection state.
@@ -188,7 +209,7 @@ projection, reflection, or selection state.
 The tracked `.concorde/reflections/log.md` records difficulties, workarounds, deferrals, blockers,
 and provisional design choices encountered by lifecycle phases. Entries have stable `R-NNN` IDs and
 maintainer-owned status/notes. Reflections are process memory, not behavioral requirements, and are
-never copied into another persisted artifact. Reflection-triage/v3 allocates IDs atomically from the
+never copied into another persisted artifact. Reflection-triage/v4 allocates IDs atomically from the
 log's high-water marker and removes an open entry only after its `small` `fast-loop` plan is validated,
 merged, and marked `merged`; other work retains maintainer disposition. Triage configuration shares
 the directory; triage plans and worktrees are disposable.

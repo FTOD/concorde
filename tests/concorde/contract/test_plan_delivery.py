@@ -10,7 +10,7 @@ WORKSPACE_FIXTURES = REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/works
 
 class PlanDeliveryContractTests(unittest.TestCase):
     def test_plan_uses_feature_architecture_code_and_tests_as_inputs(self):
-        body = (PACKAGE / "commands/concorde.plan.md").read_text(encoding="utf-8")
+        body = (PACKAGE / "skills/concorde-plan/SKILL.md").read_text(encoding="utf-8")
         normalized = " ".join(body.split())
         for value in (
             "complete selected feature file",
@@ -44,15 +44,15 @@ class PlanDeliveryContractTests(unittest.TestCase):
         ):
             self.assertIn(value, body, value)
 
-    def test_delivery_proposal8_is_cleanup_only_and_exactly_one_attempt(self):
+    def test_delivery_proposal9_is_cleanup_only_and_exactly_one_attempt(self):
         proposal = json.loads((WORKSPACE_FIXTURES / "deliver-proposal.json").read_text(encoding="utf-8"))
-        self.assertEqual(proposal["proposal_version"], 8)
-        self.assertEqual(set(proposal), {"proposal_version", "operation", "target", "source_digest", "remove"})
+        self.assertEqual(proposal["proposal_version"], 9)
+        self.assertEqual(set(proposal), {"proposal_version", "tool", "target", "source_digest", "remove"})
         self.assertEqual(len(proposal["remove"]), 1)
         self.assertTrue(proposal["remove"][0].startswith(".concorde/attempts/feature."))
 
     def test_delivery_guidance_never_authors_content(self):
-        body = (REPOSITORY_ROOT / "commands/concorde.deliver.md").read_text(encoding="utf-8")
+        body = (REPOSITORY_ROOT / "skills/concorde-deliver/SKILL.md").read_text(encoding="utf-8")
         normalized = " ".join(body.split())
         self.assertIn("Delivery is cleanup-only", normalized)
         self.assertIn("writes no durable specification or implementation narrative", normalized)

@@ -91,16 +91,45 @@ def verify_release(
             "concorde/scripts/concorde.py",
             "concorde/src/concorde/cli.py",
             "concorde/templates/feature-template.md",
-            "concorde/commands/concorde.specify.md",
+            "concorde/skills/concorde-specify/SKILL.md",
+            "concorde/operations/concorde-standard-dev-loop/SKILL.md",
+            "concorde/operations/concorde-standard-dev-loop/operation.py",
+            "concorde/operations/concorde-reflections-triage/SKILL.md",
+            "concorde/operations/concorde-reflections-triage/operation.py",
         }
         missing = required - set(names)
         if missing:
             raise ValueError(f"{expected_name} is missing package members: {sorted(missing)}")
-        if any("/.specify/" in f"/{name}" or name.startswith("concorde/presets/") or name.startswith("concorde/extensions/") or name.startswith("concorde/bundles/") for name in names):
+        if any(
+            "/.specify/" in f"/{name}"
+            or name.startswith("concorde/presets/")
+            or name.startswith("concorde/extensions/")
+            or name.startswith("concorde/bundles/")
+            or name.startswith("concorde/commands/")
+            or name.startswith("concorde/examples/")
+            for name in names
+        ):
             raise ValueError(f"{expected_name} contains removed host-package layout")
         manifest = json.loads(package.read("concorde/concorde.json"))
         if manifest.get("version") != version:
             raise ValueError(f"{expected_name} package manifest version does not match {version}")
+        skill_names = sorted(
+            PurePosixPath(name).parts[2]
+            for name in names
+            if name.startswith("concorde/skills/") and name.endswith("/SKILL.md")
+        )
+        operation_members = {
+            operation: {
+                PurePosixPath(name).name
+                for name in names
+                if name.startswith(f"concorde/operations/{operation}/")
+            }
+            for operation in manifest.get("operations", [])
+        }
+        if skill_names != sorted(manifest.get("skills", [])):
+            raise ValueError(f"{expected_name} Skill inventory differs from concorde.json")
+        if any(members != {"SKILL.md", "operation.py"} for members in operation_members.values()):
+            raise ValueError(f"{expected_name} must retain every exact Operation pair")
     with tempfile.TemporaryDirectory() as temporary:
         temporary_root = Path(temporary)
         extracted = temporary_root / "extracted"

@@ -1,16 +1,15 @@
 ---
 name: concorde-specify
 description: "Create or update one direct module-level feature file."
-argument-hint: "Optional command guidance"
+argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.specify.md"
+  source: "skills/concorde-specify/SKILL.md"
+  kind: "skill"
 user-invocable: true
 disable-model-invocation: false
 ---
-# Concorde Specify
-
 ## User Input
 
 ```text
@@ -26,7 +25,7 @@ interfaces, failures, and Architecture Zoom all belong in that one document.
 ## Workspace gate
 
 Before resolving templates, reading feature artifacts, or writing anything, run `python3 scripts/workspace.py --phase specify` from the
-project root. Require a successful Protocol 12 result (`schema_version: 12`) whose status is
+project root. Require a successful Protocol 13 result (`schema_version: 13`) whose status is
 `resolved` or `selected`. Treat returned paths as the sole authority:
 
 - identity: `feature_id`, `feature_path`, and `providing_module`;
@@ -57,7 +56,7 @@ an explicit dependency. Reject a selected path outside the providing module's di
    inconsistent with the architecture text, route that module to architecture work before declaring
    the feature ready. Do not descend into child modules merely because they exist.
 3. Read `./templates/feature-template.md` as the format reference. Use the returned `feature_path`;
-   create its `features/` parent only when Protocol 12 identifies a new canonical feature selection.
+   create its `features/` parent only when Protocol 13 identifies a new canonical feature selection.
    A missing feature has no trustworthy attempt key until its front-matter stable ID exists: do not
    derive an ID from its filename or module, and do not create a provisional attempt.
 4. Write one self-contained design with:
@@ -87,7 +86,7 @@ an explicit dependency. Reject a selected path outside the providing module's di
    diagram change is an architecture change: surface it explicitly for review rather than inventing
    structural facts in the feature.
 8. After writing a new feature and reconciling its module inventory, run `python3 scripts/workspace.py --phase specify` again. Require
-   Protocol 12 to resolve the exact non-null stable feature ID and return
+   Protocol 13 to resolve the exact non-null stable feature ID and return
    `.concorde/attempts/<stable-feature-id>/`; reject any basename-derived, module-local, or mismatched
    attempt path.
 9. Create or re-evaluate the built-in requirements-quality checklist only at the second response's

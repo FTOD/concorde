@@ -34,13 +34,16 @@ class OneCommandInstallAcceptance(unittest.TestCase):
             self.assertTrue((target / ".agents/skills/concorde-init/SKILL.md").is_file())
             self.assertTrue((target / ".concorde/install.json").is_file())
 
-    def test_each_supported_integration_installs_all_commands(self):
+    def test_each_supported_integration_installs_all_capabilities(self):
         with tempfile.TemporaryDirectory() as temporary:
             for integration, root_name in (("codex", ".agents/skills"), ("claude", ".claude/skills")):
                 target = Path(temporary) / integration
                 result = self.run_installer(target, "--integration", integration, "--apply")
                 self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
-                self.assertEqual(len(list((target / root_name).glob("concorde-*/SKILL.md"))), 16)
+                self.assertEqual(len(list((target / root_name).glob("concorde-*/SKILL.md"))), 18)
+                self.assertTrue(
+                    (target / root_name / "concorde-standard-dev-loop/SKILL.md").is_file()
+                )
 
     def test_existing_project_control_and_sources_are_preserved(self):
         with tempfile.TemporaryDirectory() as temporary:

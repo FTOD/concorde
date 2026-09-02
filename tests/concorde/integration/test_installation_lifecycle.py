@@ -43,10 +43,10 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         shutil.copy2(REPOSITORY_ROOT / "concorde.json", destination / "concorde.json")
         shutil.copy2(REPOSITORY_ROOT / "LICENSE", destination / "LICENSE")
         shutil.copy2(REPOSITORY_ROOT / "README.md", destination / "README.md")
-        for directory in ("agent-assets", "commands", "src", "templates"):
+        for directory in ("agent-assets", "operations", "skills", "src", "templates"):
             shutil.copytree(REPOSITORY_ROOT / directory, destination / directory, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
         (destination / "scripts").mkdir()
-        for script in ("concorde.py", "concorde.ps1", "concorde.sh", "reflections_queue.py", "render-command-surfaces.py", "workspace.py"):
+        for script in ("concorde.py", "concorde.ps1", "concorde.sh", "reflections_queue.py", "render-capability-surfaces.py", "workspace.py"):
             shutil.copy2(REPOSITORY_ROOT / "scripts" / script, destination / "scripts" / script)
         return destination
 
@@ -64,9 +64,9 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         _, applied = self.run_install("--integration", "codex", "--apply")
         self.assertEqual(applied["status"], "installed")
         receipt = json.loads((self.root / ".concorde/install.json").read_text())
-        self.assertEqual(receipt["concorde_version"], "1.1.0")
+        self.assertEqual(receipt["concorde_version"], "2.0.0")
         self.assertEqual(receipt["architecture_profile"], 7)
-        self.assertEqual(receipt["workspace_protocol"], 12)
+        self.assertEqual(receipt["workspace_protocol"], 13)
         before = self.tree_digest()
         _, repeated = self.run_install("--integration", "codex", "--apply")
         self.assertEqual(repeated["status"], "unchanged")
@@ -78,15 +78,15 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         unrelated.write_text("maintainer\n")
         updated = self.package_copy("updated")
         manifest = json.loads((updated / "concorde.json").read_text())
-        manifest["version"] = "1.1.0"
+        manifest["version"] = "2.0.0"
         (updated / "concorde.json").write_text(json.dumps(manifest, indent=2) + "\n")
-        command = updated / "commands/concorde.ask.md"
-        command.write_text(command.read_text() + "\nUpdate marker.\n")
+        skill = updated / "skills/concorde-ask/SKILL.md"
+        skill.write_text(skill.read_text() + "\nUpdate marker.\n")
         _, preview = self.run_install("--integration", "codex", checkout=updated)
         self.assertTrue(any(item["action"] == "update" for item in preview["actions"]))
         self.run_install("--integration", "codex", "--apply", checkout=updated)
         receipt = json.loads((self.root / ".concorde/install.json").read_text())
-        self.assertEqual(receipt["concorde_version"], "1.1.0")
+        self.assertEqual(receipt["concorde_version"], "2.0.0")
         self.assertEqual(unrelated.read_text(), "maintainer\n")
         self.assertIn("Update marker", (self.root / ".agents/skills/concorde-ask/SKILL.md").read_text())
 
@@ -134,6 +134,33 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertEqual(value["status"], "conflict")
         self.assertEqual(outside.read_text(), "outside\n")
+
+    def test_modified_owned_legacy_output_blocks_migration_and_is_preserved(self):
+        self.root.mkdir()
+        legacy = self.root / ".concorde/framework/commands/concorde.plan.md"
+        legacy.parent.mkdir(parents=True)
+        legacy.write_text("original legacy\n")
+        receipt = {
+            "schema_version": 1,
+            "outputs": [
+                {
+                    "path": ".concorde/framework/commands/concorde.plan.md",
+                    "role": "command",
+                    "sha256": "sha256:"
+                    + hashlib.sha256(legacy.read_bytes()).hexdigest(),
+                }
+            ],
+        }
+        receipt_path = self.root / ".concorde/install.json"
+        receipt_path.parent.mkdir(exist_ok=True)
+        receipt_path.write_text(json.dumps(receipt))
+        legacy.write_text("maintainer changed legacy\n")
+        before = self.tree_digest()
+        result, value = self.run_install("--apply", check=False)
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(value["status"], "conflict")
+        self.assertEqual(before, self.tree_digest())
+        self.assertEqual(legacy.read_text(), "maintainer changed legacy\n")
 
 
 if __name__ == "__main__":

@@ -81,7 +81,7 @@ def render_notes(version: str, base_url: str, assets: dict[str, str]) -> str:
         "python3 concorde/scripts/install-concorde.py --checkout concorde --target . --integration codex --apply",
         "```",
         "",
-        "The canonical `concorde.*` command IDs are rendered as `concorde-*` skills and implemented entirely by Concorde.",
+        "Canonical leaf Skills and paired LangGraph Operations are projected together as `concorde-*` agent skills and implemented entirely by Concorde.",
         "",
     ]
     return "\n".join(lines)
@@ -213,7 +213,7 @@ def publish(
         record["notes"] = notes
         if dry_run:
             record["outcome"] = "dry-run"
-            record["message"] = "plan printed; no release host operation was performed"
+            record["message"] = "plan printed; no release-host action was performed"
             return record, EXIT_OK
         existing = host.view(tag)
         if existing is not None and not existing.get("isDraft"):

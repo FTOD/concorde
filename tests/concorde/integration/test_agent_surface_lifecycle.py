@@ -21,17 +21,17 @@ class AgentSurfaceLifecycleIntegrationTests(unittest.TestCase):
         self.root = Path(self.temporary.name) / "checkout"
         self.root.mkdir()
         shutil.copy2(REPOSITORY_ROOT / "concorde.json", self.root / "concorde.json")
-        for directory in ("agent-assets", "commands", "src", "templates"):
+        for directory in ("agent-assets", "operations", "skills", "src", "templates"):
             shutil.copytree(REPOSITORY_ROOT / directory, self.root / directory, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
         (self.root / "scripts/development").mkdir(parents=True)
         shutil.copy2(REPOSITORY_ROOT / SCRIPT_RELATIVE, self.root / SCRIPT_RELATIVE)
 
-    def run_sync(self, operation: str, check: bool = True):
+    def run_sync(self, tool: str, check: bool = True):
         result = subprocess.run(
             [
                 sys.executable,
                 str(self.root / SCRIPT_RELATIVE),
-                operation,
+                tool,
                 "--project-root", str(self.root),
                 "--format", "json",
             ],
@@ -48,7 +48,7 @@ class AgentSurfaceLifecycleIntegrationTests(unittest.TestCase):
         self.assertEqual({item["action"] for item in before["actions"]}, {"create"})
         _, applied = self.run_sync("apply")
         self.assertEqual(applied["status"], "current")
-        self.assertEqual(applied["outputs"], 38)
+        self.assertEqual(applied["outputs"], 40)
         self.assertTrue((self.root / ".agents/skills/concorde-plan/SKILL.md").is_file())
         self.assertTrue((self.root / ".claude/skills/concorde-plan/SKILL.md").is_file())
 
@@ -62,7 +62,7 @@ class AgentSurfaceLifecycleIntegrationTests(unittest.TestCase):
         drift = [item for item in status["actions"] if item["action"] != "current"]
         self.assertEqual([(item["path"], item["action"]) for item in drift], [(".agents/skills/concorde-plan/SKILL.md", "update")])
         self.run_sync("apply")
-        self.assertIn("Protocol 12", skill.read_text())
+        self.assertIn("Protocol 13", skill.read_text())
 
     def test_legacy_symlink_is_replaced_with_regular_native_surface(self):
         target = self.root / "legacy.md"
@@ -86,10 +86,10 @@ class AgentSurfaceLifecycleIntegrationTests(unittest.TestCase):
         self.assertIsNone(value)
         self.assertIn("non-file conflict", result.stderr)
 
-    def test_canonical_source_change_updates_only_its_generated_integrations(self):
+    def test_canonical_skill_change_updates_only_its_generated_integrations(self):
         self.run_sync("apply")
-        command = self.root / "commands/concorde.checklist.md"
-        command.write_text(command.read_text() + "\nLifecycle marker.\n")
+        skill = self.root / "skills/concorde-checklist/SKILL.md"
+        skill.write_text(skill.read_text() + "\nLifecycle marker.\n")
         _, status = self.run_sync("status")
         changed = {item["path"] for item in status["actions"] if item["action"] == "update"}
         self.assertEqual(changed, {

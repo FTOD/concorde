@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "operation": "validate",
+  "schema_version": 2,
+  "tool": "validate",
   "target": "specs/example",
   "status": "invalid",
   "artifacts": ["specs/example/architecture.md"],

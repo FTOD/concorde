@@ -18,7 +18,7 @@ const baseline = new Map([
   ['docs/project-structure.md', '/docs/project-structure'],
   ['docs/concorde-workflow.md', '/docs/concorde-workflow'],
   ['docs/agent-surfaces.md', '/docs/agent-surfaces'],
-  ['docs/commands.md', '/docs/commands'],
+  ['docs/skills.md', '/docs/skills'],
   ['docs/releasing.md', '/docs/releasing'],
   ['docs/contributing/docsite.md', '/docs/contributing/docsite'],
 ]);
@@ -33,15 +33,15 @@ describe('maintained Concorde framework guides', () => {
     const readme = registry.documents.find((document) => document.sourcePath === 'README.md');
     if (!readme) throw new Error('Expected root README.md in the content registry.');
     const model = readme.content.indexOf('## The model');
-    const workflow = readme.content.indexOf('## Workflow');
+    const workflow = readme.content.indexOf('## Leaf Skills and Operations');
     const install = readme.content.indexOf('## Install');
     expect(model).toBeGreaterThan(-1);
     expect(workflow).toBeGreaterThan(model);
     expect(install).toBeGreaterThan(workflow);
-    for (const command of ['init', 'context', 'ask', 'validate', 'deliver']) {
-      expect(readme.content).toContain(`$concorde-${command}`);
+    for (const skill of ['init', 'context', 'ask', 'validate', 'deliver']) {
+      expect(readme.content).toContain(`$concorde-${skill}`);
     }
-    expect(readme.links.some((link) => link.targetSourcePath === 'docs/commands.md')).toBe(true);
+    expect(readme.links.some((link) => link.targetSourcePath === 'docs/skills.md')).toBe(true);
     const homepageTargets = new Set(readme.links.map((link) => link.targetRoute));
     for (const route of ['/architecture/module.concorde', '/docs/ontology', '/docs/concorde-workflow']) {
       expect(homepageTargets).toContain(route);
@@ -94,7 +94,7 @@ describe('maintained Concorde framework guides', () => {
     const architecturePages = registry.documents.filter(
       (document): document is ModuleArchitecture => document.contentKind === 'module-architecture',
     );
-    expect(architecturePages).toHaveLength(6);
+    expect(architecturePages).toHaveLength(7);
     expect(architecturePages.every((document) => document.architectureDiagrams.length === 1)).toBe(true);
     expect(architecturePages.flatMap((document) => document.architectureDiagrams)
       .every((diagram) => diagram.kind === 'architecture' && diagram.source.endsWith('/diagrams/system-overview.json'))).toBe(true);
@@ -102,14 +102,14 @@ describe('maintained Concorde framework guides', () => {
       .every((document) => !('architectureDiagrams' in document))).toBe(true);
   });
 
-  it('documents ask as a cited read-only agent surface rather than a runtime operation', async () => {
+  it('documents ask as a cited read-only leaf Skill rather than a LangGraph Operation', async () => {
     const registry = await buildRegistry(projectRoot);
-    const commands = registry.documents.find((document) => document.sourcePath === 'docs/commands.md');
-    if (!commands) throw new Error('Expected docs/commands.md in the documentation registry.');
-    const text = commands.content.toLowerCase();
-    expect(text).toContain('concorde.ask');
+    const skills = registry.documents.find((document) => document.sourcePath === 'docs/skills.md');
+    if (!skills) throw new Error('Expected docs/skills.md in the documentation registry.');
+    const text = skills.content.toLowerCase();
+    expect(text).toContain('concorde-ask');
     expect(text).toContain('read-only');
-    expect(text).toContain('never invokes another command');
-    expect(text).toContain('protocol 12');
+    expect(text).toContain('never invokes another skill');
+    expect(text).toContain('protocol 13');
   });
 });

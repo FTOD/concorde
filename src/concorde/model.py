@@ -1,4 +1,4 @@
-"""Immutable entities shared by Concorde Source Profile 7 operations."""
+"""Immutable entities shared by Concorde Source Profile 7 Tools."""
 
 from __future__ import annotations
 
@@ -184,8 +184,8 @@ class InitializationProposal:
 
 
 @dataclass(frozen=True)
-class OperationResult:
-    operation: str
+class ToolResult:
+    tool: str
     target: str
     status: str
     artifacts: tuple[str, ...] = ()

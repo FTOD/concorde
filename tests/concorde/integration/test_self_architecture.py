@@ -11,12 +11,12 @@ from concorde.validate import validate_project  # noqa: E402
 
 
 class SelfArchitectureTests(unittest.TestCase):
-    def test_concorde_has_six_recursive_profile_seven_architectures(self):
+    def test_concorde_has_seven_recursive_profile_seven_architectures(self):
         package = ProjectRepository(REPOSITORY_ROOT).load()
         modules = package.documents("module")
-        self.assertEqual(len(modules), 6)
+        self.assertEqual(len(modules), 7)
         self.assertEqual({module.identifier for module in modules}, {
-            "module.concorde", "module.concorde.commands", "module.concorde.runtime",
+            "module.concorde", "module.concorde.skills", "module.concorde.operations", "module.concorde.runtime",
             "module.concorde.workspace", "module.concorde.distribution", "module.concorde.auto-docs",
         })
         self.assertTrue(all(module.path.endswith("architecture.md") for module in modules))
@@ -27,7 +27,7 @@ class SelfArchitectureTests(unittest.TestCase):
         context = bounded_context(REPOSITORY_ROOT, "module.concorde")
         self.assertEqual(context.status, "success", context.findings)
         projection = context.result["context"]
-        self.assertEqual(len(projection["children"]), 5)
+        self.assertEqual(len(projection["children"]), 6)
         self.assertTrue(all("architecture" in child for child in projection["children"]))
         self.assertTrue(projection["current_module"]["entities"])
         self.assertTrue(projection["current_module"]["relationships"])

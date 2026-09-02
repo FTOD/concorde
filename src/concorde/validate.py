@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 
-from .diagnostics import finding_key
-from .model import Finding, OperationResult, SourceDocument
+from .diagnostics import digest_sources, finding_key
+from .model import Finding, SourceDocument, ToolResult
 from .repository import ProjectRepository, RepositoryError
 from .validation.diagrams import validate_diagrams
 from .validation.entities import validate_entities
@@ -16,6 +16,7 @@ from .validation.freshness import validate_freshness
 from .validation.hierarchy import validate_hierarchy
 from .validation.layout import validate_layout
 from .validation.reflections import validate_reflections
+from .validation.capabilities import capability_source_paths, validate_capabilities
 
 
 FOCUSED_VALIDATORS = (
@@ -27,6 +28,7 @@ FOCUSED_VALIDATORS = (
     validate_reflections,
     validate_evidence,
     validate_freshness,
+    validate_capabilities,
 )
 
 
@@ -35,7 +37,11 @@ def _finding(rule: str, source: SourceDocument, message: str, remediation: str) 
 
 
 def _target_artifacts(package, target: str | None) -> tuple[str, ...]:
-    all_artifacts = sorted([source.path for source in package.sources] + list(package.diagrams))
+    all_artifacts = sorted(
+        [source.path for source in package.sources]
+        + list(package.diagrams)
+        + list(capability_source_paths(package.project_root))
+    )
     if not target or target in {package.specification_root, "."}:
         return tuple(all_artifacts)
     matches = package.by_id.get(target, ())
@@ -50,13 +56,13 @@ def _target_artifacts(package, target: str | None) -> tuple[str, ...]:
     return tuple(sorted(set(selected)))
 
 
-def validate_project(project_root: str | Path, target: str | None = None) -> OperationResult:
-    operation_target = target or "."
+def validate_project(project_root: str | Path, target: str | None = None) -> ToolResult:
+    tool_target = target or "."
     try:
         package = ProjectRepository(project_root).load()
     except RepositoryError as error:
         finding = Finding("CONCORDE-SOURCE-001", "error", ".concorde/config.json", str(error), "Correct the Profile 7 configuration or malformed architecture/feature/control-state source and retry.")
-        return OperationResult("validate", operation_target, "invalid", findings=(finding,), result={"summary": {"errors": 1, "warnings": 0, "infos": 0}, "source_digest": "sha256:" + "0" * 64})
+        return ToolResult("validate", tool_target, "invalid", findings=(finding,), result={"summary": {"errors": 1, "warnings": 0, "infos": 0}, "source_digest": "sha256:" + "0" * 64})
 
     findings: list[Finding] = []
     for validator in FOCUSED_VALIDATORS:
@@ -76,11 +82,18 @@ def validate_project(project_root: str | Path, target: str | None = None) -> Ope
 
     ordered = tuple(sorted(findings, key=finding_key))
     summary = Counter(item.severity for item in ordered)
-    return OperationResult(
+    digest_paths = (
+        [source.path for source in package.sources]
+        + list(package.diagrams)
+        + list(package.auxiliary)
+        + list(capability_source_paths(package.project_root))
+    )
+    source_digest = digest_sources(package.project_root, digest_paths)
+    return ToolResult(
         "validate",
-        operation_target,
+        tool_target,
         "invalid" if summary["error"] else "success",
         artifacts,
         ordered,
-        {"summary": {"errors": summary["error"], "warnings": summary["warning"], "infos": summary["info"]}, "source_digest": package.source_digest},
+        {"summary": {"errors": summary["error"], "warnings": summary["warning"], "infos": summary["info"]}, "source_digest": source_digest},
     )

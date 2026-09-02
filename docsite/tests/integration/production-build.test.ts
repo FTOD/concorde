@@ -67,14 +67,15 @@ describe('Profile 7 production build', () => {
     expect(autoDocsFeature).toMatchObject({moduleRoute: '/architecture/module.concorde.auto-docs'});
 
     const diagrams = manifest.pages.flatMap((page) => page.architectureDiagrams ?? []);
-    expect(diagrams).toHaveLength(6);
+    expect(diagrams).toHaveLength(7);
     expect(diagrams.every((diagram) =>
       diagram.kind === 'architecture' && diagram.source.endsWith('/diagrams/system-overview.json'))).toBe(true);
     expect(Object.keys(firstDiagramHashes).sort()).toEqual([
       'concorde-auto-docs-system-overview.html',
-      'concorde-commands-system-overview.html',
       'concorde-distribution-system-overview.html',
+      'concorde-operations-system-overview.html',
       'concorde-runtime-system-overview.html',
+      'concorde-skills-system-overview.html',
       'concorde-system-overview.html',
       'concorde-workspace-system-overview.html',
     ]);

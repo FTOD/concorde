@@ -16,7 +16,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 REPOSITORY = "https://github.com/FTOD/concorde"
 FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 ARCHITECTURE_PROFILE = 7
-WORKSPACE_PROTOCOL = 12
+WORKSPACE_PROTOCOL = 13
 
 
 class ReleaseIdentityError(ValueError):
@@ -40,8 +40,8 @@ def _read_json(path: Path) -> dict:
 
 def read_release_identity(root: Path = REPOSITORY_ROOT) -> ReleaseIdentity:
     manifest = _read_json(root / "concorde.json")
-    if manifest.get("schema_version") != 1 or manifest.get("name") != "concorde":
-        raise ReleaseIdentityError("concorde.json must declare schema_version 1 and name 'concorde'")
+    if manifest.get("schema_version") != 2 or manifest.get("name") != "concorde":
+        raise ReleaseIdentityError("concorde.json must declare schema_version 2 and name 'concorde'")
     version = manifest.get("version")
     if not isinstance(version, str) or not version or version.startswith("v"):
         raise ReleaseIdentityError("concorde.json version must be an unprefixed release version")
@@ -71,7 +71,9 @@ def archive_name(version: str) -> str:
 def _included(relative: str) -> bool:
     if relative in {"LICENSE", "README.md", "concorde.json", "scripts/install-concorde.py"}:
         return True
-    if relative.startswith(("agent-assets/", "commands/", "src/concorde/", "templates/")):
+    if relative.startswith(
+        ("agent-assets/", "operations/", "skills/", "src/concorde/", "templates/")
+    ):
         return Path(relative).suffix in {".json", ".md", ".py", ".tmpl"}
     if relative.startswith("scripts/"):
         return Path(relative).name in {
@@ -79,7 +81,7 @@ def _included(relative: str) -> bool:
             "concorde.ps1",
             "concorde.sh",
             "reflections_queue.py",
-            "render-command-surfaces.py",
+            "render-capability-surfaces.py",
             "workspace.py",
         }
     return False
@@ -87,7 +89,14 @@ def _included(relative: str) -> bool:
 
 def package_files(root: Path = REPOSITORY_ROOT) -> Iterable[Path]:
     candidates = [root / "LICENSE", root / "README.md", root / "concorde.json", root / "scripts/install-concorde.py"]
-    for directory in ("agent-assets", "commands", "src/concorde", "templates", "scripts"):
+    for directory in (
+        "agent-assets",
+        "operations",
+        "skills",
+        "src/concorde",
+        "templates",
+        "scripts",
+    ):
         candidates.extend(sorted((root / directory).rglob("*")))
     seen: set[str] = set()
     for path in sorted(candidates, key=lambda item: item.relative_to(root).as_posix()):

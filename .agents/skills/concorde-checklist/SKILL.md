@@ -4,10 +4,9 @@ description: "Generate a requirements-quality checklist for one direct feature f
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.checklist.md"
+  source: "skills/concorde-checklist/SKILL.md"
+  kind: "skill"
 ---
-# Concorde Checklist
-
 # Checklist Purpose: Unit Tests for English
 
 Generate a reviewer-owned checklist that evaluates whether the selected feature requirements are
@@ -16,7 +15,7 @@ implementation complete.
 
 ## Workspace gate
 
-Run `python3 scripts/workspace.py --phase checklist` first and require a successful Protocol 12 workspace. Use the returned
+Run `python3 scripts/workspace.py --phase checklist` first and require a successful Protocol 13 workspace. Use the returned
 `feature_path`, `module_architecture`, bounded ancestry/related-feature summaries, and exact
 `checklists_dir`. Never derive a checklist path from the feature source or read another attempt.
 

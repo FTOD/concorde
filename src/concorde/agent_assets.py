@@ -7,7 +7,7 @@ import json
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 
-from .model import Finding, OperationResult
+from .model import Finding, ToolResult
 
 
 RECEIPT_PATH = ".concorde/agent-assets.json"
@@ -48,8 +48,8 @@ def _read_json(path: Path, label: str) -> dict[str, Any]:
 
 def _manifest(asset_root: Path) -> dict[str, Any]:
     value = _read_json(asset_root / "manifest.json", "agent-asset manifest")
-    if value.get("schema_version") != 1 or value.get("protocol") != "reflection-triage/v3":
-        raise AgentAssetError("agent-asset manifest must declare schema_version 1 and reflection-triage/v3")
+    if value.get("schema_version") != 1 or value.get("protocol") != "reflection-triage/v4":
+        raise AgentAssetError("agent-asset manifest must declare schema_version 1 and reflection-triage/v4")
     integrations = value.get("integrations")
     if not isinstance(integrations, dict) or set(integrations) != {"claude", "codex"}:
         raise AgentAssetError("agent-asset manifest must declare exactly claude and codex integrations")
@@ -207,14 +207,14 @@ def preview_agent_assets(
     asset_root: Path,
     integration: str,
     concorde_version: str = "source",
-) -> OperationResult:
+) -> ToolResult:
     try:
         desired = render_projection(asset_root, integration)
         receipt = _load_receipt(project_root)
         actions = _projection_actions(project_root, desired, _prior_outputs(receipt, integration))
         actions.extend(_legacy_conflicts(project_root))
         conflicts = [item for item in actions if item["action"] == "conflict"]
-        return OperationResult(
+        return ToolResult(
             "agent-assets.preview",
             integration,
             "conflict" if conflicts else "proposal",
@@ -237,7 +237,7 @@ def preview_agent_assets(
             ),
         )
     except AgentAssetError as error:
-        return OperationResult(
+        return ToolResult(
             "agent-assets.preview",
             integration,
             "invalid",
@@ -264,10 +264,10 @@ def sync_agent_assets(
     asset_root: Path,
     integration: str,
     concorde_version: str = "source",
-) -> OperationResult:
+) -> ToolResult:
     preview = preview_agent_assets(project_root, asset_root, integration, concorde_version)
     if preview.status in {"conflict", "invalid", "failed"}:
-        return OperationResult(
+        return ToolResult(
             "agent-assets.sync",
             integration,
             preview.status,
@@ -316,7 +316,7 @@ def sync_agent_assets(
     }
     _write_receipt(project_root, receipt)
     changed = config_created or ignore_created or any(item["action"] not in {"unchanged"} for item in actions)
-    return OperationResult(
+    return ToolResult(
         "agent-assets.sync",
         integration,
         "success" if changed else "unchanged",
@@ -325,7 +325,7 @@ def sync_agent_assets(
     )
 
 
-def verify_agent_assets(project_root: Path, asset_root: Path, integration: str) -> OperationResult:
+def verify_agent_assets(project_root: Path, asset_root: Path, integration: str) -> ToolResult:
     try:
         desired = render_projection(asset_root, integration)
         receipt = _load_receipt(project_root)
@@ -354,7 +354,7 @@ def verify_agent_assets(project_root: Path, asset_root: Path, integration: str) 
                     "Run agent-assets sync to seed the default configuration.",
                 )
             )
-        return OperationResult(
+        return ToolResult(
             "agent-assets.verify",
             integration,
             "invalid" if findings else "success",
@@ -363,7 +363,7 @@ def verify_agent_assets(project_root: Path, asset_root: Path, integration: str) 
             result={"integration": integration, "outputs": sorted(desired)},
         )
     except AgentAssetError as error:
-        return OperationResult(
+        return ToolResult(
             "agent-assets.verify",
             integration,
             "invalid",
@@ -371,14 +371,14 @@ def verify_agent_assets(project_root: Path, asset_root: Path, integration: str) 
         )
 
 
-def remove_agent_assets(project_root: Path, integration: str) -> OperationResult:
+def remove_agent_assets(project_root: Path, integration: str) -> ToolResult:
     try:
         receipt = _load_receipt(project_root)
         prior = _prior_outputs(receipt, integration)
         actions = _projection_actions(project_root, {}, prior)
         conflicts = [item for item in actions if item["action"] == "conflict"]
         if conflicts:
-            return OperationResult(
+            return ToolResult(
                 "agent-assets.remove",
                 integration,
                 "conflict",
@@ -399,7 +399,7 @@ def remove_agent_assets(project_root: Path, integration: str) -> OperationResult
                 (project_root / item["path"]).unlink()
         receipt["integrations"].pop(integration, None)
         _write_receipt(project_root, receipt)
-        return OperationResult(
+        return ToolResult(
             "agent-assets.remove",
             integration,
             "success" if prior else "unchanged",
@@ -407,7 +407,7 @@ def remove_agent_assets(project_root: Path, integration: str) -> OperationResult
             result={"integration": integration, "actions": actions},
         )
     except AgentAssetError as error:
-        return OperationResult(
+        return ToolResult(
             "agent-assets.remove",
             integration,
             "invalid",

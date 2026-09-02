@@ -179,7 +179,7 @@ class PublishReleaseTests(unittest.TestCase):
         self.assertEqual(pointer["schema_version"], 1)
         self.assertEqual(pointer["tag"], self.tag)
         self.assertEqual(pointer["architecture_profile"], 7)
-        self.assertEqual(pointer["workspace_protocol"], 12)
+        self.assertEqual(pointer["workspace_protocol"], 13)
         self.assertEqual(pointer["archive"]["name"], builder.archive_name(self.version))
         for removed in ("catalogs", "archives", "bundle_id", "speckit_version", "published_at"):
             self.assertNotIn(removed, pointer)

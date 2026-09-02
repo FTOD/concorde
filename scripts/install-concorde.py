@@ -15,13 +15,15 @@ from typing import Any, Mapping, NamedTuple, Sequence
 SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPT_ROOT / "src"))
 
-from concorde.command_assets import CommandAssetError, command_id, render_commands  # noqa: E402
 from concorde.agent_assets import AgentAssetError, render_projection  # noqa: E402
+from concorde.skill_assets import SkillAssetError, render_capabilities  # noqa: E402
 
 
 FRAMEWORK_ROOT = ".concorde/framework"
 RECEIPT_PATH = ".concorde/install.json"
 INSTALL_SCHEMA = 1
+PACKAGE_ROOTS = ["agent-assets", "operations", "scripts", "skills", "src", "templates"]
+OPERATIONS = ["concorde-standard-dev-loop", "concorde-reflections-triage"]
 
 
 class InstallError(ValueError):
@@ -70,36 +72,38 @@ def load_package(root: Path) -> Package:
         "version",
         "architecture_profile",
         "workspace_protocol",
-        "commands",
+        "skills",
+        "operations",
         "templates",
         "integrations",
         "install",
     }
     if required - set(manifest):
         raise InstallError(f"Concorde manifest is missing fields: {sorted(required - set(manifest))}")
-    if manifest.get("schema_version") != 1 or manifest.get("name") != "concorde":
-        raise InstallError("Concorde manifest must declare schema_version 1 and name 'concorde'")
-    if manifest.get("architecture_profile") != 7 or manifest.get("workspace_protocol") != 12:
-        raise InstallError("Concorde package must declare Architecture Profile 7 and Workspace Protocol 12")
-    if manifest.get("delivery_proposal") != 8 or manifest.get("command_namespace") != "concorde":
-        raise InstallError("Concorde package must declare Delivery Proposal 8 and the concorde command namespace")
+    if manifest.get("schema_version") != 2 or manifest.get("name") != "concorde":
+        raise InstallError("Concorde manifest must declare schema_version 2 and name 'concorde'")
+    if manifest.get("architecture_profile") != 7 or manifest.get("workspace_protocol") != 13:
+        raise InstallError("Concorde package must declare Architecture Profile 7 and Workspace Protocol 13")
+    if manifest.get("delivery_proposal") != 9 or manifest.get("skill_namespace") != "concorde":
+        raise InstallError("Concorde package must declare Delivery Proposal 9 and the concorde Skill namespace")
     install = manifest.get("install")
     if not isinstance(install, dict) or install.get("framework_root") != FRAMEWORK_ROOT or install.get("receipt") != RECEIPT_PATH:
         raise InstallError("Concorde manifest declares an unsupported installation layout")
     integrations = manifest.get("integrations")
     if integrations != ["claude", "codex"]:
         raise InstallError("Concorde manifest must declare exactly claude and codex integrations")
-    if manifest.get("package_roots") != ["agent-assets", "commands", "scripts", "src", "templates"]:
+    if manifest.get("package_roots") != PACKAGE_ROOTS:
         raise InstallError("Concorde manifest declares an unsupported root package inventory")
-    commands = manifest.get("commands")
-    if not isinstance(commands, list) or any(not isinstance(item, str) for item in commands):
-        raise InstallError("Concorde manifest commands must be a string list")
-    if len(commands) != len(set(commands)):
-        raise InstallError("Concorde manifest command inventory contains duplicates")
-    command_paths = sorted((root / "commands").glob("*.md"))
-    observed_commands = sorted(command_id(path) for path in command_paths)
-    if observed_commands != sorted(commands):
-        raise InstallError("Concorde manifest command inventory differs from root commands/")
+    skills = manifest.get("skills")
+    if not isinstance(skills, list) or any(not isinstance(item, str) for item in skills):
+        raise InstallError("Concorde manifest Skills must be a string list")
+    if len(skills) != 16 or len(skills) != len(set(skills)):
+        raise InstallError("Concorde manifest must declare exactly sixteen unique leaf Skills")
+    operations = manifest.get("operations")
+    if operations != OPERATIONS:
+        raise InstallError(f"Concorde manifest must declare exactly these Operations: {OPERATIONS}")
+    if set(skills) & set(operations):
+        raise InstallError("Concorde Skill and Operation names must be globally unique")
     templates = manifest.get("templates")
     if not isinstance(templates, list) or any(not isinstance(item, str) for item in templates):
         raise InstallError("Concorde manifest templates must be a string list")
@@ -108,10 +112,17 @@ def load_package(root: Path) -> Package:
     observed_templates = sorted(path.name for path in (root / "templates").glob("*.md"))
     if observed_templates != sorted(templates):
         raise InstallError("Concorde manifest template inventory differs from root templates/")
-    for required_root in ("agent-assets", "commands", "scripts", "src", "templates"):
+    for required_root in PACKAGE_ROOTS:
         path = root / required_root
         if path.is_symlink() or not path.is_dir():
             raise InstallError(f"Concorde package root is missing: {required_root}")
+    for legacy_root in ("commands", "examples"):
+        if (root / legacy_root).exists() or (root / legacy_root).is_symlink():
+            raise InstallError(f"Concorde package contains removed legacy root: {legacy_root}")
+    try:
+        render_capabilities(root, "codex", FRAMEWORK_ROOT)
+    except SkillAssetError as error:
+        raise InstallError(str(error)) from error
     license_path = root / "LICENSE"
     readme_path = root / "README.md"
     if manifest.get("license") != "MIT" or manifest.get("license_file") != "LICENSE" or license_path.is_symlink() or not license_path.is_file():
@@ -126,7 +137,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
     desired[f"{FRAMEWORK_ROOT}/concorde.json"] = (package.root / "concorde.json").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/LICENSE"] = (package.root / "LICENSE").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/README.md"] = (package.root / "README.md").read_bytes()
-    for directory in ("agent-assets", "commands", "src", "templates"):
+    for directory in ("agent-assets", "operations", "skills", "src", "templates"):
         source_root = package.root / directory
         for path in sorted(source_root.rglob("*")):
             if path.is_symlink():
@@ -141,7 +152,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
         "concorde.ps1",
         "concorde.sh",
         "reflections_queue.py",
-        "render-command-surfaces.py",
+        "render-capability-surfaces.py",
         "workspace.py",
     )
     for name in scripts:
@@ -157,12 +168,15 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
         raise InstallError(f"unsupported integration: {integration}")
     outputs = {path: (content, "framework") for path, content in _package_files(package).items()}
     try:
-        commands = render_commands(package.root, integration, FRAMEWORK_ROOT)
+        capabilities = render_capabilities(package.root, integration, FRAMEWORK_ROOT)
         reflections = render_projection(package.root / "agent-assets/reflections", integration)
-    except (CommandAssetError, AgentAssetError) as error:
+    except (SkillAssetError, AgentAssetError) as error:
         raise InstallError(str(error)) from error
-    for path, content in commands.items():
-        outputs[path] = (content.encode("utf-8"), "command")
+    operations = set(package.manifest["operations"])
+    for path, content in capabilities.items():
+        name = PurePosixPath(path).parent.name
+        role = "operation" if name in operations else "skill"
+        outputs[path] = (content.encode("utf-8"), role)
     for path, content in reflections.items():
         if path in outputs:
             raise InstallError(f"agent output collision: {path}")

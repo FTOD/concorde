@@ -4,10 +4,9 @@ description: "Convert one selected attempt task list into dependency-ordered iss
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.taskstoissues.md"
+  source: "skills/concorde-taskstoissues/SKILL.md"
+  kind: "skill"
 ---
-# Concorde Taskstoissues
-
 ## User Input
 
 ```text
@@ -18,7 +17,7 @@ $ARGUMENTS
 
 ## Workspace gate
 
-Run `python3 scripts/workspace.py --phase taskstoissues` first and require Protocol 12. Use the returned selected feature identity,
+Run `python3 scripts/workspace.py --phase taskstoissues` first and require Protocol 13. Use the returned selected feature identity,
 `feature_path`, `module_architecture`, bounded summaries, `attempt_dir`, `tasks`, `plan`, and
 `validation`. Reject a missing or empty task list. Never resolve a root-level copy or inspect another
 attempt.

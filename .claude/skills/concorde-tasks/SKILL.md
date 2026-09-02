@@ -1,16 +1,15 @@
 ---
 name: concorde-tasks
 description: "Generate dependency-ordered tasks for one Concorde attempt."
-argument-hint: "Optional command guidance"
+argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.tasks.md"
+  source: "skills/concorde-tasks/SKILL.md"
+  kind: "skill"
 user-invocable: true
 disable-model-invocation: false
 ---
-# Concorde Tasks
-
 ## User Input
 
 ```text
@@ -24,7 +23,7 @@ module architecture, feature file/interfaces, code, tests, and projections befor
 
 ## Workspace gate
 
-Run `python3 scripts/workspace.py --phase tasks` first. Require Protocol 12 and a canonical selected feature. Use only returned
+Run `python3 scripts/workspace.py --phase tasks` first. Require Protocol 13 and a canonical selected feature. Use only returned
 `feature_path`, `module_architecture`, bounded ancestry/related summaries, `executable_context`,
 `attempt_dir`, `plan`, `tasks`, `research`, `data_model`, `quickstart`, `validation`,
 `checklists_dir`, and `reflections`. Seed a missing returned tasks file through

@@ -11,14 +11,14 @@ WORKSPACE_FIXTURES = REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/works
 
 
 class DeliveryTerminologyContractTests(unittest.TestCase):
-    def test_workspace_interface_is_protocol12_and_proposal8(self):
+    def test_workspace_interface_is_protocol13_and_proposal9(self):
         schema = json.loads((WORKSPACE_FIXTURES / "feature-workspace.schema.json").read_text(encoding="utf-8"))
         Draft202012Validator.check_schema(schema)
-        self.assertEqual(schema["$defs"]["deliveryResponse"]["properties"]["schema_version"]["const"], 12)
-        self.assertEqual(schema["$defs"]["deliveryProposal"]["properties"]["proposal_version"]["const"], 8)
+        self.assertEqual(schema["$defs"]["deliveryResponse"]["properties"]["schema_version"]["const"], 13)
+        self.assertEqual(schema["$defs"]["deliveryProposal"]["properties"]["proposal_version"]["const"], 9)
         self.assertEqual(
             set(schema["$defs"]["deliveryProposal"]["required"]),
-            {"proposal_version", "operation", "target", "source_digest", "remove"},
+            {"proposal_version", "tool", "target", "source_digest", "remove"},
         )
 
     def test_examples_validate_and_proposal_contains_no_narrative_updates(self):
@@ -33,8 +33,9 @@ class DeliveryTerminologyContractTests(unittest.TestCase):
 
     def test_eligible_response_retains_design_architecture_and_executable_digests(self):
         value = json.loads((WORKSPACE_FIXTURES / "deliver-eligible-response.json").read_text(encoding="utf-8"))
-        self.assertEqual(value["schema_version"], 12)
-        self.assertEqual(value["proposal_version"], 8)
+        self.assertEqual(value["schema_version"], 13)
+        self.assertEqual(value["proposal_version"], 9)
+        self.assertEqual(value["tool"], "deliver")
         self.assertEqual(value["changes"], [{
             "path": value["workspace"]["attempt_dir"],
             "action": "delete",
@@ -48,15 +49,15 @@ class DeliveryTerminologyContractTests(unittest.TestCase):
 
     def test_runtime_and_guidance_use_cleanup_only_delivery_language(self):
         runtime = (REPOSITORY_ROOT / "src/concorde/delivery.py").read_text(encoding="utf-8")
-        command = (REPOSITORY_ROOT / "commands/concorde.deliver.md").read_text(encoding="utf-8")
+        skill = (REPOSITORY_ROOT / "skills/concorde-deliver/SKILL.md").read_text(encoding="utf-8")
         readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("Delivery Proposal 8", runtime)
-        self.assertIn("proposal.get(\"proposal_version\") != 8", runtime)
+        self.assertIn("Delivery Proposal 9", runtime)
+        self.assertIn("proposal.get(\"proposal_version\") != 9", runtime)
         self.assertIn("cleanup-only", runtime)
-        self.assertIn("cleanup-only", command)
+        self.assertIn("cleanup-only", skill)
         self.assertIn("cleanup-only", readme)
         self.assertIn("remove exactly", readme)
-        for body in (command, readme):
+        for body in (skill, readme):
             self.assertNotIn("accepted realization", body.lower())
 
     def test_interface_fixtures_live_outside_specification_hierarchy(self):

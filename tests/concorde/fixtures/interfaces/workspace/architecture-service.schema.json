@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.invalid/interfaces/architecture-service-v1.schema.json",
-  "title": "Concorde Architecture Service Protocol v1",
+  "$id": "https://concorde.invalid/interfaces/architecture-service-v2.schema.json",
+  "title": "Concorde Architecture Service Protocol v2",
   "oneOf": [
     {
       "$ref": "#/$defs/request"
@@ -11,7 +11,7 @@
     }
   ],
   "$defs": {
-    "operation": {
+    "tool": {
       "type": "string",
       "enum": [
         "init",
@@ -42,16 +42,16 @@
       "additionalProperties": false,
       "required": [
         "schema_version",
-        "operation",
+        "tool",
         "target",
         "options"
       ],
       "properties": {
         "schema_version": {
-          "const": 1
+          "const": 2
         },
-        "operation": {
-          "$ref": "#/$defs/operation"
+        "tool": {
+          "$ref": "#/$defs/tool"
         },
         "target": {
           "type": "string",
@@ -67,7 +67,7 @@
       "additionalProperties": false,
       "required": [
         "schema_version",
-        "operation",
+        "tool",
         "target",
         "status",
         "artifacts",
@@ -76,10 +76,10 @@
       ],
       "properties": {
         "schema_version": {
-          "const": 1
+          "const": 2
         },
-        "operation": {
-          "$ref": "#/$defs/operation"
+        "tool": {
+          "$ref": "#/$defs/tool"
         },
         "target": {
           "type": "string",
@@ -111,7 +111,7 @@
         },
         "result": {
           "type": "object",
-          "description": "Operation-specific result. For context: optional `reflections` {path, open: {feature_id: count}} at the current level and an optional `reflections_open` integer on every feature summary, present only when the project reflection log exists."
+          "description": "Tool-specific result. For context: optional `reflections` {path, open: {feature_id: count}} at the current level and an optional `reflections_open` integer on every feature summary, present only when the project reflection log exists."
         }
       }
     },

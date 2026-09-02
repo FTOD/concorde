@@ -1,4 +1,4 @@
-"""Safe direct-feature workspace resolution for Workspace Protocol 12."""
+"""Safe direct-feature workspace resolution for Workspace Protocol 13."""
 
 from __future__ import annotations
 

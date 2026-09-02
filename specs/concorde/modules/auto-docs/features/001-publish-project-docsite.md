@@ -46,10 +46,10 @@ with one architecture page per module and one design page per feature.
 - **Compatibility**: Feature route is `/features/<feature-id>` with no companion pages.
 - **Implementing entities**: `entity.auto-docs.publisher`, `entity.auto-docs.docusaurus`.
 
-### `contract.auto-docs.build-interface` — Build/preview/validate commands
+### `contract.auto-docs.build-interface` — Build, preview, and validation scripts
 
 - **Consumer**: Maintainer and CI.
-- **Direction**: Command/config/source input to status, manifest, candidate, or diagnostics.
+- **Direction**: Script/config/source input to status, manifest, candidate, or diagnostics.
 - **Entry points**: npm `start`, `inspect`, `validate`, `render-diagrams`, `build`, and `check` scripts.
 - **Inputs**: Repository/docsite roots, canonical sources, dependencies, and optional environment configuration.
 - **Outputs**: Deterministic diagnostics, Manifest 10, preview, or atomically promoted build.
@@ -76,7 +76,7 @@ with one architecture page per module and one design page per feature.
 - **Provider**: `external:archify`.
 - **Consumer**: Auto-Docs diagram delivery orchestrator.
 - **Direction**: Maintained module diagram JSON to validated self-contained HTML/receipts.
-- **Entry points**: Project-local Archify skill/CLI validation, delivery, and optional visual-check operations.
+- **Entry points**: Project-local Archify Skill/CLI validation, delivery, and optional visual-check actions.
 - **Inputs**: Declared architecture-owned JSON source, output path, hidden generic legend policy, and generator environment.
 - **Outputs**: Showcase validation result, standalone HTML, source/output digests, and truthful visual-review status.
 - **Obligations**: Preserve source authority/provenance, write only generated output, and reject stale/invalid/escaping deliveries.

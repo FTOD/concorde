@@ -23,7 +23,7 @@ code/tests, `.concorde/reflections/log.md`, and the corresponding stable-ID cont
 
 | Entity ID | Role |
 |---|---|
-| `entity.concorde.workspace-resolver` | Resolves selection and emits Feature Workspace Protocol 12. |
+| `entity.concorde.workspace-resolver` | Resolves selection and emits Feature Workspace Protocol 13. |
 | `entity.concorde.runtime` | Loads module/feature identities and safe canonical paths. |
 | `entity.concorde.specification` | Supplies direct feature files and architecture. |
 | `entity.concorde.control-state` | Supplies stable-ID attempt and reflection state. |
@@ -32,16 +32,18 @@ code/tests, `.concorde/reflections/log.md`, and the corresponding stable-ID cont
 
 ### `interface.concorde.workspace` — Resolve selected feature phase paths
 
-- **Consumer**: Concorde lifecycle commands and delivery.
+- **Consumer**: Concorde lifecycle Skills, Operation stages, and delivery Tool.
 - **Direction**: Selection/phase input to structured workspace output.
 - **Entry points**: `workspace.py --phase <phase>` with optional `--feature-path`.
 - **Inputs**: Project root, phase, and native `.concorde/feature.json` selection or canonical direct feature file.
-- **Outputs**: Protocol 12 identity/`feature_path`, module architecture/ancestry, related feature paths, stable-ID-derived attempt paths/state, reflection path, and executable roots; a first-pass planned feature has unavailable attempt fields.
+- **Outputs**: Protocol 13 Tool result containing identity/`feature_path`, module
+  architecture/ancestry, related feature paths, stable-ID-derived attempt paths/state, reflection
+  path, and executable roots; a first-pass planned feature has unavailable attempt fields.
 - **Obligations**: Return only real project-contained direct features/control paths, validate stable-ID binding, require a second post-front-matter specify resolution, and never create later-phase artifacts implicitly.
 - **Failures**: Invalid layout/ID, missing feature/architecture, orphan/colliding attempt, attempted orphan adoption, ambiguity, symlinks, or unsafe paths stop resolution.
-- **Compatibility**: Protocol 12 removes specification-local control state while retaining `feature_path` and rejecting all earlier removed authority fields.
+- **Compatibility**: Protocol 13 removes specification-local control state while retaining `feature_path` and rejecting all earlier removed authority fields.
 - **Implementing entities**: `entity.concorde.workspace-resolver`, `entity.concorde.runtime`.
-- **Example**: `workspace.py --phase plan --feature-path specs/example/features/001-change.md` returns `schema_version: 12` and `attempt_dir: .concorde/attempts/feature.example.change` from the file's stable ID.
+- **Example**: `workspace.py --phase plan --feature-path specs/example/features/001-change.md` returns `schema_version: 13` and `attempt_dir: .concorde/attempts/feature.example.change` from the file's stable ID.
 
 ## Usage Scenarios
 
@@ -52,7 +54,7 @@ code/tests, `.concorde/reflections/log.md`, and the corresponding stable-ID cont
 ## Requirements
 
 - **FR-001**: A valid feature MUST be one direct `<module>/features/<NNN-name>.md` file registered by that module, with no wrapper directory.
-- **FR-002**: Protocol 12 MUST expose only `feature_path`, module architecture/ancestry, related feature paths, control attempt/reflection paths, and executable context fields.
+- **FR-002**: Protocol 13 MUST expose only `feature_path`, module architecture/ancestry, related feature paths, control attempt/reflection paths, and executable context fields.
 - **FR-003**: Phase resolution MUST derive canonical temporal paths without reading other attempts or creating later artifacts.
 - **FR-004**: Legacy trio/subfeature/contract/module-control layouts and unsafe/symlinked roots MUST be rejected with Profile 7 remediation.
 - **FR-005**: Planned-feature resolution MUST not infer a stable ID from the filename and MUST rerun after front matter before checklist creation.

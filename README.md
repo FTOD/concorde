@@ -4,10 +4,10 @@ Concorde is a standalone, module-centered architecture and feature workflow for 
 coding agents. It provides one structural entry point per module, one complete specification per
 feature, bounded implementation context, deterministic validation, and cleanup-only delivery.
 
-Concorde no longer depends on or composes with Spec Kit. Its public command namespace is
-`concorde.*`, rendered as `concorde-*` agent skills. The Markdown formatting of commands/templates
-retains useful ideas from Spec Kit as acknowledged reference lineage. All current instructions,
-templates, runtime behavior, installation, and ownership are Concorde-native.
+Concorde no longer depends on or composes with Spec Kit. Its public capability namespace is
+`concorde-*`: leaf Skills perform one bounded phase, while paired Operation skills invoke LangGraphs
+that compose several leaves with explicit controls. Skill/template Markdown retains useful formatting
+ideas from Spec Kit as acknowledged reference lineage; all behavior and ownership are Concorde-native.
 
 ## The model
 
@@ -41,13 +41,13 @@ installed framework/agent files are reproducible projections, never intent autho
 Read [Ontology](docs/ontology.md), [Specification model](docs/specification-model.md), and
 [Project structure](docs/project-structure.md).
 
-## Workflow commands
+## Leaf Skills and Operations
 
-Canonical command sources live together in root `commands/` (for example,
-`commands/concorde.specify.md`). Install/rendering turns
-them into agent-native skills while retaining these public IDs:
+Canonical leaves live at `skills/<name>/SKILL.md`. Each Operation lives at
+`operations/<name>/{operation.py,SKILL.md}` and its Markdown is installed into the same agent Skill
+namespace while Python remains in the framework.
 
-| Command | Outcome |
+| Leaf Skill | Outcome |
 |---|---|
 | `$concorde-constitution` | Create or amend `.concorde/constitution.md`. |
 | `$concorde-init` | Propose and explicitly apply a Profile 7 root module/reflection log. |
@@ -66,18 +66,19 @@ them into agent-native skills while retaining these public IDs:
 | `$concorde-ask` | Answer from cited package guidance and bounded project sources. |
 | `$concorde-deliver` | Validate a completed attempt and remove exactly that attempt. |
 
-Feature Workspace Protocol 12 returns one selected `feature_path`, its providing architecture,
+Feature Workspace Protocol 13 returns one selected `feature_path`, its providing architecture,
 bounded ancestry/related summaries, stable-ID attempt/reflection state, and deterministic source/test
-discovery hints. Delivery Proposal 8 binds current digests and one exact removal path. Any stale,
+discovery hints. Delivery Proposal 9 binds current digests and one exact removal path. Any stale,
 incomplete, invalid, or unsafe delivery is non-mutating.
 
-See [Workflow](docs/concorde-workflow.md) and [Command reference](docs/commands.md).
+The paired `concorde-standard-dev-loop` and `concorde-reflections-triage` Operations sit above these
+leaves. See [Workflow](docs/concorde-workflow.md) and [Skill reference](docs/skills.md).
 
 ## Compose prompts with LangGraph
 
-Canonical `commands/concorde.*.md` files are complete prompts as well as agent-skill sources. Runtime
-can resolve those whole prompts into ordered [LangGraph](https://github.com/langchain-ai/langgraph)
-stages without copying prompt text or making LangGraph responsible for Concorde permissions.
+Canonical `skills/*/SKILL.md` files are complete leaf prompts. Operations resolve those whole Skills
+into ordered [LangGraph](https://github.com/langchain-ai/langgraph) stages without copying prompt text
+or making LangGraph responsible for Concorde permissions.
 
 The tested standard graph is:
 
@@ -91,17 +92,17 @@ checkout:
 
 ```bash
 uv sync
-uv run python examples/standard_dev_loop.py "Add audit logging"
+uv run python operations/concorde-standard-dev-loop/operation.py "Add audit logging"
 ```
 
 The base Concorde installer remains Python-only and offline; LangGraph is an optional workflow-host
 dependency constrained to `langgraph>=1.2,<2`. See
-[Workflow](docs/concorde-workflow.md#langgraph-prompt-stage-composition) for the injected executor API
+[Workflow](docs/concorde-workflow.md#langgraph-operations) for the injected executor API
 and installation boundary.
 
 ## Explore architecture and implementation alignment
 
-Concorde 1.1 adds the native read-only `concorde explore` operation. It works without an implementation graph,
+The native read-only `concorde explore` Tool works without an implementation graph,
 returning bounded Profile 7 modules/entities/features/interfaces with truthful `unknown` alignment:
 
 ```bash
@@ -124,7 +125,7 @@ The sidecar names each Concorde subject, requested status, evidence basis, imple
 node IDs, finding IDs, and rationale. Only explicit revision-current executable evidence can become
 verified; deterministic findings can establish disagreement. Missing, stale, candidate-only, or
 invalid evidence becomes unknown. UA node/edge types remain adapter metadata, and neither text search
-nor name/path similarity creates a mapping. The command emits canonical JSON to stdout and writes no
+nor name/path similarity creates a mapping. The Tool emits canonical JSON to stdout and writes no
 index or source file. Installed projects use
 `.concorde/framework/scripts/concorde.py` with the same arguments.
 
@@ -156,7 +157,7 @@ See [Quick start](docs/quick-start.md).
 
 ## Maintain this checkout
 
-Root `commands/`, `templates/`, `src/concorde/`, `scripts/`, and `agent-assets/` are canonical.
+Root `skills/`, `operations/`, `templates/`, `src/concorde/`, `scripts/`, and `agent-assets/` are canonical.
 Tracked `.agents/**` and `.claude/**` files are generated source-checkout projections; Concorde does
 not install a duplicate `.concorde/framework` into its own repository.
 
@@ -197,9 +198,10 @@ safe members, SHA-256, an isolated native installation, and byte-equivalent rebu
 
 | Path | Responsibility |
 |---|---|
-| `commands/` | Canonical complete lifecycle command Markdown. |
+| `skills/` | Canonical leaf capabilities, one `SKILL.md` per directory. |
+| `operations/` | Paired LangGraph `operation.py` and user-facing `SKILL.md` capabilities. |
 | `templates/` | Complete feature/plan/task/checklist/constitution/reflection format references. |
-| `src/concorde/` | Deterministic runtime, alignment explorer, and command/agent projectors. |
+| `src/concorde/` | Deterministic Tool runtime, capability validation, and Skill/agent projectors. |
 | `agent-assets/` | Canonical reflection-triage roles and integration templates. |
 | `scripts/` | Portable runtime adapters, installer, checkout sync, and release programs. |
 | `concorde.json` | Single package/version/profile/protocol/inventory authority. |

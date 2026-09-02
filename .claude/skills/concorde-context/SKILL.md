@@ -1,16 +1,15 @@
 ---
 name: concorde-context
 description: "Retrieve exactly one bounded module or feature context"
-argument-hint: "Optional command guidance"
+argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.context.md"
+  source: "skills/concorde-context/SKILL.md"
+  kind: "skill"
 user-invocable: true
 disable-model-invocation: false
 ---
-# Concorde Context
-
 # Retrieve Concorde Context
 
 Require one stable module or feature ID in `$ARGUMENTS`, then run
@@ -30,5 +29,5 @@ When present, return the project-control reflection-log path and open counts, bu
 maintainer asks about recorded problems. Generated projections may be listed with provenance and
 freshness but are never stronger than their architecture or feature source.
 
-This operation is strictly read-only. Preserve canonical status, findings, source digest, and exit
+This Skill is strictly read-only. Preserve canonical status, findings, source digest, and exit
 behavior.

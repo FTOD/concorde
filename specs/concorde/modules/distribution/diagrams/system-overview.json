@@ -9,13 +9,13 @@
     "viewBox": [1380, 650]
   },
   "components": [
-    {"id": "manifest", "type": "cloud", "label": "Manifest", "sublabel": "Version + inventory", "pos": [40, 270], "size": [160, 68]},
+    {"id": "manifest", "type": "cloud", "label": "Manifest 2", "sublabel": "Capability inventory", "pos": [40, 270], "size": [160, 68]},
     {"id": "builder", "type": "backend", "label": "Archive Builder", "sublabel": "Reproducible package", "pos": [280, 100], "size": [180, 68]},
     {"id": "installer", "type": "backend", "label": "Installer", "sublabel": "Owned projection", "pos": [280, 440], "size": [180, 68]},
     {"id": "archive", "type": "database", "label": "Release Archive", "sublabel": "Immutable bytes", "pos": [550, 100], "size": [180, 68]},
-    {"id": "framework", "type": "database", "label": "Framework Projection", "sublabel": "Project-local package", "pos": [550, 440], "size": [190, 68]},
+    {"id": "framework", "type": "database", "label": "Framework Projection", "sublabel": "Tools + capability pairs", "pos": [550, 440], "size": [190, 68]},
     {"id": "verifier", "type": "security", "label": "Release Verifier", "sublabel": "Integrity + rebuild", "pos": [830, 100], "size": [180, 68]},
-    {"id": "surfaces", "type": "frontend", "label": "Agent Surfaces", "sublabel": "Codex and Claude", "pos": [830, 440], "size": [180, 68]},
+    {"id": "surfaces", "type": "frontend", "label": "Agent Skills", "sublabel": "Leaf + Operation", "pos": [830, 440], "size": [180, 68]},
     {"id": "publisher", "type": "backend", "label": "Publisher", "sublabel": "Draft transaction", "pos": [1090, 100], "size": [170, 68]},
     {"id": "github", "type": "external", "label": "GitHub Releases", "sublabel": "Immutable host", "pos": [1230, 270], "size": [150, 68]}
   ],

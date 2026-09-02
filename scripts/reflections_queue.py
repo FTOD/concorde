@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic queue, allocation, plan-state, and merged-removal helper for reflection-triage/v3."""
+"""Deterministic queue, allocation, plan-state, and merged-removal helper for reflection-triage/v4."""
 
 from __future__ import annotations
 
@@ -425,7 +425,7 @@ def allocate_id(root: Path) -> dict[str, Any]:
     replacement = _render_high_water(text, parsed, allocated)
     _atomic_log_replace(path, before, replacement)
     return {
-        "operation": "allocate-reflection-id",
+        "tool": "allocate-reflection-id",
         "status": "allocated",
         "log_path": log_path(),
         "allocated_id": format_reflection_id(allocated),
@@ -480,7 +480,7 @@ def remove_merged(root: Path, requested: list[str]) -> dict[str, Any]:
         raise QueueError("Git HEAD changed during merged-reflection validation")
     _atomic_log_replace(path, before, replacement)
     return {
-        "operation": "remove-merged-reflections",
+        "tool": "remove-merged-reflections",
         "status": "removed",
         "log_path": log_path(),
         "removed": identifiers,

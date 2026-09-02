@@ -36,8 +36,8 @@ class ImplementationDeliveryIntegrationTests(unittest.TestCase):
     def write_proposal(self, root: Path, eligibility, **extra) -> Path:
         path = root / eligibility.result["proposal_path"]
         proposal = {
-            "proposal_version": 8,
-            "operation": "deliver",
+            "proposal_version": 9,
+            "tool": "deliver",
             "target": eligibility.target,
             "source_digest": eligibility.result["source_digest"],
             "remove": [eligibility.result["workspace"]["attempt_dir"]],
@@ -52,7 +52,7 @@ class ImplementationDeliveryIntegrationTests(unittest.TestCase):
             before = tree_hashes(root)
             result = propose_delivery(root)
             self.assertEqual(result.status, "eligible", result.findings)
-            self.assertEqual(result.result["proposal_version"], 8)
+            self.assertEqual(result.result["proposal_version"], 9)
             self.assertEqual(result.result["changes"], [{"path": ATTEMPT, "action": "delete", "meaning": "Remove the complete temporal attempt; retain every durable and executable authority."}])
             self.assertEqual(result.result["evidence_summary"], {"passed": 1, "missing": 0})
             self.assertNotIn("feature_implementation", result.result["workspace"])
@@ -148,6 +148,20 @@ class ImplementationDeliveryIntegrationTests(unittest.TestCase):
             before = tree_hashes(root)
             result = apply_delivery(root, proposal.relative_to(root).as_posix())
             self.assertEqual(result.status, "invalid")
+            self.assertEqual(tree_hashes(root), before)
+
+    def test_proposal_rejects_the_legacy_operation_discriminator(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_copy(temporary)
+            eligibility = propose_delivery(root)
+            proposal = self.write_proposal(root, eligibility)
+            payload = json.loads(proposal.read_text(encoding="utf-8"))
+            payload["operation"] = payload.pop("tool")
+            proposal.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+            before = tree_hashes(root)
+            result = apply_delivery(root, proposal.relative_to(root).as_posix())
+            self.assertEqual(result.status, "invalid")
+            self.assertIn("operation discriminator", result.findings[0].message)
             self.assertEqual(tree_hashes(root), before)
 
     def test_symlinked_attempt_input_is_invalid_and_non_mutating(self):

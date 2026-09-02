@@ -12,7 +12,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 class InstalledClaudeWorkflowAcceptance(unittest.TestCase):
-    def test_native_claude_install_exposes_commands_agents_and_runtime(self):
+    def test_native_claude_install_exposes_capabilities_agents_and_runtime(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             install = subprocess.run(
@@ -20,7 +20,7 @@ class InstalledClaudeWorkflowAcceptance(unittest.TestCase):
                 text=True, capture_output=True,
             )
             self.assertEqual(install.returncode, 0, install.stderr or install.stdout)
-            self.assertEqual(len(list((root / ".claude/skills").glob("concorde-*/SKILL.md"))), 16)
+            self.assertEqual(len(list((root / ".claude/skills").glob("concorde-*/SKILL.md"))), 18)
             self.assertTrue((root / ".claude/agents/reflection-investigator.md").is_file())
             feature = create_feature_file(root)
             write_selection(root, feature.relative_to(root).as_posix())

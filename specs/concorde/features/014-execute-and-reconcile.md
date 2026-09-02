@@ -25,7 +25,7 @@ test/projection sources, and records proportionate evidence before marking work 
 
 | Entity ID | Role |
 |---|---|
-| `entity.concorde.commands` | Defines execution authority, ordering, evidence, reflection, and halt rules. |
+| `entity.concorde.skills` | Defines execution authority, ordering, evidence, reflection, and halt rules. |
 | `entity.concorde.workspace-resolver` | Returns the selected attempt plus protected durable/code context. |
 | `entity.concorde.coding-agent` | Performs test-first implementation and task/evidence updates. |
 | `entity.concorde.runtime` | Supplies deterministic validation and safe structured diagnostics. |
@@ -36,13 +36,13 @@ test/projection sources, and records proportionate evidence before marking work 
 
 - **Consumer**: Maintainer delegating an approved dependency-ordered implementation.
 - **Direction**: Complete attempt input to reconciled sources, tests, evidence, tasks, and reflections.
-- **Entry points**: `concorde.implement`, `concorde.analyze`, and `concorde.converge`.
+- **Entry points**: Leaf Skills `concorde-implement`, `concorde-analyze`, and `concorde-converge`.
 - **Inputs**: Feature design, module architecture, source/tests, complete plan/tasks/checklists, and active reflection context.
 - **Outputs**: Product/specification changes authorized by tasks, passing evidence in the selected stable-ID control attempt's `validation.md`, checked tasks, and appended difficult choices/problems.
 - **Obligations**: Respect dependencies/file ownership, test before code where required, protect authorities, and never claim skipped/failed checks as passed.
 - **Failures**: A failed blocking task or unexpected protected-source change stops dependent work and preserves truthful task state.
 - **Compatibility**: Implementation updates code/spec owners directly; it never writes an accepted realization narrative.
-- **Implementing entities**: `entity.concorde.commands`, `entity.concorde.workspace-resolver`, `entity.concorde.coding-agent`, `entity.concorde.runtime`.
+- **Implementing entities**: `entity.concorde.skills`, `entity.concorde.workspace-resolver`, `entity.concorde.coding-agent`, `entity.concorde.runtime`.
 
 ## Usage Scenarios
 

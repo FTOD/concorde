@@ -1,16 +1,15 @@
 ---
 name: concorde-ask
 description: "Answer a grounded, read-only question about Concorde"
-argument-hint: "Optional command guidance"
+argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "commands/concorde.ask.md"
+  source: "skills/concorde-ask/SKILL.md"
+  kind: "skill"
 user-invocable: true
 disable-model-invocation: false
 ---
-# Concorde Ask
-
 ## User question
 
 ```text
@@ -25,7 +24,7 @@ projections, or edit any file.
 
 ## Source order
 
-1. Read `./concorde.json`, the relevant file under `./commands/`, and any
+1. Read `./concorde.json`, the relevant file under `./skills/`, and any
    directly referenced format file under `./templates/`.
 2. For a project-specific question, use `.concorde/config.json` and `.concorde/feature.json` only to
    locate sources. Start with exactly one module's `architecture.md` or one direct `features/*.md` file:

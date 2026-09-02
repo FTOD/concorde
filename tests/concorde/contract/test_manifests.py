@@ -17,9 +17,9 @@ class ManifestContractTests(unittest.TestCase):
 
     def test_one_manifest_declares_native_identity_profile_and_install_layout(self):
         manifest = self.manifest
-        self.assertEqual(manifest["schema_version"], 1)
-        self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "1.1.0"))
-        self.assertEqual((manifest["architecture_profile"], manifest["workspace_protocol"]), (7, 12))
+        self.assertEqual(manifest["schema_version"], 2)
+        self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "2.0.0"))
+        self.assertEqual((manifest["architecture_profile"], manifest["workspace_protocol"]), (7, 13))
         self.assertEqual(manifest["integrations"], ["claude", "codex"])
         self.assertEqual(manifest["install"], {
             "framework_root": ".concorde/framework",
@@ -35,12 +35,14 @@ class ManifestContractTests(unittest.TestCase):
         finally:
             sys.path.pop(0)
 
-    def test_manifest_inventory_equals_root_commands_and_templates(self):
-        commands = sorted(path.stem for path in (REPOSITORY_ROOT / "commands").glob("*.md"))
+    def test_manifest_inventory_equals_root_capabilities_and_templates(self):
+        skills = sorted(path.name for path in (REPOSITORY_ROOT / "skills").iterdir())
+        operations = sorted(path.name for path in (REPOSITORY_ROOT / "operations").iterdir())
         templates = sorted(path.name for path in (REPOSITORY_ROOT / "templates").glob("*.md"))
-        self.assertEqual(sorted(self.manifest["commands"]), commands)
+        self.assertEqual(sorted(self.manifest["skills"]), skills)
+        self.assertEqual(sorted(self.manifest["operations"]), operations)
         self.assertEqual(sorted(self.manifest["templates"]), templates)
-        self.assertEqual((len(commands), len(templates)), (16, 6))
+        self.assertEqual((len(skills), len(operations), len(templates)), (16, 2, 6))
 
     def test_complete_feature_template_contains_profile_and_product_sections(self):
         body = (REPOSITORY_ROOT / "templates/feature-template.md").read_text()
@@ -75,7 +77,7 @@ class ManifestContractTests(unittest.TestCase):
         for key in ("speckit_version", "bundle_id", "install_policy"):
             self.assertNotIn(key, serialized)
 
-    def test_native_source_install_materializes_framework_and_commands(self):
+    def test_native_source_install_materializes_framework_and_capabilities(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
             result = subprocess.run(
@@ -92,8 +94,10 @@ class ManifestContractTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
             self.assertEqual(json.loads(result.stdout)["status"], "installed")
             self.assertTrue((target / ".concorde/framework/concorde.json").is_file())
-            self.assertTrue((target / ".concorde/framework/src/concorde/workflows.py").is_file())
+            self.assertTrue((target / ".concorde/framework/src/concorde/operation_runtime.py").is_file())
+            self.assertTrue((target / ".concorde/framework/operations/concorde-standard-dev-loop/operation.py").is_file())
             self.assertTrue((target / ".agents/skills/concorde-constitution/SKILL.md").is_file())
+            self.assertTrue((target / ".agents/skills/concorde-standard-dev-loop/SKILL.md").is_file())
             self.assertFalse((target / ".specify").exists())
 
 

@@ -23,19 +23,19 @@ from concorde.agent_assets import (  # noqa: E402
 
 
 class AgentAssetTests(unittest.TestCase):
-    def test_canonical_manifest_and_both_projections_require_v3(self):
+    def test_canonical_manifest_and_both_projections_require_v4(self):
         manifest = json.loads((CANONICAL_ASSETS / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["protocol"], "reflection-triage/v3")
+        self.assertEqual(manifest["protocol"], "reflection-triage/v4")
         for integration in ("claude", "codex"):
             rendered = render_projection(CANONICAL_ASSETS, integration)
-            self.assertTrue(all("reflection-triage/v3" in text for text in rendered.values()))
+            self.assertTrue(all("reflection-triage/v4" in text for text in rendered.values()))
 
         with tempfile.TemporaryDirectory() as temporary:
             legacy = Path(temporary) / "reflections"
             shutil.copytree(CANONICAL_ASSETS, legacy)
             path = legacy / "manifest.json"
-            path.write_text(path.read_text().replace("reflection-triage/v3", "reflection-triage/v2"))
-            with self.assertRaisesRegex(AgentAssetError, "reflection-triage/v3"):
+            path.write_text(path.read_text().replace("reflection-triage/v4", "reflection-triage/v3"))
+            with self.assertRaisesRegex(AgentAssetError, "reflection-triage/v4"):
                 render_projection(legacy, "codex")
 
     def test_fresh_sync_is_repeatable_and_seeds_shared_config_once(self):
@@ -45,7 +45,6 @@ class AgentAssetTests(unittest.TestCase):
             first = sync_agent_assets(root, CANONICAL_ASSETS, "codex", "0.9.0")
             self.assertEqual(first.status, "success")
             expected = {
-                ".agents/skills/reflections-triage/SKILL.md",
                 ".codex/agents/reflection_investigator.toml",
                 ".codex/agents/reflection_implementer.toml",
             }

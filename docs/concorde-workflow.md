@@ -21,12 +21,12 @@ analyze ↔ implement ↔ converge
         ↓
 validate full reconciled repository
         ↓
-Proposal 8 delivery removes attempt only
+Proposal 9 delivery removes attempt only
 ```
 
 ## 1. Initialize
 
-`concorde.init` proposes Profile 7 control state, `.concorde/reflections/log.md`, and a root
+`concorde-init` proposes Profile 7 control state, `.concorde/reflections/log.md`, and a root
 `architecture.md`. The maintainer
 reviews exact files/digests before apply. Existing configured hierarchies return unchanged rather
 than receiving starter prose.
@@ -37,23 +37,23 @@ only from product responsibilities, never from Concorde's internal roles.
 
 ## 2. Specify and clarify
 
-`concorde.specify` creates or revises one direct module feature file. It embeds every meaningful
+`concorde-specify` creates or revises one direct module feature file. It embeds every meaningful
 interface and references existing architecture entities. A new feature is registered in the
 providing architecture's immediate feature inventory; structural entity/relationship changes remain
 explicit architecture work.
 
-`concorde.clarify` asks a small number of high-impact questions and reconciles each answer through
+`concorde-clarify` asks a small number of high-impact questions and reconciles each answer through
 front matter, usage, interfaces, failures, requirements, and Architecture Zoom. It never redefines a
 module entity inside a feature.
 
-For a new file, the first Protocol 12 response leaves stable-ID attempt fields unresolved. After the
+For a new file, the first Protocol 13 response leaves stable-ID attempt fields unresolved. After the
 feature front matter exists, specification reruns the resolver and evaluates the built-in
 requirements checklist under the returned `.concorde/attempts/<stable-feature-id>/checklists/` path.
 Custom checklists remain reviewer-owned.
 
 ## 3. Plan
 
-`concorde.plan` runs Workspace Protocol 12 and reads:
+`concorde-plan` runs Workspace Protocol 13 and reads:
 
 - the complete selected feature file;
 - the providing module architecture and bounded ancestry;
@@ -70,12 +70,12 @@ package, and public-guide reconciliation.
 Planning does not edit durable sources. It records conflicts, workarounds, and provisional prototype
 choices in `.concorde/reflections/log.md` and keeps going when a safe bounded assumption is possible.
 New entries reserve their ID atomically through the installed reflection helper. The separate
-reflection-triage/v3 merge workflow removes only validated merged `small` `fast-loop` entries and
+reflection-triage/v4 merge workflow removes only validated merged `small` `fast-loop` entries and
 leaves all other routes for maintainer disposition.
 
 ## 4. Tasks
 
-`concorde.tasks` produces dependency-ordered, test-first tasks. Every task has a stable ID, exact
+`concorde-tasks` produces dependency-ordered, test-first tasks. Every task has a stable ID, exact
 paths, requirement or acceptance trace, dependencies, and a proportionate verification check.
 
 Tasks may explicitly own durable reconciliation when the planned change affects architecture entity
@@ -85,14 +85,14 @@ behavior, implementation, and evidence coherent in the same attempt.
 
 ## 5. Analyze, implement, and converge
 
-`concorde.analyze` is a read-only consistency/coverage audit. It can append only a centralized
+`concorde-analyze` is a read-only consistency/coverage audit. It can append only a centralized
 reflection when the audit itself encounters a framework/tooling conflict.
 
-`concorde.implement` executes tasks phase-by-phase. Before checking a task it records compact attempt
+`concorde-implement` executes tasks phase-by-phase. Before checking a task it records compact attempt
 evidence: task/trace, actual command, outcome, evidence path, scope, and limitation. Only a passed
 proportionate check permits completion. Unexpected durable changes stop task completion.
 
-`concorde.converge` compares current repository/evidence state with feature intent, architecture, and plan,
+`concorde-converge` compares current repository/evidence state with feature intent, architecture, and plan,
 then appends only genuinely remaining tasks. It preserves existing task IDs/text/markers.
 
 ## 6. Validation and projections
@@ -106,10 +106,10 @@ one task. Generated output never substitutes for an entity or interface definiti
 
 ## 7. Delivery
 
-`concorde.deliver` is invoked only after architecture/feature/code/tests/projections already
+`concorde-deliver` is invoked only after architecture/feature/code/tests/projections already
 agree and every task/checklist has evidence.
 
-Proposal mode returns a digest-bound Delivery Proposal 8 naming exactly the selected attempt. The
+Proposal mode returns a digest-bound Delivery Proposal 9 naming exactly the selected attempt. The
 invocation authorizes immediate apply without a second question. Apply rechecks digest, validation,
 completion, and safe paths, then atomically removes the attempt. It writes no durable narrative.
 
@@ -117,36 +117,36 @@ Any failure preserves the entire attempt and every durable/executable authority.
 
 ## Fast loop
 
-`concorde.fast-loop` is an alternative for one small, fully understood, single-feature/single-module
+`concorde-fast-loop` is an alternative for one small, fully understood, single-feature/single-module
 change with no active attempt, migration, new topology/type/compatibility policy, or multi-feature
 coordination. It directly reconciles the minimal design/architecture/code/test set and runs focused
 evidence. Otherwise use the full lifecycle.
 
-## LangGraph prompt-stage composition
+## LangGraph Operations
 
-The Markdown files under `commands/` are complete canonical prompts. Agent projections wrap those
-prompts for Codex or Claude; workflow graphs resolve the same bodies through
-`concorde.command_assets.load_command_prompt`. Generated skills are never prompt authority.
+The Markdown files under `skills/` are complete canonical leaf capabilities. Agent projections wrap
+those Skills for Codex or Claude; Operation graphs resolve the same bodies through
+`concorde.skill_assets.load_skill_prompt`. Generated skills are never prompt authority.
 
-`concorde.workflows.build_standard_dev_loop` uses LangGraph's public `StateGraph`, `START`, `END`,
+`operations/concorde-standard-dev-loop/operation.py` uses the shared Operation runtime and LangGraph's public `StateGraph`, `START`, `END`,
 `compile()`, and `invoke()` APIs to build this topology:
 
 ```text
 START → specify → plan → tasks → deliver → END
 ```
 
-Stages are ordered prompt bundles rather than copied or merged fragments:
+Stages are ordered Skill bundles rather than copied or merged fragments:
 
-| Stage | Canonical prompts |
+| Stage | Canonical Skills |
 |---|---|
-| specify | `concorde.specify` |
-| plan | `concorde.plan` |
-| tasks | `concorde.tasks`, then `concorde.implement` |
-| deliver | `concorde.validate`, then `concorde.deliver` |
+| specify | `concorde-specify` |
+| plan | `concorde-plan` |
+| tasks | `concorde-tasks`, then `concorde-implement` |
+| deliver | `concorde-validate`, then `concorde-deliver` |
 
 The graph receives an injected executor. Each invocation contains the user request, immutable stage
-definition and prompts, and all prior successful stage results. The executor decides how an
-authorized agent or model consumes those prompts; the example only records them. An executor
+definition and Skills, and all prior successful stage results. The executor decides how an
+authorized agent or model consumes those Skills; the deterministic CLI only records them. An executor
 exception remains visible and prevents downstream nodes.
 
 LangGraph is optional and constrained to `langgraph>=1.2,<2`. It is a development dependency in this
@@ -155,7 +155,7 @@ installer remain dependency-free. Installed workflow hosts must provide that opt
 their Python environment. Run the real graph without credentials or network calls:
 
 ```bash
-uv run python examples/standard_dev_loop.py "Add audit logging"
+uv run python operations/concorde-standard-dev-loop/operation.py "Add audit logging"
 ```
 
 ## Reflections

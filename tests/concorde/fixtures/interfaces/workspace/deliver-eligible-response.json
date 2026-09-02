@@ -1,6 +1,6 @@
 {
-  "schema_version": 12,
-  "operation": "deliver",
+  "schema_version": 13,
+  "tool": "deliver",
   "target": "feature.example.api.health-check",
   "status": "eligible",
   "workspace": {
@@ -49,7 +49,7 @@
   ],
   "findings": [],
   "source_digest": "sha256:3a4b8170a27c10f664308295149c300ef5e98323214b90c2ea365dad061e0f00",
-  "proposal_version": 8,
+  "proposal_version": 9,
   "proposal_path": ".concorde/attempts/feature.example.api.health-check/deliver-proposal.json",
   "task_summary": {"complete": 27, "incomplete": 0, "malformed": 0},
   "checklist_summary": {"files": 1, "complete": 22, "incomplete": 0, "malformed": 0},

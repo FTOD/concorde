@@ -10,7 +10,7 @@ from tests.concorde.support.paths import INVALID_PROJECTS, RUNTIME_ROOT, VALID_P
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.diagnostics import canonical_json, operation_envelope  # noqa: E402
+from concorde.diagnostics import canonical_json, tool_envelope  # noqa: E402
 from concorde.validate import validate_project  # noqa: E402
 
 
@@ -20,7 +20,7 @@ class ValidationIntegrationTests(unittest.TestCase):
             root = Path(temporary) / "project"
             shutil.copytree(VALID_PROJECT, root)
             before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}
-            outputs = [canonical_json(operation_envelope(validate_project(root))) for _ in range(3)]
+            outputs = [canonical_json(tool_envelope(validate_project(root))) for _ in range(3)]
             self.assertEqual(outputs[0], outputs[1])
             self.assertEqual(outputs[1], outputs[2])
             self.assertEqual(before, {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()})

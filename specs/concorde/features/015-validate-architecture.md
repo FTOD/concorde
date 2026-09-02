@@ -18,7 +18,8 @@ evidence_status: partial
 ## Outcome and Scope
 
 A maintainer receives a repeatable, complete, actionable account of Profile 7 layout, module/entity/
-relationship/interface/reference integrity, evidence status, diagrams, freshness, and reflections.
+relationship/interface/reference integrity, Script/Skill/Operation structure, evidence status,
+diagrams, freshness, and reflections.
 
 ## Architecture Zoom
 
@@ -35,7 +36,8 @@ relationship/interface/reference integrity, evidence status, diagrams, freshness
 
 - **Consumer**: Maintainer, CI, planning/implementation/delivery gates, and Auto-Docs.
 - **Direction**: Project/target input to read-only structured findings.
-- **Entry points**: Canonical command `concorde.validate` and native runtime `validate` operation in source or installed framework.
+- **Entry points**: Leaf Skill `concorde-validate` and native Runtime `validate` Tool in source or
+  installed framework.
 - **Inputs**: Project root plus optional stable module/feature focus.
 - **Outputs**: Status, source digest, exact findings with rule/severity/subject/path/remediation, and evidence summary.
 - **Obligations**: Be deterministic/non-mutating, report all applicable findings, and distinguish structure from behavior proof.
@@ -51,12 +53,17 @@ relationship/interface/reference integrity, evidence status, diagrams, freshness
 
 ## Requirements
 
-- **FR-001**: Validation MUST check Profile 7 config/layout, rooted module cycles, exact inventories, path-safe IDs, stable-ID control bindings, entity types/locators, and relationship endpoints/direction.
+- **FR-001**: Validation MUST check Profile 7 config/layout, rooted module cycles, exact inventories,
+  path-safe IDs, stable-ID control bindings, entity types/locators, and relationship endpoints/direction.
 - **FR-002**: It MUST check flat feature placement, related IDs, embedded interface completeness/ownership,
   zoom visibility, requirements/evidence state, one showcase Archify architecture system overview per
   module with principal entity relationships, diagram freshness, and reflection grammar/paths.
 - **FR-003**: Legacy module-pair/trio/contracts/subfeatures and unsafe/symlinked sources MUST receive distinct actionable findings.
 - **FR-004**: Validation MUST enumerate all applicable findings deterministically and MUST NOT mutate or claim implementation correctness.
+- **FR-005**: Package-scoped validation MUST enforce Package Manifest 2's exact root inventories,
+  leaf-Skill directories, globally unique capability names, exact Operation Python/Markdown pairs,
+  declared multi-Skill membership, and absence of compatibility capability sources without importing
+  arbitrary Operation Python.
 
 ## Edge Cases
 

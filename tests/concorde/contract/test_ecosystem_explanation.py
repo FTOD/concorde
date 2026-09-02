@@ -14,7 +14,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         for marker in ('FRAMEWORK_ROOT = ".concorde/framework"', 'RECEIPT_PATH = ".concorde/install.json"', "installation_plan", "apply_plan"):
             self.assertIn(marker, installer)
         for guide in guides:
-            for marker in ("scripts/install-concorde.py", "--target", "--integration", "--apply", "Profile 7", "Protocol 12"):
+            for marker in ("scripts/install-concorde.py", "--target", "--integration", "--apply", "Profile 7", "Protocol 13"):
                 self.assertIn(marker, guide)
             self.assertIn("Preview", guide)
             self.assertNotIn("specify-cli", guide)
@@ -28,23 +28,27 @@ class EcosystemExplanationContractTests(unittest.TestCase):
         ]
         combined = "\n".join(path.read_text().lower() for path in sources)
         for term in (
-            "commands/", "templates/", "src/concorde", "agent-assets", "concorde.json",
+            "skills/", "operations/", "templates/", "src/concorde", "agent-assets", "concorde.json",
             "module", "architecture.md", "features/<nnn-name>.md", "code", "tests",
-            "attempts/", "projection", "protocol 12", "cleanup-only", "ownership receipt",
+            "attempts/", "projection", "protocol 13", "cleanup-only", "ownership receipt",
         ):
             self.assertIn(term, combined, term)
         self.assertIn("standalone", combined)
         self.assertIn("no host", combined)
 
-    def test_manifest_counts_match_documented_command_and_template_counts(self):
+    def test_manifest_counts_match_documented_capability_and_template_counts(self):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
         readme = (REPOSITORY_ROOT / "README.md").read_text()
-        self.assertEqual(len(manifest["commands"]), 16)
+        self.assertEqual(len(manifest["skills"]), 16)
+        self.assertEqual(len(manifest["operations"]), 2)
         self.assertEqual(len(manifest["templates"]), 6)
-        for command in manifest["commands"]:
-            self.assertIn(f"commands/{command}.md", str(REPOSITORY_ROOT / f"commands/{command}.md"))
-        self.assertIn("16 commands", (REPOSITORY_ROOT / "specs/concorde/features/003-installation.md").read_text())
-        self.assertIn("Sixteen", (REPOSITORY_ROOT / "specs/concorde/modules/commands/features/001-project-workflow.md").read_text())
+        for skill in manifest["skills"]:
+            self.assertTrue((REPOSITORY_ROOT / f"skills/{skill}/SKILL.md").is_file())
+        for operation in manifest["operations"]:
+            self.assertTrue((REPOSITORY_ROOT / f"operations/{operation}/SKILL.md").is_file())
+            self.assertTrue((REPOSITORY_ROOT / f"operations/{operation}/operation.py").is_file())
+        self.assertIn("16 leaf", (REPOSITORY_ROOT / "specs/concorde/features/003-installation.md").read_text())
+        self.assertIn("16 leaf", (REPOSITORY_ROOT / "specs/concorde/modules/skills/features/001-project-workflow.md").read_text())
         self.assertIn("$concorde-constitution", readme)
 
 

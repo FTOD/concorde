@@ -41,10 +41,14 @@ project/
 
 ## Package source versus installed projection
 
-In the Concorde framework repository, root `commands/`, `templates/`, `src/concorde/`, `scripts/`,
-`agent-assets/`, and `concorde.json` are distribution authorities. `.agents/**` and `.claude/**` are
+In the Concorde framework repository, root `skills/`, `operations/`, `templates/`, `src/concorde/`,
+`scripts/`, `agent-assets/`, and `concorde.json` are distribution authorities. `.agents/**` and `.claude/**` are
 generated checkout projections. Consumer projects receive the same sources beneath
 `.concorde/framework/` plus selected integration outputs and `.concorde/install.json` ownership.
+
+Every leaf directory contains exactly one `SKILL.md`. Every Operation directory contains exactly one
+`operation.py` and its associated `SKILL.md`; the Markdown projects to the agent namespace and the
+Python graph remains in the installed framework.
 
 Project-authored `.concorde/config.json`, `feature.json`, `constitution.md`, attempts, and reflection
 log are never package outputs. Installer defaults create reflection config/ignore only when absent.
@@ -52,7 +56,7 @@ log are never package outputs. Installer defaults create reflection config/ignor
 ## Control state
 
 `.concorde/config.json` selects specification root/profile. `.concorde/feature.json` contains only one
-canonical `feature_path`. Neither defines behavior. Workspace Protocol 12 validates/resolves both
+canonical `feature_path`. Neither defines behavior. Workspace Protocol 13 validates/resolves both
 before each path-sensitive phase.
 
 ## Safety

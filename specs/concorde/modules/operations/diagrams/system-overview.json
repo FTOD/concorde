@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Operations System Overview",
+    "output": "../../../../../generated/architecture/concorde-operations-system-overview.html",
+    "quality_profile": "showcase",
+    "legend": {"mode": "hidden"},
+    "viewBox": [1360, 640]
+  },
+  "components": [
+    {"id": "user", "type": "external", "label": "Maintainer", "sublabel": "Invokes Operation skill", "pos": [40, 270], "size": [160, 68]},
+    {"id": "operation_skill", "type": "frontend", "label": "Operation Skill", "sublabel": "Paired Markdown", "pos": [260, 270], "size": [170, 68]},
+    {"id": "operation_graph", "type": "backend", "label": "operation.py", "sublabel": "Stage topology", "pos": [500, 270], "size": [170, 68]},
+    {"id": "runtime", "type": "backend", "label": "Operation Runtime", "sublabel": "State + executor", "pos": [750, 270], "size": [180, 68]},
+    {"id": "langgraph", "type": "external", "label": "LangGraph 1.x", "sublabel": "Graph scheduler", "pos": [1010, 270], "size": [170, 68]},
+    {"id": "executor", "type": "external", "label": "Coding Agent", "sublabel": "Skill executor", "pos": [1210, 270], "size": [130, 68]},
+    {"id": "skills", "type": "frontend", "label": "Leaf Skills", "sublabel": "Canonical prompts", "pos": [750, 80], "size": [180, 68]},
+    {"id": "state", "type": "database", "label": "Operation State", "sublabel": "Ordered results", "pos": [1010, 470], "size": [170, 68]},
+    {"id": "validator", "type": "security", "label": "Pair Validator", "sublabel": "Python + Markdown", "pos": [500, 470], "size": [170, 68]}
+  ],
+  "connections": [
+    {"id": "user-invokes-operation", "from": "user", "to": "operation_skill", "label": "invokes", "variant": "emphasis"},
+    {"id": "skill-invokes-graph", "from": "operation_skill", "to": "operation_graph", "label": "paired entrypoint", "labelAt": [465, 352]},
+    {"id": "graph-calls-runtime", "from": "operation_graph", "to": "runtime", "label": "builds stages"},
+    {"id": "runtime-calls-langgraph", "from": "runtime", "to": "langgraph", "label": "compiles"},
+    {"id": "langgraph-schedules-executor", "from": "langgraph", "to": "executor", "label": "schedules Skills", "labelAt": [1195, 352]},
+    {"id": "skills-feed-runtime", "from": "skills", "to": "runtime", "label": "complete prompts", "fromSide": "bottom", "toSide": "top", "labelAt": [840, 162]},
+    {"id": "runtime-updates-state", "from": "runtime", "to": "state", "label": "appends results", "fromSide": "right", "toSide": "left"},
+    {"id": "validator-checks-graph", "from": "validator", "to": "operation_graph", "label": "checks pair", "fromSide": "top", "toSide": "bottom"}
+  ]
+}

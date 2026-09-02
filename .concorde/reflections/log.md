@@ -89,7 +89,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.workflow.plan-delivery
 - **Kind**: guidance
-- **Concerns**: commands/concorde.plan.md
+- **Concerns**: skills/concorde-plan/SKILL.md
 - **Expected**: Planning keeps proposed contract work in the selected attempt and schedules any durable contract mutation for implementation.
 - **Observed**: The plan command directs Phase 1 to write feature-root `contracts/`, although child FR-007 and parent FR-015 prohibit planning from updating durable sources and the module reference classifies `attempt/contracts/**` as temporal.
 - **Effect**: worked-around
@@ -120,7 +120,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.workflow.plan-delivery
 - **Kind**: tooling
-- **Concerns**: feature.commands.project-workflow
+- **Concerns**: feature.skills.project-workflow
 - **Expected**: Refreshing the three changed Codex skills preserves every other Concorde preset winner while Claude remains the configured integration.
 - **Observed**: The first cross-integration refresh backed up only three generated skills; removing the temporary Codex preset exposed lower-layer `analyze` and `specify` skills, causing two full-suite failures.
 - **Effect**: worked-around
@@ -137,7 +137,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Expected**: Every reflection `Concerns` value resolves to a stable project ID or existing project-relative path.
 - **Observed**: The first record of the Codex projection problem named the triggering command rather than the maintained preset path, and deterministic validation rejected it.
 - **Effect**: worked-around
-- **Action**: Replaced the unresolved command string with the then-canonical package path and reran reflection validation; the concern now follows `feature.commands.project-workflow` after native migration.
+- **Action**: Replaced the unresolved command string with the then-canonical package path and reran reflection validation; the concern now follows `feature.skills.project-workflow` after native migration.
 - **Improvement**: Validate each new reflection entry immediately after append, before starting the full suite.
 - **Status**: open
 
@@ -159,7 +159,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.workflow.execute-and-reconcile
 - **Kind**: guidance
-- **Concerns**: commands/concorde.analyze.md
+- **Concerns**: skills/concorde-analyze/SKILL.md
 - **Expected**: The complete analysis surface preserves every file except a required centralized reflection record.
 - **Observed**: Mandatory before/after hooks were executed without first requiring the same read-only-except-reflection contract, so a mutating hook could violate the phase promise.
 - **Effect**: worked-around
@@ -198,7 +198,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.define-project-ontology
 - **Kind**: guidance
-- **Concerns**: commands/concorde.plan.md
+- **Concerns**: skills/concorde-plan/SKILL.md
 - **Expected**: A selected feature attempt writes only inside one lifecycle root and treats other feature bodies as read-only authorities.
 - **Observed**: The requested source-profile migration is not coherent unless all twenty-four feature designs, six module packages, runtime, guidance, fixtures, and projections change together; a partial migration cannot be loaded or validated by either profile.
 - **Effect**: worked-around
