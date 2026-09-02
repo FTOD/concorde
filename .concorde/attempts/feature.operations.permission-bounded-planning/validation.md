@@ -572,3 +572,61 @@ Implementation appends one compact record here before checking each task.
   - **Scope**: maintained semantic residue and final fail-closed enforcement coverage.
   - **Limitation**: specialist reflection-agent sandbox templates remain a separate non-profile
     projection contract; converting that contract was not task-authorized and no mixed config is emitted.
+
+- **T038 · delivery readiness**
+  - **Check**: final SHA-256/protected-source comparison, canonical Protocol 13 related-summary
+    digest, 145-path authorization audit, task/checklist scan, active-attempt/cleanup-path check,
+    integrated 370-test/zero-finding gates, and clean implementation snapshot.
+  - **Outcome**: passed.
+  - **Protected before → after**:
+    - selected feature `4461415a9e3d04e75a40562a0b37afc42459aaa6c6434a0f872db3c7ed78aaf9`
+      → `6be4e26338feb5c69901038a74fed844eca6a9e2ba974a528b4579460d389388` (T029; verified status after final gates);
+    - providing architecture `567a0fc7a1f4e954432a4026058a7d9d039298e5ab143ae749b1a0defb4239d6`
+      → `9a55e823d3150637311031063d4bd781dc467a71873f342ec0b7235712b782a2` (T029/T037);
+    - root ancestry `4e338e6526d595c99d533b2468ef32875d0f516ba9c9e4897309fa66a2f318c3`
+      → `5207ac239f171284d13389a4e25d3f36deb99980d1ca5f484d89f9bc92637304` (T031);
+    - Constitution `3a83eebdff17e11e4aa2e02e434171efb86489aec0ec4163f32aa25dab8ad43a`
+      → `0a6a0fd1e8e37324c9f6ecc51b1b125c2f73fdbe30481260d35a2cf2696300f0` (T028);
+    - canonical indented/sorted related summaries
+      `156765fef2dff740afaec2df33bdb3ae5355dd3b6b3ac9f87a9b06f4fb3a5354`
+      → `cf9ee26f43346118eb65c3ee5fc7f754a71b7aaff0a4155023c1486d0a52502a` (T029/T031/T032).
+  - **Final task-declared related authorities**:
+    standard loop `a4f37e6d1cf20569c096046255483475ebe257e853f4efa4390f050c1155356c`;
+    Skills workflow `b35ebb81a11547def3126ede7ba961d04ec75fb0507608ab27ab66b26c6c5a5e`;
+    Runtime Tools `496d0d0df52fd311038614af80c90218629f49ea2f3297b5e34ef5c1386fb314`;
+    Workspace `3872775a7dade54795e67f74600abc529411093760c773bd31512cfb7f1c0525`;
+    Distribution `6e742fd29a6d440b935465f2d5487a38ffea485bee12a624f934d33e33336217`;
+    root features 001 `2d5e258c1a5937c5ff7a2f2317bc15cd6775a22dc25c09afaf36f0c573e8516a`,
+    003 `84c2bb565500c772eb57a9f4fb10ad110722bca2a369a5b1f6baaaba7319dcf3`,
+    004 `b2b052e745972c23ddfeef73549522a1699688989be98e3e197effcd480b4dd8`,
+    005 `c60616a13175fe69510a74d0d6bcf4c93a52fff7f0046545a4e6ddef146afa58`,
+    007 `5b1f53cad88d7be42ccf63119c5b559c0ff39f8f50df99e4de8a7cc7578109b0`,
+    013 `c3f0e2cc3c357b74ea78e868956f241b056b77576d011af7c5df65e0197a72d5`,
+    018 `9c5de806f5a99a9f249c5187b2d1be784144574e39a4b0e116128ae893690c2c`,
+    019 `3dc0c33ab1a9ba8844a4a318748f37c12313e109caa1570f78ed939287495d69`.
+  - **Changed-path authorization**: implementation commit `68db99339fcccb74c8a54b579bf498a4b07d073d`
+    contains 145 files, all grouped by executable tasks: red/final tests and two-module fixture
+    T002–T007/T025/T037; capability/effect/runtime/context/policy/executor source T008–T016/T024/T037;
+    planner split/pair and standard/triage graphs T018–T021/T037; manifest/install/release/projectors
+    T023–T026; generated `.agents/.claude` Skill projections T026/T037; governance/architecture/
+    features/diagram T028–T032; templates/README/docs (including scan-discovered release examples)
+    T028/T033/T037; attempt tasks/evidence T001–T038. No reflection-log, unrelated attempt, setup,
+    lockfile, or unowned path is present in that commit.
+  - **Completion/clean state**: requirements checklist 28/28 checked; this evidence precedes the
+    final T038 marker, yielding 38/38. `git status --porcelain` was empty at clean implementation
+    snapshot `68db99339fcccb74c8a54b579bf498a4b07d073d`; the final process commit must retain empty status.
+    Protocol 13 still resolves the active attempt for explicit delivery.
+  - **Enforcement limitations**: no paid/live model was called; real subprocess handoff is exercised
+    with injected recorders. Native enforcement requires parseable supported clients (Codex
+    permission profiles at 0.138.0+; Claude restricted strict sandbox at 2.1.248+) or a host-verified
+    equivalently narrow outer sandbox. Model transport/authentication is host infrastructure and is
+    not project-command network authority. Generated diagrams/screenshots are ignored projections.
+    The locked docsite dependency audit warning (10 moderate/20 high) remains outside this feature's
+    authorized dependency scope. Branch-local R-009/R-019 path findings are resolved in the
+    parent-owned integration log and excluded from this branch commit.
+  - **Cleanup-only delivery path**:
+    `.concorde/attempts/feature.operations.permission-bounded-planning` (remove exactly this directory
+    later through Delivery Proposal 9; no cleanup was performed during implementation).
+  - **Reflections**: parent recorded R-045 for the solved stash/worktree bootstrap omission (open for
+    this feature: 1 in integrated state); R-015 audit was fixed and confirmed dismissible. This branch
+    made no reflection-log edit.

@@ -74,7 +74,7 @@
 - [X] T035 Run the complete Python suite with `uv run python -m unittest discover -s tests/concorde -t . -p 'test_*.py'` and record passed count/scope in `.concorde/attempts/feature.operations.permission-bounded-planning/validation.md` [SC-005]
 - [X] T036 Run `uv run python scripts/concorde.py validate --format json`, every declared Archify showcase validation, agent-surface freshness, installer/package verification, and `npm run check` in `docsite/`; record each result and limitation in `.concorde/attempts/feature.operations.permission-bounded-planning/validation.md` [SC-005]
 - [X] T037 Scan maintained sources/tests for stale `16 leaf`, `two Operation`, `skills/concorde-plan`, `OPERATION_SKILLS`, leaf-only composition, legacy Codex sandbox/profile mixing, and permissive Claude fallback references; reconcile only task-authorized occurrences [FR-005, FR-006, FR-008, FR-013, FR-014]
-- [ ] T038 Record final protected/related-summary digests, changed-path/task authorization, 38/38 task and 28/28 checklist completion, enforcement limitations, clean tracked worktree status, and exact cleanup-only remove path in `.concorde/attempts/feature.operations.permission-bounded-planning/validation.md` [delivery readiness]
+- [X] T038 Record final protected/related-summary digests, changed-path/task authorization, 38/38 task and 28/28 checklist completion, enforcement limitations, clean tracked worktree status, and exact cleanup-only remove path in `.concorde/attempts/feature.operations.permission-bounded-planning/validation.md` [delivery readiness]
 
 ## Dependencies and Parallel Opportunities
 
