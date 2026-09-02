@@ -215,6 +215,28 @@ class ImplementationDeliveryIntegrationTests(unittest.TestCase):
             self.assertEqual(tree_hashes(root), before)
             self.assertFalse((root / ".concorde/attempts/.feature.example.deliver.concorde-remove").exists())
 
+    def test_partial_cleanup_failure_restores_complete_attempt_from_backup(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_copy(temporary)
+            eligibility = propose_delivery(root)
+            proposal = self.write_proposal(root, eligibility)
+            before = tree_hashes(root)
+            original = shutil.rmtree
+            tombstone = (root / ".concorde/attempts/.feature.example.deliver.concorde-remove").resolve()
+
+            def partially_remove_tombstone(path, *args, **kwargs):
+                if Path(path).resolve() == tombstone:
+                    (tombstone / "tasks.md").unlink()
+                    raise OSError("injected partial removal failure")
+                return original(path, *args, **kwargs)
+
+            with patch("concorde.delivery.shutil.rmtree", side_effect=partially_remove_tombstone):
+                result = apply_delivery(root, proposal.relative_to(root).as_posix())
+            self.assertEqual(result.status, "failed")
+            self.assertEqual(tree_hashes(root), before)
+            self.assertTrue((root / ATTEMPT).is_dir())
+            self.assertFalse(tombstone.exists())
+
     def test_delivery_tombstone_is_feature_specific_and_does_not_collide_with_a_sibling_attempt(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary)
