@@ -20,7 +20,10 @@ TASK_LINE = re.compile(r"^\s*-\s+\[([ xX])\]\s+(T\d{3,})\b")
 TASK_REFERENCE = re.compile(r"\bT\d{3,}\b")
 CHECKLIST_LINE = re.compile(r"^\s*-\s+\[([ xX])\](?:\s+.*)?$")
 CHECKBOX_LIKE_LINE = re.compile(r"^\s*-\s+\[[^\]]*\]")
-EVIDENCE_HEADING = re.compile(r"^###\s+(T\d{3,})\b.*$", re.MULTILINE)
+EVIDENCE_BOUNDARY = re.compile(
+    r"^(?:###\s+(?P<legacy>T\d{3,})\b.*|- \*\*(?P<compact>T\d{3,}) · \S(?:.*\S)?\*\*)$",
+    re.MULTILINE,
+)
 PASSED_OUTCOME = re.compile(r"\*\*Outcome\*\*:\s*passed\b", re.IGNORECASE)
 DELIVERY_PROPOSAL_KEYS = frozenset({"proposal_version", "tool", "target", "source_digest", "remove"})
 
@@ -113,12 +116,12 @@ def _validation_state(project: Path, validation_path: str, task_ids: Iterable[st
     if not path.is_file() or path.is_symlink():
         return [], ["validation.md is missing or is not a real file"]
     body = path.read_text(encoding="utf-8")
-    matches = list(EVIDENCE_HEADING.finditer(body))
+    matches = list(EVIDENCE_BOUNDARY.finditer(body))
     passed: list[str] = []
     for index, match in enumerate(matches):
         block = body[match.end() : matches[index + 1].start() if index + 1 < len(matches) else len(body)]
         if PASSED_OUTCOME.search(block):
-            passed.append(match.group(1))
+            passed.append(match.group("legacy") or match.group("compact"))
     missing = sorted(set(task_ids) - set(passed))
     return sorted(set(passed)), missing
 

@@ -76,6 +76,77 @@ class ImplementationDeliveryIntegrationTests(unittest.TestCase):
             self.assertIn("CONCORDE-DELIVER-013", {item.rule_id for item in result.findings})
             self.assertEqual(tree_hashes(root), before)
 
+    def test_compact_evidence_statuses_are_task_bounded_and_read_only(self):
+        for outcome, expected_status, passed in (
+            ("passed", "eligible", 1),
+            ("failed", "invalid", 0),
+            ("skipped", "invalid", 0),
+        ):
+            with self.subTest(outcome=outcome), tempfile.TemporaryDirectory() as temporary:
+                root = self.project_copy(temporary)
+                validation = root / ATTEMPT / "validation.md"
+                validation.write_text(
+                    "# Validation\n\n## Attempt Evidence\n\n"
+                    "- **T001 · Fixture trace**\n"
+                    "  - **Check**: deterministic fixture check.\n"
+                    f"  - **Outcome**: {outcome}.\n"
+                    "  - **Evidence**: fixture record.\n",
+                    encoding="utf-8",
+                )
+                before = tree_hashes(root)
+                result = propose_delivery(root)
+                self.assertEqual(result.status, expected_status, result.findings)
+                self.assertEqual(result.result["evidence_summary"], {"passed": passed, "missing": 1 - passed})
+                self.assertEqual(tree_hashes(root), before)
+
+    def test_malformed_compact_evidence_boundaries_are_ignored(self):
+        malformed = (
+            "- **T01 · Short task ID**",
+            "- **T001 - Wrong separator**",
+            "- **T001 · **",
+            "- **T001 · Missing closing bold",
+            "- **T001 · Trailing content** extra",
+            "  - **T001 · Nested task record**",
+        )
+        for boundary in malformed:
+            with self.subTest(boundary=boundary), tempfile.TemporaryDirectory() as temporary:
+                root = self.project_copy(temporary)
+                validation = root / ATTEMPT / "validation.md"
+                validation.write_text(
+                    "# Validation\n\n## Attempt Evidence\n\n"
+                    f"{boundary}\n"
+                    "  - **Check**: deterministic fixture check.\n"
+                    "  - **Outcome**: passed.\n",
+                    encoding="utf-8",
+                )
+                before = tree_hashes(root)
+                result = propose_delivery(root)
+                self.assertEqual(result.status, "invalid")
+                self.assertEqual(result.result["evidence_summary"], {"passed": 0, "missing": 1})
+                self.assertEqual(tree_hashes(root), before)
+
+    def test_legacy_and_compact_evidence_mix_and_deduplicate_read_only(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_copy(temporary)
+            write_complete_attempt(root / FEATURE, ("T001", "T002"))
+            validation = root / ATTEMPT / "validation.md"
+            validation.write_text(
+                "# Validation\n\n## Attempt Evidence\n\n"
+                "### T001 — Legacy trace\n\n"
+                "- **Outcome**: passed.\n\n"
+                "- **T001 · Duplicate compact trace**\n"
+                "  - **Outcome**: passed.\n\n"
+                "- **T002 · Compact trace**\n"
+                "  - **Check**: deterministic fixture check.\n"
+                "  - **Outcome**: passed.\n",
+                encoding="utf-8",
+            )
+            before = tree_hashes(root)
+            result = propose_delivery(root)
+            self.assertEqual(result.status, "eligible", result.findings)
+            self.assertEqual(result.result["evidence_summary"], {"passed": 2, "missing": 0})
+            self.assertEqual(tree_hashes(root), before)
+
     def test_existing_checklists_must_be_complete(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary)
