@@ -38,13 +38,13 @@ class InstalledCodexWorkflowAcceptance(unittest.TestCase):
             payload = json.loads(proposal.stdout)
             self.assertEqual(payload["status"], "eligible")
             proposal_path = payload["proposal_path"]
-            (root / proposal_path).write_text(json.dumps({
+            self.assertEqual(json.loads((root / proposal_path).read_text(encoding="utf-8")), {
                 "proposal_version": 9,
                 "tool": "deliver",
                 "target": payload["target"],
                 "source_digest": payload["source_digest"],
                 "remove": [payload["workspace"]["attempt_dir"]],
-            }, sort_keys=True) + "\n")
+            })
             apply = subprocess.run([sys.executable, str(launcher), "--project-root", str(root), "deliver", "--apply", "--proposal", proposal_path], text=True, capture_output=True)
             self.assertEqual(apply.returncode, 0, apply.stdout)
             self.assertFalse(attempt.exists())
