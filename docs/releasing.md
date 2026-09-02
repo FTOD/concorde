@@ -1,63 +1,59 @@
 # Releasing Concorde
 
-Concorde releases one pinned preset + extension + bundle component set. The bundle manifest's version
-is the single release-version authority; preset/extension manifests and bundle pins must agree.
+Concorde releases one standalone package. `concorde.json` is the sole version, repository,
+Architecture Profile, Workspace Protocol, command/template inventory, and integration authority.
 
 ## Build
 
 ```bash
-uv run python scripts/release/build-components.py --output dist
+python3 scripts/release/build-release.py --output dist
 ```
 
-The builder creates deterministic archives and matching catalogs:
+The builder creates exactly:
 
-- `concorde-preset-<version>.zip`
-- `concorde-extension-<version>.zip`
-- `concorde-bundle-<version>.zip`
-- `presets.json`, `extensions.json`, and `bundles.json`
+- `concorde-<version>.zip`
+- `release.json`
 
-Archives use a strict member allowlist, normalized permissions/timestamps, and sorted paths. Catalog
-entries include repository/version/Spec Kit range, Architecture Source Profile 7, Feature Workspace
-Protocol 12, capability counts derived from manifests, HTTPS release locations, and SHA-256 digests.
-The extension archive carries the independently versioned reflection-triage/v3 manifest; no new
-catalog field or schema version is required.
+The archive has one `concorde/` root and an allowlisted set of root README/manifest, commands,
+templates, runtime, portable scripts/native installer, and agent assets. Member order, timestamp,
+mode, and compression settings are normalized. The pointer binds name/version/tag/repository,
+Profile 7, Protocol 12, archive URL, and SHA-256.
 
 ## Verify
 
 ```bash
-uv run python scripts/release/verify-release.py --dist dist
+python3 scripts/release/verify-release.py \
+  --dist dist \
+  --expect-version 1.0.0 \
+  --expect-base-url https://github.com/FTOD/concorde/releases/download/v1.0.0
 ```
 
-Verification checks manifest identity, catalog metadata and URLs, profile/protocol values, archive
-digests, safe member paths, and a byte-equivalent rebuild. For CI release tags, also pin expected
-version/base URL.
+Verification checks:
 
-## Release pointer
-
-`release.json` is the installer's current/version-specific entry point. It declares schema/version/
-tag/repository/base URL, supported Spec Kit range, bundle ID, Profile 7, Protocol 12, catalog URLs,
-and archive digests. The installer rejects a missing or mismatched profile/protocol before catalog
-registration.
+- package/pointer/tag/profile/protocol identity;
+- pointer URL and archive digest;
+- unique safe archive members beneath `concorde/`;
+- required manifest, installer, runtime, command, and template members;
+- absence of removed host-package layouts;
+- isolated extraction and native Codex installation; and
+- a byte-equivalent rebuild from the same source and base URL.
 
 ## Publish
 
-The publisher verifies local artifacts first. An absent release becomes a draft, receives all
-immutable assets, then is published. A leftover draft is repaired by replacing draft assets. An
-identical published release is a no-op; a divergent published release is refused. Published assets
-are never clobbered.
-
 ```bash
-uv run python scripts/release/publish-release.py --dist dist --tag v<version> --dry-run
-uv run python scripts/release/publish-release.py --dist dist --tag v<version>
+python3 scripts/release/publish-release.py --dist dist --tag v1.0.0 --dry-run
+python3 scripts/release/publish-release.py --dist dist --tag v1.0.0
 ```
 
-## Pre-release checklist
+Publication verifies first. An absent release becomes a draft, receives the archive/pointer, then is
+published. A leftover draft is repaired by replacing draft assets. An already-published identical
+release is a no-op. Divergent published bytes are never overwritten; bump the package version.
 
-- canonical package sources and manifests agree;
-- self-host status is current for the active integration;
-- obsolete template projections are absent;
-- Protocol 12/Proposal 8/reflection-triage/v3 markers are fresh across installed surfaces;
-- full Python tests and docsite `npm run check` pass;
-- Concorde validation passes on the self-hosted specifications;
-- catalogs rebuild deterministically; and
-- release notes explain any breaking interface/profile change.
+## Release checklist
+
+- Python unit, contract, integration, and acceptance suites pass.
+- `python3 scripts/concorde.py --project-root . validate` succeeds.
+- `python3 scripts/development/sync-agent-surfaces.py status` is current.
+- Docsite `npm run check` succeeds.
+- The release archive/pointer verify and rebuild byte-identically.
+- Tag is exactly `v<concorde.json version>`.

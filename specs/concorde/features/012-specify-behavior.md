@@ -24,7 +24,7 @@ requirements, failures, related-feature links, and architecture zoom in its sole
 
 | Entity ID | Role |
 |---|---|
-| `entity.concorde.preset-package` | Supplies the design-only specification command and template. |
+| `entity.concorde.commands` | Supplies the design-only specification command and template. |
 | `entity.concorde.coding-agent` | Authors/reviews the bounded feature design and quality checklist. |
 | `entity.concorde.workspace-resolver` | Confirms the providing module and canonical flat feature path. |
 
@@ -40,7 +40,7 @@ requirements, failures, related-feature links, and architecture zoom in its sole
 - **Obligations**: Define every interface and architecture reference, make requirements testable, and avoid implementation prose.
 - **Failures**: Unclear ownership, unresolved material ambiguity, or invalid entity/interface references block readiness.
 - **Compatibility**: Creates no abstract, implementation, feature contract directory, feature diagram, or nested subfeature.
-- **Implementing entities**: `entity.concorde.preset-package`, `entity.concorde.coding-agent`, `entity.concorde.workspace-resolver`.
+- **Implementing entities**: `entity.concorde.commands`, `entity.concorde.coding-agent`, `entity.concorde.workspace-resolver`.
 
 ## Usage Scenarios
 

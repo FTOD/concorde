@@ -1,6 +1,11 @@
+from __future__ import annotations
+
+import contextlib
 import importlib.util
+import io
 import json
 import shutil
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,15 +15,18 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 def _load(name: str, module_name: str):
     spec = importlib.util.spec_from_file_location(module_name, REPOSITORY_ROOT / "scripts/release" / name)
+    assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
-    assert spec.loader
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
 
-class FakeHost:
-    """Records every release-host operation; serves canned state for view/download."""
+publisher = _load("publish-release.py", "concorde_release_publisher_tests")
+builder = _load("build-release.py", "concorde_release_builder_publisher_tests")
 
+
+class FakeHost:
     def __init__(self, existing=None, published_files=None, fail_on=None):
         self.existing = existing
         self.files = published_files or {}
@@ -51,11 +59,7 @@ class FakeHost:
     def download(self, tag, name, directory):
         self._record("download", tag, name)
         if name in self.files:
-            (Path(directory) / name).write_text(self.files[name], encoding="utf-8")
-
-
-publisher = _load("publish-release.py", "concorde_release_publisher")
-builder = _load("build-components.py", "concorde_release_builder_for_publisher_tests")
+            (Path(directory) / name).write_bytes(self.files[name])
 
 
 class PublishReleaseTests(unittest.TestCase):
@@ -69,179 +73,132 @@ class PublishReleaseTests(unittest.TestCase):
         self.assets = publisher.asset_names(self.version)
 
     def _published_files(self):
-        record, code = publisher.publish(self.dist, self.tag, FakeHost(), dry_run=True)
-        self.assertEqual(code, 0, record)
-        return {name: (self.dist / name).read_text(encoding="utf-8") for name in ("extensions.json", "presets.json", "bundles.json", "release.json")}
+        return {name: (self.dist / name).read_bytes() for name in self.assets}
 
-    def _mutating(self, host):
+    @staticmethod
+    def _mutating(host):
         return [call for call in host.calls if call[0] in {"create", "upload", "delete", "publish"}]
 
-    def test_absent_release_is_created_as_draft_uploaded_then_published(self):
-        host = FakeHost(existing=None)
+    def test_absent_release_is_drafted_uploaded_and_published(self):
+        host = FakeHost()
         record, code = publisher.publish(self.dist, self.tag, host)
-        self.assertEqual(code, 0, record)
-        self.assertEqual(record["outcome"], "published")
+        self.assertEqual((code, record["outcome"]), (0, "published"), record)
         self.assertEqual(host.calls[0], ("view", self.tag))
         self.assertEqual(host.calls[1], ("create", self.tag, False))
         self.assertEqual([call[2] for call in host.calls[2:-1]], self.assets)
-        self.assertEqual(len(self.assets), 7)
-        self.assertIn("release.json", self.assets)
+        self.assertEqual(len(self.assets), 2)
         self.assertEqual(host.calls[-1], ("publish", self.tag))
-        self.assertTrue((self.dist / "release.json").is_file())
-        self.assertIn(f"preset:concorde@{self.version}", host.notes)
-        self.assertIn(f"extension:concorde@{self.version}", host.notes)
-        self.assertIn(">=0.16.4,<0.16.5", host.notes)
+        self.assertIn("Standalone Concorde package", host.notes)
+        self.assertIn("install-concorde.py", host.notes)
+        self.assertNotIn("specify bundle", host.notes)
 
-    def test_dry_run_prints_plan_and_touches_no_host(self):
-        host = FakeHost(existing=None)
+    def test_dry_run_prints_plan_and_never_calls_host(self):
+        host = FakeHost()
         record, code = publisher.publish(self.dist, self.tag, host, dry_run=True)
-        self.assertEqual(code, 0)
-        self.assertEqual(record["outcome"], "dry-run")
+        self.assertEqual((code, record["outcome"]), (0, "dry-run"))
         self.assertEqual(host.calls, [])
+        self.assertEqual(len(record["plan"]), 4)
         self.assertEqual(record["plan"][0], f"gh release create {self.tag} --draft --verify-tag")
         self.assertEqual(record["plan"][-1], f"gh release edit {self.tag} --draft=false")
-        self.assertEqual(len(record["plan"]), 9)
-        self.assertEqual(record["base_url"], f"https://github.com/FTOD/concorde/releases/download/{self.tag}")
-        self.assertIn(f"preset:concorde@{self.version}", record["notes"])
 
-    def test_tag_that_disagrees_with_manifest_version_is_rejected(self):
+    def test_tag_mismatch_is_rejected_before_host_call(self):
         host = FakeHost()
         record, code = publisher.publish(self.dist, "v9.9.9", host)
-        self.assertEqual(code, 1)
-        self.assertEqual(record["outcome"], "version-mismatch")
-        self.assertIn("v9.9.9", record["message"])
-        self.assertIn(self.version, record["message"])
+        self.assertEqual((code, record["outcome"]), (1, "version-mismatch"))
         self.assertEqual(host.calls, [])
 
     def test_verification_failure_publishes_nothing(self):
-        catalog = self.dist / "bundles.json"
-        text = catalog.read_text(encoding="utf-8")
-        catalog.write_text(text.replace('"sha256:', '"sha256:0'), encoding="utf-8")
+        archive = self.dist / builder.archive_name(self.version)
+        archive.write_bytes(archive.read_bytes() + b"corrupt")
         host = FakeHost()
         record, code = publisher.publish(self.dist, self.tag, host)
-        self.assertEqual(code, 1)
-        self.assertEqual(record["outcome"], "verification-failed")
-        self.assertIn("digest mismatch", record["message"])
+        self.assertEqual((code, record["outcome"]), (1, "verification-failed"))
+        self.assertIn("digest", record["message"])
         self.assertEqual(host.calls, [])
 
-    def test_prerelease_version_marks_release_and_pointer(self):
-        self.assertTrue(publisher.is_prerelease("0.3.0-rc.1"))
-        self.assertFalse(publisher.is_prerelease("0.3.0"))
+    def test_prerelease_flag_is_forwarded_to_draft(self):
         original = publisher.is_prerelease
         publisher.is_prerelease = lambda version: True
         try:
-            host = FakeHost(existing=None)
+            host = FakeHost()
             record, code = publisher.publish(self.dist, self.tag, host)
         finally:
             publisher.is_prerelease = original
         self.assertEqual(code, 0, record)
         self.assertEqual(host.calls[1], ("create", self.tag, True))
         self.assertIn("--prerelease", record["plan"][0])
-        self.assertTrue(json.loads((self.dist / "release.json").read_text(encoding="utf-8"))["prerelease"])
 
-    def test_leftover_draft_is_repaired_and_published(self):
-        host = FakeHost(existing={"isDraft": True, "assets": [{"name": "presets.json"}, {"name": "concorde-extension-0.1.0.zip"}]})
+    def test_leftover_draft_is_repaired(self):
+        host = FakeHost(existing={"isDraft": True, "assets": [{"name": "old.zip"}, {"name": "release.json"}]})
         record, code = publisher.publish(self.dist, self.tag, host)
-        self.assertEqual(code, 0, record)
-        self.assertEqual(record["outcome"], "published")
+        self.assertEqual((code, record["outcome"]), (0, "published"))
+        self.assertEqual(host.calls[1:3], [("delete", self.tag, "old.zip"), ("delete", self.tag, "release.json")])
         self.assertNotIn("create", [call[0] for call in host.calls])
-        self.assertEqual(host.calls[1:3], [("delete", self.tag, "presets.json"), ("delete", self.tag, "concorde-extension-0.1.0.zip")])
-        self.assertEqual([call[2] for call in host.calls[3:-1]], self.assets)
-        self.assertEqual(host.calls[-1], ("publish", self.tag))
 
-    def test_identical_published_release_is_a_noop(self):
-        files = self._published_files()
-        host = FakeHost(existing={"isDraft": False, "assets": []}, published_files=files)
+    def test_identical_published_release_is_noop(self):
+        host = FakeHost(existing={"isDraft": False, "assets": []}, published_files=self._published_files())
         record, code = publisher.publish(self.dist, self.tag, host)
-        self.assertEqual(code, 0, record)
-        self.assertEqual(record["outcome"], "already-published")
+        self.assertEqual((code, record["outcome"]), (0, "already-published"))
         self.assertTrue(record["compared"]["identical"])
         self.assertEqual(self._mutating(host), [])
 
     def test_divergent_published_release_is_refused(self):
         files = self._published_files()
-        files["presets.json"] = files["presets.json"].replace('"sha256:', '"sha256:f')
+        files["release.json"] += b"\n"
         host = FakeHost(existing={"isDraft": False, "assets": []}, published_files=files)
         record, code = publisher.publish(self.dist, self.tag, host)
-        self.assertEqual(code, 2)
-        self.assertEqual(record["outcome"], "divergent")
-        self.assertEqual(sorted(record["compared"]["differences"]), ["presets.json"])
-        self.assertIn("sha256", record["compared"]["differences"]["presets.json"])
+        self.assertEqual((code, record["outcome"]), (2, "divergent"))
+        self.assertIn("release.json", record["compared"]["differences"])
         self.assertEqual(self._mutating(host), [])
 
-    def test_published_pointer_profile_or_protocol_drift_is_divergent(self):
+    def test_missing_published_archive_is_divergent(self):
         files = self._published_files()
-        files["release.json"] = files["release.json"].replace('"workspace_protocol": 12', '"workspace_protocol": 11')
+        del files[builder.archive_name(self.version)]
         host = FakeHost(existing={"isDraft": False, "assets": []}, published_files=files)
         record, code = publisher.publish(self.dist, self.tag, host)
         self.assertEqual(code, 2)
-        self.assertEqual(record["outcome"], "divergent")
-        self.assertIn("workspace_protocol", record["compared"]["differences"]["release.json"])
-        self.assertEqual(self._mutating(host), [])
+        self.assertEqual(record["compared"]["differences"][builder.archive_name(self.version)], "missing from published release")
 
-    def test_missing_published_asset_counts_as_divergent(self):
-        files = self._published_files()
-        del files["release.json"]
-        host = FakeHost(existing={"isDraft": False, "assets": []}, published_files=files)
+    def test_compare_only_never_mutates_absent_or_draft(self):
+        for existing, outcome in ((None, "absent"), ({"isDraft": True, "assets": []}, "draft")):
+            host = FakeHost(existing=existing)
+            record, code = publisher.publish(self.dist, self.tag, host, compare_only=True)
+            self.assertEqual((code, record["outcome"]), (0, outcome))
+            self.assertEqual(self._mutating(host), [])
+
+    def test_upload_failure_reports_residual_draft(self):
+        failed_asset = self.assets[1]
+        host = FakeHost(fail_on=("upload", failed_asset))
         record, code = publisher.publish(self.dist, self.tag, host)
-        self.assertEqual(code, 2)
-        self.assertEqual(record["compared"]["differences"]["release.json"], "missing from the published release")
-
-    def test_compare_only_never_mutates(self):
-        host = FakeHost(existing=None)
-        record, code = publisher.publish(self.dist, self.tag, host, compare_only=True)
-        self.assertEqual((code, record["outcome"]), (0, "absent"))
-        self.assertEqual(self._mutating(host), [])
-        host = FakeHost(existing={"isDraft": True, "assets": []})
-        record, code = publisher.publish(self.dist, self.tag, host, compare_only=True)
-        self.assertEqual((code, record["outcome"]), (0, "draft"))
-        self.assertEqual(self._mutating(host), [])
-
-    def test_upload_failure_reports_residual_draft_state(self):
-        host = FakeHost(existing=None, fail_on=("upload", "presets.json"))
-        record, code = publisher.publish(self.dist, self.tag, host)
-        self.assertEqual(code, 1)
-        self.assertEqual(record["outcome"], "publication-failed")
-        self.assertEqual(record["residual_state"]["draft"], self.tag)
-        self.assertEqual(record["residual_state"]["assets_uploaded"], self.assets[: self.assets.index("presets.json")])
+        self.assertEqual((code, record["outcome"]), (1, "publication-failed"))
+        self.assertEqual(record["residual_state"]["assets_uploaded"], self.assets[:1])
         self.assertNotIn(("publish", self.tag), host.calls)
 
-    def test_pointer_has_no_clock_fields_and_matches_catalog_digests(self):
-        self._published_files()
-        pointer = json.loads((self.dist / "release.json").read_text(encoding="utf-8"))
-        self.assertEqual(pointer["schema_version"], "1.0")
+    def test_pointer_has_one_archive_and_no_clock_or_host_component_fields(self):
+        pointer = json.loads((self.dist / "release.json").read_text())
+        self.assertEqual(pointer["schema_version"], 1)
         self.assertEqual(pointer["tag"], self.tag)
         self.assertEqual(pointer["architecture_profile"], 7)
         self.assertEqual(pointer["workspace_protocol"], 12)
-        self.assertNotIn("published_at", pointer)
-        self.assertNotIn("updated_at", pointer)
-        for name, (collection, identifier) in {
-            "extensions.json": ("extensions", "concorde"),
-            "presets.json": ("presets", "concorde"),
-            "bundles.json": ("bundles", "concorde-bundle"),
-        }.items():
-            catalog = json.loads((self.dist / name).read_text(encoding="utf-8"))
-            entry = catalog[collection][identifier]
-            self.assertEqual(pointer["archives"][Path(entry["download_url"]).name], entry["sha256"])
-            self.assertEqual(pointer["catalogs"][collection], catalog["catalog_url"])
+        self.assertEqual(pointer["archive"]["name"], builder.archive_name(self.version))
+        for removed in ("catalogs", "archives", "bundle_id", "speckit_version", "published_at"):
+            self.assertNotIn(removed, pointer)
 
-    def test_render_notes_names_components_range_and_registration_commands(self):
-        notes = publisher.render_notes("0.1.0", ">=0.16.4,<0.16.5", "https://github.com/FTOD/concorde/releases/download/v0.1.0", {"concorde-extension-0.1.0.zip": "sha256:ab"})
-        for needle in ("preset:concorde@0.1.0", "extension:concorde@0.1.0", "concorde-bundle@0.1.0", ">=0.16.4,<0.16.5", "`7` / `12`", "`reflection-triage/v3`", "specify bundle install concorde-bundle", "releases/latest/download/release.json"):
+    def test_render_notes_names_native_archive_and_install(self):
+        notes = publisher.render_notes("1.2.3", "https://example.test/v1.2.3", {"concorde-1.2.3.zip": "sha256:ab"})
+        for needle in ("concorde-1.2.3.zip", "Architecture Profile", "Workspace Protocol", "install-concorde.py", "--apply"):
             self.assertIn(needle, notes)
+        self.assertNotIn("preset", notes.lower())
 
-    def test_cli_dry_run_prints_record_and_exit_code(self):
-        import contextlib
-        import io
-
+    def test_cli_dry_run_and_version_mismatch_records(self):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            code = publisher.main(["--dist", str(self.dist), "--tag", self.tag, "--dry-run", "--gh", "/nonexistent/gh"])
+            code = publisher.main(["--dist", str(self.dist), "--tag", self.tag, "--dry-run", "--gh", "/missing"])
         self.assertEqual(code, 0)
         self.assertEqual(json.loads(output.getvalue())["outcome"], "dry-run")
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            code = publisher.main(["--dist", str(self.dist), "--tag", "v9.9.9", "--gh", "/nonexistent/gh"])
+            code = publisher.main(["--dist", str(self.dist), "--tag", "v9.9.9", "--gh", "/missing"])
         self.assertEqual(code, 1)
         self.assertEqual(json.loads(output.getvalue())["outcome"], "version-mismatch")
 

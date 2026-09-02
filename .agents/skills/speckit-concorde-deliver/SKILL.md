@@ -1,11 +1,12 @@
 ---
 name: speckit-concorde-deliver
-description: Validate and remove one completed temporal feature attempt
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Validate and remove one completed temporal feature attempt"
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: concorde:commands/speckit.concorde.deliver.md
+  author: "concorde"
+  source: "commands/speckit.concorde.deliver.md"
 ---
+# Speckit Concorde Deliver
 
 ## User Input
 
@@ -22,10 +23,7 @@ atomically removes exactly the selected `.concorde/attempts/<stable-feature-id>/
 
 ## Propose
 
-1. From the target project root invoke the installed launcher:
-
-   - POSIX: `.specify/extensions/concorde/scripts/bash/concorde.sh deliver $ARGUMENTS --propose`
-   - PowerShell: `.specify/extensions/concorde/scripts/powershell/concorde.ps1 deliver $ARGUMENTS --propose`
+1. From the target project root invoke `python3 scripts/concorde.py deliver $ARGUMENTS --propose`.
 
 2. Require a Protocol 12 workspace and Delivery Proposal 8 result. Stop on any status other than
    `eligible`; report every finding and leave the attempt byte-identical. Never check off, rewrite,
@@ -41,7 +39,7 @@ atomically removes exactly the selected `.concorde/attempts/<stable-feature-id>/
 
 The user's delivery invocation authorizes proposal and apply in one operation; do not ask for a
 second approval. Immediately invoke the same launcher with
-`deliver --apply --proposal <returned-project-relative-proposal-path>`.
+`python3 scripts/concorde.py deliver --apply --proposal <returned-project-relative-proposal-path>`.
 
 Apply must revalidate the digest, completeness, project validation, safe target, and exact removal
 manifest. It atomically removes only the selected attempt. Any stale digest, incomplete evidence,

@@ -3,110 +3,84 @@
 ## Prerequisites
 
 - Python 3.11+
-- [`uv`](https://docs.astral.sh/uv/)
 - Git
-- one supported Spec Kit coding-agent integration (examples below use Codex)
+- Codex or Claude project integration
 
-## Install Concorde
+Concorde needs no host specification framework and no network access when installing from a checkout.
 
-Preview a public release installation:
+## 1. Preview installation
 
-```bash
-uv run python scripts/install-concorde.py \
-  --target ../sample-project \
-  --integration codex \
-  --preview
-```
-
-The preview validates the release pointer, including Architecture Source Profile 7 and Workspace
-Protocol 12, shows catalog/bundle/agent-projection changes, and writes nothing. Apply the reviewed
-plan:
+From the Concorde checkout:
 
 ```bash
-uv run python scripts/install-concorde.py \
-  --target ../sample-project \
+python3 scripts/install-concorde.py \
+  --target ../my-project \
   --integration codex
 ```
 
-Omitting `--preview` applies the reviewed installation plan.
-
-For development, install directly from a Concorde checkout:
+Preview is the default and writes nothing. Review every create/adopt/update/remove/conflict action,
+role, and digest. Apply only a conflict-free accepted plan:
 
 ```bash
-uv run python scripts/install-concorde.py \
-  --target ../sample-project \
+python3 scripts/install-concorde.py \
+  --target ../my-project \
   --integration codex \
-  --checkout . \
-  --preview
+  --apply
 ```
 
-## Initialize architecture
+Use `--integration claude` for Claude. Installed framework bytes live at `.concorde/framework/`;
+ownership lives at `.concorde/install.json`.
 
-Inside the target Spec Kit project, invoke the installed `speckit.concorde.init` command with a root
-module ID/name. Review the exact proposal, save it at a project-relative path, and apply it through
-the command. Initialization Proposal 2 creates the configured root `architecture.md`,
-`.concorde/config.json`, and `.concorde/reflections/log.md`; it does not guess a product hierarchy.
+## 2. Initialize project architecture
 
-Edit the root architecture to define the product's responsibility/boundary, significant entities,
-relationships, interactions, and actual immediate modules/features. Add a child module only when it
-owns a coherent recursive boundary.
+Inside the target, invoke `$speckit-concorde-init` (Claude may present `/speckit-concorde-init`). The
+compatibility name now runs Concorde's native Profile 7 initializer. Initialization Proposal 2 creates:
 
-## Specify a feature
+- `.concorde/config.json`
+- `.concorde/reflections/log.md`
+- `specs/<project>/architecture.md`
 
-Select a direct `features/<NNN-name>.md` path under its providing module and invoke `speckit.specify`
-with a concrete capability description. A complete feature file includes:
+It creates no feature or attempt.
 
-- outcome and scope;
-- representative success/edge/failure usage;
-- scenarios, requirements, assumptions, and success criteria;
-- embedded provided/required interfaces; and
-- an Architecture Zoom referencing module entity IDs.
+## 3. Create/select a feature
 
-Review the generated requirements checklist. Use `speckit.clarify` for material ambiguity and
-`speckit.checklist` for focused reviewer questions.
+Choose a direct `features/<NNN-name>.md` beneath its providing module and invoke
+`$speckit-specify <description>`. The first Protocol 12 response for a new file intentionally has no
+stable feature/attempt ID. After the command writes valid front matter, it resolves again and persists
+only `.concorde/feature.json` plus the returned requirements checklist path.
 
-For a new feature, the first Protocol 12 resolution intentionally reports unresolved/null attempt
-paths. Write the stable front-matter ID, rerun the resolver, and only then use its exact checklist
-path. Never derive the attempt key from the filename.
+Use `$speckit-clarify` for material ambiguity and `$speckit-checklist` for reviewer-focused quality.
 
-## Plan and implement
+## 4. Plan and implement
 
 ```text
-speckit.plan
-speckit.tasks
-speckit.analyze
-speckit.implement
-speckit.converge      # only if evidence reveals more work
+$speckit-plan
+$speckit-tasks
+$speckit-analyze
+$speckit-implement
+$speckit-converge      # only when verified work remains
 ```
 
-Planning reads the feature file, providing architecture, code, and tests. It creates one temporal
-`.concorde/attempts/<stable-feature-id>/`. Tasks carry stable IDs, exact paths, requirement traces,
-dependencies, and checks. Implementation
-records passed evidence before checking each task and reconciles every explicitly affected
-architecture/feature/code/test/projection surface.
+Planning/task/evidence artifacts live at `.concorde/attempts/<stable-feature-id>/`. Implementation
+tasks explicitly reconcile every affected architecture, feature, source, test, documentation, and
+projection authority. A task is complete only after passing evidence is recorded.
 
-Record problems and provisional prototype decisions in `.concorde/reflections/log.md`; keep progressing
-when a safe bounded assumption is available.
+## 5. Validate and deliver
 
-## Validate and deliver
+Run the installed native validator directly when useful:
 
 ```bash
-python .specify/extensions/concorde/scripts/python/concorde.py --project-root . validate
+python3 .concorde/framework/scripts/concorde.py --project-root . validate --format json
 ```
 
-After every task/checklist/evidence gate passes, invoke `speckit.concorde.deliver`. It generates and
-applies a digest-bound Proposal 8, removes exactly the selected attempt, and retains architecture,
-feature file, code, tests, projections, and reflections unchanged.
+After tasks/checklists/evidence pass, invoke `$speckit-concorde-deliver`. It proposes and applies
+Delivery Proposal 8, removing exactly the selected attempt while leaving durable sources/reflections
+unchanged.
 
-## Verify installation state
+## 6. Update Concorde
 
-The installed extension/preset are package projections. In the Concorde repository itself, use the
-self-host status command documented in [Self-hosting](self-hosting.md). In a consuming project, use
-Spec Kit bundle info/list plus the extension's deterministic validate/context commands.
+Preview the new checkout/version against the existing target. Unchanged receipt-owned outputs can
+update; unowned or user-modified collisions stop. Apply after review. A second identical apply is
+`unchanged`.
 
-## Next reading
-
-- [Specification model](specification-model.md)
-- [Workflow](concorde-workflow.md)
-- [Commands](commands.md)
-- [Ontology](ontology.md)
+For framework-development projections, see [Agent-surface maintenance](agent-surfaces.md).

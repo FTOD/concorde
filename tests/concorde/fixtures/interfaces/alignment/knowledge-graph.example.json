@@ -48,15 +48,15 @@
       }
     },
     {
-      "id": "concorde:command:speckit.concorde.explore",
+      "id": "concorde:explorer:alignment-query",
       "type": "endpoint",
-      "name": "speckit.concorde.explore",
+      "name": "concorde.alignment.query",
       "summary": "Canonical Alignment Explorer command intent.",
       "tags": ["command", "concorde-explore"],
       "complexity": "simple",
       "concordeMeta": {
         "kind": "command",
-        "stableId": "speckit.concorde.explore",
+        "stableId": "concorde.alignment.query",
         "sourcePath": "specs/concorde/features/006-alignment-explorer.md",
         "authorityClass": "durable-feature-intent",
         "lifecycle": "durable",
@@ -95,7 +95,7 @@
       "weight": 1
     },
     {
-      "source": "concorde:command:speckit.concorde.explore",
+      "source": "concorde:explorer:alignment-query",
       "target": "concorde:feature.concorde.explore-alignment",
       "type": "serves",
       "direction": "forward",
@@ -127,7 +127,7 @@
       "nodeIds": [
         "concorde:module.concorde",
         "concorde:feature.concorde.explore-alignment",
-        "concorde:command:speckit.concorde.explore",
+        "concorde:explorer:alignment-query",
         "file:src/alignment-projector.ts",
         "file:tests/alignment-projector.test.ts"
       ]

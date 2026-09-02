@@ -17,7 +17,7 @@ interfaces:
   provided:
     - contract.concorde.workflow
   required:
-    - contract.concorde.spec-kit-platform
+    - contract.concorde.agent-platform
 evidence_status: partial
 ---
 
@@ -33,9 +33,9 @@ skills as the sole conversational surface.
 
 | Entity ID | Role |
 |---|---|
-| `module.concorde.skills` | Presents the normal and Concorde-specific workflow operations. |
-| `module.concorde.scripts` | Resolves workspaces and performs deterministic init/context/validate/deliver operations. |
-| `module.concorde.workspace-files` | Defines durable specification paths plus stable-ID attempts and reflections in project control state. |
+| `module.concorde.commands` | Presents the normal and Concorde-specific workflow operations. |
+| `module.concorde.runtime` | Resolves workspaces and performs deterministic init/context/validate/deliver operations. |
+| `module.concorde.workspace` | Defines durable specification paths plus stable-ID attempts and reflections in project control state. |
 | `entity.concorde.coding-agent` | Authors design/plan/tasks/code/tests and follows evidence/authority rules. |
 
 ## Interfaces
@@ -50,22 +50,22 @@ skills as the sole conversational surface.
 - **Obligations**: Keep each fact in one authority, resolve Protocol 12 paths first, trace every task, validate deterministically, and disclose evidence limits.
 - **Failures**: Invalid placement/authority, incomplete checklist/task, failed check, stale/unsafe delivery, or ambiguous impact stops the affected phase without implied authorization.
 - **Compatibility**: Profile 7 features are direct Markdown files; Protocol 12 rejects specification-local control state/redundant feature fields, while Delivery 8 retains cleanup-only semantics.
-- **Implementing entities**: `module.concorde.skills`, `module.concorde.scripts`, `module.concorde.workspace-files`, `entity.concorde.coding-agent`.
+- **Implementing entities**: `module.concorde.commands`, `module.concorde.runtime`, `module.concorde.workspace`, `entity.concorde.coding-agent`.
 - **Example**: A maintainer specifies `features/001-change.md` with ID `feature.example.change`, runs plan/tasks/implement in `.concorde/attempts/feature.example.change/`, verifies all evidence, then invokes delivery once to remove that attempt.
 
-### `contract.concorde.spec-kit-platform` — Required Spec Kit host lifecycle
+### `contract.concorde.agent-platform` — Supported coding-agent execution surface
 
-- **Provider**: `external:specify-cli==0.16.4`.
-- **Consumer**: Concorde preset/extension packages and their installed phase surfaces.
-- **Direction**: Host project/component/phase state to composition, selection, and lifecycle services.
-- **Entry points**: Spec Kit project initialization, catalogs/bundles/components, preset composition, extension registration, and `.specify/feature.json` selection.
-- **Inputs**: Valid manifests, compatibility ranges, project root, integration, phase/selection, and lifecycle intent.
-- **Outputs**: Composed templates/commands, installed ownership/registries, selected feature control, and structured component results.
-- **Obligations**: Preserve typed component identity/provenance, deterministic composition order, project containment, and explicit mutation preview/apply.
-- **Failures**: Incompatible/missing/colliding components or invalid project/selection state must fail without partial hidden ownership.
-- **Compatibility**: Concorde currently targets `specify-cli>=0.16.4,<0.16.5`.
-- **Implementing entities**: `entity.concorde.spec-kit`.
-- **Example**: Spec Kit composes the base spec template with Concorde's design-only addendum and installs the extension's workspace adapter.
+- **Provider**: `external:coding-agent-platform` (supported Codex or Claude integration).
+- **Consumer**: Maintainers and Concorde-rendered commands.
+- **Direction**: Project command files and user invocation to an agent turn that follows their declared workflow.
+- **Entry points**: `.agents/skills/**` and `.codex/agents/**`, or `.claude/skills/**` and `.claude/agents/**`.
+- **Inputs**: Regular rendered Markdown/TOML files, project root, user arguments, and granted filesystem/tool authority.
+- **Outputs**: Conversational phase result plus only the file/tool effects authorized by the invoked Concorde command.
+- **Obligations**: Load project-local command metadata/body, preserve project containment, surface tool failures, and never imply authority from a compatibility command name.
+- **Failures**: Missing/unsupported integration assets, invalid command metadata, unavailable tools, or denied permissions stop execution without hidden fallback behavior.
+- **Compatibility**: Concorde package schema 1 supports Codex and Claude while sharing command semantics.
+- **Implementing entities**: `entity.concorde.coding-agent`, `entity.concorde.commands`, `entity.concorde.agent-assets`.
+- **Example**: Codex loads `.agents/skills/speckit-plan/SKILL.md`, which invokes Concorde's native workspace adapter.
 
 ## Usage Scenarios
 

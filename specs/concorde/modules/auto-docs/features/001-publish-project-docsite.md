@@ -10,7 +10,7 @@ interfaces:
     - contract.auto-docs.build-interface
     - contract.auto-docs.build-manifest
   required:
-    - contract.workspace-files.records
+    - contract.workspace.records
     - contract.auto-docs.archify-renderer
 evidence_status: verified
 ---
@@ -41,7 +41,7 @@ with one architecture page per module and one design page per feature.
 - **Entry points**: Generated site root and semantic routes.
 - **Inputs**: Build Manifest 10, materialized content, Docusaurus assets, and delivered architecture diagrams.
 - **Outputs**: Accessible searchable pages with canonical source provenance and navigation.
-- **Obligations**: No source mutation, no attempts, unique stable routes, accessible text fallback, and last-good preservation.
+- **Obligations**: No source mutation, no `.concorde` control/framework pages, unique stable routes, accessible text fallback, and last-good preservation.
 - **Failures**: Invalid/incomplete candidate is never promoted.
 - **Compatibility**: Feature route is `/features/<feature-id>` with no companion pages.
 - **Implementing entities**: `entity.auto-docs.publisher`, `entity.auto-docs.docusaurus`.

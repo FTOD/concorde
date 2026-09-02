@@ -16,7 +16,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-08-31
 - **Feature**: feature.concorde.define-project-ontology
 - **Kind**: tooling
-- **Concerns**: scripts/development/self-host-concorde.py
+- **Concerns**: scripts/development/sync-agent-surfaces.py
 - **Expected**: A reviewed self-host proposal refreshes owned installed surfaces atomically or reports a recoverable conflict.
 - **Observed**: Apply rolled back because legacy `.claude/reflections.config.json` state could not be adopted into the new projection receipt.
 - **Effect**: deferred
@@ -45,7 +45,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.workflow.accept-milestone
 - **Kind**: tooling
-- **Concerns**: scripts/development/self-host-concorde.py
+- **Concerns**: scripts/development/sync-agent-surfaces.py
 - **Expected**: Temporarily selecting Codex lets self-host refresh that integration while preserving the current Claude materialization.
 - **Observed**: Codex preflight succeeded, but apply detected Spec Kit registry entries that did not match the temporary composition and rolled back the owned scope.
 - **Effect**: worked-around
@@ -89,7 +89,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.workflow.plan-delivery
 - **Kind**: guidance
-- **Concerns**: presets/concorde/commands/speckit.plan.md
+- **Concerns**: commands/speckit.plan.md
 - **Expected**: Planning keeps proposed contract work in the selected attempt and schedules any durable contract mutation for implementation.
 - **Observed**: The plan command directs Phase 1 to write feature-root `contracts/`, although child FR-007 and parent FR-015 prohibit planning from updating durable sources and the module reference classifies `attempt/contracts/**` as temporal.
 - **Effect**: worked-around
@@ -117,7 +117,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.workflow.plan-delivery
 - **Kind**: tooling
-- **Concerns**: presets/concorde/preset.yml
+- **Concerns**: feature.commands.project-workflow
 - **Expected**: Refreshing the three changed Codex skills preserves every other Concorde preset winner while Claude remains the configured integration.
 - **Observed**: The first cross-integration refresh backed up only three generated skills; removing the temporary Codex preset exposed lower-layer `analyze` and `specify` skills, causing two full-suite failures.
 - **Effect**: worked-around
@@ -134,7 +134,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Expected**: Every reflection `Concerns` value resolves to a stable project ID or existing project-relative path.
 - **Observed**: The first record of the Codex projection problem named the triggering command rather than the maintained preset path, and deterministic validation rejected it.
 - **Effect**: worked-around
-- **Action**: Replaced the unresolved command string with `presets/concorde/preset.yml` and reran reflection validation.
+- **Action**: Replaced the unresolved command string with the then-canonical package path and reran reflection validation; the concern now follows `feature.commands.project-workflow` after native migration.
 - **Improvement**: Validate each new reflection entry immediately after append, before starting the full suite.
 - **Status**: open
 
@@ -156,7 +156,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.workflow.execute-and-reconcile
 - **Kind**: guidance
-- **Concerns**: presets/concorde/commands/speckit.analyze.md
+- **Concerns**: commands/speckit.analyze.md
 - **Expected**: The complete analysis surface preserves every file except a required centralized reflection record.
 - **Observed**: Mandatory before/after hooks were executed without first requiring the same read-only-except-reflection contract, so a mutating hook could violate the phase promise.
 - **Effect**: worked-around
@@ -169,7 +169,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.workflow.execute-and-reconcile
 - **Kind**: environment
-- **Concerns**: scripts/development/self-host-concorde.py
+- **Concerns**: scripts/development/sync-agent-surfaces.py
 - **Expected**: Refreshing configured Claude preserves and verifies the already materialized inactive Codex skill set atomically.
 - **Observed**: The first sandboxed apply could not rewrite `.agents/skills` during inactive-integration restoration, so verification failed and rollback could not restore those paths exactly.
 - **Effect**: worked-around
@@ -195,7 +195,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.define-project-ontology
 - **Kind**: guidance
-- **Concerns**: presets/concorde/commands/speckit.plan.md
+- **Concerns**: commands/speckit.plan.md
 - **Expected**: A selected feature attempt writes only inside one lifecycle root and treats other feature bodies as read-only authorities.
 - **Observed**: The requested source-profile migration is not coherent unless all twenty-four feature designs, six module packages, runtime, guidance, fixtures, and projections change together; a partial migration cannot be loaded or validated by either profile.
 - **Effect**: worked-around
@@ -221,7 +221,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.define-project-ontology
 - **Kind**: tooling
-- **Concerns**: scripts/development/self-host-concorde.py
+- **Concerns**: scripts/development/sync-agent-surfaces.py
 - **Expected**: Checked-in canonical preset/extension sources and installed Spec Kit/Codex/Claude projections have one reproducible current composition.
 - **Observed**: The clean checkout contains source-only diagram-output checks in plan/specify guidance that are absent from the installed projection, so blindly treating installed files as the edit baseline would discard newer requirements.
 - **Effect**: worked-around
@@ -273,7 +273,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.define-project-ontology
 - **Kind**: implementation
-- **Concerns**: extensions/concorde/runtime/concorde/delivery.py
+- **Concerns**: src/concorde/delivery.py
 - **Expected**: Delivery removes exactly one complete attempt atomically and restores it on any cleanup failure.
 - **Observed**: A recursive directory tree cannot be intrinsically transactionally deleted across filesystems; process crash or power loss can interrupt operations outside Python's rollback control.
 - **Effect**: worked-around
@@ -299,9 +299,9 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.define-project-ontology
 - **Kind**: guidance
-- **Concerns**: extensions/concorde/runtime/concorde/feature_workspace.py
+- **Concerns**: src/concorde/feature_workspace.py
 - **Expected**: Selection names the canonical feature authority without embedding a removed storage concept.
-- **Observed**: Current `.specify/feature.json` and Protocol 10 expose `feature_directory`, but a direct feature file has no unique directory of its own.
+- **Observed**: Current `.concorde/feature.json` and Protocol 10 expose `feature_directory`, but a direct feature file has no unique directory of its own.
 - **Effect**: assumed
 - **Action**: Protocol 11 uses `feature_path` and the selection record stores that direct Markdown path; no dual-layout/dual-key compatibility remains after cutover.
 - **Improvement**: Propose a typed feature-path selection field upstream in Spec Kit so host and extension terminology converge.
@@ -312,7 +312,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.define-project-ontology
 - **Kind**: architecture
-- **Concerns**: extensions/concorde/runtime/concorde/delivery.py
+- **Concerns**: src/concorde/delivery.py
 - **Expected**: Serialized protocols change version only when their accepted fields or semantics change.
 - **Observed**: Feature/attempt paths change under Profile 6 and Protocol 11, but Proposal 8 still binds target/digest/one remove path and Manifest 10 still records semantic pages/routes/provenance.
 - **Effect**: assumed
@@ -338,7 +338,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.define-project-ontology
 - **Kind**: architecture
-- **Concerns**: bundles/concorde-bundle/bundle.yml
+- **Concerns**: concorde.json
 - **Expected**: Installed artifacts communicate the Profile 6 / Protocol 11 compatibility boundary through their component versions.
 - **Observed**: The prior Profile 5 work is still uncommitted and only v0.1 is tagged, so either extending pending 0.6.0 or bumping again is mechanically possible.
 - **Effect**: assumed
@@ -351,7 +351,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.define-project-ontology
 - **Kind**: architecture
-- **Concerns**: specs/concorde/modules/workspace-files/architecture.md
+- **Concerns**: specs/concorde/modules/workspace/architecture.md
 - **Expected**: The specification tree contains only durable module architecture, feature intent, and explanatory sources, while project workflow state has one obvious owner.
 - **Observed**: Attempts and the reflection log live under `specs/`, but reflection triage configuration, plans, and worktrees already live under `.concorde/reflections/`, splitting one process concern across two authorities.
 - **Effect**: assumed
@@ -366,7 +366,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.define-project-ontology
 - **Kind**: architecture
-- **Concerns**: extensions/concorde/runtime/concorde/feature_workspace.py
+- **Concerns**: src/concorde/feature_workspace.py
 - **Expected**: An active attempt remains bound to the same semantic feature when its navigation filename or providing module path changes.
 - **Observed**: Protocol 11 derives attempts from the feature basename, so a harmless file rename looks like an orphaned old attempt plus a new empty workspace.
 - **Effect**: assumed
@@ -381,7 +381,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.define-project-ontology
 - **Kind**: tooling
-- **Concerns**: extensions/concorde/runtime/concorde/feature_workspace.py
+- **Concerns**: src/concorde/feature_workspace.py
 - **Expected**: Every lifecycle phase writes only paths returned by the active workspace protocol.
 - **Observed**: Protocol 11 can create this attempt only below `specs/concorde/attempts/` and can record planning reflections only in `specs/concorde/reflections.md`, while final Protocol 12 must reject both locations.
 - **Effect**: worked-around

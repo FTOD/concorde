@@ -16,8 +16,8 @@ class SelfArchitectureTests(unittest.TestCase):
         modules = package.documents("module")
         self.assertEqual(len(modules), 6)
         self.assertEqual({module.identifier for module in modules}, {
-            "module.concorde", "module.concorde.skills", "module.concorde.scripts",
-            "module.concorde.workspace-files", "module.concorde.distribution", "module.concorde.auto-docs",
+            "module.concorde", "module.concorde.commands", "module.concorde.runtime",
+            "module.concorde.workspace", "module.concorde.distribution", "module.concorde.auto-docs",
         })
         self.assertTrue(all(module.path.endswith("architecture.md") for module in modules))
 
@@ -34,7 +34,7 @@ class SelfArchitectureTests(unittest.TestCase):
         self.assertTrue(projection["current_module"]["interactions"])
         self.assertNotIn("module.concorde.auto-docs", repr(projection["children"][0]))
 
-    def test_self_hosted_specs_have_no_legacy_durable_artifacts(self):
+    def test_source_specs_have_no_legacy_durable_artifacts(self):
         specification = REPOSITORY_ROOT / "specs/concorde"
         self.assertFalse(list(specification.rglob("module.md")))
         self.assertFalse(list(specification.rglob("abstract.md")))

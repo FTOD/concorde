@@ -11,7 +11,7 @@ from tests.concorde.support.feature_workspace import create_feature_file
 from tests.concorde.support.paths import CONTEXT_PROJECT, REPOSITORY_ROOT, TWO_LEVEL_PROJECT
 
 
-ADAPTER = REPOSITORY_ROOT / "extensions/concorde/scripts/python/workspace.py"
+ADAPTER = REPOSITORY_ROOT / "scripts/workspace.py"
 REMOVED = {"workspace_kind", "feature_abstract", "feature_implementation", "feature_" + "directory", "feature_" + "design", "module_summary", "module_design", "contracts_dir", "parent_context"}
 
 

@@ -1,17 +1,5 @@
 #!/usr/bin/env python3
-"""Publish a verified Concorde release as immutable GitHub release assets.
-
-Decision table for the publish-release feature:
-
-    tag != manifest version        -> version-mismatch     (exit 1, nothing touched)
-    verification fails             -> verification-failed  (exit 1, nothing touched)
-    release absent                 -> create draft, upload 7 assets, publish (exit 0)
-    leftover draft                 -> delete draft assets, upload, publish   (exit 0)
-    published and identical        -> already-published    (exit 0, no-op)
-    published and different        -> divergent            (exit 2, refused)
-
-The publisher never passes ``--clobber``: a published asset is never replaced.
-"""
+"""Publish a verified standalone Concorde release as immutable GitHub assets."""
 
 from __future__ import annotations
 
@@ -32,32 +20,19 @@ def _load_script(name: str, module_name: str):
     if spec is None or spec.loader is None:
         raise RuntimeError(f"cannot load {name}")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
 
-_BUILDER = _load_script("build-components.py", "concorde_release_builder")
-_VERIFIER = _load_script("verify-release.py", "concorde_release_verifier")
+BUILDER = _load_script("build-release.py", "concorde_release_builder")
+VERIFIER = _load_script("verify-release.py", "concorde_release_verifier")
 
-REPOSITORY = _BUILDER.REPOSITORY
+REPOSITORY = BUILDER.REPOSITORY
 REPOSITORY_SLUG = REPOSITORY.removeprefix("https://github.com/")
-CATALOGS = ("extensions.json", "presets.json", "bundles.json")
-POINTER = "release.json"
-BUNDLE_ID = "concorde-bundle"
-POINTER_SCHEMA_VERSION = "1.0"
-ARCHITECTURE_PROFILE = _BUILDER.ARCHITECTURE_PROFILE
-WORKSPACE_PROTOCOL = _BUILDER.WORKSPACE_PROTOCOL
-REFLECTION_TRIAGE_PROTOCOL = "reflection-triage/v3"
-
 EXIT_OK = 0
 EXIT_REJECTED = 1
 EXIT_DIVERGENT = 2
-
-_CATALOG_ENTRIES = {
-    "extensions.json": ("extensions", "concorde"),
-    "presets.json": ("presets", "concorde"),
-    "bundles.json": ("bundles", "concorde-bundle"),
-}
 
 
 class PublicationError(Exception):
@@ -68,15 +43,11 @@ class PublicationError(Exception):
 
 
 def archive_names(version: str) -> list[str]:
-    return [
-        f"concorde-preset-{version}.zip",
-        f"concorde-extension-{version}.zip",
-        f"concorde-bundle-{version}.zip",
-    ]
+    return [BUILDER.archive_name(version)]
 
 
 def asset_names(version: str) -> list[str]:
-    return archive_names(version) + list(CATALOGS) + [POINTER]
+    return [BUILDER.archive_name(version), "release.json"]
 
 
 def is_prerelease(version: str) -> bool:
@@ -87,78 +58,32 @@ def _sha256(path: Path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build_release_pointer(
-    dist: Path,
-    version: str,
-    tag: str,
-    base_url: str,
-    speckit_range: str,
-    prerelease: bool = False,
-) -> dict[str, Any]:
-    """Write the release feature's embedded-interface payload and return it."""
-    pointer: dict[str, Any] = {
-        "schema_version": POINTER_SCHEMA_VERSION,
-        "version": version,
-        "tag": tag,
-        "repository": REPOSITORY,
-        "base_url": base_url,
-        "speckit_version": speckit_range,
-        "bundle_id": BUNDLE_ID,
-        "architecture_profile": ARCHITECTURE_PROFILE,
-        "workspace_protocol": WORKSPACE_PROTOCOL,
-        "catalogs": {
-            "extensions": f"{base_url}/extensions.json",
-            "presets": f"{base_url}/presets.json",
-            "bundles": f"{base_url}/bundles.json",
-        },
-        "archives": {name: _sha256(dist / name) for name in archive_names(version)},
-    }
-    if prerelease:
-        pointer["prerelease"] = True
-    (dist / POINTER).write_text(json.dumps(pointer, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
-    return pointer
-
-
-def render_notes(version: str, speckit_range: str, base_url: str, archives: dict[str, str]) -> str:
+def render_notes(version: str, base_url: str, assets: dict[str, str]) -> str:
+    name = BUILDER.archive_name(version)
     lines = [
         f"# Concorde {version}",
         "",
-        "Pinned Spec Kit component set for this release:",
+        "Standalone Concorde package:",
         "",
-        "| Component | Kind | Version |",
-        "|---|---|---|",
-        f"| `concorde-bundle` | bundle | `concorde-bundle@{version}` |",
-        f"| `concorde` | preset | `preset:concorde@{version}` |",
-        f"| `concorde` | extension | `extension:concorde@{version}` |",
+        f"- Architecture Profile: `{BUILDER.ARCHITECTURE_PROFILE}`",
+        f"- Workspace Protocol: `{BUILDER.WORKSPACE_PROTOCOL}`",
+        f"- Archive: `{name}`",
         "",
-        f"Supported Spec Kit range: `{speckit_range}`",
-        f"Concorde architecture profile / workspace protocol: `{ARCHITECTURE_PROFILE}` / `{WORKSPACE_PROTOCOL}`",
-        f"Reflection agent protocol: `{REFLECTION_TRIAGE_PROTOCOL}`",
+        "## SHA-256",
         "",
-        "## Archive digests",
+        *[f"- `{asset}`: `{digest}`" for asset, digest in sorted(assets.items())],
         "",
-        "| Archive | SHA-256 |",
-        "|---|---|",
+        "## Install",
+        "",
+        "```bash",
+        f'curl -fLO "{base_url}/{name}"',
+        f'unzip "{name}"',
+        "python3 concorde/scripts/install-concorde.py --checkout concorde --target . --integration codex --apply",
+        "```",
+        "",
+        "The retained `speckit-*` command IDs are compatibility names implemented entirely by Concorde.",
+        "",
     ]
-    lines.extend(f"| `{name}` | `{digest}` |" for name, digest in sorted(archives.items()))
-    lines.extend(
-        [
-            "",
-            "## Install into a Spec Kit project",
-            "",
-            "```bash",
-            f'specify extension catalog add "{base_url}/extensions.json" --name concorde --install-allowed',
-            f'specify preset catalog add "{base_url}/presets.json" --name concorde --install-allowed',
-            f'specify bundle catalog add "{base_url}/bundles.json" --id concorde',
-            f"specify bundle install {BUNDLE_ID}",
-            "```",
-            "",
-            f"Current-release pointer: `{REPOSITORY}/releases/latest/download/{POINTER}`",
-            "",
-            f"Quick start: {REPOSITORY}/blob/{'v' + version}/docs/quick-start.md",
-            "",
-        ]
-    )
     return "\n".join(lines)
 
 
@@ -172,17 +97,13 @@ class ReleaseHost(Protocol):
 
 
 class GhClient:
-    """Thin wrapper over the GitHub CLI; every method is one ``gh release`` call."""
-
     def __init__(self, executable: str = "gh", repository: str = REPOSITORY_SLUG):
         self.executable = executable
         self.repository = repository
 
     def _run(self, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
         result = subprocess.run(
-            [self.executable, *args, "--repo", self.repository],
-            text=True,
-            capture_output=True,
+            [self.executable, *args, "--repo", self.repository], text=True, capture_output=True
         )
         if check and result.returncode:
             raise PublicationError(
@@ -192,7 +113,9 @@ class GhClient:
         return result
 
     def view(self, tag: str) -> dict[str, Any] | None:
-        result = self._run("release", "view", tag, "--json", "isDraft,isPrerelease,tagName,assets", check=False)
+        result = self._run(
+            "release", "view", tag, "--json", "isDraft,isPrerelease,tagName,assets", check=False
+        )
         if result.returncode:
             if "not found" in (result.stderr + result.stdout).lower():
                 return None
@@ -200,7 +123,10 @@ class GhClient:
         return json.loads(result.stdout)
 
     def create_draft(self, tag: str, notes_file: Path, title: str, prerelease: bool) -> None:
-        args = ["release", "create", tag, "--draft", "--verify-tag", "--title", title, "--notes-file", str(notes_file)]
+        args = [
+            "release", "create", tag, "--draft", "--verify-tag", "--title", title,
+            "--notes-file", str(notes_file),
+        ]
         if prerelease:
             args.append("--prerelease")
         self._run(*args)
@@ -224,43 +150,20 @@ def _plan_operations(tag: str, version: str, prerelease: bool) -> list[str]:
 
 
 def compare_with_published(dist: Path, version: str, tag: str, host: ReleaseHost) -> dict[str, Any]:
-    """Compare the published catalogs and pointer with the local ``dist``; never mutates."""
     differences: dict[str, Any] = {}
     with tempfile.TemporaryDirectory() as temporary:
         downloaded = Path(temporary)
-        for name in list(CATALOGS) + [POINTER]:
+        for name in asset_names(version):
             try:
                 host.download(tag, name, downloaded)
             except PublicationError as error:
                 differences[name] = f"download failed: {error}"
                 continue
-            remote_path = downloaded / name
-            if not remote_path.is_file():
-                differences[name] = "missing from the published release"
-                continue
-            local = json.loads((dist / name).read_text(encoding="utf-8"))
-            remote = json.loads(remote_path.read_text(encoding="utf-8"))
-            if name == POINTER:
-                fields = {
-                    "version": None,
-                    "base_url": None,
-                    "architecture_profile": None,
-                    "workspace_protocol": None,
-                    "archives": None,
-                }
-                changed = {field: {"published": remote.get(field), "local": local.get(field)} for field in fields if remote.get(field) != local.get(field)}
-            else:
-                collection, identifier = _CATALOG_ENTRIES[name]
-                local_entry = local[collection][identifier]
-                remote_entry = remote.get(collection, {}).get(identifier, {})
-                changed = {}
-                if remote.get("catalog_url") != local.get("catalog_url"):
-                    changed["catalog_url"] = {"published": remote.get("catalog_url"), "local": local.get("catalog_url")}
-                for field in ("version", "download_url", "sha256"):
-                    if remote_entry.get(field) != local_entry.get(field):
-                        changed[field] = {"published": remote_entry.get(field), "local": local_entry.get(field)}
-            if changed:
-                differences[name] = changed
+            remote = downloaded / name
+            if not remote.is_file():
+                differences[name] = "missing from published release"
+            elif remote.read_bytes() != (dist / name).read_bytes():
+                differences[name] = {"published": _sha256(remote), "local": _sha256(dist / name)}
     return {"identical": not differences, "differences": differences}
 
 
@@ -272,7 +175,6 @@ def publish(
     dry_run: bool = False,
     compare_only: bool = False,
 ) -> tuple[dict[str, Any], int]:
-    """Run the decision table and return the Publication Record with its exit code."""
     dist = dist.resolve()
     record: dict[str, Any] = {
         "outcome": None,
@@ -285,58 +187,51 @@ def publish(
         "message": None,
     }
     try:
-        identity = _BUILDER.read_release_identity()
+        identity = BUILDER.read_release_identity()
         version = identity.version
         record["version"] = version
         expected_tag = f"v{version}"
         if tag != expected_tag:
             raise PublicationError(
                 "version-mismatch",
-                f"tag {tag} does not match the manifest release version {version} (expected tag {expected_tag}); "
-                f"bump {_BUILDER.BUNDLE_MANIFEST} and the component manifests together before tagging",
+                f"tag {tag} does not match concorde.json version {version} (expected {expected_tag})",
             )
-        base_url = _BUILDER.default_base_url(version)
+        base_url = BUILDER.default_base_url(version)
         record["base_url"] = base_url
         try:
-            _VERIFIER.verify_release(dist, expect_version=version, expect_base_url=base_url)
-        except (ValueError, FileNotFoundError, KeyError) as error:
+            VERIFIER.verify_release(dist, expect_version=version, expect_base_url=base_url)
+        except (ValueError, OSError, KeyError) as error:
             raise PublicationError("verification-failed", f"release verification failed: {error}") from error
-
         prerelease = is_prerelease(version)
-        build_release_pointer(dist, version, tag, base_url, identity.speckit_range, prerelease)
-        archives = {name: _sha256(dist / name) for name in archive_names(version)}
-        notes = render_notes(version, identity.speckit_range, base_url, archives)
-        record["plan"] = _plan_operations(tag, version, prerelease)
-        record["notes"] = notes
         assets = [dist / name for name in asset_names(version)]
         missing = [path.name for path in assets if not path.is_file()]
         if missing:
-            raise PublicationError("verification-failed", f"release assets missing from {dist}: {', '.join(missing)}")
-
+            raise PublicationError("verification-failed", f"release assets missing: {', '.join(missing)}")
+        digests = {path.name: _sha256(path) for path in assets}
+        notes = render_notes(version, base_url, digests)
+        record["plan"] = _plan_operations(tag, version, prerelease)
+        record["notes"] = notes
         if dry_run:
             record["outcome"] = "dry-run"
             record["message"] = "plan printed; no release host operation was performed"
             return record, EXIT_OK
-
         existing = host.view(tag)
         if existing is not None and not existing.get("isDraft"):
             compared = compare_with_published(dist, version, tag, host)
             record["compared"] = compared
             if compared["identical"]:
                 record["outcome"] = "already-published"
-                record["message"] = f"{tag} is already published with identical catalogs and digests; nothing changed"
+                record["message"] = f"{tag} already contains identical standalone assets"
                 return record, EXIT_OK
             raise PublicationError(
                 "divergent",
-                f"{tag} is already published with different content ({', '.join(sorted(compared['differences']))}); "
-                "refusing to overwrite a published release — publish a new version instead",
+                f"{tag} contains different immutable assets; publish a new version",
                 EXIT_DIVERGENT,
             )
         if compare_only:
             record["outcome"] = "draft" if existing is not None else "absent"
-            record["message"] = f"{tag} is {record['outcome']}; compare-only performed no mutation"
+            record["message"] = "compare-only performed no mutation"
             return record, EXIT_OK
-
         uploaded: list[str] = []
         try:
             if existing is None:
@@ -352,10 +247,10 @@ def publish(
                 uploaded.append(path.name)
             host.publish(tag)
         except PublicationError as error:
-            record["residual_state"] = {"draft": tag, "assets_uploaded": uploaded, "next_run": "repairs the draft and publishes"}
+            record["residual_state"] = {"draft": tag, "assets_uploaded": uploaded, "next_run": "repairs the draft"}
             raise PublicationError("publication-failed", str(error)) from error
         record["outcome"] = "published"
-        record["message"] = f"{tag} published with {len(assets)} assets at {base_url}"
+        record["message"] = f"{tag} published with {len(assets)} standalone assets"
         return record, EXIT_OK
     except PublicationError as error:
         record["outcome"] = error.outcome
@@ -366,10 +261,10 @@ def publish(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dist", type=Path, default=Path("dist"))
-    parser.add_argument("--tag", required=True, help="Release tag, must equal v<manifest version>")
-    parser.add_argument("--dry-run", action="store_true", help="Print the plan; perform no release host operation")
-    parser.add_argument("--compare-only", action="store_true", help="Compare with a published release; never mutate")
-    parser.add_argument("--gh", default="gh", help="GitHub CLI executable")
+    parser.add_argument("--tag", required=True)
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--compare-only", action="store_true")
+    parser.add_argument("--gh", default="gh")
     arguments = parser.parse_args(argv)
     record, code = publish(
         arguments.dist,
@@ -383,4 +278,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

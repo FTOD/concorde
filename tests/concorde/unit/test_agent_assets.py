@@ -116,7 +116,7 @@ class AgentAssetTests(unittest.TestCase):
             self.assertTrue(plans.is_file())
             self.assertTrue(log.is_file())
             self.assertFalse((root / ".codex/agents/reflection_investigator.toml").exists())
-            receipt = json.loads((root / ".specify/concorde-agent-assets.json").read_text())
+            receipt = json.loads((root / ".concorde/agent-assets.json").read_text())
             self.assertNotIn("codex", receipt["integrations"])
 
 

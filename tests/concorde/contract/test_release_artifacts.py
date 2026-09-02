@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+import hashlib
 import importlib.util
 import json
-import hashlib
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -9,203 +12,110 @@ from pathlib import Path
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-def _load_script(name: str, module_name: str):
-    path = REPOSITORY_ROOT / "scripts/release" / name
-    spec = importlib.util.spec_from_file_location(module_name, path)
+def _load(name: str, module_name: str):
+    spec = importlib.util.spec_from_file_location(module_name, REPOSITORY_ROOT / "scripts/release" / name)
+    assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
-    assert spec.loader
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
 
-def load_builder():
-    return _load_script("build-components.py", "concorde_release_builder")
+builder = _load("build-release.py", "concorde_release_builder_contract")
+verifier = _load("verify-release.py", "concorde_release_verifier_contract")
 
 
-def load_verifier():
-    return _load_script("verify-release.py", "concorde_release_verifier")
-
-
-class ReleaseArtifactTests(unittest.TestCase):
-    def test_two_builds_are_byte_equivalent_and_catalogs_match(self):
-        builder = load_builder()
+class ReleaseArtifactContractTests(unittest.TestCase):
+    def test_build_is_byte_reproducible(self):
         with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
-            builder.build_release(Path(first), "http://127.0.0.1:8765")
-            builder.build_release(Path(second), "http://127.0.0.1:8765")
-            names = ["concorde-preset-0.9.0.zip", "concorde-extension-0.9.0.zip", "concorde-bundle-0.9.0.zip"]
-            for name in names:
+            base = "https://example.test/releases/v1.0.0"
+            one = builder.build_release(Path(first), base)
+            two = builder.build_release(Path(second), base)
+            self.assertEqual(one, two)
+            for name in ("concorde-1.0.0.zip", "release.json"):
                 self.assertEqual((Path(first) / name).read_bytes(), (Path(second) / name).read_bytes())
-            self.assertEqual((Path(first) / "presets.json").read_bytes(), (Path(second) / "presets.json").read_bytes())
 
-    def test_default_catalog_urls_are_the_published_release_location(self):
-        builder = load_builder()
-        version = builder.read_release_version()
-        base_url = builder.default_base_url(version)
-        self.assertEqual(base_url, f"https://github.com/FTOD/concorde/releases/download/v{version}")
+    def test_release_pointer_binds_one_archive_identity_and_digest(self):
         with tempfile.TemporaryDirectory() as temporary:
-            builder.build_release(Path(temporary))
-            for name, (collection, identifier) in {
-                "extensions.json": ("extensions", "concorde"),
-                "presets.json": ("presets", "concorde"),
-                "bundles.json": ("bundles", "concorde-bundle"),
-            }.items():
-                text = (Path(temporary) / name).read_text(encoding="utf-8")
-                self.assertNotIn('"http://', text)
-                catalog = json.loads(text)
-                entry = catalog[collection][identifier]
-                self.assertEqual(catalog["catalog_url"], f"{base_url}/{name}")
-                self.assertTrue(entry["download_url"].startswith(f"{base_url}/"))
-                self.assertEqual(entry["repository"], builder.REPOSITORY)
-                self.assertEqual(entry["version"], version)
-                self.assertEqual(entry["architecture_profile"], 7)
-                self.assertEqual(entry["workspace_protocol"], 12)
+            output = Path(temporary)
+            builder.build_release(output, "https://example.test/v1.0.0")
+            pointer = json.loads((output / "release.json").read_text())
+            self.assertEqual(pointer["schema_version"], 1)
+            self.assertEqual((pointer["version"], pointer["tag"]), ("1.0.0", "v1.0.0"))
+            self.assertEqual((pointer["architecture_profile"], pointer["workspace_protocol"]), (7, 12))
+            self.assertEqual(pointer["archive"]["name"], "concorde-1.0.0.zip")
+            digest = "sha256:" + hashlib.sha256((output / pointer["archive"]["name"]).read_bytes()).hexdigest()
+            self.assertEqual(pointer["archive"]["sha256"], digest)
+            for removed in ("catalogs", "bundle_id", "speckit_version"):
+                self.assertNotIn(removed, pointer)
 
-    def test_manifests_share_one_release_version_and_repository(self):
-        builder = load_builder()
-        identity = builder.read_release_identity()
-        self.assertEqual(identity.repository, "https://github.com/FTOD/concorde")
-        for relative in (builder.BUNDLE_MANIFEST, builder.PRESET_MANIFEST, builder.EXTENSION_MANIFEST):
-            self.assertIn(f'"{identity.version}"', (REPOSITORY_ROOT / relative).read_text(encoding="utf-8"))
-
-        def patched_root(relative: str, old: str, new: str) -> Path:
-            root = Path(tempfile.mkdtemp())
-            for manifest in (builder.BUNDLE_MANIFEST, builder.PRESET_MANIFEST, builder.EXTENSION_MANIFEST):
-                target = root / manifest
-                target.parent.mkdir(parents=True, exist_ok=True)
-                content = (REPOSITORY_ROOT / manifest).read_text(encoding="utf-8")
-                if manifest == relative:
-                    self.assertIn(old, content)
-                    content = content.replace(old, new, 1)
-                target.write_text(content, encoding="utf-8")
-            return root
-
-        with self.assertRaisesRegex(builder.ReleaseIdentityError, "version disagreement.*preset.version declares 9.9.9"):
-            builder.read_release_identity(patched_root(builder.PRESET_MANIFEST, f'version: "{identity.version}"', 'version: "9.9.9"'))
-        with self.assertRaisesRegex(builder.ReleaseIdentityError, "repository disagreement"):
-            builder.read_release_identity(
-                patched_root(builder.EXTENSION_MANIFEST, builder.REPOSITORY, "https://github.com/someone-else/concorde")
-            )
-
-    def test_verifier_rejects_wrong_version_or_base_url(self):
-        builder = load_builder()
-        verifier = load_verifier()
-        version = builder.read_release_version()
-        base_url = builder.default_base_url(version)
-        with tempfile.TemporaryDirectory() as temporary:
-            builder.build_release(Path(temporary))
-            verified = verifier.verify_release(Path(temporary), expect_version=version, expect_base_url=base_url)
-            self.assertEqual(set(verified), {
-                f"concorde-preset-{version}.zip", f"concorde-extension-{version}.zip", f"concorde-bundle-{version}.zip",
-            })
-            with self.assertRaisesRegex(ValueError, "expected release version 9.9.9"):
-                verifier.verify_release(Path(temporary), expect_version="9.9.9")
-            with self.assertRaisesRegex(ValueError, "download_url .* is not https://example.invalid/releases/"):
-                verifier.verify_release(Path(temporary), expect_base_url="https://example.invalid/releases")
-
-            self.assertEqual(verifier.REFLECTION_TRIAGE_PROTOCOL, "reflection-triage/v3")
-
-            catalog_path = Path(temporary) / "presets.json"
-            catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
-            catalog["presets"]["concorde"]["workspace_protocol"] = 9
-            catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "Feature Workspace Protocol must be 12"):
-                verifier.verify_release(Path(temporary))
-
-    def test_catalog_capability_counts_match_component_manifests(self):
-        builder = load_builder()
+    def test_archive_has_single_safe_root_and_required_native_members(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
             builder.build_release(output)
-            preset_catalog = json.loads((output / "presets.json").read_text(encoding="utf-8"))
-            extension_catalog = json.loads((output / "extensions.json").read_text(encoding="utf-8"))
-            preset_manifest = (REPOSITORY_ROOT / "presets/concorde/preset.yml").read_text(
-                encoding="utf-8"
-            )
-            extension_manifest = (REPOSITORY_ROOT / "extensions/concorde/extension.yml").read_text(
-                encoding="utf-8"
-            )
+            with zipfile.ZipFile(output / "concorde-1.0.0.zip") as archive:
+                names = archive.namelist()
+                self.assertEqual(len(names), len(set(names)))
+                self.assertTrue(all(name.startswith("concorde/") for name in names))
+                for required in (
+                    "concorde/concorde.json",
+                    "concorde/LICENSE",
+                    "concorde/scripts/install-concorde.py",
+                    "concorde/src/concorde/cli.py",
+                    "concorde/commands/speckit.constitution.md",
+                    "concorde/templates/feature-template.md",
+                    "concorde/agent-assets/reflections/manifest.json",
+                ):
+                    self.assertIn(required, names)
+                self.assertEqual(archive.read("concorde/concorde.json"), (REPOSITORY_ROOT / "concorde.json").read_bytes())
+                self.assertFalse(any("/.specify/" in f"/{name}" for name in names))
+                self.assertFalse(any(name.startswith(("concorde/presets/", "concorde/extensions/", "concorde/bundles/")) for name in names))
 
-            self.assertEqual(
-                preset_catalog["presets"]["concorde"]["provides"],
-                {
-                    "templates": preset_manifest.count('type: "template"'),
-                    "commands": preset_manifest.count('type: "command"'),
-                },
-            )
-            self.assertEqual(
-                extension_catalog["extensions"]["concorde"]["provides"]["commands"],
-                extension_manifest.count('- name: "speckit.concorde.'),
-            )
-            self.assertEqual(extension_catalog["extensions"]["concorde"]["provides"], {
-                "commands": 5,
-                "scripts": 5,
-            })
-            self.assertEqual(preset_catalog["presets"]["concorde"]["provides"]["templates"], 4)
-
-    def test_archives_match_explicit_allowlists_and_installed_handoff(self):
-        builder = load_builder()
-        sources = {
-            "concorde-preset-0.9.0.zip": ("preset", REPOSITORY_ROOT / "presets/concorde"),
-            "concorde-extension-0.9.0.zip": ("extension", REPOSITORY_ROOT / "extensions/concorde"),
-            "concorde-bundle-0.9.0.zip": ("bundle", REPOSITORY_ROOT / "bundles/concorde-bundle"),
-        }
+    def test_archive_embeds_manifest_command_and_template_inventory(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
-            builder.build_release(output, "http://127.0.0.1:8765")
-            for archive_name, (component, source) in sources.items():
-                expected = {
-                    path.relative_to(source).as_posix()
-                    for path in builder._source_files(source, component)
-                }
-                with zipfile.ZipFile(output / archive_name) as archive:
-                    self.assertEqual(set(archive.namelist()), expected)
+            builder.build_release(output)
+            with zipfile.ZipFile(output / "concorde-1.0.0.zip") as archive:
+                manifest = json.loads(archive.read("concorde/concorde.json"))
+                commands = sorted(Path(name).stem for name in archive.namelist() if name.startswith("concorde/commands/") and name.endswith(".md"))
+                templates = sorted(Path(name).name for name in archive.namelist() if name.startswith("concorde/templates/") and name.endswith(".md"))
+                self.assertEqual(sorted(manifest["commands"]), commands)
+                self.assertEqual(sorted(manifest["templates"]), templates)
 
-            with zipfile.ZipFile(output / "concorde-preset-0.9.0.zip") as preset_archive:
-                command_members = sorted(
-                    name for name in preset_archive.namelist() if name.startswith("commands/")
-                )
-                preset_manifest = builder._load_yaml(REPOSITORY_ROOT / builder.PRESET_MANIFEST)
-                self.assertEqual(
-                    len(command_members),
-                    builder._capability_counts(preset_manifest, "commands")["commands"],
-                )
-                self.assertTrue(all(b"Protocol 12" in preset_archive.read(name) for name in command_members))
-                self.assertNotIn("templates/abstract-template.md", preset_archive.namelist())
-                self.assertNotIn("templates/implementation-template.md", preset_archive.namelist())
+    def test_verifier_installs_and_rebuilds_release(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            base = "https://example.test/v1.0.0"
+            built = builder.build_release(output, base)
+            verified = verifier.verify_release(output, "1.0.0", base)
+            self.assertEqual(verified, built)
 
-            with zipfile.ZipFile(output / "concorde-extension-0.9.0.zip") as extension_archive:
-                handoff_members = sorted(
-                    name
-                    for name in extension_archive.namelist()
-                    if name.startswith(("commands/", "scripts/", "runtime/", "schemas/"))
-                )
-                digest = hashlib.sha256()
-                for name in handoff_members:
-                    digest.update(name.encode("utf-8"))
-                    digest.update(b"\0")
-                    digest.update(extension_archive.read(name))
-                    digest.update(b"\0")
-                self.assertEqual(len(digest.hexdigest()), 64)
-                self.assertIn("scripts/python/workspace.py", handoff_members)
-                self.assertIn("scripts/python/reflections_queue.py", handoff_members)
-                self.assertIn("commands/speckit.concorde.ask.md", handoff_members)
-                self.assertIn(b'"schema_version": 12', extension_archive.read("scripts/python/workspace.py"))
-                self.assertIn(b"Delivery Proposal 8", extension_archive.read("runtime/concorde/delivery.py"))
-                self.assertNotIn(".agents/", "\n".join(handoff_members))
-                agent_members = sorted(
-                    name for name in extension_archive.namelist() if name.startswith("agent-assets/reflections/")
-                )
-                self.assertIn("agent-assets/reflections/manifest.json", agent_members)
-                self.assertIn("agent-assets/reflections/orchestrator.md", agent_members)
-                self.assertIn("agent-assets/reflections/roles/investigator.md", agent_members)
-                self.assertIn("agent-assets/reflections/roles/implementer.md", agent_members)
-                self.assertIn("agent-assets/reflections/projections/claude/SKILL.md.tmpl", agent_members)
-                self.assertIn("agent-assets/reflections/projections/codex/SKILL.md.tmpl", agent_members)
-                self.assertGreaterEqual(len(agent_members), 10)
-                self.assertIn(
-                    b'"protocol": "reflection-triage/v3"',
-                    extension_archive.read("agent-assets/reflections/manifest.json"),
-                )
+    def test_verifier_rejects_digest_protocol_and_archive_corruption(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            base = "https://example.test/v1.0.0"
+            builder.build_release(output, base)
+            pointer_path = output / "release.json"
+            pointer = json.loads(pointer_path.read_text())
+            pointer["workspace_protocol"] = 11
+            pointer_path.write_text(json.dumps(pointer))
+            with self.assertRaisesRegex(ValueError, "workspace_protocol"):
+                verifier.verify_release(output, "1.0.0", base)
+            builder.build_release(output, base)
+            archive = output / "concorde-1.0.0.zip"
+            archive.write_bytes(archive.read_bytes() + b"corrupt")
+            with self.assertRaisesRegex(ValueError, "digest"):
+                verifier.verify_release(output, "1.0.0", base)
+
+    def test_release_identity_rejects_wrong_repository_profile_or_protocol(self):
+        original = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
+        for field, value in (("repository", "https://example.test/other"), ("architecture_profile", 6), ("workspace_protocol", 11)):
+            with tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                altered = {**original, field: value}
+                (root / "concorde.json").write_text(json.dumps(altered))
+                with self.assertRaises(builder.ReleaseIdentityError):
+                    builder.read_release_identity(root)
 
 
 if __name__ == "__main__":

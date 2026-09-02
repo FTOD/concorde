@@ -1,124 +1,99 @@
-import re
+from __future__ import annotations
+
+import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-import yaml
-
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-PRESET = REPOSITORY_ROOT / "presets/concorde"
-EXTENSION = REPOSITORY_ROOT / "extensions/concorde"
-
-
 class ManifestContractTests(unittest.TestCase):
-    def test_extension_declares_profile7_commands_scripts_and_agent_assets(self):
-        manifest = yaml.safe_load((EXTENSION / "extension.yml").read_text(encoding="utf-8"))
-        self.assertEqual(len(manifest["provides"]["commands"]), 5)
-        self.assertEqual(len(manifest["provides"]["scripts"]), 5)
-        self.assertIn("module-centered", manifest["extension"]["description"])
-        descriptions = {item["name"]: item["description"] for item in manifest["provides"]["commands"]}
-        self.assertIn("atomically remove", descriptions["speckit.concorde.deliver"])
-        self.assertIn("Protocol 12", manifest["provides"]["scripts"][3]["description"])
-        self.assertEqual(manifest["extension"]["version"], "0.9.0")
-        self.assertIn("reflection-triage/v3", manifest["provides"]["scripts"][4]["description"])
-        for relative in (
-            "agent-assets/reflections/manifest.json",
-            "agent-assets/reflections/orchestrator.md",
-            "agent-assets/reflections/roles/investigator.md",
-            "agent-assets/reflections/roles/implementer.md",
-            "agent-assets/reflections/projections/claude/SKILL.md.tmpl",
-            "agent-assets/reflections/projections/codex/SKILL.md.tmpl",
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
+
+    def test_one_manifest_declares_native_identity_profile_and_install_layout(self):
+        manifest = self.manifest
+        self.assertEqual(manifest["schema_version"], 1)
+        self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "1.0.0"))
+        self.assertEqual((manifest["architecture_profile"], manifest["workspace_protocol"]), (7, 12))
+        self.assertEqual(manifest["integrations"], ["claude", "codex"])
+        self.assertEqual(manifest["install"], {
+            "framework_root": ".concorde/framework",
+            "receipt": ".concorde/install.json",
+            "selection": ".concorde/feature.json",
+        })
+
+    def test_runtime_reads_version_from_the_single_manifest(self):
+        sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
+        try:
+            import concorde
+            self.assertEqual(concorde.__version__, self.manifest["version"])
+        finally:
+            sys.path.pop(0)
+
+    def test_manifest_inventory_equals_root_commands_and_templates(self):
+        commands = sorted(path.stem for path in (REPOSITORY_ROOT / "commands").glob("*.md"))
+        templates = sorted(path.name for path in (REPOSITORY_ROOT / "templates").glob("*.md"))
+        self.assertEqual(sorted(self.manifest["commands"]), commands)
+        self.assertEqual(sorted(self.manifest["templates"]), templates)
+        self.assertEqual((len(commands), len(templates)), (16, 6))
+
+    def test_complete_feature_template_contains_profile_and_product_sections(self):
+        body = (REPOSITORY_ROOT / "templates/feature-template.md").read_text()
+        for marker in (
+            "kind: feature", "related_features", "## Outcome and Scope", "## Usage",
+            "## User Scenarios & Testing", "## Interfaces", "## Architecture Zoom",
+            "## Requirements", "## Success Criteria",
         ):
-            self.assertTrue((EXTENSION / relative).is_file(), relative)
+            self.assertIn(marker, body)
+        self.assertNotIn("[FEATURE BRANCH]", body)
 
-    def test_bundle_is_native_exactly_two_components_and_names_profile(self):
-        text = (REPOSITORY_ROOT / "bundles/concorde-bundle/bundle.yml").read_text(encoding="utf-8")
-        manifest = yaml.safe_load(text)
-        self.assertEqual(manifest["bundle"]["id"], "concorde-bundle")
-        self.assertEqual(manifest["bundle"]["version"], "0.9.0")
-        self.assertIn("Profile 7", manifest["bundle"]["description"])
-        self.assertIn("Protocol 12", manifest["bundle"]["description"])
-        self.assertEqual(len(manifest["provides"]["extensions"]), 1)
-        self.assertEqual(len(manifest["provides"]["presets"]), 1)
-        self.assertEqual(manifest["provides"]["steps"], [])
-        self.assertEqual(manifest["provides"]["workflows"], [])
-        self.assertNotIn("integration:", text)
+    def test_plan_tasks_and_checklist_are_complete_root_references(self):
+        plan = (REPOSITORY_ROOT / "templates/plan-template.md").read_text()
+        tasks = (REPOSITORY_ROOT / "templates/tasks-template.md").read_text()
+        checklist = (REPOSITORY_ROOT / "templates/checklist-template.md").read_text()
+        for marker in ("Concorde Architecture Gate", "Source Structure", "Attempt Artifacts", "Risk Controls"):
+            self.assertIn(marker, plan)
+        for marker in ("Concorde Task Coverage", "Required Checklist Format", "Evidence Before Completion"):
+            self.assertIn(marker, tasks)
+        self.assertIn("requirements-quality", checklist)
 
-    def test_preset_has_four_templates_and_ten_design_only_commands(self):
-        text = (PRESET / "preset.yml").read_text(encoding="utf-8")
-        manifest = yaml.safe_load(text)
-        entries = manifest["provides"]["templates"]
-        templates = [item for item in entries if item["type"] == "template"]
-        commands = [item for item in entries if item["type"] == "command"]
-        self.assertEqual([item["name"] for item in templates], [
-            "spec-template", "reflections-template", "plan-template", "tasks-template",
-        ])
-        self.assertEqual(len(commands), 10)
-        self.assertEqual(sum(item["strategy"] == "append" for item in entries), 1)
-        self.assertEqual(sum(item["strategy"] == "replace" for item in entries), 13)
-        self.assertEqual(manifest["preset"]["version"], "0.9.0")
-        self.assertFalse((PRESET / "templates/abstract-template.md").exists())
-        self.assertFalse((PRESET / "templates/implementation-template.md").exists())
-        self.assertIn("embedded interface", templates[0]["description"])
-        self.assertIn("architecture-zoom", templates[0]["description"])
-        self.assertIn("merged-small removal", templates[1]["description"])
+    def test_reflection_template_keeps_log_v1_and_high_water(self):
+        body = (REPOSITORY_ROOT / "templates/reflections-template.md").read_text()
+        self.assertIn("Concorde Reflection Log v1", body)
+        self.assertIn("concorde-reflection-high-water", body)
+        self.assertIn("R-NNN", body)
 
-    def test_extension_and_preset_install_from_source_without_removed_templates(self):
+    def test_removed_host_package_layout_is_absent(self):
+        for relative in (".specify", "presets", "extensions", "bundles", "catalogs"):
+            self.assertFalse((REPOSITORY_ROOT / relative).exists(), relative)
+        serialized = json.dumps(self.manifest).lower()
+        for key in ("speckit_version", "bundle_id", "install_policy"):
+            self.assertNotIn(key, serialized)
+
+    def test_native_source_install_materializes_framework_and_commands(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            subprocess.run(
-                ["specify", "init", "--here", "--force", "--ignore-agent-tools", "--integration", "codex", "--integration-options=--skills"],
-                cwd=root, check=True, capture_output=True, text=True,
+            target = Path(temporary)
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(REPOSITORY_ROOT / "scripts/install-concorde.py"),
+                    "--target", str(target),
+                    "--integration", "codex",
+                    "--apply", "--format", "json",
+                ],
+                text=True,
+                capture_output=True,
             )
-            subprocess.run(
-                ["specify", "extension", "add", str(EXTENSION), "--dev"],
-                cwd=root, check=True, capture_output=True, text=True,
-            )
-            subprocess.run(
-                ["specify", "preset", "add", "--dev", str(PRESET)],
-                cwd=root, check=True, capture_output=True, text=True,
-            )
-            installed_preset = root / ".specify/presets/concorde"
-            self.assertTrue((installed_preset / "preset.yml").is_file())
-            self.assertTrue((root / ".specify/extensions/concorde/extension.yml").is_file())
-            self.assertFalse((installed_preset / "templates/abstract-template.md").exists())
-            self.assertFalse((installed_preset / "templates/implementation-template.md").exists())
-            self.assertIn('"concorde"', (root / ".specify/presets/.registry").read_text(encoding="utf-8"))
-            self.assertIn('"concorde"', (root / ".specify/extensions/.registry").read_text(encoding="utf-8"))
-
-            for command in ("specify", "clarify", "checklist", "plan", "tasks", "implement", "analyze", "converge", "taskstoissues", "fast-loop"):
-                rendered = (root / f".agents/skills/speckit-{command}/SKILL.md").read_text(encoding="utf-8")
-                self.assertIn("Protocol 12", rendered, command)
-
-    def test_templates_keep_attempt_memory_and_source_authority_distinct(self):
-        design = (PRESET / "templates/design-template.md").read_text(encoding="utf-8")
-        plan = (PRESET / "templates/plan-template.md").read_text(encoding="utf-8")
-        tasks = (PRESET / "templates/tasks-template.md").read_text(encoding="utf-8")
-        self.assertIn("complete durable specification", design)
-        self.assertIn("## Interfaces", design)
-        self.assertIn("## Architecture Zoom", design)
-        self.assertIn("current source code", plan)
-        self.assertIn("writes only under the returned `attempt_dir`", plan)
-        self.assertIn("module `architecture.md`", tasks)
-        self.assertIn("direct feature file", tasks)
-        self.assertIn("cleanup-only delivery", tasks)
-        self.assertNotRegex("\n".join((design, plan, tasks)), re.compile(r"(?:abstract|implementation)-template"))
-
-    def test_reflection_template_keeps_log_v1_with_v3_high_water_lifecycle(self):
-        body = (PRESET / "templates/reflections-template.md").read_text(encoding="utf-8")
-        for value in (
-            "<!-- concorde-reflection-high-water: R-000 -->",
-            "Reflection-triage/v3",
-            "--allocate-id",
-            "`allocated_id`",
-            "--remove-merged",
-            "without adding Status/Note",
-        ):
-            self.assertIn(value, body, value)
-        self.assertIn("Grammar (Concorde Reflection Log v1)", body)
+            self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+            self.assertEqual(json.loads(result.stdout)["status"], "installed")
+            self.assertTrue((target / ".concorde/framework/concorde.json").is_file())
+            self.assertTrue((target / ".agents/skills/speckit-constitution/SKILL.md").is_file())
+            self.assertFalse((target / ".specify").exists())
 
 
 if __name__ == "__main__":

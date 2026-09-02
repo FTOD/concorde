@@ -47,14 +47,15 @@ class DeliveryTerminologyContractTests(unittest.TestCase):
         self.assertIn("executable_context", value["retained_digests"])
 
     def test_runtime_and_guidance_use_cleanup_only_delivery_language(self):
-        runtime = (REPOSITORY_ROOT / "extensions/concorde/runtime/concorde/delivery.py").read_text(encoding="utf-8")
-        command = (REPOSITORY_ROOT / "extensions/concorde/commands/speckit.concorde.deliver.md").read_text(encoding="utf-8")
-        readme = (REPOSITORY_ROOT / "extensions/concorde/README.md").read_text(encoding="utf-8")
+        runtime = (REPOSITORY_ROOT / "src/concorde/delivery.py").read_text(encoding="utf-8")
+        command = (REPOSITORY_ROOT / "commands/speckit.concorde.deliver.md").read_text(encoding="utf-8")
+        readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("Delivery Proposal 8", runtime)
         self.assertIn("proposal.get(\"proposal_version\") != 8", runtime)
         self.assertIn("cleanup-only", runtime)
         self.assertIn("cleanup-only", command)
-        self.assertIn("atomically removes only", readme)
+        self.assertIn("cleanup-only", readme)
+        self.assertIn("remove exactly", readme)
         for body in (command, readme):
             self.assertNotIn("accepted realization", body.lower())
 

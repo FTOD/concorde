@@ -1,16 +1,15 @@
 ---
 name: speckit-tasks
-description: Generate dependency-ordered tasks for one Concorde attempt.
-argument-hint: "Optional task generation constraints"
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Generate dependency-ordered tasks for one Concorde attempt."
+argument-hint: "Optional command guidance"
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: preset:concorde
+  author: "concorde"
+  source: "commands/speckit.tasks.md"
 user-invocable: true
 disable-model-invocation: false
 ---
-
-# Speckit Tasks Skill
+# Speckit Tasks
 
 ## User Input
 
@@ -25,11 +24,11 @@ module architecture, feature file/interfaces, code, tests, and projections befor
 
 ## Workspace gate
 
-Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase tasks` first. Require Protocol 12 and a canonical selected feature. Use only returned
+Run `python3 scripts/workspace.py --phase tasks` first. Require Protocol 12 and a canonical selected feature. Use only returned
 `feature_path`, `module_architecture`, bounded ancestry/related summaries, `executable_context`,
 `attempt_dir`, `plan`, `tasks`, `research`, `data_model`, `quickstart`, `validation`,
 `checklists_dir`, and `reflections`. Seed a missing returned tasks file through
-`specify preset resolve tasks-template`; never create a copy beside the feature file.
+`./templates/tasks-template.md`; never create a copy beside the feature file.
 
 Read the complete feature file, module architecture, implementation plan, research/data model/
 quickstart when present, and current code/test inventory. Related-feature summaries are navigation;
@@ -79,11 +78,10 @@ Check every requirement/interface/architecture change has task coverage, every t
 the user-authorized scope, dependencies are acyclic, and independently testable stories remain
 independent. Record contradictions, missing path authority, workarounds, or provisional choices in
 the project reflection log with `Phase: tasks`. Before appending a new entry, run the installed
-`.specify/extensions/concorde/scripts/python/reflections_queue.py --allocate-id`, use only its
+`python3 ./scripts/reflections_queue.py --allocate-id`, use only its
 `allocated_id`, and never derive an ID from the remaining log entries; update an existing occurrence
 without allocating or duplicating an entry. Do not silently rewrite the feature file, architecture,
 plan, or code during task generation.
 
-Process enabled unconditional `after_tasks` hooks: run mandatory hooks, present optional hooks, and
-leave conditional hooks to the executor. Report total tasks by phase/story, parallel opportunities,
+Report total tasks by phase/story, parallel opportunities,
 independent test criteria, MVP scope, and reflections added.

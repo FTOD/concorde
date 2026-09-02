@@ -4,13 +4,13 @@ import unittest
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-PRESET = REPOSITORY_ROOT / "presets/concorde"
+PACKAGE = REPOSITORY_ROOT
 WORKSPACE_FIXTURES = REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/workspace"
 
 
 class PlanDeliveryContractTests(unittest.TestCase):
     def test_plan_uses_feature_architecture_code_and_tests_as_inputs(self):
-        body = (PRESET / "commands/speckit.plan.md").read_text(encoding="utf-8")
+        body = (PACKAGE / "commands/speckit.plan.md").read_text(encoding="utf-8")
         normalized = " ".join(body.split())
         for value in (
             "complete selected feature file",
@@ -24,7 +24,7 @@ class PlanDeliveryContractTests(unittest.TestCase):
         self.assertNotIn("attempt/contracts/", body)
 
     def test_plan_template_requires_explicit_durable_reconciliation_tasks(self):
-        body = " ".join((PRESET / "templates/plan-template.md").read_text(encoding="utf-8").split())
+        body = " ".join((PACKAGE / "templates/plan-template.md").read_text(encoding="utf-8").split())
         self.assertIn("selected direct feature file", body)
         self.assertIn("providing module's `architecture.md`", body)
         self.assertIn("current source code", body)
@@ -33,7 +33,7 @@ class PlanDeliveryContractTests(unittest.TestCase):
         self.assertIn("cleanup-only delivery", body)
 
     def test_task_template_traces_architecture_feature_code_tests_and_delivery(self):
-        body = " ".join((PRESET / "templates/tasks-template.md").read_text(encoding="utf-8").split())
+        body = " ".join((PACKAGE / "templates/tasks-template.md").read_text(encoding="utf-8").split())
         for value in (
             "module `architecture.md`",
             "direct feature file",
@@ -52,7 +52,7 @@ class PlanDeliveryContractTests(unittest.TestCase):
         self.assertTrue(proposal["remove"][0].startswith(".concorde/attempts/feature."))
 
     def test_delivery_guidance_never_authors_content(self):
-        body = (REPOSITORY_ROOT / "extensions/concorde/commands/speckit.concorde.deliver.md").read_text(encoding="utf-8")
+        body = (REPOSITORY_ROOT / "commands/speckit.concorde.deliver.md").read_text(encoding="utf-8")
         normalized = " ".join(body.split())
         self.assertIn("Delivery is cleanup-only", normalized)
         self.assertIn("writes no durable specification or implementation narrative", normalized)

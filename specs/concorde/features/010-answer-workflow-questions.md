@@ -23,7 +23,7 @@ interfaces, or current-project application using only the smallest relevant main
 
 | Entity ID | Role |
 |---|---|
-| `entity.concorde.extension-package` | Supplies canonical ask guidance and stable navigation rules. |
+| `entity.concorde.commands` | Supplies canonical ask guidance and stable navigation rules. |
 | `entity.concorde.coding-agent` | Selects bounded sources, reasons over them, and returns citations without mutation. |
 | `entity.concorde.specification` | Provides project-specific architecture/design evidence when the question requires it. |
 
@@ -39,7 +39,7 @@ interfaces, or current-project application using only the smallest relevant main
 - **Obligations**: Use installed/current sources, disclose inference, and avoid unrelated/deeper reads or any write.
 - **Failures**: Missing authority or unresolved ambiguity is reported rather than guessed as fact.
 - **Compatibility**: Answers use current Profile 7 terms while historical names are labeled legacy.
-- **Implementing entities**: `entity.concorde.extension-package`, `entity.concorde.coding-agent`.
+- **Implementing entities**: `entity.concorde.commands`, `entity.concorde.coding-agent`.
 
 ## Usage Scenarios
 

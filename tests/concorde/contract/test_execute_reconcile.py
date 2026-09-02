@@ -3,7 +3,7 @@ import unittest
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-COMMANDS = REPOSITORY_ROOT / "presets/concorde/commands"
+COMMANDS = REPOSITORY_ROOT / "commands"
 
 
 class ExecuteReconcileContractTests(unittest.TestCase):

@@ -1,18 +1,17 @@
 ---
 name: speckit-concorde-context
-description: Retrieve exactly one bounded module or feature context
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Retrieve exactly one bounded module or feature context"
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: concorde:commands/speckit.concorde.context.md
+  author: "concorde"
+  source: "commands/speckit.concorde.context.md"
 ---
+# Speckit Concorde Context
 
 # Retrieve Concorde Context
 
-Require one stable module or feature ID in `$ARGUMENTS`, then run:
-
-- POSIX: `.specify/extensions/concorde/scripts/bash/concorde.sh context $ARGUMENTS --format json`
-- PowerShell: `.specify/extensions/concorde/scripts/powershell/concorde.ps1 context $ARGUMENTS --format json`
+Require one stable module or feature ID in `$ARGUMENTS`, then run
+`python3 scripts/concorde.py context $ARGUMENTS --format json`.
 
 For a module, present its `architecture.md`, responsibility/boundary, typed current-level entities,
 directed relationships, representative interactions, immediate child-module summaries, level-local

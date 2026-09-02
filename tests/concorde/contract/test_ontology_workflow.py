@@ -14,7 +14,7 @@ class OntologyWorkflowContractTests(unittest.TestCase):
         self.assertIn("| Entity ID | Type | Definition | Locator |", architecture)
         self.assertIn("| Source | Predicate | Target | Description |", architecture)
         self.assertIn("| Interaction ID | Trigger | Steps | Result | Interfaces |", architecture)
-        self.assertIn("module.concorde.skills", architecture)
+        self.assertIn("module.concorde.commands", architecture)
 
         design = (REPOSITORY_ROOT / "specs/concorde/features/007-project-ontology.md").read_text(encoding="utf-8")
         for heading in ("Outcome and Scope", "Architecture Zoom", "Interfaces", "Requirements", "Edge Cases"):
@@ -23,13 +23,13 @@ class OntologyWorkflowContractTests(unittest.TestCase):
             self.assertIn(phrase, design)
 
         sources = {
-            "presets/concorde/templates/design-template.md": ("architecture zoom", "interfaces", "source code"),
-            "presets/concorde/commands/speckit.specify.md": ("architecture.md", "feature_path", "interfaces"),
-            "presets/concorde/commands/speckit.plan.md": ("module architecture", "feature file", "source code"),
-            "presets/concorde/commands/speckit.implement.md": ("module architecture", "feature file", "source code"),
-            "presets/concorde/commands/speckit.fast-loop.md": ("providing architecture", "selected feature file", "code/tests"),
-            "extensions/concorde/commands/speckit.concorde.init.md": ("architecture.md", "typed entity vocabulary", "directed relationship vocabulary"),
-            "extensions/concorde/commands/speckit.concorde.deliver.md": ("module architecture", "feature file", "code"),
+            "templates/feature-template.md": ("architecture zoom", "interfaces", "source code"),
+            "commands/speckit.specify.md": ("architecture.md", "feature_path", "interfaces"),
+            "commands/speckit.plan.md": ("module architecture", "feature file", "source code"),
+            "commands/speckit.implement.md": ("module architecture", "feature file", "source code"),
+            "commands/speckit.fast-loop.md": ("providing architecture", "selected feature file", "code/tests"),
+            "commands/speckit.concorde.init.md": ("architecture.md", "typed entity vocabulary", "directed relationship vocabulary"),
+            "commands/speckit.concorde.deliver.md": ("module architecture", "feature file", "code"),
         }
         for relative, required in sources.items():
             text = (REPOSITORY_ROOT / relative).read_text(encoding="utf-8").lower()
@@ -38,9 +38,9 @@ class OntologyWorkflowContractTests(unittest.TestCase):
                     self.assertIn(phrase, text)
 
     def test_runtime_declares_profile7_entity_and_feature_diagnostics(self):
-        entity_validator = (REPOSITORY_ROOT / "extensions/concorde/runtime/concorde/validation/entities.py").read_text(encoding="utf-8")
-        feature_validator = (REPOSITORY_ROOT / "extensions/concorde/runtime/concorde/validation/features.py").read_text(encoding="utf-8")
-        coordinator = (REPOSITORY_ROOT / "extensions/concorde/runtime/concorde/validate.py").read_text(encoding="utf-8")
+        entity_validator = (REPOSITORY_ROOT / "src/concorde/validation/entities.py").read_text(encoding="utf-8")
+        feature_validator = (REPOSITORY_ROOT / "src/concorde/validation/features.py").read_text(encoding="utf-8")
+        coordinator = (REPOSITORY_ROOT / "src/concorde/validate.py").read_text(encoding="utf-8")
 
         for family in ("CONCORDE-ENTITY-", "CONCORDE-RELATIONSHIP-", "CONCORDE-INTERACTION-"):
             self.assertIn(family, entity_validator)
@@ -49,7 +49,7 @@ class OntologyWorkflowContractTests(unittest.TestCase):
         self.assertIn("validate_entities", coordinator)
         self.assertIn("validate_features", coordinator)
 
-    def test_self_hosted_profile_uses_direct_feature_files_and_is_contract_free(self):
+    def test_source_profile_uses_direct_feature_files_and_is_contract_free(self):
         root = REPOSITORY_ROOT / "specs/concorde"
         package = ProjectRepository(REPOSITORY_ROOT).load()
         self.assertEqual(package.profile_version, 7)

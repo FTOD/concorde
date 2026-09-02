@@ -1,16 +1,15 @@
 ---
 name: speckit-checklist
-description: Generate a requirements-quality checklist for one direct feature file.
-argument-hint: "Domain or focus area for the checklist"
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Generate a requirements-quality checklist for one direct feature file."
+argument-hint: "Optional command guidance"
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: preset:concorde
+  author: "concorde"
+  source: "commands/speckit.checklist.md"
 user-invocable: true
 disable-model-invocation: false
 ---
-
-# Speckit Checklist Skill
+# Speckit Checklist
 
 # Checklist Purpose: Unit Tests for English
 
@@ -20,7 +19,7 @@ implementation complete.
 
 ## Workspace gate
 
-Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase checklist` first and require a successful Protocol 12 workspace. Use the returned
+Run `python3 scripts/workspace.py --phase checklist` first and require a successful Protocol 12 workspace. Use the returned
 `feature_path`, `module_architecture`, bounded ancestry/related-feature summaries, and exact
 `checklists_dir`. Never derive a checklist path from the feature source or read another attempt.
 
@@ -28,7 +27,7 @@ Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py -
 
 1. Read the feature file and only the architecture sections needed to resolve its interfaces and
    Architecture Zoom. Consider `$ARGUMENTS` as the checklist's focus and risk context.
-2. Resolve `checklist-template` through the public preset resolver.
+2. Read `./templates/checklist-template.md` as the checklist format reference.
 3. Choose a short descriptive filename under the returned `checklists_dir`; never overwrite another
    reviewer checklist unless the user explicitly names it for revision.
 4. Write 10–20 questions about requirement quality, not runtime outcomes. Cover where relevant:

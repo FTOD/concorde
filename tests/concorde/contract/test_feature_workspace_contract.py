@@ -62,7 +62,7 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         self.assertEqual(proposal["properties"]["remove"]["maxItems"], 1)
 
     def test_workspace_adapter_emits_protocol12_and_two_pass_feature_id_preflight(self):
-        adapter = (REPOSITORY_ROOT / "extensions/concorde/scripts/python/workspace.py").read_text(encoding="utf-8")
+        adapter = (REPOSITORY_ROOT / "scripts/workspace.py").read_text(encoding="utf-8")
         self.assertIn('"schema_version": 12', adapter)
         self.assertIn('parser.add_argument("--feature-id")', adapter)
         self.assertIn("allow_missing_feature=arguments.phase == \"specify\"", adapter)

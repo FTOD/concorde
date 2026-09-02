@@ -1,9 +1,13 @@
 # Concorde
 
-Concorde adds a module-centered architecture and feature workflow to
-[Spec Kit](https://github.com/github/spec-kit). It gives maintainers one structural entry point per
-module, one complete specification per feature, bounded context for coding agents, deterministic
-validation, and cleanup-only delivery.
+Concorde is a standalone, module-centered architecture and feature workflow for maintainers and
+coding agents. It provides one structural entry point per module, one complete specification per
+feature, bounded implementation context, deterministic validation, and cleanup-only delivery.
+
+Concorde no longer depends on or composes with Spec Kit. The familiar `speckit-*` command IDs remain
+temporarily for workflow compatibility, and the Markdown formatting of commands/templates retains
+useful ideas from Spec Kit as acknowledged reference lineage. All current instructions, templates,
+runtime behavior, installation, and ownership are Concorde-native.
 
 ## The model
 
@@ -15,154 +19,140 @@ specs/<project>/
 └── features/<NNN-name>.md        # complete durable feature specification
 
 .concorde/
-├── config.json                   # Profile 7 + root module selection
-├── attempts/<stable-feature-id>/ # optional temporal work; removed by delivery
-└── reflections/log.md            # tracked project process memory
+├── config.json                   # Profile 7 + root module
+├── feature.json                  # selected direct feature path
+├── constitution.md               # optional project governance
+├── attempts/<stable-feature-id>/ # temporal work; removed by delivery
+├── reflections/log.md            # tracked process memory
+├── framework/                    # installed Concorde package projection
+└── install.json                  # installed-output ownership receipt
 ```
 
-A module is the only recursive specification unit. Its `architecture.md` defines responsibility,
-boundary, immediate child modules and level-local features, typed architecture entities, directed
-relationships, and representative interactions. Significant entities can be modules, packages,
-programs, files, scripts, classes, functions, interfaces, schemas, stores, configuration, tests,
-external systems, or a project-defined type with an explicit meaning.
+A module is the only recursive specification unit. Its `architecture.md` owns responsibility,
+boundary, immediate children/features, significant typed entities, directed relationships, and
+representative interactions. A feature is one direct Markdown file with outcome/scope, usage,
+scenarios, requirements, embedded provided/required interfaces, and an Architecture Zoom over
+visible entity IDs.
 
-A feature is one usable capability at that module level. Its direct Markdown file contains outcome, scope,
-usage, scenarios, requirements, failures, related-feature semantics, embedded provided/required
-interfaces, and an Architecture Zoom over entity IDs from the providing module or permitted
-ancestry. Existing `contract.*` IDs may remain interface identities, but interfaces are part of the
-feature rather than separate specification files.
+Source code is implementation. Tests and deterministic checks are evidence. Plans, tasks, research,
+checklists, and validation logs are temporary attempt memory. Generated sites/diagrams/releases and
+installed framework/agent files are reproducible projections, never intent authority.
 
-Source code is the implementation. Tests and deterministic checks are evidence. Plans, research,
-tasks, checklists, and validation logs are temporary attempt memory. Generated sites, diagrams,
-indexes, packages, and delivery results are reproducible projections, not source authority.
-
-Read more in [Ontology](docs/ontology.md), [Specification model](docs/specification-model.md), and
+Read [Ontology](docs/ontology.md), [Specification model](docs/specification-model.md), and
 [Project structure](docs/project-structure.md).
 
-## Workflow
+## Workflow commands
 
-Concorde composes normal Spec Kit commands with five framework commands:
+Canonical command sources live together in root `commands/` (for example,
+`commands/speckit.specify.md`). Install/rendering turns
+them into agent-native skills while retaining these public IDs:
 
 | Command | Outcome |
 |---|---|
-| `$speckit-concorde-init` | Propose and explicitly apply a Profile 7 root module and reflection log. |
-| `$speckit-specify` | Create or revise one direct level-local feature file and its requirements checklist. |
-| `$speckit-clarify` | Resolve important ambiguity inside that design and its embedded interfaces. |
-| `$speckit-checklist` | Create a reviewer-owned requirements-quality checklist in the corresponding stable-ID attempt. |
-| `$speckit-plan` | Plan from feature file + module architecture + current code/tests into `.concorde/attempts/<stable-feature-id>/`. |
+| `$speckit-constitution` | Create or amend `.concorde/constitution.md`. |
+| `$speckit-concorde-init` | Propose and explicitly apply a Profile 7 root module/reflection log. |
+| `$speckit-specify` | Create or revise one direct level-local feature and its requirements checklist. |
+| `$speckit-clarify` | Resolve important ambiguity in that feature/interfaces. |
+| `$speckit-checklist` | Create a reviewer-owned requirements-quality checklist. |
+| `$speckit-plan` | Plan from feature + module architecture + current code/tests into one attempt. |
 | `$speckit-tasks` | Generate dependency-ordered, traceable, test-first tasks. |
-| `$speckit-analyze` | Read-only consistency and coverage audit. |
+| `$speckit-analyze` | Run a read-only consistency/coverage audit. |
 | `$speckit-implement` | Execute tasks across architecture/feature/code/tests/projections with evidence. |
-| `$speckit-converge` | Append only remaining executable work to the active task list. |
+| `$speckit-converge` | Append only remaining verified work to the active task list. |
 | `$speckit-taskstoissues` | Convert tasks into dependency-aware external issues when authorized. |
-| `$speckit-fast-loop` | Directly complete one eligible small no-attempt change. |
+| `$speckit-fast-loop` | Complete one eligible small established change without an attempt. |
 | `$speckit-concorde-context` | Retrieve exactly one bounded module or feature context. |
 | `$speckit-concorde-validate` | Deterministically validate the complete source profile. |
-| `$speckit-concorde-ask` | Answer from cited installed guidance and bounded project sources. |
-| `$speckit-concorde-deliver` | Validate a completed attempt and atomically remove only that attempt. |
+| `$speckit-concorde-ask` | Answer from cited package guidance and bounded project sources. |
+| `$speckit-concorde-deliver` | Validate a completed attempt and remove exactly that attempt. |
 
-Feature Workspace Protocol 12 returns one selected `feature_path`, its providing module
-architecture, bounded module ancestry, bounded related-feature summaries, temporal paths, reflection
-state, and deterministic code/test discovery context. It never expands unrelated feature bodies or
-synthesizes an implementation narrative.
-
-Reflection-triage/v3 reserves every new `R-NNN` through an atomic high-water allocator. After a
-validated merge it removes only a matching open entry backed by a `small` `fast-loop` plan marked
-`merged`; design work, other routes, larger fixes, and failed/unmerged work remain for explicit
-maintainer disposition without an automated Status/Note edit.
-
-Delivery Proposal 8 binds the stable target, current source/attempt digest, eligibility evidence,
-and exact removal path. Apply revalidates everything and removes one real, non-symlinked project-control attempt.
-Any stale, incomplete, invalid, or unsafe proposal is non-mutating.
+Feature Workspace Protocol 12 returns one selected `feature_path`, its providing architecture,
+bounded ancestry/related summaries, stable-ID attempt/reflection state, and deterministic source/test
+discovery hints. Delivery Proposal 8 binds current digests and one exact removal path. Any stale,
+incomplete, invalid, or unsafe delivery is non-mutating.
 
 See [Workflow](docs/concorde-workflow.md) and [Command reference](docs/commands.md).
 
 ## Install
 
-Use Python 3.11+, `uv`, and Spec Kit 0.16.4. The one-command installer previews by default and uses
-Spec Kit's native catalog/bundle lifecycle:
+Concorde requires Python 3.11+ and no host framework. Preview is the default:
 
 ```bash
-uv run python scripts/install-concorde.py --target ../my-project --integration codex --preview
-uv run python scripts/install-concorde.py --target ../my-project --integration codex
+python3 scripts/install-concorde.py \
+  --target ../my-project \
+  --integration codex
 ```
 
-Omit `--preview` to apply the reviewed installation plan.
-
-For local development from this checkout:
+Review the exact create/adopt/update/remove/conflict actions, then explicitly apply:
 
 ```bash
-uv run python scripts/install-concorde.py \
+python3 scripts/install-concorde.py \
   --target ../my-project \
   --integration codex \
-  --checkout . \
-  --preview
+  --apply
 ```
 
-The release pointer and catalogs declare Architecture Source Profile 7 and Workspace Protocol 12;
-the installer rejects a package with a different profile/protocol. Installation owns component and
-agent projections only. It preserves project-authored configuration, specifications, code, tests,
-docs, and unrelated agent assets.
+Use `--integration claude` for Claude. The installer validates [`concorde.json`](concorde.json),
+copies one package beneath `.concorde/framework/`, renders the selected integration, seeds only
+missing reflection defaults, and writes `.concorde/install.json` last. It updates/removes only files
+whose observed bytes still match the prior receipt; unowned or user-modified collisions fail closed.
 
 See [Quick start](docs/quick-start.md).
 
-## Self-host this checkout
+## Maintain this checkout
 
-Canonical distribution sources live under `presets/concorde/` and `extensions/concorde/`. Installed
-`.specify/`, Codex, and Claude surfaces are projections. Review and apply a scoped self-host proposal,
-then verify freshness:
+Root `commands/`, `templates/`, `src/concorde/`, `scripts/`, and `agent-assets/` are canonical.
+Tracked `.agents/**` and `.claude/**` files are generated source-checkout projections; Concorde does
+not install a duplicate `.concorde/framework` into its own repository.
 
 ```bash
-uv run python scripts/development/self-host-concorde.py --project-root . propose --format json
-uv run python scripts/development/self-host-concorde.py --project-root . \
-  apply --proposal .specify/self-hosting-proposal.json --format json
-uv run python scripts/development/self-host-concorde.py --project-root . \
-  status --require-current --format json
+python3 scripts/development/sync-agent-surfaces.py status --format json
+python3 scripts/development/sync-agent-surfaces.py apply --format json
 ```
 
-Self-host verification compares canonical component bytes, Spec Kit registries, materialized command
-and template surfaces, active-integration assets, Protocol 12 markers, and absence of removed
-templates. See [Self-hosting](docs/self-hosting.md).
+See [Agent-surface maintenance](docs/agent-surfaces.md).
 
 ## Develop and validate
 
 ```bash
-uv sync --extra dev
+uv sync
 .venv/bin/python -m unittest discover -s tests/concorde -t . -p 'test_*.py'
-.venv/bin/python extensions/concorde/scripts/python/concorde.py --project-root . validate
+python3 scripts/concorde.py --project-root . validate
 
 cd docsite
 npm ci
 npm run check
 ```
 
-The repository self-applies the model at [specs/concorde/architecture.md](specs/concorde/architecture.md).
-Canonical packages, runtime, tests, documentation adapter, and public guides are kept in one coherent
-profile; mixed source layouts are invalid.
+The repository self-applies the model at
+[`specs/concorde/architecture.md`](specs/concorde/architecture.md).
 
 ## Release
 
 ```bash
-uv run python scripts/release/build-components.py --output dist
-uv run python scripts/release/verify-release.py --dist dist
+python3 scripts/release/build-release.py --output dist
+python3 scripts/release/verify-release.py --dist dist
 ```
 
-The build produces deterministic preset, extension, and bundle archives plus matching catalogs.
-Release verification checks identity, Profile 7/Protocol 12 metadata, safe members, digests, URLs,
-capability counts, and byte-equivalent rebuilds. See [Releasing](docs/releasing.md).
+The build produces exactly `concorde-<version>.zip` and `release.json`. Verification checks identity,
+safe members, SHA-256, an isolated native installation, and byte-equivalent rebuilds. See
+[Releasing](docs/releasing.md).
 
 ## Repository map
 
 | Path | Responsibility |
 |---|---|
-| `presets/concorde/` | Canonical host-phase commands and templates. |
-| `extensions/concorde/` | Canonical runtime, schemas, framework commands, and agent assets. |
-| `specs/concorde/` | Self-hosted module architectures, direct feature files, and diagrams. |
-| `.concorde/` | Project configuration, stable-ID attempts, tracked reflection log, and triage state. |
+| `commands/` | Canonical complete lifecycle command Markdown. |
+| `templates/` | Complete feature/plan/task/checklist/constitution/reflection format references. |
+| `src/concorde/` | Deterministic runtime and command/agent projectors. |
+| `agent-assets/` | Canonical reflection-triage roles and integration templates. |
+| `scripts/` | Portable runtime adapters, installer, checkout sync, and release programs. |
+| `concorde.json` | Single package/version/profile/protocol/inventory authority. |
+| `specs/concorde/` | Self-applied module architectures and direct features. |
+| `.concorde/` | Native project configuration, selection, constitution, attempts, and reflections. |
 | `tests/concorde/` | Python unit, contract, integration, and acceptance evidence. |
-| `docsite/` | Generated architecture/feature publication adapter. |
-| `scripts/` | Installer, self-host, and release programs. |
-| `bundles/`, `catalogs/` | Installable package recipe and release catalogs. |
+| `docsite/` | Architecture/feature publication adapter. |
 | `docs/` | Public framework and contributor guidance. |
 
-Concorde package manifests declare the MIT license.
+Concorde is distributed under the MIT License in `LICENSE`, declared by its package manifest and
+included in every release/installed framework projection.

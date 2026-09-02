@@ -1,13 +1,12 @@
 ---
 name: speckit-converge
-description: Append remaining verified work to one active Concorde task list.
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Append remaining verified work to one active Concorde task list."
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: preset:concorde
+  author: "concorde"
+  source: "commands/speckit.converge.md"
 ---
-
-# Speckit Converge Skill
+# Speckit Converge
 
 ## User Input
 
@@ -23,7 +22,7 @@ the work or rewrite completed history.
 
 ## Workspace gate
 
-Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase converge` first and require Protocol 12 plus an active attempt. Use only returned feature file,
+Run `python3 scripts/workspace.py --phase converge` first and require Protocol 12 plus an active attempt. Use only returned feature file,
 architecture, bounded context, executable context, plan, tasks, validation, checklist, and reflection
 paths. Never inspect another attempt.
 
@@ -47,7 +46,7 @@ marker, phase, and evidence entry. Do not mark tasks complete or reopen them.
 
 Record contradictions, workarounds, or provisional decisions encountered in
 `workspace.reflections` with `Phase: converge`. Before appending a new entry, run the installed
-`.specify/extensions/concorde/scripts/python/reflections_queue.py --allocate-id`, use only its
+`python3 ./scripts/reflections_queue.py --allocate-id`, use only its
 `allocated_id`, and never derive an ID from the remaining log entries; update an existing occurrence
 without allocating a new ID.
 Convergence may write only the selected task list, its compact reconciliation evidence when a check

@@ -1,13 +1,12 @@
 ---
 name: speckit-clarify
-description: Clarify underspecified behavior in one direct feature file.
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Clarify underspecified behavior in one direct feature file."
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: preset:concorde
+  author: "concorde"
+  source: "commands/speckit.clarify.md"
 ---
-
-# Speckit Clarify Skill
+# Speckit Clarify
 
 ## User Input
 
@@ -22,7 +21,7 @@ invent architecture, inspect unrelated attempts, or write code.
 
 ## Workspace gate
 
-Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase clarify` first. Require Protocol 12 and `resolved`/`selected` status. Use only the returned
+Run `python3 scripts/workspace.py --phase clarify` first. Require Protocol 12 and `resolved`/`selected` status. Use only the returned
 `feature_path`, `module_architecture`, `feature_id`, `providing_module`, bounded
 `module_ancestry`, bounded `related_features`, `checklists_dir`, and process paths. Treat ancestry and
 related-feature summaries as navigation; open a related design only when the ambiguity directly
@@ -55,9 +54,8 @@ marker remains for the answered areas, the representative usage still follows th
 only the selected feature file plus permitted built-in checklist state changed. Run deterministic Concorde
 validation for the selected feature when available.
 
-Process enabled unconditional `after_clarify` hooks from `.specify/extensions.yml`; mandatory hooks
-run and gate completion, optional hooks are presented, and conditional hooks are left to the hook
-executor.
+Concorde has no extension-hook phase. Complete only the selected feature clarification and its
+requirements checklist, then report the changed authorities.
 
 Report questions answered, sections changed, remaining deferred ambiguities, architecture follow-up,
 checklist state, and validation result.

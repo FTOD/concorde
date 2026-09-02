@@ -16,7 +16,7 @@ const baseline = new Map([
   ['docs/specification-model.md', '/docs/specification-model'],
   ['docs/project-structure.md', '/docs/project-structure'],
   ['docs/concorde-workflow.md', '/docs/concorde-workflow'],
-  ['docs/self-hosting.md', '/docs/self-hosting'],
+  ['docs/agent-surfaces.md', '/docs/agent-surfaces'],
   ['docs/commands.md', '/docs/commands'],
   ['docs/releasing.md', '/docs/releasing'],
   ['docs/contributing/docsite.md', '/docs/contributing/docsite'],

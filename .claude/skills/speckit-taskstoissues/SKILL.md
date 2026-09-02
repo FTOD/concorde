@@ -1,16 +1,15 @@
 ---
 name: speckit-taskstoissues
-description: Convert one selected attempt task list into dependency-ordered issues.
-argument-hint: "Optional filter or label for GitHub issues"
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Convert one selected attempt task list into dependency-ordered issues."
+argument-hint: "Optional command guidance"
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: preset:concorde
+  author: "concorde"
+  source: "commands/speckit.taskstoissues.md"
 user-invocable: true
 disable-model-invocation: false
 ---
-
-# Speckit Taskstoissues Skill
+# Speckit Taskstoissues
 
 ## User Input
 
@@ -22,7 +21,7 @@ $ARGUMENTS
 
 ## Workspace gate
 
-Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase taskstoissues` first and require Protocol 12. Use the returned selected feature identity,
+Run `python3 scripts/workspace.py --phase taskstoissues` first and require Protocol 12. Use the returned selected feature identity,
 `feature_path`, `module_architecture`, bounded summaries, `attempt_dir`, `tasks`, `plan`, and
 `validation`. Reject a missing or empty task list. Never resolve a root-level copy or inspect another
 attempt.

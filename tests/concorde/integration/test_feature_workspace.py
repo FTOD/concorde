@@ -26,7 +26,7 @@ class FeatureWorkspaceIntegrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary)
             self.assertEqual(persist_selection(root, DELIVER), "selected")
-            selected = root / ".specify/feature.json"
+            selected = root / ".concorde/feature.json"
             first = selected.read_bytes()
             self.assertEqual(json.loads(first), {"feature_path": DELIVER})
             self.assertEqual(persist_selection(root, DELIVER), "unchanged")
@@ -58,7 +58,7 @@ class FeatureWorkspaceIntegrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary)
             persist_selection(root, DELIVER)
-            state = root / ".specify/feature.json"
+            state = root / ".concorde/feature.json"
             before = state.read_bytes()
             with self.assertRaises(WorkspaceError):
                 persist_selection(root, "specs/example/features/009-missing.md")

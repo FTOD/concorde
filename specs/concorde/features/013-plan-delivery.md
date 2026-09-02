@@ -25,7 +25,7 @@ and known reflections into one technical plan and dependency-ordered temporal ta
 
 | Entity ID | Role |
 |---|---|
-| `entity.concorde.preset-package` | Supplies bounded planning/task-generation gates and templates. |
+| `entity.concorde.commands` | Supplies bounded planning/task-generation gates and templates. |
 | `entity.concorde.workspace-resolver` | Returns Protocol 12 durable, executable, related, and control-state paths. |
 | `entity.concorde.coding-agent` | Researches decisions and authors plan/tasks without changing product authorities. |
 
@@ -41,7 +41,7 @@ and known reflections into one technical plan and dependency-ordered temporal ta
 - **Obligations**: Resolve unknowns, keep proposals temporal, map every affected authority/evidence path, and preserve durable sources during planning.
 - **Failures**: Constitution violations, unresolved clarifications, missing ownership, or incomplete trace coverage prevent implementation readiness.
 - **Compatibility**: Plans against code reality, never an accepted `implementation.md` baseline.
-- **Implementing entities**: `entity.concorde.preset-package`, `entity.concorde.workspace-resolver`, `entity.concorde.coding-agent`.
+- **Implementing entities**: `entity.concorde.commands`, `entity.concorde.workspace-resolver`, `entity.concorde.coding-agent`.
 
 ## Usage Scenarios
 

@@ -9,7 +9,7 @@ complete plan to the parent; the parent validates and writes it.
 1. Load the entry with the installed reflections queue helper.
 2. Read the named concern, the recording feature's direct feature file, its providing architecture,
    and the owning code/tests needed to locate the fix. Never read another feature's attempt.
-3. Apply Speckit Fast Loop's eligibility gate honestly and choose exactly one route:
+3. Apply Concorde's `speckit-fast-loop` compatibility command eligibility gate honestly and choose exactly one route:
    `fast-loop`, `specify`, `dismiss`, or `blocked`.
 4. Reproduce cheaply when safe. Establish root cause with project-relative file/line evidence.
 5. Return a complete `R-NNN.md` plan with frontmatter fields `id`, `title`, `route`, `status:

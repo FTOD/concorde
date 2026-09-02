@@ -34,7 +34,7 @@ and architecture-owned diagrams as one searchable, accessible site with exact so
 - **Consumer**: Maintainer, contributor, and CI.
 - **Direction**: Maintained content/build request to static site and Manifest 10 result.
 - **Entry points**: `npm run start`, `npm run validate`, `npm run build`, and `npm run check` in `docsite`.
-- **Inputs**: Root README, `docs/**/*.md`, recursive module `architecture.md`, direct `features/*.md`, and declared module diagrams.
+- **Inputs**: Root README, `docs/**/*.md`, recursive module `architecture.md`, direct `features/*.md`, and declared module diagrams; native `.concorde/**` control/framework state is excluded.
 - **Outputs**: Searchable site, semantic routes, source provenance, delivered diagrams, and Build Manifest 10.
 - **Obligations**: Validate identities/links/routes/freshness, never discover `.concorde/**` as pages,
   diagnose legacy specification-local control sources, and atomically preserve the last successful site on failure.
@@ -53,7 +53,7 @@ and architecture-owned diagrams as one searchable, accessible site with exact so
 - **FR-001**: Each module `architecture.md`, direct feature file, project document, and declared architecture diagram MUST appear exactly once in the normalized registry.
 - **FR-002**: Routes MUST derive from stable semantic IDs and remain independent of legacy filenames or storage depth.
 - **FR-003**: Build Manifest 10 MUST inventory all included sources, module/feature relations, routes, diagram deliveries, provenance, and generator version deterministically.
-- **FR-004**: `.concorde` attempts/reflections and executable/private source files MUST NOT become
+- **FR-004**: `.concorde` configuration/selection/constitution/attempt/reflection/framework/receipt state and executable/private source files MUST NOT become
   published pages or broad Manifest exclusions; legacy `specs/**/attempts/**` and specification-root
   reflection logs MUST fail the Profile 7 publication gate.
 - **FR-005**: Any discovery, link, render, validation, or build failure MUST preserve maintained sources and the last successful site.

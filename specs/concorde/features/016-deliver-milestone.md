@@ -35,7 +35,7 @@ only that temporal workspace, leaving architecture, design, code, tests, and ref
 
 - **Consumer**: Maintainer accepting completed implementation work.
 - **Direction**: Complete attempt to proposal/result and attempt removal.
-- **Entry points**: `speckit.concorde.deliver` and runtime `deliver --propose/--apply`.
+- **Entry points**: Compatibility command `speckit.concorde.deliver` and native runtime `deliver --propose/--apply`.
 - **Inputs**: Selected feature ID/root, complete tasks/checklists/validation, safe attempt path, and current source digest.
 - **Outputs**: Proposal 8 eligibility/details, applied cleanup manifest, retained-authority digests, warnings/findings, and no-active-attempt state.
 - **Obligations**: Recheck every digest/path/eligibility condition at apply and remove exactly the returned attempt.

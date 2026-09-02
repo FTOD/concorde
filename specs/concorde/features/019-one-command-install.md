@@ -1,62 +1,92 @@
 ---
-id: feature.concorde.install-with-spec-kit.one-command-install
+id: feature.concorde.install.one-command
 kind: feature
 module: module.concorde
 related_features:
-  - feature.concorde.install-with-spec-kit
-  - feature.distribution.package-concorde-bundle
+  - feature.concorde.install
+  - feature.distribution.package-concorde
 interfaces:
   provided:
     - interface.concorde.one-command-install
   required:
-    - contract.concorde.spec-kit-installation
-evidence_status: unknown
+    - contract.concorde.installation
+evidence_status: verified
 ---
 
-# Feature Design: One-Command Installation
+# Feature Design: One-Command Native Install
 
 ## Outcome and Scope
 
-A maintainer can install the supported Concorde bundle into a target project with one command and
-receive a usable verified Profile 7 workflow or an unchanged target with actionable diagnostics.
+A maintainer can preview or install Concorde from a source checkout or extracted standalone archive
+with one Python command, without first initializing or installing another framework.
 
-## Architecture Zoom
+## Usage
 
-| Entity ID | Role |
-|---|---|
-| `entity.concorde.installer` | Resolves the bundle/catalog and delegates component lifecycle to Spec Kit. |
-| `entity.concorde.preset-package` | Provides feature/plan/task templates and normal phase commands. |
-| `entity.concorde.extension-package` | Provides operations, runtime, launchers, and agent assets. |
-| `entity.concorde.spec-kit` | Owns preview, materialization, registry, update, and removal. |
+From a Concorde checkout run `python3 scripts/install-concorde.py --target <project> --integration
+codex` to preview. Add `--apply` to accept. From an extracted release, pass `--checkout concorde`.
+
+## User Scenarios & Testing
+
+### User Story 1 — Local Checkout Install (Priority: P1)
+
+**Independent Test**: Run one apply command against an empty target and invoke the installed validator
+launcher from `.concorde/framework/scripts/concorde.py`.
+
+1. **Given** a checkout and empty target, **When** the one command runs with `--apply`, **Then** all
+   framework/agent outputs and a receipt exist without `.specify`.
+
+### User Story 2 — Extracted Release Install (Priority: P2)
+
+**Independent Test**: Extract the verified archive and run its included installer with the extracted
+package root.
+
+1. **Given** a verified release archive, **When** its included installer runs, **Then** the installed
+   output inventory matches a checkout installation of that version.
 
 ## Interfaces
 
-### `interface.concorde.one-command-install` — Install the supported bundle
+### `interface.concorde.one-command-install` — Install a Concorde package
 
-- **Consumer**: Project maintainer starting or upgrading a Concorde-enabled project.
-- **Direction**: Installer arguments to preview/applied/unchanged/failure result.
-- **Entry points**: `scripts/install-concorde.py` through the documented `uvx` invocation.
-- **Inputs**: Target root, bundle/version or trusted catalog input, integration choice, and preview/apply intent.
-- **Outputs**: Exact component/projection plan, ownership records, verified installed surfaces, and diagnostics.
-- **Obligations**: Preview before apply, resolve only trusted compatible components, use Spec Kit ownership, and preserve user/unrelated paths.
-- **Failures**: Trust, compatibility, integrity, composition, projection, or verification errors roll back owned changes.
-- **Compatibility**: Installs Profile 7/Protocol 12/Initialization 2/Delivery 8 sources as one tested bundle.
-- **Implementing entities**: `entity.concorde.installer`, `entity.concorde.preset-package`, `entity.concorde.extension-package`, `entity.concorde.spec-kit`.
+- **Consumer**: Project maintainer and installation automation.
+- **Direction**: CLI arguments to preview or applied native installation result.
+- **Entry points**: `python3 scripts/install-concorde.py` in checkout or `python3 concorde/scripts/install-concorde.py` after extraction.
+- **Inputs**: `--target`, optional `--checkout`, `--integration`, preview/default or `--apply`, and output format.
+- **Outputs**: Human or JSON installation plan/result plus `.concorde/install.json` after apply.
+- **Obligations**: Require only Python 3.11+; preview by default; use exact package inventory/ownership semantics; preserve all unowned paths.
+- **Failures**: Invalid source, target, integration, inventory, ownership, symlink, or write failure produces non-zero status and actionable diagnostics.
+- **Compatibility**: Package schema 1; Profile 7; Protocol 12; Codex/Claude integrations.
+- **Example**: `python3 scripts/install-concorde.py --target ../my-project --integration codex --apply`.
+- **Implementing entities**: `entity.concorde.installer`, `entity.concorde.package-manifest`, `entity.concorde.commands`, `entity.concorde.runtime`.
 
-## Usage Scenarios
+## Architecture Zoom
 
-1. Install from public catalog into an empty/initialized target with one documented command.
-2. Use development/local sources while still exercising native Spec Kit preview/apply/ownership.
-3. Repeat, update, or remove safely and verify the exact active/inactive integration surfaces.
+| Entity ID | Role in this feature | Interaction |
+|---|---|---|
+| `entity.concorde.installer` | Single entry command. | Loads package, plans ownership, and applies/rolls back. |
+| `entity.concorde.package-manifest` | Package discovery contract. | Makes checkout and extracted archive equivalent inputs. |
+| `entity.concorde.commands` | User-facing workflow surface. | Becomes integration-native skills during apply. |
+| `entity.concorde.runtime` | Installed deterministic operations. | Is copied beside scripts under the framework projection. |
+
+## Related Features
+
+- `feature.concorde.install` defines lifecycle and ownership semantics.
+- `feature.distribution.package-concorde` ensures release archives include the same installer/package.
 
 ## Requirements
 
-- **FR-001**: One invocation MUST sequence project readiness, trusted catalogs, bundle preview/apply, agent-asset sync, and verification.
-- **FR-002**: The installer MUST be idempotent and distinguish unchanged, applied, rejected, and failed outcomes.
-- **FR-003**: Local development mode MUST not bypass component validation, composition, ownership, or rollback rules.
-- **FR-004**: Failures MUST name the stage/finding/remediation and preserve unrelated/user state.
+- **FR-001**: One invocation MUST discover/validate the package and calculate the complete installation.
+- **FR-002**: Preview MUST be the default and apply MUST require an explicit flag.
+- **FR-003**: Checkout and extracted archive installation MUST produce equivalent desired outputs.
+- **FR-004**: An empty target MUST require no prior framework initialization or network access.
+- **FR-005**: JSON mode MUST return stable schema/status/action fields for automation.
+
+## Success Criteria
+
+- **SC-001**: One command installs every declared command for Codex and Claude targets.
+- **SC-002**: A second identical apply is a zero-change `unchanged` result.
 
 ## Edge Cases
 
-- Target is initialized but has conflicting lower-layer command winners.
-- Network catalog/archive resolution fails after preview but before apply.
+- Target exists but is not a real directory.
+- Extracted archive is incomplete, modified, or points at the wrong package root.
+- Python can run the installer but a target parent is a symlink or non-directory.

@@ -33,7 +33,7 @@ subjects and inspect explicit evidence-qualified alignments, unknowns, and disag
 
 - **Consumer**: Maintainer or coding agent exploring architecture and specification-to-code agreement.
 - **Direction**: Validated specification plus optional implementation graph/evidence to read-only graph bundle/query result.
-- **Entry points**: `speckit.concorde.explore` projection/query surface when installed.
+- **Entry points**: Future read-only Alignment Explorer projection/query API; no lifecycle command is distributed while evidence status remains `unknown`.
 - **Inputs**: Profile 7 modules/entities/relations/features/interfaces, pinned UA graph, explicit alignment bases, and current evidence/freshness metadata.
 - **Outputs**: Searchable graph with provenance, qualified identities, adapter types, alignments, and unknown/partial/verified/disagrees states.
 - **Obligations**: Keep representation distinct from identity, never infer verification from names/similarity, and expose absent/stale evidence truthfully.
@@ -69,6 +69,7 @@ subjects and inspect explicit evidence-qualified alignments, unknowns, and disag
 - **FR-003**: Alignments MUST name their evidence basis, revision, freshness, and bounded status; names/similarity alone cannot verify.
 - **FR-004**: Missing/stale/incompatible input MUST yield unknown/findings rather than invented agreement or disagreement.
 - **FR-005**: Exploration MUST be read-only and reproducible from validated maintained/executable inputs.
+- **FR-006**: Distribution MUST NOT advertise an explorer command until a concrete implementation and executable evidence exist.
 
 ## Edge Cases
 

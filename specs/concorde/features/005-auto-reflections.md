@@ -4,7 +4,7 @@ kind: feature
 module: module.concorde
 related_features:
   - feature.concorde.workflow
-  - feature.skills.compose-workflow
+  - feature.commands.project-workflow
 interfaces:
   provided:
     - interface.concorde.reflections
@@ -26,7 +26,8 @@ retains explicit maintainer disposition without duplicating identity or silently
 
 | Entity ID | Role |
 |---|---|
-| `entity.concorde.extension-package` | Distributes canonical reflection grammar, orchestrator, roles, and queue helper. |
+| `entity.concorde.agent-assets` | Supplies canonical reflection grammar, orchestrator, and roles. |
+| `entity.concorde.runtime` | Supplies deterministic queue, allocation, plan-state, and merged-removal behavior. |
 | `entity.concorde.coding-agent` | Records entries/occurrences during work and performs explicitly assigned triage. |
 | `entity.concorde.control-state` | Holds the sole tracked `.concorde/reflections/log.md` authority beside triage configuration/scratch state. |
 
@@ -54,7 +55,7 @@ retains explicit maintainer disposition without duplicating identity or silently
 - **Compatibility**: Profile 7 control paths and Reflection Log v1 grammar remain stable;
   reflection-triage/v3 adds durable ID allocation and removes eligible merged-small entries instead
   of requiring maintainer closure.
-- **Implementing entities**: `entity.concorde.extension-package`, `entity.concorde.coding-agent`, `entity.concorde.control-state`.
+- **Implementing entities**: `entity.concorde.agent-assets`, `entity.concorde.runtime`, `entity.concorde.coding-agent`, `entity.concorde.control-state`.
 
 ## Usage Scenarios
 

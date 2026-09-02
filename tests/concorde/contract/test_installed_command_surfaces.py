@@ -1,172 +1,119 @@
+from __future__ import annotations
+
 import json
+import os
 import shutil
-import tempfile
-import unittest
 import subprocess
 import sys
+import tempfile
+import unittest
 from pathlib import Path
 
-from tests.concorde.support.catalog_server import CatalogServer
-from tests.concorde.support.installed_command_surface import (
-    CONCORDE_COMMANDS,
-    FAST_LOOP_PHASES,
-    NORMAL_PHASES,
-    PRESET_COMMANDS,
-    execute_workspace_surface,
-    handoff_digest,
-    registered_artifact,
-)
 from tests.concorde.support.paths import CONTEXT_PROJECT, REPOSITORY_ROOT
-from tests.concorde.support.specify_project import SpecifyProject
-
-import importlib.util
-
-
-_builder_spec = importlib.util.spec_from_file_location(
-    "concorde_release_builder", REPOSITORY_ROOT / "scripts/release/build-components.py"
-)
-assert _builder_spec and _builder_spec.loader
-_builder = importlib.util.module_from_spec(_builder_spec)
-_builder_spec.loader.exec_module(_builder)
 
 
 class InstalledCommandSurfaceContractTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.distribution_temporary = tempfile.TemporaryDirectory()
-        cls.dist = Path(cls.distribution_temporary.name)
-        cls.server = CatalogServer(cls.dist)
-        _builder.build_release(cls.dist, cls.server.base_url)
-        cls.server.__enter__()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.server.__exit__(None, None, None)
-        cls.distribution_temporary.cleanup()
-
-    def installed_project(self, temporary: str, integration: str = "codex") -> Path:
-        root = Path(temporary) / "target"
-        project = SpecifyProject(root, integration=integration, skills=integration == "codex")
-        project.initialize()
-        project.register_catalogs(self.server.base_url)
-        project.run("bundle", "install", "concorde-bundle")
-        subprocess.run(
+    def install(self, base: str, integration: str) -> Path:
+        root = Path(base) / integration
+        result = subprocess.run(
             [
                 sys.executable,
-                str(root / ".specify/extensions/concorde/scripts/python/concorde.py"),
-                "--project-root",
-                str(root),
-                "agent-assets",
-                "sync",
-                "--integration",
-                integration,
-                "--concorde-version",
-                "0.9.0",
+                str(REPOSITORY_ROOT / "scripts/install-concorde.py"),
+                "--target", str(root),
+                "--integration", integration,
+                "--apply", "--format", "json",
             ],
-            cwd=root,
-            check=True,
-            capture_output=True,
             text=True,
+            capture_output=True,
         )
+        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+        self.assertEqual(json.loads(result.stdout)["status"], "installed")
         shutil.copytree(CONTEXT_PROJECT / ".concorde", root / ".concorde", dirs_exist_ok=True)
         shutil.copytree(CONTEXT_PROJECT / "specs", root / "specs", dirs_exist_ok=True)
-        (root / ".specify/feature.json").write_text(
-            json.dumps({"feature_path": "specs/example/features/001-deliver.md"}, separators=(",", ":")) + "\n",
-            encoding="utf-8",
+        (root / ".concorde/feature.json").write_text(
+            '{"feature_path":"specs/example/features/001-deliver.md"}\n'
         )
         return root
 
-    def test_release_materializes_commands_and_native_reflection_agents(self):
+    def test_both_integrations_receive_all_commands_and_reflection_agents(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root = self.installed_project(temporary)
-            normal = {registered_artifact(root, "codex", command) for command in NORMAL_PHASES}
-            fast_loop = {registered_artifact(root, "codex", command) for command in FAST_LOOP_PHASES}
-            concorde = {registered_artifact(root, "codex", command) for command in CONCORDE_COMMANDS}
-            self.assertEqual(len(normal), 9)
-            self.assertEqual(len(fast_loop), 1)
-            self.assertEqual(len(concorde), 5)
-            self.assertTrue(all(path.is_file() for path in normal | fast_loop | concorde))
-            self.assertTrue((root / ".agents/skills/reflections-triage/SKILL.md").is_file())
-            self.assertTrue((root / ".codex/agents/reflection_investigator.toml").is_file())
-            self.assertTrue((root / ".codex/agents/reflection_implementer.toml").is_file())
-            self.assertTrue((root / ".specify/concorde-agent-assets.json").is_file())
-            fast_content = next(iter(fast_loop)).read_text(encoding="utf-8")
-            for requirement in (
-                "$ARGUMENTS",
-                "--phase fast-loop",
-                "Protocol 12",
-                "direct, no-attempt path",
-                "one selected feature and one providing module",
-                "affected architecture entities, interface semantics",
-                "no new module, feature, entity type, cross-module relationship",
-                "no migration, destructive operation, release, multi-feature coordination",
-                "user request authorizes every affected durable/source path",
-                "selected feature file, relevant providing architecture sections, and current code/tests",
-                "Reconcile code and tests plus the selected feature file or",
-                "Run focused tests and deterministic validation",
-                "no attempt was created",
+            for integration, skill_root in (("codex", ".agents/skills"), ("claude", ".claude/skills")):
+                with self.subTest(integration=integration):
+                    root = self.install(temporary, integration)
+                    skills = sorted((root / skill_root).glob("speckit-*/SKILL.md"))
+                    self.assertEqual(len(skills), 16)
+                    self.assertTrue((root / skill_root / "reflections-triage/SKILL.md").is_file())
+                    if integration == "codex":
+                        self.assertTrue((root / ".codex/agents/reflection_investigator.toml").is_file())
+                    else:
+                        self.assertTrue((root / ".claude/agents/reflection-investigator.md").is_file())
+                    for skill in skills:
+                        content = skill.read_text()
+                        self.assertIn('author: "concorde"', content)
+                        self.assertIn('compatibility: "Requires a Concorde project"', content)
+                        self.assertNotIn(".specify/", content)
+                        self.assertNotIn("github-spec-kit", content)
+
+    def test_phase_commands_use_installed_workspace_and_templates(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.install(temporary, "codex")
+            plan = (root / ".agents/skills/speckit-plan/SKILL.md").read_text()
+            specify = (root / ".agents/skills/speckit-specify/SKILL.md").read_text()
+            self.assertIn("python3 .concorde/framework/scripts/workspace.py --phase plan", plan)
+            self.assertIn(".concorde/framework/templates/plan-template.md", plan)
+            self.assertIn(".concorde/framework/templates/feature-template.md", specify)
+            self.assertIn("Protocol 12", plan)
+            self.assertNotIn(str(REPOSITORY_ROOT), plan + specify)
+
+    def test_installed_workspace_adapter_executes_protocol12(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.install(temporary, "codex")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(root / ".concorde/framework/scripts/workspace.py"),
+                    "--project-root", str(root),
+                    "--phase", "plan",
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["schema_version"], 12)
+            self.assertEqual(payload["workspace"]["feature_id"], "feature.example.deliver")
+            self.assertEqual(payload["phase_root"], ".concorde/attempts/feature.example.deliver")
+
+    def test_receipt_roles_cover_framework_commands_agents_and_defaults(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.install(temporary, "codex")
+            receipt = json.loads((root / ".concorde/install.json").read_text())
+            self.assertEqual(receipt["concorde_version"], "1.0.0")
+            self.assertEqual(receipt["integration"], "codex")
+            roles = {item["role"] for item in receipt["outputs"]}
+            self.assertEqual(roles, {"framework", "command", "agent"})
+            paths = {item["path"] for item in receipt["outputs"]}
+            self.assertIn(".concorde/framework/concorde.json", paths)
+            self.assertIn(".agents/skills/speckit-constitution/SKILL.md", paths)
+            self.assertNotIn(".concorde/config.json", paths)
+            self.assertTrue(os.access(root / ".concorde/framework/scripts/concorde.py", os.X_OK))
+            self.assertTrue(os.access(root / ".concorde/framework/scripts/concorde.sh", os.X_OK))
+
+    def test_installed_framework_canonical_bytes_match_root_sources(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.install(temporary, "codex")
+            for relative in (
+                "concorde.json",
+                "commands/speckit.plan.md",
+                "templates/feature-template.md",
+                "src/concorde/cli.py",
+                "agent-assets/reflections/manifest.json",
             ):
-                self.assertIn(requirement, fast_content)
-            self.assertNotIn("workspace_kind", fast_content)
-            self.assertNotIn(str(REPOSITORY_ROOT), fast_content)
-            ask = registered_artifact(root, "codex", "speckit.concorde.ask")
-            content = ask.read_text(encoding="utf-8")
-            for requirement in ("$ARGUMENTS", "cite", "uncertainty", "read-only"):
-                self.assertIn(requirement, content)
-            for executable in ("concorde.sh", "concorde.ps1", "concorde.py", "workspace.py"):
-                self.assertNotIn(executable, content)
-            self.assertNotIn(str(REPOSITORY_ROOT), content)
-            triage = (root / ".agents/skills/reflections-triage/SKILL.md").read_text(encoding="utf-8")
-            self.assertIn("reflection-triage/v3", triage)
-            self.assertIn("--allocate-id", triage)
-            self.assertIn("--remove-merged", triage)
-            self.assertNotIn(str(REPOSITORY_ROOT), triage)
-            helper = (root / ".specify/extensions/concorde/scripts/python/reflections_queue.py").read_text(encoding="utf-8")
-            self.assertIn("reflection-triage/v3", helper)
-            self.assertIn('add_argument("--allocate-id"', helper)
-            self.assertIn('add_argument("--remove-merged"', helper)
-
-    def test_every_preset_winner_executes_the_installed_workspace_bootstrap(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = self.installed_project(temporary)
-            receipts = []
-            for command, phase in PRESET_COMMANDS.items():
-                artifact = registered_artifact(root, "codex", command)
-                receipt = execute_workspace_surface(
-                    root,
-                    artifact,
-                    command,
-                    phase,
-                    REPOSITORY_ROOT,
-                )
-                receipts.append(receipt)
-                self.assertEqual(receipt.exit_status, 0)
-                expected = receipt.workspace["feature_path"] if phase in {"specify", "clarify", "checklist", "fast-loop"} else receipt.workspace["attempt_dir"]
-                self.assertEqual(receipt.phase_root, expected)
                 self.assertEqual(
-                    receipt.workspace["checklists_dir"],
-                    receipt.workspace["attempt_dir"] + "/checklists",
+                    (root / ".concorde/framework" / relative).read_bytes(),
+                    (REPOSITORY_ROOT / relative).read_bytes(),
+                    relative,
                 )
-                content = artifact.read_text(encoding="utf-8")
-                self.assertNotIn("FEATURE_DIR/checklists", content)
-                if phase in {"specify", "clarify", "checklist", "implement"}:
-                    self.assertIn("checklists_dir", content)
-                self.assertIn("Protocol 12", content)
-                self.assertEqual(receipt.checkout_reads, ())
-            self.assertEqual(len({item.handoff_digest for item in receipts}), 1)
-
-    def test_installed_handoff_bytes_match_release_sources(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = self.installed_project(temporary)
-            installed = handoff_digest(
-                root / ".specify/extensions/concorde",
-                root / ".specify/presets/concorde",
-            )
-            source = handoff_digest(
-                REPOSITORY_ROOT / "extensions/concorde",
-                REPOSITORY_ROOT / "presets/concorde",
-            )
-            self.assertEqual(installed, source)
 
 
 if __name__ == "__main__":

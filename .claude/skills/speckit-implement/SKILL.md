@@ -1,16 +1,15 @@
 ---
 name: speckit-implement
-description: Execute every task in one selected Concorde attempt.
-argument-hint: "Optional implementation guidance or task filter"
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Execute every task in one selected Concorde attempt."
+argument-hint: "Optional command guidance"
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: preset:concorde
+  author: "concorde"
+  source: "commands/speckit.implement.md"
 user-invocable: true
 disable-model-invocation: false
 ---
-
-# Speckit Implement Skill
+# Speckit Implement
 
 ## User Input
 
@@ -26,7 +25,7 @@ evidence. Delivery is a later cleanup-only operation.
 
 ## Workspace gate
 
-Before hooks, setup inspection, or reads, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase implement`. Require Protocol 12 with a canonical
+Before setup inspection or reads, run `python3 scripts/workspace.py --phase implement`. Require Protocol 12 with a canonical
 selected feature and an active attempt. Use only the returned durable, temporal, process, and
 executable paths. Never resolve another attempt or infer a compatibility root. Bounded ancestry and
 related-feature summaries are navigation; open another feature file only when an executable task names it.
@@ -35,13 +34,13 @@ Scan every file in the returned `checklists_dir`. Report total/checked/unchecked
 unchecked, stop and ask whether to proceed; checklist state is reviewer-owned and must not be edited
 to make implementation eligible.
 
-Process enabled unconditional `before_implement` hooks. Run mandatory hooks and stop on failure;
-present optional hooks; leave conditional hooks to the hook executor.
+Concorde has no extension-hook phase. The selected attempt, checklist state, and task dependencies
+are the complete pre-execution gate.
 
 ## Context and protected baseline
 
 Read the complete selected feature file, providing module architecture, plan, tasks, validation, research,
-data model, quickstart, constitution, and source/tests named by executable context. Read an explicitly
+data model, quickstart, `.concorde/constitution.md` when present, and source/tests named by executable context. Read an explicitly
 tasked related feature file or ancestor architecture section only as needed and cite why.
 
 At start, record SHA-256 evidence for the selected feature file, providing architecture, bounded ancestry
@@ -80,7 +79,7 @@ match an executable task and its trace. An unexpected change stops completion ma
 
 Record every difficulty encountered, including one solved by a workaround and every provisional
 prototype design choice. Before appending a new entry to `workspace.reflections`, run the installed
-`.specify/extensions/concorde/scripts/python/reflections_queue.py --allocate-id`, use only its
+`python3 ./scripts/reflections_queue.py --allocate-id`, use only its
 `allocated_id`, and never derive an ID from the remaining log entries. Append with fixed grammar,
 `Phase: implement`, and `Status: open`, or add an occurrence to the same existing problem without
 allocating a new ID. Name the concerned design, architecture, interface ID, guidance, tool, or code path. Keep
@@ -98,8 +97,8 @@ After all tasks:
 - prove every task and checklist is complete with passed evidence; and
 - confirm the selected attempt still exists for explicit delivery.
 
-Process enabled unconditional `after_implement` hooks before reporting. Run mandatory hooks, present
-optional hooks, and leave conditional hooks to the executor.
+Run the declared validation and reconciliation checks before reporting; there is no
+post-implementation extension-hook layer.
 
 Report completed/open tasks, changed architecture/feature/code/test/projection paths, commands and
 results, limitations, and `Reflections added: <ids or none> · open for this feature: <count>`.

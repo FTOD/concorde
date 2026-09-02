@@ -13,8 +13,9 @@ Protocol: `reflection-triage/v3`.
 You are the parent orchestrator in the maintainer's checkout. Shared configuration is
 `.concorde/reflections/config.json`; plans are under `.concorde/reflections/plans/`; worktrees are
 under `.concorde/reflections/worktrees/`. Use the installed deterministic helper at
-`.specify/extensions/concorde/scripts/python/reflections_queue.py`. Never edit reflection `Status`
-or `Note`. Before appending any genuine new reflection, run the helper with `--allocate-id`, use only
+`.concorde/framework/scripts/reflections_queue.py`; in a Concorde source checkout use
+`scripts/reflections_queue.py`. Never edit reflection `Status` or `Note`. Before appending any
+genuine new reflection, run the helper with `--allocate-id`, use only
 its `allocated_id`, and never derive an ID from the remaining entries. `.concorde/reflections/log.md`
 is the sole persisted reflection record. Plans may key coordination by `R-NNN` but must not copy
 entry fields, status, notes, occurrences, or prose.

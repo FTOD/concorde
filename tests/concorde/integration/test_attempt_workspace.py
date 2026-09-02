@@ -14,7 +14,7 @@ REMOVED = {"workspace_kind", "feature_abstract", "feature_implementation", "feat
 
 class AttemptWorkspaceIntegration(unittest.TestCase):
     def run_adapter(self, root: Path, phase: str, feature: str, persist: bool = False, feature_id: str | None = None) -> dict:
-        command = [sys.executable, str(REPOSITORY_ROOT / "extensions/concorde/scripts/python/workspace.py"), "--project-root", str(root), "--phase", phase, "--feature-path", feature]
+        command = [sys.executable, str(REPOSITORY_ROOT / "scripts/workspace.py"), "--project-root", str(root), "--phase", phase, "--feature-path", feature]
         if feature_id is not None:
             command.extend(["--feature-id", feature_id])
         if persist:
@@ -53,7 +53,7 @@ class AttemptWorkspaceIntegration(unittest.TestCase):
             self.assertEqual(payload["workspace"]["attempt_state"], "unresolved")
             self.assertIsNone(payload["workspace"]["attempt_dir"])
             self.assertFalse((root / feature).exists())
-            self.assertEqual(json.loads((root / ".specify/feature.json").read_text(encoding="utf-8")), {"feature_path": feature})
+            self.assertEqual(json.loads((root / ".concorde/feature.json").read_text(encoding="utf-8")), {"feature_path": feature})
 
             preflight = self.run_adapter(
                 root,

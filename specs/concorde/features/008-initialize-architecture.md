@@ -34,7 +34,7 @@ inventing product structure or overwriting an existing configured hierarchy.
 
 - **Consumer**: Maintainer establishing Concorde in a project.
 - **Direction**: Bidirectional command/result.
-- **Entry points**: `speckit.concorde.init` and the runtime `init` operation.
+- **Entry points**: Compatibility command `speckit.concorde.init` and native `scripts/concorde.py init` operation in source/installed package layouts.
 - **Inputs**: Project root, proposed root module ID, responsibility, boundary, and optional initial modules/features.
 - **Outputs**: Digest-bearing proposal or an applied/unchanged structured result with exact artifacts and findings.
 - **Obligations**: Preview and apply use the same proposal; existing targets are never silently overwritten.

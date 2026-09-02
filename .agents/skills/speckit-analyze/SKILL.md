@@ -1,14 +1,12 @@
 ---
 name: speckit-analyze
-description: Analyze one direct feature file, architecture context, and temporal attempt
-  without mutation.
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Analyze one direct feature file, architecture context, and temporal attempt without mutation."
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: preset:concorde
+  author: "concorde"
+  source: "commands/speckit.analyze.md"
 ---
-
-# Speckit Analyze Skill
+# Speckit Analyze
 
 ## User Input
 
@@ -19,13 +17,13 @@ $ARGUMENTS
 # Analyze Concorde Alignment
 
 This is a read-only semantic audit. It reports inconsistencies and coverage gaps across the selected
-feature file, providing module architecture, attempt plan/tasks/evidence, constitution, and named
+feature file, providing module architecture, attempt plan/tasks/evidence, `.concorde/constitution.md` when present, and named
 code/test surfaces. It never fixes them.
 
 ## Workspace gate and scope
 
-Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase analyze` first and require Protocol 12. Use only returned paths. Read the selected feature file,
-providing architecture, plan/tasks/research/validation when present, constitution, checklist state,
+Run `python3 scripts/workspace.py --phase analyze` first and require Protocol 12. Use only returned paths. Read the selected feature file,
+providing architecture, plan/tasks/research/validation when present, optional `.concorde/constitution.md`, checklist state,
 and source/test paths needed to verify task coverage. Related-feature summaries and module ancestry
 remain bounded navigation; open another feature file only for a named interface dependency, never another
 attempt.
@@ -60,7 +58,7 @@ Do not edit design, architecture, attempt artifacts, code, tests, control state,
 The only permitted write is a centralized reflection entry when the analysis itself encounters a
 guidance/tooling/source disagreement that cannot be represented as an ordinary report finding. Use
 `Phase: analyze`. Before appending a new entry, run the installed
-`.specify/extensions/concorde/scripts/python/reflections_queue.py --allocate-id`, use only its
+`python3 ./scripts/reflections_queue.py --allocate-id`, use only its
 `allocated_id`, and never derive an ID from the remaining log entries. Update an existing occurrence
 without allocating a new ID, and never duplicate the entry elsewhere.
 

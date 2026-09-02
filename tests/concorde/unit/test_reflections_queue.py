@@ -22,7 +22,7 @@ from tests.concorde.support.reflection_triage import (
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-SCRIPT = REPOSITORY_ROOT / "extensions/concorde/scripts/python/reflections_queue.py"
+SCRIPT = REPOSITORY_ROOT / "scripts/reflections_queue.py"
 
 
 def load_queue_module():

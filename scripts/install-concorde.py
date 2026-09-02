@@ -1,1068 +1,454 @@
 #!/usr/bin/env python3
-"""Install Concorde through Spec Kit's native bundle lifecycle."""
+"""Preview or apply one standalone Concorde package to a project."""
 
 from __future__ import annotations
 
 import argparse
-import contextlib
-import functools
-import http.server
+import hashlib
 import json
-import os
-import shutil
-import subprocess
 import sys
 import tempfile
-import threading
-import urllib.error
-import urllib.request
-from collections.abc import Mapping, Sequence
-from pathlib import Path
-from typing import Any, NamedTuple
-from urllib.parse import urlparse
+from pathlib import Path, PurePosixPath
+from typing import Any, Mapping, NamedTuple, Sequence
 
-import yaml
 
+SCRIPT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(SCRIPT_ROOT / "src"))
 
-SPECIFY_VERSION = "0.16.4"
-BUNDLE_ID = "concorde-bundle"
-MANAGED_CATALOG = "concorde"
-ARCHITECTURE_PROFILE = 7
-WORKSPACE_PROTOCOL = 12
-CURRENT_RELEASE_URL = "https://github.com/FTOD/concorde/releases/latest/download/release.json"
+from concorde.command_assets import CommandAssetError, command_id, render_commands  # noqa: E402
+from concorde.agent_assets import AgentAssetError, render_projection  # noqa: E402
 
-EXIT_OK = 0
-EXIT_REQUEST = 2
-EXIT_RELEASE = 3
-EXIT_SPECIFY = 4
 
+FRAMEWORK_ROOT = ".concorde/framework"
+RECEIPT_PATH = ".concorde/install.json"
+INSTALL_SCHEMA = 1
 
-class InstallationError(Exception):
-    """A staged installer failure with stable exit and remediation information."""
 
-    def __init__(
-        self,
-        exit_code: int,
-        stage: str,
-        message: str,
-        remediation: str,
-        residual_state: str = "target unchanged",
-    ) -> None:
-        super().__init__(message)
-        self.exit_code = exit_code
-        self.stage = stage
-        self.remediation = remediation
-        self.residual_state = residual_state
+class InstallError(ValueError):
+    """The requested package or target cannot be installed safely."""
 
 
-class ReleaseDescriptor(NamedTuple):
-    version: str
-    tag: str
-    speckit_version: str
-    bundle_id: str
-    architecture_profile: int
-    workspace_protocol: int
-    catalogs: dict[str, str]
-    source: str
-
-
-class InstallResult(NamedTuple):
-    outcome: str
-    record: Mapping[str, Any]
-    integration: str
-    reload_required: bool
-    agent_assets: Mapping[str, Any] | None = None
-
-
-def normalize_version(value: str) -> str:
-    normalized = value.strip()
-    if normalized.startswith("v"):
-        normalized = normalized[1:]
-    if not normalized or any(character.isspace() for character in normalized):
-        raise InstallationError(
-            EXIT_REQUEST,
-            "request-validation",
-            f"Invalid Concorde version: {value!r}.",
-            "Pass a release version such as 0.9.0.",
-        )
-    return normalized
-
-
-def release_pointer_url(version: str | None) -> str:
-    if version is None:
-        return CURRENT_RELEASE_URL
-    normalized = normalize_version(version)
-    return f"https://github.com/FTOD/concorde/releases/download/v{normalized}/release.json"
-
-
-def _release_error(message: str) -> InstallationError:
-    return InstallationError(
-        EXIT_RELEASE,
-        "release-validation",
-        message,
-        "Select a published Concorde release whose release.json follows schema 1.x, supports Spec Kit 0.16.4, and declares Profile 7 / Protocol 12.",
-    )
-
-
-def _catalog_url_allowed(url: str, allow_local: bool) -> bool:
-    try:
-        parsed = urlparse(url)
-        hostname = parsed.hostname
-        _ = parsed.port
-    except ValueError:
-        return False
-    if parsed.scheme == "https" and hostname:
-        return True
-    return bool(
-        allow_local
-        and parsed.scheme == "http"
-        and hostname in {"127.0.0.1", "localhost", "::1"}
-    )
-
-
-def validate_release_pointer(
-    payload: object,
-    *,
-    expected_version: str | None = None,
-    allow_local: bool = False,
-    source: str = "release.json",
-) -> ReleaseDescriptor:
-    if not isinstance(payload, Mapping):
-        raise _release_error("release.json must contain a JSON object.")
-    schema = str(payload.get("schema_version", "")).strip()
-    if schema.split(".", 1)[0] != "1":
-        raise _release_error(f"Unsupported release.json schema {schema or '<missing>'!r}.")
-    version = str(payload.get("version", "")).strip()
-    tag = str(payload.get("tag", "")).strip()
-    if not version or tag != f"v{version}":
-        raise _release_error("release.json version and tag are missing or inconsistent.")
-    if expected_version is not None and version != normalize_version(expected_version):
-        raise _release_error(
-            f"Requested Concorde {normalize_version(expected_version)} but release.json declares {version}."
-        )
-    bundle_id = str(payload.get("bundle_id", "")).strip()
-    if bundle_id != BUNDLE_ID:
-        raise _release_error(
-            f"release.json names bundle {bundle_id or '<missing>'!r}; expected {BUNDLE_ID!r}."
-        )
-    architecture_profile = payload.get("architecture_profile")
-    workspace_protocol = payload.get("workspace_protocol")
-    if architecture_profile != ARCHITECTURE_PROFILE or workspace_protocol != WORKSPACE_PROTOCOL:
-        raise _release_error(
-            "release.json must declare Architecture Source Profile "
-            f"{ARCHITECTURE_PROFILE} and Feature Workspace Protocol {WORKSPACE_PROTOCOL}."
-        )
-    speckit_version = str(payload.get("speckit_version", "")).replace(" ", "")
-    if speckit_version != ">=0.16.4,<0.16.5":
-        raise _release_error(
-            f"Release {version} declares unsupported Spec Kit range {speckit_version or '<missing>'!r}."
-        )
-    raw_catalogs = payload.get("catalogs")
-    if not isinstance(raw_catalogs, Mapping):
-        raise _release_error("release.json must name extension, preset, and bundle catalogs.")
-    catalogs: dict[str, str] = {}
-    for kind in ("extensions", "presets", "bundles"):
-        value = raw_catalogs.get(kind)
-        if not isinstance(value, str) or not _catalog_url_allowed(value, allow_local):
-            raise _release_error(
-                f"release.json catalog {kind!r} must be an HTTPS URL"
-                + (" or loopback HTTP URL." if allow_local else ".")
-            )
-        catalogs[kind] = value
-    return ReleaseDescriptor(
-        version=version,
-        tag=tag,
-        speckit_version=speckit_version,
-        bundle_id=bundle_id,
-        architecture_profile=architecture_profile,
-        workspace_protocol=workspace_protocol,
-        catalogs=catalogs,
-        source=source,
-    )
-
-
-def classify_target(path: Path) -> str:
-    if not path.exists():
-        return "absent"
-    if not path.is_dir():
-        return "non-project"
-    if (path / ".specify").is_dir():
-        return "project"
-    try:
-        next(path.iterdir())
-    except StopIteration:
-        return "empty"
-    return "non-project"
-
-
-def catalog_state(
-    kind: str,
-    config: object,
-    desired_url: str,
-    managed_catalog: str = MANAGED_CATALOG,
-) -> str:
-    if kind not in {"extension", "preset", "bundle"}:
-        raise ValueError(f"unsupported catalog kind: {kind}")
-    if not isinstance(config, Mapping):
-        return "missing"
-    entries = config.get("catalogs", [])
-    if not isinstance(entries, list):
-        return "missing"
-    identity_key = "id" if kind == "bundle" else "name"
-    policy_key = "install_policy" if kind == "bundle" else "install_allowed"
-    expected_policy: object = "install-allowed" if kind == "bundle" else True
-    for entry in entries:
-        if not isinstance(entry, Mapping) or entry.get(identity_key) != managed_catalog:
-            continue
-        if entry.get("url") == desired_url and entry.get(policy_key) == expected_policy:
-            return "current"
-        return "replace"
-    return "missing"
-
-
-def select_action(installed_version: str | None, resolved_version: str) -> str:
-    if installed_version is None:
-        return "install"
-    if installed_version == resolved_version:
-        return "already-current"
-    return "update"
-
-
-def installed_bundle_version(payload: object) -> str | None:
-    if not isinstance(payload, list):
-        raise InstallationError(
-            EXIT_SPECIFY,
-            "bundle-state",
-            "Spec Kit returned an invalid installed-bundle list.",
-            "Run `specify bundle list --json` and repair the reported registry problem.",
-            "existing project was not changed",
-        )
-    matches = [
-        item
-        for item in payload
-        if isinstance(item, Mapping) and item.get("bundle_id") == BUNDLE_ID
-    ]
-    if not matches:
-        return None
-    if len(matches) != 1 or not isinstance(matches[0].get("version"), str):
-        raise InstallationError(
-            EXIT_SPECIFY,
-            "bundle-state",
-            f"Spec Kit reported ambiguous or invalid state for {BUNDLE_ID}.",
-            "Run `specify bundle list --json` and resolve duplicate or corrupt records.",
-            "existing project was not changed",
-        )
-    return str(matches[0]["version"])
-
-
-def render_failure(error: InstallationError) -> str:
-    return "\n".join(
-        [
-            f"CONCORDE INSTALL FAILED [{error.stage}]",
-            str(error),
-            f"Remediation: {error.remediation}",
-            f"Residual state: {error.residual_state}",
-        ]
-    )
-
-
-class SpecifyRunner:
-    """Invoke the public Spec Kit CLI while preserving its diagnostics."""
-
-    def __init__(self, executable: str | None = None) -> None:
-        self.executable = executable or shutil.which("specify") or "specify"
-
-    def verify(self, cwd: Path) -> None:
-        try:
-            result = subprocess.run(
-                [self.executable, "--version"],
-                cwd=cwd,
-                text=True,
-                capture_output=True,
-            )
-        except OSError as error:
-            raise InstallationError(
-                EXIT_REQUEST,
-                "specify-cli",
-                f"Cannot run the pinned Spec Kit CLI: {error}",
-                f"Run this installer through `uvx --from specify-cli=={SPECIFY_VERSION} python`.",
-            ) from error
-        observed = (result.stdout or result.stderr).strip()
-        if result.returncode or observed != f"specify {SPECIFY_VERSION}":
-            raise InstallationError(
-                EXIT_REQUEST,
-                "specify-cli",
-                f"Expected specify {SPECIFY_VERSION}; observed {observed or '<no version>'}.",
-                f"Run this installer through `uvx --from specify-cli=={SPECIFY_VERSION} python`.",
-            )
-
-    def run(
-        self,
-        *arguments: str,
-        cwd: Path,
-        stage: str,
-        check: bool = True,
-    ) -> subprocess.CompletedProcess[str]:
-        environment = os.environ.copy()
-        environment.pop("SPECIFY_FEATURE_PATH", None)
-        environment.pop("PYTHONPATH", None)
-        environment["PYTHONNOUSERSITE"] = "1"
-        result = subprocess.run(
-            [self.executable, *arguments],
-            cwd=cwd,
-            env=environment,
-            text=True,
-            capture_output=True,
-        )
-        if result.stdout:
-            print(result.stdout, end="", file=sys.stdout)
-        if result.stderr:
-            print(result.stderr, end="", file=sys.stderr)
-        if check and result.returncode:
-            raise InstallationError(
-                EXIT_SPECIFY,
-                stage,
-                f"Spec Kit command failed ({result.returncode}): specify {' '.join(arguments)}",
-                "Review the native Spec Kit diagnostic above, correct the project or source, and retry.",
-                "inspect the target with `specify bundle list --json` before retrying",
-            )
-        return result
-
-    def json(self, *arguments: str, cwd: Path, stage: str) -> Any:
-        environment = os.environ.copy()
-        environment.pop("SPECIFY_FEATURE_PATH", None)
-        environment.pop("PYTHONPATH", None)
-        environment["PYTHONNOUSERSITE"] = "1"
-        result = subprocess.run(
-            [self.executable, *arguments],
-            cwd=cwd,
-            env=environment,
-            text=True,
-            capture_output=True,
-        )
-        if result.returncode:
-            if result.stdout:
-                print(result.stdout, end="", file=sys.stdout)
-            if result.stderr:
-                print(result.stderr, end="", file=sys.stderr)
-            raise InstallationError(
-                EXIT_SPECIFY,
-                stage,
-                f"Spec Kit command failed ({result.returncode}): specify {' '.join(arguments)}",
-                "Review the native Spec Kit diagnostic above, correct the project or source, and retry.",
-                "target state is unchanged by this read-only command",
-            )
-        try:
-            return json.loads(result.stdout)
-        except json.JSONDecodeError as error:
-            raise InstallationError(
-                EXIT_SPECIFY,
-                stage,
-                f"Spec Kit returned invalid JSON: {error}",
-                "Run the same command manually with --json and verify Spec Kit 0.16.4 is active.",
-                "target state is unchanged by this read-only command",
-            ) from error
-
-
-def load_yaml(path: Path) -> object:
-    if not path.is_file():
-        return {}
-    try:
-        return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    except (OSError, UnicodeError, yaml.YAMLError) as error:
-        raise InstallationError(
-            EXIT_SPECIFY,
-            "catalog-state",
-            f"Cannot read catalog state at {path}: {error}",
-            "Repair the malformed project catalog configuration and retry.",
-            "existing project was not changed",
-        ) from error
-
-
-def fetch_release(version: str | None) -> ReleaseDescriptor:
-    url = release_pointer_url(version)
-    request = urllib.request.Request(
-        url,
-        headers={"Accept": "application/json", "User-Agent": "concorde-installer"},
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            payload = json.load(response)
-    except (OSError, urllib.error.URLError, json.JSONDecodeError) as error:
-        raise InstallationError(
-            EXIT_RELEASE,
-            "release-discovery",
-            f"Cannot read {url}: {error}",
-            "Check network access and the requested release version, then retry or use --checkout.",
-        ) from error
-    return validate_release_pointer(
-        payload,
-        expected_version=version,
-        source=url,
-    )
-
-
-def _catalog_config_path(target: Path, kind: str) -> Path:
-    names = {
-        "extension": "extension-catalogs.yml",
-        "preset": "preset-catalogs.yml",
-        "bundle": "bundle-catalogs.yml",
-    }
-    return target / ".specify" / names[kind]
-
-
-def catalog_states(
-    target: Path,
-    release: ReleaseDescriptor,
-    managed_catalog: str = MANAGED_CATALOG,
-) -> dict[str, str]:
-    catalog_urls = {
-        "extension": release.catalogs["extensions"],
-        "preset": release.catalogs["presets"],
-        "bundle": release.catalogs["bundles"],
-    }
-    return {
-        kind: catalog_state(
-            kind,
-            load_yaml(_catalog_config_path(target, kind)),
-            url,
-            managed_catalog,
-        )
-        for kind, url in catalog_urls.items()
-    }
-
-
-def reconcile_catalogs(
-    target: Path,
-    release: ReleaseDescriptor,
-    runner: SpecifyRunner,
-    managed_catalog: str = MANAGED_CATALOG,
-) -> dict[str, str]:
-    urls = {
-        "extension": release.catalogs["extensions"],
-        "preset": release.catalogs["presets"],
-        "bundle": release.catalogs["bundles"],
-    }
-    states = catalog_states(target, release, managed_catalog)
-    for kind in ("extension", "preset", "bundle"):
-        state = states[kind]
-        if state == "current":
-            continue
-        if state == "replace":
-            runner.run(
-                kind, "catalog", "remove", managed_catalog,
-                cwd=target,
-                stage=f"{kind}-catalog-remove",
-            )
-        if kind == "extension":
-            arguments = (
-                "extension", "catalog", "add", urls[kind],
-                "--name", managed_catalog, "--install-allowed",
-            )
-        elif kind == "preset":
-            arguments = (
-                "preset", "catalog", "add", urls[kind],
-                "--name", managed_catalog, "--install-allowed",
-            )
-        else:
-            arguments = (
-                "bundle", "catalog", "add", urls[kind],
-                "--id", managed_catalog, "--policy", "install-allowed",
-            )
-        runner.run(*arguments, cwd=target, stage=f"{kind}-catalog-add")
-    return states
-
-
-def _catalog_identity_present(target: Path, kind: str, identity: str) -> bool:
-    config = load_yaml(_catalog_config_path(target, kind))
-    if not isinstance(config, Mapping) or not isinstance(config.get("catalogs"), list):
-        return False
-    key = "id" if kind == "bundle" else "name"
-    return any(
-        isinstance(entry, Mapping) and entry.get(key) == identity
-        for entry in config["catalogs"]
-    )
-
-
-def remove_managed_catalogs(
-    target: Path,
-    runner: SpecifyRunner,
-    managed_catalog: str,
-) -> None:
-    if classify_target(target) != "project":
-        return
-    for kind in ("extension", "preset", "bundle"):
-        if _catalog_identity_present(target, kind, managed_catalog):
-            runner.run(
-                kind, "catalog", "remove", managed_catalog,
-                cwd=target,
-                stage=f"{kind}-catalog-cleanup",
-            )
-
-
-def _project_integration(target: Path, runner: SpecifyRunner) -> str:
-    status = runner.json("integration", "status", "--json", cwd=target, stage="integration-status")
-    if not isinstance(status, Mapping) or not isinstance(status.get("default_integration"), str):
-        raise InstallationError(
-            EXIT_REQUEST,
-            "integration-status",
-            "The existing Spec Kit project has no readable default integration.",
-            "Run `specify integration status --json`, repair its integration state, and retry.",
-            "existing project was not changed",
-        )
-    return str(status["default_integration"])
-
-
-def prepare_target(
-    target: Path,
-    requested_integration: str | None,
-    integration_options: str | None,
-    runner: SpecifyRunner,
-) -> tuple[str, bool]:
-    target_kind = classify_target(target)
-    if target_kind == "non-project":
-        raise InstallationError(
-            EXIT_REQUEST,
-            "target-validation",
-            f"{target} is not an empty directory or an existing Spec Kit project.",
-            "Choose an empty directory, initialize it manually, or run from an existing Spec Kit project.",
-        )
-    if target_kind == "project":
-        integration = _project_integration(target, runner)
-        if requested_integration and requested_integration != integration:
-            raise InstallationError(
-                EXIT_REQUEST,
-                "integration-conflict",
-                f"The project uses integration {integration!r}, not {requested_integration!r}.",
-                f"Omit --integration or pass --integration {integration}.",
-                "existing project was not changed",
-            )
-        return integration, False
-    if not requested_integration:
-        raise InstallationError(
-            EXIT_REQUEST,
-            "request-validation",
-            "--integration is required for a fresh target.",
-            "Pass the coding-agent integration, for example --integration codex.",
-        )
-    target.mkdir(parents=True, exist_ok=True)
-    arguments = [
-        "init", "--here", "--force", "--ignore-agent-tools", "--integration", requested_integration,
-    ]
-    options = integration_options
-    if options is None and requested_integration == "codex":
-        options = "--skills"
-    if options:
-        arguments.append(f"--integration-options={options}")
-    runner.run(*arguments, cwd=target, stage="project-initialization")
-    return requested_integration, True
-
-
-def _print_plan(
-    release: ReleaseDescriptor,
-    integration: str,
-    catalog_plan: Mapping[str, str],
-    bundle_info: object,
-    action: str,
-    agent_plan: Mapping[str, Any] | None = None,
-) -> None:
-    print("\nConcorde installation plan")
-    print(f"  release: {release.version} ({release.source})")
-    print(f"  Spec Kit: {SPECIFY_VERSION} ({release.speckit_version})")
-    print(
-        f"  Concorde source profile/protocol: "
-        f"{release.architecture_profile}/{release.workspace_protocol}"
-    )
-    print(f"  integration: {integration}")
-    for kind in ("extension", "preset", "bundle"):
-        print(f"  {kind} catalog: {catalog_plan[kind]}")
-    print(f"  action: {action}")
-    print("\nNative expanded bundle information:")
-    print(json.dumps(bundle_info, indent=2, sort_keys=True))
-    if agent_plan is not None:
-        print("\nNative reflection-agent projection plan:")
-        print(json.dumps(agent_plan, indent=2, sort_keys=True))
-
-
-def _bundle_record(payload: object) -> Mapping[str, Any]:
-    if not isinstance(payload, list):
-        raise InstallationError(
-            EXIT_SPECIFY,
-            "final-verification",
-            "Spec Kit returned an invalid installed-bundle list.",
-            "Run `specify bundle list --json` and inspect the installation.",
-            "installation result is unknown",
-        )
-    for item in payload:
-        if isinstance(item, Mapping) and item.get("bundle_id") == BUNDLE_ID:
-            return item
-    raise InstallationError(
-        EXIT_SPECIFY,
-        "final-verification",
-        f"Spec Kit did not report {BUNDLE_ID} after installation.",
-        "Run `specify bundle list --json` and inspect the native lifecycle diagnostics.",
-        "project is initialized and catalogs are registered; bundle state is unknown",
-    )
-
-
-def _print_success(
-    outcome: str,
-    record: Mapping[str, Any],
-    integration: str,
-    reload_required: bool,
-    agent_assets: Mapping[str, Any] | None = None,
-) -> None:
-    components = record.get("contributed_components", [])
-    print("\nCONCORDE INSTALL SUCCESS")
-    print(f"  outcome: {outcome}")
-    print(f"  bundle: {record.get('bundle_id')}@{record.get('version')}")
-    if isinstance(components, list):
-        for component in components:
-            if isinstance(component, Mapping):
-                print(f"  {component.get('kind')}: {component.get('id')}@{component.get('version')}")
-    print(f"  integration: {integration}")
-    if agent_assets:
-        verify = agent_assets.get("verify", {})
-        result = verify.get("result", {}) if isinstance(verify, Mapping) else {}
-        outputs = result.get("outputs", []) if isinstance(result, Mapping) else []
-        print(f"  agent projection: {verify.get('status', 'unknown') if isinstance(verify, Mapping) else 'unknown'}")
-        print(f"  agent outputs: {len(outputs) if isinstance(outputs, list) else 0}")
-        print("  agent receipt: .specify/concorde-agent-assets.json")
-    print(f"  agent reload required: {'yes' if reload_required else 'no'}")
-    print("  next: start a new agent session if required, then run speckit-concorde-init")
-
-
-def run_agent_assets(
-    project_root: Path,
-    integration: str,
-    operation: str,
-    concorde_version: str,
-    *,
-    source_project: Path | None = None,
-    allow_conflict: bool = False,
-) -> Mapping[str, Any]:
-    """Invoke only the projector shipped in an installed Concorde extension."""
-    source = source_project or project_root
-    launcher = source / ".specify/extensions/concorde/scripts/python/concorde.py"
-    if not launcher.is_file():
-        raise InstallationError(
-            EXIT_SPECIFY,
-            f"agent-projection-{operation}",
-            f"Installed Concorde agent projector is missing: {launcher}",
-            "Repair or reinstall extension:concorde, then retry.",
-            "component state may be installed; agent projections were not verified",
-        )
-    arguments = [
-        sys.executable,
-        str(launcher),
-        "--project-root",
-        str(project_root),
-        "agent-assets",
-        operation,
-        "--integration",
-        integration,
-        "--concorde-version",
-        concorde_version,
-    ]
-    if source_project is not None and source_project != project_root:
-        arguments.extend(
-            [
-                "--source-root",
-                str(source / ".specify/extensions/concorde/agent-assets/reflections"),
-            ]
-        )
-    environment = os.environ.copy()
-    environment.pop("SPECIFY_FEATURE_PATH", None)
-    environment.pop("PYTHONPATH", None)
-    environment["PYTHONNOUSERSITE"] = "1"
-    completed = subprocess.run(
-        arguments,
-        cwd=source,
-        env=environment,
-        text=True,
-        capture_output=True,
-    )
-    if completed.stderr:
-        print(completed.stderr, end="", file=sys.stderr)
-    try:
-        payload = json.loads(completed.stdout)
-    except json.JSONDecodeError as error:
-        raise InstallationError(
-            EXIT_SPECIFY,
-            f"agent-projection-{operation}",
-            f"Installed agent projector returned invalid JSON: {error}",
-            "Run the installed concorde.py agent-assets command directly and inspect its diagnostic.",
-            "component state may be installed; agent projection state is unknown",
-        ) from error
-    status = payload.get("status") if isinstance(payload, Mapping) else None
-    allowed = {"proposal", "success", "unchanged"}
-    if allow_conflict:
-        allowed.add("conflict")
-    acceptable_nonzero = allow_conflict and status == "conflict"
-    if (completed.returncode and not acceptable_nonzero) or status not in allowed:
-        findings = payload.get("findings", []) if isinstance(payload, Mapping) else []
-        messages = [str(item.get("message")) for item in findings if isinstance(item, Mapping)]
-        raise InstallationError(
-            EXIT_SPECIFY,
-            f"agent-projection-{operation}",
-            "; ".join(messages) or f"Agent projection {operation} failed with status {status!r}.",
-            "Resolve the named ownership or installed-asset problem, then retry.",
-            "component state may be installed; conflicting or failed agent projections were preserved",
-        )
-    return payload
-
-
-def execute_install(
-    target: Path,
-    release: ReleaseDescriptor,
-    requested_integration: str | None,
-    integration_options: str | None,
-    runner: SpecifyRunner,
-    managed_catalog: str = MANAGED_CATALOG,
-    announce: bool = True,
-) -> InstallResult:
-    integration, initialized = prepare_target(
-        target,
-        requested_integration,
-        integration_options,
-        runner,
-    )
-    before = runner.json("bundle", "list", "--json", cwd=target, stage="bundle-state")
-    installed_version = installed_bundle_version(before)
-    catalog_plan = catalog_states(target, release, managed_catalog)
-    reconcile_catalogs(target, release, runner, managed_catalog)
-    bundle_info = runner.json(
-        "bundle", "info", release.bundle_id, "--json",
-        cwd=target,
-        stage="bundle-preview",
-    )
-    action = select_action(installed_version, release.version)
-    _print_plan(release, integration, catalog_plan, bundle_info, action)
-    if action == "install":
-        runner.run("bundle", "install", release.bundle_id, cwd=target, stage="bundle-install")
-        outcome = "installed"
-    elif action == "update":
-        runner.run("bundle", "update", release.bundle_id, cwd=target, stage="bundle-update")
-        outcome = "updated"
-    else:
-        outcome = action
-    after = runner.json("bundle", "list", "--json", cwd=target, stage="final-verification")
-    record = _bundle_record(after)
-    if record.get("version") != release.version:
-        raise InstallationError(
-            EXIT_SPECIFY,
-            "final-verification",
-            f"Installed bundle version {record.get('version')!r} does not match planned {release.version!r}.",
-            "Review `specify bundle list --json` and the registered Concorde catalogs.",
-            "project is initialized; installed component state disagrees with the plan",
-        )
-    agent_preview = run_agent_assets(target, integration, "preview", release.version)
-    agent_sync = run_agent_assets(target, integration, "sync", release.version)
-    agent_verify = run_agent_assets(target, integration, "verify", release.version)
-    agent_assets = {"preview": agent_preview, "sync": agent_sync, "verify": agent_verify}
-    result = InstallResult(
-        outcome=outcome,
-        record=record,
-        integration=integration,
-        reload_required=(
-            initialized
-            or action in {"install", "update"}
-            or agent_sync.get("status") == "success"
-        ),
-        agent_assets=agent_assets,
-    )
-    if announce:
-        _print_success(*result)
-    return result
-
-
-def inspect_target(
-    target: Path,
-    release: ReleaseDescriptor,
-    requested_integration: str | None,
-    runner: SpecifyRunner,
-    managed_catalog: str = MANAGED_CATALOG,
-) -> tuple[str, str | None, dict[str, str]]:
-    target_kind = classify_target(target)
-    if target_kind == "non-project":
-        raise InstallationError(
-            EXIT_REQUEST,
-            "target-validation",
-            f"{target} is not an empty directory or an existing Spec Kit project.",
-            "Choose an empty directory, initialize it manually, or preview an existing Spec Kit project.",
-        )
-    if target_kind == "project":
-        integration = _project_integration(target, runner)
-        if requested_integration and requested_integration != integration:
-            raise InstallationError(
-                EXIT_REQUEST,
-                "integration-conflict",
-                f"The project uses integration {integration!r}, not {requested_integration!r}.",
-                f"Omit --integration or pass --integration {integration}.",
-                "existing project was not changed",
-            )
-        bundles = runner.json("bundle", "list", "--json", cwd=target, stage="bundle-state")
-        return (
-            integration,
-            installed_bundle_version(bundles),
-            catalog_states(target, release, managed_catalog),
-        )
-    if not requested_integration:
-        raise InstallationError(
-            EXIT_REQUEST,
-            "request-validation",
-            "--integration is required for a fresh target.",
-            "Pass the coding-agent integration, for example --integration codex.",
-        )
-    return requested_integration, None, {kind: "missing" for kind in ("extension", "preset", "bundle")}
-
-
-def execute_preview(
-    target: Path,
-    release: ReleaseDescriptor,
-    requested_integration: str | None,
-    integration_options: str | None,
-    runner: SpecifyRunner,
-    managed_catalog: str = MANAGED_CATALOG,
-) -> str:
-    integration, installed_version, target_catalogs = inspect_target(
-        target,
-        release,
-        requested_integration,
-        runner,
-        managed_catalog,
-    )
-    with tempfile.TemporaryDirectory(prefix="concorde-preview-") as temporary:
-        preview_root = Path(temporary)
-        prepare_target(preview_root, integration, integration_options, runner)
-        reconcile_catalogs(preview_root, release, runner, managed_catalog)
-        bundle_info = runner.json(
-            "bundle", "info", release.bundle_id, "--json",
-            cwd=preview_root,
-            stage="bundle-preview",
-        )
-        runner.run("bundle", "install", release.bundle_id, cwd=preview_root, stage="preview-bundle-install")
-        agent_plan = run_agent_assets(
-            target,
-            integration,
-            "preview",
-            release.version,
-            source_project=preview_root,
-            allow_conflict=True,
-        )
-    action = select_action(installed_version, release.version)
-    _print_plan(release, integration, target_catalogs, bundle_info, action, agent_plan)
-    print("\nCONCORDE INSTALL PREVIEW COMPLETE")
-    print("  outcome: preview")
-    print(f"  planned action: {action}")
-    print("  target changed: no")
-    return "preview"
-
-
-class _QuietCatalogHandler(http.server.SimpleHTTPRequestHandler):
-    def log_message(self, format: str, *arguments: object) -> None:
-        return
-
-
-class LoopbackCatalogServer:
-    def __init__(self, directory: Path) -> None:
-        handler = functools.partial(_QuietCatalogHandler, directory=str(directory.resolve()))
-        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
-        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
-        self.started = False
+class Package(NamedTuple):
+    root: Path
+    manifest: Mapping[str, Any]
 
     @property
-    def base_url(self) -> str:
-        return f"http://127.0.0.1:{self.server.server_port}"
-
-    def start(self) -> None:
-        self.thread.start()
-        self.started = True
-
-    def close(self) -> None:
-        if self.started:
-            self.server.shutdown()
-        self.server.server_close()
-        if self.started:
-            self.thread.join(timeout=5)
+    def version(self) -> str:
+        return str(self.manifest["version"])
 
 
-def _run_release_script(checkout: Path, script: Path, *arguments: str, stage: str) -> None:
-    environment = os.environ.copy()
-    environment.pop("SPECIFY_FEATURE_PATH", None)
-    environment.pop("PYTHONPATH", None)
-    environment["PYTHONNOUSERSITE"] = "1"
-    result = subprocess.run(
-        [sys.executable, str(script), *arguments],
-        cwd=checkout,
-        env=environment,
-        text=True,
-        capture_output=True,
+def _sha256(data: bytes) -> str:
+    return "sha256:" + hashlib.sha256(data).hexdigest()
+
+
+def _safe_relative(value: str, field: str) -> str:
+    candidate = PurePosixPath(value)
+    if not value or candidate.is_absolute() or ".." in candidate.parts or "\\" in value:
+        raise InstallError(f"{field} must be a safe project-relative path: {value!r}")
+    return candidate.as_posix()
+
+
+def _read_json(path: Path, label: str) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise InstallError(f"cannot read {label} {path}: {error}") from error
+    if not isinstance(value, dict):
+        raise InstallError(f"{label} must be a JSON object: {path}")
+    return value
+
+
+def load_package(root: Path) -> Package:
+    root = root.resolve()
+    manifest_path = root / "concorde.json"
+    if manifest_path.is_symlink() or not manifest_path.is_file():
+        raise InstallError(f"Concorde package manifest must be one real file: {manifest_path}")
+    manifest = _read_json(manifest_path, "Concorde package manifest")
+    required = {
+        "schema_version",
+        "name",
+        "version",
+        "architecture_profile",
+        "workspace_protocol",
+        "commands",
+        "templates",
+        "integrations",
+        "install",
+    }
+    if required - set(manifest):
+        raise InstallError(f"Concorde manifest is missing fields: {sorted(required - set(manifest))}")
+    if manifest.get("schema_version") != 1 or manifest.get("name") != "concorde":
+        raise InstallError("Concorde manifest must declare schema_version 1 and name 'concorde'")
+    if manifest.get("architecture_profile") != 7 or manifest.get("workspace_protocol") != 12:
+        raise InstallError("Concorde package must declare Architecture Profile 7 and Workspace Protocol 12")
+    if manifest.get("delivery_proposal") != 8 or manifest.get("command_namespace") != "speckit":
+        raise InstallError("Concorde package must declare Delivery Proposal 8 and the retained speckit command namespace")
+    install = manifest.get("install")
+    if not isinstance(install, dict) or install.get("framework_root") != FRAMEWORK_ROOT or install.get("receipt") != RECEIPT_PATH:
+        raise InstallError("Concorde manifest declares an unsupported installation layout")
+    integrations = manifest.get("integrations")
+    if integrations != ["claude", "codex"]:
+        raise InstallError("Concorde manifest must declare exactly claude and codex integrations")
+    if manifest.get("package_roots") != ["agent-assets", "commands", "scripts", "src", "templates"]:
+        raise InstallError("Concorde manifest declares an unsupported root package inventory")
+    commands = manifest.get("commands")
+    if not isinstance(commands, list) or any(not isinstance(item, str) for item in commands):
+        raise InstallError("Concorde manifest commands must be a string list")
+    if len(commands) != len(set(commands)):
+        raise InstallError("Concorde manifest command inventory contains duplicates")
+    command_paths = sorted((root / "commands").glob("*.md"))
+    observed_commands = sorted(command_id(path) for path in command_paths)
+    if observed_commands != sorted(commands):
+        raise InstallError("Concorde manifest command inventory differs from root commands/")
+    templates = manifest.get("templates")
+    if not isinstance(templates, list) or any(not isinstance(item, str) for item in templates):
+        raise InstallError("Concorde manifest templates must be a string list")
+    if len(templates) != len(set(templates)):
+        raise InstallError("Concorde manifest template inventory contains duplicates")
+    observed_templates = sorted(path.name for path in (root / "templates").glob("*.md"))
+    if observed_templates != sorted(templates):
+        raise InstallError("Concorde manifest template inventory differs from root templates/")
+    for required_root in ("agent-assets", "commands", "scripts", "src", "templates"):
+        path = root / required_root
+        if path.is_symlink() or not path.is_dir():
+            raise InstallError(f"Concorde package root is missing: {required_root}")
+    license_path = root / "LICENSE"
+    readme_path = root / "README.md"
+    if manifest.get("license") != "MIT" or manifest.get("license_file") != "LICENSE" or license_path.is_symlink() or not license_path.is_file():
+        raise InstallError("Concorde package must include its declared MIT LICENSE file")
+    if readme_path.is_symlink() or not readme_path.is_file():
+        raise InstallError("Concorde package must include one real root README.md")
+    return Package(root, manifest)
+
+
+def _package_files(package: Package) -> dict[str, bytes]:
+    desired: dict[str, bytes] = {}
+    desired[f"{FRAMEWORK_ROOT}/concorde.json"] = (package.root / "concorde.json").read_bytes()
+    desired[f"{FRAMEWORK_ROOT}/LICENSE"] = (package.root / "LICENSE").read_bytes()
+    desired[f"{FRAMEWORK_ROOT}/README.md"] = (package.root / "README.md").read_bytes()
+    for directory in ("agent-assets", "commands", "src", "templates"):
+        source_root = package.root / directory
+        for path in sorted(source_root.rglob("*")):
+            if path.is_symlink():
+                raise InstallError(f"Concorde packages may not contain symlinks: {path}")
+            if path.is_file():
+                relative = path.relative_to(package.root).as_posix()
+                if "__pycache__" in PurePosixPath(relative).parts or path.suffix in {".pyc", ".pyo"}:
+                    continue
+                desired[f"{FRAMEWORK_ROOT}/{relative}"] = path.read_bytes()
+    scripts = (
+        "concorde.py",
+        "concorde.ps1",
+        "concorde.sh",
+        "reflections_queue.py",
+        "render-command-surfaces.py",
+        "workspace.py",
     )
-    if result.stdout:
-        print(result.stdout, end="")
-    if result.stderr:
-        print(result.stderr, end="", file=sys.stderr)
-    if result.returncode:
-        raise InstallationError(
-            EXIT_RELEASE,
-            stage,
-            f"Local release command failed ({result.returncode}): {script.name}",
-            "Fix the named checkout release validation, then retry development mode.",
-            "target unchanged; temporary release data will be removed",
-        )
+    for name in scripts:
+        source = package.root / "scripts" / name
+        if source.is_symlink() or not source.is_file():
+            raise InstallError(f"Concorde package script is missing: scripts/{name}")
+        desired[f"{FRAMEWORK_ROOT}/scripts/{name}"] = source.read_bytes()
+    return desired
 
 
-@contextlib.contextmanager
-def local_release(checkout_value: str):
-    checkout = Path(checkout_value).expanduser().resolve()
-    build_script = checkout / "scripts/release/build-components.py"
-    verify_script = checkout / "scripts/release/verify-release.py"
-    manifests = [
-        checkout / "bundles/concorde-bundle/bundle.yml",
-        checkout / "presets/concorde/preset.yml",
-        checkout / "extensions/concorde/extension.yml",
-    ]
-    missing = [path for path in [build_script, verify_script, *manifests] if not path.is_file()]
-    if missing:
-        joined = ", ".join(str(path.relative_to(checkout)) for path in missing) if checkout.is_dir() else str(checkout)
-        raise InstallationError(
-            EXIT_RELEASE,
-            "checkout-validation",
-            f"The local Concorde checkout is incomplete: {joined}.",
-            "Pass the root of a Concorde checkout containing the release scripts and all three manifests.",
-        )
-    with tempfile.TemporaryDirectory(prefix="concorde-release-") as temporary:
-        dist = Path(temporary)
-        server = LoopbackCatalogServer(dist)
-        try:
-            _run_release_script(
-                checkout,
-                build_script,
-                "--output", str(dist),
-                "--base-url", server.base_url,
-                stage="checkout-build",
-            )
-            _run_release_script(
-                checkout,
-                verify_script,
-                "--dist", str(dist),
-                "--expect-base-url", server.base_url,
-                stage="checkout-verification",
-            )
-            try:
-                bundle_catalog = json.loads((dist / "bundles.json").read_text(encoding="utf-8"))
-                bundle = bundle_catalog["bundles"][BUNDLE_ID]
-                version = str(bundle["version"])
-                speckit_version = str(bundle["requires"]["speckit_version"])
-                architecture_profile = bundle["architecture_profile"]
-                workspace_protocol = bundle["workspace_protocol"]
-            except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError) as error:
-                raise InstallationError(
-                    EXIT_RELEASE,
-                    "checkout-verification",
-                    f"The verified local bundle catalog cannot be read: {error}",
-                    "Re-run the checkout release verifier and repair its generated catalogs.",
-                ) from error
-            release = validate_release_pointer(
-                {
-                    "schema_version": "1.0",
-                    "version": version,
-                    "tag": f"v{version}",
-                    "speckit_version": speckit_version,
-                    "bundle_id": BUNDLE_ID,
-                    "architecture_profile": architecture_profile,
-                    "workspace_protocol": workspace_protocol,
-                    "catalogs": {
-                        "extensions": f"{server.base_url}/extensions.json",
-                        "presets": f"{server.base_url}/presets.json",
-                        "bundles": f"{server.base_url}/bundles.json",
-                    },
-                },
-                expected_version=version,
-                allow_local=True,
-                source=f"local checkout {checkout} via {server.base_url}",
-            )
-            server.start()
-            yield release
-        finally:
-            server.close()
+def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes, str]]:
+    if integration not in package.manifest["integrations"]:
+        raise InstallError(f"unsupported integration: {integration}")
+    outputs = {path: (content, "framework") for path, content in _package_files(package).items()}
+    try:
+        commands = render_commands(package.root, integration, FRAMEWORK_ROOT)
+        reflections = render_projection(package.root / "agent-assets/reflections", integration)
+    except (CommandAssetError, AgentAssetError) as error:
+        raise InstallError(str(error)) from error
+    for path, content in commands.items():
+        outputs[path] = (content.encode("utf-8"), "command")
+    for path, content in reflections.items():
+        if path in outputs:
+            raise InstallError(f"agent output collision: {path}")
+        outputs[path] = (content.encode("utf-8"), "agent")
+    defaults = {
+        ".concorde/reflections/config.json": (
+            package.root / "agent-assets/reflections/config.default.json"
+        ).read_bytes(),
+        ".concorde/reflections/.gitignore": b"plans/\nworktrees/\n",
+    }
+    for path, content in defaults.items():
+        outputs[path] = (content, "project-default")
+    return dict(sorted(outputs.items()))
 
 
-def _operate(
-    arguments: argparse.Namespace,
+def _load_receipt(target: Path) -> dict[str, Any]:
+    path = target / RECEIPT_PATH
+    if not path.exists():
+        return {"schema_version": INSTALL_SCHEMA, "outputs": []}
+    if path.is_symlink() or not path.is_file():
+        raise InstallError(f"Concorde installation receipt must be one real file: {path}")
+    value = _read_json(path, "Concorde installation receipt")
+    if value.get("schema_version") != INSTALL_SCHEMA or not isinstance(value.get("outputs"), list):
+        raise InstallError(f"unsupported Concorde installation receipt: {path}")
+    return value
+
+
+def _prior_outputs(receipt: Mapping[str, Any]) -> dict[str, str]:
+    outputs: dict[str, str] = {}
+    for item in receipt.get("outputs", []):
+        if not isinstance(item, Mapping) or not isinstance(item.get("path"), str) or not isinstance(item.get("sha256"), str):
+            raise InstallError("Concorde installation receipt contains an invalid output")
+        relative = _safe_relative(item["path"], "receipt output")
+        if relative in outputs:
+            raise InstallError(f"Concorde installation receipt repeats output: {relative}")
+        outputs[relative] = item["sha256"]
+    return outputs
+
+
+def _file_digest(path: Path) -> str | None:
+    if path.is_symlink() or not path.is_file():
+        return None
+    return _sha256(path.read_bytes())
+
+
+def installation_plan(
     target: Path,
-    release: ReleaseDescriptor,
-    runner: SpecifyRunner,
-    *,
-    development: bool = False,
-) -> None:
-    managed_catalog = "concorde-dev" if development else MANAGED_CATALOG
-    if arguments.preview:
-        execute_preview(
-            target,
-            release,
-            arguments.integration,
-            arguments.integration_options,
-            runner,
-            managed_catalog,
-        )
-    else:
-        if development:
-            result: InstallResult | None = None
-            try:
-                result = execute_install(
-                    target,
-                    release,
-                    arguments.integration,
-                    arguments.integration_options,
-                    runner,
-                    managed_catalog,
-                    announce=False,
-                )
-            finally:
-                remove_managed_catalogs(target, runner, managed_catalog)
-            if result is not None:
-                _print_success(*result)
+    package: Package,
+    integration: str,
+) -> tuple[list[dict[str, str]], dict[str, tuple[bytes, str]], dict[str, Any]]:
+    target = target.resolve()
+    receipt = _load_receipt(target)
+    prior = _prior_outputs(receipt)
+    desired = desired_outputs(package, integration)
+    actions: list[dict[str, str]] = []
+    for relative, (content, role) in desired.items():
+        path = target / relative
+        expected = _sha256(content)
+        observed = _file_digest(path)
+        try:
+            _check_parent(target, relative)
+            unsafe = None
+        except InstallError as error:
+            unsafe = str(error)
+        if unsafe is not None:
+            action = "conflict"
+        elif role == "project-default" and path.exists() and observed is not None:
+            action = "preserve"
+        elif not path.exists() and not path.is_symlink():
+            action = "create"
+        elif observed == expected:
+            action = "unchanged" if prior.get(relative) == expected else "adopt"
+        elif prior.get(relative) == observed and observed is not None:
+            action = "update"
         else:
-            execute_install(
-                target,
-                release,
-                arguments.integration,
-                arguments.integration_options,
-                runner,
-                managed_catalog,
-            )
+            action = "conflict"
+        item = {"path": relative, "action": action, "role": role, "sha256": expected}
+        if action == "conflict":
+            item["reason"] = unsafe or "existing target is not the desired bytes or an unchanged owned output"
+        actions.append(item)
+    for relative, digest in sorted(prior.items()):
+        if relative in desired:
+            continue
+        path = target / relative
+        observed = _file_digest(path)
+        try:
+            _check_parent(target, relative)
+            unsafe = None
+        except InstallError as error:
+            unsafe = str(error)
+        if unsafe is not None:
+            action = "conflict"
+        elif not path.exists() and not path.is_symlink():
+            action = "drop-missing"
+        elif observed == digest:
+            action = "remove"
+        else:
+            action = "conflict"
+        item = {"path": relative, "action": action, "role": "superseded", "sha256": digest}
+        if action == "conflict":
+            item["reason"] = unsafe or "superseded owned output was modified and must be preserved"
+        actions.append(item)
+    return sorted(actions, key=lambda item: item["path"]), desired, receipt
 
 
-def parser() -> argparse.ArgumentParser:
-    result = argparse.ArgumentParser(description=__doc__)
-    result.add_argument("--target", default=".", help="Target project directory (default: current directory)")
-    result.add_argument("--integration", help="Coding-agent integration; required for a fresh target")
-    result.add_argument("--integration-options", help="Options forwarded to `specify init`")
-    source = result.add_mutually_exclusive_group()
-    source.add_argument("--version", help="Published Concorde version (for example 0.9.0)")
-    source.add_argument("--checkout", help="Local Concorde checkout to build, verify, and install")
-    result.add_argument("--preview", action="store_true", help="Print the exact plan without changing the target")
-    return result
+def _check_target(target: Path) -> None:
+    if target.exists() and (target.is_symlink() or not target.is_dir()):
+        raise InstallError(f"target must be a real directory: {target}")
+    target.mkdir(parents=True, exist_ok=True)
+
+
+def _check_parent(target: Path, relative: str) -> Path:
+    relative = _safe_relative(relative, "installation output")
+    path = target / relative
+    current = target
+    for part in PurePosixPath(relative).parts[:-1]:
+        current /= part
+        if current.is_symlink():
+            raise InstallError(f"installation path contains a symlink: {current.relative_to(target)}")
+        if current.exists() and not current.is_dir():
+            raise InstallError(f"installation parent is not a directory: {current.relative_to(target)}")
+    return path
+
+
+def _receipt(package: Package, integration: str, desired: Mapping[str, tuple[bytes, str]]) -> bytes:
+    value = {
+        "schema_version": INSTALL_SCHEMA,
+        "concorde_version": package.version,
+        "integration": integration,
+        "architecture_profile": package.manifest["architecture_profile"],
+        "workspace_protocol": package.manifest["workspace_protocol"],
+        "outputs": [
+            {"path": path, "role": role, "sha256": _sha256(content)}
+            for path, (content, role) in sorted(desired.items())
+            if role != "project-default"
+        ],
+    }
+    return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def apply_plan(
+    target: Path,
+    package: Package,
+    integration: str,
+    actions: Sequence[Mapping[str, str]],
+    desired: Mapping[str, tuple[bytes, str]],
+) -> str:
+    conflicts = [item for item in actions if item["action"] == "conflict"]
+    if conflicts:
+        raise InstallError("installation plan has ownership conflicts")
+    mutable = [item for item in actions if item["action"] in {"create", "update", "remove"}]
+    receipt_content = _receipt(package, integration, desired)
+    receipt_path = target / RECEIPT_PATH
+    previous_receipt = receipt_path.read_bytes() if receipt_path.is_file() and not receipt_path.is_symlink() else None
+    previous_receipt_mode = receipt_path.stat().st_mode & 0o777 if previous_receipt is not None else None
+    backups: dict[str, tuple[bytes, int]] = {}
+    created: list[str] = []
+    created_directories: set[Path] = set()
+    staged_files: set[Path] = set()
+    try:
+        for item in mutable:
+            relative = item["path"]
+            path = _check_parent(target, relative)
+            action = item["action"]
+            if action in {"update", "remove"}:
+                backups[relative] = (path.read_bytes(), path.stat().st_mode & 0o777)
+            if action == "remove":
+                path.unlink()
+                continue
+            content = desired[relative][0]
+            current = path.parent
+            missing: list[Path] = []
+            while current != target and not current.exists():
+                missing.append(current)
+                current = current.parent
+            path.parent.mkdir(parents=True, exist_ok=True)
+            created_directories.update(missing)
+            if action == "create":
+                created.append(relative)
+            with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".concorde-install-", delete=False) as handle:
+                staged = Path(handle.name)
+                staged_files.add(staged)
+                handle.write(content)
+            staged.replace(path)
+            staged_files.discard(staged)
+            if relative.startswith(f"{FRAMEWORK_ROOT}/scripts/") and path.suffix in {".py", ".sh"}:
+                path.chmod(0o755)
+            else:
+                path.chmod(0o644)
+        receipt_path.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(dir=receipt_path.parent, prefix=".concorde-receipt-", delete=False) as handle:
+            staged_receipt = Path(handle.name)
+            staged_files.add(staged_receipt)
+            handle.write(receipt_content)
+        staged_receipt.replace(receipt_path)
+        staged_files.discard(staged_receipt)
+        receipt_path.chmod(0o644)
+    except Exception:
+        for staged in staged_files:
+            staged.unlink(missing_ok=True)
+        for relative in reversed(created):
+            path = target / relative
+            if path.exists() and not path.is_symlink() and path.is_file():
+                path.unlink()
+        for relative, (content, mode) in backups.items():
+            path = target / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+            path.chmod(mode)
+        if previous_receipt is None:
+            receipt_path.unlink(missing_ok=True)
+        else:
+            receipt_path.write_bytes(previous_receipt)
+            if previous_receipt_mode is not None:
+                receipt_path.chmod(previous_receipt_mode)
+        for directory in sorted(created_directories, key=lambda item: len(item.parts), reverse=True):
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
+        raise
+    return "unchanged" if not mutable and previous_receipt == receipt_content else "installed"
+
+
+def _print_plan(package: Package, integration: str, actions: Sequence[Mapping[str, str]], status: str) -> None:
+    counts: dict[str, int] = {}
+    for item in actions:
+        counts[item["action"]] = counts.get(item["action"], 0) + 1
+    print("Concorde installation plan")
+    print(f"  version: {package.version}")
+    print(f"  integration: {integration}")
+    print(f"  status: {status}")
+    print("  actions: " + ", ".join(f"{name}={count}" for name, count in sorted(counts.items())))
+    for item in actions:
+        if item["action"] == "conflict":
+            print(f"  conflict: {item['path']} — {item['reason']}")
+
+
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="install-concorde")
+    parser.add_argument("--target", required=True)
+    parser.add_argument("--integration", choices=["codex", "claude"], default="codex")
+    parser.add_argument("--checkout", default=str(SCRIPT_ROOT))
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--apply", action="store_true")
+    mode.add_argument("--preview", action="store_true")
+    parser.add_argument("--format", choices=["text", "json"], default="text")
+    return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    arguments = parser().parse_args(argv)
-    target = Path(arguments.target).expanduser().resolve()
-    runner = SpecifyRunner()
+    arguments = create_parser().parse_args(argv)
     try:
-        runner.verify(Path.cwd())
-        if arguments.checkout:
-            with local_release(arguments.checkout) as release:
-                _operate(arguments, target, release, runner, development=True)
+        requested_target = Path(arguments.target).absolute()
+        if requested_target.is_symlink():
+            raise InstallError(f"target must not be a symlink: {requested_target}")
+        target = requested_target.resolve()
+        _check_target(target)
+        package = load_package(Path(arguments.checkout))
+        actions, desired, _ = installation_plan(target, package, arguments.integration)
+        conflicts = [item for item in actions if item["action"] == "conflict"]
+        status = "conflict" if conflicts else "preview"
+        if arguments.apply and not conflicts:
+            status = apply_plan(target, package, arguments.integration, actions, desired)
+        result = {
+            "schema_version": INSTALL_SCHEMA,
+            "status": status,
+            "version": package.version,
+            "integration": arguments.integration,
+            "target": str(target),
+            "receipt": RECEIPT_PATH,
+            "actions": actions,
+        }
+        if arguments.format == "json":
+            print(json.dumps(result, indent=2, sort_keys=True))
         else:
-            release = fetch_release(arguments.version)
-            _operate(arguments, target, release, runner)
-    except InstallationError as error:
-        print(render_failure(error), file=sys.stderr)
-        return error.exit_code
-    return EXIT_OK
+            _print_plan(package, arguments.integration, actions, status)
+            if not arguments.apply and not conflicts:
+                print("  next: rerun with --apply to accept this exact ownership plan")
+        return 2 if conflicts else 0
+    except (InstallError, OSError, UnicodeError) as error:
+        if arguments.format == "json":
+            print(json.dumps({"schema_version": INSTALL_SCHEMA, "status": "failed", "error": str(error)}, sort_keys=True))
+        else:
+            print(f"CONCORDE INSTALL FAILED: {error}", file=sys.stderr)
+        return 3
 
 
 if __name__ == "__main__":

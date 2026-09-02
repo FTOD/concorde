@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 def write_selection(project_root: Path, feature_path: str) -> Path:
-    path = project_root / ".specify" / "feature.json"
+    path = project_root / ".concorde" / "feature.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"feature_path": feature_path}) + "\n", encoding="utf-8")
     return path

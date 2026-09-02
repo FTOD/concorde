@@ -132,9 +132,9 @@ class FeatureWorkspaceTests(unittest.TestCase):
             feature = create_feature_file(project)
             relative = feature.relative_to(project).as_posix()
             self.assertEqual(persist_selection(project, relative), "selected")
-            first = (project / ".specify/feature.json").read_bytes()
+            first = (project / ".concorde/feature.json").read_bytes()
             self.assertEqual(persist_selection(project, relative), "unchanged")
-            self.assertEqual((project / ".specify/feature.json").read_bytes(), first)
+            self.assertEqual((project / ".concorde/feature.json").read_bytes(), first)
             with self.assertRaises(WorkspaceError):
                 resolve_phase_paths(project, "../outside")
 
@@ -144,13 +144,13 @@ class FeatureWorkspaceTests(unittest.TestCase):
             feature = create_feature_file(project)
             self.assertEqual(resolve_phase_paths(project, "feature.example.deliver").feature_path, feature.relative_to(project).as_posix())
             self.assertEqual(persist_selection(project, "feature.example.deliver"), "selected")
-            self.assertEqual(json.loads((project / ".specify/feature.json").read_text(encoding="utf-8")), {"feature_path": feature.relative_to(project).as_posix()})
+            self.assertEqual(json.loads((project / ".concorde/feature.json").read_text(encoding="utf-8")), {"feature_path": feature.relative_to(project).as_posix()})
 
     def test_legacy_selection_key_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
             create_feature_file(project)
-            state = project / ".specify/feature.json"
+            state = project / ".concorde/feature.json"
             state.parent.mkdir(parents=True, exist_ok=True)
             state.write_text(json.dumps({"feature_" + "directory": "specs/example/features/001-deliver"}) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(WorkspaceError, "feature_path"):

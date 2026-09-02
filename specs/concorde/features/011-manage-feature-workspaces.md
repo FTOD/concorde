@@ -32,10 +32,10 @@ code/tests, `.concorde/reflections/log.md`, and the corresponding stable-ID cont
 
 ### `interface.concorde.workspace` — Resolve selected feature phase paths
 
-- **Consumer**: Spec Kit phases and installed Concorde skills.
+- **Consumer**: Concorde lifecycle commands and delivery.
 - **Direction**: Selection/phase input to structured workspace output.
 - **Entry points**: `workspace.py --phase <phase>` with optional `--feature-path`.
-- **Inputs**: Project root, phase, and Spec Kit selection or canonical direct feature file.
+- **Inputs**: Project root, phase, and native `.concorde/feature.json` selection or canonical direct feature file.
 - **Outputs**: Protocol 12 identity/`feature_path`, module architecture/ancestry, related feature paths, stable-ID-derived attempt paths/state, reflection path, and executable roots; a first-pass planned feature has unavailable attempt fields.
 - **Obligations**: Return only real project-contained direct features/control paths, validate stable-ID binding, require a second post-front-matter specify resolution, and never create later-phase artifacts implicitly.
 - **Failures**: Invalid layout/ID, missing feature/architecture, orphan/colliding attempt, attempted orphan adoption, ambiguity, symlinks, or unsafe paths stop resolution.

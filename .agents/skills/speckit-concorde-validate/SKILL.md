@@ -1,18 +1,16 @@
 ---
 name: speckit-concorde-validate
-description: Deterministically validate module-centered Concorde sources
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Deterministically validate module-centered Concorde sources"
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: concorde:commands/speckit.concorde.validate.md
+  author: "concorde"
+  source: "commands/speckit.concorde.validate.md"
 ---
+# Speckit Concorde Validate
 
 # Validate Concorde
 
-Run the installed project-relative launcher with optional target `$ARGUMENTS`:
-
-- POSIX: `.specify/extensions/concorde/scripts/bash/concorde.sh validate $ARGUMENTS --format json`
-- PowerShell: `.specify/extensions/concorde/scripts/powershell/concorde.ps1 validate $ARGUMENTS --format json`
+Run `python3 scripts/concorde.py validate $ARGUMENTS --format json` from the project root.
 
 Present the canonical status, complete sorted findings, source digest, and summary. Preserve exit
 codes: success 0, invalid 1, conflict 2, and failed 3. Do not hide errors, modify sources, or

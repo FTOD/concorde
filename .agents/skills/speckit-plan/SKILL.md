@@ -1,13 +1,12 @@
 ---
 name: speckit-plan
-description: Plan one Concorde feature change against architecture, code, and tests.
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Plan one Concorde feature change against architecture, code, and tests."
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: preset:concorde
+  author: "concorde"
+  source: "commands/speckit.plan.md"
 ---
-
-# Speckit Plan Skill
+# Speckit Plan
 
 ## User Input
 
@@ -22,7 +21,7 @@ architecture, current source code, and executable evidence. All planning outputs
 
 ## Workspace gate
 
-Before hooks, setup checks, template resolution, or artifact reads, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase plan`. Require Protocol 12
+Before setup checks, template reading, or artifact reads, run `python3 scripts/workspace.py --phase plan`. Require Protocol 12
 with `resolved` or `selected` status. Use the returned paths as the only authority:
 
 - `feature_path` and `module_architecture`;
@@ -34,17 +33,11 @@ with `resolved` or `selected` status. Use the returned paths as the only authori
 
 Do not resolve a root-level compatibility plan. Do not implicitly load another feature body or any
 other attempt. If the returned attempt is absent, create exactly that directory and seed its plan by
-resolving `plan-template` through the public preset resolver.
-
-## Pre-plan hooks
-
-Inspect `.specify/extensions.yml`. Run enabled unconditional mandatory `before_plan` hooks before
-continuing; present enabled unconditional optional hooks; skip hooks with conditions for the hook
-executor. Stop on a failed mandatory hook.
+reading `./templates/plan-template.md` as the temporal format reference.
 
 ## Inputs and authority
 
-Read the constitution, complete selected feature file, providing module architecture, current
+Read `.concorde/constitution.md` when present, the complete selected feature file, providing module architecture, current
 source code and executable tests named by executable context, and existing attempt planning artifacts.
 There is no prose implementation baseline. Open a related
 feature file only for an explicitly relevant interface dependency and cite why. Generated pages
@@ -89,7 +82,7 @@ byte-identical.
 Whenever planning must assume, work around, defer, or stop because feature intent, architecture, related
 interfaces, code/tests, guidance, or tooling disagree, append or update the project-wide reflection
 log at `workspace.reflections`. Before appending a new entry, run the installed
-`.specify/extensions/concorde/scripts/python/reflections_queue.py --allocate-id`, use only its
+`python3 ./scripts/reflections_queue.py --allocate-id`, use only its
 `allocated_id`, and never derive an ID from the remaining log entries. Use fixed field grammar,
 `Phase: plan`, and `Status: open`; an existing problem receives an occurrence without allocating a
 new ID. This includes design
@@ -103,6 +96,5 @@ Verify that planning wrote only returned attempt paths plus any required reflect
 unknowns are resolved or explicit bounded assumptions; every affected durable/interface/code/test
 surface has a task-ready path; diagram checks passed; and protected hashes show no unexpected change.
 
-Run enabled unconditional mandatory `after_plan` hooks, present optional ones, and leave conditional
-hooks to the executor. Report the feature ID, module architecture, plan path, generated artifacts,
+Report the feature ID, module architecture, plan path, generated artifacts,
 architecture/interface delta, code/test baseline examined, and reflections added.

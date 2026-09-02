@@ -1,106 +1,90 @@
 # Command reference
 
-Installed Codex skills use hyphenated names such as `$speckit-plan`; other integrations may present
-slash commands. All phase-sensitive commands resolve Feature Workspace Protocol 12 before accessing
-paths.
+Canonical commands live in root `commands/` and render directly into Codex/Claude skills. The
+`speckit-*` IDs are retained compatibility names; every command is authored and executed by
+Concorde. All path-sensitive phases resolve Feature Workspace Protocol 12 before other artifact reads.
 
-## Framework commands
+## Governance and framework operations
+
+### `speckit.constitution`
+
+Creates/amends `.concorde/constitution.md` from the complete root constitution format reference.
 
 ### `speckit.concorde.init`
 
-Proposes and explicitly applies the root Profile 7 module hierarchy plus
-`.concorde/reflections/log.md`. Apply is review-gated and
-digest-bound. Existing configured projects return `unchanged`.
+Proposes and explicitly applies Profile 7 configuration, root architecture, and reflection log.
 
 ### `speckit.concorde.context <stable-id>`
 
-Returns exactly one bounded module or feature context. Module output contains current-level entities,
-relationships, interactions, children, features, externals, diagrams, and navigation. Feature output
-contains `feature_path`, providing architecture, ancestry, related summaries, interface/zoom summaries,
-attempt state, and source/test hints. Read-only.
+Returns one bounded module or feature altitude. Strictly read-only.
 
 ### `speckit.concorde.validate [target]`
 
-Runs deterministic Profile 7 validation and returns sorted findings, status, source digest, and
-summary. Exit codes are 0 success, 1 invalid, 2 conflict, and 3 failed. Read-only.
+Returns deterministic sorted Profile 7 findings/status/digest. Never repairs.
 
 ### `speckit.concorde.ask <question>`
 
-Answers from installed guidance and the smallest bounded project sources, with Basis and Sources.
-It never invokes another command or mutates the workspace.
+Answers from package guidance and the smallest bounded project context with citations. It is
+read-only and never invokes another command.
 
 ### `speckit.concorde.deliver [feature]`
 
-Generates Proposal 8 and, under the same explicit invocation, applies it. Eligibility requires
-complete tasks/checklists, passed evidence, current validation, safe real paths, and current digest.
-Apply removes exactly one attempt and changes no durable/executable source.
+Validates a completed stable-ID attempt, applies Delivery Proposal 8, and removes exactly that
+temporal workspace. It writes no durable implementation prose.
 
-## Spec Kit lifecycle commands modified by the preset
+## Feature lifecycle
 
 ### `speckit.specify <description>`
 
-Creates or revises one direct module `features/<NNN-name>.md` file. The file embeds interfaces and an
-Architecture Zoom. New features reconcile the module's immediate feature inventory. Writes the
-built-in requirements checklist under the returned attempt checklist directory. A missing feature's
-first Protocol 12 response has unresolved/null attempt fields; after writing its stable ID, specify
-reruns the resolver before creating the checklist and never derives the attempt key from the filename.
+Creates/revises one direct module-level feature with embedded interfaces and Architecture Zoom. For
+a new file, the first Protocol 12 result has unresolved attempt fields; after stable front matter is
+written, the command resolves again and persists `.concorde/feature.json`.
 
 ### `speckit.clarify [focus]`
 
-Asks up to five high-impact questions and writes answers into the owning parts of the selected
-feature file. Architecture identity conflicts are routed to module architecture instead of redefined.
+Resolves up to three high-impact ambiguities inside the selected feature and its requirements checklist.
 
 ### `speckit.checklist [focus]`
 
-Creates a reviewer-owned requirements-quality checklist. Items judge clarity/completeness/
-consistency/testability of English requirements; they do not represent product work.
+Creates a reviewer-owned requirements-quality checklist under the matching attempt.
 
 ### `speckit.plan [constraints]`
 
-Creates the selected `.concorde/attempts/<stable-feature-id>/` and plans from feature file +
-architecture + current code/tests. Writes only temporal plan/research/data-model/quickstart/
-validation artifacts. Records provisional choices and unresolved conflicts in
-`.concorde/reflections/log.md`.
+Writes a technical plan/research/useful artifacts only under the selected attempt. It reads bounded
+architecture plus current code/tests and leaves durable sources unchanged.
 
 ### `speckit.tasks [constraints]`
 
-Generates test-first tasks with stable IDs, exact paths, traces, dependencies, parallel markers, and
-verification commands. Includes explicit architecture/feature/interface reconciliation where needed.
+Creates dependency-ordered, test-first tasks with exact paths/traces and evidence gates.
 
 ### `speckit.analyze`
 
-Read-only semantic consistency, coverage, and delivery-readiness audit. It reports findings without
-applying fixes.
+Runs a non-mutating consistency/coverage audit over feature, architecture, plan, tasks, code/tests.
 
 ### `speckit.implement`
 
-Executes tasks phase-by-phase and records passed evidence before completion. May edit architecture,
-feature files, code, tests, fixtures, projections, and public docs only through explicit traced
-tasks.
+Executes dependency-ready tasks, reconciles all affected authorities, records passing evidence before
+checking tasks, and stops truthfully on blocking failures.
 
 ### `speckit.converge`
 
-Appends only remaining executable tasks after comparing current state/evidence with feature intent,
-architecture, and plan. Preserves existing task history.
+Compares current repository/evidence with intended outcome and appends only remaining executable work.
 
 ### `speckit.taskstoissues`
 
-Groups tasks into dependency-aware issues while preserving IDs, traces, paths, ownership, and
-acceptance checks. External creation occurs only when the invocation and integration authorize it.
+Converts selected tasks into dependency-aware external issues only with explicit external-write authority.
 
 ### `speckit.fast-loop`
 
-Direct no-attempt path for one eligible small change. Rejects active attempts, migrations, new
-topology/types/compatibility policy, broad setup, destructive work, and multi-feature coordination.
+Completes one small already-specified, non-structural change without an attempt after deterministic
+eligibility/impact preflight.
 
-## Hooks
+## Native paths and templates
 
-Normal phases inspect `.specify/extensions.yml`. Enabled unconditional mandatory hooks execute and
-gate completion; enabled unconditional optional hooks are presented; conditional hooks are left to
-the hook executor. Hooks never expand a phase's source-authority or mutation boundary.
+Source-checkout skills invoke root `scripts/` and read root `templates/`. Installed skills invoke
+`.concorde/framework/scripts/` and read `.concorde/framework/templates/`. Commands have no hook,
+priority, or layered-template phase. Complete root files are the only package guidance authority.
 
-## Workspace fields
-
-Protocol 12 groups fields into identity, direct feature/architecture context, temporal attempt
-paths/state, process reflection state, and executable source/test context. Treat returned paths as
-the only authority and related/ancestry summaries as navigation only.
+Protocol 12 returns feature/module identity, native selection, bounded ancestry/relations,
+stable-ID attempt/reflection paths, and executable context. It never expands unrelated feature bodies
+or invents implementation narrative.

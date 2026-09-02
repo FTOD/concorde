@@ -1,62 +1,62 @@
 # Project structure
 
-Concorde separates canonical architecture/feature sources, executable implementation/evidence,
-temporary work memory, and generated projections.
+Concorde separates durable architecture/feature intent, native project control, executable
+implementation/evidence, installed framework projections, and generated outputs.
 
 ```text
 project/
 ├── .concorde/
-│   ├── config.json                         # root module + Profile 7 selection
+│   ├── config.json                         # root module + Profile 7
+│   ├── feature.json                        # exactly one selected feature_path
+│   ├── constitution.md                     # optional governance authority
 │   ├── attempts/<stable-feature-id>/       # optional tracked temporal work
-│   └── reflections/
-│       ├── log.md                           # tracked process memory
-│       ├── config.json                      # triage configuration
-│       ├── plans/                           # ignored/disposable
-│       └── worktrees/                       # ignored/disposable
-├── .specify/
-│   ├── feature.json                       # selected feature control state
-│   ├── presets/concorde/                  # installed canonical-package projection
-│   └── extensions/concorde/               # installed runtime/package projection
+│   ├── reflections/
+│   │   ├── log.md                          # tracked process memory
+│   │   ├── config.json                     # triage configuration
+│   │   ├── plans/                          # ignored/disposable
+│   │   └── worktrees/                      # ignored/disposable
+│   ├── framework/                          # installed standalone package projection
+│   └── install.json                        # output path/role/digest ownership receipt
+├── .agents/ | .claude/                     # generated selected-integration surfaces
 ├── specs/<project>/
 │   ├── architecture.md
 │   ├── diagrams/
 │   ├── modules/<child>/                    # recursive module package
 │   └── features/<NNN-name>.md              # one complete durable feature
-├── src/ | app/ | packages/ | ...              # implementation authority
-├── tests/                                     # executable evidence and fixtures
-├── generated/                                 # reproducible projections
-└── docs/                                      # public maintained guidance
+├── src/ | app/ | packages/ | ...           # implementation authority
+├── tests/                                  # executable evidence and fixtures
+├── generated/                              # reproducible projections
+└── docs/                                   # maintained public guidance
 ```
 
 ## Placement rules
 
-- `modules/<child>/` contains an immediate module only. Each child has its own `architecture.md` and
-  may recurse.
+- `modules/<child>/` contains an immediate module only. Each child has one `architecture.md` and may recurse.
 - `features/<NNN-name>.md` is one level-local feature authority. Features never contain another feature.
-- `.concorde/attempts/<stable-feature-id>/` is optional temporal work keyed by the exact globally
-  unique feature ID, independent of its mutable filename or module path.
-- Module diagrams stay under that module's `diagrams/` and are declared/textually explained in its
-  architecture.
-- Executed interface schemas/examples live with source or tests. Human-readable interface semantics
-  stay embedded in the owning feature file.
+- `.concorde/attempts/<stable-feature-id>/` is optional temporal work keyed by the exact globally unique feature ID.
+- Module diagrams stay under that module's `diagrams/` and are declared/textually explained in architecture.
+- Executed schemas/examples live with source/tests. Human-readable interface semantics live in the feature.
 - `.concorde/reflections/log.md` is the only persisted reflection record.
-- Generated outputs never sit in a source location or become a resolver input.
+- Generated and installed outputs never become resolver inputs for specification behavior/structure.
 
-## Canonical versus installed package sources
+## Package source versus installed projection
 
-In the Concorde framework repository, `presets/concorde/` and `extensions/concorde/` are distribution
-authorities. `.specify/**`, `.agents/**`, and `.claude/**` are installed/materialized projections.
-Edit canonical sources first and regenerate through self-hosting. Do not patch an installed copy as
-the source of a release.
+In the Concorde framework repository, root `commands/`, `templates/`, `src/concorde/`, `scripts/`,
+`agent-assets/`, and `concorde.json` are distribution authorities. `.agents/**` and `.claude/**` are
+generated checkout projections. Consumer projects receive the same sources beneath
+`.concorde/framework/` plus selected integration outputs and `.concorde/install.json` ownership.
+
+Project-authored `.concorde/config.json`, `feature.json`, `constitution.md`, attempts, and reflection
+log are never package outputs. Installer defaults create reflection config/ignore only when absent.
 
 ## Control state
 
-`.concorde/config.json` selects the specification root and architecture profile. `.specify/feature.json`
-stores only one canonical `feature_path`. Neither defines behavior. Workspace Protocol 12 validates
-and resolves control state before each phase.
+`.concorde/config.json` selects specification root/profile. `.concorde/feature.json` contains only one
+canonical `feature_path`. Neither defines behavior. Workspace Protocol 12 validates/resolves both
+before each path-sensitive phase.
 
 ## Safety
 
-Canonical paths are normalized, project-relative, and symlink-safe. Runtime mutations operate on
-exact proposal paths and fail closed on stale digests, path escape, symlink traversal, ambiguous
-identity, or mixed profile state. Delivery removes only one selected attempt.
+Canonical paths are normalized, project-relative, and symlink-safe. Runtime/installer mutations use
+exact proposal or ownership paths and fail closed on stale digests, escapes, symlinks, ambiguous
+identity, modified owned outputs, or mixed profile state. Delivery removes only one selected attempt.

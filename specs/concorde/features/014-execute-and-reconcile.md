@@ -25,7 +25,7 @@ test/projection sources, and records proportionate evidence before marking work 
 
 | Entity ID | Role |
 |---|---|
-| `entity.concorde.preset-package` | Defines execution authority, ordering, evidence, reflection, and halt rules. |
+| `entity.concorde.commands` | Defines execution authority, ordering, evidence, reflection, and halt rules. |
 | `entity.concorde.workspace-resolver` | Returns the selected attempt plus protected durable/code context. |
 | `entity.concorde.coding-agent` | Performs test-first implementation and task/evidence updates. |
 | `entity.concorde.runtime` | Supplies deterministic validation and safe structured diagnostics. |
@@ -42,7 +42,7 @@ test/projection sources, and records proportionate evidence before marking work 
 - **Obligations**: Respect dependencies/file ownership, test before code where required, protect authorities, and never claim skipped/failed checks as passed.
 - **Failures**: A failed blocking task or unexpected protected-source change stops dependent work and preserves truthful task state.
 - **Compatibility**: Implementation updates code/spec owners directly; it never writes an accepted realization narrative.
-- **Implementing entities**: `entity.concorde.preset-package`, `entity.concorde.workspace-resolver`, `entity.concorde.coding-agent`, `entity.concorde.runtime`.
+- **Implementing entities**: `entity.concorde.commands`, `entity.concorde.workspace-resolver`, `entity.concorde.coding-agent`, `entity.concorde.runtime`.
 
 ## Usage Scenarios
 

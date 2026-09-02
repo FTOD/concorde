@@ -32,11 +32,10 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
     def test_public_guidance_names_v3_and_retained_maintainer_disposition(self):
         paths = (
             "README.md",
-            "extensions/concorde/README.md",
-            "presets/concorde/README.md",
-            "bundles/concorde-bundle/README.md",
+            "agent-assets/reflections/orchestrator.md",
+            "specs/concorde/features/005-auto-reflections.md",
             "docs/ontology.md",
-            "docs/self-hosting.md",
+            "docs/agent-surfaces.md",
             "docs/releasing.md",
         )
         combined = "\n".join((REPOSITORY_ROOT / path).read_text(encoding="utf-8") for path in paths)
@@ -78,7 +77,8 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
             self.assertIn("reflection-triage/v3", text)
             self.assertIn(".concorde/reflections/log.md", text)
             self.assertIn(".concorde/reflections/config.json", text)
-            self.assertIn(".specify/extensions/concorde/scripts/python/reflections_queue.py", text)
+            self.assertIn(".concorde/framework/scripts/reflections_queue.py", text)
+            self.assertIn("scripts/reflections_queue.py", text)
             self.assertIn("--allocate-id", text)
             self.assertIn("--remove-merged", text)
             self.assertIn("set only their plan status to `merged`", normalized)

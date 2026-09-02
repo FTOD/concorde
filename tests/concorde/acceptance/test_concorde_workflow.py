@@ -15,7 +15,7 @@ class ConcordeWorkflowAcceptance(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(CONTEXT_PROJECT, root)
-            adapter = REPOSITORY_ROOT / "extensions/concorde/scripts/python/workspace.py"
+            adapter = REPOSITORY_ROOT / "scripts/workspace.py"
             selected = subprocess.run(
                 [sys.executable, str(adapter), "--project-root", str(root), "--feature-path", "specs/example/features/001-deliver.md", "--persist", "--phase", "plan"],
                 check=True,
@@ -26,7 +26,7 @@ class ConcordeWorkflowAcceptance(unittest.TestCase):
             self.assertEqual(payload["status"], "selected")
             self.assertEqual(payload["phase_root"], ".concorde/attempts/feature.example.deliver")
             self.assertEqual(payload["workspace"]["plan"], ".concorde/attempts/feature.example.deliver/plan.md")
-            self.assertEqual(json.loads((root / ".specify/feature.json").read_text())["feature_path"], "specs/example/features/001-deliver.md")
+            self.assertEqual(json.loads((root / ".concorde/feature.json").read_text())["feature_path"], "specs/example/features/001-deliver.md")
             feature_path = root / payload["workspace"]["feature_path"]
             self.assertTrue(feature_path.is_file())
             self.assertFalse((feature_path.parent / feature_path.stem).exists())
@@ -37,7 +37,7 @@ class ConcordeWorkflowAcceptance(unittest.TestCase):
                 capture_output=True,
             )
             self.assertEqual(json.loads(resolved.stdout)["status"], "resolved")
-            launcher = REPOSITORY_ROOT / "extensions/concorde/scripts/python/concorde.py"
+            launcher = REPOSITORY_ROOT / "scripts/concorde.py"
             removed = subprocess.run(
                 [sys.executable, str(launcher), "--project-root", str(root), "feature", "select", "feature.example.deliver"],
                 text=True,
@@ -50,8 +50,8 @@ class ConcordeWorkflowAcceptance(unittest.TestCase):
             root = Path(temporary) / "project"
             shutil.copytree(CONTEXT_PROJECT, root)
             before = {path.relative_to(root): hashlib.sha256(path.read_bytes()).hexdigest() for path in root.rglob("*") if path.is_file()}
-            python_launcher = REPOSITORY_ROOT / "extensions/concorde/scripts/python/concorde.py"
-            bash_launcher = REPOSITORY_ROOT / "extensions/concorde/scripts/bash/concorde.sh"
+            python_launcher = REPOSITORY_ROOT / "scripts/concorde.py"
+            bash_launcher = REPOSITORY_ROOT / "scripts/concorde.sh"
             outputs = []
             for command in (
                 [sys.executable, str(python_launcher)],

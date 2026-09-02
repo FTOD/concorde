@@ -15,7 +15,7 @@ from tests.concorde.support.feature_workspace import (
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-CANONICAL_ASSETS = REPOSITORY_ROOT / "extensions" / "concorde" / "agent-assets" / "reflections"
+CANONICAL_ASSETS = REPOSITORY_ROOT / "agent-assets" / "reflections"
 DEFAULT_CONFIG = {
     "schema_version": 1,
     "order": "newest-first",

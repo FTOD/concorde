@@ -1,16 +1,15 @@
 ---
 name: speckit-specify
-description: Create or update one direct module-level feature file.
-argument-hint: "Describe the feature you want to specify"
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Create or update one direct module-level feature file."
+argument-hint: "Optional command guidance"
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: preset:concorde
+  author: "concorde"
+  source: "commands/speckit.specify.md"
 user-invocable: true
 disable-model-invocation: false
 ---
-
-# Speckit Specify Skill
+# Speckit Specify
 
 ## User Input
 
@@ -26,7 +25,7 @@ interfaces, failures, and Architecture Zoom all belong in that one document.
 
 ## Workspace gate
 
-Before resolving templates, reading feature artifacts, or writing anything, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase specify` from the
+Before resolving templates, reading feature artifacts, or writing anything, run `python3 scripts/workspace.py --phase specify` from the
 project root. Require a successful Protocol 12 result (`schema_version: 12`) whose status is
 `resolved` or `selected`. Treat returned paths as the sole authority:
 
@@ -54,7 +53,7 @@ an explicit dependency. Reject a selected path outside the providing module's di
 2. Read the providing module's `architecture.md` as bounded structural authority. Confirm the
    module responsibility and boundary, immediate feature inventory, and all entities/interfaces the
    proposed feature will reference. Do not descend into child modules merely because they exist.
-3. Resolve `spec-template` through `specify preset resolve`. Use the returned `feature_path`;
+3. Read `./templates/feature-template.md` as the format reference. Use the returned `feature_path`;
    create its `features/` parent only when Protocol 12 identifies a new canonical feature selection.
    A missing feature has no trustworthy attempt key until its front-matter stable ID exists: do not
    derive an ID from its filename or module, and do not create a provisional attempt.
@@ -83,14 +82,14 @@ an explicit dependency. Reject a selected path outside the providing module's di
    inventory entry after the design is ready. Any needed entity, relationship, interaction, or
    diagram change is an architecture change: surface it explicitly for review rather than inventing
    structural facts in the feature.
-8. After writing a new feature and reconciling its module inventory, run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase specify` again. Require
+8. After writing a new feature and reconciling its module inventory, run `python3 scripts/workspace.py --phase specify` again. Require
    Protocol 12 to resolve the exact non-null stable feature ID and return
    `.concorde/attempts/<stable-feature-id>/`; reject any basename-derived, module-local, or mismatched
    attempt path.
 9. Create or re-evaluate the built-in requirements-quality checklist only at the second response's
    returned `checklists_dir/requirements.md`. Checklist marks judge the quality of requirements, not
    product completion. Never create a compatibility copy beside the direct feature file.
-10. Persist normal Spec Kit selection in `.specify/feature.json`; it is control state, not design
+10. Persist Concorde selection in `.concorde/feature.json`; it is control state, not design
    authority.
 
 ## Quality gate
@@ -114,12 +113,8 @@ Resolve at most three high-impact ambiguities by asking concise questions. Recor
 inside the design's Assumptions without inventing product facts. Specification does not modify code,
 tests, generated projections, or another feature.
 
-## Extension hooks
-
-After the quality gate, inspect `.specify/extensions.yml`. Run each enabled unconditional mandatory
-`after_specify` hook and report its command/result; present enabled unconditional optional hooks
-without running them. Leave conditional hooks to the hook executor. A failed mandatory hook prevents
-a readiness claim.
+Concorde has no extension-hook phase. After the quality gate, the selected feature, module inventory,
+requirements checklist, and deterministic validation are the complete readiness boundary.
 
 ## Completion report
 

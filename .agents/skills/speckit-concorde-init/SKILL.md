@@ -1,19 +1,17 @@
 ---
 name: speckit-concorde-init
-description: Propose and explicitly apply a root module-centered Concorde hierarchy
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Propose and explicitly apply a root module-centered Concorde hierarchy"
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: concorde:commands/speckit.concorde.init.md
+  author: "concorde"
+  source: "commands/speckit.concorde.init.md"
 ---
+# Speckit Concorde Init
 
 # Initialize Concorde
 
-Treat `$ARGUMENTS` as optional `--module-id` and `--name` values. Invoke the installed launcher from
-the target project:
-
-- POSIX: `.specify/extensions/concorde/scripts/bash/concorde.sh init --propose $ARGUMENTS`
-- PowerShell: `.specify/extensions/concorde/scripts/powershell/concorde.ps1 init --propose $ARGUMENTS`
+Treat `$ARGUMENTS` as optional `--module-id` and `--name` values. From the target project run
+`python3 scripts/concorde.py init --propose $ARGUMENTS`.
 
 The Initialization Proposal 2 must select Architecture Source Profile 7 and create exactly
 `.concorde/config.json`, `.concorde/reflections/log.md`, and one root `architecture.md`. The
@@ -32,7 +30,7 @@ If status is `unchanged`, report the existing profile, root architecture, immedi
 features, and findings; do not compare the project with starter prose or overwrite it. If status is
 `proposal`, present exact files, digests, conflicts, and the complete JSON proposal. Silence is not
 approval. After the maintainer explicitly accepts and saves that exact proposal at a safe
-project-relative path, invoke `init --apply --proposal <path>`.
+project-relative path, invoke `python3 scripts/concorde.py init --apply --proposal <path>`.
 
 Never edit maintained architecture outside the accepted runtime operation. Preserve exit status and
 report all findings, created paths, retained project files, and resulting source digest.

@@ -4,7 +4,7 @@ Concorde makes architecture navigable at the same scale as the work being done. 
 enter at one module, see its immediate structure and interfaces, then open one feature file without
 loading the entire repository.
 
-## What Concorde adds
+## What Concorde provides
 
 - a recursive module hierarchy with one structural authority per level;
 - typed architecture entities and directed relationships rather than an untyped prose inventory;
@@ -14,6 +14,18 @@ loading the entire repository.
 - deterministic validation of layout, identity, references, safety, and freshness;
 - temporary attempt workspaces with task/evidence discipline; and
 - digest-bound, cleanup-only delivery.
+
+## Standalone lifecycle boundary
+
+Concorde owns the complete lifecycle. Root `commands/` and `templates/` are canonical human-readable
+instructions/formats; `src/concorde/` and `scripts/` own deterministic operations; `concorde.json`
+owns one package identity. The native installer projects those sources under `.concorde/framework/`
+and into Codex or Claude, recording only generated framework/agent outputs in
+`.concorde/install.json`. Project configuration, selection, constitution, attempts, reflections,
+specifications, code, and tests remain project-owned.
+
+The `speckit-*` command IDs are temporary compatibility labels. They do not delegate any phase or
+template behavior to another framework.
 
 ## Authority map
 

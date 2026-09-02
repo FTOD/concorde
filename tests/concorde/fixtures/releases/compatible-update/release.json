@@ -1,5 +1,0 @@
-{
-  "version": "0.3.1",
-  "compatible_with": "0.3.0",
-  "preserves": [".concorde", "specs"]
-}

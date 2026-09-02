@@ -96,10 +96,9 @@ This feature changes the following root-architecture entities; their final defin
 | `entity.concorde.runtime` | package | Discovers and models recursive `architecture.md` modules, direct feature files, typed entities/relations, interfaces, project-control attempts/reflections, evidence, and projections. |
 | `entity.concorde.workspace-resolver` | program | Returns one selected feature file, its providing module architecture, bounded ancestry/relations, and stable-ID control-state paths through Protocol 12. |
 | `entity.concorde.cli` | program | Exposes validation and cleanup-only delivery over the new package model. |
-| `entity.concorde.preset-package` | directory | Teaches specification, planning, tasks, implementation, convergence, analysis, and fast loop using the new authorities. |
-| `entity.concorde.extension-package` | directory | Teaches context, initialization, validation, ask, and cleanup-only delivery using the new authorities. |
+| `entity.concorde.commands` | directory | Teaches specification, planning, tasks, implementation, convergence, analysis, and fast loop using the new authorities. |
 | `module.concorde.auto-docs` | module | Publishes module architecture and direct feature files without interpreting a wrapper directory or `design.md` basename. |
-| `entity.concorde.specification` | directory | Self-applies the new profile across all six modules and twenty-four features. |
+| `entity.concorde.specification` | directory | Self-applies the new profile across five child modules and twenty-four features. |
 | `entity.concorde.control-state` | directory | Owns Profile 7 configuration, stable-ID attempts, tracked reflections, and triage state outside module specifications. |
 
 The feature is cross-cutting because these entities share one source profile. They must switch together; a mixed old/new durable layout is invalid after migration.
@@ -136,7 +135,7 @@ The feature is cross-cutting because these entities share one source profile. Th
   with no dual-layout mode. Initialization Proposal 2 adds the reflection log and reflection-triage/v2
   changes its canonical locator. Stable module/feature/interface IDs, Delivery Proposal 8 semantics,
   and Build Manifest 10 semantics remain unchanged.
-- **Implementing entities**: `entity.concorde.runtime`, `entity.concorde.workspace-resolver`, `entity.concorde.cli`, `entity.concorde.preset-package`, `entity.concorde.specification`, `entity.concorde.control-state`.
+- **Implementing entities**: `entity.concorde.runtime`, `entity.concorde.workspace-resolver`, `entity.concorde.cli`, `entity.concorde.commands`, `entity.concorde.specification`, `entity.concorde.control-state`.
 - **Example**: A module `architecture.md` defines `entity.example.worker`; a feature design references it in Architecture Zoom and exposes an interface whose entry point and implementing entities include that stable ID.
 
 ### `contract.understand-anything.knowledge-graph` — Required vocabulary reference
@@ -291,7 +290,7 @@ As a maintainer, I can validate that the entire project uses the new ontology an
 - **SC-005**: Workspace JSON and all command/skill contracts contain `feature_path`, Protocol 12,
   `.concorde/attempts/<stable-feature-id>/`, and `.concorde/reflections/log.md`, with zero module-local
   control-state or other deprecated authority fields.
-- **SC-006**: Complete Python, documentation-site, package/release, self-hosting, and Concorde validation suites pass under the new source profile.
+- **SC-006**: Complete Python, documentation-site, native package/release, agent-surface, and Concorde validation suites pass under the new source profile.
 - **SC-007**: The selected ontology attempt is delivered successfully from
   `.concorde/attempts/feature.concorde.define-project-ontology/`, that directory is absent afterward,
   and both `specs/concorde/features/007-project-ontology.md` and `.concorde/reflections/log.md` remain
@@ -302,7 +301,7 @@ As a maintainer, I can validate that the entire project uses the new ontology an
 ## Assumptions
 
 - This is an intentionally breaking prototype source profile; no compatibility reader for the old layout is required after the repository itself migrates.
-- Architecture inventories include only entities significant to understanding structure, extension, interfaces, or risk. Concorde does not require a duplicate row for every implementation symbol.
+- Architecture inventories include only entities significant to understanding structure, evolution, interfaces, or risk. Concorde does not require a duplicate row for every implementation symbol.
 - Understand Anything supplies a useful code-entity and relationship vocabulary, but Concorde remains authoritative for recursive modules, feature interfaces, attempts, evidence, and specification ownership.
 - Existing stable module and feature IDs remain unchanged. Existing `contract.*` IDs are preserved as interface identities for this prototype to keep external references recognizable.
 - Stable feature IDs are globally unique and restricted to a path-safe grammar. The exact stable ID
@@ -322,7 +321,7 @@ As a maintainer, I can validate that the entire project uses the new ontology an
 - Supporting module-local attempts or a specification-root reflection log after the control-state cutover.
 - Supporting multiple concurrent attempts for one stable feature ID; separate branches/worktrees remain the prototype mechanism.
 - Renaming every preserved `contract.*` stable identity to `interface.*` during the prototype.
-- Replacing Archify, Docusaurus, Spec Kit, or the coding-agent platforms.
+- Replacing Archify, Docusaurus, or the supported coding-agent platforms.
 
 ## Concorde Architecture Alignment
 
@@ -334,4 +333,4 @@ As a maintainer, I can validate that the entire project uses the new ontology an
 - **Architecture authority**: the migrated root `specs/concorde/architecture.md` and recursive child module architecture files.
 - **Prototype delivery**: one repository-wide attempt is justified because partial migration would
   leave selection, control-state routing, reflection triage, delivery, publication, guidance, fixtures,
-  and self-hosted paths mutually incompatible.
+  and generated agent-surface paths mutually incompatible.

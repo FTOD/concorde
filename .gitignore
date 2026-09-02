@@ -35,8 +35,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.pyc
-.specify/extensions/*/.specify-dev/
-.specify/concorde-agent-assets.json
 
 # Claude Code: subagent worktrees and reflection-triage plans (machine-local)
 .claude/worktrees/

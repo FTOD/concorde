@@ -11,7 +11,7 @@ from tests.concorde.support.feature_workspace import attempt_path, create_featur
 from tests.concorde.support.paths import CONTEXT_PROJECT, REPOSITORY_ROOT, TWO_LEVEL_PROJECT
 
 
-ADAPTER = REPOSITORY_ROOT / "extensions/concorde/scripts/python/workspace.py"
+ADAPTER = REPOSITORY_ROOT / "scripts/workspace.py"
 
 
 def run_phase(root: Path, feature: str, phase: str) -> dict:

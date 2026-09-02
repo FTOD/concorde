@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "name": "concorde",
+  "version": "1.0.0",
+  "description": "Standalone module-centered architecture and feature workflow",
+  "license": "MIT",
+  "license_file": "LICENSE",
+  "repository": "https://github.com/FTOD/concorde",
+  "architecture_profile": 7,
+  "workspace_protocol": 12,
+  "delivery_proposal": 8,
+  "command_namespace": "speckit",
+  "format_lineage": "Command and Markdown template formatting was informed by GitHub Spec Kit; Concorde owns and executes every distributed asset.",
+  "commands": [
+    "speckit.analyze",
+    "speckit.checklist",
+    "speckit.clarify",
+    "speckit.concorde.ask",
+    "speckit.concorde.context",
+    "speckit.concorde.deliver",
+    "speckit.concorde.init",
+    "speckit.concorde.validate",
+    "speckit.constitution",
+    "speckit.converge",
+    "speckit.fast-loop",
+    "speckit.implement",
+    "speckit.plan",
+    "speckit.specify",
+    "speckit.tasks",
+    "speckit.taskstoissues"
+  ],
+  "templates": [
+    "checklist-template.md",
+    "constitution-template.md",
+    "feature-template.md",
+    "plan-template.md",
+    "reflections-template.md",
+    "tasks-template.md"
+  ],
+  "package_roots": [
+    "agent-assets",
+    "commands",
+    "scripts",
+    "src",
+    "templates"
+  ],
+  "integrations": [
+    "claude",
+    "codex"
+  ],
+  "install": {
+    "framework_root": ".concorde/framework",
+    "receipt": ".concorde/install.json",
+    "selection": ".concorde/feature.json"
+  }
+}

@@ -23,15 +23,15 @@
     },
     "nodes": [
       {
-        "id": "concorde:command:speckit.concorde.explore",
+        "id": "concorde:explorer:alignment-query",
         "type": "endpoint",
-        "name": "speckit.concorde.explore",
+        "name": "concorde.alignment.query",
         "summary": "Canonical Alignment Explorer command intent.",
         "tags": ["command", "concorde-explore"],
         "complexity": "simple",
         "concordeMeta": {
           "kind": "command",
-          "stableId": "speckit.concorde.explore",
+          "stableId": "concorde.alignment.query",
           "sourcePath": "specs/concorde/features/006-alignment-explorer.md",
           "authorityClass": "durable-feature-intent",
           "lifecycle": "durable",
@@ -63,7 +63,7 @@
     ],
     "edges": [
       {
-        "source": "concorde:command:speckit.concorde.explore",
+        "source": "concorde:explorer:alignment-query",
         "target": "concorde:feature.concorde.explore-alignment",
         "type": "serves",
         "direction": "forward",
@@ -78,7 +78,7 @@
     "relations": [
       {
         "id": "relation:command-serves-feature",
-        "source_id": "speckit.concorde.explore",
+        "source_id": "concorde.alignment.query",
         "target_id": "feature.concorde.explore-alignment",
         "canonical_relation": "exposes",
         "adapter_edge_type": "serves",

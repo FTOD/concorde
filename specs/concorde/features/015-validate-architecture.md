@@ -35,7 +35,7 @@ relationship/interface/reference integrity, evidence status, diagrams, freshness
 
 - **Consumer**: Maintainer, CI, planning/implementation/delivery gates, and Auto-Docs.
 - **Direction**: Project/target input to read-only structured findings.
-- **Entry points**: `speckit.concorde.validate` and runtime `validate`.
+- **Entry points**: Compatibility command `speckit.concorde.validate` and native runtime `validate` operation in source or installed framework.
 - **Inputs**: Project root plus optional stable module/feature focus.
 - **Outputs**: Status, source digest, exact findings with rule/severity/subject/path/remediation, and evidence summary.
 - **Obligations**: Be deterministic/non-mutating, report all applicable findings, and distinguish structure from behavior proof.

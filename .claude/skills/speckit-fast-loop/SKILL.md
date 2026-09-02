@@ -1,16 +1,15 @@
 ---
 name: speckit-fast-loop
-description: Complete one eligible small change directly across feature intent, architecture,
-  code, and tests.
-compatibility: Requires spec-kit project structure with .specify/ directory
+description: "Complete one eligible small change directly across feature intent, architecture, code, and tests."
+argument-hint: "Optional command guidance"
+compatibility: "Requires a Concorde project"
 metadata:
-  author: github-spec-kit
-  source: preset:concorde
+  author: "concorde"
+  source: "commands/speckit.fast-loop.md"
 user-invocable: true
 disable-model-invocation: false
 ---
-
-# Speckit Fast Loop Skill
+# Speckit Fast Loop
 
 ## User Input
 
@@ -26,7 +25,7 @@ module/feature ontology and evidence standard as the full workflow.
 
 ## Workspace gate
 
-Run `.venv/bin/python .specify/extensions/concorde/scripts/python/workspace.py --phase fast-loop` first and require Protocol 12 for one existing selected feature. Use only the returned
+Run `python3 scripts/workspace.py --phase fast-loop` first and require Protocol 12 for one existing selected feature. Use only the returned
 `feature_path`, providing architecture, bounded summaries, executable context, and reflection path.
 Reject fast-loop when an attempt already exists. Never create
 `.concorde/attempts/<stable-feature-id>/` artifacts.
@@ -62,7 +61,7 @@ plan, tasks, implementation, and delivery.
 
 Difficulties, workarounds, or knowingly provisional choices go to the centralized reflection log
 with `Phase: fast-loop`. Before appending a new entry, run the installed
-`.specify/extensions/concorde/scripts/python/reflections_queue.py --allocate-id`, use only its
+`python3 ./scripts/reflections_queue.py --allocate-id`, use only its
 `allocated_id`, and never derive an ID from the remaining log entries; an existing problem receives
 an occurrence without allocating a new ID.
 

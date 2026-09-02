@@ -4,8 +4,20 @@ from pathlib import Path
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-PRESET_COMMANDS = REPOSITORY_ROOT / "presets/concorde/commands"
-EXTENSION_COMMANDS = REPOSITORY_ROOT / "extensions/concorde/commands"
+LIFECYCLE_COMMANDS = REPOSITORY_ROOT / "commands"
+FRAMEWORK_COMMANDS = REPOSITORY_ROOT / "commands"
+WORKSPACE_COMMANDS = (
+    "speckit.analyze.md",
+    "speckit.checklist.md",
+    "speckit.clarify.md",
+    "speckit.converge.md",
+    "speckit.fast-loop.md",
+    "speckit.implement.md",
+    "speckit.plan.md",
+    "speckit.specify.md",
+    "speckit.tasks.md",
+    "speckit.taskstoissues.md",
+)
 
 
 def read(directory: Path, name: str) -> str:
@@ -14,14 +26,15 @@ def read(directory: Path, name: str) -> str:
 
 class AgentCommandContractTests(unittest.TestCase):
     def test_every_phase_resolves_protocol12_before_path_sensitive_work(self):
-        for path in sorted(PRESET_COMMANDS.glob("*.md")):
+        for name in WORKSPACE_COMMANDS:
+            path = LIFECYCLE_COMMANDS / name
             with self.subTest(path=path.name):
                 body = path.read_text(encoding="utf-8")
                 self.assertIn("Protocol 12", body)
                 self.assertIn("workspace.py --phase", body)
 
     def test_phase_guidance_uses_feature_path_architecture_attempt_and_executable_context(self):
-        combined = "\n".join(path.read_text(encoding="utf-8") for path in PRESET_COMMANDS.glob("*.md"))
+        combined = "\n".join(path.read_text(encoding="utf-8") for path in LIFECYCLE_COMMANDS.glob("*.md"))
         for value in (
             "feature_path",
             "module_architecture",
@@ -48,7 +61,7 @@ class AgentCommandContractTests(unittest.TestCase):
             self.assertNotIn(removed, combined, removed)
 
     def test_specify_authors_one_direct_feature_file_with_embedded_interfaces(self):
-        body = read(PRESET_COMMANDS, "speckit.specify.md")
+        body = read(LIFECYCLE_COMMANDS, "speckit.specify.md")
         normalized = " ".join(body.split())
         for value in (
             "complete durable feature file",
@@ -66,8 +79,8 @@ class AgentCommandContractTests(unittest.TestCase):
             self.assertIn(value, normalized, value)
 
     def test_source_only_diagram_checks_survive_as_module_architecture_checks(self):
-        specify = " ".join(read(PRESET_COMMANDS, "speckit.specify.md").split())
-        plan = " ".join(read(PRESET_COMMANDS, "speckit.plan.md").split())
+        specify = " ".join(read(LIFECYCLE_COMMANDS, "speckit.specify.md").split())
+        plan = " ".join(read(LIFECYCLE_COMMANDS, "speckit.plan.md").split())
         for body in (specify, plan):
             self.assertIn("normalized project-relative `.html`", body)
             self.assertIn("`meta.output`", body)
@@ -77,8 +90,8 @@ class AgentCommandContractTests(unittest.TestCase):
         self.assertIn("Invalid declarations must return to architecture authority", plan)
 
     def test_plan_and_tasks_cover_complete_authority_delta_without_durable_planning_writes(self):
-        plan = " ".join(read(PRESET_COMMANDS, "speckit.plan.md").split())
-        tasks = " ".join(read(PRESET_COMMANDS, "speckit.tasks.md").split())
+        plan = " ".join(read(LIFECYCLE_COMMANDS, "speckit.plan.md").split())
+        tasks = " ".join(read(LIFECYCLE_COMMANDS, "speckit.tasks.md").split())
         self.assertIn("current source code and executable tests", plan)
         self.assertIn("must leave durable sources byte-identical", plan)
         self.assertIn("There is no prose implementation baseline", plan)
@@ -90,7 +103,7 @@ class AgentCommandContractTests(unittest.TestCase):
         self.assertIn("Architecture/feature-file edits are valid implementation tasks", tasks)
 
     def test_implementation_requires_task_authority_and_passed_attempt_evidence(self):
-        body = " ".join(read(PRESET_COMMANDS, "speckit.implement.md").split())
+        body = " ".join(read(LIFECYCLE_COMMANDS, "speckit.implement.md").split())
         for value in (
             "Code is implementation authority",
             "tests and deterministic checks are evidence",
@@ -104,9 +117,9 @@ class AgentCommandContractTests(unittest.TestCase):
             self.assertIn(value, body, value)
 
     def test_analysis_convergence_and_reflections_preserve_boundaries(self):
-        analyze = " ".join(read(PRESET_COMMANDS, "speckit.analyze.md").split())
-        converge = " ".join(read(PRESET_COMMANDS, "speckit.converge.md").split())
-        implement = " ".join(read(PRESET_COMMANDS, "speckit.implement.md").split())
+        analyze = " ".join(read(LIFECYCLE_COMMANDS, "speckit.analyze.md").split())
+        converge = " ".join(read(LIFECYCLE_COMMANDS, "speckit.converge.md").split())
+        implement = " ".join(read(LIFECYCLE_COMMANDS, "speckit.implement.md").split())
         self.assertIn("read-only semantic audit", analyze.lower())
         self.assertIn("only permitted write is a centralized reflection entry", analyze)
         self.assertIn("appends only genuinely remaining executable work", converge)
@@ -121,13 +134,13 @@ class AgentCommandContractTests(unittest.TestCase):
             "speckit.analyze.md", "speckit.converge.md", "speckit.fast-loop.md",
         ):
             with self.subTest(name=name):
-                body = read(PRESET_COMMANDS, name)
+                body = read(LIFECYCLE_COMMANDS, name)
                 self.assertIn("--allocate-id", body)
                 self.assertIn("allocated_id", body)
                 self.assertIn("never derive", body)
 
     def test_fast_loop_is_direct_bounded_and_never_creates_attempt_memory(self):
-        body = " ".join(read(PRESET_COMMANDS, "speckit.fast-loop.md").split())
+        body = " ".join(read(LIFECYCLE_COMMANDS, "speckit.fast-loop.md").split())
         self.assertIn("direct, no-attempt path", body)
         self.assertIn("Reject fast-loop when an attempt already exists", body)
         self.assertIn("Never create `.concorde/attempts/<stable-feature-id>/` artifacts", body)
@@ -135,12 +148,12 @@ class AgentCommandContractTests(unittest.TestCase):
         self.assertIn("no new module, feature, entity type, cross-module relationship", body)
         self.assertIn("recommend specification/clarification followed by plan, tasks, implementation, and delivery", body)
 
-    def test_extension_commands_expose_profile7_context_validation_and_cleanup_delivery(self):
-        init = " ".join(read(EXTENSION_COMMANDS, "speckit.concorde.init.md").split())
-        context = " ".join(read(EXTENSION_COMMANDS, "speckit.concorde.context.md").split())
-        validate = " ".join(read(EXTENSION_COMMANDS, "speckit.concorde.validate.md").split())
-        deliver = " ".join(read(EXTENSION_COMMANDS, "speckit.concorde.deliver.md").split())
-        ask = " ".join(read(EXTENSION_COMMANDS, "speckit.concorde.ask.md").split())
+    def test_framework_commands_expose_profile7_context_validation_and_cleanup_delivery(self):
+        init = " ".join(read(FRAMEWORK_COMMANDS, "speckit.concorde.init.md").split())
+        context = " ".join(read(FRAMEWORK_COMMANDS, "speckit.concorde.context.md").split())
+        validate = " ".join(read(FRAMEWORK_COMMANDS, "speckit.concorde.validate.md").split())
+        deliver = " ".join(read(FRAMEWORK_COMMANDS, "speckit.concorde.deliver.md").split())
+        ask = " ".join(read(FRAMEWORK_COMMANDS, "speckit.concorde.ask.md").split())
         self.assertIn("Architecture Source Profile 7", init)
         self.assertIn("Initialization Proposal 2", init)
         self.assertIn(".concorde/reflections/log.md", init)
