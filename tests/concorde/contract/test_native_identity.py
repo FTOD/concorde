@@ -13,7 +13,7 @@ class NativeIdentityContractTests(unittest.TestCase):
     def test_single_manifest_owns_one_concorde_identity(self):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
         self.assertEqual(manifest["name"], "concorde")
-        self.assertEqual(manifest["version"], "1.0.0")
+        self.assertEqual(manifest["version"], "1.1.0")
         self.assertEqual(manifest["command_namespace"], "speckit")
         self.assertIn("Concorde owns", manifest["format_lineage"])
 

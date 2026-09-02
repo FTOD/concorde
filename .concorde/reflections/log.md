@@ -1,6 +1,6 @@
 # Reflections: Concorde
 
-<!-- concorde-reflection-high-water: R-043 -->
+<!-- concorde-reflection-high-water: R-044 -->
 
 The project's remaining open reflection log: unresolved difficulties, prototype choices, or problems
 coding agents met while planning or implementing a feature, attributed to that feature and naming the
@@ -110,6 +110,9 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Improvement**: Prefer stable normative phrases over newly invented shorthand when adding prose-contract assertions.
 - **Occurrences**:
   - implement 2026-09-01 feature.concorde.workflow.execute-and-reconcile — the new handoff test required lowercase `failed verification` while the contract correctly began the sentence with `Failed verification`.
+  - implement 2026-09-02 feature.concorde.explore-alignment — the first focused documentation marker required shorthand `concorde explore` while the README already carried the exact `scripts/concorde.py ... explore` invocation; the guide now also names the shorthand operation for discoverability.
+  - implement 2026-09-02 feature.concorde.explore-alignment — the integrated gate found the projection unit test still expected the former coarse `entity.concorde.runtime` zoom participant after durable reconciliation introduced the concrete `entity.concorde.alignment-explorer`; the assertion now follows the selected feature's current entity.
+  - implement 2026-09-02 feature.concorde.explore-alignment — the first final stale-language scan matched the unrelated fast-loop sentence `no accepted-realization prerequisite exists`; the alignment audit was narrowed to feature-006-owned/interface/public surfaces so negated historical terminology elsewhere is not misclassified.
 - **Status**: open
 
 ### R-011 · Partial Codex projection backup exposed lower-layer skills
@@ -391,4 +394,17 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Improvement**: Define a first-class source-profile migration operation that binds old and new control-state paths without a hand-managed bootstrap sequence.
 - **Occurrences**:
   - implement 2026-09-01 feature.concorde.define-project-ontology — the pre/post attempt-tree aggregate included absolute project-relative path prefixes, so relocation changed that aggregate despite same-filesystem rename; future cutovers need a saved relative-path manifest before mutation.
+- **Status**: open
+
+### R-044 · Alignment exploration needs a concrete prototype entry point
+- **Phase**: plan
+- **Date**: 2026-09-02
+- **Feature**: feature.concorde.explore-alignment
+- **Kind**: architecture
+- **Concerns**: feature.concorde.explore-alignment
+- **Expected**: The feature identifies a concrete read-only projection/query entry point and an executable representation for explicit alignment evidence.
+- **Observed**: The maintained interface intentionally says only `Future read-only Alignment Explorer projection/query API`, while the checked-in JSON fixtures are untested, reference a missing schema path, and still encode removed ontology concepts.
+- **Effect**: assumed
+- **Action**: Use a native `concorde explore` JSON operation plus a versioned, revision-bound alignment sidecar; keep it distinct from conversational `speckit-*` commands and prohibit name/similarity-derived verification.
+- **Improvement**: Reassess whether a browser projection or a broadly adopted alignment format should supplement the JSON operation after real project usage establishes stable query and evidence needs.
 - **Status**: open

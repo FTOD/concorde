@@ -65,7 +65,35 @@ Planning/task/evidence artifacts live at `.concorde/attempts/<stable-feature-id>
 tasks explicitly reconcile every affected architecture, feature, source, test, documentation, and
 projection authority. A task is complete only after passing evidence is recorded.
 
-## 5. Validate and deliver
+## 5. Explore alignment (optional)
+
+The native explorer works without Understand Anything and returns bounded specification subjects with
+unknown implementation status:
+
+```bash
+python3 .concorde/framework/scripts/concorde.py \
+  --project-root . \
+  explore feature.example.change
+```
+
+If the project has a UA graph, create/review an explicit schema-1 alignment sidecar, then bind it to
+the expected implementation revision:
+
+```bash
+python3 .concorde/framework/scripts/concorde.py \
+  --project-root . \
+  explore feature.example.change \
+  --graph .ua/knowledge-graph.json \
+  --alignment evidence/alignment.json \
+  --revision "$(git rev-parse HEAD)" \
+  --status verified
+```
+
+This operation is read-only and deterministic. It never infers verification from matching names or
+paths; missing/stale/invalid evidence becomes unknown. See [Command reference](commands.md#native-read-only-exploration)
+and [Ontology](ontology.md#alignment-exploration).
+
+## 6. Validate and deliver
 
 Run the installed native validator directly when useful:
 
@@ -77,7 +105,7 @@ After tasks/checklists/evidence pass, invoke `$speckit-concorde-deliver`. It pro
 Delivery Proposal 8, removing exactly the selected attempt while leaving durable sources/reflections
 unchanged.
 
-## 6. Update Concorde
+## 7. Update Concorde
 
 Preview the new checkout/version against the existing target. Unchanged receipt-owned outputs can
 update; unowned or user-modified collisions stop. Apply after review. A second identical apply is

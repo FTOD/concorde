@@ -88,7 +88,7 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.install(temporary, "codex")
             receipt = json.loads((root / ".concorde/install.json").read_text())
-            self.assertEqual(receipt["concorde_version"], "1.0.0")
+            self.assertEqual(receipt["concorde_version"], "1.1.0")
             self.assertEqual(receipt["integration"], "codex")
             roles = {item["role"] for item in receipt["outputs"]}
             self.assertEqual(roles, {"framework", "command", "agent"})
@@ -106,6 +106,7 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
                 "concorde.json",
                 "commands/speckit.plan.md",
                 "templates/feature-template.md",
+                "src/concorde/alignment.py",
                 "src/concorde/cli.py",
                 "agent-assets/reflections/manifest.json",
             ):

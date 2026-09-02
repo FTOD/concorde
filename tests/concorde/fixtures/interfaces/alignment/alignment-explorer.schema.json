@@ -1,89 +1,167 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Concorde Alignment Explorer Bundle v1",
+  "$id": "https://concorde.invalid/interfaces/alignment-explorer-result-v1.schema.json",
+  "title": "Concorde Alignment Explorer Result v1",
   "type": "object",
-  "required": ["schema_version", "ontology_source", "ontology_version", "provenance", "knowledge_graph", "alignment"],
+  "required": [
+    "alignment_schema_version", "source_profile", "source_digest", "target", "query",
+    "status_filter", "provenance", "specification", "implementation", "alignment"
+  ],
   "properties": {
-    "schema_version": {"const": 1},
-    "ontology_source": {"const": "docs/ontology.md"},
-    "ontology_version": {"type": "string", "minLength": 1},
+    "alignment_schema_version": {"const": 1},
+    "source_profile": {"const": 7},
+    "source_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "target": {"type": "string", "minLength": 1},
+    "query": {"type": ["string", "null"]},
+    "status_filter": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/status"},
+      "uniqueItems": true
+    },
     "provenance": {"$ref": "#/$defs/provenance"},
-    "knowledge_graph": {"$ref": "../understand-anything-graph/knowledge-graph.schema.json"},
-    "alignment": {
-      "type": "object",
-      "required": ["relations", "records", "summary"],
-      "properties": {
-        "relations": {"type": "array", "items": {"$ref": "#/$defs/relation"}},
-        "records": {"type": "array", "items": {"$ref": "#/$defs/alignmentRecord"}},
-        "summary": {"$ref": "#/$defs/summary"}
-      },
-      "additionalProperties": false
-    }
+    "specification": {"$ref": "#/$defs/specification"},
+    "implementation": {"$ref": "#/$defs/implementation"},
+    "alignment": {"$ref": "#/$defs/alignment"}
   },
   "additionalProperties": false,
   "$defs": {
+    "status": {"enum": ["unknown", "partial", "verified", "disagrees"]},
+    "nullableString": {"type": ["string", "null"]},
+    "stringArray": {
+      "type": "array", "items": {"type": "string"}, "uniqueItems": true
+    },
     "provenance": {
       "type": "object",
       "required": [
-        "concorde_source_digest", "implementation_revision", "upstream_repository",
-        "upstream_revision", "graph_version", "analyzed_at"
+        "concorde_source_digest", "upstream_repository", "upstream_revision", "graph_path",
+        "graph_version", "graph_kind", "analyzed_at", "implementation_revision",
+        "expected_revision", "freshness"
       ],
       "properties": {
-        "concorde_source_digest": {"type": "string"},
-        "implementation_revision": {"type": "string"},
-        "upstream_repository": {"type": "string"},
-        "upstream_revision": {"type": "string"},
-        "graph_version": {"type": "string"},
-        "analyzed_at": {"type": "string"}
+        "concorde_source_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "upstream_repository": {"const": "https://github.com/Egonex-AI/Understand-Anything"},
+        "upstream_revision": {"const": "ba450c43425f3de6d43daf76526950ad8ca93536"},
+        "graph_path": {"$ref": "#/$defs/nullableString"},
+        "graph_version": {"$ref": "#/$defs/nullableString"},
+        "graph_kind": {"type": ["string", "null"], "enum": ["codebase", "knowledge", "design", null]},
+        "analyzed_at": {"$ref": "#/$defs/nullableString"},
+        "implementation_revision": {"$ref": "#/$defs/nullableString"},
+        "expected_revision": {"$ref": "#/$defs/nullableString"},
+        "freshness": {"enum": ["absent", "current", "unknown", "stale"]}
       },
       "additionalProperties": false
     },
-    "relation": {
-      "type": "object",
-      "required": ["id", "source_id", "target_id", "canonical_relation", "adapter_edge_type", "mapping_basis"],
-      "properties": {
-        "id": {"type": "string"},
-        "source_id": {"type": "string"},
-        "target_id": {"type": "string"},
-        "canonical_relation": {"type": "string"},
-        "adapter_edge_type": {"type": "string"},
-        "mapping_basis": {
-          "enum": [
-            "stable-id", "source-path", "contract", "accepted-realization",
-            "executable-evidence", "deterministic-finding", "candidate-only"
-          ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "alignmentRecord": {
+    "subject": {
       "type": "object",
       "required": [
-        "subject_id", "status", "coverage", "specification_node_ids", "realization_node_ids",
-        "implementation_node_ids", "evidence_node_ids", "finding_ids", "relation_ids", "rationale"
+        "id", "kind", "profile_kind", "adapter_type", "name", "description", "module_id",
+        "feature_id", "declaring_feature_ids", "source_path", "source_paths"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["module", "entity", "feature", "interface"]},
+        "profile_kind": {"type": "string", "minLength": 1},
+        "adapter_type": {"$ref": "knowledge-graph.schema.json#/$defs/node/properties/type"},
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "module_id": {"$ref": "#/$defs/nullableString"},
+        "feature_id": {"$ref": "#/$defs/nullableString"},
+        "declaring_feature_ids": {"$ref": "#/$defs/stringArray"},
+        "source_path": {"type": "string", "minLength": 1},
+        "source_paths": {"$ref": "#/$defs/stringArray"}
+      },
+      "additionalProperties": false
+    },
+    "relationship": {
+      "type": "object",
+      "required": ["source_id", "target_id", "predicate", "adapter_edge_type", "description", "interface_id"],
+      "properties": {
+        "source_id": {"type": "string"},
+        "target_id": {"type": "string"},
+        "predicate": {"type": "string"},
+        "adapter_edge_type": {"$ref": "knowledge-graph.schema.json#/$defs/edge/properties/type"},
+        "description": {"type": "string"},
+        "interface_id": {"$ref": "#/$defs/nullableString"}
+      },
+      "additionalProperties": false
+    },
+    "interaction": {
+      "type": "object",
+      "required": ["id", "trigger", "steps", "result", "interfaces", "source_path"],
+      "properties": {
+        "id": {"type": "string"},
+        "trigger": {"type": "string"},
+        "steps": {"type": "array", "items": {"type": "string"}},
+        "result": {"type": "string"},
+        "interfaces": {"$ref": "#/$defs/stringArray"},
+        "source_path": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "specification": {
+      "type": "object",
+      "required": ["subjects", "relationships", "interactions"],
+      "properties": {
+        "subjects": {"type": "array", "items": {"$ref": "#/$defs/subject"}},
+        "relationships": {"type": "array", "items": {"$ref": "#/$defs/relationship"}},
+        "interactions": {"type": "array", "items": {"$ref": "#/$defs/interaction"}}
+      },
+      "additionalProperties": false
+    },
+    "counts": {
+      "type": "object",
+      "required": ["total_nodes", "returned_nodes", "total_edges", "returned_edges"],
+      "properties": {
+        "total_nodes": {"type": "integer", "minimum": 0},
+        "returned_nodes": {"type": "integer", "minimum": 0},
+        "total_edges": {"type": "integer", "minimum": 0},
+        "returned_edges": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "implementation": {
+      "type": "object",
+      "required": ["project", "nodes", "edges", "layers", "tour", "counts"],
+      "properties": {
+        "project": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "knowledge-graph.schema.json#/$defs/project"}
+          ]
+        },
+        "nodes": {"type": "array", "items": {"$ref": "knowledge-graph.schema.json#/$defs/node"}},
+        "edges": {"type": "array", "items": {"$ref": "knowledge-graph.schema.json#/$defs/edge"}},
+        "layers": {"type": "array", "items": {"$ref": "knowledge-graph.schema.json#/$defs/layer"}},
+        "tour": {"type": "array", "items": {"$ref": "knowledge-graph.schema.json#/$defs/tourStep"}},
+        "counts": {"$ref": "#/$defs/counts"}
+      },
+      "additionalProperties": false
+    },
+    "record": {
+      "type": "object",
+      "required": [
+        "subject_id", "status", "requested_status", "basis", "implementation_revision",
+        "freshness", "implementation_node_ids", "evidence_node_ids", "finding_ids", "rationale"
       ],
       "properties": {
         "subject_id": {"type": "string"},
-        "status": {"enum": ["unknown", "partial", "verified", "disagrees"]},
-        "coverage": {"$ref": "#/$defs/coverage"},
-        "specification_node_ids": {"$ref": "#/$defs/stringArray"},
-        "realization_node_ids": {"$ref": "#/$defs/stringArray"},
+        "status": {"$ref": "#/$defs/status"},
+        "requested_status": {
+          "oneOf": [{"$ref": "#/$defs/status"}, {"type": "null"}]
+        },
+        "basis": {
+          "type": ["string", "null"],
+          "enum": [
+            "stable-id", "source-path", "contract", "executable-evidence",
+            "deterministic-finding", "candidate-only", null
+          ]
+        },
+        "implementation_revision": {"$ref": "#/$defs/nullableString"},
+        "freshness": {"enum": ["absent", "current", "unknown", "stale"]},
         "implementation_node_ids": {"$ref": "#/$defs/stringArray"},
         "evidence_node_ids": {"$ref": "#/$defs/stringArray"},
         "finding_ids": {"$ref": "#/$defs/stringArray"},
-        "relation_ids": {"$ref": "#/$defs/stringArray"},
-        "rationale": {"type": "string"}
-      },
-      "additionalProperties": false
-    },
-    "coverage": {
-      "type": "object",
-      "required": ["specification", "accepted_realization", "implementation", "evidence"],
-      "properties": {
-        "specification": {"enum": ["present", "absent", "not-applicable"]},
-        "accepted_realization": {"enum": ["present", "placeholder", "absent", "not-applicable"]},
-        "implementation": {"enum": ["present", "absent", "ambiguous", "not-applicable"]},
-        "evidence": {"enum": ["present", "absent", "failing", "stale", "not-applicable"]}
+        "rationale": {"type": "string", "minLength": 1}
       },
       "additionalProperties": false
     },
@@ -98,6 +176,14 @@
       },
       "additionalProperties": false
     },
-    "stringArray": {"type": "array", "items": {"type": "string"}}
+    "alignment": {
+      "type": "object",
+      "required": ["records", "summary"],
+      "properties": {
+        "records": {"type": "array", "items": {"$ref": "#/$defs/record"}},
+        "summary": {"$ref": "#/$defs/summary"}
+      },
+      "additionalProperties": false
+    }
   }
 }

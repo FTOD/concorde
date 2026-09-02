@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://concorde.invalid/interfaces/alignment-input-v1.schema.json",
+  "title": "Concorde Alignment Input v1",
+  "type": "object",
+  "required": ["schema_version", "implementation_revision", "records"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "implementation_revision": {"type": "string", "minLength": 1},
+    "records": {"type": "array", "items": {"$ref": "#/$defs/record"}}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "record": {
+      "type": "object",
+      "required": [
+        "subject_id", "status", "basis", "implementation_node_ids",
+        "evidence_node_ids", "finding_ids", "rationale"
+      ],
+      "properties": {
+        "subject_id": {"type": "string", "minLength": 1},
+        "status": {"enum": ["unknown", "partial", "verified", "disagrees"]},
+        "basis": {
+          "enum": [
+            "stable-id", "source-path", "contract", "executable-evidence",
+            "deterministic-finding", "candidate-only"
+          ]
+        },
+        "implementation_node_ids": {
+          "type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true
+        },
+        "evidence_node_ids": {
+          "type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true
+        },
+        "finding_ids": {
+          "type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true
+        },
+        "rationale": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -70,6 +70,34 @@ IDs remain Concorde-owned, and logical entities stay separate from their physica
 locators. The Understand Anything adapter maps those types and edges only as a projection; it never
 changes Concorde ownership or turns a physical path into logical identity.
 
+### Alignment exploration
+
+The native `concorde explore` operation projects one validated module, entity, feature, or interface
+altitude. An optional explicitly supplied UA graph stays implementation evidence: its original IDs,
+27 pinned node types, 38 pinned edge types, directions, project revision, layers, and tour remain
+visible but never redefine a Concorde subject.
+
+Mappings live in a separate Alignment Schema 1 sidecar so the upstream graph remains unmodified. The
+sidecar binds one implementation revision and contains unique subject claims with:
+
+- requested `unknown`, `partial`, `verified`, or `disagrees` status;
+- basis (`stable-id`, `source-path`, `contract`, `executable-evidence`,
+  `deterministic-finding`, or `candidate-only`);
+- implementation and evidence node IDs;
+- deterministic finding IDs; and
+- rationale.
+
+The explorer computes effective status. Graph/sidecar/expected revisions must agree before a claim is
+current. Verified additionally requires executable-evidence basis and an evidence node; disagreement
+requires deterministic-finding basis and a finding ID. Missing graph/sidecar, no expected revision,
+staleness, invalid references/types, candidate-only mappings, or insufficient evidence all reduce to
+unknown. Search is presentation filtering only: it never supplies an alignment basis.
+
+Returned specification subjects retain stable ID, Profile kind, owner/declarer, and canonical source
+path separately from an adapter type. Results include only the selected Profile altitude and mapped or
+text-matched implementation nodes plus one edge hop; total/returned counts make the bound explicit.
+The operation is deterministic and read-only and emits no persistent graph/index.
+
 ### Entity relationship
 
 A relationship is typed, directed, and resolves both endpoints at the current module visibility.

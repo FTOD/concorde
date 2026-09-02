@@ -31,7 +31,7 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertEqual(arguments.checkout, str(REPOSITORY_ROOT))
 
     def test_manifest_is_single_profile_and_inventory_authority(self):
-        self.assertEqual(self.package.version, "1.0.0")
+        self.assertEqual(self.package.version, "1.1.0")
         self.assertEqual(self.package.manifest["architecture_profile"], 7)
         self.assertEqual(self.package.manifest["workspace_protocol"], 12)
         self.assertEqual(len(self.package.manifest["commands"]), 16)
@@ -40,6 +40,7 @@ class NativeInstallerTests(unittest.TestCase):
     def test_desired_codex_outputs_use_native_paths_only(self):
         outputs = installer.desired_outputs(self.package, "codex")
         self.assertIn(".concorde/framework/src/concorde/cli.py", outputs)
+        self.assertIn(".concorde/framework/src/concorde/alignment.py", outputs)
         self.assertIn(".agents/skills/speckit-plan/SKILL.md", outputs)
         self.assertIn(".codex/agents/reflection_implementer.toml", outputs)
         plan = outputs[".agents/skills/speckit-plan/SKILL.md"][0].decode()

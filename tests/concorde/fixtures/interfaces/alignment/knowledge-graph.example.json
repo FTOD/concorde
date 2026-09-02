@@ -5,117 +5,55 @@
     "name": "Concorde Example",
     "languages": ["Python", "Markdown"],
     "frameworks": [],
-    "description": "Minimal graph showing a Concorde feature and implementation evidence.",
-    "analyzedAt": "2026-08-31T00:00:00Z",
+    "description": "Minimal implementation graph for Alignment Explorer contract tests.",
+    "analyzedAt": "2026-09-02T00:00:00Z",
     "gitCommitHash": "0123456789abcdef0123456789abcdef01234567"
   },
   "nodes": [
     {
-      "id": "concorde:module.concorde",
-      "type": "module",
-      "name": "Concorde",
-      "summary": "The root Concorde architecture level.",
-      "tags": ["concorde"],
-      "complexity": "moderate",
-      "concordeMeta": {
-        "kind": "module",
-        "stableId": "module.concorde",
-        "sourcePath": "specs/concorde/module.md",
-        "authorityClass": "maintained-architecture",
-        "lifecycle": "durable",
-        "moduleId": "module.concorde",
-        "ontologySource": "docs/ontology.md",
-        "ontologyVersion": "1.1.0-draft"
-      }
-    },
-    {
-      "id": "concorde:feature.concorde.explore-alignment",
-      "type": "concept",
-      "name": "Alignment Explorer",
-      "summary": "Browse architecture and inspect evidence-qualified alignment.",
-      "tags": ["feature", "alignment"],
-      "complexity": "complex",
-      "concordeMeta": {
-        "kind": "feature",
-        "stableId": "feature.concorde.explore-alignment",
-        "sourcePath": "specs/concorde/features/006-alignment-explorer.md",
-        "authorityClass": "durable-feature-intent",
-        "lifecycle": "durable",
-        "moduleId": "module.concorde",
-        "featureId": "feature.concorde.explore-alignment",
-        "ontologySource": "docs/ontology.md",
-        "ontologyVersion": "1.1.0-draft"
-      }
-    },
-    {
-      "id": "concorde:explorer:alignment-query",
-      "type": "endpoint",
-      "name": "concorde.alignment.query",
-      "summary": "Canonical Alignment Explorer command intent.",
-      "tags": ["command", "concorde-explore"],
-      "complexity": "simple",
-      "concordeMeta": {
-        "kind": "command",
-        "stableId": "concorde.alignment.query",
-        "sourcePath": "specs/concorde/features/006-alignment-explorer.md",
-        "authorityClass": "durable-feature-intent",
-        "lifecycle": "durable",
-        "moduleId": "module.concorde",
-        "featureId": "feature.concorde.explore-alignment",
-        "ontologySource": "docs/ontology.md",
-        "ontologyVersion": "1.1.0-draft"
-      }
-    },
-    {
-      "id": "file:src/alignment-projector.ts",
+      "id": "file:src/concorde/alignment.py",
       "type": "file",
-      "name": "alignment-projector.ts",
-      "filePath": "src/alignment-projector.ts",
-      "summary": "Example implementation projection entry point.",
-      "tags": ["implementation"],
+      "name": "alignment.py",
+      "filePath": "src/concorde/alignment.py",
+      "summary": "Implements strict evidence-qualified alignment exploration.",
+      "tags": ["implementation", "alignment"],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:src/concorde/alignment.py:explore_alignment",
+      "type": "function",
+      "name": "explore_alignment",
+      "filePath": "src/concorde/alignment.py",
+      "lineRange": [1, 1],
+      "summary": "Returns a bounded read-only alignment query result.",
+      "tags": ["entry-point", "alignment"],
       "complexity": "moderate"
     },
     {
-      "id": "file:tests/alignment-projector.test.ts",
+      "id": "file:tests/concorde/integration/test_alignment_explorer.py",
       "type": "file",
-      "name": "alignment-projector.test.ts",
-      "filePath": "tests/alignment-projector.test.ts",
-      "summary": "Example executable evidence for projection behavior.",
-      "tags": ["test"],
-      "complexity": "simple"
+      "name": "test_alignment_explorer.py",
+      "filePath": "tests/concorde/integration/test_alignment_explorer.py",
+      "summary": "Exercises explorer projection, evidence, freshness, and query behavior.",
+      "tags": ["test", "evidence"],
+      "complexity": "moderate"
     }
   ],
   "edges": [
     {
-      "source": "concorde:module.concorde",
-      "target": "concorde:feature.concorde.explore-alignment",
+      "source": "file:src/concorde/alignment.py",
+      "target": "function:src/concorde/alignment.py:explore_alignment",
       "type": "contains",
       "direction": "forward",
-      "description": "module registers project-level feature",
+      "description": "The source file contains the public explorer function.",
       "weight": 1
     },
     {
-      "source": "concorde:explorer:alignment-query",
-      "target": "concorde:feature.concorde.explore-alignment",
-      "type": "serves",
-      "direction": "forward",
-      "description": "canonical command exposes the feature outcome",
-      "weight": 1
-    },
-    {
-      "source": "file:src/alignment-projector.ts",
-      "target": "concorde:feature.concorde.explore-alignment",
-      "type": "implements",
-      "direction": "forward",
-      "description": "explicit implementation mapping",
-      "weight": 1
-    },
-    {
-      "source": "file:src/alignment-projector.ts",
-      "target": "file:tests/alignment-projector.test.ts",
+      "source": "function:src/concorde/alignment.py:explore_alignment",
+      "target": "file:tests/concorde/integration/test_alignment_explorer.py",
       "type": "tested_by",
       "direction": "forward",
-      "description": "executable evidence",
+      "description": "Integration tests provide executable evidence.",
       "weight": 1
     }
   ],
@@ -123,15 +61,23 @@
     {
       "id": "layer:alignment",
       "name": "Alignment Explorer",
-      "description": "Specification and implementation projection example.",
+      "description": "Implementation and executable evidence.",
       "nodeIds": [
-        "concorde:module.concorde",
-        "concorde:feature.concorde.explore-alignment",
-        "concorde:explorer:alignment-query",
-        "file:src/alignment-projector.ts",
-        "file:tests/alignment-projector.test.ts"
+        "file:src/concorde/alignment.py",
+        "function:src/concorde/alignment.py:explore_alignment",
+        "file:tests/concorde/integration/test_alignment_explorer.py"
       ]
     }
   ],
-  "tour": []
+  "tour": [
+    {
+      "order": 1,
+      "title": "Explore alignment",
+      "description": "Follow the entry point to its executable evidence.",
+      "nodeIds": [
+        "function:src/concorde/alignment.py:explore_alignment",
+        "file:tests/concorde/integration/test_alignment_explorer.py"
+      ]
+    }
+  ]
 }

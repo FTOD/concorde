@@ -31,6 +31,20 @@ def create_parser() -> argparse.ArgumentParser:
     context.add_argument("target")
     context.add_argument("--format", choices=["json"], default="json")
 
+    explore = subparsers.add_parser("explore")
+    explore.add_argument("target", nargs="?")
+    explore.add_argument("--graph")
+    explore.add_argument("--alignment")
+    explore.add_argument("--revision")
+    explore.add_argument("--query")
+    explore.add_argument(
+        "--status",
+        action="append",
+        choices=["unknown", "partial", "verified", "disagrees"],
+        default=[],
+    )
+    explore.add_argument("--format", choices=["json"], default="json")
+
     validate = subparsers.add_parser("validate")
     validate.add_argument("target", nargs="?")
     validate.add_argument("--format", choices=["json"], default="json")
@@ -73,6 +87,18 @@ def dispatch(arguments: argparse.Namespace) -> OperationResult:
         from .context import bounded_context
 
         return bounded_context(root, arguments.target)
+    if arguments.operation == "explore":
+        from .alignment import explore_alignment
+
+        return explore_alignment(
+            root,
+            arguments.target,
+            graph_path=arguments.graph,
+            alignment_path=arguments.alignment,
+            expected_revision=arguments.revision,
+            query=arguments.query,
+            statuses=arguments.status,
+        )
     if arguments.operation == "deliver":
         from .delivery import apply_delivery, propose_delivery
 
@@ -120,7 +146,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         operation = argv[0] if argv else "validate"
         payload = envelope(
             operation
-            if operation in {"init", "context", "validate", "deliver", "agent-assets"}
+            if operation in {"init", "context", "explore", "validate", "deliver", "agent-assets"}
             else "validate",
             ".",
             "failed",

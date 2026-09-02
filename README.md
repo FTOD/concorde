@@ -73,6 +73,35 @@ incomplete, invalid, or unsafe delivery is non-mutating.
 
 See [Workflow](docs/concorde-workflow.md) and [Command reference](docs/commands.md).
 
+## Explore architecture and implementation alignment
+
+Concorde 1.1 adds the native read-only `concorde explore` operation. It works without an implementation graph,
+returning bounded Profile 7 modules/entities/features/interfaces with truthful `unknown` alignment:
+
+```bash
+python3 scripts/concorde.py --project-root . explore feature.example.checkout
+```
+
+To overlay Understand Anything output, pass the graph explicitly with a schema-1 alignment sidecar
+and the implementation revision you expect:
+
+```bash
+python3 scripts/concorde.py --project-root . explore feature.example.checkout \
+  --graph .ua/knowledge-graph.json \
+  --alignment evidence/alignment.json \
+  --revision "$(git rev-parse HEAD)" \
+  --query checkout \
+  --status verified
+```
+
+The sidecar names each Concorde subject, requested status, evidence basis, implementation/evidence UA
+node IDs, finding IDs, and rationale. Only explicit revision-current executable evidence can become
+verified; deterministic findings can establish disagreement. Missing, stale, candidate-only, or
+invalid evidence becomes unknown. UA node/edge types remain adapter metadata, and neither text search
+nor name/path similarity creates a mapping. The command emits canonical JSON to stdout and writes no
+index or source file. Installed projects use
+`.concorde/framework/scripts/concorde.py` with the same arguments.
+
 ## Install
 
 Concorde requires Python 3.11+ and no host framework. Preview is the default:
@@ -144,7 +173,7 @@ safe members, SHA-256, an isolated native installation, and byte-equivalent rebu
 |---|---|
 | `commands/` | Canonical complete lifecycle command Markdown. |
 | `templates/` | Complete feature/plan/task/checklist/constitution/reflection format references. |
-| `src/concorde/` | Deterministic runtime and command/agent projectors. |
+| `src/concorde/` | Deterministic runtime, alignment explorer, and command/agent projectors. |
 | `agent-assets/` | Canonical reflection-triage roles and integration templates. |
 | `scripts/` | Portable runtime adapters, installer, checkout sync, and release programs. |
 | `concorde.json` | Single package/version/profile/protocol/inventory authority. |

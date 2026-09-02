@@ -16,6 +16,7 @@
       "enum": [
         "init",
         "context",
+        "explore",
         "validate"
       ]
     },

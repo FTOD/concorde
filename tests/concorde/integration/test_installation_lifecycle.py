@@ -64,7 +64,7 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         _, applied = self.run_install("--integration", "codex", "--apply")
         self.assertEqual(applied["status"], "installed")
         receipt = json.loads((self.root / ".concorde/install.json").read_text())
-        self.assertEqual(receipt["concorde_version"], "1.0.0")
+        self.assertEqual(receipt["concorde_version"], "1.1.0")
         self.assertEqual(receipt["architecture_profile"], 7)
         self.assertEqual(receipt["workspace_protocol"], 12)
         before = self.tree_digest()

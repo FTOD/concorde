@@ -38,7 +38,7 @@ Validate `concorde.json`, preview/apply its package to a target, or build `conco
 - **Obligations**: Reject missing/extra manifest inventory and symlinks; include native installer; normalize archive metadata; bind URL/digest/version.
 - **Failures**: Invalid identity/inventory/member/path/version/digest/rebuild prevents installation or release.
 - **Compatibility**: Schema 1 supports Architecture Profile 7, Workspace Protocol 12, Codex, and Claude.
-- **Example**: `concorde-1.0.0.zip` contains `concorde/concorde.json` and its included installer.
+- **Example**: `concorde-1.1.0.zip` contains `concorde/concorde.json` and its included installer.
 - **Implementing entities**: `entity.distribution.manifest`, `entity.distribution.archive-builder`, `entity.distribution.archive`, `entity.distribution.release-pointer`.
 
 ### `contract.distribution.native-installation` — Preview/apply ownership lifecycle

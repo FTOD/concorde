@@ -41,10 +41,10 @@ implementation, executable evidence, and temporary work state have explicit, non
 ## Boundary
 
 Concorde owns its root command and template sources, deterministic runtime, project-control model,
-agent-surface projection, direct installer, standalone release, and optional documentation projections.
-It does not own a coding-agent runtime, product source code, Archify rendering, Docusaurus internals,
-or Understand Anything graph semantics. Retained `speckit-*` command IDs are compatibility names;
-they do not identify a host or dependency.
+agent-surface projection, direct installer, standalone release, evidence-qualified alignment
+exploration, and optional documentation projections. It does not own a coding-agent runtime, product
+source code, Archify rendering, Docusaurus internals, or Understand Anything graph semantics.
+Retained `speckit-*` command IDs are compatibility names; they do not identify a host or dependency.
 
 ## Entities
 
@@ -59,9 +59,10 @@ they do not identify a host or dependency.
 | `entity.concorde.commands` | directory | All canonical lifecycle command instructions, including compatibility-named `speckit.*` commands. | `commands` |
 | `entity.concorde.templates` | directory | Complete feature, plan, task, checklist, constitution, and reflection Markdown format references. | `templates` |
 | `entity.concorde.agent-assets` | directory | Canonical reflection-triage roles and integration templates. | `agent-assets` |
-| `entity.concorde.runtime` | package | Standard-library implementation of the Concorde source and workflow contracts. | `src/concorde` |
-| `entity.concorde.cli` | program | Structured command dispatcher for initialization, context, validation, delivery, and agent assets. | `src/concorde/cli.py#create_parser` |
+| `entity.concorde.runtime` | package | Standard-library implementation of the Concorde source, workflow, and read-only alignment contracts. | `src/concorde` |
+| `entity.concorde.cli` | program | Structured command dispatcher for initialization, context, exploration, validation, delivery, and agent assets. | `src/concorde/cli.py#create_parser` |
 | `entity.concorde.workspace-resolver` | program | Resolves one direct feature, its module/ancestry/relations, and stable-ID control paths. | `src/concorde/feature_workspace.py#resolve_phase_paths` |
+| `entity.concorde.alignment-explorer` | program | Validates a pinned optional implementation graph and explicit alignment claims, then returns a bounded evidence-qualified read-only query result. | `src/concorde/alignment.py#explore_alignment` |
 | `entity.concorde.installer` | program | Previews and applies one digest-owned native package to Codex or Claude projects. | `scripts/install-concorde.py` |
 | `entity.concorde.agent-surface-sync` | program | Verifies or refreshes this checkout's generated integration surfaces from root authorities. | `scripts/development/sync-agent-surfaces.py` |
 | `entity.concorde.release-tooling` | program | Builds, verifies, and publishes one deterministic standalone archive and pointer. | `scripts/release` |
@@ -89,7 +90,9 @@ they do not identify a host or dependency.
 | `module.concorde.auto-docs` | `calls` | `entity.concorde.archify` | Renders declared architecture views before site publication. |
 | `entity.concorde.workspace-resolver` | `reads_from` | `entity.concorde.specification` | Selects exactly one direct feature and its providing structural context. |
 | `entity.concorde.workspace-resolver` | `reads_from` | `entity.concorde.control-state` | Resolves native selection, stable-ID attempt state, and the reflection authority. |
-| `entity.concorde.understand-anything` | `provides` | `entity.concorde.runtime` | Supplies optional graph evidence without replacing Concorde identity. |
+| `entity.concorde.cli` | `calls` | `entity.concorde.alignment-explorer` | Dispatches the native read-only `explore` operation and its filters. |
+| `entity.concorde.alignment-explorer` | `reads_from` | `entity.concorde.specification` | Projects validated Profile 7 modules, entities, features, interfaces, relationships, and interactions. |
+| `entity.concorde.understand-anything` | `provides` | `entity.concorde.alignment-explorer` | Supplies optional pinned graph evidence without replacing Concorde identity. |
 
 ## Interactions
 
@@ -98,6 +101,7 @@ they do not identify a host or dependency.
 | `interaction.concorde.feature-work` | Maintainer invokes a projected lifecycle command. | Resolve one Protocol 12 workspace; read the direct feature/module/code evidence; perform the phase within its authority; run deterministic checks; record attempt evidence. | Feature intent, architecture, implementation, tests, and temporal state remain reconciled at the phase boundary. | `contract.concorde.workflow` |
 | `interaction.concorde.install` | Maintainer previews and accepts a native installation. | Read `concorde.json`; calculate owned create/adopt/update/remove actions; reject collisions and symlinks; atomically write one framework projection, selected agent surfaces, defaults, and receipt. | Idempotent standalone installation or an unchanged target with exact conflict diagnostics. | `contract.concorde.installation` |
 | `interaction.concorde.publish` | Maintainer or CI requests project documentation. | Load validated maintained sources; render declared diagrams; create Manifest 10; build a candidate; atomically promote it. | Searchable read model with source provenance. | `contract.auto-docs.architecture-site` |
+| `interaction.concorde.explore` | Maintainer invokes the native explorer for a stable subject. | Validate Profile 7; project the bounded subject graph; strictly load an optional pinned UA graph and explicit revision-bound sidecar; reduce absent, stale, or invalid evidence to unknown; apply text/status filters; serialize one canonical result. | Read-only architecture and implementation subjects remain distinct while explicit alignments expose provenance, freshness, and bounded status. | `contract.concorde.alignment-explorer` |
 | `interaction.concorde.deliver` | Maintainer invokes delivery for a complete selected attempt. | Revalidate eligibility, digest, paths, tasks, checklists, and evidence; remove exactly that stable-ID attempt. | Durable sources remain authoritative with no active attempt or implementation narrative. | `contract.concorde.workflow` |
 
 ## Modules
@@ -141,4 +145,6 @@ they do not identify a host or dependency.
 - `speckit-*` IDs remain temporarily for user muscle memory and are not architectural dependencies.
 - One manifest, one archive, one installation receipt, and one version replace independently composed packages.
 - Stable architecture identity remains separate from mutable file/symbol locators.
+- Understand Anything node/edge types remain adapter metadata; only explicit revision-current sidecar
+  claims can qualify an alignment, and names/similarity never verify one.
 - Code and tests remain implementation/evidence; plans and task state remain temporal.

@@ -1,5 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://concorde.invalid/interfaces/understand-anything-knowledge-graph-pinned.schema.json",
   "title": "Understand Anything Knowledge Graph Compatibility Profile",
   "type": "object",
   "required": ["version", "project", "nodes", "edges", "layers", "tour"],
@@ -23,7 +24,7 @@
         "frameworks": {"type": "array", "items": {"type": "string"}},
         "description": {"type": "string"},
         "analyzedAt": {"type": "string"},
-        "gitCommitHash": {"type": "string"}
+        "gitCommitHash": {"type": "string", "minLength": 1}
       },
       "additionalProperties": true
     },
@@ -31,7 +32,7 @@
       "type": "object",
       "required": ["id", "type", "name", "summary", "tags", "complexity"],
       "properties": {
-        "id": {"type": "string"},
+        "id": {"type": "string", "minLength": 1},
         "type": {
           "enum": [
             "file", "function", "class", "module", "concept",
@@ -46,49 +47,67 @@
         "lineRange": {
           "type": "array",
           "prefixItems": [{"type": "number"}, {"type": "number"}],
+          "items": false,
           "minItems": 2,
           "maxItems": 2
         },
         "summary": {"type": "string"},
         "tags": {"type": "array", "items": {"type": "string"}},
         "complexity": {"enum": ["simple", "moderate", "complex"]},
-        "concordeMeta": {"$ref": "#/$defs/concordeMeta"}
+        "languageNotes": {"type": "string"},
+        "domainMeta": {"$ref": "#/$defs/domainMeta"},
+        "knowledgeMeta": {"$ref": "#/$defs/knowledgeMeta"},
+        "figmaMeta": {"$ref": "#/$defs/figmaMeta"}
       },
       "additionalProperties": true
     },
-    "concordeMeta": {
+    "domainMeta": {
       "type": "object",
-      "required": ["kind", "sourcePath", "authorityClass", "lifecycle", "ontologySource", "ontologyVersion"],
       "properties": {
-        "kind": {
-          "enum": [
-            "module", "feature", "subfeature", "contract", "scenario", "command", "requirement", "artifact",
-            "attempt", "accepted-realization", "implementation-entity", "evidence", "finding", "projection"
-          ]
-        },
-        "stableId": {"type": "string"},
-        "sourcePath": {"type": "string"},
-        "authorityClass": {
-          "enum": [
-            "workflow-control", "installed-tooling", "maintained-architecture", "module-design-reference", "project-ontology", "feature-orientation",
-            "durable-feature-intent", "feature-implementation", "temporary-attempt",
-            "project-reflection-log", "executable-reality", "generated-read-model"
-          ]
-        },
-        "lifecycle": {"enum": ["control", "installed", "durable", "durable-summary", "durable-accepted", "temporal", "durable-process-memory", "executable", "generated"]},
-        "moduleId": {"type": "string"},
-        "featureId": {"type": "string"},
-        "ontologySource": {"const": "docs/ontology.md"},
-        "ontologyVersion": {"type": "string"}
+        "entities": {"type": "array", "items": {"type": "string"}},
+        "businessRules": {"type": "array", "items": {"type": "string"}},
+        "crossDomainInteractions": {"type": "array", "items": {"type": "string"}},
+        "entryPoint": {"type": "string"},
+        "entryType": {"enum": ["http", "cli", "event", "cron", "manual"]}
       },
-      "additionalProperties": false
+      "additionalProperties": true
+    },
+    "knowledgeMeta": {
+      "type": "object",
+      "properties": {
+        "wikilinks": {"type": "array", "items": {"type": "string"}},
+        "backlinks": {"type": "array", "items": {"type": "string"}},
+        "category": {"type": "string"},
+        "content": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "figmaMeta": {
+      "type": "object",
+      "properties": {
+        "fileKey": {"type": "string"},
+        "nodeId": {"type": "string"},
+        "figmaType": {"type": "string"},
+        "thumbnailUrl": {"type": "string"},
+        "dimensions": {
+          "type": "object",
+          "required": ["width", "height"],
+          "properties": {"width": {"type": "number"}, "height": {"type": "number"}},
+          "additionalProperties": true
+        },
+        "tokenKind": {"enum": ["color", "type", "spacing", "effect", "grid"]},
+        "tokenValue": {"type": "string"},
+        "prototypeTargets": {"type": "array", "items": {"type": "string"}},
+        "componentKey": {"type": "string"}
+      },
+      "additionalProperties": true
     },
     "edge": {
       "type": "object",
       "required": ["source", "target", "type", "direction", "weight"],
       "properties": {
-        "source": {"type": "string"},
-        "target": {"type": "string"},
+        "source": {"type": "string", "minLength": 1},
+        "target": {"type": "string", "minLength": 1},
         "type": {
           "enum": [
             "imports", "exports", "contains", "inherits", "implements",
@@ -105,27 +124,28 @@
         "description": {"type": "string"},
         "weight": {"type": "number", "minimum": 0, "maximum": 1}
       },
-      "additionalProperties": false
+      "additionalProperties": true
     },
     "layer": {
       "type": "object",
       "required": ["id", "name", "description", "nodeIds"],
       "properties": {
-        "id": {"type": "string"},
+        "id": {"type": "string", "minLength": 1},
         "name": {"type": "string"},
         "description": {"type": "string"},
         "nodeIds": {"type": "array", "items": {"type": "string"}}
       },
-      "additionalProperties": false
+      "additionalProperties": true
     },
     "tourStep": {
       "type": "object",
       "required": ["order", "title", "description", "nodeIds"],
       "properties": {
-        "order": {"type": "integer"},
+        "order": {"type": "number"},
         "title": {"type": "string"},
         "description": {"type": "string"},
-        "nodeIds": {"type": "array", "items": {"type": "string"}}
+        "nodeIds": {"type": "array", "items": {"type": "string"}},
+        "languageLesson": {"type": "string"}
       },
       "additionalProperties": true
     }
