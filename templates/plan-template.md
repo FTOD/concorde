@@ -3,7 +3,8 @@
 **Branch**: `[branch-or-worktree]` | **Date**: [DATE] | **Feature**: [direct feature-file link]
 
 **Input**: The selected direct feature file, the providing module's `architecture.md`, current source code,
-executable tests/checks, Constitution, bounded related-feature summaries, and reflection log.
+executable tests/checks, Constitution, bounded related-feature summaries, exact required-interface
+owner feature specifications when needed, and reflection log.
 
 ## Summary
 
@@ -41,7 +42,9 @@ executable tests/checks, Constitution, bounded related-feature summaries, and re
 
 Plan from four authorities: selected direct feature file, providing module architecture, current source
 code, and executable evidence. The workspace resolver supplies bounded module ancestry and related-
-feature summaries; open another feature body only when the requested change depends on its interface.
+feature summaries. A trusted context resolver may open another feature body only when it uniquely
+owns an `interfaces.required` ID and must record that ID as the reason; dependency architecture,
+source, tests, descendants, and attempts remain excluded.
 
 1. Resolve every architecture entity named by the feature's interfaces and Architecture Zoom.
 2. Identify every affected entity, directed relationship, interaction, embedded interface, source
@@ -56,6 +59,10 @@ feature summaries; open another feature body only when the requested change depe
    Require one normalized unique output below `generated/` and `meta.legend.mode: hidden`.
 7. Record conflicts, workarounds, assumptions, and provisional prototype choices in the returned
    `.concorde/reflections/log.md` authority.
+8. When the feature changes an Operation, plan explicit public/internal exposure, leaf-owned effects,
+   exact ordered capability/binding parity, nested-cycle rejection, concrete path-policy resolution,
+   native/outer enforcement, receipt evidence, and Codex/Claude effective-set parity. LangGraph and
+   prompt instructions never count as filesystem enforcement.
 
 ## Source Structure
 
@@ -108,6 +115,7 @@ For each material unknown, record:
 | Risk | Control | Verification |
 |---|---|---|
 | [risk] | [bounded plan/task/rollback control] | [exact command/check] |
+| Ambient or unioned agent authority | [one narrowing policy/config/receipt per leaf occurrence] | [negative no-launch and native-parity checks] |
 
 ## Post-Design Constitution Re-check
 

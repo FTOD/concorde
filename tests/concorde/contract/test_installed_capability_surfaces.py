@@ -52,6 +52,7 @@ class InstalledCapabilitySurfaceContractTests(unittest.TestCase):
                     for operation in (
                         "concorde-standard-dev-loop",
                         "concorde-reflections-triage",
+                        "concorde-plan",
                     ):
                         projected = root / skill_root / operation / "SKILL.md"
                         framework = root / ".concorde/framework/operations" / operation
@@ -89,9 +90,9 @@ class InstalledCapabilitySurfaceContractTests(unittest.TestCase):
             plan = (root / ".agents/skills/concorde-plan/SKILL.md").read_text()
             specify = (root / ".agents/skills/concorde-specify/SKILL.md").read_text()
             self.assertIn(
-                "python3 .concorde/framework/scripts/workspace.py --phase plan", plan
+                "python3 .concorde/framework/operations/concorde-plan/operation.py", plan
             )
-            self.assertIn(".concorde/framework/templates/plan-template.md", plan)
+            self.assertIn('kind: "operation"', plan)
             self.assertIn(".concorde/framework/templates/feature-template.md", specify)
             self.assertIn("Protocol 13", plan)
             self.assertNotIn(str(REPOSITORY_ROOT), plan + specify)
@@ -141,15 +142,15 @@ class InstalledCapabilitySurfaceContractTests(unittest.TestCase):
             payload = json.loads(result.stdout)
             self.assertEqual(payload["operation"], "concorde-standard-dev-loop")
             self.assertEqual(
-                [stage["stage"] for stage in payload["stages"]],
-                ["specify", "plan", "tasks", "deliver"],
+                [item["stage"] for item in payload["capabilities"]],
+                ["specify", "plan", "tasks", "tasks", "deliver", "deliver"],
             )
 
     def test_receipt_roles_cover_framework_skills_operations_and_agents(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.install(temporary, "codex")
             receipt = json.loads((root / ".concorde/install.json").read_text())
-            self.assertEqual(receipt["concorde_version"], "2.0.0")
+            self.assertEqual(receipt["concorde_version"], "2.1.0")
             self.assertEqual(receipt["integration"], "codex")
             roles = {item["role"] for item in receipt["outputs"]}
             self.assertEqual(roles, {"framework", "skill", "operation", "agent"})
@@ -168,7 +169,10 @@ class InstalledCapabilitySurfaceContractTests(unittest.TestCase):
             root = self.install(temporary, "codex")
             for relative in (
                 "concorde.json",
-                "skills/concorde-plan/SKILL.md",
+                "skills/concorde-plan-context/SKILL.md",
+                "skills/concorde-plan-author/SKILL.md",
+                "operations/concorde-plan/SKILL.md",
+                "operations/concorde-plan/operation.py",
                 "operations/concorde-standard-dev-loop/SKILL.md",
                 "operations/concorde-standard-dev-loop/operation.py",
                 "templates/feature-template.md",

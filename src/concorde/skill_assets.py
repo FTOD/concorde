@@ -14,10 +14,44 @@ from .frontmatter import FrontMatterError, parse_document
 SKILL_NAME = re.compile(r"^concorde-[a-z0-9]+(?:-[a-z0-9]+)*$")
 INTEGRATIONS = frozenset({"codex", "claude"})
 CapabilityKind = Literal["skill", "operation"]
+CapabilityExposure = Literal["public", "internal"]
+CredentialPosture = Literal["none", "declared"]
+
+PATH_ROLES = frozenset(
+    {
+        "selected-feature",
+        "module-architecture",
+        "module-ancestry",
+        "related-summaries",
+        "required-feature-specs",
+        "owned-implementation",
+        "task-authorized",
+        "attempt",
+        "checklists",
+        "constitution",
+        "reflections",
+        "framework",
+        "templates",
+        "reflection-queue",
+        "reflection-plans",
+        "reflection-worktrees",
+        "generated-projections",
+    }
+)
 
 
 class SkillAssetError(ValueError):
     """A canonical Skill or Operation cannot be loaded or projected safely."""
+
+
+@dataclass(frozen=True)
+class EffectDeclaration:
+    """Integration-neutral authority owned by one canonical leaf Skill."""
+
+    reads: tuple[str, ...] = ()
+    writes: tuple[str, ...] = ()
+    network: bool = False
+    credentials: CredentialPosture = "none"
 
 
 @dataclass(frozen=True)
@@ -29,8 +63,10 @@ class SkillPrompt:
     source_path: str
     kind: CapabilityKind
     body: str
+    exposure: CapabilityExposure = "public"
     operation: str | None = None
-    skills: tuple[str, ...] = ()
+    capabilities: tuple[str, ...] = ()
+    effects: EffectDeclaration | None = None
 
 
 def capability_name(path: Path) -> str:
@@ -103,6 +139,50 @@ def _validate_body(name: str, body: str) -> None:
         raise SkillAssetError(f"capability {name} requires a level-one heading")
 
 
+def _role_list(name: str, effects: Mapping[str, object], field: str) -> tuple[str, ...]:
+    value = effects.get(field)
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise SkillAssetError(f"leaf Skill {name} effects.{field} must be a list of path roles")
+    if len(value) != len(set(value)):
+        raise SkillAssetError(f"leaf Skill {name} effects.{field} contains duplicate roles")
+    unknown = sorted(set(value) - PATH_ROLES)
+    if unknown:
+        raise SkillAssetError(f"leaf Skill {name} effects.{field} has unknown path roles: {unknown}")
+    return tuple(value)
+
+
+def _effects(name: str, value: object) -> EffectDeclaration | None:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping) or set(value) != {
+        "reads",
+        "writes",
+        "network",
+        "credentials",
+    }:
+        raise SkillAssetError(
+            f"leaf Skill {name} effects must declare exactly reads, writes, network, and credentials"
+        )
+    reads = _role_list(name, value, "reads")
+    writes = _role_list(name, value, "writes")
+    if not set(writes).issubset(reads):
+        raise SkillAssetError(f"leaf Skill {name} write roles must also appear in effects.reads")
+    network = value.get("network")
+    credentials = value.get("credentials")
+    if not isinstance(network, bool):
+        raise SkillAssetError(f"leaf Skill {name} effects.network must be true or false")
+    if credentials not in {"none", "declared"}:
+        raise SkillAssetError(
+            f"leaf Skill {name} effects.credentials must be 'none' or 'declared'"
+        )
+    return EffectDeclaration(
+        reads=reads,
+        writes=writes,
+        network=network,
+        credentials=credentials,
+    )
+
+
 def resolve_skill_prompt(
     path: Path,
     kind: CapabilityKind,
@@ -130,10 +210,15 @@ def resolve_skill_prompt(
         raise SkillAssetError(f"capability {name} requires a description")
     _validate_body(name, body)
 
+    exposure = metadata.get("exposure", "public")
+    if exposure not in {"public", "internal"}:
+        raise SkillAssetError(f"capability {name} exposure must be 'public' or 'internal'")
     operation: str | None = None
     composed: tuple[str, ...] = ()
+    effects: EffectDeclaration | None = None
     if kind == "skill":
-        allowed = {"name", "description", "scripts"}
+        allowed = {"name", "description", "exposure", "scripts", "effects"}
+        effects = _effects(name, metadata.get("effects"))
         scripts = metadata.get("scripts", {})
         if not isinstance(scripts, Mapping):
             raise SkillAssetError(f"capability {name} scripts must be a mapping")
@@ -156,18 +241,20 @@ def resolve_skill_prompt(
         if "{OPERATION}" in body:
             raise SkillAssetError(f"leaf Skill {name} may not use {{OPERATION}}")
     else:
-        allowed = {"name", "description", "operation", "skills"}
+        if exposure != "public":
+            raise SkillAssetError(f"Operation {name} exposure must be public")
+        if "effects" in metadata:
+            raise SkillAssetError(f"Operation {name} may not declare leaf effects")
+        allowed = {"name", "description", "exposure", "operation", "capabilities"}
         operation_value = metadata.get("operation")
         if operation_value != "operation.py":
             raise SkillAssetError(f"Operation {name} must declare operation: operation.py")
-        skills_value = metadata.get("skills")
-        if not isinstance(skills_value, list) or len(skills_value) < 2 or not all(
-            isinstance(item, str) and SKILL_NAME.fullmatch(item) for item in skills_value
+        capabilities_value = metadata.get("capabilities")
+        if not isinstance(capabilities_value, list) or len(capabilities_value) < 2 or not all(
+            isinstance(item, str) and SKILL_NAME.fullmatch(item) for item in capabilities_value
         ):
-            raise SkillAssetError(f"Operation {name} must declare at least two valid Skills")
-        if len(skills_value) != len(set(skills_value)):
-            raise SkillAssetError(f"Operation {name} declares duplicate Skills")
-        composed = tuple(skills_value)
+            raise SkillAssetError(f"Operation {name} must declare at least two valid capabilities")
+        composed = tuple(capabilities_value)
         operation = _framework_path(framework_prefix, f"operations/{name}/operation.py")
         body = body.replace("{OPERATION}", "python3 " + operation)
         if "{SCRIPT}" in body:
@@ -187,8 +274,10 @@ def resolve_skill_prompt(
         source_path=_canonical_source(name, kind),
         kind=kind,
         body=body,
+        exposure=exposure,
         operation=operation,
-        skills=composed,
+        capabilities=composed,
+        effects=effects,
     )
 
 
@@ -236,9 +325,11 @@ def load_skill_prompt(
     else:
         raise SkillAssetError(f"capability {name} is not declared by {root / 'concorde.json'}")
     prompt = resolve_skill_prompt(_exact_directory(root, name, kind), kind, framework_prefix)
-    unknown = set(prompt.skills) - set(skills)
+    unknown = set(prompt.capabilities) - (set(skills) | set(operations))
     if unknown:
-        raise SkillAssetError(f"Operation {name} composes unknown Skills: {sorted(unknown)}")
+        raise SkillAssetError(f"Operation {name} composes unknown capabilities: {sorted(unknown)}")
+    if prompt.kind == "operation" and name in prompt.capabilities:
+        raise SkillAssetError(f"Operation {name} may not directly compose itself")
     return prompt
 
 
@@ -257,6 +348,7 @@ def _projection_frontmatter(prompt: SkillPrompt, integration: str) -> str:
             '  author: "concorde"',
             f"  source: {json.dumps(prompt.source_path)}",
             f"  kind: {json.dumps(prompt.kind)}",
+            f"  exposure: {json.dumps(prompt.exposure)}",
         ]
     )
     if prompt.operation is not None:
@@ -280,6 +372,39 @@ def render_skill(
         raise SkillAssetError(f"unsupported capability integration: {integration}")
     prompt = resolve_skill_prompt(path, kind, framework_prefix)
     return _projection_frontmatter(prompt, integration) + prompt.body.lstrip()
+
+
+def public_capabilities(
+    package_root: str | Path,
+    framework_prefix: str = ".concorde/framework",
+) -> tuple[SkillPrompt, ...]:
+    """Load the manifested public capability surface while retaining internal package leaves."""
+
+    root = Path(package_root)
+    manifest = _read_manifest(root)
+    skills = _inventory(manifest, "skill")
+    operations = _inventory(manifest, "operations")
+    if set(skills) & set(operations):
+        raise SkillAssetError("capability names must be globally unique")
+    prompts = tuple(
+        load_skill_prompt(root, name, framework_prefix) for name in (*skills, *operations)
+    )
+    return tuple(prompt for prompt in prompts if prompt.exposure == "public")
+
+
+def capability_projection_roles(
+    package_root: str | Path,
+    integration: str,
+    framework_prefix: str = ".concorde/framework",
+) -> dict[str, CapabilityKind]:
+    """Return exact public target→kind ownership for safe same-path role transitions."""
+
+    if integration not in INTEGRATIONS:
+        raise SkillAssetError(f"unsupported capability integration: {integration}")
+    return {
+        target_path(prompt.name, integration): prompt.kind
+        for prompt in public_capabilities(package_root, framework_prefix)
+    }
 
 
 def render_capabilities(
@@ -314,8 +439,8 @@ def render_capabilities(
             )
 
     rendered: dict[str, str] = {}
-    for name in (*skills, *operations):
-        prompt = load_skill_prompt(root, name, framework_prefix)
+    for prompt in public_capabilities(root, framework_prefix):
+        name = prompt.name
         path = _exact_directory(root, name, prompt.kind)
         target = target_path(name, integration)
         if target in rendered:

@@ -46,9 +46,10 @@ In the Concorde framework repository, root `skills/`, `operations/`, `templates/
 generated checkout projections. Consumer projects receive the same sources beneath
 `.concorde/framework/` plus selected integration outputs and `.concorde/install.json` ownership.
 
-Every leaf directory contains exactly one `SKILL.md`. Every Operation directory contains exactly one
-`operation.py` and its associated `SKILL.md`; the Markdown projects to the agent namespace and the
-Python graph remains in the installed framework.
+Every one of 17 leaf directories contains exactly one public/internal effect-declared `SKILL.md`.
+Every one of three Operation directories contains exactly `operation.py` plus associated `SKILL.md`
+with ordered capabilities/bindings. All leaves/pairs remain in the framework; only 15 public leaves
+plus three Operations project to the agent namespace. The two internal planner leaves never project.
 
 Project-authored `.concorde/config.json`, `feature.json`, `constitution.md`, attempts, and reflection
 log are never package outputs. Installer defaults create reflection config/ignore only when absent.
@@ -58,9 +59,12 @@ log are never package outputs. Installer defaults create reflection config/ignor
 `.concorde/config.json` selects specification root/profile. `.concorde/feature.json` contains only one
 canonical `feature_path`. Neither defines behavior. Workspace Protocol 13 validates/resolves both
 before each path-sensitive phase.
+Operations-owned trusted resolution maps returned paths, providing-module locators, exact task tokens,
+and required-interface owner feature specs into concrete non-symlink roles before an agent launch.
 
 ## Safety
 
 Canonical paths are normalized, project-relative, and symlink-safe. Runtime/installer mutations use
 exact proposal or ownership paths and fail closed on stale digests, escapes, symlinks, ambiguous
-identity, modified owned outputs, or mixed profile state. Delivery removes only one selected attempt.
+identity, modified owned outputs, widened/missing agent policy, unavailable native/outer enforcement,
+or mixed profile state. Delivery removes only one selected attempt.

@@ -23,7 +23,30 @@ FRAMEWORK_ROOT = ".concorde/framework"
 RECEIPT_PATH = ".concorde/install.json"
 INSTALL_SCHEMA = 1
 PACKAGE_ROOTS = ["agent-assets", "operations", "scripts", "skills", "src", "templates"]
-OPERATIONS = ["concorde-standard-dev-loop", "concorde-reflections-triage"]
+SKILLS = [
+    "concorde-analyze",
+    "concorde-checklist",
+    "concorde-clarify",
+    "concorde-ask",
+    "concorde-context",
+    "concorde-deliver",
+    "concorde-init",
+    "concorde-validate",
+    "concorde-constitution",
+    "concorde-converge",
+    "concorde-fast-loop",
+    "concorde-implement",
+    "concorde-plan-context",
+    "concorde-plan-author",
+    "concorde-specify",
+    "concorde-tasks",
+    "concorde-taskstoissues",
+]
+OPERATIONS = [
+    "concorde-standard-dev-loop",
+    "concorde-reflections-triage",
+    "concorde-plan",
+]
 
 
 class InstallError(ValueError):
@@ -97,8 +120,8 @@ def load_package(root: Path) -> Package:
     skills = manifest.get("skills")
     if not isinstance(skills, list) or any(not isinstance(item, str) for item in skills):
         raise InstallError("Concorde manifest Skills must be a string list")
-    if len(skills) != 16 or len(skills) != len(set(skills)):
-        raise InstallError("Concorde manifest must declare exactly sixteen unique leaf Skills")
+    if skills != SKILLS or len(skills) != len(set(skills)):
+        raise InstallError(f"Concorde manifest must declare exactly these 17 leaf Skills: {SKILLS}")
     operations = manifest.get("operations")
     if operations != OPERATIONS:
         raise InstallError(f"Concorde manifest must declare exactly these Operations: {OPERATIONS}")

@@ -6,6 +6,7 @@ related_features:
   - feature.concorde.workflow
   - feature.skills.project-workflow
   - feature.operations.standard-development-loop
+  - feature.operations.permission-bounded-planning
 interfaces:
   provided:
     - interface.concorde.reflections
@@ -19,7 +20,8 @@ evidence_status: partial
 ## Outcome and Scope
 
 Every planning/implementation difficulty or provisional design choice is appended to the one tracked
-project-control reflection log. Maintainers can explicitly investigate and route it; a validated merge
+project-control reflection log. Maintainers can explicitly choose status/investigate/implement/merge;
+the paired Operation launches only the chosen branch under per-leaf policies. A validated merge
 of a small `fast-loop` fix removes its matching open entry automatically, while every other route
 retains explicit maintainer disposition without duplicating identity or silently changing status.
 
@@ -27,7 +29,7 @@ retains explicit maintainer disposition without duplicating identity or silently
 
 | Entity ID | Role |
 |---|---|
-| `module.concorde.operations` | Supplies the paired reflection-triage LangGraph and installed Operation skill. |
+| `module.concorde.operations` | Supplies the conditional permission-bounded triage graph and nested public planner. |
 | `entity.concorde.agent-assets` | Supplies canonical reflection grammar and internal investigator/implementer roles. |
 | `entity.concorde.runtime` | Supplies deterministic queue, allocation, plan-state, and merged-removal Tools. |
 | `entity.concorde.coding-agent` | Records entries/occurrences during work and performs explicitly assigned triage. |
@@ -46,17 +48,19 @@ retains explicit maintainer disposition without duplicating identity or silently
 - **Outputs**: Atomically allocated never-used ID, unique project-log entry/occurrence, validated queue/plan/worktree state, implementer
   commit, merge result, exact removed-entry manifest for eligible small fixes, and maintainer-owned
   status/note for retained entries.
-- **Obligations**: Keep one identity/prose authority; never reuse removed IDs; avoid secrets; isolate
+- **Obligations**: Keep one identity/prose authority; never reuse removed IDs; avoid secrets; make
+  status model-free and investigators read-only; select exactly one route; keep nested planning public/opaque; isolate
   worktrees; preserve status/note for retained entries; remove an entry only when its `small`
   `fast-loop` plan is `merged`, `recorded_under` matches the entry feature, its commit is present in
   current history, and automated merge validation passed; allocate every new ID from a tracked log
   high-water marker rather than the current entries; never treat reflection as behavioral intent.
-- **Failures**: Malformed/unresolved entries, duplicate identity, stale or non-ancestor commit,
+- **Failures**: Malformed/unresolved entries, invalid action/route/policy, unavailable enforcement,
+  duplicate identity, stale or non-ancestor commit,
   ineligible route/effort/status, unsafe worktree/merge, or verification failure preserves the complete
   log and sources.
 - **Compatibility**: Profile 7 control paths and Reflection Log v1 grammar remain stable;
-  reflection-triage/v4 reserves `tool` for queue helpers and exposes the multi-Skill workflow as an
-  exact Python/Markdown Operation pair.
+  reflection-triage/v4 reserves `tool` for queue helpers and exposes the conditional mixed-capability
+  workflow as an exact Python/Markdown Operation pair.
 - **Implementing entities**: `module.concorde.operations`, `entity.concorde.agent-assets`,
   `entity.concorde.runtime`, `entity.concorde.coding-agent`, and `entity.concorde.control-state`.
 
@@ -65,8 +69,8 @@ retains explicit maintainer disposition without duplicating identity or silently
 1. A phase encounters a new difficult choice/problem, allocates the next ID atomically from the
    tracked log high-water marker, appends a valid entry, and continues safe work; a repeated retained
    problem appends an occurrence.
-2. A maintainer invokes triage; investigators produce evidence-backed routes/plans without changing the log's decision state.
-3. Implementers work in isolated owned worktrees; only validated commits merge.
+2. `status` runs no model; `investigate` launches only a zero-write analyzer.
+3. `implement` chooses exactly fast-loop or public nested plan; implementers write only isolated owned worktrees/reflection record and only validated commits merge.
 4. After a `small` `fast-loop` merge, the parent marks the plan `merged` and invokes deterministic
    removal of exactly that matching open entry without a maintainer status/note step.
 5. `specify`, `dismiss`, `blocked`, failed, and non-small work remains in the log until explicit
@@ -78,7 +82,8 @@ retains explicit maintainer disposition without duplicating identity or silently
 - **FR-002**: Entry IDs MUST be unique and never reused, required fields/path references MUST validate,
   and maintainer status/note MUST be preserved for retained entries.
 - **FR-003**: Repeated problems MUST append occurrences rather than duplicate entries.
-- **FR-004**: Triage plans/worktrees/agents MUST be explicit, isolated, ownership-bounded, and validated before merge.
+- **FR-004**: Triage actions/routes, plans/worktrees/agents, and per-leaf policies MUST be explicit,
+  conditional, isolated, ownership-bounded, and validated before merge.
 - **FR-005**: Reflection content MUST NOT be copied into architecture, feature designs, attempts, code, tests, diagrams, or generated releases.
 - **FR-006**: After validation and merge, a plan with `route: fast-loop`, `effort: small`,
   `status: merged`, a recorded commit reachable from current `HEAD`, and a matching open entry MUST be
@@ -92,8 +97,10 @@ retains explicit maintainer disposition without duplicating identity or silently
   than or equal to every current or previously used reflection ID; every new entry MUST obtain its ID
   through one atomic `--allocate-id` Tool action, and removal MUST never lower or reuse that value.
 - **FR-011**: Reflection triage MUST be installed as the associated Markdown skill for its paired
-  LangGraph; its Python graph MUST compose declared leaf Skills and retain internal specialist agents
-  as support rather than user-facing leaf capabilities.
+  LangGraph; its Python graph MUST compose only action/route-reachable direct capabilities, reference
+  public `concorde-plan` rather than private leaves, and retain specialist agents as support.
+- **FR-012**: Status MUST launch no model, investigation MUST have zero writes, route alternatives
+  MUST never both execute, and implementer policies MUST narrow writes to reflection worktrees/log.
 - **FR-010**: Allocation/removal MUST reject a missing, malformed, stale, or inconsistent high-water
   marker before mutation and preserve log bytes on failure.
 

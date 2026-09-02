@@ -24,8 +24,8 @@ Profile 7, Protocol 13, archive URL, and SHA-256.
 ```bash
 python3 scripts/release/verify-release.py \
   --dist dist \
-  --expect-version 2.0.0 \
-  --expect-base-url https://github.com/FTOD/concorde/releases/download/v2.0.0
+  --expect-version 2.1.0 \
+  --expect-base-url https://github.com/FTOD/concorde/releases/download/v2.1.0
 ```
 
 Verification checks:
@@ -41,8 +41,8 @@ Verification checks:
 ## Publish
 
 ```bash
-python3 scripts/release/publish-release.py --dist dist --tag v2.0.0 --dry-run
-python3 scripts/release/publish-release.py --dist dist --tag v2.0.0
+python3 scripts/release/publish-release.py --dist dist --tag v2.1.0 --dry-run
+python3 scripts/release/publish-release.py --dist dist --tag v2.1.0
 ```
 
 Publication verifies first. An absent release becomes a draft, receives the archive/pointer, then is

@@ -27,8 +27,9 @@ class SourceCheckoutAcceptance(unittest.TestCase):
     def test_root_skills_are_the_projection_provenance(self):
         for integration_root in (".agents/skills", ".claude/skills"):
             plan = (REPOSITORY_ROOT / integration_root / "concorde-plan/SKILL.md").read_text()
-            self.assertIn('source: "skills/concorde-plan/SKILL.md"', plan)
-            self.assertIn("python3 scripts/workspace.py --phase plan", plan)
+            self.assertIn('source: "operations/concorde-plan/SKILL.md"', plan)
+            self.assertIn('kind: "operation"', plan)
+            self.assertIn("python3 operations/concorde-plan/operation.py", plan)
             self.assertNotIn(".concorde/framework", plan)
 
 

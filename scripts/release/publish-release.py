@@ -81,7 +81,7 @@ def render_notes(version: str, base_url: str, assets: dict[str, str]) -> str:
         "python3 concorde/scripts/install-concorde.py --checkout concorde --target . --integration codex --apply",
         "```",
         "",
-        "Canonical leaf Skills and paired LangGraph Operations are projected together as `concorde-*` agent skills and implemented entirely by Concorde.",
+        "The package contains 17 canonical leaf Skills (15 public, 2 internal) and three paired LangGraph Operations; supported agents receive exactly 18 public `concorde-*` projections.",
         "",
     ]
     return "\n".join(lines)

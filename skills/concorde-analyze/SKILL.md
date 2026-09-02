@@ -1,6 +1,23 @@
 ---
 name: concorde-analyze
 description: "Analyze one direct feature file, architecture context, and temporal attempt without mutation."
+exposure: public
+effects:
+  reads:
+    - selected-feature
+    - module-architecture
+    - module-ancestry
+    - related-summaries
+    - required-feature-specs
+    - owned-implementation
+    - attempt
+    - constitution
+    - reflections
+    - framework
+  writes:
+    - reflections
+  network: false
+  credentials: none
 scripts:
   py: scripts/workspace.py --phase analyze
 ---

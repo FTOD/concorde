@@ -9,20 +9,23 @@ Concorde uses three structural capability levels:
 
 ```text
 scripts/                              basic runnable Tools
-skills/<name>/SKILL.md                independently invocable leaf Skills
-operations/<name>/operation.py        controlled multi-Skill LangGraph
+skills/<name>/SKILL.md                public/internal effect-declared leaf Skills
+operations/<name>/operation.py        controlled acyclic Skill/Operation LangGraph
 operations/<name>/SKILL.md            paired user-facing Operation skill
 ```
 
-A Script exposes one or more bounded deterministic Tools. A leaf Skill contains one complete prompt
-and may invoke Tools, but it does not orchestrate multiple Skills. An Operation is a LangGraph above
-the leaf layer: it defines stages, shared state, ordering, failure propagation, and other explicit
-controls while resolving complete canonical Skills without copying their bodies.
+A Script exposes bounded deterministic Tools. A leaf Skill contains one complete prompt, declares
+public/internal exposure and exact effects when composed, and may invoke Tools but not orchestrate
+Skills. An Operation is a public LangGraph above the leaf layer: it defines ordered direct Skill or
+public-Operation occurrences, exact narrowing bindings, state/failure controls, and acyclic opaque
+nesting while resolving canonical bodies without copying/flattening them.
 
 Every Operation directory contains exactly one `operation.py` and one associated `SKILL.md`. The
-Markdown is installed into the same agent namespace as leaf Skills; Python stays under the installed
-framework as execution authority. Missing pairs, extra canonical files, unknown Skill dependencies,
-root `commands/`, and maintained root `examples/` graphs are invalid.
+Markdown is installed into the same agent namespace as public leaf Skills; Python and internal leaves
+stay under the framework. Before each leaf launch, trusted code maps Protocol 13 roles to concrete
+paths, compiles Codex/Claude/outer enforcement, and requires a receipt. Missing effects/bindings,
+cycles, internal projection, pairs/extras, unknown capabilities, root `commands/`, and maintained
+root `examples/` graphs are invalid.
 
 ## Module
 

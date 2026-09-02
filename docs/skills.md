@@ -1,9 +1,10 @@
 # Skill and Operation reference
 
-Canonical leaf capabilities live under `skills/<name>/SKILL.md`. Paired LangGraph Operations live
-under `operations/<name>/{operation.py,SKILL.md}` and install their Markdown into the same Codex or
-Claude Skill namespace. All path-sensitive capabilities resolve Feature Workspace Protocol 13 before
-other project-artifact reads.
+Seventeen canonical public/internal leaves live under `skills/<name>/SKILL.md`; composed leaves own
+effects. Three paired public LangGraph Operations live under
+`operations/<name>/{operation.py,SKILL.md}` and install their Markdown into the same Codex/Claude
+namespace. Only 15 leaves project, for 18 public capabilities per integration. Trusted path-sensitive
+launches resolve Protocol 13 into enforced concrete roles before other artifact reads.
 
 ## Governance and framework leaf Skills
 
@@ -49,11 +50,6 @@ Resolves up to three high-impact ambiguities inside the selected feature and its
 ### `concorde-checklist [focus]`
 
 Creates a reviewer-owned requirements-quality checklist under the matching attempt.
-
-### `concorde-plan [constraints]`
-
-Writes a technical plan/research/useful artifacts only under the selected attempt. It reads bounded
-architecture plus current code/tests and leaves durable sources unchanged.
 
 ### `concorde-tasks [constraints]`
 
@@ -120,10 +116,17 @@ python3 .concorde/framework/scripts/concorde.py --project-root . explore feature
 
 ## Operation skills
 
-- `concorde-standard-dev-loop` invokes the paired standard four-stage LangGraph.
-- `concorde-reflections-triage` invokes the paired reflection investigation/control graph.
+- `concorde-plan [constraints]` invokes read-only internal context then temporal author. Only unique
+  required-interface owner feature bodies cross a module boundary; provider internals/other attempts
+  are denied and author writes only selected attempt/reflections.
+- `concorde-standard-dev-loop` invokes the paired four-stage graph and sees planning only as the
+  opaque public nested Operation.
+- `concorde-reflections-triage` invokes only the explicitly selected conditional branch; status has no
+  model, investigators are read-only, and implementers are worktree-scoped.
 
-Each projected Operation skill carries source and framework-local Python-entrypoint provenance.
+Each projected Operation carries source/kind/framework-entrypoint provenance. Internal
+`concorde-plan-context` and `concorde-plan-author` remain package-only. Every direct leaf occurrence
+receives one narrowing normalized/native policy and enforcement receipt; LangGraph does not enforce files.
 
 ## Native paths and templates
 

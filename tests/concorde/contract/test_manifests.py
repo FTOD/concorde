@@ -18,7 +18,7 @@ class ManifestContractTests(unittest.TestCase):
     def test_one_manifest_declares_native_identity_profile_and_install_layout(self):
         manifest = self.manifest
         self.assertEqual(manifest["schema_version"], 2)
-        self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "2.0.0"))
+        self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "2.1.0"))
         self.assertEqual((manifest["architecture_profile"], manifest["workspace_protocol"]), (7, 13))
         self.assertEqual(manifest["integrations"], ["claude", "codex"])
         self.assertEqual(manifest["install"], {
@@ -42,7 +42,7 @@ class ManifestContractTests(unittest.TestCase):
         self.assertEqual(sorted(self.manifest["skills"]), skills)
         self.assertEqual(sorted(self.manifest["operations"]), operations)
         self.assertEqual(sorted(self.manifest["templates"]), templates)
-        self.assertEqual((len(skills), len(operations), len(templates)), (16, 2, 6))
+        self.assertEqual((len(skills), len(operations), len(templates)), (17, 3, 6))
 
     def test_complete_feature_template_contains_profile_and_product_sections(self):
         body = (REPOSITORY_ROOT / "templates/feature-template.md").read_text()

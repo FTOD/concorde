@@ -6,6 +6,7 @@ metadata:
   author: "concorde"
   source: "skills/concorde-init/SKILL.md"
   kind: "skill"
+  exposure: "public"
 ---
 # Initialize Concorde
 

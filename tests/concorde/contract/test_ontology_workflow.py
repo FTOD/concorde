@@ -26,7 +26,7 @@ class OntologyWorkflowContractTests(unittest.TestCase):
         sources = {
             "templates/feature-template.md": ("architecture zoom", "interfaces", "source code"),
             "skills/concorde-specify/SKILL.md": ("architecture.md", "feature_path", "interfaces"),
-            "skills/concorde-plan/SKILL.md": ("module architecture", "feature file", "source code"),
+            "skills/concorde-plan-author/SKILL.md": ("module architecture", "feature file", "source code"),
             "skills/concorde-implement/SKILL.md": ("module architecture", "feature file", "source code"),
             "skills/concorde-fast-loop/SKILL.md": ("providing architecture", "selected feature file", "code/tests"),
             "skills/concorde-init/SKILL.md": ("architecture.md", "typed entity vocabulary", "directed relationship vocabulary"),

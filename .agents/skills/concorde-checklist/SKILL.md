@@ -6,6 +6,7 @@ metadata:
   author: "concorde"
   source: "skills/concorde-checklist/SKILL.md"
   kind: "skill"
+  exposure: "public"
 ---
 # Checklist Purpose: Unit Tests for English
 

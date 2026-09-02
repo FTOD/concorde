@@ -5,8 +5,9 @@ coding agents. It provides one structural entry point per module, one complete s
 feature, bounded implementation context, deterministic validation, and cleanup-only delivery.
 
 Concorde no longer depends on or composes with Spec Kit. Its public capability namespace is
-`concorde-*`: leaf Skills perform one bounded phase, while paired Operation skills invoke LangGraphs
-that compose several leaves with explicit controls. Skill/template Markdown retains useful formatting
+`concorde-*`: public leaf Skills perform one bounded phase, internal leaves support Operations, and
+paired Operation skills invoke acyclic LangGraphs over ordered Skills/Operations with per-leaf
+Codex/Claude enforcement. Skill/template Markdown retains useful formatting
 ideas from Spec Kit as acknowledged reference lineage; all behavior and ownership are Concorde-native.
 
 ## The model
@@ -43,18 +44,17 @@ Read [Ontology](docs/ontology.md), [Specification model](docs/specification-mode
 
 ## Leaf Skills and Operations
 
-Canonical leaves live at `skills/<name>/SKILL.md`. Each Operation lives at
+Seventeen canonical leaves (15 public, two internal) live at `skills/<name>/SKILL.md`. Each of three Operations lives at
 `operations/<name>/{operation.py,SKILL.md}` and its Markdown is installed into the same agent Skill
 namespace while Python remains in the framework.
 
-| Leaf Skill | Outcome |
+| Public leaf Skill | Outcome |
 |---|---|
 | `$concorde-constitution` | Create or amend `.concorde/constitution.md`. |
 | `$concorde-init` | Propose and explicitly apply a Profile 7 root module/reflection log. |
 | `$concorde-specify` | Create or revise one direct level-local feature and its requirements checklist. |
 | `$concorde-clarify` | Resolve important ambiguity in that feature/interfaces. |
 | `$concorde-checklist` | Create a reviewer-owned requirements-quality checklist. |
-| `$concorde-plan` | Plan from feature + module architecture + current code/tests into one attempt. |
 | `$concorde-tasks` | Generate dependency-ordered, traceable, test-first tasks. |
 | `$concorde-analyze` | Run a read-only consistency/coverage audit. |
 | `$concorde-implement` | Execute tasks across architecture/feature/code/tests/projections with evidence. |
@@ -71,14 +71,23 @@ bounded ancestry/related summaries, stable-ID attempt/reflection state, and dete
 discovery hints. Delivery Proposal 9 binds current digests and one exact removal path. Any stale,
 incomplete, invalid, or unsafe delivery is non-mutating.
 
-The paired `concorde-standard-dev-loop` and `concorde-reflections-triage` Operations sit above these
-leaves. See [Workflow](docs/concorde-workflow.md) and [Skill reference](docs/skills.md).
+| Public Operation | Outcome |
+|---|---|
+| `$concorde-plan` | Resolve read-only context, then author one temporal plan behind published feature interfaces. |
+| `$concorde-standard-dev-loop` | Run the four-stage lifecycle while nesting public planning. |
+| `$concorde-reflections-triage` | Run only the explicitly selected status/investigate/route/validation branch. |
+
+The framework packages internal `concorde-plan-context` and `concorde-plan-author`, but neither is
+projected as a user capability. Both agents receive the same 18 public `concorde-*` skills. See
+[Workflow](docs/concorde-workflow.md) and [Skill reference](docs/skills.md).
 
 ## Compose prompts with LangGraph
 
-Canonical `skills/*/SKILL.md` files are complete leaf prompts. Operations resolve those whole Skills
-into ordered [LangGraph](https://github.com/langchain-ai/langgraph) stages without copying prompt text
-or making LangGraph responsible for Concorde permissions.
+Canonical `skills/*/SKILL.md` files are complete leaves with public/internal exposure and
+machine-readable effects when composed. Operations resolve whole direct Skills or public Operations
+into ordered [LangGraph](https://github.com/langchain-ai/langgraph) stages without copying/flattening
+prompts. LangGraph is control plane only: trusted code resolves concrete paths, narrows leaf effects,
+renders a Codex permission profile or Claude restricted strict sandbox, and requires a receipt.
 
 The tested standard graph is:
 
@@ -86,13 +95,13 @@ The tested standard graph is:
 START → specify → plan → tasks → deliver → END
 ```
 
-Its prompt bundles preserve the full lifecycle: `specify`; `plan`; `tasks` + `implement`; then
+Its direct bundles preserve the full lifecycle: `specify`; public nested `plan`; `tasks` + `implement`; then
 `validate` + cleanup-only `deliver`. Run the deterministic, credential-free example from a source
 checkout:
 
 ```bash
 uv sync
-uv run python operations/concorde-standard-dev-loop/operation.py "Add audit logging"
+uv run python operations/concorde-standard-dev-loop/operation.py "Add audit logging" --describe-policy
 ```
 
 The base Concorde installer remains Python-only and offline; LangGraph is an optional workflow-host
@@ -152,6 +161,8 @@ Use `--integration claude` for Claude. The installer validates [`concorde.json`]
 copies one package beneath `.concorde/framework/`, renders the selected integration, seeds only
 missing reflection defaults, and writes `.concorde/install.json` last. It updates/removes only files
 whose observed bytes still match the prior receipt; unowned or user-modified collisions fail closed.
+Concorde 2.1.0 installs 17 leaves and three complete Operation pairs in the framework while projecting
+only 15 public leaves plus the three Operations.
 
 See [Quick start](docs/quick-start.md).
 
@@ -198,10 +209,10 @@ safe members, SHA-256, an isolated native installation, and byte-equivalent rebu
 
 | Path | Responsibility |
 |---|---|
-| `skills/` | Canonical leaf capabilities, one `SKILL.md` per directory. |
-| `operations/` | Paired LangGraph `operation.py` and user-facing `SKILL.md` capabilities. |
+| `skills/` | Canonical public/internal leaf capabilities, one `SKILL.md` with exposure/effects per directory. |
+| `operations/` | Paired public LangGraph `operation.py`/`SKILL.md` with ordered capabilities/bindings. |
 | `templates/` | Complete feature/plan/task/checklist/constitution/reflection format references. |
-| `src/concorde/` | Deterministic Tool runtime, capability validation, and Skill/agent projectors. |
+| `src/concorde/` | Deterministic Tools plus Operations-owned graph, policy, path-context, and process-handoff programs. |
 | `agent-assets/` | Canonical reflection-triage roles and integration templates. |
 | `scripts/` | Portable runtime adapters, installer, checkout sync, and release programs. |
 | `concorde.json` | Single package/version/profile/protocol/inventory authority. |

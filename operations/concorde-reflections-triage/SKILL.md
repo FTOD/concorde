@@ -1,8 +1,9 @@
 ---
 name: concorde-reflections-triage
 description: Investigate and route project reflections through a controlled LangGraph Operation.
+exposure: public
 operation: operation.py
-skills:
+capabilities:
   - concorde-analyze
   - concorde-fast-loop
   - concorde-plan
@@ -15,8 +16,9 @@ skills:
 
 Protocol: `reflection-triage/v4`.
 
-Use the paired graph at `{OPERATION}` as the stage topology authority. The graph composes leaf Skills;
-specialized investigator and implementer agents remain internal execution support.
+Use the paired graph at `{OPERATION}` as the stage topology authority. The graph composes direct leaf
+Skills and the public nested planner; specialized investigator and implementer agents remain internal
+execution support.
 
 Shared configuration is `.concorde/reflections/config.json`; plans are under
 `.concorde/reflections/plans/`; worktrees are under `.concorde/reflections/worktrees/`. Use the
@@ -32,9 +34,20 @@ checkout use `scripts/reflections_queue.py`. Never edit reflection `Status` or `
 - `merge`: require clean tracked state, merge one branch at a time, validate, and remove only a
   matching merged small fast-loop entry through the helper.
 
-Before work, run `{OPERATION} "$ARGUMENTS" --framework-prefix {FRAMEWORK}` and require its
-ordered investigate, route, implement, and validate stages. Execute each leaf Skill and internal role
-within the existing authority boundaries. A failed or blocked stage prevents every downstream stage.
+Before work, run `{OPERATION} "$ARGUMENTS" --framework-prefix {FRAMEWORK} --describe-policy` and
+require only the capabilities reachable for the explicit action/route:
+
+- `status`: no model capability; run/report the queue Tool and stop;
+- `investigate`: `concorde-analyze` only, under a zero-write policy;
+- `implement --route fast-loop`: analyze, isolated-worktree fast-loop, then validate;
+- `implement --route plan`: analyze, public nested `concorde-plan`, tasks, isolated-worktree
+  implement, then validate; and
+- `merge`: validate the parent state before the deterministic merge/removal Tool actions.
+
+Never invoke both route alternatives. Never reference the planner's private leaves from this outer
+graph. Execute each direct leaf/internal role within its own immutable authority; investigators are
+read-only and implementers can write only beneath the declared reflection worktree plus the central
+reflection record. A failed or blocked capability prevents every downstream node.
 
 The parent remains the only plan-file writer. Never run parallel implementers in the main checkout,
 never change maintainer disposition, and never maintain a second integration-specific queue.

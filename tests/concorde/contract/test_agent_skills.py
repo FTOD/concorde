@@ -12,7 +12,6 @@ WORKSPACE_SKILLS = (
     "concorde-converge",
     "concorde-fast-loop",
     "concorde-implement",
-    "concorde-plan",
     "concorde-specify",
     "concorde-tasks",
     "concorde-taskstoissues",
@@ -79,7 +78,7 @@ class AgentSkillContractTests(unittest.TestCase):
 
     def test_source_only_diagram_checks_survive_as_module_architecture_checks(self):
         specify = " ".join(read(SKILL_ROOT, "concorde-specify").split())
-        plan = " ".join(read(SKILL_ROOT, "concorde-plan").split())
+        plan = " ".join(read(SKILL_ROOT, "concorde-plan-author").split())
         for body in (specify, plan):
             self.assertIn("normalized project-relative `.html`", body)
             self.assertIn("`meta.output`", body)
@@ -89,7 +88,7 @@ class AgentSkillContractTests(unittest.TestCase):
         self.assertIn("Invalid declarations must return to architecture authority", plan)
 
     def test_plan_and_tasks_cover_complete_authority_delta_without_durable_planning_writes(self):
-        plan = " ".join(read(SKILL_ROOT, "concorde-plan").split())
+        plan = " ".join(read(SKILL_ROOT, "concorde-plan-author").split())
         tasks = " ".join(read(SKILL_ROOT, "concorde-tasks").split())
         self.assertIn("current source code and executable tests", plan)
         self.assertIn("must leave durable sources byte-identical", plan)
@@ -129,7 +128,7 @@ class AgentSkillContractTests(unittest.TestCase):
 
     def test_every_entry_writing_phase_allocates_ids_atomically(self):
         for name in (
-            "concorde-plan", "concorde-tasks", "concorde-implement",
+            "concorde-plan-author", "concorde-tasks", "concorde-implement",
             "concorde-analyze", "concorde-converge", "concorde-fast-loop",
         ):
             with self.subTest(name=name):

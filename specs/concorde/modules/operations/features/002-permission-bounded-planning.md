@@ -15,7 +15,7 @@ interfaces:
     - contract.skills.workflow-guidance
     - contract.skills.agent-surface
     - contract.workspace.feature-workspace
-evidence_status: unknown
+evidence_status: verified
 ---
 
 # Feature Design: Permission-Bounded Planning Operations
@@ -68,10 +68,12 @@ interfaces. It then launches the plan author under a policy that can read only t
 write only the selected attempt and the centralized reflection log, and cannot mutate durable
 architecture, feature, source, or test files.
 
-The same host can invoke the standard development or reflection-triage Operation. Before each leaf
-Skill invocation, the host receives one immutable launch specification containing the chosen
-integration and concrete filesystem policy. It must prove that Codex, Claude, or an outer sandbox
-can enforce the policy before starting the agent.
+The same host can invoke the standard development or reflection-triage Operation. Before each direct
+leaf Skill invocation, the runtime supplies one immutable launch specification containing the
+chosen integration, prompt/prior results, normalized policy, native configuration, and digests. The
+injectable process executor version-checks `codex exec` or restricted `claude -p`, scrubs ambient
+secret variables, and returns a matching enforcement receipt; tests inject the runner and never call
+a live model.
 
 ### Edge and failure cases
 
@@ -195,7 +197,9 @@ effective read/write/deny sets before validating their native configuration shap
   provider feature such as `specs/ledger/features/002-record-entry.md`; it receives write access only
   to `.concorde/attempts/feature.payments.charge/**` and `.concorde/reflections/log.md`.
 - **Implementing entities**: `entity.operations.runtime`, `entity.operations.definition`,
-  `entity.operations.state`, and `entity.operations.coding-agent`.
+  `entity.operations.state`, `entity.operations.permission-context`,
+  `entity.operations.policy-compiler`, `entity.operations.process-launcher`, and
+  `entity.operations.coding-agent`.
 
 ### `contract.operations.plan` — Permission-bounded planning LangGraph
 
@@ -221,17 +225,25 @@ effective read/write/deny sets before validating their native configuration shap
   same-name compatibility alias remains.
 - **Example**: `concorde-plan "Add idempotent capture"` runs a read-only context stage, then a plan
   author stage whose prior result names the exact feature-spec and owned implementation boundary.
-- **Implementing entities**: `entity.operations.runtime`, `entity.operations.definition`,
-  `entity.operations.state`, and `entity.operations.coding-agent`.
+- **Implementing entities**: `entity.operations.plan`, `entity.operations.plan-skill`,
+  `entity.operations.runtime`, `entity.operations.permission-context`,
+  `entity.operations.policy-compiler`, `entity.operations.process-launcher`,
+  `entity.operations.definition`, `entity.operations.state`, and
+  `entity.operations.coding-agent`.
 
 ## Architecture Zoom
 
 | Entity ID | Role in this feature | Interaction |
 |---|---|---|
-| `entity.operations.runtime` | Validates policy coverage and supplies immutable launch specifications. | Resolves Operation stages and attaches the normalized/integration-native policy before calling the executor. |
-| `entity.operations.definition` | Carries exact stage, Skill, and permission-policy bindings. | Prevents undeclared or mismatched Skill execution. |
-| `entity.operations.state` | Carries request plus prior bounded stage results. | Lets the planning author consume the context result without reopening unrelated sources. |
-| `entity.operations.coding-agent` | Enforces the selected Codex, Claude, or outer sandbox configuration. | Starts only after policy validation and returns an explicit result/failure. |
+| `entity.operations.runtime` | Validates direct capability/binding coverage and supplies immutable leaf launch specifications. | Preserves nested opacity and passes exact prior capability results. |
+| `entity.operations.definition` | Carries exact stage, occurrence, capability, agent, and narrowing bindings. | Prevents undeclared, duplicated, widened, or order-mismatched execution. |
+| `entity.operations.state` | Carries request plus prior bounded capability results/receipts. | Lets the planning author consume the context result without reopening unrelated sources. |
+| `entity.operations.permission-context` | Resolves Protocol 13 and interface ownership into concrete paths/reasons/denies. | Includes provider feature promises while excluding provider internals and other attempts. |
+| `entity.operations.policy-compiler` | Freezes normalized policy and Codex/Claude/outer configurations. | Proves native effective-set parity and narrowing-only composition. |
+| `entity.operations.process-launcher` | Performs injectable real CLI preflight/execution. | Starts only after digest/enforcement/version checks and returns a structured receipt. |
+| `entity.operations.plan` | Owns the public context → author graph. | Keeps two internal leaves behind one stable public Operation identity. |
+| `entity.operations.plan-skill` | Documents and projects the public planner. | Resolves the installed paired entry point for both integrations. |
+| `entity.operations.coding-agent` | Enforces the selected Codex, Claude, or outer sandbox configuration. | Applies native boundaries while model transport remains outside project network authority. |
 | `entity.operations.standard-dev-loop` | Migrates the existing lifecycle graph to per-Skill launch policies. | Invokes planning through the same bounded contract and retains downstream failure boundaries. |
 | `entity.operations.reflections-triage` | Migrates investigation and implementation agents to explicit policies. | Keeps investigators read-only and implementers scoped to isolated worktrees. |
 
@@ -254,7 +266,8 @@ effective read/write/deny sets before validating their native configuration shap
 - **FR-001**: Every manifested Operation MUST declare one permission binding for every composed leaf
   Skill occurrence, and deterministic validation MUST reject missing, duplicate, unknown, or
   stage/order-mismatched bindings.
-- **FR-002**: The shared Operation runtime MUST give the executor an immutable launch specification
+- **FR-002**: The shared Operation runtime MUST reject graph construction without a leaf launch
+  factory and MUST give the executor a non-null immutable launch specification
   containing the selected integration, normalized read/write/deny paths, network posture, native
   configuration, Skill body, and prior stage results before that Skill executes.
 - **FR-003**: Path resolution MUST use Protocol 13 authorities and real project-relative paths,
@@ -287,7 +300,8 @@ effective read/write/deny sets before validating their native configuration shap
   and its Codex/Claude configuration semantics with no cross-kind name collision or legacy alias.
 - **FR-014**: An Operation MUST be able to compose another manifested Operation by its public
   capability identity without loading or flattening the nested Operation's internal stages/Skills;
-  resolution MUST reject cycles, preserve nested state/failure/policy boundaries, and make the
+  resolution MUST reject cycles and a missing explicit enforcing dispatcher, preserve nested
+  state/failure/policy boundaries, and make the
   standard-development and reflection-routing graphs reference `concorde-plan` rather than its
   private leaves wherever they invoke planning.
 
@@ -322,6 +336,9 @@ effective read/write/deny sets before validating their native configuration shap
   both integrations.
 - **SC-005**: Full unit, contract, integration, installation/projection, deterministic Profile 7,
   and documentation checks pass with no undeclared durable mutation or compatibility capability.
-- **SC-006**: A nested-operation test proves the outer executor sees only the public
-  `concorde-plan` capability and result, while the inner graph alone resolves its context/author
-  leaves and a failure at either level prevents the correct downstream nodes.
+- **SC-006**: Nested-operation tests prove the outer graph sees only public `concorde-plan`, a trusted
+  dispatcher runs inner context/author with independent non-null launches, missing dispatcher/factory
+  invokes no executor, and a failure at either level prevents the correct downstream nodes.
+
+Implementation/package evidence additionally distinguishes 17 packaged leaves (15 public, two
+internal), three public Operations, and the same 18 projected capabilities in Codex and Claude.

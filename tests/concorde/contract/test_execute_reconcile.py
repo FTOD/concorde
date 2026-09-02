@@ -48,7 +48,7 @@ class ExecuteReconcileContractTests(unittest.TestCase):
 
     def test_reflections_capture_workarounds_and_provisional_prototype_choices(self):
         implement = " ".join((SKILLS / "concorde-implement/SKILL.md").read_text(encoding="utf-8").split())
-        plan = " ".join((SKILLS / "concorde-plan/SKILL.md").read_text(encoding="utf-8").split())
+        plan = " ".join((SKILLS / "concorde-plan-author/SKILL.md").read_text(encoding="utf-8").split())
         self.assertIn("every provisional prototype design choice", implement)
         self.assertIn("workaround", implement)
         self.assertIn("provisional or imperfect prototype choices", plan)

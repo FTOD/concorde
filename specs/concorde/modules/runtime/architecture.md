@@ -24,8 +24,8 @@ reflection queue support, capability validation, and cleanup-only delivery.
 Runtime owns the normalized in-memory model, repository loader, Tool envelopes, safe path rules,
 portable entry adapters, and atomic mutations explicitly defined by Concorde. It does not own
 agent-authored architecture/feature prose, product implementation, leaf Skill prompts, LangGraph
-Operation topology, model execution, or generated documentation presentation. Operation is not a
-synonym for a CLI action in this module.
+Operation topology/policy/process handoff (even where physically under `src/concorde`), model
+execution, or generated documentation presentation. Operation is not a synonym for a CLI action in this module.
 
 ## Entities
 
@@ -42,9 +42,9 @@ synonym for a CLI action in this module.
 | `entity.runtime.repository-loader` | program | Discovers Profile 7 module architectures, direct features, diagrams, and control authorities. | `src/concorde/repository.py#ProjectRepository.load` |
 | `entity.runtime.context-builder` | program | Projects one bounded module or feature altitude. | `src/concorde/context.py#bounded_context` |
 | `entity.runtime.alignment-explorer` | program | Validates optional pinned UA graph/sidecar inputs and projects bounded evidence-qualified alignment without mutation. | `src/concorde/alignment.py#explore_alignment` |
-| `entity.runtime.workspace-resolver` | program | Resolves native selection, ancestry, related summaries, attempt/reflection state, and executable roots. | `src/concorde/feature_workspace.py#resolve_phase_paths` |
+| `entity.runtime.workspace-resolver` | program | Resolves native selection, ancestry, related summaries, attempt/reflection state, executable roots, and safe concrete Protocol-13/task path roles without following symlinks. | `src/concorde/feature_workspace.py#resolve_phase_paths` |
 | `entity.runtime.validator` | program | Runs layout, hierarchy, entity, interface, capability, evidence, diagram, freshness, and reflection rules. | `src/concorde/validate.py#validate_project` |
-| `entity.runtime.capability-validator` | program | Validates the package's exact Script/Skill/Operation structure without importing Operation Python. | `src/concorde/validation/capabilities.py` |
+| `entity.runtime.capability-validator` | program | Validates exact Script/public-internal-Skill/Operation pairs, effects, mixed literal topology/bindings, and direct/indirect cycles without importing Operation Python. | `src/concorde/validation/capabilities.py` |
 | `entity.runtime.initializer` | program | Proposes and atomically applies Initialization Proposal 3 with a root Archify system overview. | `src/concorde/initialize.py` |
 | `entity.runtime.delivery` | program | Proposes and applies digest-bound Delivery Proposal 9 removal of one complete attempt. | `src/concorde/delivery.py` |
 | `entity.runtime.cli` | program | Dispatches supported Tools and serializes one structured Tool envelope. | `src/concorde/cli.py` |
@@ -79,7 +79,7 @@ synonym for a CLI action in this module.
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
 | `interaction.runtime.tool` | A Skill, script, CI job, or maintainer invokes a Runtime entry point. | Locate colocated `src`; parse the Tool; load configuration/package; validate inputs and paths; execute the bounded action; serialize one canonical Tool envelope. | Deterministic success/failure with stable diagnostics and no conversational side channel. | `contract.runtime.tools` |
-| `interaction.runtime.workspace` | A path-sensitive Skill requests selected feature context. | Resolve explicit path, environment selection, or `.concorde/feature.json`; load the direct feature/module; derive stable-ID attempt/reflection and executable context; return Protocol 13. | Exactly one canonical direct feature plus bounded context is routed. | `contract.workspace.feature-workspace` |
+| `interaction.runtime.workspace` | A path-sensitive Skill or trusted Operation resolver requests selected feature context. | Resolve explicit path, environment selection, or `.concorde/feature.json`; load the direct feature/module; derive stable-ID attempt/reflection/executable context; validate concrete task/role paths and reject symlinks/escapes; return Protocol 13. | Exactly one canonical direct feature plus bounded safe role inputs is routed. | `contract.workspace.feature-workspace` |
 | `interaction.runtime.explore` | A caller requests one stable module, entity, feature, or interface. | Validate Profile 7; project the target altitude; validate optional UA graph and schema-1 sidecar; compare revisions; qualify records; apply text/status bounds; serialize Tool JSON. | Current explicit evidence may qualify alignment; absent, stale, incompatible, or candidate-only claims are unknown. | `contract.concorde.alignment-explorer`, `contract.runtime.tools` |
 | `interaction.runtime.deliver` | Maintainer requests cleanup after completed work. | Verify tasks, checklists, passing evidence, validation, digest, safe real attempt path, and retained authorities; atomically remove or roll back. | One complete attempt disappears and every durable/executable authority is retained. | `contract.runtime.tools`, `contract.workspace.feature-workspace` |
 
@@ -101,6 +101,8 @@ None.
 - Source and installed packages preserve the same relative `scripts/` plus `src/` layout.
 - Native selection lives at `.concorde/feature.json`; no compatibility reader exists for host state.
 - Every Runtime action uses the same loader and Tool envelope; Operation is reserved for LangGraph.
+- Files under `src/concorde` retain module ownership by responsibility: Runtime owns deterministic
+  workspace/validation Tools, while Operations owns graph/policy/process-handoff programs.
 - Protocol 13, Delivery Proposal 9, architecture-service envelope 2, capability-surface status schema
   2, and reflection-triage/v4 use `tool` discriminators.
 - Exploration never normalizes or rewrites input graphs and never treats adapter vocabulary or text

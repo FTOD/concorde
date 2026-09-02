@@ -14,8 +14,12 @@ from pathlib import Path
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
 
-from concorde.agent_assets import AgentAssetError, render_projection  # noqa: E402
-from concorde.skill_assets import SkillAssetError, render_capabilities  # noqa: E402
+from concorde.agent_assets import AgentAssetError, projection_roles, render_projection  # noqa: E402
+from concorde.skill_assets import (  # noqa: E402
+    SkillAssetError,
+    capability_projection_roles,
+    render_capabilities,
+)
 
 
 def _sha256(content: bytes) -> str:
@@ -26,7 +30,19 @@ def expected_outputs(root: Path) -> dict[str, bytes]:
     outputs: dict[str, bytes] = {}
     for integration in ("codex", "claude"):
         rendered = render_capabilities(root, integration, "")
-        rendered.update(render_projection(root / "agent-assets/reflections", integration))
+        capability_roles = capability_projection_roles(root, integration, "")
+        if set(rendered) != set(capability_roles) or len(rendered) != 18:
+            raise ValueError(
+                f"{integration} must expose exactly 18 public capabilities with owned roles"
+            )
+        specialist = render_projection(root / "agent-assets/reflections", integration)
+        specialist_roles = projection_roles(root / "agent-assets/reflections", integration)
+        if set(specialist) != set(specialist_roles):
+            raise ValueError(f"{integration} specialist role inventory differs from outputs")
+        collisions = set(rendered) & set(specialist)
+        if collisions:
+            raise ValueError(f"agent surface role collision: {sorted(collisions)}")
+        rendered.update(specialist)
         for relative, content in rendered.items():
             encoded = content.encode("utf-8")
             if relative in outputs and outputs[relative] != encoded:

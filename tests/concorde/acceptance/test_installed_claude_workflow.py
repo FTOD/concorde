@@ -32,7 +32,10 @@ class InstalledClaudeWorkflowAcceptance(unittest.TestCase):
             self.assertEqual(json.loads(workspace.stdout)["workspace"]["feature_id"], "feature.example.deliver")
             skill = (root / ".claude/skills/concorde-plan/SKILL.md").read_text()
             self.assertIn("user-invocable: true", skill)
-            self.assertIn(".concorde/framework/scripts/workspace.py --phase plan", skill)
+            self.assertIn(".concorde/framework/operations/concorde-plan/operation.py", skill)
+            self.assertIn('kind: "operation"', skill)
+            self.assertFalse((root / ".claude/skills/concorde-plan-context").exists())
+            self.assertFalse((root / ".claude/skills/concorde-plan-author").exists())
             self.assertNotIn(".specify/", skill)
 
 

@@ -6,6 +6,7 @@ metadata:
   author: "concorde"
   source: "skills/concorde-fast-loop/SKILL.md"
   kind: "skill"
+  exposure: "public"
 ---
 ## User Input
 

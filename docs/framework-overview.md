@@ -10,7 +10,7 @@ loading the entire repository.
 - typed architecture entities and directed relationships rather than an untyped prose inventory;
 - one complete direct Markdown file per level-local feature;
 - embedded feature interfaces with stable identities and usage/failure semantics;
-- bounded Protocol 13 context for planning and coding agents;
+- bounded Protocol 13 context plus concrete required-interface/owned-locator permission roles;
 - deterministic validation of layout, identity, references, safety, and freshness;
 - temporary attempt workspaces with task/evidence discipline; and
 - digest-bound, cleanup-only delivery.
@@ -24,8 +24,11 @@ and into Codex or Claude, recording only generated framework/agent outputs in
 `.concorde/install.json`. Project configuration, selection, constitution, attempts, reflections,
 specifications, code, and tests remain project-owned.
 
-Leaf and Operation capabilities share canonical `concorde-*` names. Operations compose complete leaf
-Skills through LangGraph; they never delegate specification authority to another framework.
+Seventeen public/internal leaves and three Operations share canonical `concorde-*` names. Both agents
+receive 15 public leaves plus three Operations; internal planner leaves stay framework-only.
+Operations compose complete direct Skills or public Operations through LangGraph without flattening.
+Trusted code—not prompts or LangGraph—resolves concrete paths, narrows effects, renders a native or
+approved outer sandbox, launches the agent, and checks its receipt.
 
 ## Authority map
 
@@ -47,8 +50,9 @@ Skills through LangGraph; they never delegate specification authority to another
 A module architecture shows immediate child modules as bounded entities; child internals stay in the
 child architecture. A feature may reference entities visible in its providing module or permitted
 ancestry. Related features are stable-ID relationships, not containment. Protocol 13 returns concise
-ancestry and related-feature summaries, while another feature file is opened only for a specific
-interface dependency.
+ancestry and related-feature summaries. The planning context opens another feature file only when it
+uniquely owns a required interface, records that reason, and continues to deny provider architecture,
+source, tests, descendants, and attempts.
 
 This keeps context useful without pretending that generated summaries are authority.
 

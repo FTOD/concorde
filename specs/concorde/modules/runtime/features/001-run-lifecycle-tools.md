@@ -8,6 +8,7 @@ related_features:
   - feature.concorde.maintain-agent-surfaces
   - feature.concorde.record-workflow-reflections
   - feature.operations.standard-development-loop
+  - feature.operations.permission-bounded-planning
 interfaces:
   provided:
     - contract.runtime.tools
@@ -62,7 +63,7 @@ while public results use Tool terminology and versioned contracts.
 - **Failures**: Invalid config/source/target/path/proposal, unavailable input, or filesystem failure
   returns failure and preserves unrelated/current authority.
 - **Compatibility**: Architecture-service envelope 2 exposes Profile 7, Protocol 13, Initialization
-  Proposal 3, Delivery Proposal 9, and Alignment Schema 1 terminology. Concorde 2.0.0 reserves
+  Proposal 3, Delivery Proposal 9, and Alignment Schema 1 terminology. Concorde 2.1.0 reserves
   Operation for paired LangGraphs.
 - **Implementing entities**: `entity.runtime.cli`, `entity.runtime.tool-result`,
   `entity.runtime.tool-envelope`, `entity.runtime.repository-loader`,
@@ -85,8 +86,9 @@ Tool writes an explorer index or repairs input.
 - **FR-004**: Exploration MUST preserve Profile identity separately from adapter metadata and reduce
   absent, stale, candidate-only, or invalid evidence to unknown.
 - **FR-005**: Every public envelope MUST use `tool`; no lower-level action may claim Operation identity.
-- **FR-006**: Package capability validation MUST inspect source/metadata/AST structure without importing
-  or executing arbitrary Operation Python.
+- **FR-006**: Package capability validation MUST inspect exposure/effects, mixed
+  Skill/Operation literals, exact occurrence bindings, and cycles from source/metadata/AST without
+  importing or executing arbitrary Operation Python.
 
 ## Edge Cases
 
@@ -94,3 +96,5 @@ Tool writes an explorer index or repairs input.
 - PowerShell and POSIX quoting produce equivalent arguments.
 - A valid implementation graph has no explicit alignment sidecar or current expected revision.
 - LangGraph is unavailable while a base Tool is imported or invoked; Tool behavior remains available.
+- Operation permission/native process modules share the physical package but remain owned by
+  Operations and are not reclassified as deterministic Runtime Tools.

@@ -76,6 +76,9 @@ evidence_status: unknown
 <!--
   Define every meaningful machine, human-workflow, or generated-artifact interface here. Existing
   stable contract.* IDs may remain interface identities. Do not create separate interface documents.
+  If this feature exposes a Skill/Operation capability, state public/internal exposure, leaf effects,
+  direct nested capabilities, narrowing obligations, and fail-closed enforcement in this interface;
+  machine metadata remains in the canonical capability source rather than a duplicate registry.
 -->
 
 ### `[interface.stable.id]` — [Interface name]
@@ -123,6 +126,12 @@ why. Write `None.` when the list is empty.]
 ### Assumptions
 
 - [Explicit bounded assumption that is not a hidden requirement.]
+
+<!--
+  Capability features must not assume that prompts or LangGraph enforce access. Require concrete
+  path resolution plus supported native/outer enforcement, keep internal leaves unprojected, and
+  require nested Operation composition to be acyclic and opaque.
+-->
 
 ## Success Criteria
 

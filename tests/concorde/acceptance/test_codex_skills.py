@@ -21,14 +21,20 @@ class CodexSkillsAcceptance(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
             manifest = json.loads((root / ".concorde/framework/concorde.json").read_text())
             skills = sorted((root / ".agents/skills").glob("concorde-*/SKILL.md"))
-            self.assertEqual(
-                len(skills), len(manifest["skills"]) + len(manifest["operations"])
-            )
-            for phase in ("specify", "plan", "tasks", "implement", "fast-loop"):
+            self.assertEqual(len(skills), 18)
+            for phase in ("specify", "tasks", "implement", "fast-loop"):
                 body = (root / f".agents/skills/concorde-{phase}/SKILL.md").read_text()
                 self.assertIn("Protocol 13", body)
                 self.assertIn(f"--phase {phase}", body)
                 self.assertIn('author: "concorde"', body)
+            plan = (root / ".agents/skills/concorde-plan/SKILL.md").read_text()
+            self.assertIn('kind: "operation"', plan)
+            self.assertIn(
+                ".concorde/framework/operations/concorde-plan/operation.py",
+                plan,
+            )
+            self.assertFalse((root / ".agents/skills/concorde-plan-context").exists())
+            self.assertFalse((root / ".agents/skills/concorde-plan-author").exists())
             deliver = (root / ".agents/skills/concorde-deliver/SKILL.md").read_text()
             self.assertIn("Delivery Proposal 9", deliver)
             self.assertIn(".concorde/framework/scripts/concorde.py deliver", deliver)

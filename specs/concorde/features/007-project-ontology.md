@@ -23,9 +23,10 @@ evidence_status: verified
 **Status**: Implemented; awaiting explicit Concorde delivery
 
 **Input**: Preserve the module-centered durable specification and replace the flat command/example
-concept with a structural capability hierarchy. Scripts are basic runnable tools; skills are leaf
-capabilities; operations are LangGraph control graphs that compose multiple skills. Every operation
-Python source has an associated Markdown skill and operations are installed as user-facing skills.
+concept with a structural capability hierarchy. Scripts are basic runnable tools; public or internal
+skills are effect-declared leaves; operations are public LangGraph control graphs that compose
+ordered Skills or Operations without cycles or flattening. Every operation Python source has an
+associated Markdown skill and public capabilities are installed as user-facing skills.
 Migrate ontology, architecture, package layout, installation, projection, validation, documentation,
 tests, and maintained sources together.
 
@@ -79,25 +80,31 @@ runtime, installation, release, documentation, validation, fixtures, and maintai
 ├── scripts/                              # basic deterministic runnable tools
 ├── skills/
 │   └── <skill-name>/
-│       └── SKILL.md                      # one leaf capability prompt
+│       └── SKILL.md                      # one public/internal effect-declared leaf
 └── operations/
     └── <operation-name>/
-        ├── operation.py                  # one LangGraph multi-skill control graph
+        ├── operation.py                  # one acyclic mixed-capability LangGraph
         └── SKILL.md                      # required user-facing operation skill
 ```
 
 - A script is a basic runnable tool. It may parse inputs, inspect or mutate within its explicit
   contract, and return deterministic results; it does not define a conversational capability graph.
 - A skill is a leaf capability whose canonical authority is one `skills/<skill-name>/SKILL.md`. It
-  may invoke scripts/tools, but it does not orchestrate multiple skills into a loop.
+  may invoke scripts/tools, but it does not orchestrate multiple skills into a loop. Its metadata
+  declares `exposure: public|internal` and, when composed, exact read/write/network/credential
+  `effects`; internal leaves remain package/runtime inputs and do not project to users.
 - An operation is the next structural level above skills. Its `operation.py` uses LangGraph to
-  compose two or more leaf skills with ordering, state, branching, retries, review gates, or other
-  explicit controls.
+  compose two or more ordered direct leaf Skills or public Operations with state, branching, retries,
+  review gates, or other explicit controls. Nested Operations remain opaque; direct and indirect
+  composition cycles are invalid.
 - Every operation has exactly one associated `SKILL.md` in the same directory. The Python graph is
   execution authority; the Markdown file is its user-facing invocation and behavioral contract.
-- Installation projects both leaf `skills/*/SKILL.md` and operation `operations/*/SKILL.md` into the
-  selected agent's skill directory. Operation Python remains installed under the framework package
-  and is invoked by its projected skill.
+- Installation packages every leaf and Operation pair but projects only public leaves plus every
+  operation `operations/*/SKILL.md` into the selected agent's skill directory. Operation Python
+  remains installed under the framework package and is invoked by its projected skill.
+- Every direct leaf occurrence has one exact narrowing binding. Trusted runtime code resolves
+  Protocol 13 roles into concrete paths, renders Codex/Claude/outer enforcement, and supplies one
+  immutable launch specification and matching receipt; a stage never shares its permission union.
 - `commands/` is obsolete because its Markdown files are skills, not commands. `examples/` is
   obsolete for maintained LangGraph loops because those graphs are operations, not illustrative code.
 - A mixed layout is invalid: no canonical prompt may remain under `commands/`, and no maintained
@@ -115,10 +122,12 @@ runtime, installation, release, documentation, validation, fixtures, and maintai
 | `Interaction` | An ordered or conditional collaboration among architecture entities described at the current module level. | `uses` → `Entity relationship`; `supports` → `Feature` |
 | `Tool` | One basic deterministic runnable capability, normally exposed by a script or program entry point. It performs a bounded action but does not compose conversational skills. | `implemented by` → `Script`; `invoked by` → `Skill`; `returns` → `Tool result` |
 | `Script` | A directly runnable source entry point for one or more basic tools. Scripts are the lowest executable layer and contain no multi-skill LangGraph topology. | `implements` → `Tool`; `used by` → `Skill` |
-| `Skill` | One leaf user capability defined by a canonical `skills/<skill-name>/SKILL.md`. Its complete prompt may call tools but remains independently invocable and contains no multi-skill loop. | `invokes` → `Tool`; `composed by` → `Operation`; `projected to` → `Agent skill` |
-| `Operation` | A controlled LangGraph above the leaf layer that composes multiple skills into a stateful workflow. Its canonical directory contains exactly `operation.py` and its associated `SKILL.md`. | `composes` → `Skill`; `implemented by` → `operation.py`; `exposed by` → `Operation skill`; `uses` → `LangGraph` |
+| `Skill` | One public or internal leaf capability defined by a canonical `skills/<skill-name>/SKILL.md`. Its complete prompt may call tools, contains no multi-skill loop, and owns integration-neutral effects when composed. | `invokes` → `Tool`; `composed by` → `Operation`; `declares` → `Exposure`; `declares` → `Effects`; `projected to` → `Agent skill` when public |
+| `Operation` | A public controlled LangGraph above the leaf layer that composes ordered direct Skills or Operations into an acyclic stateful workflow. Its canonical directory contains exactly `operation.py` and its associated `SKILL.md`. | `composes` → `Skill` or `Operation`; `implemented by` → `operation.py`; `exposed by` → `Operation skill`; `uses` → `LangGraph` |
 | `Operation skill` | The required Markdown surface paired with an operation Python graph and installed to users as an agent skill. | `describes` → `Operation`; `invokes` → `operation.py`; `projected to` → `Agent skill` |
-| `Stage` | One named node or controlled step inside an operation, containing one or more ordered leaf skills plus explicit state/control semantics. | `part of` → `Operation`; `uses` → `Skill`; `transitions to` → `Stage` |
+| `Exposure` | `public` makes a leaf projectable; `internal` keeps it package-loadable only for Operations. Operations are always public. | `controls` → `Agent skill`; `declared by` → `Skill` |
+| `Effects` | Leaf-owned path-role reads/writes plus network and credential posture that Operation bindings may narrow but never widen. | `declared by` → `Skill`; `compiled by` → `Operation runtime`; `enforced by` → `Coding-agent sandbox` |
+| `Stage` | One named node or controlled step inside an operation, containing one or more ordered direct capability occurrences plus explicit state/control semantics. | `part of` → `Operation`; `uses` → `Skill` or `Operation`; `transitions to` → `Stage` |
 | `Feature` | One module-level functionality or interface that a consumer can use, specified in one durable `features/<NNN-name>.md` file. | `belongs to` → `Module`; `exposes` → `Feature interface`; `zooms into` → `Architecture entity`; `relates to` → `Feature` |
 | `Feature file` | The direct Markdown authority for one feature; its filename supplies navigation while its front-matter `feature.*` ID supplies semantic identity. | `specifies` → `Feature`; `belongs to` → `Module`; `corresponds to` → `Attempt` |
 | `Feature interface` | The human-readable entry points, inputs, outputs, obligations, failures, and compatibility expectations through which a feature is used. Existing stable `contract.*` identifiers remain valid prototype interface identities. | `part of` → `Feature`; `implemented by` → `Architecture entity`; `replaces` → `Architecture contract` |
@@ -165,25 +174,28 @@ The feature is cross-cutting because these entities share one source profile. Th
 - feature front matter, embedded interface definitions, architecture references, requirements, and usage scenarios;
 - optional project control state containing `.concorde/attempts/<stable-feature-id>/` and the tracked
   `.concorde/reflections/log.md`.
-- canonical leaf skill sources and paired operation Python/Markdown sources.
+- canonical public/internal leaf sources with effects and paired operation Python/Markdown sources
+  with ordered capabilities and occurrence bindings.
 
 - **Outputs**:
 
 - a bounded module or feature context with stable IDs and canonical paths;
 - deterministic findings for invalid structure or unresolved semantic references;
 - generated navigation and architecture views with source provenance;
-- installed leaf and operation skill surfaces with source provenance;
+- installed public-leaf and operation skill surfaces with source/kind/policy provenance;
 - a delivery result that lists removed temporal artifacts and retained durable/code authorities.
 
 - **Obligations**: Producers define each architecture-significant entity once at its owning module,
   use stable IDs for every cross-reference, keep feature interfaces in the owning design, distinguish
-  code/test reality from prose/projections, keep Skills leaf-level, and pair every Operation Python
-  graph with the Markdown skill installed to users.
+  code/test reality from prose/projections, keep Skills leaf-level, declare exposure/effects, keep
+  Operation nesting acyclic and opaque, and pair every Operation Python graph with the Markdown skill
+  installed to users. Every direct leaf launch is deny-by-default and narrowing-only.
 
 - **Failures**: Resolution or validation fails on unsafe paths, duplicate IDs, cyclic module
   containment, untyped entities, unresolved relationships, missing interface semantics, legacy
   durable files, residual `commands/` or `examples/` capability sources, unpaired operation files,
-  non-leaf skills, or ambiguous ownership; delivery failures preserve the complete attempt.
+  non-leaf skills, unknown effects, internal projection, missing/mismatched occurrence policy,
+  Operation cycle, or ambiguous ownership; delivery failures preserve the complete attempt.
 
 - **Compatibility**: Profile 7 / Protocol 13 are an intentional breaking control-state path revision
   with no dual-layout mode. Initialization Proposal 3 adds the reflection log and required root system
@@ -270,14 +282,14 @@ As a maintainer, I can validate that the entire project uses the new ontology an
 
 ### User Story 5 - Compose and Install Structured Capabilities (Priority: P1)
 
-As a workflow author, I can discover basic tools under Scripts, independently invocable leaf
-capabilities under Skills, and controlled multi-skill LangGraphs under Operations without treating
-all Markdown prompts as flat commands.
+As a workflow author, I can discover basic tools under Scripts, public/internal effect-declared leaf
+capabilities under Skills, and controlled acyclic mixed-capability LangGraphs under Operations
+without treating all Markdown prompts as flat commands.
 
-**Independent Test**: Install a package containing leaf Skills and one standard development
-Operation, then verify each leaf and operation appears as an agent skill, the operation's projected
-Markdown points to its installed Python graph, and deterministic validation rejects every missing or
-extra operation pair member.
+**Independent Test**: Install a package containing public/internal leaves and nested Operations, then
+verify only public leaves plus every Operation appear as agent skills, paired Markdown points to
+installed Python, internal leaves remain package-loadable, and deterministic validation rejects
+missing effects/bindings, cycles, or pair members.
 
 **Acceptance Scenarios**:
 
@@ -286,9 +298,9 @@ extra operation pair member.
 2. **Given** a LangGraph that composes several skills, **When** its source is inspected, **Then** it
    lives at `operations/<name>/operation.py` beside exactly one associated `SKILL.md` that exposes it
    to users.
-3. **Given** an installation for Codex or Claude, **When** capabilities are projected, **Then** leaf
-   Skills and Operation skills share the agent's skill namespace while graph Python remains in the
-   installed framework.
+3. **Given** an installation for Codex or Claude, **When** capabilities are projected, **Then** public
+   leaf Skills and Operation skills share the agent namespace, internal leaves stay unprojected, and
+   graph Python remains in the installed framework.
 4. **Given** a basic deterministic runnable entry point, **When** it is classified, **Then** it remains
    a Script/Tool and is not promoted to a Skill or Operation unless a corresponding user capability
    or multi-skill graph actually exists.
@@ -366,24 +378,28 @@ extra operation pair member.
   feature exists, specify-phase attempt fields MUST be explicitly unavailable; after the feature file
   declares a valid ID, specification MUST re-resolve the workspace before creating its checklist or attempt.
 - **FR-024**: Concorde capability sources MUST use exactly three structural layers: basic runnable
-  tools under `scripts/`, leaf capabilities under `skills/<skill-name>/SKILL.md`, and controlled
-  multi-skill LangGraphs under `operations/<operation-name>/`.
+  tools under `scripts/`, public/internal leaf capabilities under `skills/<skill-name>/SKILL.md`, and
+  controlled acyclic mixed-capability LangGraphs under `operations/<operation-name>/`.
 - **FR-025**: Every canonical Skill MUST be one leaf `SKILL.md` that may invoke Scripts/Tools but MUST
   NOT define a loop or graph that orchestrates multiple Skills.
 - **FR-026**: Every canonical Operation MUST contain exactly one `operation.py` LangGraph and exactly
   one associated `SKILL.md`; either file without its pair MUST be invalid.
-- **FR-027**: An Operation MUST compose at least two canonical Skills and MUST define its stage order,
-  shared state, failure propagation, and any branching, retry, review, or authorization controls in
-  Python rather than duplicating leaf prompt bodies.
+- **FR-027**: An Operation MUST compose at least two ordered direct canonical Skills or public
+  Operations, MUST remain acyclic and keep nested Operation internals opaque, and MUST define stage
+  order, occurrence policies, state, failure propagation, and branching/retry/review controls in
+  Python rather than duplicating or flattening prompt bodies.
 - **FR-028**: Installation and release packaging MUST include every leaf Skill plus every complete
-  Operation pair, project both leaf and Operation Markdown surfaces into the selected agent skill
-  namespace, and keep Operation Python under the installed framework.
+  Operation pair, project only public leaves plus all Operation Markdown surfaces into the selected
+  agent namespace, and keep internal leaves and Operation Python under the installed framework.
 - **FR-029**: The canonical capability layout MUST contain no `commands/` directory and no maintained
   LangGraph under `examples/`; validation, tests, docs, and manifests MUST reject or omit those legacy
   concepts after migration.
 - **FR-030**: Canonical Skill and Operation identities MUST be safe, unique, stable across source and
   installed layouts, and traceable from projected agent skill back to its owning source and, for an
   Operation, its paired graph.
+- **FR-031**: Every Operation-composed leaf MUST declare exact effects and every direct occurrence
+  MUST have one order-matched narrowing policy; concrete unsafe/unresolved paths, widened policy,
+  missing native/outer enforcement, or stale receipt MUST stop before launch.
 
 ## Success Criteria
 
@@ -403,10 +419,12 @@ extra operation pair member.
   specify resolution and receives the exact stable-ID path only after its feature front matter exists.
 - **SC-009**: 100% of canonical leaf capabilities reside under `skills/*/SKILL.md`, with zero
   canonical capability prompts under `commands/`.
-- **SC-010**: 100% of operation directories contain exactly one `operation.py` and one `SKILL.md`, and
-  the standard development loop composes its declared Skills without embedding their prompt bodies.
-- **SC-011**: Fresh Codex and Claude installations expose every leaf and Operation as agent skills and
-  include every paired Operation Python graph under `.concorde/framework/operations/`.
+- **SC-010**: 100% of operation directories contain exactly one `operation.py` and one `SKILL.md`,
+  every capability/binding/cycle check passes, and the standard loop nests public `concorde-plan`
+  without embedding its private leaves or prompt bodies.
+- **SC-011**: Fresh Codex and Claude installations expose exactly 15 public leaves plus three
+  Operations, package both internal planner leaves, and include every paired Operation Python graph
+  under `.concorde/framework/operations/`.
 - **SC-012**: Complete Python, installation, release, agent-surface, documentation, and validation
   tests contain zero current terminology that classifies leaf prompts as commands or maintained
   LangGraphs as examples.
