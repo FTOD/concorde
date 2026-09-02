@@ -81,8 +81,8 @@ def load_package(root: Path) -> Package:
         raise InstallError("Concorde manifest must declare schema_version 1 and name 'concorde'")
     if manifest.get("architecture_profile") != 7 or manifest.get("workspace_protocol") != 12:
         raise InstallError("Concorde package must declare Architecture Profile 7 and Workspace Protocol 12")
-    if manifest.get("delivery_proposal") != 8 or manifest.get("command_namespace") != "speckit":
-        raise InstallError("Concorde package must declare Delivery Proposal 8 and the retained speckit command namespace")
+    if manifest.get("delivery_proposal") != 8 or manifest.get("command_namespace") != "concorde":
+        raise InstallError("Concorde package must declare Delivery Proposal 8 and the concorde command namespace")
     install = manifest.get("install")
     if not isinstance(install, dict) or install.get("framework_root") != FRAMEWORK_ROOT or install.get("receipt") != RECEIPT_PATH:
         raise InstallError("Concorde manifest declares an unsupported installation layout")

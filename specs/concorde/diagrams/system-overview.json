@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Concorde System Overview",
+    "output": "../../../generated/architecture/concorde-system-overview.html",
+    "quality_profile": "showcase",
+    "legend": {"mode": "hidden"},
+    "viewBox": [1380, 650]
+  },
+  "components": [
+    {"id": "maintainer", "type": "external", "label": "Maintainer", "sublabel": "Lifecycle consumer", "pos": [40, 270], "size": [140, 68]},
+    {"id": "commands", "type": "frontend", "label": "Commands", "sublabel": "Agent guidance", "pos": [250, 270], "size": [150, 68]},
+    {"id": "runtime", "type": "backend", "label": "Runtime", "sublabel": "Deterministic operations", "pos": [490, 270], "size": [170, 68]},
+    {"id": "workspace", "type": "database", "label": "Workspace", "sublabel": "Sources and control state", "pos": [760, 270], "size": [180, 68]},
+    {"id": "distribution", "type": "cloud", "label": "Distribution", "sublabel": "Package and install", "pos": [1030, 110], "size": [170, 68]},
+    {"id": "autodocs", "type": "frontend", "label": "Auto-Docs", "sublabel": "Validated read model", "pos": [1030, 430], "size": [170, 68]},
+    {"id": "archify", "type": "external", "label": "Archify", "sublabel": "Diagram renderer", "pos": [1230, 430], "size": [120, 68]}
+  ],
+  "connections": [
+    {"id": "maintainer-invokes-commands", "from": "maintainer", "to": "commands", "label": "invokes", "variant": "emphasis"},
+    {"id": "commands-call-runtime", "from": "commands", "to": "runtime", "label": "calls"},
+    {"id": "commands-read-workspace", "from": "commands", "to": "workspace", "label": "reads bounded context", "variant": "dashed", "fromSide": "bottom", "toSide": "bottom"},
+    {"id": "runtime-accesses-workspace", "from": "runtime", "to": "workspace", "label": "validates and updates", "labelAt": [710, 352]},
+    {"id": "distribution-projects-commands", "from": "distribution", "to": "commands", "label": "projects", "fromSide": "left", "toSide": "top"},
+    {"id": "autodocs-read-workspace", "from": "workspace", "to": "autodocs", "label": "publishes validated sources", "fromSide": "right", "toSide": "left"},
+    {"id": "autodocs-call-archify", "from": "autodocs", "to": "archify", "label": "renders views", "labelAt": [1215, 512]}
+  ]
+}

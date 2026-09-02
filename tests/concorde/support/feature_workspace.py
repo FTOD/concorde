@@ -89,6 +89,10 @@ parent: null
 modules: []
 features:
 {feature_lines}
+diagrams:
+  - source: diagrams/system-overview.json
+    kind: architecture
+    output: generated/architecture/example-system-overview.html
 ---
 
 # Architecture: Example
@@ -133,8 +137,32 @@ None.
 
 ## Decisions
 
+- [System overview](diagrams/system-overview.json) projects the fixture entities and relationships.
 - Fixtures keep implementation entities conceptual unless locator validation itself is under test.
 """
+
+
+def _root_system_overview() -> str:
+    return json.dumps(
+        {
+            "schema_version": 1,
+            "diagram_type": "architecture",
+            "meta": {
+                "title": "Example System Overview",
+                "output": "../../../generated/architecture/example-system-overview.html",
+                "quality_profile": "showcase",
+                "legend": {"mode": "hidden"},
+            },
+            "components": [
+                {"id": "maintainer", "type": "external", "label": "Maintainer"},
+                {"id": "runtime", "type": "backend", "label": "Runtime"},
+            ],
+            "connections": [
+                {"id": "maintainer-calls-runtime", "from": "maintainer", "to": "runtime", "label": "calls"}
+            ],
+        },
+        separators=(",", ":"),
+    ) + "\n"
 
 
 def create_feature_file(
@@ -158,6 +186,9 @@ def create_feature_file(
         if match:
             feature_ids.append(match.group(1))
     (specification_root / "architecture.md").write_text(_root_architecture(feature_ids), encoding="utf-8")
+    diagram = specification_root / "diagrams/system-overview.json"
+    diagram.parent.mkdir(parents=True, exist_ok=True)
+    diagram.write_text(_root_system_overview(), encoding="utf-8")
     return feature
 
 

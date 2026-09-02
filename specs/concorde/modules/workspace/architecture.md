@@ -5,7 +5,10 @@ parent: module.concorde
 modules: []
 features:
   - feature.workspace.manage-feature-workspace
-diagrams: []
+diagrams:
+  - source: diagrams/system-overview.json
+    kind: architecture
+    output: generated/architecture/concorde-workspace-system-overview.html
 ---
 
 # Architecture: Workspace
@@ -32,7 +35,7 @@ implementation behavior, test truthfulness, version-control history, or generate
 | `entity.workspace.module-architecture` | document | One module's responsibility, boundary, entities, relations, interactions, children, features, and decisions. | `concept:<module>/architecture.md` |
 | `entity.workspace.feature-design` | document | One direct feature's outcome, usage, scenarios, interfaces, requirements, and architecture zoom. | `concept:<module>/features/<NNN-name>.md` |
 | `entity.workspace.module-directory` | directory | Immediate recursive child-module container. | `concept:<module>/modules/<child>` |
-| `entity.workspace.module-diagrams` | directory | Optional maintained explanatory sources owned by one module architecture. | `concept:<module>/diagrams` |
+| `entity.workspace.module-diagrams` | directory | Required Archify system overview plus optional maintained explanatory sources owned by one module architecture. | `concept:<module>/diagrams` |
 | `entity.workspace.control-state` | directory | Project-wide configuration, selection, governance, attempts, reflections, framework installation, and receipts. | `.concorde` |
 | `entity.workspace.framework` | directory | Installed projection of one standalone Concorde package. | `concept:installed-framework-projection` |
 | `entity.workspace.install-receipt` | configuration | Digest/role ownership ledger for framework and agent outputs. | `concept:native-install-receipt` |
@@ -86,6 +89,8 @@ None.
 
 ## Decisions
 
+- [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
+  entities and directed relationships in this architecture.
 - Module containment is the only durable specification hierarchy; direct features never contain features.
 - `.concorde/feature.json` replaces host-owned selection and has no compatibility fallback.
 - `.concorde/framework` is installed package projection; `.concorde/config.json`, constitution, attempts, and reflections are project authority/control.

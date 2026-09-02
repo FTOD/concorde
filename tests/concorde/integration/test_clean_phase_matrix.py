@@ -57,7 +57,7 @@ class CleanPhaseMatrixIntegrationTests(unittest.TestCase):
 
     def test_every_phase_skill_names_the_same_phase(self):
         for phase in PHASES:
-            path = REPOSITORY_ROOT / ".agents/skills" / f"speckit-{phase}/SKILL.md"
+            path = REPOSITORY_ROOT / ".agents/skills" / f"concorde-{phase}/SKILL.md"
             with self.subTest(phase=phase):
                 self.assertTrue(path.is_file())
                 self.assertIn(f"scripts/workspace.py --phase {phase}", path.read_text())

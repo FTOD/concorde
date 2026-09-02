@@ -31,6 +31,49 @@ def validate_diagrams(package: Any) -> list[Finding]:
         linked = _link_targets(module.body, source_dir)
         declared = module.metadata.get("diagrams", [])
         declared_sources: set[str] = set()
+        architecture_views = package.module_views(module)
+        if not architecture_views:
+            findings.append(
+                Finding(
+                    "CONCORDE-VIEW-010",
+                    "error",
+                    module.path,
+                    "Module architecture requires an Archify architecture system overview of its principal entities and relationships.",
+                    "Create diagrams/system-overview.json with diagram_type architecture, declare it in architecture.md, and link it from the architecture text.",
+                    subject_id=module.identifier,
+                )
+            )
+        else:
+            for path, diagram in architecture_views.items():
+                meta = diagram.get("meta") if isinstance(diagram, dict) else None
+                if not isinstance(meta, dict) or meta.get("quality_profile") != "showcase":
+                    findings.append(
+                        Finding(
+                            "CONCORDE-VIEW-011",
+                            "error",
+                            path,
+                            "Module architecture system overviews must use Archify showcase quality.",
+                            "Set meta.quality_profile to showcase and pass all nine Archify showcase checks.",
+                            subject_id=module.identifier,
+                        )
+                    )
+            if not any(
+                isinstance(diagram.get("components"), list)
+                and len(diagram["components"]) >= 2
+                and isinstance(diagram.get("connections"), list)
+                and len(diagram["connections"]) >= 1
+                for diagram in architecture_views.values()
+            ):
+                findings.append(
+                    Finding(
+                        "CONCORDE-VIEW-012",
+                        "error",
+                        module.path,
+                        "Module architecture has no system overview that depicts relationships among principal entities.",
+                        "Give an Archify architecture view at least two principal entity components and one directed connection grounded in architecture.md.",
+                        subject_id=module.identifier,
+                    )
+                )
         if isinstance(declared, list):
             for item in declared:
                 if not isinstance(item, dict) or not isinstance(item.get("source"), str):

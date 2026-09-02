@@ -4,6 +4,7 @@ import {describe, expect, it} from 'vitest';
 
 import {createManifest} from '../../plugins/concorde-content/manifest';
 import {buildRegistry} from '../../plugins/concorde-content/registry';
+import type {ModuleArchitecture} from '../../plugins/concorde-content/types';
 import {validateRegistry} from '../../plugins/concorde-content/validation';
 
 const projectRoot = resolve(__dirname, '../../..');
@@ -38,7 +39,7 @@ describe('maintained Concorde framework guides', () => {
     expect(workflow).toBeGreaterThan(model);
     expect(install).toBeGreaterThan(workflow);
     for (const command of ['init', 'context', 'ask', 'validate', 'deliver']) {
-      expect(readme.content).toContain(`$speckit-concorde-${command}`);
+      expect(readme.content).toContain(`$concorde-${command}`);
     }
     expect(readme.links.some((link) => link.targetSourcePath === 'docs/commands.md')).toBe(true);
     const homepageTargets = new Set(readme.links.map((link) => link.targetRoute));
@@ -88,11 +89,15 @@ describe('maintained Concorde framework guides', () => {
     expect(manifest.excludedSources.some((source) => source.sourcePath.startsWith('.concorde/'))).toBe(false);
   });
 
-  it('keeps the current no-diagram prototype explicit on every module architecture', async () => {
+  it('publishes one Archify system overview on every module architecture', async () => {
     const registry = await buildRegistry(projectRoot);
-    const architecturePages = registry.documents.filter((document) => document.contentKind === 'module-architecture');
-    expect(architecturePages.flatMap((document) =>
-      'architectureDiagrams' in document ? document.architectureDiagrams ?? [] : [])).toEqual([]);
+    const architecturePages = registry.documents.filter(
+      (document): document is ModuleArchitecture => document.contentKind === 'module-architecture',
+    );
+    expect(architecturePages).toHaveLength(6);
+    expect(architecturePages.every((document) => document.architectureDiagrams.length === 1)).toBe(true);
+    expect(architecturePages.flatMap((document) => document.architectureDiagrams)
+      .every((diagram) => diagram.kind === 'architecture' && diagram.source.endsWith('/diagrams/system-overview.json'))).toBe(true);
     expect(registry.documents.filter((document) => document.contentKind !== 'module-architecture')
       .every((document) => !('architectureDiagrams' in document))).toBe(true);
   });
@@ -102,7 +107,7 @@ describe('maintained Concorde framework guides', () => {
     const commands = registry.documents.find((document) => document.sourcePath === 'docs/commands.md');
     if (!commands) throw new Error('Expected docs/commands.md in the documentation registry.');
     const text = commands.content.toLowerCase();
-    expect(text).toContain('speckit.concorde.ask');
+    expect(text).toContain('concorde.ask');
     expect(text).toContain('read-only');
     expect(text).toContain('never invokes another command');
     expect(text).toContain('protocol 12');

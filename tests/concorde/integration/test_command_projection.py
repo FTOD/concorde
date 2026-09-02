@@ -24,7 +24,7 @@ class CommandProjectionIntegrationTests(unittest.TestCase):
                 self.assertTrue(all(".specify/" not in content for content in rendered.values()))
 
     def test_source_and_installed_prefixes_change_paths_not_phase_intent(self):
-        command = REPOSITORY_ROOT / "commands/speckit.plan.md"
+        command = REPOSITORY_ROOT / "commands/concorde.plan.md"
         source = render_command(command, "codex", "")
         installed = render_command(command, "codex", ".concorde/framework")
         self.assertIn("python3 scripts/workspace.py --phase plan", source)
@@ -48,11 +48,11 @@ class CommandProjectionIntegrationTests(unittest.TestCase):
     def test_invalid_command_metadata_or_script_path_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            invalid_metadata = root / "speckit.invalid.md"
+            invalid_metadata = root / "concorde.invalid.md"
             invalid_metadata.write_text('---\ndescription: "Invalid"\npriority: 10\n---\n\nBody.\n')
             with self.assertRaisesRegex(CommandAssetError, "unsupported metadata"):
                 render_command(invalid_metadata, "codex")
-            unsafe = root / "speckit.unsafe.md"
+            unsafe = root / "concorde.unsafe.md"
             unsafe.write_text('---\ndescription: "Unsafe"\nscripts:\n  py: ../escape.py\n---\n\nRun {SCRIPT}.\n')
             with self.assertRaisesRegex(CommandAssetError, "safe package-relative"):
                 render_command(unsafe, "codex")

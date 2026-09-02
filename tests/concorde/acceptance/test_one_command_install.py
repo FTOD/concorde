@@ -31,7 +31,7 @@ class OneCommandInstallAcceptance(unittest.TestCase):
             applied = self.run_installer(target, "--integration", "codex", "--apply")
             self.assertEqual(applied.returncode, 0, applied.stderr or applied.stdout)
             self.assertEqual(json.loads(applied.stdout)["status"], "installed")
-            self.assertTrue((target / ".agents/skills/speckit-concorde-init/SKILL.md").is_file())
+            self.assertTrue((target / ".agents/skills/concorde-init/SKILL.md").is_file())
             self.assertTrue((target / ".concorde/install.json").is_file())
 
     def test_each_supported_integration_installs_all_commands(self):
@@ -40,7 +40,7 @@ class OneCommandInstallAcceptance(unittest.TestCase):
                 target = Path(temporary) / integration
                 result = self.run_installer(target, "--integration", integration, "--apply")
                 self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
-                self.assertEqual(len(list((target / root_name).glob("speckit-*/SKILL.md"))), 16)
+                self.assertEqual(len(list((target / root_name).glob("concorde-*/SKILL.md"))), 16)
 
     def test_existing_project_control_and_sources_are_preserved(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -62,7 +62,7 @@ class OneCommandInstallAcceptance(unittest.TestCase):
     def test_unowned_collision_returns_conflict_and_preserves_file(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
-            collision = target / ".agents/skills/speckit-plan/SKILL.md"
+            collision = target / ".agents/skills/concorde-plan/SKILL.md"
             collision.parent.mkdir(parents=True)
             collision.write_text("mine\n")
             result = self.run_installer(target, "--apply")

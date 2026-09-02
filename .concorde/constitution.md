@@ -7,8 +7,8 @@ Sync Impact Report
     installation, and agent projection end to end.
   - B.II Concorde Develops Itself with Concorde: root package sources precede generated agent surfaces,
     without a duplicated host installation.
-- Modified constraints: no external specification framework owns a lifecycle phase; retained
-  `speckit-*` IDs are compatibility labels only.
+- Modified constraints: no external specification framework owns a lifecycle phase; canonical
+  `concorde.*` IDs render as `concorde-*` skills.
 - Modified standards: selection and constitution move under `.concorde/`; root `commands/`,
   `templates/`, `src/concorde/`, and `agent-assets/` are distribution authorities.
 - Compatibility impact: old preset, extension, bundle, catalog, and `.specify/` installations are not
@@ -166,8 +166,8 @@ is the acceptance test that the workflow is practical rather than aspirational.
 
 - Concorde owns its complete lifecycle: constitution, specification, clarification, planning, tasks,
   implementation, convergence, bounded context, validation, delivery, installation, and publication.
-  No external specification framework is an authority or runtime dependency. The `speckit-*` command
-  IDs remain temporarily as user-facing compatibility names and MUST NOT imply external ownership.
+  No external specification framework is an authority or runtime dependency. Canonical `concorde.*`
+  command IDs render as `concorde-*` skills and MUST NOT imply external ownership.
 - Canonical distributable sources are the root `commands/`, `templates/`, `src/concorde/`, `scripts/`,
   and `agent-assets/` paths plus `concorde.json`. Generated Codex/Claude surfaces are projections.
 - Rendering and publication tools (currently Archify and Docusaurus) are generated read models.

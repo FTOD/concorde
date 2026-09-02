@@ -63,7 +63,7 @@ class ReleaseArtifactContractTests(unittest.TestCase):
                     "concorde/scripts/install-concorde.py",
                     "concorde/src/concorde/alignment.py",
                     "concorde/src/concorde/cli.py",
-                    "concorde/commands/speckit.constitution.md",
+                    "concorde/commands/concorde.constitution.md",
                     "concorde/templates/feature-template.md",
                     "concorde/agent-assets/reflections/manifest.json",
                 ):

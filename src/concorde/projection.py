@@ -82,7 +82,7 @@ def feature_summary(package: Any, feature: SourceDocument) -> dict[str, Any]:
 
 
 def scenario_projections(view: dict[str, Any]) -> list[dict[str, Any]]:
-    """Keep optional diagram-view summaries as generated navigation, never architecture authority."""
+    """Keep diagram-view summaries as generated navigation, never architecture authority."""
     result: list[dict[str, Any]] = []
     for item in view.get("meta", {}).get("views", []):
         if isinstance(item, dict) and isinstance(item.get("id"), str):

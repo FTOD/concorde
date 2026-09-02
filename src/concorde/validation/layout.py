@@ -159,7 +159,7 @@ def validate_layout(package: Any) -> list[Finding]:
                         "CONCORDE-LAYOUT-010",
                         child,
                         f"Module root entry '{child.name}' is not part of Profile 7.",
-                        "Keep architecture.md, immediate modules/, direct features/, and optional diagrams/ only.",
+                        "Keep architecture.md, immediate modules/, direct features/, and architecture-owned diagrams/ only.",
                         module.identifier,
                     )
                 )

@@ -29,7 +29,7 @@ phase intent, native runtime paths, bounded workspace rules, and no composition 
 ## Usage
 
 Package installation renders commands with `.concorde/framework` paths. Checkout sync renders the same
-sources with root paths. Maintainers invoke the retained command IDs normally in either integration.
+sources with root paths. Maintainers invoke the canonical command IDs normally in either integration.
 
 ## Interfaces
 
@@ -42,8 +42,9 @@ sources with root paths. Maintainers invoke the retained command IDs normally in
 - **Outputs**: Exact phase read/write/evidence/reflection behavior and completion report expectations.
 - **Obligations**: Preserve authority boundaries, resolve native selection first, use complete root templates, allocate reflection IDs through the helper, and expose deterministic failures.
 - **Failures**: Invalid/missing workspace, template, command metadata, interface/reference, task/evidence, or runtime check stops the phase without hidden fallback layers.
-- **Compatibility**: Sixteen `speckit-*` command IDs remain while current content/metadata is Concorde-owned.
-- **Example**: `speckit-plan` resolves Protocol 12, reads `templates/plan-template.md`, and writes only the selected attempt.
+- **Compatibility**: Sixteen canonical `concorde.*` command IDs render as `concorde-*` skills while
+  current content/metadata remains Concorde-owned.
+- **Example**: `concorde-plan` resolves Protocol 12, reads `templates/plan-template.md`, and writes only the selected attempt.
 - **Implementing entities**: `entity.commands.manifest`, `entity.commands.sources`, `entity.commands.feature-template`, `entity.commands.plan-template`, `entity.commands.tasks-template`.
 
 ### `contract.commands.agent-surface` — Rendered integration commands
@@ -56,7 +57,7 @@ sources with root paths. Maintainers invoke the retained command IDs normally in
 - **Obligations**: Validate command filename/front matter, preserve body semantics, resolve every script/framework token, and produce deterministic sorted outputs.
 - **Failures**: Unknown metadata, unsafe script path, unsupported integration, collision, symlink, or unresolved token blocks projection.
 - **Compatibility**: Codex and Claude output metadata may differ; command name/description/body behavior remains equivalent.
-- **Example**: Root `commands/speckit.plan.md` renders `speckit-plan` with source or installed workspace adapter path.
+- **Example**: Root `commands/concorde.plan.md` renders `concorde-plan` with source or installed workspace adapter path.
 - **Implementing entities**: `entity.commands.projector`, `entity.commands.sources`, `entity.commands.checkout-sync`.
 
 ## Architecture Zoom

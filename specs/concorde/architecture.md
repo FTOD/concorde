@@ -28,7 +28,10 @@ features:
   - feature.concorde.workflow.fast-loop
   - feature.concorde.release.publish
   - feature.concorde.install.one-command
-diagrams: []
+diagrams:
+  - source: diagrams/system-overview.json
+    kind: architecture
+    output: generated/architecture/concorde-system-overview.html
 ---
 
 # Architecture: Concorde
@@ -44,7 +47,7 @@ Concorde owns its root command and template sources, deterministic runtime, proj
 agent-surface projection, direct installer, standalone release, evidence-qualified alignment
 exploration, and optional documentation projections. It does not own a coding-agent runtime, product
 source code, Archify rendering, Docusaurus internals, or Understand Anything graph semantics.
-Retained `speckit-*` command IDs are compatibility names; they do not identify a host or dependency.
+Canonical `concorde.*` command IDs render as `concorde-*` skills and do not identify a host or dependency.
 
 ## Entities
 
@@ -56,7 +59,7 @@ Retained `speckit-*` command IDs are compatibility names; they do not identify a
 | `module.concorde.distribution` | module | One native package, owned installation, reproducible release, and immutable publication. | `specs/concorde/modules/distribution/architecture.md` |
 | `module.concorde.auto-docs` | module | Validation-gated publication of maintained architecture, feature, and documentation sources. | `specs/concorde/modules/auto-docs/architecture.md` |
 | `entity.concorde.package-manifest` | configuration | Single package identity and inventory for commands, templates, runtime, protocols, and integrations. | `concorde.json` |
-| `entity.concorde.commands` | directory | All canonical lifecycle command instructions, including compatibility-named `speckit.*` commands. | `commands` |
+| `entity.concorde.commands` | directory | All canonical lifecycle command instructions in the `concorde.*` namespace. | `commands` |
 | `entity.concorde.templates` | directory | Complete feature, plan, task, checklist, constitution, and reflection Markdown format references. | `templates` |
 | `entity.concorde.agent-assets` | directory | Canonical reflection-triage roles and integration templates. | `agent-assets` |
 | `entity.concorde.runtime` | package | Standard-library implementation of the Concorde source, workflow, and read-only alignment contracts. | `src/concorde` |
@@ -140,9 +143,13 @@ Retained `speckit-*` command IDs are compatibility names; they do not identify a
 
 ## Decisions
 
+- [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
+  entities and directed relationships in this architecture.
+
 - Concorde is the lifecycle owner; it no longer has preset, extension, bundle, catalog, or host layers.
 - Root commands and templates are readable canonical assets; installed agent files are generated projections.
-- `speckit-*` IDs remain temporarily for user muscle memory and are not architectural dependencies.
+- `concorde.*` IDs are the canonical public command namespace; agent integrations render them as
+  `concorde-*` skills.
 - One manifest, one archive, one installation receipt, and one version replace independently composed packages.
 - Stable architecture identity remains separate from mutable file/symbol locators.
 - Understand Anything node/edge types remain adapter metadata; only explicit revision-current sidecar

@@ -23,7 +23,7 @@ class CommandSurfaceParityAcceptance(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
                 roots[integration] = root
-            for command in ("speckit-plan", "speckit-specify", "speckit-fast-loop", "speckit-concorde-deliver", "speckit-constitution"):
+            for command in ("concorde-plan", "concorde-specify", "concorde-fast-loop", "concorde-deliver", "concorde-constitution"):
                 codex = (roots["codex"] / f".agents/skills/{command}/SKILL.md").read_text()
                 claude = (roots["claude"] / f".claude/skills/{command}/SKILL.md").read_text()
                 codex_body = codex.split("---", 2)[-1]
@@ -36,7 +36,7 @@ class CommandSurfaceParityAcceptance(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             subprocess.run([sys.executable, str(REPOSITORY_ROOT / "scripts/install-concorde.py"), "--target", str(root), "--apply"], check=True, capture_output=True, text=True)
-            for path in (root / ".agents/skills").glob("speckit-*/SKILL.md"):
+            for path in (root / ".agents/skills").glob("concorde-*/SKILL.md"):
                 body = path.read_text()
                 self.assertNotIn("{SCRIPT}", body)
                 self.assertNotIn("{FRAMEWORK}", body)

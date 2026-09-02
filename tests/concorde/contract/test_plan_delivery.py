@@ -10,7 +10,7 @@ WORKSPACE_FIXTURES = REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/works
 
 class PlanDeliveryContractTests(unittest.TestCase):
     def test_plan_uses_feature_architecture_code_and_tests_as_inputs(self):
-        body = (PACKAGE / "commands/speckit.plan.md").read_text(encoding="utf-8")
+        body = (PACKAGE / "commands/concorde.plan.md").read_text(encoding="utf-8")
         normalized = " ".join(body.split())
         for value in (
             "complete selected feature file",
@@ -52,7 +52,7 @@ class PlanDeliveryContractTests(unittest.TestCase):
         self.assertTrue(proposal["remove"][0].startswith(".concorde/attempts/feature."))
 
     def test_delivery_guidance_never_authors_content(self):
-        body = (REPOSITORY_ROOT / "commands/speckit.concorde.deliver.md").read_text(encoding="utf-8")
+        body = (REPOSITORY_ROOT / "commands/concorde.deliver.md").read_text(encoding="utf-8")
         normalized = " ".join(body.split())
         self.assertIn("Delivery is cleanup-only", normalized)
         self.assertIn("writes no durable specification or implementation narrative", normalized)

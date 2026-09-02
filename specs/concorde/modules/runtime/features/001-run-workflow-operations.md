@@ -46,7 +46,7 @@ bounded context, explore evidence-qualified alignment, and close attempts atomic
 - **Outputs**: Operation/target/status, artifacts, findings, and versioned result payload; exploration returns Alignment Schema 1 specification/implementation/provenance/alignment projections.
 - **Obligations**: Deterministic behavior, safe paths, non-mutating read operations, atomic reviewed mutations, and actionable diagnostics.
 - **Failures**: Invalid config/source/target/path/proposal or filesystem failure returns failure and preserves unrelated/current authority.
-- **Compatibility**: Envelopes expose Profile 7, Protocol 12, Initialization 2, Delivery 8, and Alignment Schema 1 terminology only; native package version 1.1.0 adds `explore` without changing existing operations.
+- **Compatibility**: Envelopes expose Profile 7, Protocol 12, Initialization 3, Delivery 8, and Alignment Schema 1 terminology only; native package version 1.1.0 adds `explore` without changing existing operations.
 - **Implementing entities**: `entity.runtime.cli`, `entity.runtime.repository-loader`, `entity.runtime.alignment-explorer`, `entity.runtime.validator`, `entity.runtime.delivery`.
 - **Example**: `concorde.py --project-root . validate` emits a JSON envelope whose findings carry stable rule IDs and remediations.
 

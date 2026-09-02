@@ -36,7 +36,7 @@ test/projection sources, and records proportionate evidence before marking work 
 
 - **Consumer**: Maintainer delegating an approved dependency-ordered implementation.
 - **Direction**: Complete attempt input to reconciled sources, tests, evidence, tasks, and reflections.
-- **Entry points**: `speckit.implement`, `speckit.analyze`, and `speckit.converge`.
+- **Entry points**: `concorde.implement`, `concorde.analyze`, and `concorde.converge`.
 - **Inputs**: Feature design, module architecture, source/tests, complete plan/tasks/checklists, and active reflection context.
 - **Outputs**: Product/specification changes authorized by tasks, passing evidence in the selected stable-ID control attempt's `validation.md`, checked tasks, and appended difficult choices/problems.
 - **Obligations**: Respect dependencies/file ownership, test before code where required, protect authorities, and never claim skipped/failed checks as passed.

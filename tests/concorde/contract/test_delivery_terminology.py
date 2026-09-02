@@ -48,7 +48,7 @@ class DeliveryTerminologyContractTests(unittest.TestCase):
 
     def test_runtime_and_guidance_use_cleanup_only_delivery_language(self):
         runtime = (REPOSITORY_ROOT / "src/concorde/delivery.py").read_text(encoding="utf-8")
-        command = (REPOSITORY_ROOT / "commands/speckit.concorde.deliver.md").read_text(encoding="utf-8")
+        command = (REPOSITORY_ROOT / "commands/concorde.deliver.md").read_text(encoding="utf-8")
         readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("Delivery Proposal 8", runtime)
         self.assertIn("proposal.get(\"proposal_version\") != 8", runtime)

@@ -42,19 +42,19 @@ class CommandUpdateIntegrationTests(unittest.TestCase):
             changed_root = base / "changed"
             changed_root.mkdir()
             self.copy_package(changed_root)
-            command = changed_root / "commands/speckit.checklist.md"
+            command = changed_root / "commands/concorde.checklist.md"
             command.write_text(command.read_text() + "\nNative update marker.\n")
             changed_package = installer.load_package(changed_root)
             update_actions, update_desired, _ = installer.installation_plan(target, changed_package, "codex")
             updates = {item["path"] for item in update_actions if item["action"] == "update"}
             self.assertEqual(updates, {
-                ".concorde/framework/commands/speckit.checklist.md",
-                ".agents/skills/speckit-checklist/SKILL.md",
+                ".concorde/framework/commands/concorde.checklist.md",
+                ".agents/skills/concorde-checklist/SKILL.md",
             })
             installer.apply_plan(target, changed_package, "codex", update_actions, update_desired)
             after = {item["path"]: item["sha256"] for item in json.loads((target / ".concorde/install.json").read_text())["outputs"]}
             self.assertEqual({path for path in before if before[path] != after[path]}, updates)
-            self.assertIn("Native update marker", (target / ".agents/skills/speckit-checklist/SKILL.md").read_text())
+            self.assertIn("Native update marker", (target / ".agents/skills/concorde-checklist/SKILL.md").read_text())
 
     def test_command_projection_update_preserves_project_selection(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -33,7 +33,7 @@ interfaces, or current-project application using only the smallest relevant main
 
 - **Consumer**: Maintainer or coding agent needing workflow/framework orientation.
 - **Direction**: Natural-language input to read-only cited answer.
-- **Entry points**: `speckit.concorde.ask`.
+- **Entry points**: `concorde.ask`.
 - **Inputs**: One bounded question and optional project target.
 - **Outputs**: Concise answer, direct source citations, and clearly identified uncertainty.
 - **Obligations**: Use installed/current sources, disclose inference, and avoid unrelated/deeper reads or any write.

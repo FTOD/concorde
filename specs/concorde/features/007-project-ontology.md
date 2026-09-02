@@ -32,7 +32,8 @@ Migrate routing, delivery, validation, publication, guidance, fixtures, and main
 A maintainer can enter the specification at any module, understand that module's architecture as a
 graph of typed entities and interactions, then open one direct feature file to learn what the module
 provides, how to use it, and how the relevant architecture entities collaborate. The `specs/` tree
-contains only durable architecture, feature intent, and optional explanatory diagrams; project-level
+contains only durable architecture, feature intent, required Archify system overviews, and optional
+additional explanatory diagrams; project-level
 workflow state is isolated under `.concorde/`.
 
 This migration is repository-wide. It changes Concorde's source profile, runtime protocol, initialization, context retrieval, validation, planning, implementation, delivery, generated documentation, canonical and installed guidance, fixtures, and every maintained Concorde module and feature specification.
@@ -42,7 +43,7 @@ This migration is repository-wide. It changes Concorde's source profile, runtime
 ```text
 <module>/
 ├── architecture.md             # the module's structure, entities, and interactions
-├── diagrams/                   # optional architecture-owned explanatory sources
+├── diagrams/                   # required system overview + optional architecture-owned views
 ├── modules/<child>/            # immediate child modules with the same shape
 └── features/
     └── <NNN-name>.md           # one complete durable feature specification
@@ -132,7 +133,8 @@ The feature is cross-cutting because these entities share one source profile. Th
 - **Failures**: Resolution or validation fails on unsafe paths, duplicate IDs, cyclic module containment, untyped entities, unresolved relationships, missing interface semantics, legacy durable files, or ambiguous ownership; delivery failures preserve the complete attempt.
 
 - **Compatibility**: Profile 7 / Protocol 12 are an intentional breaking control-state path revision
-  with no dual-layout mode. Initialization Proposal 2 adds the reflection log and reflection-triage/v2
+  with no dual-layout mode. Initialization Proposal 3 adds the reflection log and required root system
+  overview, while reflection-triage/v2
   changes its canonical locator. Stable module/feature/interface IDs, Delivery Proposal 8 semantics,
   and Build Manifest 10 semantics remain unchanged.
 - **Implementing entities**: `entity.concorde.runtime`, `entity.concorde.workspace-resolver`, `entity.concorde.cli`, `entity.concorde.commands`, `entity.concorde.specification`, `entity.concorde.control-state`.
@@ -258,14 +260,15 @@ As a maintainer, I can validate that the entire project uses the new ontology an
   removed authority fields.
 - **FR-016**: Specification, clarification, planning, task generation, analysis, convergence, implementation, fast-loop, initialization, context, validation, and delivery guidance MUST use the new authority model consistently in canonical and installed surfaces.
 - **FR-017**: Initialization MUST propose a minimal root `architecture.md` with a valid typed
-  entity/relationship scaffold and initialize `.concorde/reflections/log.md`; when explicitly requested,
+  entity/relationship scaffold, its Archify system overview, and initialize `.concorde/reflections/log.md`; when explicitly requested,
   it MAY add one direct feature file and its stable-ID attempt mapping, but MUST NOT create module-local
-  attempts or feature wrapper directories. The three-file initialization transaction MUST use
-  Initialization Proposal 2.
+  attempts or feature wrapper directories. The four-file initialization transaction MUST use
+  Initialization Proposal 3.
 - **FR-018**: Validation MUST deterministically check canonical direct-file layout, module cycles,
   unique/path-safe stable IDs, entity types and locators, relationship endpoints, stable-ID attempt
   mapping, related-feature references, embedded interface completeness, architecture zoom references,
-  control-state safety, and legacy residue without mutating sources.
+  one showcase Archify system overview per module with principal entity relationships, control-state
+  safety, and legacy residue without mutating sources.
 - **FR-019**: Documentation generation MUST publish `architecture.md` as each module landing page and
   each direct feature file as one feature landing page, preserve source provenance, publish
   architecture-owned diagrams, and exclude `.concorde/` control state from public content discovery.
@@ -309,7 +312,9 @@ As a maintainer, I can validate that the entire project uses the new ontology an
   active work, while changing the stable ID with active work is rejected rather than guessed.
 - The reflection log and active attempt files are tracked reviewable state. Reflection-triage plans,
   worktrees, and legacy compatibility assets remain ignored/disposable.
-- Architecture-owned JSON diagrams remain optional supporting sources. Feature-specific dynamic diagrams are either promoted to the providing module's diagram set or retired; they do not restore a multi-file feature specification.
+- Each module owns one required Archify architecture system overview; other architecture-owned JSON
+  diagrams remain optional supporting sources. Feature-specific dynamic diagrams are either promoted
+  to the providing module's diagram set or retired; they do not restore a multi-file feature specification.
 - Git history is sufficient durable milestone history after delivery removes temporal attempt evidence. Current code and tests, not a generated narrative, describe the accepted implementation.
 
 ## Out of Scope

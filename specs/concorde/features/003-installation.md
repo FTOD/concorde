@@ -59,7 +59,8 @@ outcomes plus preservation of unrelated files.
 - **Outputs**: Status, version, integration, receipt path, and sorted create/adopt/update/remove/conflict actions with role/digest.
 - **Obligations**: Preview by default; validate manifest/inventory; reject symlink/ownership collisions; update only prior matching digests; write receipt last; restore prior bytes on apply failure.
 - **Failures**: Invalid package, unsupported integration/profile, unsafe path, modified owned output, unrelated collision, or filesystem failure returns diagnostics without claiming success.
-- **Compatibility**: Package Profile 7/Protocol 12 must match runtime; `speckit-*` names are rendered as Concorde-owned commands.
+- **Compatibility**: Package Profile 7/Protocol 12 must match runtime; canonical `concorde.*` names are
+  rendered as Concorde-owned `concorde-*` skills.
 - **Example**: `python3 scripts/install-concorde.py --target ../app --integration codex --apply`.
 - **Implementing entities**: `module.concorde.distribution`, `entity.concorde.installer`, `entity.concorde.package-manifest`, `entity.concorde.commands`, `entity.concorde.agent-assets`.
 
@@ -74,7 +75,7 @@ outcomes plus preservation of unrelated files.
 - **Obligations**: Preserve command semantics across integrations; never follow target symlinks or overwrite unowned divergent files.
 - **Failures**: Unsupported integration, invalid source front matter/template, output collision, or unsafe target path blocks projection.
 - **Compatibility**: Codex and Claude are the complete supported set for package schema 1.
-- **Example**: `speckit-plan` in both agents invokes the installed `.concorde/framework/scripts/workspace.py`.
+- **Example**: `concorde-plan` in both agents invokes the installed `.concorde/framework/scripts/workspace.py`.
 - **Implementing entities**: `entity.concorde.installer`, `entity.concorde.commands`, `entity.concorde.coding-agent`.
 
 ## Architecture Zoom

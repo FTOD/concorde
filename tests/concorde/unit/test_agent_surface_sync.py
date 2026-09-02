@@ -27,8 +27,8 @@ class AgentSurfaceSyncTests(unittest.TestCase):
 
     def test_inventory_contains_all_commands_for_both_integrations(self):
         desired = sync.expected_outputs(REPOSITORY_ROOT)
-        codex = {path for path in desired if path.startswith(".agents/skills/speckit-")}
-        claude = {path for path in desired if path.startswith(".claude/skills/speckit-")}
+        codex = {path for path in desired if path.startswith(".agents/skills/concorde-")}
+        claude = {path for path in desired if path.startswith(".claude/skills/concorde-")}
         self.assertEqual(len(codex), 16)
         self.assertEqual(len(claude), 16)
         for content in desired.values():

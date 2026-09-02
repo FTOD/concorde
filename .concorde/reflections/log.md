@@ -89,7 +89,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.workflow.plan-delivery
 - **Kind**: guidance
-- **Concerns**: commands/speckit.plan.md
+- **Concerns**: commands/concorde.plan.md
 - **Expected**: Planning keeps proposed contract work in the selected attempt and schedules any durable contract mutation for implementation.
 - **Observed**: The plan command directs Phase 1 to write feature-root `contracts/`, although child FR-007 and parent FR-015 prohibit planning from updating durable sources and the module reference classifies `attempt/contracts/**` as temporal.
 - **Effect**: worked-around
@@ -159,7 +159,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.workflow.execute-and-reconcile
 - **Kind**: guidance
-- **Concerns**: commands/speckit.analyze.md
+- **Concerns**: commands/concorde.analyze.md
 - **Expected**: The complete analysis surface preserves every file except a required centralized reflection record.
 - **Observed**: Mandatory before/after hooks were executed without first requiring the same read-only-except-reflection contract, so a mutating hook could violate the phase promise.
 - **Effect**: worked-around
@@ -198,7 +198,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Date**: 2026-09-01
 - **Feature**: feature.concorde.define-project-ontology
 - **Kind**: guidance
-- **Concerns**: commands/speckit.plan.md
+- **Concerns**: commands/concorde.plan.md
 - **Expected**: A selected feature attempt writes only inside one lifecycle root and treats other feature bodies as read-only authorities.
 - **Observed**: The requested source-profile migration is not coherent unless all twenty-four feature designs, six module packages, runtime, guidance, fixtures, and projections change together; a partial migration cannot be loaded or validated by either profile.
 - **Effect**: worked-around
@@ -405,6 +405,6 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Expected**: The feature identifies a concrete read-only projection/query entry point and an executable representation for explicit alignment evidence.
 - **Observed**: The maintained interface intentionally says only `Future read-only Alignment Explorer projection/query API`, while the checked-in JSON fixtures are untested, reference a missing schema path, and still encode removed ontology concepts.
 - **Effect**: assumed
-- **Action**: Use a native `concorde explore` JSON operation plus a versioned, revision-bound alignment sidecar; keep it distinct from conversational `speckit-*` commands and prohibit name/similarity-derived verification.
+- **Action**: Use a native `concorde explore` JSON operation plus a versioned, revision-bound alignment sidecar; keep it distinct from conversational `concorde-*` commands and prohibit name/similarity-derived verification.
 - **Improvement**: Reassess whether a browser projection or a broadly adopted alignment format should supplement the JSON operation after real project usage establishes stable query and evidence needs.
 - **Status**: open

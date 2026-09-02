@@ -70,7 +70,7 @@ class AlignmentExplorerContractTests(unittest.TestCase):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
         self.assertEqual(len(manifest["commands"]), 16)
         self.assertFalse(any("explore" in command for command in manifest["commands"]))
-        self.assertFalse((REPOSITORY_ROOT / "commands/speckit.concorde.explore.md").exists())
+        self.assertFalse((REPOSITORY_ROOT / "commands/concorde.explore.md").exists())
 
     def test_alignment_input_has_no_similarity_or_confidence_escape_hatch(self):
         record = self.schemas["alignment-input.schema.json"]["$defs"]["record"]

@@ -10,7 +10,7 @@ from typing import Mapping
 from .frontmatter import FrontMatterError, parse_document
 
 
-COMMAND_FILE = re.compile(r"^speckit(?:\.[a-z0-9-]+)+\.md$")
+COMMAND_FILE = re.compile(r"^concorde(?:\.[a-z0-9-]+)+\.md$")
 INTEGRATIONS = frozenset({"codex", "claude"})
 
 

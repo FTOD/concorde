@@ -40,8 +40,8 @@ class AgentSurfaceContractTests(unittest.TestCase):
 
     def test_contract_covers_both_integration_commands_and_reflection_agents(self):
         paths = {item["path"] for item in self.status()["actions"]}
-        self.assertEqual(len([path for path in paths if path.startswith(".agents/skills/speckit-")]), 16)
-        self.assertEqual(len([path for path in paths if path.startswith(".claude/skills/speckit-")]), 16)
+        self.assertEqual(len([path for path in paths if path.startswith(".agents/skills/concorde-")]), 16)
+        self.assertEqual(len([path for path in paths if path.startswith(".claude/skills/concorde-")]), 16)
         for required in (
             ".agents/skills/reflections-triage/SKILL.md",
             ".codex/agents/reflection_investigator.toml",

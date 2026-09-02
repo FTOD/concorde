@@ -20,7 +20,7 @@ class InstalledClaudeWorkflowAcceptance(unittest.TestCase):
                 text=True, capture_output=True,
             )
             self.assertEqual(install.returncode, 0, install.stderr or install.stdout)
-            self.assertEqual(len(list((root / ".claude/skills").glob("speckit-*/SKILL.md"))), 16)
+            self.assertEqual(len(list((root / ".claude/skills").glob("concorde-*/SKILL.md"))), 16)
             self.assertTrue((root / ".claude/agents/reflection-investigator.md").is_file())
             feature = create_feature_file(root)
             write_selection(root, feature.relative_to(root).as_posix())
@@ -30,7 +30,7 @@ class InstalledClaudeWorkflowAcceptance(unittest.TestCase):
             )
             self.assertEqual(workspace.returncode, 0, workspace.stdout)
             self.assertEqual(json.loads(workspace.stdout)["workspace"]["feature_id"], "feature.example.deliver")
-            skill = (root / ".claude/skills/speckit-plan/SKILL.md").read_text()
+            skill = (root / ".claude/skills/concorde-plan/SKILL.md").read_text()
             self.assertIn("user-invocable: true", skill)
             self.assertIn(".concorde/framework/scripts/workspace.py --phase plan", skill)
             self.assertNotIn(".specify/", skill)

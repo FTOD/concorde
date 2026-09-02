@@ -8,6 +8,10 @@ features:
   - feature.example.atomic
   - feature.example.checkout.authorize
   - feature.example.checkout.confirm
+diagrams:
+  - source: diagrams/system-overview.json
+    kind: architecture
+    output: generated/architecture/checkout-example.html
 ---
 
 # Architecture: Checkout Example
@@ -58,4 +62,5 @@ None.
 
 ## Decisions
 
+- [System overview](diagrams/system-overview.json) projects the checkout entities and relationships.
 - Former subfeatures are flat related features with preserved stable IDs.

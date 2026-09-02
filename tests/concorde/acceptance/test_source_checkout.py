@@ -18,15 +18,15 @@ class SourceCheckoutAcceptance(unittest.TestCase):
         value = json.loads(result.stdout)
         self.assertEqual(value["status"], "current")
         self.assertEqual(value["outputs"], 38)
-        self.assertEqual(len(list((REPOSITORY_ROOT / ".agents/skills").glob("speckit-*/SKILL.md"))), 16)
-        self.assertEqual(len(list((REPOSITORY_ROOT / ".claude/skills").glob("speckit-*/SKILL.md"))), 16)
+        self.assertEqual(len(list((REPOSITORY_ROOT / ".agents/skills").glob("concorde-*/SKILL.md"))), 16)
+        self.assertEqual(len(list((REPOSITORY_ROOT / ".claude/skills").glob("concorde-*/SKILL.md"))), 16)
         self.assertFalse((REPOSITORY_ROOT / ".concorde/framework").exists())
         self.assertFalse((REPOSITORY_ROOT / ".specify").exists())
 
     def test_root_commands_are_the_projection_provenance(self):
         for integration_root in (".agents/skills", ".claude/skills"):
-            plan = (REPOSITORY_ROOT / integration_root / "speckit-plan/SKILL.md").read_text()
-            self.assertIn('source: "commands/speckit.plan.md"', plan)
+            plan = (REPOSITORY_ROOT / integration_root / "concorde-plan/SKILL.md").read_text()
+            self.assertIn('source: "commands/concorde.plan.md"', plan)
             self.assertIn("python3 scripts/workspace.py --phase plan", plan)
             self.assertNotIn(".concorde/framework", plan)
 

@@ -4,17 +4,17 @@ Concorde is a standalone, module-centered architecture and feature workflow for 
 coding agents. It provides one structural entry point per module, one complete specification per
 feature, bounded implementation context, deterministic validation, and cleanup-only delivery.
 
-Concorde no longer depends on or composes with Spec Kit. The familiar `speckit-*` command IDs remain
-temporarily for workflow compatibility, and the Markdown formatting of commands/templates retains
-useful ideas from Spec Kit as acknowledged reference lineage. All current instructions, templates,
-runtime behavior, installation, and ownership are Concorde-native.
+Concorde no longer depends on or composes with Spec Kit. Its public command namespace is
+`concorde.*`, rendered as `concorde-*` agent skills. The Markdown formatting of commands/templates
+retains useful ideas from Spec Kit as acknowledged reference lineage. All current instructions,
+templates, runtime behavior, installation, and ownership are Concorde-native.
 
 ## The model
 
 ```text
 specs/<project>/
 ├── architecture.md
-├── diagrams/                     # optional module-owned sources
+├── diagrams/                     # required system overview + optional module-owned views
 ├── modules/<child>/              # recursive, same shape
 └── features/<NNN-name>.md        # complete durable feature specification
 
@@ -44,27 +44,27 @@ Read [Ontology](docs/ontology.md), [Specification model](docs/specification-mode
 ## Workflow commands
 
 Canonical command sources live together in root `commands/` (for example,
-`commands/speckit.specify.md`). Install/rendering turns
+`commands/concorde.specify.md`). Install/rendering turns
 them into agent-native skills while retaining these public IDs:
 
 | Command | Outcome |
 |---|---|
-| `$speckit-constitution` | Create or amend `.concorde/constitution.md`. |
-| `$speckit-concorde-init` | Propose and explicitly apply a Profile 7 root module/reflection log. |
-| `$speckit-specify` | Create or revise one direct level-local feature and its requirements checklist. |
-| `$speckit-clarify` | Resolve important ambiguity in that feature/interfaces. |
-| `$speckit-checklist` | Create a reviewer-owned requirements-quality checklist. |
-| `$speckit-plan` | Plan from feature + module architecture + current code/tests into one attempt. |
-| `$speckit-tasks` | Generate dependency-ordered, traceable, test-first tasks. |
-| `$speckit-analyze` | Run a read-only consistency/coverage audit. |
-| `$speckit-implement` | Execute tasks across architecture/feature/code/tests/projections with evidence. |
-| `$speckit-converge` | Append only remaining verified work to the active task list. |
-| `$speckit-taskstoissues` | Convert tasks into dependency-aware external issues when authorized. |
-| `$speckit-fast-loop` | Complete one eligible small established change without an attempt. |
-| `$speckit-concorde-context` | Retrieve exactly one bounded module or feature context. |
-| `$speckit-concorde-validate` | Deterministically validate the complete source profile. |
-| `$speckit-concorde-ask` | Answer from cited package guidance and bounded project sources. |
-| `$speckit-concorde-deliver` | Validate a completed attempt and remove exactly that attempt. |
+| `$concorde-constitution` | Create or amend `.concorde/constitution.md`. |
+| `$concorde-init` | Propose and explicitly apply a Profile 7 root module/reflection log. |
+| `$concorde-specify` | Create or revise one direct level-local feature and its requirements checklist. |
+| `$concorde-clarify` | Resolve important ambiguity in that feature/interfaces. |
+| `$concorde-checklist` | Create a reviewer-owned requirements-quality checklist. |
+| `$concorde-plan` | Plan from feature + module architecture + current code/tests into one attempt. |
+| `$concorde-tasks` | Generate dependency-ordered, traceable, test-first tasks. |
+| `$concorde-analyze` | Run a read-only consistency/coverage audit. |
+| `$concorde-implement` | Execute tasks across architecture/feature/code/tests/projections with evidence. |
+| `$concorde-converge` | Append only remaining verified work to the active task list. |
+| `$concorde-taskstoissues` | Convert tasks into dependency-aware external issues when authorized. |
+| `$concorde-fast-loop` | Complete one eligible small established change without an attempt. |
+| `$concorde-context` | Retrieve exactly one bounded module or feature context. |
+| `$concorde-validate` | Deterministically validate the complete source profile. |
+| `$concorde-ask` | Answer from cited package guidance and bounded project sources. |
+| `$concorde-deliver` | Validate a completed attempt and remove exactly that attempt. |
 
 Feature Workspace Protocol 12 returns one selected `feature_path`, its providing architecture,
 bounded ancestry/related summaries, stable-ID attempt/reflection state, and deterministic source/test

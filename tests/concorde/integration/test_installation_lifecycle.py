@@ -80,7 +80,7 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         manifest = json.loads((updated / "concorde.json").read_text())
         manifest["version"] = "1.1.0"
         (updated / "concorde.json").write_text(json.dumps(manifest, indent=2) + "\n")
-        command = updated / "commands/speckit.concorde.ask.md"
+        command = updated / "commands/concorde.ask.md"
         command.write_text(command.read_text() + "\nUpdate marker.\n")
         _, preview = self.run_install("--integration", "codex", checkout=updated)
         self.assertTrue(any(item["action"] == "update" for item in preview["actions"]))
@@ -88,17 +88,17 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         receipt = json.loads((self.root / ".concorde/install.json").read_text())
         self.assertEqual(receipt["concorde_version"], "1.1.0")
         self.assertEqual(unrelated.read_text(), "maintainer\n")
-        self.assertIn("Update marker", (self.root / ".agents/skills/speckit-concorde-ask/SKILL.md").read_text())
+        self.assertIn("Update marker", (self.root / ".agents/skills/concorde-ask/SKILL.md").read_text())
 
     def test_modified_owned_output_blocks_update_without_mutation(self):
         self.run_install("--integration", "codex", "--apply")
-        modified = self.root / ".agents/skills/speckit-plan/SKILL.md"
+        modified = self.root / ".agents/skills/concorde-plan/SKILL.md"
         modified.write_text("maintainer edit\n")
         before = self.tree_digest()
         result, preview = self.run_install("--integration", "codex", check=False)
         self.assertEqual(result.returncode, 2)
         self.assertEqual(preview["status"], "conflict")
-        self.assertTrue(any(item["path"].endswith("speckit-plan/SKILL.md") and item["action"] == "conflict" for item in preview["actions"]))
+        self.assertTrue(any(item["path"].endswith("concorde-plan/SKILL.md") and item["action"] == "conflict" for item in preview["actions"]))
         self.assertEqual(before, self.tree_digest())
 
     def test_integration_switch_reconciles_owned_surfaces_and_preserves_unrelated(self):
@@ -107,10 +107,10 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         unrelated.parent.mkdir(parents=True)
         unrelated.write_text("team\n")
         _, preview = self.run_install("--integration", "claude")
-        self.assertTrue(any(item["action"] == "remove" and item["path"].startswith(".agents/skills/speckit-") for item in preview["actions"]))
+        self.assertTrue(any(item["action"] == "remove" and item["path"].startswith(".agents/skills/concorde-") for item in preview["actions"]))
         self.run_install("--integration", "claude", "--apply")
-        self.assertTrue((self.root / ".claude/skills/speckit-plan/SKILL.md").is_file())
-        self.assertFalse((self.root / ".agents/skills/speckit-plan/SKILL.md").exists())
+        self.assertTrue((self.root / ".claude/skills/concorde-plan/SKILL.md").is_file())
+        self.assertFalse((self.root / ".agents/skills/concorde-plan/SKILL.md").exists())
         self.assertEqual(unrelated.read_text(), "team\n")
 
     def test_invalid_profile_stops_before_output(self):
@@ -127,7 +127,7 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         self.root.mkdir()
         outside = Path(self.temporary.name) / "outside.txt"
         outside.write_text("outside\n")
-        link = self.root / ".agents/skills/speckit-plan/SKILL.md"
+        link = self.root / ".agents/skills/concorde-plan/SKILL.md"
         link.parent.mkdir(parents=True)
         link.symlink_to(outside)
         result, value = self.run_install("--apply", check=False)

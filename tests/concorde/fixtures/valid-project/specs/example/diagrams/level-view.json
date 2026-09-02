@@ -1,7 +1,12 @@
 {
   "schema_version": 1,
   "diagram_type": "architecture",
-  "meta": {"title": "Example", "output": "../../../generated/architecture/example.html", "legend": {"mode": "hidden"}, "views": []},
-  "components": [],
-  "connections": []
+  "meta": {"title": "Example", "output": "../../../generated/architecture/example.html", "quality_profile": "showcase", "legend": {"mode": "hidden"}, "views": []},
+  "components": [
+    {"id": "runtime", "type": "backend", "label": "Runtime"},
+    {"id": "api", "type": "backend", "label": "API"}
+  ],
+  "connections": [
+    {"id": "runtime-calls-api", "from": "runtime", "to": "api", "label": "calls"}
+  ]
 }

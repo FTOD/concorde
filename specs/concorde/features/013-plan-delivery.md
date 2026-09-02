@@ -35,7 +35,7 @@ and known reflections into one technical plan and dependency-ordered temporal ta
 
 - **Consumer**: Maintainer and coding agent preparing a reviewed feature change.
 - **Direction**: Durable feature/architecture/code context to a separate stable-ID control plan and tasks.
-- **Entry points**: `speckit.plan`, `speckit.tasks`, and optional `speckit.taskstoissues`.
+- **Entry points**: `concorde.plan`, `concorde.tasks`, and optional `concorde.taskstoissues`.
 - **Inputs**: `feature_path`, module ancestry, related feature paths, source/test inventory, constitution, reflections, and checklist state.
 - **Outputs**: `.concorde/attempts/<stable-feature-id>/plan.md`, research/data model/quickstart, and dependency-ordered tasks with exact traces/paths.
 - **Obligations**: Resolve unknowns, keep proposals temporal, map every affected authority/evidence path, and preserve durable sources during planning.

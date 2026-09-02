@@ -26,23 +26,23 @@ Proposal 8 delivery removes attempt only
 
 ## 1. Initialize
 
-`speckit.concorde.init` proposes Profile 7 control state, `.concorde/reflections/log.md`, and a root
+`concorde.init` proposes Profile 7 control state, `.concorde/reflections/log.md`, and a root
 `architecture.md`. The maintainer
 reviews exact files/digests before apply. Existing configured hierarchies return unchanged rather
 than receiving starter prose.
 
 The root architecture defines responsibility/boundary, inventories, entity/relationship vocabulary,
-representative interactions, and optional module diagram declarations. Product modules are created
+representative interactions, a required Archify system overview, and optional additional module diagram declarations. Product modules are created
 only from product responsibilities, never from Concorde's internal roles.
 
 ## 2. Specify and clarify
 
-`speckit.specify` creates or revises one direct module feature file. It embeds every meaningful
+`concorde.specify` creates or revises one direct module feature file. It embeds every meaningful
 interface and references existing architecture entities. A new feature is registered in the
 providing architecture's immediate feature inventory; structural entity/relationship changes remain
 explicit architecture work.
 
-`speckit.clarify` asks a small number of high-impact questions and reconciles each answer through
+`concorde.clarify` asks a small number of high-impact questions and reconciles each answer through
 front matter, usage, interfaces, failures, requirements, and Architecture Zoom. It never redefines a
 module entity inside a feature.
 
@@ -53,7 +53,7 @@ Custom checklists remain reviewer-owned.
 
 ## 3. Plan
 
-`speckit.plan` runs Workspace Protocol 12 and reads:
+`concorde.plan` runs Workspace Protocol 12 and reads:
 
 - the complete selected feature file;
 - the providing module architecture and bounded ancestry;
@@ -75,7 +75,7 @@ leaves all other routes for maintainer disposition.
 
 ## 4. Tasks
 
-`speckit.tasks` produces dependency-ordered, test-first tasks. Every task has a stable ID, exact
+`concorde.tasks` produces dependency-ordered, test-first tasks. Every task has a stable ID, exact
 paths, requirement or acceptance trace, dependencies, and a proportionate verification check.
 
 Tasks may explicitly own durable reconciliation when the planned change affects architecture entity
@@ -85,14 +85,14 @@ behavior, implementation, and evidence coherent in the same attempt.
 
 ## 5. Analyze, implement, and converge
 
-`speckit.analyze` is a read-only consistency/coverage audit. It can append only a centralized
+`concorde.analyze` is a read-only consistency/coverage audit. It can append only a centralized
 reflection when the audit itself encounters a framework/tooling conflict.
 
-`speckit.implement` executes tasks phase-by-phase. Before checking a task it records compact attempt
+`concorde.implement` executes tasks phase-by-phase. Before checking a task it records compact attempt
 evidence: task/trace, actual command, outcome, evidence path, scope, and limitation. Only a passed
 proportionate check permits completion. Unexpected durable changes stop task completion.
 
-`speckit.converge` compares current repository/evidence state with feature intent, architecture, and plan,
+`concorde.converge` compares current repository/evidence state with feature intent, architecture, and plan,
 then appends only genuinely remaining tasks. It preserves existing task IDs/text/markers.
 
 ## 6. Validation and projections
@@ -106,7 +106,7 @@ one task. Generated output never substitutes for an entity or interface definiti
 
 ## 7. Delivery
 
-`speckit.concorde.deliver` is invoked only after architecture/feature/code/tests/projections already
+`concorde.deliver` is invoked only after architecture/feature/code/tests/projections already
 agree and every task/checklist has evidence.
 
 Proposal mode returns a digest-bound Delivery Proposal 8 naming exactly the selected attempt. The
@@ -117,7 +117,7 @@ Any failure preserves the entire attempt and every durable/executable authority.
 
 ## Fast loop
 
-`speckit.fast-loop` is an alternative for one small, fully understood, single-feature/single-module
+`concorde.fast-loop` is an alternative for one small, fully understood, single-feature/single-module
 change with no active attempt, migration, new topology/type/compatibility policy, or multi-feature
 coordination. It directly reconciles the minimal design/architecture/code/test set and runs focused
 evidence. Otherwise use the full lifecycle.

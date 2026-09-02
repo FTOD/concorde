@@ -33,7 +33,7 @@ reconciliation of affected architecture/design/code/test/projection sources with
 
 - **Consumer**: Maintainer requesting a low-risk established modification.
 - **Direction**: Explicit request to directly reconciled source/test result.
-- **Entry points**: `speckit.fast-loop`.
+- **Entry points**: `concorde.fast-loop`.
 - **Inputs**: Selected anchor, requested change, clean worktree, complete current architecture/design/code/test context.
 - **Outputs**: Exact changed sources, affected features/interfaces/entities, checks, evidence limits, or preflight rejection.
 - **Obligations**: Reject structural/interface/policy ambiguity, discover all affected authorities, preserve unrelated/user state, and run proportional checks.

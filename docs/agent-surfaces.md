@@ -16,10 +16,10 @@ Canonical:
 
 Generated checkout projections:
 
-- `.agents/skills/speckit-*/SKILL.md`
+- `.agents/skills/concorde-*/SKILL.md`
 - `.agents/skills/reflections-triage/SKILL.md`
 - `.codex/agents/reflection_*.toml`
-- `.claude/skills/speckit-*/SKILL.md`
+- `.claude/skills/concorde-*/SKILL.md`
 - `.claude/skills/reflections-triage/SKILL.md`
 - `.claude/agents/reflection-*.md`
 

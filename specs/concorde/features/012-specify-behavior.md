@@ -34,7 +34,7 @@ requirements, failures, related-feature links, and architecture zoom in its sole
 
 - **Consumer**: Maintainer defining or changing a module capability.
 - **Direction**: Natural-language intent and bounded architecture to durable feature design/checklist.
-- **Entry points**: `speckit.specify`, optionally followed by `speckit.clarify` or checklist review.
+- **Entry points**: `concorde.specify`, optionally followed by `concorde.clarify` or checklist review.
 - **Inputs**: Feature description, providing module architecture, related feature IDs, and existing design when revising.
 - **Outputs**: One validated `features/<NNN-name>.md`, `feature_path` selection pointer, and temporal requirements-quality checklist in the matching stable-ID control attempt after the post-front-matter workspace rerun.
 - **Obligations**: Define every interface and architecture reference, make requirements testable, and avoid implementation prose.

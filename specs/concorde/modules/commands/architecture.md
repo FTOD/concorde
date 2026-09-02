@@ -5,7 +5,10 @@ parent: module.concorde
 modules: []
 features:
   - feature.commands.project-workflow
-diagrams: []
+diagrams:
+  - source: diagrams/system-overview.json
+    kind: architecture
+    output: generated/architecture/concorde-commands-system-overview.html
 ---
 
 # Architecture: Commands
@@ -17,7 +20,7 @@ consistently to supported coding-agent integrations without layered composition.
 
 ## Boundary
 
-Commands owns root command prose, root templates, compatibility command IDs, projection metadata,
+Commands owns root command prose, root templates, canonical command IDs, projection metadata,
 and phase authority rules. It does not own deterministic runtime behavior, project specifications,
 agent execution, or integration-specific product internals.
 
@@ -73,8 +76,11 @@ None.
 
 ## Decisions
 
+- [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
+  entities and directed relationships in this architecture.
 - Root `commands/` and `templates/` are canonical; `.agents/**` and `.claude/**` are generated.
 - Commands are complete documents, not fragments merged through priorities or strategies.
 - Templates are complete format references; project files become authority only after being authored.
-- Compatibility `speckit-*` IDs are retained while metadata names Concorde as author and source owner.
+- Canonical `concorde.*` IDs render as `concorde-*` skills while metadata names Concorde as author and
+  source owner.
 - Deterministic filesystem semantics remain in Runtime, not conversational command prose.

@@ -5,7 +5,10 @@ parent: module.concorde
 modules: []
 features:
   - feature.runtime.run-workflow-operations
-diagrams: []
+diagrams:
+  - source: diagrams/system-overview.json
+    kind: architecture
+    output: generated/architecture/concorde-runtime-system-overview.html
 ---
 
 # Architecture: Runtime
@@ -38,7 +41,7 @@ generated documentation presentation.
 | `entity.runtime.alignment-explorer` | program | Strictly validates optional pinned UA graph/sidecar inputs and projects bounded specification, implementation, provenance, and effective alignment records without mutation. | `src/concorde/alignment.py#explore_alignment` |
 | `entity.runtime.workspace-resolver` | program | Resolves native selection, ancestry, related summaries, attempt/reflection state, and executable roots. | `src/concorde/feature_workspace.py#resolve_phase_paths` |
 | `entity.runtime.validator` | program | Runs layout, hierarchy, entity, interface, evidence, diagram, freshness, and reflection rules. | `src/concorde/validate.py#validate_project` |
-| `entity.runtime.initializer` | program | Proposes and atomically applies Initialization Proposal 2. | `src/concorde/initialize.py` |
+| `entity.runtime.initializer` | program | Proposes and atomically applies Initialization Proposal 3 with a root Archify system overview. | `src/concorde/initialize.py` |
 | `entity.runtime.delivery` | program | Proposes and applies digest-bound removal of one complete attempt. | `src/concorde/delivery.py` |
 | `entity.runtime.agent-projector` | program | Renders and verifies command/reflection assets without an external command composer. | `src/concorde/command_assets.py` |
 | `entity.runtime.cli` | program | Dispatches supported operations and serializes one structured envelope. | `src/concorde/cli.py` |
@@ -86,6 +89,8 @@ None.
 
 ## Decisions
 
+- [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
+  entities and directed relationships in this architecture.
 - Python standard-library behavior is canonical; shell and PowerShell only locate and forward.
 - Source and installed packages preserve the same relative `scripts/` + `src/` layout.
 - Native selection lives at `.concorde/feature.json`; no compatibility reader exists for host state.

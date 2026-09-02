@@ -4,6 +4,10 @@ kind: module
 parent: module.example.api
 modules: []
 features: []
+diagrams:
+  - source: diagrams/system-overview.json
+    kind: architecture
+    output: generated/architecture/example-store.html
 ---
 
 # Architecture: Example Store
@@ -44,4 +48,5 @@ None.
 
 ## Decisions
 
+- [System overview](diagrams/system-overview.json) projects the store entities and relationships.
 - Persistence stays behind the child-module boundary.

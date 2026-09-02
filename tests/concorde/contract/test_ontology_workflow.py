@@ -24,12 +24,12 @@ class OntologyWorkflowContractTests(unittest.TestCase):
 
         sources = {
             "templates/feature-template.md": ("architecture zoom", "interfaces", "source code"),
-            "commands/speckit.specify.md": ("architecture.md", "feature_path", "interfaces"),
-            "commands/speckit.plan.md": ("module architecture", "feature file", "source code"),
-            "commands/speckit.implement.md": ("module architecture", "feature file", "source code"),
-            "commands/speckit.fast-loop.md": ("providing architecture", "selected feature file", "code/tests"),
-            "commands/speckit.concorde.init.md": ("architecture.md", "typed entity vocabulary", "directed relationship vocabulary"),
-            "commands/speckit.concorde.deliver.md": ("module architecture", "feature file", "code"),
+            "commands/concorde.specify.md": ("architecture.md", "feature_path", "interfaces"),
+            "commands/concorde.plan.md": ("module architecture", "feature file", "source code"),
+            "commands/concorde.implement.md": ("module architecture", "feature file", "source code"),
+            "commands/concorde.fast-loop.md": ("providing architecture", "selected feature file", "code/tests"),
+            "commands/concorde.init.md": ("architecture.md", "typed entity vocabulary", "directed relationship vocabulary"),
+            "commands/concorde.deliver.md": ("module architecture", "feature file", "code"),
         }
         for relative, required in sources.items():
             text = (REPOSITORY_ROOT / relative).read_text(encoding="utf-8").lower()

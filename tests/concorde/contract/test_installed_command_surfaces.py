@@ -40,7 +40,7 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
             for integration, skill_root in (("codex", ".agents/skills"), ("claude", ".claude/skills")):
                 with self.subTest(integration=integration):
                     root = self.install(temporary, integration)
-                    skills = sorted((root / skill_root).glob("speckit-*/SKILL.md"))
+                    skills = sorted((root / skill_root).glob("concorde-*/SKILL.md"))
                     self.assertEqual(len(skills), 16)
                     self.assertTrue((root / skill_root / "reflections-triage/SKILL.md").is_file())
                     if integration == "codex":
@@ -57,8 +57,8 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
     def test_phase_commands_use_installed_workspace_and_templates(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.install(temporary, "codex")
-            plan = (root / ".agents/skills/speckit-plan/SKILL.md").read_text()
-            specify = (root / ".agents/skills/speckit-specify/SKILL.md").read_text()
+            plan = (root / ".agents/skills/concorde-plan/SKILL.md").read_text()
+            specify = (root / ".agents/skills/concorde-specify/SKILL.md").read_text()
             self.assertIn("python3 .concorde/framework/scripts/workspace.py --phase plan", plan)
             self.assertIn(".concorde/framework/templates/plan-template.md", plan)
             self.assertIn(".concorde/framework/templates/feature-template.md", specify)
@@ -94,7 +94,7 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
             self.assertEqual(roles, {"framework", "command", "agent"})
             paths = {item["path"] for item in receipt["outputs"]}
             self.assertIn(".concorde/framework/concorde.json", paths)
-            self.assertIn(".agents/skills/speckit-constitution/SKILL.md", paths)
+            self.assertIn(".agents/skills/concorde-constitution/SKILL.md", paths)
             self.assertNotIn(".concorde/config.json", paths)
             self.assertTrue(os.access(root / ".concorde/framework/scripts/concorde.py", os.X_OK))
             self.assertTrue(os.access(root / ".concorde/framework/scripts/concorde.sh", os.X_OK))
@@ -104,7 +104,7 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
             root = self.install(temporary, "codex")
             for relative in (
                 "concorde.json",
-                "commands/speckit.plan.md",
+                "commands/concorde.plan.md",
                 "templates/feature-template.md",
                 "src/concorde/alignment.py",
                 "src/concorde/cli.py",

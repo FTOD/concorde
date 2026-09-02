@@ -34,12 +34,12 @@ inventing product structure or overwriting an existing configured hierarchy.
 
 - **Consumer**: Maintainer establishing Concorde in a project.
 - **Direction**: Bidirectional command/result.
-- **Entry points**: Compatibility command `speckit.concorde.init` and native `scripts/concorde.py init` operation in source/installed package layouts.
+- **Entry points**: Canonical command `concorde.init` and native `scripts/concorde.py init` operation in source/installed package layouts.
 - **Inputs**: Project root, proposed root module ID, responsibility, boundary, and optional initial modules/features.
 - **Outputs**: Digest-bearing proposal or an applied/unchanged structured result with exact artifacts and findings.
 - **Obligations**: Preview and apply use the same proposal; existing targets are never silently overwritten.
 - **Failures**: Unsafe paths, conflicts, invalid entities/relations, stale proposals, or filesystem failure preserve the project.
-- **Compatibility**: Initialization Proposal 2 contains exactly Profile 7 configuration, one root architecture, and `.concorde/reflections/log.md`; older/mixed initialization is rejected.
+- **Compatibility**: Initialization Proposal 3 contains exactly Profile 7 configuration, one root architecture, its Archify system overview, and `.concorde/reflections/log.md`; older/mixed initialization is rejected.
 - **Implementing entities**: `entity.concorde.cli`, `entity.concorde.runtime`.
 
 ## Usage Scenarios
@@ -50,9 +50,9 @@ inventing product structure or overwriting an existing configured hierarchy.
 
 ## Requirements
 
-- **FR-001**: Initialization MUST propose Profile 7 configuration, one valid root `architecture.md` with entity/relation/interaction scaffold, and one Reflection Log v1 authority at `.concorde/reflections/log.md`.
+- **FR-001**: Initialization MUST propose Profile 7 configuration, one valid root `architecture.md` with entity/relation/interaction scaffold, one linked Archify `architecture` system overview of those entities and relationships, and one Reflection Log v1 authority at `.concorde/reflections/log.md`.
 - **FR-002**: It MUST NOT invent child modules/features/interfaces or create any feature artifact.
-- **FR-003**: Apply MUST accept only a current safe Initialization Proposal 2 and atomically promote exactly its three declared files.
+- **FR-003**: Apply MUST accept only a current safe Initialization Proposal 3 and atomically promote exactly its four declared files.
 - **FR-004**: Existing configured/partial/conflicting state MUST be diagnosed and never overwritten implicitly.
 
 ## Edge Cases

@@ -24,8 +24,8 @@ and into Codex or Claude, recording only generated framework/agent outputs in
 `.concorde/install.json`. Project configuration, selection, constitution, attempts, reflections,
 specifications, code, and tests remain project-owned.
 
-The `speckit-*` command IDs are temporary compatibility labels. They do not delegate any phase or
-template behavior to another framework.
+The `concorde.*` command IDs are canonical and render as `concorde-*` skills. They do not delegate
+any phase or template behavior to another framework.
 
 ## Authority map
 

@@ -45,10 +45,12 @@ features: []
 }
 
 describe('diagram declaration discovery', () => {
-  it('discovers the real tree as an empty architecture-owned declaration set', async () => {
+  it('discovers one architecture-owned system overview per real module', async () => {
     const projectRoot = resolve(__dirname, '../../..');
     const declarations = await discoverDiagramDeclarations(projectRoot);
-    expect(declarations).toEqual([]);
+    expect(declarations).toHaveLength(6);
+    expect(declarations.every((item) => item.sourcePath.endsWith('/diagrams/system-overview.json'))).toBe(true);
+    expect(declarations.every((item) => item.kind === 'architecture')).toBe(true);
     expect(declarations.every((item) => item.ownerPath.endsWith('/architecture.md'))).toBe(true);
     expect(declarations.map((item) => item.sourcePath)).toEqual(
       [...declarations.map((item) => item.sourcePath)].sort(),

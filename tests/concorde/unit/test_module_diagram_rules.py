@@ -35,6 +35,32 @@ class ModuleDiagramRuleTests(unittest.TestCase):
             architecture.write_text(architecture.read_text(encoding="utf-8") + "\n[view](diagrams/level-view.json)\n", encoding="utf-8")
             self.assertNotIn("CONCORDE-VIEW-006", {item.rule_id for item in validate_project(root).findings})
 
+    def test_every_module_requires_an_architecture_system_overview(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.copy(temporary)
+            architecture = root / "specs/example/architecture.md"
+            text = architecture.read_text(encoding="utf-8")
+            start = text.index("diagrams:\n")
+            end = text.index("---\n", start)
+            architecture.write_text(text[:start] + "diagrams: []\n" + text[end:], encoding="utf-8")
+            (root / LEVEL_VIEW).unlink()
+            finding = next(item for item in validate_project(root).findings if item.rule_id == "CONCORDE-VIEW-010")
+            self.assertEqual(finding.source, "specs/example/architecture.md")
+            self.assertIn("system overview", finding.message)
+
+    def test_system_overview_requires_showcase_quality_and_entity_relationships(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.copy(temporary)
+            path = root / LEVEL_VIEW
+            value = json.loads(path.read_text(encoding="utf-8"))
+            value["meta"].pop("quality_profile")
+            value["components"] = []
+            value["connections"] = []
+            path.write_text(json.dumps(value), encoding="utf-8")
+            rules = {item.rule_id for item in validate_project(root).findings}
+            self.assertIn("CONCORDE-VIEW-011", rules)
+            self.assertIn("CONCORDE-VIEW-012", rules)
+
     def test_undeclared_diagram_and_kind_disagreement_are_distinct(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.copy(temporary)

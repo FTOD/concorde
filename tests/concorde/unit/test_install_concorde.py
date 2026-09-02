@@ -41,9 +41,9 @@ class NativeInstallerTests(unittest.TestCase):
         outputs = installer.desired_outputs(self.package, "codex")
         self.assertIn(".concorde/framework/src/concorde/cli.py", outputs)
         self.assertIn(".concorde/framework/src/concorde/alignment.py", outputs)
-        self.assertIn(".agents/skills/speckit-plan/SKILL.md", outputs)
+        self.assertIn(".agents/skills/concorde-plan/SKILL.md", outputs)
         self.assertIn(".codex/agents/reflection_implementer.toml", outputs)
-        plan = outputs[".agents/skills/speckit-plan/SKILL.md"][0].decode()
+        plan = outputs[".agents/skills/concorde-plan/SKILL.md"][0].decode()
         self.assertIn(".concorde/framework/scripts/workspace.py --phase plan", plan)
         self.assertNotIn(".specify", plan)
         self.assertTrue(all(not path.startswith(("presets/", "extensions/", "bundles/")) for path in outputs))
@@ -82,7 +82,7 @@ class NativeInstallerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
             desired = installer.desired_outputs(self.package, "codex")
-            relative = ".agents/skills/speckit-plan/SKILL.md"
+            relative = ".agents/skills/concorde-plan/SKILL.md"
             path = target / relative
             path.parent.mkdir(parents=True)
             path.write_bytes(desired[relative][0])
@@ -93,7 +93,7 @@ class NativeInstallerTests(unittest.TestCase):
     def test_unowned_or_modified_owned_file_is_a_conflict(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
-            collision = target / ".agents/skills/speckit-plan/SKILL.md"
+            collision = target / ".agents/skills/concorde-plan/SKILL.md"
             collision.parent.mkdir(parents=True)
             collision.write_text("maintainer file\n")
             actions, _, _ = installer.installation_plan(target, self.package, "codex")
@@ -106,11 +106,11 @@ class NativeInstallerTests(unittest.TestCase):
             actions, desired, _ = installer.installation_plan(target, self.package, "codex")
             installer.apply_plan(target, self.package, "codex", actions, desired)
             claude_actions, claude_desired, _ = installer.installation_plan(target, self.package, "claude")
-            self.assertTrue(any(item["action"] == "remove" and item["path"].startswith(".agents/skills/speckit-") for item in claude_actions))
-            self.assertTrue(any(item["action"] == "create" and item["path"].startswith(".claude/skills/speckit-") for item in claude_actions))
+            self.assertTrue(any(item["action"] == "remove" and item["path"].startswith(".agents/skills/concorde-") for item in claude_actions))
+            self.assertTrue(any(item["action"] == "create" and item["path"].startswith(".claude/skills/concorde-") for item in claude_actions))
             installer.apply_plan(target, self.package, "claude", claude_actions, claude_desired)
-            self.assertFalse((target / ".agents/skills/speckit-plan/SKILL.md").exists())
-            self.assertTrue((target / ".claude/skills/speckit-plan/SKILL.md").is_file())
+            self.assertFalse((target / ".agents/skills/concorde-plan/SKILL.md").exists())
+            self.assertTrue((target / ".claude/skills/concorde-plan/SKILL.md").is_file())
 
     def test_safe_relative_rejects_escape_absolute_and_backslash(self):
         for value in ("../escape", "/absolute", "bad\\path"):

@@ -5,7 +5,7 @@ isolation: worktree
 background: true
 permissionMode: acceptEdits
 skills:
-  - speckit-fast-loop
+  - concorde-fast-loop
 ---
 
 You are the implementation tier of `reflection-triage/v3`. You receive one owning feature, an
@@ -14,7 +14,7 @@ assigned worktree and never redesign the plans.
 
 Before writing, verify `git rev-parse --show-toplevel` equals the assigned worktree. Stop with an
 actionable failure otherwise. Select the supplied feature with the installed workspace adapter and
-invoke `speckit-fast-loop` for each plan.
+invoke `concorde-fast-loop` for each plan.
 
 For every plan in order:
 

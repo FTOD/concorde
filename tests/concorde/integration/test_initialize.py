@@ -23,11 +23,16 @@ class InitializationTests(unittest.TestCase):
             self.assertEqual(first, propose_initialization(root))
             self.assertEqual(first.status, "proposal")
             proposal = first.result["proposal"]
-            self.assertEqual(proposal["proposal_version"], 2)
+            self.assertEqual(proposal["proposal_version"], 3)
             slug = proposal["project_root_id"].split(".", 1)[1]
             self.assertEqual(
                 {item["path"] for item in proposal["files"]},
-                {".concorde/config.json", ".concorde/reflections/log.md", f"specs/{slug}/architecture.md"},
+                {
+                    ".concorde/config.json",
+                    ".concorde/reflections/log.md",
+                    f"specs/{slug}/architecture.md",
+                    f"specs/{slug}/diagrams/system-overview.json",
+                },
             )
             config = next(item for item in proposal["files"] if item["path"] == ".concorde/config.json")
             self.assertIn('"profile_version": 7', config["content"])
@@ -37,6 +42,13 @@ class InitializationTests(unittest.TestCase):
             architecture = next(item for item in proposal["files"] if item["path"].endswith("architecture.md"))
             for heading in ("Responsibility", "Boundary", "Entities", "Relationships", "Interactions", "Modules", "Features", "Decisions"):
                 self.assertIn(f"## {heading}", architecture["content"])
+            self.assertIn("diagrams/system-overview.json", architecture["content"])
+            diagram = next(item for item in proposal["files"] if item["path"].endswith("system-overview.json"))
+            diagram_value = json.loads(diagram["content"])
+            self.assertEqual(diagram_value["diagram_type"], "architecture")
+            self.assertEqual(diagram_value["meta"]["quality_profile"], "showcase")
+            self.assertEqual(diagram_value["meta"]["legend"], {"mode": "hidden"})
+            self.assertGreaterEqual(len(diagram_value["connections"]), 1)
             for forbidden in ("module.md", "design.md", "abstract.md", "implementation.md", "contracts"):
                 self.assertNotIn(forbidden, {item["path"] for item in proposal["files"]})
             for item in proposal["files"]:
@@ -52,6 +64,7 @@ class InitializationTests(unittest.TestCase):
             applied = apply_proposal(root, "accepted.json")
             self.assertEqual(applied.status, "success", applied.findings)
             self.assertTrue((root / "specs/sample/architecture.md").is_file())
+            self.assertTrue((root / "specs/sample/diagrams/system-overview.json").is_file())
             self.assertTrue((root / ".concorde/reflections/log.md").is_file())
             self.assertIn(
                 "<!-- concorde-reflection-high-water: R-000 -->",
@@ -72,7 +85,12 @@ class InitializationTests(unittest.TestCase):
             self.assertEqual(result.result["architecture"]["module_architecture"], "specs/sample/architecture.md")
             self.assertEqual(
                 set(result.artifacts),
-                {".concorde/config.json", ".concorde/reflections/log.md", "specs/sample/architecture.md"},
+                {
+                    ".concorde/config.json",
+                    ".concorde/reflections/log.md",
+                    "specs/sample/architecture.md",
+                    "specs/sample/diagrams/system-overview.json",
+                },
             )
 
     def test_partial_conflict_and_staged_failure_are_non_mutating(self):

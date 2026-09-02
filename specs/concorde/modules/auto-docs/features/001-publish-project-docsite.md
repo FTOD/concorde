@@ -81,10 +81,12 @@ with one architecture page per module and one design page per feature.
 - **Outputs**: Showcase validation result, standalone HTML, source/output digests, and truthful visual-review status.
 - **Obligations**: Preserve source authority/provenance, write only generated output, and reject stale/invalid/escaping deliveries.
 - **Failures**: Schema/composition/output/freshness/browser failures stop affected publication; missing browser is reported as unreviewed.
-- **Compatibility**: Profile 7 permits zero diagrams, never discovers feature-owned diagram sources,
-  and treats `.concorde/**` as non-public project control state rather than a content collection.
+- **Compatibility**: Profile 7 requires one module-owned Archify architecture system overview, never
+  discovers feature-owned diagram sources, and treats `.concorde/**` as non-public project control
+  state rather than a content collection.
 - **Implementing entities**: `entity.auto-docs.diagram-renderer`, `entity.auto-docs.archify`.
-- **Example**: A module with `diagrams: []` produces no renderer invocation or manifest diagram entries.
+- **Example**: A module system overview is showcase-validated and rendered before its architecture page
+  is admitted to the publication candidate.
 
 ## Usage Scenarios
 

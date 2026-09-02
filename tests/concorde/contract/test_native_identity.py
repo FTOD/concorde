@@ -14,7 +14,7 @@ class NativeIdentityContractTests(unittest.TestCase):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
         self.assertEqual(manifest["name"], "concorde")
         self.assertEqual(manifest["version"], "1.1.0")
-        self.assertEqual(manifest["command_namespace"], "speckit")
+        self.assertEqual(manifest["command_namespace"], "concorde")
         self.assertIn("Concorde owns", manifest["format_lineage"])
 
     def test_removed_host_package_paths_are_not_tracked(self):
@@ -36,7 +36,7 @@ class NativeIdentityContractTests(unittest.TestCase):
     def test_compatibility_command_names_resolve_to_root_files(self):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
         self.assertEqual(len(manifest["commands"]), 16)
-        self.assertTrue(all(name.startswith("speckit.") for name in manifest["commands"]))
+        self.assertTrue(all(name.startswith("concorde.") for name in manifest["commands"]))
         self.assertTrue(all((REPOSITORY_ROOT / "commands" / f"{name}.md").is_file() for name in manifest["commands"]))
 
 

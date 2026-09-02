@@ -55,7 +55,8 @@ without source mutation.
 - **Outputs**: Schema 1 status, output count, and sorted action/path/digest entries; refreshed regular files on apply.
 - **Obligations**: Render both integrations from the same sources, use source-checkout runtime paths, replace legacy generated symlinks, and never modify canonical inputs.
 - **Failures**: Invalid command/asset source, output collision, or non-file target conflict returns failure without a false current status.
-- **Compatibility**: All command IDs, including `speckit-*`, remain stable while metadata names Concorde ownership.
+- **Compatibility**: All canonical `concorde.*` command IDs remain stable while rendered
+  `concorde-*` skill metadata names Concorde ownership.
 - **Example**: Status reports 38 current outputs after an apply.
 - **Implementing entities**: `entity.concorde.agent-surface-sync`, `entity.concorde.commands`, `entity.concorde.agent-assets`.
 

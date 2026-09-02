@@ -12,7 +12,7 @@ A module is the recursive unit of specification ownership. It has:
 - one `architecture.md`;
 - zero or more immediate child modules under `modules/`;
 - zero or more level-local features under `features/`; and
-- optional architecture-owned diagrams under `diagrams/`.
+- one required Archify system overview and any additional architecture-owned diagrams under `diagrams/`.
 
 A parent architecture exposes each child as one bounded entity and does not duplicate the child's
 internal inventory. Workflow attempts and reflections belong to project control state, not a module.
@@ -26,7 +26,8 @@ internal inventory. Workflow attempts and reflections belong to project control 
 3. architecture-significant entities;
 4. typed directed relationships among visible entities;
 5. representative ordered or conditional interactions; and
-6. optional diagram declarations with textual counterparts.
+6. a required Archify `architecture` system-overview declaration, plus optional additional diagrams,
+   all with textual counterparts.
 
 ### Architecture entity
 

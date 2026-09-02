@@ -81,7 +81,7 @@ def render_notes(version: str, base_url: str, assets: dict[str, str]) -> str:
         "python3 concorde/scripts/install-concorde.py --checkout concorde --target . --integration codex --apply",
         "```",
         "",
-        "The retained `speckit-*` command IDs are compatibility names implemented entirely by Concorde.",
+        "The canonical `concorde.*` command IDs are rendered as `concorde-*` skills and implemented entirely by Concorde.",
         "",
     ]
     return "\n".join(lines)

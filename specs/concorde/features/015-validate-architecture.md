@@ -35,7 +35,7 @@ relationship/interface/reference integrity, evidence status, diagrams, freshness
 
 - **Consumer**: Maintainer, CI, planning/implementation/delivery gates, and Auto-Docs.
 - **Direction**: Project/target input to read-only structured findings.
-- **Entry points**: Compatibility command `speckit.concorde.validate` and native runtime `validate` operation in source or installed framework.
+- **Entry points**: Canonical command `concorde.validate` and native runtime `validate` operation in source or installed framework.
 - **Inputs**: Project root plus optional stable module/feature focus.
 - **Outputs**: Status, source digest, exact findings with rule/severity/subject/path/remediation, and evidence summary.
 - **Obligations**: Be deterministic/non-mutating, report all applicable findings, and distinguish structure from behavior proof.
@@ -52,7 +52,9 @@ relationship/interface/reference integrity, evidence status, diagrams, freshness
 ## Requirements
 
 - **FR-001**: Validation MUST check Profile 7 config/layout, rooted module cycles, exact inventories, path-safe IDs, stable-ID control bindings, entity types/locators, and relationship endpoints/direction.
-- **FR-002**: It MUST check flat feature placement, related IDs, embedded interface completeness/ownership, zoom visibility, requirements/evidence state, diagrams/freshness, and reflection grammar/paths.
+- **FR-002**: It MUST check flat feature placement, related IDs, embedded interface completeness/ownership,
+  zoom visibility, requirements/evidence state, one showcase Archify architecture system overview per
+  module with principal entity relationships, diagram freshness, and reflection grammar/paths.
 - **FR-003**: Legacy module-pair/trio/contracts/subfeatures and unsafe/symlinked sources MUST receive distinct actionable findings.
 - **FR-004**: Validation MUST enumerate all applicable findings deterministically and MUST NOT mutate or claim implementation correctness.
 

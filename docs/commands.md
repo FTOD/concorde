@@ -1,80 +1,82 @@
 # Command reference
 
 Canonical commands live in root `commands/` and render directly into Codex/Claude skills. The
-`speckit-*` IDs are retained compatibility names; every command is authored and executed by
-Concorde. All path-sensitive phases resolve Feature Workspace Protocol 12 before other artifact reads.
+Public commands use the `concorde.*` namespace and render as `concorde-*` agent skills. Every command
+is authored and executed by Concorde. All path-sensitive phases resolve Feature Workspace Protocol 12
+before other artifact reads.
 
 ## Governance and framework operations
 
-### `speckit.constitution`
+### `concorde.constitution`
 
 Creates/amends `.concorde/constitution.md` from the complete root constitution format reference.
 
-### `speckit.concorde.init`
+### `concorde.init`
 
-Proposes and explicitly applies Profile 7 configuration, root architecture, and reflection log.
+Proposes and explicitly applies Profile 7 configuration, root architecture, required Archify system
+overview, and reflection log.
 
-### `speckit.concorde.context <stable-id>`
+### `concorde.context <stable-id>`
 
 Returns one bounded module or feature altitude. Strictly read-only.
 
-### `speckit.concorde.validate [target]`
+### `concorde.validate [target]`
 
 Returns deterministic sorted Profile 7 findings/status/digest. Never repairs.
 
-### `speckit.concorde.ask <question>`
+### `concorde.ask <question>`
 
 Answers from package guidance and the smallest bounded project context with citations. It is
 read-only and never invokes another command.
 
-### `speckit.concorde.deliver [feature]`
+### `concorde.deliver [feature]`
 
 Validates a completed stable-ID attempt, applies Delivery Proposal 8, and removes exactly that
 temporal workspace. It writes no durable implementation prose.
 
 ## Feature lifecycle
 
-### `speckit.specify <description>`
+### `concorde.specify <description>`
 
 Creates/revises one direct module-level feature with embedded interfaces and Architecture Zoom. For
 a new file, the first Protocol 12 result has unresolved attempt fields; after stable front matter is
 written, the command resolves again and persists `.concorde/feature.json`.
 
-### `speckit.clarify [focus]`
+### `concorde.clarify [focus]`
 
 Resolves up to three high-impact ambiguities inside the selected feature and its requirements checklist.
 
-### `speckit.checklist [focus]`
+### `concorde.checklist [focus]`
 
 Creates a reviewer-owned requirements-quality checklist under the matching attempt.
 
-### `speckit.plan [constraints]`
+### `concorde.plan [constraints]`
 
 Writes a technical plan/research/useful artifacts only under the selected attempt. It reads bounded
 architecture plus current code/tests and leaves durable sources unchanged.
 
-### `speckit.tasks [constraints]`
+### `concorde.tasks [constraints]`
 
 Creates dependency-ordered, test-first tasks with exact paths/traces and evidence gates.
 
-### `speckit.analyze`
+### `concorde.analyze`
 
 Runs a non-mutating consistency/coverage audit over feature, architecture, plan, tasks, code/tests.
 
-### `speckit.implement`
+### `concorde.implement`
 
 Executes dependency-ready tasks, reconciles all affected authorities, records passing evidence before
 checking tasks, and stops truthfully on blocking failures.
 
-### `speckit.converge`
+### `concorde.converge`
 
 Compares current repository/evidence with intended outcome and appends only remaining executable work.
 
-### `speckit.taskstoissues`
+### `concorde.taskstoissues`
 
 Converts selected tasks into dependency-aware external issues only with explicit external-write authority.
 
-### `speckit.fast-loop`
+### `concorde.fast-loop`
 
 Completes one small already-specified, non-structural change without an attempt after deterministic
 eligibility/impact preflight.
@@ -84,7 +86,7 @@ eligibility/impact preflight.
 ### `concorde explore [stable-id]`
 
 Projects one validated Profile 7 module, entity, feature, or interface into a canonical bounded JSON
-result. This is a native deterministic operation, not a conversational `speckit-*` command. With no
+result. This is a native deterministic operation, not a conversational `concorde-*` command. With no
 graph it still returns specification subjects and explicit unknown alignment records.
 
 Optional inputs are:

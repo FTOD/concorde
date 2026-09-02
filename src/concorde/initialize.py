@@ -59,7 +59,12 @@ def _configured_architecture(project_root: Path) -> OperationResult | None:
         "unchanged",
         artifacts=tuple(
             path
-            for path in (".concorde/config.json", ".concorde/reflections/log.md", module.path)
+            for path in (
+                ".concorde/config.json",
+                ".concorde/reflections/log.md",
+                module.path,
+                *package.module_diagrams(module),
+            )
             if (project_root / path).is_file()
         ),
         result={
@@ -86,12 +91,17 @@ def _create_proposal(project_root: Path, module_id: str | None, name: str | None
     module_slug = identifier.split(".", 1)[1].replace(".", "-")
     specification_root = f"specs/{module_slug}"
     config = json.dumps({"profile_version": PROFILE_VERSION, "root_module_id": identifier, "specification_root": specification_root}, indent=2, sort_keys=True)
+    diagram_output = f"generated/architecture/{module_slug}-system-overview.html"
     architecture = f"""---
 id: {identifier}
 kind: module
 parent: null
 modules: []
 features: []
+diagrams:
+  - source: diagrams/system-overview.json
+    kind: architecture
+    output: {diagram_output}
 ---
 
 # Architecture: {project_name}
@@ -109,6 +119,7 @@ do not infer product boundaries from repository directories.
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
+| `entity.{module_slug}.maintainer` | external-system | The maintainer who reviews and evolves the project architecture. | `external:{module_slug}.maintainer` |
 | `entity.{module_slug}.project` | concept | The project outcome whose architecture this root governs. | `concept:{module_slug}.project` |
 
 ## Relationships
@@ -116,6 +127,7 @@ do not infer product boundaries from repository directories.
 | Source | Predicate | Target | Description |
 |---|---|---|---|
 | `{identifier}` | owns_entity | `entity.{module_slug}.project` | The root module owns the project outcome boundary. |
+| `entity.{module_slug}.maintainer` | reads_from | `entity.{module_slug}.project` | The maintainer reviews the governed outcome before decomposition. |
 
 ## Interactions
 
@@ -133,8 +145,65 @@ None.
 
 ## Decisions
 
+- [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
+  entities and directed relationships in this architecture.
 - The starter does not guess child modules, features, contracts, or implementation narratives.
 """
+    diagram = json.dumps(
+        {
+            "schema_version": 1,
+            "diagram_type": "architecture",
+            "meta": {
+                "title": f"{project_name} System Overview",
+                "output": f"../../../{diagram_output}",
+                "quality_profile": "showcase",
+                "legend": {"mode": "hidden"},
+                "viewBox": [760, 420],
+            },
+            "components": [
+                {
+                    "id": "maintainer",
+                    "type": "external",
+                    "label": "Maintainer",
+                    "sublabel": "Architecture reviewer",
+                    "pos": [40, 170],
+                    "size": [160, 68],
+                },
+                {
+                    "id": "root_module",
+                    "type": "backend",
+                    "label": project_name,
+                    "sublabel": "Root module",
+                    "pos": [300, 170],
+                    "size": [170, 68],
+                },
+                {
+                    "id": "project_outcome",
+                    "type": "cloud",
+                    "label": "Project Outcome",
+                    "sublabel": "Governed boundary",
+                    "pos": [570, 170],
+                    "size": [160, 68],
+                },
+            ],
+            "connections": [
+                {
+                    "id": "maintainer-reviews-outcome",
+                    "from": "maintainer",
+                    "to": "root_module",
+                    "label": "reviews",
+                    "variant": "emphasis",
+                },
+                {
+                    "id": "module-owns-outcome",
+                    "from": "root_module",
+                    "to": "project_outcome",
+                    "label": "owns boundary",
+                },
+            ],
+        },
+        indent=2,
+    )
     reflections = f"""# Reflections: {project_name}
 
 <!-- concorde-reflection-high-water: R-000 -->
@@ -146,10 +215,11 @@ while changing a selected feature. Entries use the installed Concorde Reflection
         _proposal_file(".concorde/config.json", config),
         _proposal_file(".concorde/reflections/log.md", reflections),
         _proposal_file(f"{specification_root}/architecture.md", architecture),
+        _proposal_file(f"{specification_root}/diagrams/system-overview.json", diagram),
     )
     conflicts = tuple({"path": item.path, "reason": "target already exists"} for item in files if (project_root / item.path).exists())
     return InitializationProposal(
-        proposal_version=2,
+        proposal_version=3,
         project_root_id=identifier,
         responsibility=f"Describe and govern the project-level outcome provided by {project_name}.",
         boundary="Keep product responsibilities explicit and module-centered.",
@@ -179,7 +249,7 @@ def _load_accepted(root: Path, proposal_path: str) -> InitializationProposal:
     path = ProjectRepository(root).resolve(safe_relative_path(proposal_path))
     value = json.loads(path.read_text(encoding="utf-8"))
     value = value.get("result", {}).get("proposal", value.get("proposal", value))
-    if value.get("proposal_version") != 2:
+    if value.get("proposal_version") != 3:
         raise ValueError("unsupported or missing proposal_version")
     files: list[ProposalFile] = []
     for item in value.get("files", []):
@@ -194,13 +264,14 @@ def _load_accepted(root: Path, proposal_path: str) -> InitializationProposal:
         ".concorde/config.json" not in paths
         or ".concorde/reflections/log.md" not in paths
         or not any(path.endswith("/architecture.md") for path in paths)
-        or len(paths) != 3
+        or not any(path.endswith("/diagrams/system-overview.json") for path in paths)
+        or len(paths) != 4
     ):
         raise ValueError(
-            "proposal must contain exactly configuration, reflection log, and one root architecture.md"
+            "proposal must contain exactly configuration, reflection log, one root architecture.md, and its system overview diagram"
         )
     return InitializationProposal(
-        proposal_version=2,
+        proposal_version=3,
         project_root_id=value["project_root_id"],
         responsibility=value.get("responsibility", ""),
         boundary=value.get("boundary", ""),

@@ -18,14 +18,14 @@ class ClaudeCommandsAcceptance(unittest.TestCase):
                 text=True, capture_output=True,
             )
             self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
-            for skill in (root / ".claude/skills").glob("speckit-*/SKILL.md"):
+            for skill in (root / ".claude/skills").glob("concorde-*/SKILL.md"):
                 self.assertTrue(skill.is_file())
                 self.assertFalse(skill.is_symlink())
                 content = skill.read_text()
                 self.assertIn("user-invocable: true", content)
                 self.assertNotIn(".specify/", content)
                 self.assertNotIn(str(REPOSITORY_ROOT), content)
-            ask = (root / ".claude/skills/speckit-concorde-ask/SKILL.md").read_text()
+            ask = (root / ".claude/skills/concorde-ask/SKILL.md").read_text()
             self.assertIn(".concorde/framework/concorde.json", ask)
             self.assertIn("strictly read-only", " ".join(ask.split()))
 

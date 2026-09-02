@@ -5,7 +5,10 @@ parent: module.concorde
 modules: []
 features:
   - feature.auto-docs.publish-project-docsite
-diagrams: []
+diagrams:
+  - source: diagrams/system-overview.json
+    kind: architecture
+    output: generated/architecture/concorde-auto-docs-system-overview.html
 ---
 
 # Architecture: Auto-Docs
@@ -75,6 +78,8 @@ None.
 
 ## Decisions
 
+- [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
+  entities and directed relationships in this architecture.
 - Build Manifest 10 collections remain `home`, `architecture`, `docs`, and `features`.
 - `.concorde/**` is excluded control/framework state, never a published content collection.
 - Materialized Docusaurus files and diagram deliveries are disposable and retain canonical provenance.

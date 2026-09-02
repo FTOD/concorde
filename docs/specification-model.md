@@ -49,7 +49,8 @@ semantic sections:
 - directed entity relationships;
 - representative interactions;
 - interface/feature governance references; and
-- diagram declarations or an explicit no-diagram rationale.
+- one declared Archify `architecture` system overview of principal entities and directed
+  relationships, plus any optional secondary diagram declarations.
 
 Entity tables provide stable ID, type, definition, and implementation path or external/conceptual
 locator. Relationship tables provide stable ID/predicate, source, target, meaning, and governing

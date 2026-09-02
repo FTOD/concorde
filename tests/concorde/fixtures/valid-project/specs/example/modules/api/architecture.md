@@ -5,6 +5,10 @@ parent: module.example
 modules: []
 features:
   - feature.example.api.invoke
+diagrams:
+  - source: diagrams/system-overview.json
+    kind: architecture
+    output: generated/architecture/example-api.html
 ---
 
 # Architecture: Example API
@@ -47,4 +51,5 @@ None.
 
 ## Decisions
 
+- [System overview](diagrams/system-overview.json) projects the API entities and relationships.
 - The API handler is architecture-significant; private helpers are intentionally omitted.

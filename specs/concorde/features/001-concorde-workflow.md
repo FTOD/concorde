@@ -61,11 +61,11 @@ skills as the sole conversational surface.
 - **Entry points**: `.agents/skills/**` and `.codex/agents/**`, or `.claude/skills/**` and `.claude/agents/**`.
 - **Inputs**: Regular rendered Markdown/TOML files, project root, user arguments, and granted filesystem/tool authority.
 - **Outputs**: Conversational phase result plus only the file/tool effects authorized by the invoked Concorde command.
-- **Obligations**: Load project-local command metadata/body, preserve project containment, surface tool failures, and never imply authority from a compatibility command name.
+- **Obligations**: Load project-local command metadata/body, preserve project containment, surface tool failures, and keep canonical `concorde.*` identity consistent across integrations.
 - **Failures**: Missing/unsupported integration assets, invalid command metadata, unavailable tools, or denied permissions stop execution without hidden fallback behavior.
 - **Compatibility**: Concorde package schema 1 supports Codex and Claude while sharing command semantics.
 - **Implementing entities**: `entity.concorde.coding-agent`, `entity.concorde.commands`, `entity.concorde.agent-assets`.
-- **Example**: Codex loads `.agents/skills/speckit-plan/SKILL.md`, which invokes Concorde's native workspace adapter.
+- **Example**: Codex loads `.agents/skills/concorde-plan/SKILL.md`, which invokes Concorde's native workspace adapter.
 
 ## Usage Scenarios
 

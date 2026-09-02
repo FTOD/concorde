@@ -33,32 +33,33 @@ ownership lives at `.concorde/install.json`.
 
 ## 2. Initialize project architecture
 
-Inside the target, invoke `$speckit-concorde-init` (Claude may present `/speckit-concorde-init`). The
-compatibility name now runs Concorde's native Profile 7 initializer. Initialization Proposal 2 creates:
+Inside the target, invoke `$concorde-init` (Claude may present `/concorde-init`). The
+compatibility name now runs Concorde's native Profile 7 initializer. Initialization Proposal 3 creates:
 
 - `.concorde/config.json`
 - `.concorde/reflections/log.md`
 - `specs/<project>/architecture.md`
+- `specs/<project>/diagrams/system-overview.json`
 
 It creates no feature or attempt.
 
 ## 3. Create/select a feature
 
 Choose a direct `features/<NNN-name>.md` beneath its providing module and invoke
-`$speckit-specify <description>`. The first Protocol 12 response for a new file intentionally has no
+`$concorde-specify <description>`. The first Protocol 12 response for a new file intentionally has no
 stable feature/attempt ID. After the command writes valid front matter, it resolves again and persists
 only `.concorde/feature.json` plus the returned requirements checklist path.
 
-Use `$speckit-clarify` for material ambiguity and `$speckit-checklist` for reviewer-focused quality.
+Use `$concorde-clarify` for material ambiguity and `$concorde-checklist` for reviewer-focused quality.
 
 ## 4. Plan and implement
 
 ```text
-$speckit-plan
-$speckit-tasks
-$speckit-analyze
-$speckit-implement
-$speckit-converge      # only when verified work remains
+$concorde-plan
+$concorde-tasks
+$concorde-analyze
+$concorde-implement
+$concorde-converge      # only when verified work remains
 ```
 
 Planning/task/evidence artifacts live at `.concorde/attempts/<stable-feature-id>/`. Implementation
@@ -101,7 +102,7 @@ Run the installed native validator directly when useful:
 python3 .concorde/framework/scripts/concorde.py --project-root . validate --format json
 ```
 
-After tasks/checklists/evidence pass, invoke `$speckit-concorde-deliver`. It proposes and applies
+After tasks/checklists/evidence pass, invoke `$concorde-deliver`. It proposes and applies
 Delivery Proposal 8, removing exactly the selected attempt while leaving durable sources/reflections
 unchanged.
 

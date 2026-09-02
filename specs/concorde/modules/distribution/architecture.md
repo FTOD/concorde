@@ -5,7 +5,10 @@ parent: module.concorde
 modules: []
 features:
   - feature.distribution.package-concorde
-diagrams: []
+diagrams:
+  - source: diagrams/system-overview.json
+    kind: architecture
+    output: generated/architecture/concorde-distribution-system-overview.html
 ---
 
 # Architecture: Distribution
@@ -78,6 +81,8 @@ None.
 
 ## Decisions
 
+- [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
+  entities and directed relationships in this architecture.
 - One package manifest/version/archive replaces separately versioned and composed components.
 - Installation preview is default; mutation requires `--apply`.
 - Exact output digests and roles, not a third-party registry, establish ownership.

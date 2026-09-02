@@ -91,7 +91,7 @@ def verify_release(
             "concorde/scripts/concorde.py",
             "concorde/src/concorde/cli.py",
             "concorde/templates/feature-template.md",
-            "concorde/commands/speckit.specify.md",
+            "concorde/commands/concorde.specify.md",
         }
         missing = required - set(names)
         if missing:

@@ -45,7 +45,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
             self.assertIn(f"commands/{command}.md", str(REPOSITORY_ROOT / f"commands/{command}.md"))
         self.assertIn("16 commands", (REPOSITORY_ROOT / "specs/concorde/features/003-installation.md").read_text())
         self.assertIn("Sixteen", (REPOSITORY_ROOT / "specs/concorde/modules/commands/features/001-project-workflow.md").read_text())
-        self.assertIn("$speckit-constitution", readme)
+        self.assertIn("$concorde-constitution", readme)
 
 
 if __name__ == "__main__":
