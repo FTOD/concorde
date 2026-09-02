@@ -23,8 +23,9 @@ evidence_status: verified
 
 ## Outcome and Scope
 
-Root command and template authorities become complete Codex/Claude lifecycle surfaces with identical
-phase intent, native runtime paths, bounded workspace rules, and no composition framework.
+Root command and template authorities become complete reusable prompts and Codex/Claude lifecycle
+surfaces with identical phase intent, native runtime paths, bounded workspace rules, and no layered
+source composition.
 
 ## Usage
 
@@ -35,12 +36,15 @@ sources with root paths. Maintainers invoke the canonical command IDs normally i
 
 ### `contract.commands.workflow-guidance` — Canonical lifecycle intent
 
-- **Consumer**: Supported coding agents and maintainers.
+- **Consumer**: Supported coding agents, Runtime workflow graphs, and maintainers.
 - **Direction**: Root command/template sources to executable conversational workflow.
 - **Entry points**: Every file under `commands/` and referenced file under `templates/`.
 - **Inputs**: User arguments, Protocol 12 workspace, optional constitution, selected attempt, root template formats, and bounded code/tests.
-- **Outputs**: Exact phase read/write/evidence/reflection behavior and completion report expectations.
-- **Obligations**: Preserve authority boundaries, resolve native selection first, use complete root templates, allocate reflection IDs through the helper, and expose deterministic failures.
+- **Outputs**: Complete prompt bodies with exact phase read/write/evidence/reflection behavior and
+  completion report expectations.
+- **Obligations**: Preserve authority boundaries, resolve native selection first, use complete root
+  templates, allow only whole-prompt ordered workflow composition, allocate reflection IDs through
+  the helper, and expose deterministic failures.
 - **Failures**: Invalid/missing workspace, template, command metadata, interface/reference, task/evidence, or runtime check stops the phase without hidden fallback layers.
 - **Compatibility**: Sixteen canonical `concorde.*` command IDs render as `concorde-*` skills while
   current content/metadata remains Concorde-owned.
@@ -90,6 +94,8 @@ sources with root paths. Maintainers invoke the canonical command IDs normally i
 - **FR-003**: Every rendered file MUST identify Concorde as author and root command as source.
 - **FR-004**: Complete templates MUST require no base/priority/strategy resolution.
 - **FR-005**: Installed surfaces MUST contain no unresolved token or removed host path.
+- **FR-006**: Runtime consumers MUST resolve complete canonical prompt bodies through the same
+  parsing and package-token substitution semantics used by agent-surface projection.
 
 ## Success Criteria
 

@@ -15,8 +15,9 @@ diagrams:
 
 ## Responsibility
 
-Define complete, readable lifecycle instructions and Markdown format references, then project them
-consistently to supported coding-agent integrations without layered composition.
+Define complete, readable lifecycle prompts and Markdown format references, expose those whole
+prompts for ordered workflow stages, then project them consistently to supported coding-agent
+integrations without layered source composition.
 
 ## Boundary
 
@@ -29,7 +30,7 @@ agent execution, or integration-specific product internals.
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
 | `entity.commands.manifest` | configuration | Declares the exact command/template inventory and supported integrations. | `concorde.json` |
-| `entity.commands.sources` | directory | Canonical instructions for constitution, specification, planning, implementation, validation, and related phases. | `commands` |
+| `entity.commands.sources` | directory | Complete canonical prompts for constitution, specification, planning, implementation, validation, and related phases. | `commands` |
 | `entity.commands.feature-template` | document | Complete direct-feature format with outcome, usage, scenarios, interfaces, architecture zoom, requirements, and criteria. | `templates/feature-template.md` |
 | `entity.commands.plan-template` | document | Temporal planning format grounded in feature, architecture, code, tests, risks, and evidence. | `templates/plan-template.md` |
 | `entity.commands.tasks-template` | document | Dependency-ordered traced task format with test-first and evidence gates. | `templates/tasks-template.md` |
@@ -62,7 +63,7 @@ agent execution, or integration-specific product internals.
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
 | `interaction.commands.project` | Installer or checkout sync requests an integration. | Validate root inventory; parse each command; resolve `{SCRIPT}` and `{FRAMEWORK}` for the target; add integration metadata; render reflection roles; compare owned outputs. | Codex or Claude receives the same Concorde phase intent with correct runtime/template paths. | `contract.commands.agent-surface` |
-| `interaction.commands.execute` | Maintainer invokes a rendered command. | Resolve Protocol 12 when path-sensitive; read only bounded authorities; perform the declared phase; call Runtime for deterministic work; report checks and limitations. | One phase completes or stops without crossing its authority boundary. | `contract.commands.workflow-guidance`, `contract.runtime.operations`, `contract.workspace.feature-workspace` |
+| `interaction.commands.execute` | Maintainer invokes a rendered command or Runtime supplies a whole prompt to a graph stage. | Resolve Protocol 12 when path-sensitive; read only bounded authorities; perform the declared phase; call Runtime for deterministic work; report checks and limitations. | One phase completes or stops without crossing its authority boundary. | `contract.commands.workflow-guidance`, `contract.runtime.operations`, `contract.workspace.feature-workspace` |
 
 ## Modules
 
@@ -79,7 +80,8 @@ None.
 - [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
   entities and directed relationships in this architecture.
 - Root `commands/` and `templates/` are canonical; `.agents/**` and `.claude/**` are generated.
-- Commands are complete documents, not fragments merged through priorities or strategies.
+- Commands are complete prompt documents that may be ordered into workflow stages; they are not
+  fragments merged through priorities or strategies.
 - Templates are complete format references; project files become authority only after being authored.
 - Canonical `concorde.*` IDs render as `concorde-*` skills while metadata names Concorde as author and
   source owner.

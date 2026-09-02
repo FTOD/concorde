@@ -92,6 +92,7 @@ class ManifestContractTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
             self.assertEqual(json.loads(result.stdout)["status"], "installed")
             self.assertTrue((target / ".concorde/framework/concorde.json").is_file())
+            self.assertTrue((target / ".concorde/framework/src/concorde/workflows.py").is_file())
             self.assertTrue((target / ".agents/skills/concorde-constitution/SKILL.md").is_file())
             self.assertFalse((target / ".specify").exists())
 

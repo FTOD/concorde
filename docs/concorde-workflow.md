@@ -122,6 +122,42 @@ change with no active attempt, migration, new topology/type/compatibility policy
 coordination. It directly reconciles the minimal design/architecture/code/test set and runs focused
 evidence. Otherwise use the full lifecycle.
 
+## LangGraph prompt-stage composition
+
+The Markdown files under `commands/` are complete canonical prompts. Agent projections wrap those
+prompts for Codex or Claude; workflow graphs resolve the same bodies through
+`concorde.command_assets.load_command_prompt`. Generated skills are never prompt authority.
+
+`concorde.workflows.build_standard_dev_loop` uses LangGraph's public `StateGraph`, `START`, `END`,
+`compile()`, and `invoke()` APIs to build this topology:
+
+```text
+START → specify → plan → tasks → deliver → END
+```
+
+Stages are ordered prompt bundles rather than copied or merged fragments:
+
+| Stage | Canonical prompts |
+|---|---|
+| specify | `concorde.specify` |
+| plan | `concorde.plan` |
+| tasks | `concorde.tasks`, then `concorde.implement` |
+| deliver | `concorde.validate`, then `concorde.deliver` |
+
+The graph receives an injected executor. Each invocation contains the user request, immutable stage
+definition and prompts, and all prior successful stage results. The executor decides how an
+authorized agent or model consumes those prompts; the example only records them. An executor
+exception remains visible and prevents downstream nodes.
+
+LangGraph is optional and constrained to `langgraph>=1.2,<2`. It is a development dependency in this
+checkout and imported only when a graph is built, so ordinary Concorde imports and the offline base
+installer remain dependency-free. Installed workflow hosts must provide that optional package in
+their Python environment. Run the real graph without credentials or network calls:
+
+```bash
+uv run python examples/standard_dev_loop.py "Add audit logging"
+```
+
 ## Reflections
 
 Planning, tasks, implementation, analysis, and convergence record problems when they must assume,

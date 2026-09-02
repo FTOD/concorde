@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Mapping
 
@@ -16,6 +17,16 @@ INTEGRATIONS = frozenset({"codex", "claude"})
 
 class CommandAssetError(ValueError):
     """A canonical command cannot be projected safely."""
+
+
+@dataclass(frozen=True)
+class CommandPrompt:
+    """One complete canonical command resolved for a source or installed package layout."""
+
+    command_id: str
+    description: str
+    source_path: str
+    body: str
 
 
 def command_id(path: Path) -> str:
@@ -68,9 +79,12 @@ def _frontmatter(identifier: str, description: str, integration: str, source: st
     return "\n".join(values)
 
 
-def render_command(path: Path, integration: str, framework_prefix: str = ".concorde/framework") -> str:
-    if integration not in INTEGRATIONS:
-        raise CommandAssetError(f"unsupported command integration: {integration}")
+def resolve_command_prompt(
+    path: Path,
+    framework_prefix: str = ".concorde/framework",
+) -> CommandPrompt:
+    """Resolve one canonical command without integration-specific skill metadata."""
+
     identifier = command_id(path)
     try:
         metadata, body = parse_document(path.read_text(encoding="utf-8"), path.as_posix())
@@ -101,9 +115,62 @@ def render_command(path: Path, integration: str, framework_prefix: str = ".conco
     body = body.replace("{FRAMEWORK}", framework)
     if "{SCRIPT}" in body or "{FRAMEWORK}" in body:
         raise CommandAssetError(f"command {identifier} contains an unresolved package token")
+    return CommandPrompt(
+        command_id=identifier,
+        description=description.strip(),
+        source_path=f"commands/{path.name}",
+        body=body,
+    )
+
+
+def load_command_prompt(
+    package_root: str | Path,
+    command_identifier: str,
+    framework_prefix: str = ".concorde/framework",
+) -> CommandPrompt:
+    """Load one manifested command prompt from a safe Concorde package root."""
+
+    if not isinstance(command_identifier, str) or not COMMAND_FILE.fullmatch(
+        f"{command_identifier}.md"
+    ):
+        raise CommandAssetError(f"invalid Concorde command identity: {command_identifier!r}")
+    root = Path(package_root)
+    if root.is_symlink() or not root.is_dir():
+        raise CommandAssetError(f"Concorde package root is missing, unsafe, or a symlink: {root}")
+    manifest_path = root / "concorde.json"
+    if manifest_path.is_symlink() or not manifest_path.is_file():
+        raise CommandAssetError(f"Concorde package manifest is missing or unsafe: {manifest_path}")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise CommandAssetError(f"cannot read Concorde package manifest {manifest_path}: {error}") from error
+    commands = manifest.get("commands") if isinstance(manifest, dict) else None
+    if not isinstance(commands, list) or not all(isinstance(item, str) for item in commands):
+        raise CommandAssetError(f"Concorde package manifest has no valid command inventory: {manifest_path}")
+    if command_identifier not in commands:
+        raise CommandAssetError(
+            f"command {command_identifier} is not declared by {manifest_path.as_posix()}"
+        )
+    command_root = root / "commands"
+    path = command_root / f"{command_identifier}.md"
+    if command_root.is_symlink() or path.is_symlink():
+        raise CommandAssetError(f"canonical command source may not be a symlink: {path}")
+    if not command_root.is_dir() or not path.is_file():
+        raise CommandAssetError(f"canonical command source is missing: {path}")
+    return resolve_command_prompt(path, framework_prefix)
+
+
+def render_command(path: Path, integration: str, framework_prefix: str = ".concorde/framework") -> str:
+    if integration not in INTEGRATIONS:
+        raise CommandAssetError(f"unsupported command integration: {integration}")
+    prompt = resolve_command_prompt(path, framework_prefix)
+    identifier = prompt.command_id
     heading = " ".join(part.capitalize() for part in skill_name(identifier).split("-"))
-    source = f"commands/{path.name}"
-    return _frontmatter(identifier, description.strip(), integration, source) + f"# {heading}\n\n" + body.lstrip()
+    return (
+        _frontmatter(identifier, prompt.description, integration, prompt.source_path)
+        + f"# {heading}\n\n"
+        + prompt.body.lstrip()
+    )
 
 
 def render_commands(

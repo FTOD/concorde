@@ -15,7 +15,10 @@
     {"id": "repository", "type": "database", "label": "Repository Loader", "sublabel": "Profile 7 package", "pos": [730, 270], "size": [180, 68]},
     {"id": "context", "type": "backend", "label": "Context + Workspace", "sublabel": "Bounded resolution", "pos": [990, 80], "size": [190, 68]},
     {"id": "validator", "type": "security", "label": "Validator", "sublabel": "Deterministic findings", "pos": [990, 270], "size": [170, 68]},
-    {"id": "mutation", "type": "backend", "label": "Init + Delivery", "sublabel": "Atomic operations", "pos": [990, 460], "size": [170, 68]},
+    {"id": "commands", "type": "external", "label": "Command Prompts", "sublabel": "Canonical sources", "pos": [260, 460], "size": [170, 68]},
+    {"id": "prompt_resolver", "type": "backend", "label": "Prompt Resolver", "sublabel": "Safe whole prompts", "pos": [480, 460], "size": [170, 68]},
+    {"id": "workflow", "type": "backend", "label": "Workflow Graph", "sublabel": "Four ordered stages", "pos": [730, 460], "size": [180, 68]},
+    {"id": "langgraph", "type": "external", "label": "LangGraph 1.x", "sublabel": "Optional graph runtime", "pos": [990, 460], "size": [170, 68]},
     {"id": "workspace", "type": "database", "label": "Workspace", "sublabel": "Project state", "pos": [1210, 270], "size": [130, 68]}
   ],
   "connections": [
@@ -24,9 +27,11 @@
     {"id": "cli-loads-repository", "from": "cli", "to": "repository", "label": "loads"},
     {"id": "cli-calls-context", "from": "repository", "to": "context", "label": "supplies", "fromSide": "right", "toSide": "left"},
     {"id": "repository-feeds-validator", "from": "repository", "to": "validator", "label": "supplies", "labelAt": [900, 360]},
-    {"id": "repository-feeds-mutation", "from": "repository", "to": "mutation", "label": "supplies", "fromSide": "right", "toSide": "left"},
+    {"id": "commands-feed-resolver", "from": "commands", "to": "prompt_resolver", "label": "canonical prompts", "labelAt": [455, 542]},
+    {"id": "resolver-feeds-workflow", "from": "prompt_resolver", "to": "workflow", "label": "ordered bundles"},
+    {"id": "workflow-calls-langgraph", "from": "workflow", "to": "langgraph", "label": "compiles", "variant": "dashed", "labelAt": [950, 542]},
     {"id": "context-reads-workspace", "from": "context", "to": "workspace", "label": "reads", "fromSide": "right", "toSide": "top"},
     {"id": "validator-checks-workspace", "from": "validator", "to": "workspace", "label": "validates"},
-    {"id": "mutation-updates-workspace", "from": "mutation", "to": "workspace", "label": "updates", "fromSide": "right", "toSide": "bottom"}
+    {"id": "workflow-preserves-workspace", "from": "workflow", "to": "workspace", "label": "runs gated prompts", "variant": "dashed", "fromSide": "right", "toSide": "bottom"}
   ]
 }

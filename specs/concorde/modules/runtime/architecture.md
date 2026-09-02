@@ -5,6 +5,7 @@ parent: module.concorde
 modules: []
 features:
   - feature.runtime.run-workflow-operations
+  - feature.runtime.orchestrate-development-workflows
 diagrams:
   - source: diagrams/system-overview.json
     kind: architecture
@@ -17,14 +18,15 @@ diagrams:
 
 Provide portable, deterministic, path-safe operations for Profile 7 discovery, native selection,
 bounded context, evidence-qualified alignment exploration, initialization, validation, workspace
-routing, reflection support, agent projection, and cleanup-only delivery.
+routing, reflection support, agent projection, optional prompt-stage workflow orchestration, and
+cleanup-only delivery.
 
 ## Boundary
 
 Runtime owns the normalized in-memory model, repository loader, operation envelopes, safe path rules,
 portable entry adapters, and atomic mutations explicitly defined by Concorde. It does not own
-agent-authored architecture/feature prose, product implementation, public command conversation, or
-generated documentation presentation.
+agent-authored architecture/feature prose, product implementation, prompt/model execution, public
+command conversation, or generated documentation presentation.
 
 ## Entities
 
@@ -43,7 +45,9 @@ generated documentation presentation.
 | `entity.runtime.validator` | program | Runs layout, hierarchy, entity, interface, evidence, diagram, freshness, and reflection rules. | `src/concorde/validate.py#validate_project` |
 | `entity.runtime.initializer` | program | Proposes and atomically applies Initialization Proposal 3 with a root Archify system overview. | `src/concorde/initialize.py` |
 | `entity.runtime.delivery` | program | Proposes and applies digest-bound removal of one complete attempt. | `src/concorde/delivery.py` |
-| `entity.runtime.agent-projector` | program | Renders and verifies command/reflection assets without an external command composer. | `src/concorde/command_assets.py` |
+| `entity.runtime.agent-projector` | program | Resolves complete canonical command prompts and renders/verifies integration command and reflection assets. | `src/concorde/command_assets.py` |
+| `entity.runtime.workflow-orchestrator` | program | Compiles ordered whole-prompt stages into injectable LangGraph workflows. | `src/concorde/workflows.py` |
+| `entity.runtime.langgraph` | external-system | Optional 1.x graph runtime used only when a host invokes workflow orchestration. | `external:langchain-ai/langgraph@1.x` |
 | `entity.runtime.cli` | program | Dispatches supported operations and serializes one structured envelope. | `src/concorde/cli.py` |
 | `entity.runtime.tests` | test | Unit, contract, integration, and acceptance evidence for runtime semantics. | `tests/concorde` |
 
@@ -65,8 +69,11 @@ generated documentation presentation.
 | `entity.runtime.validator` | `reads_from` | `entity.runtime.repository-loader` | Validates the same package used by every operation. |
 | `entity.runtime.delivery` | `validates` | `module.concorde.workspace` | Checks attempt eligibility, freshness, and exact removal safety. |
 | `entity.runtime.agent-projector` | `reads_from` | `module.concorde.commands` | Projects canonical root command and reflection assets. |
+| `entity.runtime.workflow-orchestrator` | `reads_from` | `entity.runtime.agent-projector` | Loads complete canonical prompt bodies through the neutral command resolver. |
+| `entity.runtime.workflow-orchestrator` | `calls` | `entity.runtime.langgraph` | Compiles prompt stages with the optional public Graph API. |
 | `entity.runtime.validator` | `tested_by` | `entity.runtime.tests` | Executable cases establish bounded runtime evidence. |
 | `entity.runtime.alignment-explorer` | `tested_by` | `entity.runtime.tests` | Unit, contract, integration, acceptance, installed, and release cases establish its bounded claims. |
+| `entity.runtime.workflow-orchestrator` | `tested_by` | `entity.runtime.tests` | Real graph invocation and deterministic injected executors establish stage behavior. |
 
 ## Interactions
 
@@ -76,6 +83,7 @@ generated documentation presentation.
 | `interaction.runtime.workspace` | A phase requests selected feature context. | Resolve explicit path, `CONCORDE_FEATURE_PATH`, or `.concorde/feature.json`; load the direct feature and module; derive stable-ID attempt/reflection and executable context; return Protocol 12. | Exactly one canonical direct feature plus bounded context is routed. | `contract.workspace.feature-workspace` |
 | `interaction.runtime.explore` | A caller requests one stable module, entity, feature, or interface. | Validate Profile 7; project the target altitude; strictly validate optional UA graph and schema-1 sidecar inputs; compare explicit revisions; qualify records; apply text/status bounds; serialize canonical JSON. | Current explicit evidence may be partial, verified, or disagreeing; every absent, stale, incompatible, or candidate-only claim is unknown. | `contract.concorde.alignment-explorer`, `contract.runtime.operations` |
 | `interaction.runtime.deliver` | Maintainer requests delivery. | Verify tasks, checklists, passing evidence, validation, digest, safe real attempt path, and retained authorities; atomically remove or roll back. | One complete attempt disappears and every durable/executable authority is retained. | `contract.runtime.operations`, `contract.workspace.feature-workspace` |
+| `interaction.runtime.standard-dev-loop` | A workflow author supplies a request and stage executor. | Resolve ordered canonical prompt bundles; compile specify, plan, tasks, and deliver nodes; invoke each stage with prior results; stop on executor failure. | Four-stage LangGraph result state or a visible failure before downstream execution. | `contract.runtime.workflow-graph`, `contract.commands.workflow-guidance` |
 
 ## Modules
 
@@ -86,6 +94,7 @@ None.
 | Feature | Outcome |
 |---|---|
 | `feature.runtime.run-workflow-operations` | Commands invoke portable deterministic Concorde operations with structured, safe, unambiguous results. |
+| `feature.runtime.orchestrate-development-workflows` | Compose canonical command prompts into tested LangGraph workflow stages. |
 
 ## Decisions
 
@@ -95,6 +104,10 @@ None.
 - Source and installed packages preserve the same relative `scripts/` + `src/` layout.
 - Native selection lives at `.concorde/feature.json`; no compatibility reader exists for host state.
 - Every operation uses the same loader and envelope.
+- LangGraph is an optional host dependency for workflow execution; importing or installing the base
+  Concorde runtime remains dependency-free.
+- Workflow stages compose complete canonical prompts in order and never reintroduce prompt fragments,
+  priority merging, or generated-skill authority.
 - Exploration never normalizes or rewrites input graphs and never treats adapter vocabulary or text
   similarity as identity/evidence.
 - Test relationships point from production subject to evidence (`tested_by`).

@@ -73,6 +73,32 @@ incomplete, invalid, or unsafe delivery is non-mutating.
 
 See [Workflow](docs/concorde-workflow.md) and [Command reference](docs/commands.md).
 
+## Compose prompts with LangGraph
+
+Canonical `commands/concorde.*.md` files are complete prompts as well as agent-skill sources. Runtime
+can resolve those whole prompts into ordered [LangGraph](https://github.com/langchain-ai/langgraph)
+stages without copying prompt text or making LangGraph responsible for Concorde permissions.
+
+The tested standard graph is:
+
+```text
+START → specify → plan → tasks → deliver → END
+```
+
+Its prompt bundles preserve the full lifecycle: `specify`; `plan`; `tasks` + `implement`; then
+`validate` + cleanup-only `deliver`. Run the deterministic, credential-free example from a source
+checkout:
+
+```bash
+uv sync
+uv run python examples/standard_dev_loop.py "Add audit logging"
+```
+
+The base Concorde installer remains Python-only and offline; LangGraph is an optional workflow-host
+dependency constrained to `langgraph>=1.2,<2`. See
+[Workflow](docs/concorde-workflow.md#langgraph-prompt-stage-composition) for the injected executor API
+and installation boundary.
+
 ## Explore architecture and implementation alignment
 
 Concorde 1.1 adds the native read-only `concorde explore` operation. It works without an implementation graph,
