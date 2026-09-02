@@ -100,7 +100,7 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
             statuses=arguments.status,
         )
     if arguments.tool == "deliver":
-        from .delivery import apply_delivery, propose_delivery
+        from .delivery import apply_delivery, materialize_delivery_proposal, propose_delivery
 
         if arguments.apply:
             if not arguments.proposal:
@@ -111,7 +111,7 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                     findings=(Finding("CONCORDE-DELIVER-008", "error", ".concorde/feature.json", "--apply requires --proposal.", "Pass the project-relative generated delivery proposal."),),
                 )
             return apply_delivery(root, arguments.proposal)
-        return propose_delivery(root, arguments.target)
+        return materialize_delivery_proposal(root, propose_delivery(root, arguments.target))
     if arguments.tool == "agent-assets":
         from .agent_assets import (
             preview_agent_assets,

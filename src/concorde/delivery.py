@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Iterable
 
-from .diagnostics import digest_sources
+from .diagnostics import canonical_json, digest_sources
 from .feature_workspace import WorkspaceError, _read_persisted_selection, _resolve_feature, resolve_phase_paths
 from .model import Finding, SourceDocument, ToolResult
 from .reflections import log_path, parse_reflection_log
@@ -170,15 +170,16 @@ def _relative_file_bytes(directory: Path) -> dict[str, bytes]:
     return files
 
 
-def propose_delivery(project_root: str | Path, target: str | None = None, ignored_proposal: str | None = None) -> ToolResult:
+def propose_delivery(project_root: str | Path, target: str | None = None) -> ToolResult:
     project = Path(project_root).resolve()
     try:
         package = ProjectRepository(project).load()
         feature, paths = _resolve_target(project, package, target)
+        proposal_path = f"{paths.attempt_dir}/deliver-proposal.json"
         complete, incomplete, malformed = _task_state(project, paths.tasks)
         checklist_files, checklist_complete, checklist_incomplete, checklist_malformed = _checklist_state(project, paths.checklists_dir)
         evidence_passed, evidence_missing = _validation_state(project, paths.validation, complete)
-        source_digest = _delivery_digest(project, package, paths, ignored_proposal)
+        source_digest = _delivery_digest(project, package, paths, proposal_path)
         retained_digests = _retained_digests(project, package, paths)
     except (RepositoryError, WorkspaceError, OSError, UnicodeError) as error:
         return ToolResult("deliver", target or ".", "invalid", findings=(_finding("CONCORDE-DELIVER-001", ".concorde/feature.json", str(error), "Select a valid direct feature with one active real .concorde/attempts/<stable-feature-id> directory."),))
@@ -210,7 +211,7 @@ def propose_delivery(project_root: str | Path, target: str | None = None, ignore
         "task_summary": {"complete": len(complete), "incomplete": len(incomplete), "malformed": len(malformed)},
         "checklist_summary": {"files": checklist_files, "complete": len(checklist_complete), "incomplete": len(checklist_incomplete), "malformed": len(checklist_malformed)},
         "evidence_summary": {"passed": len(evidence_passed), "missing": len(evidence_missing)},
-        "proposal_path": f"{paths.attempt_dir}/deliver-proposal.json",
+        "proposal_path": proposal_path,
         "retained_digests": retained_digests,
         "reflection_summary": reflection_summary,
     }
@@ -218,6 +219,88 @@ def propose_delivery(project_root: str | Path, target: str | None = None, ignore
     if reflections_body is not None:
         artifacts.append(paths.reflections)
     return ToolResult("deliver", feature.identifier, "eligible" if not findings else "invalid", tuple(artifacts), tuple(findings), result)
+
+
+def _proposal_document(eligibility: ToolResult) -> tuple[str, dict[str, Any]]:
+    workspace = eligibility.result.get("workspace")
+    if not isinstance(workspace, dict) or not isinstance(workspace.get("attempt_dir"), str):
+        raise WorkspaceError("eligible delivery result is missing its attempt directory")
+    attempt_dir = safe_relative_path(workspace["attempt_dir"])
+    proposal_path = safe_relative_path(f"{attempt_dir}/deliver-proposal.json")
+    if eligibility.result.get("proposal_path") != proposal_path:
+        raise WorkspaceError("eligible delivery result does not name the canonical proposal path")
+    source_digest = eligibility.result.get("source_digest")
+    if not isinstance(source_digest, str):
+        raise WorkspaceError("eligible delivery result is missing its source digest")
+    document = {
+        "proposal_version": 9,
+        "tool": "deliver",
+        "target": eligibility.target,
+        "source_digest": source_digest,
+        "remove": [attempt_dir],
+    }
+    return proposal_path, document
+
+
+def materialize_delivery_proposal(project_root: str | Path, eligibility: ToolResult) -> ToolResult:
+    """Atomically materialize one eligible result without changing proposal calculation."""
+    if eligibility.status != "eligible":
+        return eligibility
+    project = Path(project_root).resolve()
+    proposal_path = eligibility.result.get("proposal_path", ".concorde/attempts")
+    try:
+        relative, document = _proposal_document(eligibility)
+        proposal_path = relative
+        repository = ProjectRepository(project)
+        target = repository.resolve(relative)
+        attempt = repository.resolve(document["remove"][0])
+        if target.parent != attempt or attempt.is_symlink() or not attempt.is_dir():
+            raise WorkspaceError("delivery proposal parent must be the real selected attempt directory")
+        if target.is_symlink():
+            raise WorkspaceError("delivery proposal path may not be a symlink")
+        if target.exists() and not target.is_file():
+            raise WorkspaceError("delivery proposal target must be a regular file when it exists")
+        encoded = canonical_json(document)
+        if target.is_file() and target.read_text(encoding="utf-8") == encoded:
+            return eligibility
+        temporary: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                newline="\n",
+                dir=attempt,
+                prefix=".deliver-proposal.json.",
+                suffix=".concorde-stage",
+                delete=False,
+            ) as staged:
+                temporary = Path(staged.name)
+                staged.write(encoded)
+            if temporary.is_symlink() or not temporary.is_file():
+                raise WorkspaceError("delivery proposal staging path must be a regular file")
+            temporary.replace(target)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+    except (RepositoryError, WorkspaceError, UnicodeError) as error:
+        return ToolResult(
+            "deliver",
+            eligibility.target,
+            "invalid",
+            eligibility.artifacts,
+            (_finding("CONCORDE-DELIVER-014", str(proposal_path), str(error), "Restore a safe real attempt directory and retry proposal generation."),),
+            eligibility.result,
+        )
+    except OSError as error:
+        return ToolResult(
+            "deliver",
+            eligibility.target,
+            "failed",
+            eligibility.artifacts,
+            (_finding("CONCORDE-DELIVER-015", str(proposal_path), f"Cannot materialize delivery proposal: {error}", "Resolve the filesystem failure and retry proposal generation."),),
+            eligibility.result,
+        )
+    return eligibility
 
 
 def _load_proposal(project: Path, proposal_path: str) -> tuple[str, dict[str, Any]]:
@@ -246,7 +329,7 @@ def apply_delivery(project_root: str | Path, proposal_path: str) -> ToolResult:
         target = proposal.get("target")
         if not isinstance(target, str) or not target:
             raise WorkspaceError("delivery proposal target is required")
-        eligibility = propose_delivery(project, target, relative_proposal)
+        eligibility = propose_delivery(project, target)
         if eligibility.status != "eligible":
             return eligibility
         paths = eligibility.result["workspace"]
