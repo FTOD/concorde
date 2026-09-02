@@ -155,6 +155,18 @@ def _retained_digests(project: Path, package: Any, paths: Any) -> dict[str, str]
     return dict(sorted(result.items()))
 
 
+def _relative_file_bytes(directory: Path) -> dict[str, bytes]:
+    if directory.is_symlink() or not directory.is_dir():
+        raise WorkspaceError("delivery rollback tree must be one real directory")
+    files: dict[str, bytes] = {}
+    for path in sorted(directory.rglob("*")):
+        if path.is_symlink():
+            raise WorkspaceError("delivery rollback tree may not contain symlinks")
+        if path.is_file():
+            files[path.relative_to(directory).as_posix()] = path.read_bytes()
+    return files
+
+
 def propose_delivery(project_root: str | Path, target: str | None = None, ignored_proposal: str | None = None) -> ToolResult:
     project = Path(project_root).resolve()
     try:
@@ -254,11 +266,13 @@ def apply_delivery(project_root: str | Path, proposal_path: str) -> ToolResult:
     except (RepositoryError, WorkspaceError, OSError, UnicodeError) as error:
         return ToolResult("deliver", ".", "invalid", findings=(_finding("CONCORDE-DELIVER-005", proposal_path, str(error), "Correct and regenerate the cleanup-only proposal before applying it."),))
 
+    backup_complete = False
     moved = False
     with tempfile.TemporaryDirectory(prefix="concorde-delivery-") as temporary:
         backup = Path(temporary) / attempt.name
         try:
             shutil.copytree(attempt, backup)
+            backup_complete = True
             attempt.replace(tombstone)
             moved = True
             shutil.rmtree(tombstone)
@@ -271,11 +285,13 @@ def apply_delivery(project_root: str | Path, proposal_path: str) -> ToolResult:
             try:
                 if moved and tombstone.exists() and not attempt.exists():
                     tombstone.replace(attempt)
-                elif moved and not attempt.exists():
-                    shutil.copytree(backup, attempt)
+                if backup_complete:
+                    shutil.copytree(backup, attempt, dirs_exist_ok=True)
                 if tombstone.exists():
                     shutil.rmtree(tombstone)
-            except OSError as rollback_error:
+                if backup_complete and _relative_file_bytes(attempt) != _relative_file_bytes(backup):
+                    raise WorkspaceError("restored attempt does not match the complete delivery backup")
+            except (OSError, WorkspaceError) as rollback_error:
                 error = WorkspaceError(f"{error}; rollback also failed: {rollback_error}")
             return ToolResult("deliver", target, "failed", findings=(_finding("CONCORDE-DELIVER-006", paths["feature_path"], f"Attempt cleanup failed: {error}", "Resolve the filesystem failure; the complete attempt was restored when possible."),), result={"workspace": paths, "changes": [], "source_digest": eligibility.result["source_digest"]})
 
