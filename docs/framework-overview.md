@@ -52,4 +52,6 @@ the repository is already reconciled and removes the attempt; it does not author
 Profile 7 is a breaking source profile. Concorde does not run a dual reader for older and current
 layouts. This keeps loaders, validators, agent guidance, fixtures, publication, and packages on one
 coherent ontology. Difficult tradeoffs and knowingly provisional choices are recorded in the
-project reflection log so the prototype can proceed and be revised later.
+project reflection log so the prototype can proceed and be revised later. Reflection-triage/v3
+automatically removes only validated merged-small fast-loop problems; every broader or unresolved
+entry remains for maintainer disposition.

@@ -69,6 +69,9 @@ package, and public-guide reconciliation.
 
 Planning does not edit durable sources. It records conflicts, workarounds, and provisional prototype
 choices in `.concorde/reflections/log.md` and keeps going when a safe bounded assumption is possible.
+New entries reserve their ID atomically through the installed reflection helper. The separate
+reflection-triage/v3 merge workflow removes only validated merged `small` `fast-loop` entries and
+leaves all other routes for maintainer disposition.
 
 ## 4. Tasks
 

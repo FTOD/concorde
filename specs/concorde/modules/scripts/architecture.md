@@ -30,7 +30,7 @@ generated documentation presentation.
 | `entity.scripts.powershell-launcher` | script | Equivalent portable launcher for PowerShell projects. | `extensions/concorde/scripts/powershell/concorde.ps1` |
 | `entity.scripts.python-adapter` | program | Adds the installed runtime package to the import path and enters the CLI. | `extensions/concorde/scripts/python/concorde.py` |
 | `entity.scripts.workspace-adapter` | program | Emits Protocol 12 paths for one selected direct feature file and corresponding stable-ID control attempt. | `extensions/concorde/scripts/python/workspace.py` |
-| `entity.scripts.reflection-queue` | program | Maintains deterministic reflection-triage/v2 queue and plan state around `.concorde/reflections/log.md`. | `extensions/concorde/scripts/python/reflections_queue.py` |
+| `entity.scripts.reflection-queue` | program | Maintains reflection-triage/v3 queue/plan state, allocates IDs from the tracked log high-water, and atomically removes eligible merged-small entries. | `extensions/concorde/scripts/python/reflections_queue.py` |
 | `entity.scripts.runtime-model` | package | Immutable operation, module, entity, relation, interface, context, and finding records. | `extensions/concorde/runtime/concorde/model.py` |
 | `entity.scripts.repository-loader` | program | Discovers Profile 7 architectures/direct feature files/diagrams plus declared control authorities and constructs the normalized package. | `extensions/concorde/runtime/concorde/repository.py#ProjectRepository.load` |
 | `entity.scripts.context-builder` | program | Projects one bounded module or feature altitude with entity/interface relationships. | `extensions/concorde/runtime/concorde/context.py#bounded_context` |

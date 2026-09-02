@@ -71,9 +71,11 @@ match an executable task and its trace. An unexpected change stops completion ma
 ## Reflection recording
 
 Record every difficulty encountered, including one solved by a workaround and every provisional
-prototype design choice. Append to the project-wide `workspace.reflections` using fixed grammar,
-`Phase: implement`, the next stable ID, and `Status: open`, or add an occurrence to the same existing
-problem. Name the concerned design, architecture, interface ID, guidance, tool, or code path. Keep
+prototype design choice. Before appending a new entry to `workspace.reflections`, run the installed
+`.specify/extensions/concorde/scripts/python/reflections_queue.py --allocate-id`, use only its
+`allocated_id`, and never derive an ID from the remaining log entries. Append with fixed grammar,
+`Phase: implement`, and `Status: open`, or add an occurrence to the same existing problem without
+allocating a new ID. Name the concerned design, architecture, interface ID, guidance, tool, or code path. Keep
 Expected/Observed/Action concise. Never copy reflection identity or prose into code, tests, durable
 sources, diagrams, or attempt evidence.
 

@@ -53,7 +53,9 @@ class _SelfHostingLifecycleMixin:
         self.assertNotIn("stale hand-maintained", adopted.read_text())
         self.assertEqual(adopted.is_symlink(), self.integration == "claude")
         for relative in self_host.integration_profile(self.integration)["agent_surfaces"]:
-            self.assertTrue((self.root / str(relative)).is_file(), relative)
+            path = self.root / str(relative)
+            self.assertTrue(path.is_file(), relative)
+            self.assertIn("reflection-triage/v3", path.read_text(encoding="utf-8"), relative)
         agent_receipt = json.loads((self.root / ".specify/concorde-agent-assets.json").read_text())
         self.assertIn(self.integration, agent_receipt["integrations"])
         self.assertTrue((self.root / ".concorde/reflections/config.json").is_file())

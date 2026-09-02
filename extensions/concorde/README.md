@@ -34,9 +34,12 @@ Target projects need Python 3.11+ for runtime-backed surfaces and no third-party
 
 ## Reflection triage agent assets
 
-The extension also carries the canonical `reflection-triage/v2` orchestrator, model-neutral
+The extension also carries the canonical `reflection-triage/v3` orchestrator, model-neutral
 investigator/implementer roles, safe default configuration, Claude/Codex wrappers, and deterministic
-queue helper. These support reflection maintenance and are not a sixth command.
+queue helper. The helper allocates never-reused IDs atomically and removes an open entry only after
+its `small` `fast-loop` plan is validated, merged, marked `merged`, and proven in current history.
+Other routes and efforts retain maintainer disposition. These surfaces support reflection
+maintenance and are not a sixth command.
 
 `concorde agent-assets preview|sync|verify|remove --integration <claude|codex>` reconciles native
 project surfaces. Claude receives one skill and two role documents; Codex receives one skill and two
@@ -49,5 +52,5 @@ listed path only while its digest matches the receipt; modified, legacy, inactiv
 unrelated, and policy-protected files are preserved and reported.
 
 Investigators are read-only and return evidence-backed plans. Implementers receive one explicit
-worktree and file ownership. The parent owns plan persistence, merge, and reflection status/note
-decisions.
+worktree and file ownership. The parent owns plan persistence and merge, never edits reflection
+Status/Note, and invokes deterministic merged-small removal only after validation.

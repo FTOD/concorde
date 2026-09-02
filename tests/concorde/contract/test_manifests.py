@@ -22,7 +22,8 @@ class ManifestContractTests(unittest.TestCase):
         descriptions = {item["name"]: item["description"] for item in manifest["provides"]["commands"]}
         self.assertIn("atomically remove", descriptions["speckit.concorde.deliver"])
         self.assertIn("Protocol 12", manifest["provides"]["scripts"][3]["description"])
-        self.assertEqual(manifest["extension"]["version"], "0.8.0")
+        self.assertEqual(manifest["extension"]["version"], "0.9.0")
+        self.assertIn("reflection-triage/v3", manifest["provides"]["scripts"][4]["description"])
         for relative in (
             "agent-assets/reflections/manifest.json",
             "agent-assets/reflections/orchestrator.md",
@@ -37,7 +38,7 @@ class ManifestContractTests(unittest.TestCase):
         text = (REPOSITORY_ROOT / "bundles/concorde-bundle/bundle.yml").read_text(encoding="utf-8")
         manifest = yaml.safe_load(text)
         self.assertEqual(manifest["bundle"]["id"], "concorde-bundle")
-        self.assertEqual(manifest["bundle"]["version"], "0.8.0")
+        self.assertEqual(manifest["bundle"]["version"], "0.9.0")
         self.assertIn("Profile 7", manifest["bundle"]["description"])
         self.assertIn("Protocol 12", manifest["bundle"]["description"])
         self.assertEqual(len(manifest["provides"]["extensions"]), 1)
@@ -58,11 +59,12 @@ class ManifestContractTests(unittest.TestCase):
         self.assertEqual(len(commands), 10)
         self.assertEqual(sum(item["strategy"] == "append" for item in entries), 1)
         self.assertEqual(sum(item["strategy"] == "replace" for item in entries), 13)
-        self.assertEqual(manifest["preset"]["version"], "0.8.0")
+        self.assertEqual(manifest["preset"]["version"], "0.9.0")
         self.assertFalse((PRESET / "templates/abstract-template.md").exists())
         self.assertFalse((PRESET / "templates/implementation-template.md").exists())
         self.assertIn("embedded interface", templates[0]["description"])
         self.assertIn("architecture-zoom", templates[0]["description"])
+        self.assertIn("merged-small removal", templates[1]["description"])
 
     def test_extension_and_preset_install_from_source_without_removed_templates(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -104,6 +106,19 @@ class ManifestContractTests(unittest.TestCase):
         self.assertIn("direct feature file", tasks)
         self.assertIn("cleanup-only delivery", tasks)
         self.assertNotRegex("\n".join((design, plan, tasks)), re.compile(r"(?:abstract|implementation)-template"))
+
+    def test_reflection_template_keeps_log_v1_with_v3_high_water_lifecycle(self):
+        body = (PRESET / "templates/reflections-template.md").read_text(encoding="utf-8")
+        for value in (
+            "<!-- concorde-reflection-high-water: R-000 -->",
+            "Reflection-triage/v3",
+            "--allocate-id",
+            "`allocated_id`",
+            "--remove-merged",
+            "without adding Status/Note",
+        ):
+            self.assertIn(value, body, value)
+        self.assertIn("Grammar (Concorde Reflection Log v1)", body)
 
 
 if __name__ == "__main__":

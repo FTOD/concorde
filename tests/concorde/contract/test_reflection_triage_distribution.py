@@ -6,7 +6,7 @@ import tomllib
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.paths import RUNTIME_ROOT
+from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 from tests.concorde.support.reflection_triage import CANONICAL_ASSETS
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -29,6 +29,21 @@ def frontmatter(text: str) -> dict[str, str]:
 
 
 class ReflectionTriageDistributionContractTests(unittest.TestCase):
+    def test_public_guidance_names_v3_and_retained_maintainer_disposition(self):
+        paths = (
+            "README.md",
+            "extensions/concorde/README.md",
+            "presets/concorde/README.md",
+            "bundles/concorde-bundle/README.md",
+            "docs/ontology.md",
+            "docs/self-hosting.md",
+            "docs/releasing.md",
+        )
+        combined = "\n".join((REPOSITORY_ROOT / path).read_text(encoding="utf-8") for path in paths)
+        self.assertIn("reflection-triage/v3", combined)
+        self.assertIn("maintainer disposition", combined)
+        self.assertNotIn("reflection-triage/v2", combined)
+
     def test_projection_manifest_has_exact_claude_codex_and_shared_inventory(self):
         claude = render_projection(CANONICAL_ASSETS, "claude")
         codex = render_projection(CANONICAL_ASSETS, "codex")
@@ -57,12 +72,18 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
         self.assertEqual(frontmatter(claude_skill)["name"], "reflections-triage")
         self.assertEqual(frontmatter(codex_skill)["name"], "reflections-triage")
         for text in (claude_skill, codex_skill):
+            normalized = " ".join(text.split())
             for action in ("status", "investigate", "implement", "merge"):
                 self.assertIn(f"`{action}`", text)
-            self.assertIn("reflection-triage/v2", text)
+            self.assertIn("reflection-triage/v3", text)
             self.assertIn(".concorde/reflections/log.md", text)
             self.assertIn(".concorde/reflections/config.json", text)
             self.assertIn(".specify/extensions/concorde/scripts/python/reflections_queue.py", text)
+            self.assertIn("--allocate-id", text)
+            self.assertIn("--remove-merged", text)
+            self.assertIn("set only their plan status to `merged`", normalized)
+            self.assertIn("without a maintainer Status/Note", normalized)
+            self.assertIn("retain maintainer disposition", normalized)
             self.assertNotIn(str(Path.cwd()), text)
 
         investigator = tomllib.loads(codex[".codex/agents/reflection_investigator.toml"])
@@ -73,6 +94,7 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
             self.assertNotIn("model_reasoning_effort", role)
             for route in ("fast-loop", "specify", "dismiss", "blocked"):
                 self.assertIn(route, role["developer_instructions"])
+            self.assertIn("reflection-triage/v3", role["developer_instructions"])
         self.assertEqual(investigator["sandbox_mode"], "read-only")
         self.assertEqual(implementer["sandbox_mode"], "workspace-write")
         self.assertIn("Never change reflection `Status`/`Note` decisions", implementer["developer_instructions"])

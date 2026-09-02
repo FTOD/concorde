@@ -32,7 +32,7 @@ class ReleaseArtifactTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
             builder.build_release(Path(first), "http://127.0.0.1:8765")
             builder.build_release(Path(second), "http://127.0.0.1:8765")
-            names = ["concorde-preset-0.8.0.zip", "concorde-extension-0.8.0.zip", "concorde-bundle-0.8.0.zip"]
+            names = ["concorde-preset-0.9.0.zip", "concorde-extension-0.9.0.zip", "concorde-bundle-0.9.0.zip"]
             for name in names:
                 self.assertEqual((Path(first) / name).read_bytes(), (Path(second) / name).read_bytes())
             self.assertEqual((Path(first) / "presets.json").read_bytes(), (Path(second) / "presets.json").read_bytes())
@@ -102,6 +102,8 @@ class ReleaseArtifactTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "download_url .* is not https://example.invalid/releases/"):
                 verifier.verify_release(Path(temporary), expect_base_url="https://example.invalid/releases")
 
+            self.assertEqual(verifier.REFLECTION_TRIAGE_PROTOCOL, "reflection-triage/v3")
+
             catalog_path = Path(temporary) / "presets.json"
             catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
             catalog["presets"]["concorde"]["workspace_protocol"] = 9
@@ -143,9 +145,9 @@ class ReleaseArtifactTests(unittest.TestCase):
     def test_archives_match_explicit_allowlists_and_installed_handoff(self):
         builder = load_builder()
         sources = {
-            "concorde-preset-0.8.0.zip": ("preset", REPOSITORY_ROOT / "presets/concorde"),
-            "concorde-extension-0.8.0.zip": ("extension", REPOSITORY_ROOT / "extensions/concorde"),
-            "concorde-bundle-0.8.0.zip": ("bundle", REPOSITORY_ROOT / "bundles/concorde-bundle"),
+            "concorde-preset-0.9.0.zip": ("preset", REPOSITORY_ROOT / "presets/concorde"),
+            "concorde-extension-0.9.0.zip": ("extension", REPOSITORY_ROOT / "extensions/concorde"),
+            "concorde-bundle-0.9.0.zip": ("bundle", REPOSITORY_ROOT / "bundles/concorde-bundle"),
         }
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
@@ -158,7 +160,7 @@ class ReleaseArtifactTests(unittest.TestCase):
                 with zipfile.ZipFile(output / archive_name) as archive:
                     self.assertEqual(set(archive.namelist()), expected)
 
-            with zipfile.ZipFile(output / "concorde-preset-0.8.0.zip") as preset_archive:
+            with zipfile.ZipFile(output / "concorde-preset-0.9.0.zip") as preset_archive:
                 command_members = sorted(
                     name for name in preset_archive.namelist() if name.startswith("commands/")
                 )
@@ -171,7 +173,7 @@ class ReleaseArtifactTests(unittest.TestCase):
                 self.assertNotIn("templates/abstract-template.md", preset_archive.namelist())
                 self.assertNotIn("templates/implementation-template.md", preset_archive.namelist())
 
-            with zipfile.ZipFile(output / "concorde-extension-0.8.0.zip") as extension_archive:
+            with zipfile.ZipFile(output / "concorde-extension-0.9.0.zip") as extension_archive:
                 handoff_members = sorted(
                     name
                     for name in extension_archive.namelist()
@@ -201,7 +203,7 @@ class ReleaseArtifactTests(unittest.TestCase):
                 self.assertIn("agent-assets/reflections/projections/codex/SKILL.md.tmpl", agent_members)
                 self.assertGreaterEqual(len(agent_members), 10)
                 self.assertIn(
-                    b'"protocol": "reflection-triage/v2"',
+                    b'"protocol": "reflection-triage/v3"',
                     extension_archive.read("agent-assets/reflections/manifest.json"),
                 )
 

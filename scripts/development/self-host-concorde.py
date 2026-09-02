@@ -34,6 +34,7 @@ EXTENSION_ID = "concorde"
 BUNDLE_ID = "concorde-bundle"
 PRIORITY = 10
 WORKSPACE_PROTOCOL_VERSION = 12
+REFLECTION_TRIAGE_PROTOCOL = "reflection-triage/v3"
 
 PRESET_COMMANDS = (
     "speckit.specify",
@@ -780,7 +781,7 @@ def removed_template_residue(root: Path) -> list[str]:
 
 
 def protocol_freshness(root: Path, integration: str = "codex") -> list[str]:
-    """Return installed guidance paths that do not advertise the Profile 7 protocol."""
+    """Return installed guidance or agent assets with stale workspace/reflection protocols."""
     stale: list[str] = []
     marker = f"Protocol {WORKSPACE_PROTOCOL_VERSION}"
     for command in PRESET_COMMANDS:
@@ -794,8 +795,15 @@ def protocol_freshness(root: Path, integration: str = "codex") -> list[str]:
         stale.append(delivery)
     readme = ".specify/extensions/concorde/README.md"
     readme_path = resolve_project_path(root, readme, reject_symlink=False)
-    if not readme_path.is_file() or marker not in readme_path.read_text(encoding="utf-8"):
+    if not readme_path.is_file() or any(
+        value not in readme_path.read_text(encoding="utf-8")
+        for value in (marker, REFLECTION_TRIAGE_PROTOCOL)
+    ):
         stale.append(readme)
+    for relative in integration_profile(integration)["agent_surfaces"]:
+        path = resolve_project_path(root, str(relative), reject_symlink=False)
+        if not path.is_file() or REFLECTION_TRIAGE_PROTOCOL not in path.read_text(encoding="utf-8"):
+            stale.append(str(relative))
     return sorted(set(stale))
 
 
@@ -844,7 +852,7 @@ def verify_materialization(root: Path, expected_source: Path | None = None) -> t
             "CONCORDE-SELF-HOST-025",
             "verify",
             stale_protocol[0],
-            f"Installed guidance is not current for Protocol {WORKSPACE_PROTOCOL_VERSION}: {', '.join(stale_protocol)}",
+            f"Installed guidance is not current for Protocol {WORKSPACE_PROTOCOL_VERSION} and {REFLECTION_TRIAGE_PROTOCOL}: {', '.join(stale_protocol)}",
             "Recompose the canonical Profile 7 package and regenerate the active integration surfaces.",
         )
     installed_digest = installed
@@ -1038,7 +1046,7 @@ def status(root: Path) -> dict[str, object]:
                     )
                 )
             ),
-            "message": f"Declared active-integration surfaces compared with receipt and Protocol {WORKSPACE_PROTOCOL_VERSION}.",
+            "message": f"Declared active-integration surfaces compared with receipt, Protocol {WORKSPACE_PROTOCOL_VERSION}, and {REFLECTION_TRIAGE_PROTOCOL}.",
         },
         "activation": {"status": "reload_required", "message": "On-disk equality does not prove that the running agent reloaded these instructions."},
     }

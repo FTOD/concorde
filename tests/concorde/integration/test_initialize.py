@@ -33,6 +33,7 @@ class InitializationTests(unittest.TestCase):
             self.assertIn('"profile_version": 7', config["content"])
             reflections = next(item for item in proposal["files"] if item["path"] == ".concorde/reflections/log.md")
             self.assertIn("# Reflections:", reflections["content"])
+            self.assertIn("<!-- concorde-reflection-high-water: R-000 -->", reflections["content"])
             architecture = next(item for item in proposal["files"] if item["path"].endswith("architecture.md"))
             for heading in ("Responsibility", "Boundary", "Entities", "Relationships", "Interactions", "Modules", "Features", "Decisions"):
                 self.assertIn(f"## {heading}", architecture["content"])
@@ -52,6 +53,10 @@ class InitializationTests(unittest.TestCase):
             self.assertEqual(applied.status, "success", applied.findings)
             self.assertTrue((root / "specs/sample/architecture.md").is_file())
             self.assertTrue((root / ".concorde/reflections/log.md").is_file())
+            self.assertIn(
+                "<!-- concorde-reflection-high-water: R-000 -->",
+                (root / ".concorde/reflections/log.md").read_text(encoding="utf-8"),
+            )
             self.assertFalse((root / "specs/sample/module.md").exists())
             self.assertEqual(validate_project(root).status, "success", validate_project(root).findings)
             self.assertEqual(apply_proposal(root, "accepted.json").status, "unchanged")

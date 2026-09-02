@@ -59,8 +59,10 @@ plan, tasks, implementation, and delivery.
    not claim completion or create an attempt retroactively.
 
 Difficulties, workarounds, or knowingly provisional choices go to the centralized reflection log
-when its grammar permits the direct phase; otherwise report them and route the full workflow rather
-than inventing a reflection phase value.
+with `Phase: fast-loop`. Before appending a new entry, run the installed
+`.specify/extensions/concorde/scripts/python/reflections_queue.py --allocate-id`, use only its
+`allocated_id`, and never derive an ID from the remaining log entries; an existing problem receives
+an occurrence without allocating a new ID.
 
 Report eligibility, changed paths, checks/results, limitations, architecture/interface impact, and
 that no attempt was created.

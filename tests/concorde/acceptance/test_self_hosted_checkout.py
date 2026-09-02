@@ -42,7 +42,9 @@ class SelfHostedCheckoutAcceptanceTests(unittest.TestCase):
                 self.assertEqual(applied["status"], "applied")
                 self.assertEqual(len(list(skill_root(root, integration).glob("speckit-*/SKILL.md"))), 16)
                 for relative in self_host.integration_profile(integration)["agent_surfaces"]:
-                    self.assertTrue((root / str(relative)).is_file(), relative)
+                    path = root / str(relative)
+                    self.assertTrue(path.is_file(), relative)
+                    self.assertIn("reflection-triage/v3", path.read_text(encoding="utf-8"), relative)
                 fast_loop = skill_file(root, integration, "speckit.fast-loop")
                 self.assertTrue(fast_loop.is_file())
                 fast_loop_content = fast_loop.read_text(encoding="utf-8")

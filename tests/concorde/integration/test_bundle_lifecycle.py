@@ -74,11 +74,11 @@ class BundleLifecycleTests(unittest.TestCase):
 
     def test_preview_install_repeat_and_provenance_match(self):
         preview = self.project.json("bundle", "info", "concorde-bundle", "--json")
-        self.assertEqual(preview["version"], "0.8.0")
+        self.assertEqual(preview["version"], "0.9.0")
         self.assertIsNone(preview["integration"])
         self.assertEqual(
             [(item["kind"], item["id"], item["version"]) for item in preview["components"]],
-            [("extensions", "concorde", "0.8.0"), ("presets", "concorde", "0.8.0")],
+            [("extensions", "concorde", "0.9.0"), ("presets", "concorde", "0.9.0")],
         )
         source_hashes = self.project.source_hashes()
         self.project.run("bundle", "install", "concorde-bundle")
@@ -109,7 +109,7 @@ class BundleLifecycleTests(unittest.TestCase):
         forms = [
             REPOSITORY_ROOT / "bundles/concorde-bundle",
             REPOSITORY_ROOT / "bundles/concorde-bundle/bundle.yml",
-            self.dist / "concorde-bundle-0.8.0.zip",
+            self.dist / "concorde-bundle-0.9.0.zip",
         ]
         expected = None
         for form in forms:
@@ -167,7 +167,7 @@ class BundleLifecycleTests(unittest.TestCase):
         result = self.project.run("bundle", "update", "concorde-bundle", check=False)
         self.assertNotEqual(result.returncode, 0)
         installed = self.project.json("bundle", "list", "--json")
-        self.assertEqual(installed[0]["version"], "0.8.0")
+        self.assertEqual(installed[0]["version"], "0.9.0")
         self.assertNotIn("0.3.1", json.dumps(installed))
         self.assertEqual(self.project.source_hashes(), source_hashes)
 

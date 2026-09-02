@@ -1,11 +1,11 @@
 {
-  "catalog_url": "https://github.com/FTOD/concorde/releases/download/v0.8.0/extensions.json",
+  "catalog_url": "https://github.com/FTOD/concorde/releases/download/v0.9.0/extensions.json",
   "extensions": {
     "concorde": {
       "architecture_profile": 7,
       "author": "Concorde maintainers",
       "description": "Initialize, retrieve, validate, deliver, and explain module-centered architecture and features",
-      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.8.0/concorde-extension-0.8.0.zip",
+      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.9.0/concorde-extension-0.9.0.zip",
       "effect": "read-write",
       "id": "concorde",
       "license": "MIT",
@@ -18,7 +18,7 @@
       "requires": {
         "speckit_version": ">=0.16.4,<0.16.5"
       },
-      "sha256": "sha256:1bcb6d027e9839ec14dbe161a971ee40807012fdba82d6a8ebae8078dc4f766a",
+      "sha256": "sha256:34f0a55c9c8574d104be05003a95a16a05f5d5ed170bbc5e44c4a265ee33eb2e",
       "tags": [
         "architecture",
         "interfaces",
@@ -27,10 +27,10 @@
         "validation"
       ],
       "verified": false,
-      "version": "0.8.0",
+      "version": "0.9.0",
       "workspace_protocol": 12
     }
   },
   "schema_version": "1.0",
-  "updated_at": "2026-09-01T00:00:00Z"
+  "updated_at": "2026-09-02T00:00:00Z"
 }

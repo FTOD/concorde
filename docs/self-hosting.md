@@ -52,7 +52,7 @@ Status compares:
 | Installed | Installed component bytes equal canonical bytes and receipt. |
 | Registry | Normalized component ownership/version/priority/commands equal expected composition. |
 | Surfaces | Composed templates, all command skills, extension commands, and agent assets equal receipt. |
-| Protocol | Every installed phase advertises Protocol 12 and delivery advertises Proposal 8. |
+| Protocol | Every installed phase advertises Protocol 12, delivery advertises Proposal 8, and reflection agent assets advertise reflection-triage/v3. |
 | Removal | Obsolete feature-document templates are absent from canonical and installed surfaces. |
 | Activation | On-disk current; agent reload still required after changes. |
 
@@ -74,6 +74,6 @@ only while their observed digest matches ownership evidence.
   evidence before expanding support;
 - command collision: resolve component ownership before proposing;
 - installed/source drift: generate and review a fresh proposal;
-- stale Protocol marker or obsolete template: recompose through the public lifecycle;
+- stale workspace/reflection protocol marker or obsolete template: recompose through the public lifecycle;
 - modified receipt-owned agent file: reconcile the ownership conflict explicitly; and
 - activation pending: restart/reload the coding agent after a successful apply.

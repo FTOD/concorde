@@ -19,6 +19,8 @@ The builder creates deterministic archives and matching catalogs:
 Archives use a strict member allowlist, normalized permissions/timestamps, and sorted paths. Catalog
 entries include repository/version/Spec Kit range, Architecture Source Profile 7, Feature Workspace
 Protocol 12, capability counts derived from manifests, HTTPS release locations, and SHA-256 digests.
+The extension archive carries the independently versioned reflection-triage/v3 manifest; no new
+catalog field or schema version is required.
 
 ## Verify
 
@@ -54,7 +56,7 @@ uv run python scripts/release/publish-release.py --dist dist --tag v<version>
 - canonical package sources and manifests agree;
 - self-host status is current for the active integration;
 - obsolete template projections are absent;
-- Protocol 12/Proposal 8 markers are fresh across installed surfaces;
+- Protocol 12/Proposal 8/reflection-triage/v3 markers are fresh across installed surfaces;
 - full Python tests and docsite `npm run check` pass;
 - Concorde validation passes on the self-hosted specifications;
 - catalogs rebuild deterministically; and

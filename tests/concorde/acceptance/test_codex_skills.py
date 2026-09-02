@@ -28,7 +28,7 @@ class CodexSkillsAcceptance(unittest.TestCase):
                     sys.executable,
                     str(root / ".specify/extensions/concorde/scripts/python/concorde.py"),
                     "--project-root", str(root), "agent-assets", "sync", "--integration", "codex",
-                    "--concorde-version", "0.8.0",
+                    "--concorde-version", "0.9.0",
                 ],
                 cwd=root, check=True, capture_output=True,
             )
@@ -50,7 +50,9 @@ class CodexSkillsAcceptance(unittest.TestCase):
             installed = (root / ".agents/skills/speckit-concorde-ask/SKILL.md").read_text(encoding="utf-8")
             self.assertIn(source.split("---", 2)[2].strip(), installed)
             triage = (root / ".agents/skills/reflections-triage/SKILL.md").read_text(encoding="utf-8")
-            self.assertIn("reflection-triage/v2", triage)
+            self.assertIn("reflection-triage/v3", triage)
+            self.assertIn("--allocate-id", triage)
+            self.assertIn("--remove-merged", triage)
             self.assertTrue((root / ".codex/agents/reflection_investigator.toml").is_file())
             self.assertTrue((root / ".codex/agents/reflection_implementer.toml").is_file())
 

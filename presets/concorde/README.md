@@ -24,7 +24,9 @@ Source code is implementation authority. Tests and deterministic checks are evid
 research, tasks, checklists, and validation evidence live only in the project-control workspace
 `.concorde/attempts/<stable-feature-id>/`. The tracked process-memory authority is
 `.concorde/reflections/log.md`; reflection-triage configuration shares that directory while its plans
-and worktrees remain disposable. Implementation tasks may reconcile architecture/feature intent alongside code/tests when the
+and worktrees remain disposable. New reflection IDs are allocated atomically from the log's
+high-water marker. Reflection-triage/v3 removes only validated merged `small` `fast-loop` entries;
+all other entries retain maintainer disposition. Implementation tasks may reconcile architecture/feature intent alongside code/tests when the
 task explicitly owns and traces that change. Successful Concorde delivery validates the completed
 state and removes exactly the selected attempt; it authors no durable narrative.
 

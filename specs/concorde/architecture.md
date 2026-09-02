@@ -125,7 +125,7 @@ Docusaurus internals, or Understand Anything's graph semantics.
 | `feature.concorde.publish-project-docsite` | Publish validated architecture, feature, and project sources as a searchable site. |
 | `feature.concorde.install-with-spec-kit` | Inspect and materialize the supported bundle through Spec Kit. |
 | `feature.concorde.self-host-framework` | Prove this checkout installs and composes through the public path. |
-| `feature.concorde.record-workflow-reflections` | Preserve difficult choices and problems in one durable project log. |
+| `feature.concorde.record-workflow-reflections` | Preserve unsolved choices/problems, allocate never-used IDs, and remove validated merged-small entries automatically. |
 | `feature.concorde.explore-alignment` | Browse evidence-qualified relationships between specification and executable reality. |
 | `feature.concorde.define-project-ontology` | Define and validate recursive module architecture, typed entities/relations, and design-only feature interfaces. |
 | `feature.concorde.workflow.initialize-architecture` | Propose a minimal reviewed root architecture. |

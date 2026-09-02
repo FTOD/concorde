@@ -227,7 +227,7 @@ class PublishReleaseTests(unittest.TestCase):
 
     def test_render_notes_names_components_range_and_registration_commands(self):
         notes = publisher.render_notes("0.1.0", ">=0.16.4,<0.16.5", "https://github.com/FTOD/concorde/releases/download/v0.1.0", {"concorde-extension-0.1.0.zip": "sha256:ab"})
-        for needle in ("preset:concorde@0.1.0", "extension:concorde@0.1.0", "concorde-bundle@0.1.0", ">=0.16.4,<0.16.5", "`7` / `12`", "specify bundle install concorde-bundle", "releases/latest/download/release.json"):
+        for needle in ("preset:concorde@0.1.0", "extension:concorde@0.1.0", "concorde-bundle@0.1.0", ">=0.16.4,<0.16.5", "`7` / `12`", "`reflection-triage/v3`", "specify bundle install concorde-bundle", "releases/latest/download/release.json"):
             self.assertIn(needle, notes)
 
     def test_cli_dry_run_prints_record_and_exit_code(self):

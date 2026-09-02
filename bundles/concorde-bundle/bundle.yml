@@ -3,7 +3,7 @@ schema_version: "1.0"
 bundle:
   id: "concorde-bundle"
   name: "Concorde Bundle"
-  version: "0.8.0"
+  version: "0.9.0"
   role: "developer"
   description: "Pinned Profile 7 and Protocol 12 Concorde component set for Spec Kit"
   author: "Concorde maintainers"
@@ -17,10 +17,10 @@ requires:
 provides:
   extensions:
     - id: "concorde"
-      version: "0.8.0"
+      version: "0.9.0"
   presets:
     - id: "concorde"
-      version: "0.8.0"
+      version: "0.9.0"
       priority: 10
       strategy: "append"
   steps: []

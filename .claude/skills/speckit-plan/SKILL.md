@@ -91,8 +91,11 @@ byte-identical.
 
 Whenever planning must assume, work around, defer, or stop because feature intent, architecture, related
 interfaces, code/tests, guidance, or tooling disagree, append or update the project-wide reflection
-log at `workspace.reflections`. Use the next stable `R-NNN`, fixed field grammar, `Phase: plan`, and
-`Status: open`; add an occurrence instead of duplicating the same problem. This includes design
+log at `workspace.reflections`. Before appending a new entry, run the installed
+`.specify/extensions/concorde/scripts/python/reflections_queue.py --allocate-id`, use only its
+`allocated_id`, and never derive an ID from the remaining log entries. Use fixed field grammar,
+`Phase: plan`, and `Status: open`; an existing problem receives an occurrence without allocating a
+new ID. This includes design
 choices that are knowingly provisional for the prototype. Never copy reflection identity or prose
 into attempt or durable artifacts. Continue with a bounded prototype whenever a safe explicit
 assumption permits useful progress.

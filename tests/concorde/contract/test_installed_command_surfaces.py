@@ -61,7 +61,7 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
                 "--integration",
                 integration,
                 "--concorde-version",
-                "0.8.0",
+                "0.9.0",
             ],
             cwd=root,
             check=True,
@@ -117,8 +117,14 @@ class InstalledCommandSurfaceContractTests(unittest.TestCase):
                 self.assertNotIn(executable, content)
             self.assertNotIn(str(REPOSITORY_ROOT), content)
             triage = (root / ".agents/skills/reflections-triage/SKILL.md").read_text(encoding="utf-8")
-            self.assertIn("reflection-triage/v2", triage)
+            self.assertIn("reflection-triage/v3", triage)
+            self.assertIn("--allocate-id", triage)
+            self.assertIn("--remove-merged", triage)
             self.assertNotIn(str(REPOSITORY_ROOT), triage)
+            helper = (root / ".specify/extensions/concorde/scripts/python/reflections_queue.py").read_text(encoding="utf-8")
+            self.assertIn("reflection-triage/v3", helper)
+            self.assertIn('add_argument("--allocate-id"', helper)
+            self.assertIn('add_argument("--remove-merged"', helper)
 
     def test_every_preset_winner_executes_the_installed_workspace_bootstrap(self):
         with tempfile.TemporaryDirectory() as temporary:

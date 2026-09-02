@@ -2,13 +2,21 @@
 
 **Canonical path**: `.concorde/reflections/log.md`
 
+<!-- concorde-reflection-high-water: R-000 -->
+
 The project's one reflection log: every difficulty or problem a coding agent met while planning or
 implementing any feature, attributed to the feature that was being worked on and naming the source
 the problem concerns (any feature, module architecture, interface, guidance, tool, or file).
 Ordinary recording appends entries and occurrences. Explicit rename/documentation reconciliation may
 rewrite entry text and references like other maintained docs/specs while preserving every stable,
-unique `R-NNN` identifier, required structure, maintainer decision, and problem meaning; maintainers
-may remove closed entries without renumbering or reusing IDs. This file is the sole persisted
+unique `R-NNN` identifier, required structure, maintainer decision, and problem meaning. New entries
+first reserve their identity through the installed helper's atomic `--allocate-id` operation and use
+only its `allocated_id`; the high-water marker retires allocated and removed IDs permanently.
+Maintainers may explicitly archive or remove closed entries without renumbering or reusing IDs.
+Reflection-triage/v3 also
+removes an open entry automatically after its `small` `fast-loop` plan is validated, merged, marked
+`merged`, and accepted by the helper's `--remove-merged` gate. Every other route/effort/status keeps
+the entry for maintainer disposition. This file is the sole persisted
 authority for entry identity, status, notes, occurrences, and prose; no attempt artifact,
 feature file, module architecture, interface, diagram, code, or test copies or cites that content.
 Delivery presents entries transiently and rejects copied `R-NNN` identifiers; no operation removes
@@ -37,8 +45,11 @@ this tracked control-state file.
   feature file, module architecture, interface, diagram, or another feature's code — record the
   problem and route an explicit owning task instead;
   never copy an entry identifier, status, note, occurrence, or prose into another persisted artifact;
-  update an existing entry rather than duplicate it; never delete, renumber, or reverse a
-  maintainer's Status or Note; cite evidence paths instead of pasting secrets or bulk output; keep
+  update an existing entry rather than duplicate it; never derive a new ID from remaining entries;
+  never let an agent manually delete an entry, renumber IDs, or reverse a maintainer's Status or
+  Note; only explicit maintainer direction or the deterministic v3 helper may remove an entry, and
+  the helper removes only an eligible merged-small entry without adding Status/Note; cite evidence paths
+  instead of pasting secrets or bulk output; keep
   Expected/Observed/Action under about 150 words together. Old resolved or dismissed entries may be
   moved under a "## Archive" heading in this file.
 -->

@@ -41,7 +41,10 @@ marker, phase, and evidence entry. Do not mark tasks complete or reopen them.
 6. If no work remains, leave the task file byte-identical and report convergence.
 
 Record contradictions, workarounds, or provisional decisions encountered in
-`workspace.reflections` with `Phase: converge`, updating an existing occurrence when applicable.
+`workspace.reflections` with `Phase: converge`. Before appending a new entry, run the installed
+`.specify/extensions/concorde/scripts/python/reflections_queue.py --allocate-id`, use only its
+`allocated_id`, and never derive an ID from the remaining log entries; update an existing occurrence
+without allocating a new ID.
 Convergence may write only the selected task list, its compact reconciliation evidence when a check
 was actually run, and the centralized reflection log.
 

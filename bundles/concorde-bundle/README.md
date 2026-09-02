@@ -1,7 +1,7 @@
 # Concorde Bundle
 
-This integration-neutral bundle pins `preset:concorde@0.8.0` and
-`extension:concorde@0.8.0` and inherits the project's active coding-agent integration. It declares
+This integration-neutral bundle pins `preset:concorde@0.9.0` and
+`extension:concorde@0.9.0` and inherits the project's active coding-agent integration. It declares
 no workflow or reusable step.
 
 The component set implements Architecture Source Profile 7 and Feature Workspace Protocol 12:
@@ -17,8 +17,8 @@ The component set implements Architecture Source Profile 7 and Feature Workspace
 
 The preset contributes four templates, replaces nine normal Spec Kit 0.16.4 lifecycle commands, and
 adds fast-loop. The extension contributes five commands: runtime-backed `init`, `context`,
-`validate`, and `deliver`, plus read-only agent-followed `ask`. It also ships reflection-triage
-orchestration assets and deterministic projection tooling.
+`validate`, and `deliver`, plus read-only agent-followed `ask`. It also ships reflection-triage/v3
+orchestration assets, atomic reflection ID/removal tooling, and deterministic projection tooling.
 
 Before installation, register the reviewed Concorde catalogs as install-allowed sources. Published
 catalogs use HTTPS artifact URLs; loopback HTTP catalogs produced for acceptance testing are not
@@ -30,11 +30,11 @@ specify bundle build --path bundles/concorde-bundle --output dist
 specify bundle info concorde-bundle --json
 specify bundle install concorde-bundle
 python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
-  agent-assets preview --integration codex --concorde-version 0.8.0
+  agent-assets preview --integration codex --concorde-version 0.9.0
 python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
-  agent-assets sync --integration codex --concorde-version 0.8.0
+  agent-assets sync --integration codex --concorde-version 0.9.0
 python .specify/extensions/concorde/scripts/python/concorde.py --project-root . \
-  agent-assets verify --integration codex --concorde-version 0.8.0
+  agent-assets verify --integration codex --concorde-version 0.9.0
 ```
 
 Disabling or reprioritizing a preset changes future template resolution but may not unregister

@@ -66,6 +66,11 @@ architecture, bounded module ancestry, bounded related-feature summaries, tempor
 state, and deterministic code/test discovery context. It never expands unrelated feature bodies or
 synthesizes an implementation narrative.
 
+Reflection-triage/v3 reserves every new `R-NNN` through an atomic high-water allocator. After a
+validated merge it removes only a matching open entry backed by a `small` `fast-loop` plan marked
+`merged`; design work, other routes, larger fixes, and failed/unmerged work remain for explicit
+maintainer disposition without an automated Status/Note edit.
+
 Delivery Proposal 8 binds the stable target, current source/attempt digest, eligibility evidence,
 and exact removal path. Apply revalidates everything and removes one real, non-symlinked project-control attempt.
 Any stale, incomplete, invalid, or unsafe proposal is non-mutating.

@@ -15,8 +15,10 @@ from concorde.reflections import (  # noqa: E402
     PHASES,
     REQUIRED_FIELDS,
     STATUSES,
+    format_reflection_id,
     log_path,
     parse_reflection_log,
+    reflection_number,
     strip_reference_suffix,
 )
 
@@ -45,6 +47,34 @@ class ReflectionParserTests(unittest.TestCase):
         self.assertEqual(strip_reference_suffix("specs/x/design.md#functional-requirements"), "specs/x/design.md")
         self.assertEqual(strip_reference_suffix("src/api/invoke.py:42"), "src/api/invoke.py")
         self.assertEqual(strip_reference_suffix("feature.example.deliver"), "feature.example.deliver")
+        self.assertEqual(format_reflection_id(0), "R-000")
+        self.assertEqual(format_reflection_id(1000), "R-1000")
+        self.assertEqual(reflection_number("R-001"), 1)
+        self.assertIsNone(reflection_number("R-0001"))
+
+    def test_high_water_marker_is_unique_canonical_and_not_below_entries(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            entry = write_reflection_log(Path(temporary), [reflection_entry("R-007")]).read_text(encoding="utf-8")
+        entry = entry[entry.index("### R-007") :]
+        valid = parse_reflection_log(
+            "# Reflections: X\n\n<!-- concorde-reflection-high-water: R-042 -->\n\n" + entry
+        )
+        self.assertEqual(valid.problems, ())
+        self.assertEqual((valid.high_water, valid.high_water_line), (42, 3))
+
+        low = parse_reflection_log(
+            "# Reflections: X\n\n<!-- concorde-reflection-high-water: R-006 -->\n\n" + entry
+        )
+        self.assertEqual([problem.code for problem in low.problems], ["shape"])
+        self.assertIn("high-water", low.problems[0].message)
+        duplicate = parse_reflection_log(
+            "# Reflections: X\n\n<!-- concorde-reflection-high-water: R-007 -->\n"
+            "<!-- concorde-reflection-high-water: R-008 -->\n\n" + entry
+        )
+        self.assertEqual([problem.code for problem in duplicate.problems], ["shape"])
+        malformed_id = parse_reflection_log(entry.replace("R-007", "R-0007", 1))
+        self.assertEqual([problem.code for problem in malformed_id.problems], ["shape"])
+        self.assertEqual(malformed_id.entries, ())
 
     def test_selection_by_feature_and_status(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -98,6 +128,7 @@ class ReflectionParserTests(unittest.TestCase):
         self.assertEqual(parsed.problems, ())
         self.assertEqual(parsed.entries[0].fields["Expected"], "One line continued on the next.")
         self.assertEqual(parsed.entries[0].line, 11)
+        self.assertEqual(parsed.entries[0].end_line, len(text.splitlines()))
 
     def test_controlled_document_rewrite_preserves_stable_entry_identities(self):
         with tempfile.TemporaryDirectory() as temporary:

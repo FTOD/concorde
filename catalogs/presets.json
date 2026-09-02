@@ -1,11 +1,11 @@
 {
-  "catalog_url": "https://github.com/FTOD/concorde/releases/download/v0.8.0/presets.json",
+  "catalog_url": "https://github.com/FTOD/concorde/releases/download/v0.9.0/presets.json",
   "presets": {
     "concorde": {
       "architecture_profile": 7,
       "author": "Concorde maintainers",
       "description": "Module architecture and design-only feature guidance for the Spec Kit lifecycle",
-      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.8.0/concorde-preset-0.8.0.zip",
+      "download_url": "https://github.com/FTOD/concorde/releases/download/v0.9.0/concorde-preset-0.9.0.zip",
       "id": "concorde",
       "license": "MIT",
       "name": "Concorde",
@@ -17,7 +17,7 @@
       "requires": {
         "speckit_version": ">=0.16.4,<0.16.5"
       },
-      "sha256": "sha256:3a01510127cf8782b662e1e2426729de31e429457b6ed8270b6b24bf6ddfbe02",
+      "sha256": "sha256:cada3bf64a37036be2de364777288d14984d9ea3fec2123d80412d11a33066dc",
       "tags": [
         "architecture",
         "interfaces",
@@ -25,10 +25,10 @@
         "spec-driven-development"
       ],
       "verified": false,
-      "version": "0.8.0",
+      "version": "0.9.0",
       "workspace_protocol": 12
     }
   },
   "schema_version": "1.0",
-  "updated_at": "2026-09-01T00:00:00Z"
+  "updated_at": "2026-09-02T00:00:00Z"
 }

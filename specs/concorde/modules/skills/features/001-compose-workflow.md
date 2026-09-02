@@ -44,10 +44,12 @@ whose phase paths, authorities, deterministic crossings, and failure behavior re
 - **Direction**: Canonical command/template sources to composed executable instructions.
 - **Entry points**: Preset command/template contributions.
 - **Inputs**: Phase user input, Protocol 12 workspace, Constitution, and relevant stable-ID control attempt sources.
-- **Outputs**: Exact read/write/script/evidence/reflection behavior for each phase.
-- **Obligations**: Preserve authority boundaries, bounded reads, trace/evidence rules, and non-mutating failures across integrations.
+- **Outputs**: Exact read/write/script/evidence/reflection behavior for each phase, including
+  deterministic reflection-ID allocation and eligible merged-small removal.
+- **Obligations**: Preserve authority boundaries, bounded reads, trace/evidence rules, high-water ID
+  retirement, automatic small-merge closure, retained-route maintainer disposition, and non-mutating failures across integrations.
 - **Failures**: Missing composition inputs or incompatible hooks stop the phase with instructions/source state preserved.
-- **Compatibility**: Profile 7 contains four templates and no abstract/implementation/specification-control creation.
+- **Compatibility**: Profile 7 contains four templates and no abstract/implementation/specification-control creation; reflection-triage/v3 governs reflection allocation/removal.
 - **Implementing entities**: `entity.skills.preset-manifest`, `entity.skills.phase-commands`.
 
 ### `contract.skills.agent-surface` — Installed operation surface
@@ -71,7 +73,8 @@ whose phase paths, authorities, deterministic crossings, and failure behavior re
 - **Outputs**: Independently valid preset/extension packages suitable for bundle pinning and reproducible release.
 - **Obligations**: Every declared file resolves, package identity stays kind-qualified, and canonical sources contain no installed-only state.
 - **Failures**: Invalid manifest, missing/undeclared source, incompatible host range, or stale composition prevents packaging.
-- **Compatibility**: Profile 7 preset has four templates; extension exposes Protocol 12, Initialization 2, and Delivery 8 semantics.
+- **Compatibility**: Profile 7 preset has four templates; extension exposes Protocol 12,
+  Initialization 2, Delivery 8, and reflection-triage/v3 semantics.
 - **Implementing entities**: `entity.skills.preset-manifest`, `entity.skills.extension-commands`.
 - **Example**: Distribution packages `preset:concorde` and `extension:concorde` independently before the bundle pins their tested versions.
 
@@ -99,6 +102,9 @@ routing, and verify that all platforms name only architecture/design/code/test/a
 - **FR-001**: Every canonical phase MUST resolve Protocol 12 before reading or writing phase artifacts.
 - **FR-002**: Canonical and installed operation intent MUST remain byte/provenance verifiable.
 - **FR-003**: Removed Profile 4 artifact names MUST NOT appear as current authorities.
+- **FR-004**: Every installed phase that records a new reflection MUST allocate its ID through the
+  tracked high-water helper, and every installed triage merge MUST remove an eligible merged-small
+  entry while retaining all other routes for maintainer disposition.
 
 ## Edge Cases
 

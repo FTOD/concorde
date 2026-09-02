@@ -22,6 +22,7 @@ read_release_identity = _BUILDER.read_release_identity
 REPOSITORY = _BUILDER.REPOSITORY
 ARCHITECTURE_PROFILE = _BUILDER.ARCHITECTURE_PROFILE
 WORKSPACE_PROTOCOL = _BUILDER.WORKSPACE_PROTOCOL
+REFLECTION_TRIAGE_PROTOCOL = "reflection-triage/v3"
 
 CATALOGS = ("extensions.json", "presets.json", "bundles.json")
 
@@ -84,6 +85,12 @@ def verify_release(
         with zipfile.ZipFile(dist / archive_name) as archive:
             if any(name.startswith("/") or ".." in Path(name).parts or "\\" in name for name in archive.namelist()):
                 raise ValueError(f"{archive_name}: unsafe archive entry")
+            if collection == "extensions":
+                manifest = json.loads(archive.read("agent-assets/reflections/manifest.json"))
+                if manifest.get("protocol") != REFLECTION_TRIAGE_PROTOCOL:
+                    raise ValueError(
+                        f"{archive_name}: reflection agent assets must declare {REFLECTION_TRIAGE_PROTOCOL}"
+                    )
         verified[archive_name] = f"sha256:{digest}"
     with tempfile.TemporaryDirectory() as temporary:
         sample_catalog = json.loads((dist / "bundles.json").read_text(encoding="utf-8"))

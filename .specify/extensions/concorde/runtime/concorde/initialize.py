@@ -137,6 +137,8 @@ None.
 """
     reflections = f"""# Reflections: {project_name}
 
+<!-- concorde-reflection-high-water: R-000 -->
+
 Project-wide process memory for difficult choices, workarounds, deferrals, and blockers encountered
 while changing a selected feature. Entries use the installed Concorde Reflection Log v1 grammar.
 """

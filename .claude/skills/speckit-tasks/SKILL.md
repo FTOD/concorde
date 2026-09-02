@@ -78,8 +78,11 @@ attempt.
 Check every requirement/interface/architecture change has task coverage, every task path is within
 the user-authorized scope, dependencies are acyclic, and independently testable stories remain
 independent. Record contradictions, missing path authority, workarounds, or provisional choices in
-the project reflection log with `Phase: tasks`; update an existing occurrence rather than duplicate
-it. Do not silently rewrite the feature file, architecture, plan, or code during task generation.
+the project reflection log with `Phase: tasks`. Before appending a new entry, run the installed
+`.specify/extensions/concorde/scripts/python/reflections_queue.py --allocate-id`, use only its
+`allocated_id`, and never derive an ID from the remaining log entries; update an existing occurrence
+without allocating or duplicating an entry. Do not silently rewrite the feature file, architecture,
+plan, or code during task generation.
 
 Process enabled unconditional `after_tasks` hooks: run mandatory hooks, present optional hooks, and
 leave conditional hooks to the executor. Report total tasks by phase/story, parallel opportunities,

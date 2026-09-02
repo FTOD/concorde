@@ -115,6 +115,17 @@ class AgentCommandContractTests(unittest.TestCase):
             self.assertIn("provisional", body)
             self.assertIn("reflection", body)
 
+    def test_every_entry_writing_phase_allocates_ids_atomically(self):
+        for name in (
+            "speckit.plan.md", "speckit.tasks.md", "speckit.implement.md",
+            "speckit.analyze.md", "speckit.converge.md", "speckit.fast-loop.md",
+        ):
+            with self.subTest(name=name):
+                body = read(PRESET_COMMANDS, name)
+                self.assertIn("--allocate-id", body)
+                self.assertIn("allocated_id", body)
+                self.assertIn("never derive", body)
+
     def test_fast_loop_is_direct_bounded_and_never_creates_attempt_memory(self):
         body = " ".join(read(PRESET_COMMANDS, "speckit.fast-loop.md").split())
         self.assertIn("direct, no-attempt path", body)

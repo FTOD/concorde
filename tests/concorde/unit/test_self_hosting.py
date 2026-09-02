@@ -140,12 +140,21 @@ class SelfHostingUnitTests(unittest.TestCase):
         delivery.write_text("Delivery Proposal 8\n", encoding="utf-8")
         readme = self.root / ".specify/extensions/concorde/README.md"
         readme.parent.mkdir(parents=True, exist_ok=True)
-        readme.write_text("Feature Workspace Protocol 12\n", encoding="utf-8")
+        readme.write_text("Feature Workspace Protocol 12\nreflection-triage/v3\n", encoding="utf-8")
+        for relative in self_host.integration_profile("codex")["agent_surfaces"]:
+            path = self.root / str(relative)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("reflection-triage/v3\n", encoding="utf-8")
         self.assertEqual(self_host.protocol_freshness(self.root, "codex"), [])
 
         stale = self.root / self_host.skill_path("speckit.plan", "codex")
         stale.write_text("stale\n", encoding="utf-8")
         self.assertEqual(self_host.protocol_freshness(self.root, "codex"), [stale.relative_to(self.root).as_posix()])
+
+        stale.write_text("Feature Workspace Protocol 12\n", encoding="utf-8")
+        triage = self.root / ".agents/skills/reflections-triage/SKILL.md"
+        triage.write_text("reflection-triage/v2\n", encoding="utf-8")
+        self.assertEqual(self_host.protocol_freshness(self.root, "codex"), [triage.relative_to(self.root).as_posix()])
 
     def test_unsupported_host_and_integration_are_actionable(self):
         path = self.root / ".specify/integration.json"

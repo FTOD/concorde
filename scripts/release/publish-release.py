@@ -47,6 +47,7 @@ BUNDLE_ID = "concorde-bundle"
 POINTER_SCHEMA_VERSION = "1.0"
 ARCHITECTURE_PROFILE = _BUILDER.ARCHITECTURE_PROFILE
 WORKSPACE_PROTOCOL = _BUILDER.WORKSPACE_PROTOCOL
+REFLECTION_TRIAGE_PROTOCOL = "reflection-triage/v3"
 
 EXIT_OK = 0
 EXIT_REJECTED = 1
@@ -132,6 +133,7 @@ def render_notes(version: str, speckit_range: str, base_url: str, archives: dict
         "",
         f"Supported Spec Kit range: `{speckit_range}`",
         f"Concorde architecture profile / workspace protocol: `{ARCHITECTURE_PROFILE}` / `{WORKSPACE_PROTOCOL}`",
+        f"Reflection agent protocol: `{REFLECTION_TRIAGE_PROTOCOL}`",
         "",
         "## Archive digests",
         "",

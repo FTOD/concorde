@@ -1,25 +1,15 @@
 # Reflections: Concorde
 
+<!-- concorde-reflection-high-water: R-043 -->
+
 The project's remaining open reflection log: unresolved difficulties, prototype choices, or problems
 coding agents met while planning or implementing a feature, attributed to that feature and naming the
-source the reflection concerns. Closed entries are removed by explicit maintainer direction. The
-grammar and workflow are defined by the embedded interface in
+source the reflection concerns. The grammar and workflow are defined by the embedded interface in
 [Record and Triage Workflow Reflections](../../specs/concorde/features/005-auto-reflections.md#interfaces).
-Ordinary recording appends entries/occurrences; explicit rename or documentation reconciliation may
-rewrite existing content while preserving stable valid `R-NNN` identifiers and contract shape.
-
-### R-001 · Feature diagram output path escaped the generated boundary
-- **Phase**: implement
-- **Date**: 2026-08-31
-- **Feature**: feature.concorde.define-project-ontology
-- **Kind**: guidance
-- **Concerns**: presets/concorde/commands/speckit.specify.md
-- **Expected**: A declared feature diagram output is a generated HTML path accepted by Auto-Docs.
-- **Observed**: The specification and plan placed the output beside maintained JSON, while Auto-Docs requires a unique HTML path beneath `generated/`.
-- **Effect**: worked-around
-- **Action**: Returned the output-path correction to the specification authority before delivery and added contract evidence before resuming implementation.
-- **Improvement**: Specify and plan guidance should explicitly require `generated/` output paths and validate the declaration before implementation.
-- **Status**: open
+New entries use the tracked high-water allocator; repeated retained problems append occurrences.
+Validated merged-small fast-loop entries are removed automatically, while other routes require
+explicit maintainer disposition. Explicit rename or documentation reconciliation may rewrite existing
+content while preserving stable valid `R-NNN` identifiers and contract shape.
 
 ### R-002 · Self-host refresh could not adopt legacy Claude state
 - **Phase**: implement
@@ -63,19 +53,6 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
 - **Improvement**: Let self-host explicitly refresh an inactive installed integration without temporarily changing the project's active integration.
 - **Status**: open
 
-### R-005 · Protocol rename left three stale test and contract references
-- **Phase**: implement
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.workflow.accept-milestone
-- **Kind**: implementation
-- **Concerns**: specs/concorde/modules/workspace-files/features/001-manage-feature-workspace.md
-- **Expected**: Protocol v9 tests and contract examples resolve only the renamed delivery surfaces.
-- **Observed**: The first full suite found one schema-v8 assertion and two removed example filenames still referenced by the Workspace Files contract.
-- **Effect**: worked-around
-- **Action**: Updated the assertion, contract representation version, and both example paths before rerunning affected and full tests.
-- **Improvement**: Extend the delivery terminology contract to inventory protocol-version assertions and contract example paths, not only command tokens.
-- **Status**: open
-
 ### R-006 · Documentation gate caught MDX alias syntax and stale command expectation
 - **Phase**: implement
 - **Date**: 2026-09-01
@@ -105,21 +82,6 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
 - **Improvement**: Reconcile the child specification and abstract through their owning specification workflow before claiming terminology completeness.
 - **Occurrences**:
   - plan 2026-09-01 feature.concorde.workflow.execute-and-reconcile — FR-007/FR-008 and the abstract still call the inherited module design reference `implementation.md`.
-- **Status**: open
-
-### R-008 · Bounded level view retains the former accept label
-- **Phase**: plan
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.workflow.plan-delivery
-- **Kind**: architecture
-- **Concerns**: specs/concorde/architecture.md
-- **Expected**: The inherited level view uses the canonical `deliver` operation introduced by the workflow ontology.
-- **Observed**: The Skills-to-Scripts-to-Workspace connection still ends with `accept`, although the maintained command and current parent workflow use `deliver`.
-- **Effect**: worked-around
-- **Action**: Kept the inherited view read-only, used `deliver` in the plan, and recorded the discrepancy for the architecture owner.
-- **Improvement**: Reconcile and redeliver the level view through its owning architecture workflow, then add a stale-operation label check.
-- **Occurrences**:
-  - plan 2026-09-01 feature.concorde.workflow.execute-and-reconcile — the same inherited level view is the bounded architecture context for feature 007.
 - **Status**: open
 
 ### R-009 · Planning guidance writes contracts outside temporal attempt memory
@@ -189,19 +151,6 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
 - **Improvement**: Provide a policy-compatible managed temporary-directory cleanup operation for generated projection workflows.
 - **Status**: open
 
-### R-014 · Convergence diagram guidance contradicted its durable-write boundary
-- **Phase**: implement
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.workflow.execute-and-reconcile
-- **Kind**: guidance
-- **Concerns**: presets/concorde/commands/speckit.converge.md
-- **Expected**: Convergence appends only implementation-owned remaining work and never creates a task that edits feature `design.md`.
-- **Observed**: Diagram-gap guidance requested declaration work in `design.md`, while the append rules later prohibited every task that edits that durable authority.
-- **Effect**: worked-around
-- **Action**: Routed declaration/role/prose authority disagreements to the centralized reflection log and retained only authorized diagram implementation/evidence tasks.
-- **Improvement**: Separate specification-owned diagram problems from implementation-owned diagram freshness gaps in convergence guidance and tests.
-- **Status**: open
-
 ### R-015 · Analysis hooks were outside the declared mutation audit
 - **Phase**: implement
 - **Date**: 2026-09-01
@@ -213,19 +162,6 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
 - **Effect**: worked-around
 - **Action**: Required hook contract compatibility before invocation and included after-hooks in the same mutation budget.
 - **Improvement**: Add a reusable hook-effect declaration and deterministic compatibility check to every read-only command surface.
-- **Status**: open
-
-### R-016 · Generic setup verification could exceed the selected task scope
-- **Phase**: implement
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.workflow.execute-and-reconcile
-- **Kind**: guidance
-- **Concerns**: presets/concorde/commands/speckit.implement.md
-- **Expected**: Implementation changes project setup only when the selected plan or executable task requires the detected tool.
-- **Observed**: Generic setup guidance could create or extend ignore files merely because repository tooling was detected, even when no selected task authorized that write.
-- **Effect**: worked-around
-- **Action**: Made setup verification read-only unless the plan or an executable task puts the tool and ignore change in scope.
-- **Improvement**: Bind all implementation setup mutations to explicit task trace tokens before execution.
 - **Status**: open
 
 ### R-017 · Self-host rollback needed write access to inactive Codex surfaces
@@ -332,19 +268,6 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
 - **Improvement**: Rename/split the field in Manifest 11 after consumers can migrate to explicit lifecycle and evidence fields.
 - **Status**: open
 
-### R-025 · Ontology contract test was coupled to the retired terminology feature
-- **Phase**: implement
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.define-project-ontology
-- **Kind**: implementation
-- **Concerns**: tests/concorde/contract/test_ontology_workflow.py
-- **Expected**: The ontology workflow contract test proves the current module entity/relationship and feature interface model across specs, guidance, runtime, and docs.
-- **Observed**: The test exclusively required the deleted terminology-table schema/contract, feature-owned ontology diagram, inherited feature terminology, and old terminology validator.
-- **Effect**: worked-around
-- **Action**: Replaced its assertions with Profile 5 architecture/design/template/runtime/ontology and legacy-residue checks after the new runtime settled.
-- **Improvement**: Keep ontology contract coverage centered on stable semantic invariants rather than one optional projection or document decomposition.
-- **Status**: open
-
 ### R-026 · Attempt-directory cleanup cannot be crash-atomic on every filesystem
 - **Phase**: implement
 - **Date**: 2026-09-01
@@ -356,35 +279,6 @@ rewrite existing content while preserving stable valid `R-NNN` identifiers and c
 - **Effect**: worked-around
 - **Action**: Proposal 8 copies the complete attempt to an external temporary backup, atomically renames the target, restores on injected rename/removal failures, and binds all attempt bytes into the proposal digest.
 - **Improvement**: Evaluate filesystem-specific durable transaction/journal support if crash consistency becomes a required guarantee beyond current process-level rollback.
-- **Status**: open
-
-### R-027 · Full suite retained eight Profile 4 acceptance assumptions
-- **Phase**: implement
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.define-project-ontology
-- **Kind**: implementation
-- **Concerns**: tests/concorde/acceptance/test_installed_codex_workflow.py
-- **Expected**: Complete acceptance/integration discovery exercises installed Profile 5 initialization, templates, workspace routing, guidance, and cleanup delivery.
-- **Observed**: The first 281-test run found two errors and six failures still asserting `module.md`, subfeature/trio Protocol 9 fields, Proposal 7 narrative promotion, six templates, old command/template headings, and obsolete ask wording.
-- **Effect**: worked-around
-- **Action**: Rewrote the remaining journeys/assertions for flat design-only fixtures, Protocol 10, Proposal 8 cleanup, four templates, current workspace gates, and source-citation semantics, then reran focused and complete suites.
-- **Improvement**: Add a canonical removed-authority token matrix to acceptance test review whenever the source profile changes.
-- **Occurrences**:
-  - implement 2026-09-01 feature.concorde.define-project-ontology — the Profile 6 focused runtime gate found initialization still asserting the Profile 5 configuration version.
-  - implement 2026-09-01 feature.concorde.define-project-ontology — the first Profile 6 full gate found four installed/phase acceptance paths still persisting directory selection and Protocol 10 workspace fields.
-- **Status**: open
-
-### R-028 · Appended host templates leaked the removed artifact layout
-- **Phase**: implement
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.define-project-ontology
-- **Kind**: guidance
-- **Concerns**: presets/concorde/templates/plan-template.md
-- **Expected**: Resolving the installed plan/tasks templates yields only Profile 5 attempt paths and architecture/design/code/test/interface authority.
-- **Observed**: The Concorde addenda were correct, but `strategy: append` preserved the host's root-level plan/contracts and feature-diagram sample text before them, producing a contradictory composed template.
-- **Effect**: worked-around
-- **Action**: Made plan/tasks complete replacement templates and retained append composition only for the generic feature specification plus Concorde Feature Profile.
-- **Improvement**: Add resolved-template legacy-token tests, not only canonical-fragment tests, for every breaking source profile.
 - **Status**: open
 
 ### R-029 · Feature wrapper directory has no remaining durable meaning

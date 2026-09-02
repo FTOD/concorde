@@ -3,7 +3,7 @@ schema_version: "1.0"
 extension:
   id: "concorde"
   name: "Concorde Architecture Workflow"
-  version: "0.8.0"
+  version: "0.9.0"
   description: "Initialize, retrieve, validate, deliver, and explain module-centered architecture and features"
   author: "Concorde maintainers"
   repository: "https://github.com/FTOD/concorde"
@@ -49,7 +49,7 @@ provides:
     - name: "concorde-reflections-queue-python"
       file: "scripts/python/reflections_queue.py"
       runtime: "python"
-      description: "Deterministic shared reflection-triage queue and plan-state helper"
+      description: "Deterministic reflection-triage/v3 queue, ID allocation, plan state, and merged-small removal helper"
 
 effect: "read-write"
 
