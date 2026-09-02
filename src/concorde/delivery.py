@@ -22,7 +22,7 @@ CHECKLIST_LINE = re.compile(r"^\s*-\s+\[([ xX])\](?:\s+.*)?$")
 CHECKBOX_LIKE_LINE = re.compile(r"^\s*-\s+\[[^\]]*\]")
 EVIDENCE_HEADING = re.compile(r"^###\s+(T\d{3,})\b.*$", re.MULTILINE)
 PASSED_OUTCOME = re.compile(r"\*\*Outcome\*\*:\s*passed\b", re.IGNORECASE)
-FORBIDDEN_PROPOSAL_KEYS = frozenset({"implementation", "module_design", "design", "files", "updates", "content"})
+DELIVERY_PROPOSAL_KEYS = frozenset({"proposal_version", "tool", "target", "source_digest", "remove"})
 
 
 def _finding(rule: str, source: str, message: str, remediation: str) -> Finding:
@@ -235,11 +235,11 @@ def apply_delivery(project_root: str | Path, proposal_path: str) -> ToolResult:
         relative_proposal, proposal = _load_proposal(project, proposal_path)
         if "operation" in proposal:
             raise WorkspaceError("legacy delivery proposal operation discriminator is unsupported; use tool")
+        unexpected = sorted(set(proposal) - DELIVERY_PROPOSAL_KEYS)
+        if unexpected:
+            raise WorkspaceError("delivery proposal contains unexpected fields: " + ", ".join(unexpected))
         if proposal.get("proposal_version") != 9 or proposal.get("tool") != "deliver":
             raise WorkspaceError("unsupported delivery proposal; proposal_version 9 with tool deliver is required")
-        forbidden = sorted(FORBIDDEN_PROPOSAL_KEYS & set(proposal))
-        if forbidden:
-            raise WorkspaceError("cleanup-only delivery proposal may not contain narrative/update keys: " + ", ".join(forbidden))
         target = proposal.get("target")
         if not isinstance(target, str) or not target:
             raise WorkspaceError("delivery proposal target is required")

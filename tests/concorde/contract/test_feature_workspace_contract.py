@@ -1,9 +1,14 @@
 import json
+import sys
 import unittest
 
 from jsonschema import Draft202012Validator
 
-from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
+
+sys.path.insert(0, str(RUNTIME_ROOT))
+
+from concorde.delivery import DELIVERY_PROPOSAL_KEYS  # noqa: E402
 
 
 FIXTURES = REPOSITORY_ROOT / "tests/concorde/fixtures/interfaces/workspace"
@@ -55,9 +60,11 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
     def test_cleanup_proposal_rejects_content_or_update_surfaces(self):
         proposal = self.schema["$defs"]["deliveryProposal"]
         self.assertFalse(proposal["additionalProperties"])
-        self.assertEqual(set(proposal["properties"]), {
+        expected = {
             "proposal_version", "tool", "target", "source_digest", "remove",
-        })
+        }
+        self.assertEqual(set(proposal["properties"]), expected)
+        self.assertEqual(DELIVERY_PROPOSAL_KEYS, expected)
         self.assertEqual(proposal["properties"]["remove"]["minItems"], 1)
         self.assertEqual(proposal["properties"]["remove"]["maxItems"], 1)
 

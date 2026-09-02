@@ -150,6 +150,18 @@ class ImplementationDeliveryIntegrationTests(unittest.TestCase):
             self.assertEqual(result.status, "invalid")
             self.assertEqual(tree_hashes(root), before)
 
+    def test_proposal_rejects_undeclared_metadata_without_mutation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_copy(temporary)
+            eligibility = propose_delivery(root)
+            proposal = self.write_proposal(root, eligibility, metadata={"request_id": "arbitrary"})
+            before = tree_hashes(root)
+            result = apply_delivery(root, proposal.relative_to(root).as_posix())
+            self.assertEqual(result.status, "invalid")
+            self.assertIn("unexpected fields: metadata", result.findings[0].message)
+            self.assertEqual(tree_hashes(root), before)
+            self.assertTrue((root / ATTEMPT).is_dir())
+
     def test_proposal_rejects_the_legacy_operation_discriminator(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.project_copy(temporary)
