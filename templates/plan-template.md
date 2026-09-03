@@ -58,7 +58,7 @@ source, tests, descendants, and attempts remain excluded.
    deterministic validation, generated freshness, publication, and truthful visual-review status.
    Require one normalized unique output below `generated/` and `meta.legend.mode: hidden`.
 7. Record conflicts, workarounds, assumptions, and provisional prototype choices in the returned
-   `.concorde/reflections/R-NNN.md` authority.
+   `.concorde/reflections/pending/R-NNN.md` authority.
 8. When the feature changes an Operation, plan explicit public/internal exposure, leaf-owned effects,
    exact ordered capability/binding parity, nested-cycle rejection, concrete path-policy resolution,
    native/outer enforcement, receipt evidence, and Codex/Claude effective-set parity. LangGraph and

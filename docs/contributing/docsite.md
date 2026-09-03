@@ -24,7 +24,7 @@ project has a `docs/` directory. A project scaffolded straight from Initializati
 that is required to turn Documentation on.
 
 Attempt artifacts under `.concorde/attempts/<stable-feature-id>/`, per-file
-`.concorde/reflections/R-NNN.md` documents, other `.concorde/**` control state, code/test fixtures, generated
+`.concorde/reflections/<bucket>/R-NNN.md` documents, other `.concorde/**` control state, code/test fixtures, generated
 HTML, and package receipts are outside publication discovery. They are neither pages nor broad
 Build Manifest exclusions. Links into `.concorde/**` are diagnosed as excluded control artifacts.
 Symbolic links are not followed.

@@ -67,7 +67,10 @@ class ManifestContractTests(unittest.TestCase):
     def test_reflection_template_separates_recording_from_triage(self):
         body = (REPOSITORY_ROOT / "templates/reflections-template.md").read_text()
         self.assertIn("Concorde Reflection Document v2", body)
-        self.assertIn(".concorde/reflections/R-NNN.md", body)
+        self.assertIn(".concorde/reflections/<bucket>/R-NNN.md", body)
+        for bucket in ("pending/", "planned/", "needs-comments/"):
+            self.assertIn(bucket, body)
+        self.assertIn("--relocate", body)
         self.assertIn("triage: pending", body)
         self.assertIn("## User Comments", body)
         self.assertIn("R-NNN", body)

@@ -25,7 +25,9 @@ specs/<project>/
 ├── constitution.md               # optional project governance
 ├── attempts/<stable-feature-id>/ # temporal work; removed by delivery
 ├── reflections/index.json        # tracked allocation high-water only
-├── reflections/R-NNN.md          # one detailed problem per tracked file
+├── reflections/pending/R-NNN.md  # recorded problems awaiting triage
+├── reflections/planned/R-NNN.md  # triaged; plan proceeds without a maintainer
+├── reflections/needs-comments/   # triaged; waiting for maintainer User Comments
 ├── framework/                    # installed Concorde package projection
 └── install.json                  # installed-output ownership receipt
 ```

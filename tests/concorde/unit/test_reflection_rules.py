@@ -34,18 +34,19 @@ class ReflectionRuleTests(unittest.TestCase):
 
     def test_each_seeded_breach_yields_its_rule_and_document_path(self):
         cases = {
-            "CONCORDE-REFLECT-001": reflection_entry("R-001", Observed=""),
-            "CONCORDE-REFLECT-003": reflection_entry("R-001", Kind="bug"),
-            "CONCORDE-REFLECT-004": reflection_entry("R-001", Concerns="specs/example/missing.md"),
+            "CONCORDE-REFLECT-001": (reflection_entry("R-001", Observed=""), "pending"),
+            "CONCORDE-REFLECT-003": (reflection_entry("R-001", Kind="bug"), "pending"),
+            "CONCORDE-REFLECT-004": (reflection_entry("R-001", Concerns="specs/example/missing.md"), "pending"),
+            "CONCORDE-REFLECT-005": (reflection_entry("R-001"), "planned"),
         }
-        for rule, entry in cases.items():
+        for rule, (entry, bucket) in cases.items():
             with self.subTest(rule=rule), tempfile.TemporaryDirectory() as temporary:
                 project = self.project(temporary)
-                write_reflection_collection(project, [entry])
+                write_reflection_collection(project, [entry], bucket=bucket)
                 result = validate_project(project)
                 self.assertEqual(reflect_rules(result), [rule])
                 finding = next(item for item in result.findings if item.rule_id == rule)
-                self.assertEqual(finding.source, ".concorde/reflections/R-001.md")
+                self.assertEqual(finding.source, f".concorde/reflections/{bucket}/R-001.md")
                 self.assertEqual(finding.severity, "error")
                 self.assertTrue(finding.remediation)
                 self.assertEqual(result.status, "invalid")
@@ -92,10 +93,36 @@ class ReflectionRuleTests(unittest.TestCase):
             collection = write_reflection_collection(project, [])
             target = Path(temporary) / "outside.md"
             target.write_text("outside\n", encoding="utf-8")
-            (collection / "R-001.md").symlink_to(target)
+            (collection / "pending").mkdir()
+            (collection / "pending" / "R-001.md").symlink_to(target)
             result = validate_project(project)
             self.assertEqual(result.status, "invalid")
             self.assertEqual([item.rule_id for item in result.findings], ["CONCORDE-SOURCE-001"])
+
+    def test_flat_legacy_document_and_wrong_bucket_are_placement_breaches_only(self):
+        complete = reflection_entry(
+            "R-002",
+            Triage="complete",
+            **{
+                "Human Intervention": "not-required",
+                "Triage Analysis": "Evidence establishes the mismatch.",
+                "Proposed Resolution": "Update the owning contract.",
+                "Intervention Rationale": "Automation may proceed.",
+            },
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            project = self.project(temporary)
+            collection = write_reflection_collection(project, [reflection_entry("R-001"), complete])
+            self.assertEqual(reflect_rules(validate_project(project)), [])
+            (collection / "pending" / "R-001.md").rename(collection / "R-001.md")
+            (collection / "needs-comments").mkdir()
+            (collection / "planned" / "R-002.md").rename(collection / "needs-comments" / "R-002.md")
+            result = validate_project(project)
+            self.assertEqual(reflect_rules(result), ["CONCORDE-REFLECT-005", "CONCORDE-REFLECT-005"])
+            self.assertEqual(
+                sorted(item.source for item in result.findings if item.rule_id == "CONCORDE-REFLECT-005"),
+                [".concorde/reflections/R-001.md", ".concorde/reflections/needs-comments/R-002.md"],
+            )
 
 
 if __name__ == "__main__":

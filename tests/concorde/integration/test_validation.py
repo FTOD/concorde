@@ -53,7 +53,7 @@ class ValidationIntegrationTests(unittest.TestCase):
             overlay = INVALID_PROJECTS / "reflections-malformed/.concorde/reflections"
             shutil.copytree(overlay, root / ".concorde/reflections")
             rules = {item.rule_id for item in validate_project(root).findings if item.rule_id.startswith("CONCORDE-REFLECT-")}
-            self.assertEqual(rules, {"CONCORDE-REFLECT-001", "CONCORDE-REFLECT-002", "CONCORDE-REFLECT-003", "CONCORDE-REFLECT-004"})
+            self.assertEqual(rules, {"CONCORDE-REFLECT-001", "CONCORDE-REFLECT-002", "CONCORDE-REFLECT-003", "CONCORDE-REFLECT-004", "CONCORDE-REFLECT-005"})
 
     def test_layout_evidence_and_freshness_defects_are_distinct(self):
         with tempfile.TemporaryDirectory() as temporary:

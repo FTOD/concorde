@@ -1,9 +1,15 @@
 """Parser and collection helpers for per-file project reflections.
 
-Each ``.concorde/reflections/R-NNN.md`` document is the sole prose authority for one
+Each ``.concorde/reflections/<bucket>/R-NNN.md`` document is the sole prose authority for one
 reflection. ``index.json`` contains only the monotonic allocation high-water mark. Recording and
 triage are deliberately separate: writers describe the problem, while triage later supplies the
 analysis, proposed resolution, and human-intervention decision.
+
+The bucket directory mirrors triage state and nothing else: ``pending/`` holds recorded problems
+that triage has not investigated, ``planned/`` holds completed triage that automation may carry out
+without a maintainer, and ``needs-comments/`` holds completed triage that waits for maintainer input
+in ``User Comments``. Recording always creates a document under ``pending/``; the triage parent
+relocates it with the deterministic queue helper after persisting the completion.
 """
 
 from __future__ import annotations
@@ -18,6 +24,10 @@ from .frontmatter import FrontMatterError, parse_document
 REFLECTIONS_PATH = ".concorde/reflections"
 INDEX_PATH = f"{REFLECTIONS_PATH}/index.json"
 LEGACY_LOG_PATH = f"{REFLECTIONS_PATH}/log.md"
+PENDING_BUCKET = "pending"
+PLANNED_BUCKET = "planned"
+NEEDS_COMMENTS_BUCKET = "needs-comments"
+BUCKETS = (PENDING_BUCKET, PLANNED_BUCKET, NEEDS_COMMENTS_BUCKET)
 REQUIRED_METADATA = (
     "id",
     "title",
@@ -62,11 +72,61 @@ def index_path() -> str:
     return INDEX_PATH
 
 
-def reflection_path(identifier: str) -> str:
-    """Return the canonical project-relative document path for one reflection ID."""
+def bucket_path(bucket: str) -> str:
+    """Project-relative directory holding every reflection in one triage bucket."""
+    if bucket not in BUCKETS:
+        raise ValueError(f"reflection bucket must be one of {', '.join(BUCKETS)}: {bucket!r}")
+    return f"{REFLECTIONS_PATH}/{bucket}"
+
+
+def reflection_bucket(triage: str, human_intervention: str) -> str | None:
+    """Return the bucket directory that must hold a reflection in the given triage state.
+
+    ``pending`` documents have not been triaged. Completed triage decides whether a maintainer must
+    comment before automation may proceed: ``required`` documents wait under ``needs-comments`` and
+    ``not-required`` documents wait under ``planned``. Maintainer-owned ``status`` never changes the
+    bucket. ``None`` means the combination is invalid and is diagnosed elsewhere.
+    """
+    if triage == "pending":
+        return PENDING_BUCKET
+    if triage == "complete":
+        if human_intervention == "not-required":
+            return PLANNED_BUCKET
+        if human_intervention == "required":
+            return NEEDS_COMMENTS_BUCKET
+    return None
+
+
+def reflection_path(identifier: str, bucket: str = PENDING_BUCKET) -> str:
+    """Return the canonical project-relative document path for one reflection ID in one bucket.
+
+    Recording always allocates into ``pending``; triage relocation supplies the other buckets.
+    """
     if reflection_number(identifier) is None:
         raise ValueError(f"reflection identifier must be canonical: {identifier!r}")
-    return f"{REFLECTIONS_PATH}/{identifier}.md"
+    return f"{bucket_path(bucket)}/{identifier}.md"
+
+
+def split_reflection_path(path: str) -> tuple[str | None, str] | None:
+    """Return ``(bucket, identifier)`` for a reflection document path, or ``None`` for other paths.
+
+    A flat ``.concorde/reflections/R-NNN.md`` path is accepted with bucket ``None`` so that a
+    misplaced document is still parsed and diagnosed instead of silently ignored.
+    """
+    prefix = REFLECTIONS_PATH + "/"
+    if not path.startswith(prefix) or not path.endswith(".md"):
+        return None
+    parts = path[len(prefix) : -3].split("/")
+    if len(parts) == 1:
+        bucket: str | None = None
+        stem = parts[0]
+    elif len(parts) == 2 and parts[0] in BUCKETS:
+        bucket, stem = parts
+    else:
+        return None
+    if reflection_number(stem) is None:
+        return None
+    return bucket, stem
 
 
 def reflection_number(value: str, *, allow_zero: bool = False) -> int | None:
@@ -107,10 +167,30 @@ class ReflectionEntry:
     def triage(self) -> str:
         return self.fields.get("Triage", "")
 
+    @property
+    def human_intervention(self) -> str:
+        return self.fields.get("Human Intervention", "")
+
+    @property
+    def bucket(self) -> str | None:
+        """Bucket the document must live in according to its triage state."""
+        return reflection_bucket(self.triage, self.human_intervention)
+
+    @property
+    def expected_path(self) -> str | None:
+        """Canonical path for the current triage state, or ``None`` when it is undecidable."""
+        bucket = self.bucket
+        return None if bucket is None else reflection_path(self.identifier, bucket)
+
+    @property
+    def misplaced(self) -> bool:
+        expected = self.expected_path
+        return expected is not None and self.path != expected
+
 
 @dataclass(frozen=True)
 class ReflectionProblem:
-    code: str  # shape | duplicate | vocabulary
+    code: str  # shape | duplicate | vocabulary | placement
     path: str
     line: int
     identifier: str | None
@@ -139,6 +219,18 @@ class ParsedReflections:
             "dismissed": sum(1 for entry in selected if entry.status == "dismissed"),
         }
 
+    def bucket_counts(self) -> dict[str, int]:
+        """Number of entries whose triage state assigns them to each bucket."""
+        counts = {bucket: 0 for bucket in BUCKETS}
+        for entry in self.entries:
+            bucket = entry.bucket
+            if bucket is not None:
+                counts[bucket] += 1
+        return counts
+
+    def misplaced(self) -> tuple[ReflectionEntry, ...]:
+        return tuple(entry for entry in self.entries if entry.misplaced)
+
 
 def strip_reference_suffix(value: str) -> str:
     """Drop an optional ``#fragment`` or ``:line`` suffix from a concern reference."""
@@ -146,18 +238,12 @@ def strip_reference_suffix(value: str) -> str:
 
 
 def reflection_document_paths(auxiliary: Mapping[str, str]) -> tuple[str, ...]:
-    """Return canonical reflection document paths from a repository auxiliary map."""
-    prefix = REFLECTIONS_PATH + "/"
-    return tuple(
-        sorted(
-            path
-            for path in auxiliary
-            if path.startswith(prefix)
-            and path.count("/") == 2
-            and path.endswith(".md")
-            and reflection_number(path[len(prefix) : -3]) is not None
-        )
-    )
+    """Return reflection document paths from a repository auxiliary map.
+
+    Bucketed paths are canonical; flat paths directly under the collection root are included so
+    that parsing can report them as misplaced.
+    """
+    return tuple(sorted(path for path in auxiliary if split_reflection_path(path) is not None))
 
 
 def _meaningful(value: str) -> str:
@@ -364,6 +450,23 @@ def parse_reflection_document(text: str, path: str) -> tuple[ReflectionEntry | N
                     "Triage must record its analysis, proposed resolution, and intervention rationale.",
                 )
             )
+
+    expected_bucket = reflection_bucket(triage, human_value)
+    location = split_reflection_path(path)
+    actual_bucket = location[0] if location is not None else None
+    if expected_bucket is not None and identifier is not None and actual_bucket != expected_bucket:
+        where = f"{actual_bucket}/" if actual_bucket else "the collection root"
+        problems.append(
+            ReflectionProblem(
+                "placement",
+                path,
+                1,
+                identifier,
+                f"Reflection is filed under {where} but its triage state belongs under {expected_bucket}/.",
+                f"Run reflections_queue.py --relocate {identifier} so the document moves to "
+                f"{REFLECTIONS_PATH}/{expected_bucket}/{identifier}.md; never edit the bucket by hand.",
+            )
+        )
 
     occurrences = tuple(
         match.group(1).strip()

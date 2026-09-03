@@ -36,7 +36,7 @@ projections, or edit any file.
 3. Follow bounded module ancestry or a related feature file only when the question requires that
    exact interface/relationship. Never read an unrelated feature body, descendant internals, or
    another feature's attempt merely because it exists.
-4. Open only the relevant `.concorde/reflections/R-NNN.md` documents for questions about problems
+4. Open only the relevant `.concorde/reflections/<bucket>/R-NNN.md` documents for questions about problems
    met during work. They record tracked process memory, not required behavior; `index.json` contains
    allocation state only.
 5. Use generated pages, diagrams, indexes, and delivery results only as reproducible evidence or to

@@ -59,7 +59,9 @@ runtime, installation, documentation, validation, fixtures, and maintained archi
 │   └── <stable-feature-id>/    # temporary plan/tasks/evidence; absent after delivery
 └── reflections/
     ├── index.json              # tracked allocation high-water only
-    ├── R-NNN.md                # one tracked document per reflection
+    ├── pending/R-NNN.md        # recorded; triage pending
+    ├── planned/R-NNN.md        # triaged; no maintainer input needed
+    ├── needs-comments/R-NNN.md # triaged; waiting for User Comments
     ├── config.json             # triage configuration
     ├── plans/                  # disposable/ignored triage plans
     └── worktrees/              # disposable/ignored implementation worktrees
@@ -71,7 +73,7 @@ runtime, installation, documentation, validation, fixtures, and maintained archi
 - The feature file contains its outcome, interfaces, usage, requirements, and architecture zoom. Its filename is storage/navigation; the stable feature ID remains semantic identity.
 - `.concorde/` is project control state, outside the recursive specification hierarchy. It owns source-profile configuration, active attempts, and reflection workflow state.
 - `.concorde/attempts/<stable-feature-id>/` is temporary workflow memory keyed by the feature's globally unique semantic identity rather than its mutable filename or module path. Successful delivery validates and removes it without changing the feature file or generating another durable narrative.
-- `.concorde/reflections/R-NNN.md` files are tracked process memory; `index.json` stores allocation metadata only. Triage configuration shares the directory, while plans and worktrees remain disposable and ignored.
+- `.concorde/reflections/<bucket>/R-NNN.md` files are tracked process memory filed by triage state (`pending/`, `planned/`, `needs-comments/`); `index.json` stores allocation metadata only. Triage configuration shares the directory, while plans and worktrees remain disposable and ignored.
 - Source code is the implementation. Tests and deterministic checks are evidence. Generated sites, diagrams, indexes, and delivery results are disposable projections.
 
 ## Capability Source Model
@@ -136,7 +138,7 @@ runtime, installation, documentation, validation, fixtures, and maintained archi
 | `Source code` | The executable files and symbols that are the actual implementation at the checked-out revision. | `realizes` → `Architecture entity`; `implements` → `Feature`; `evidenced by` → `Test` |
 | `Project control state` | Tracked or disposable workflow metadata below `<project>/.concorde/`; it is neither product specification nor generated publication. | `configures` → `Module`; `contains` → `Attempt`; `contains` → `Reflection collection` |
 | `Attempt` | Temporary planning, task, research, checklist, and validation memory at `.concorde/attempts/<stable-feature-id>/`, corresponding to one selected feature identity. | `belongs to` → `Feature`; `changes` → `Source code`; `removed by` → `Delivery` |
-| `Reflection collection` | Tracked `.concorde/reflections/R-NNN.md` documents, one detailed problem per file, plus a metadata-only `index.json`. | `belongs to` → `Project control state`; `records` → `Feature work` |
+| `Reflection collection` | Tracked `.concorde/reflections/<bucket>/R-NNN.md` documents, one detailed problem per file filed under `pending/`, `planned/`, or `needs-comments/` by triage state, plus a metadata-only `index.json`. | `belongs to` → `Project control state`; `records` → `Feature work` |
 | `Delivery` | The terminal cleanup tool that proves a completed attempt is eligible and removes its temporal workspace; it does not author an implementation narrative. | `validates` → `Attempt`; `retains` → `Feature`; `retains` → `Source code` |
 
 ## Architecture Zoom
@@ -174,7 +176,7 @@ The feature is cross-cutting because these entities share one source profile. Th
 - architecture front matter and the required entity/relationship/interaction sections;
 - feature front matter, embedded interface definitions, architecture references, requirements, and usage scenarios;
 - optional project control state containing `.concorde/attempts/<stable-feature-id>/` and tracked
-  `.concorde/reflections/R-NNN.md` documents.
+  `.concorde/reflections/<bucket>/R-NNN.md` documents.
 - canonical public/internal leaf sources with effects and paired operation Python/Markdown sources
   with ordered capabilities and occurrence bindings.
 

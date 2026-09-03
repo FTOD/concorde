@@ -243,7 +243,7 @@ function profileFinding(path: string): ValidationFinding | undefined {
   if (legacyAttemptPattern.test(path) || posix.basename(path) === 'reflections.md') return {
     ruleId: 'source.profile.legacy', severity: 'error', sourcePath,
     message: `${path} is specification-local control state removed in Profile 7.`,
-    remediation: 'Move attempts to .concorde/attempts/<stable-feature-id>/ and each reflection to .concorde/reflections/R-NNN.md.',
+    remediation: 'Move attempts to .concorde/attempts/<stable-feature-id>/ and each reflection to .concorde/reflections/<bucket>/R-NNN.md.',
   };
   if (nestedFeaturePattern.test(path)) return {
     ruleId: 'feature.hierarchy.forbidden', severity: 'error', sourcePath,

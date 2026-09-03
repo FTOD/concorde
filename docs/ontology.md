@@ -209,11 +209,14 @@ projection, reflection, or selection state.
 
 ## Reflection
 
-Each tracked `.concorde/reflections/R-NNN.md` records one detailed workflow problem. Planning and task
+Each tracked `.concorde/reflections/<bucket>/R-NNN.md` records one detailed workflow problem. Planning and task
 generation normally fill only Context, Expected, Observed, Impact, and Evidence. Reflection triage
-later owns root-cause analysis, a proposed resolution, and the human-intervention decision. Every
-document retains a `User Comments` section and maintainer-owned status/resolution note. Reflections
-are process memory, not behavioral requirements, and are never copied elsewhere. A metadata-only
+later owns root-cause analysis, a proposed resolution, and the human-intervention decision. The
+bucket folder mirrors that state: `pending/` before triage, `planned/` when triage decided no
+maintainer input is needed, and `needs-comments/` when it is; the triage parent moves the file with
+the deterministic helper, never by hand. Every document retains a `User Comments` section and
+maintainer-owned status/resolution note. Reflections are process memory, not behavioral
+requirements, and are never copied elsewhere. A metadata-only
 `index.json` allocates stable IDs atomically. Reflection-triage/v5 removes an open document only after
 its `small` `fast-loop` plan is validated, merged, and marked `merged`; other work retains maintainer
 disposition. Triage configuration shares the directory; plans and worktrees are disposable.

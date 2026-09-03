@@ -30,7 +30,7 @@ cross-links, never navigation containment.
 
 Feature abstracts, accepted implementation narratives, module summary/design pairs, standalone
 specification contracts, nested feature hierarchies, and feature-owned diagrams are rejected as
-legacy residue. `.concorde/attempts/<stable-feature-id>/`, `.concorde/reflections/R-NNN.md`, and all
+legacy residue. `.concorde/attempts/<stable-feature-id>/`, `.concorde/reflections/<bucket>/R-NNN.md`, and all
 other `.concorde/**` control state are outside publication discovery and Manifest provenance.
 
 ## Site identity

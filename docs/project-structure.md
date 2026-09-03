@@ -12,7 +12,9 @@ project/
 │   ├── attempts/<stable-feature-id>/       # optional tracked temporal work
 │   ├── reflections/
 │   │   ├── index.json                      # tracked allocation high-water only
-│   │   ├── R-NNN.md                        # one tracked problem/triage record
+│   │   ├── pending/R-NNN.md                # recorded; triage pending
+│   │   ├── planned/R-NNN.md                # triaged; no maintainer input needed
+│   │   ├── needs-comments/R-NNN.md         # triaged; waiting for User Comments
 │   │   ├── config.json                     # triage configuration
 │   │   ├── plans/                          # ignored/disposable
 │   │   └── worktrees/                      # ignored/disposable
@@ -37,8 +39,12 @@ project/
 - `.concorde/attempts/<stable-feature-id>/` is optional temporal work keyed by the exact globally unique feature ID.
 - Module diagrams stay under that module's `diagrams/` and are declared/textually explained in architecture.
 - Executed schemas/examples live with source/tests. Human-readable interface semantics live in the feature.
-- Each `.concorde/reflections/R-NNN.md` is the only persisted prose record for that reflection;
-  `index.json` contains allocation metadata only.
+- Each `.concorde/reflections/<bucket>/R-NNN.md` is the only persisted prose record for that
+  reflection; `index.json` contains allocation metadata only. The bucket mirrors triage state:
+  `pending/` for `triage: pending`, `planned/` for completed triage with
+  `human_intervention: not-required`, and `needs-comments/` for completed triage with
+  `human_intervention: required`. Recording creates files under `pending/`; only
+  `reflections_queue.py --relocate` moves them.
 - Generated and installed outputs never become resolver inputs for specification behavior/structure.
 
 ## Package source versus installed projection

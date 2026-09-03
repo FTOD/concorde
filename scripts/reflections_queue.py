@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Deterministic per-file queue, allocation, plan-state, and merged-removal helper."""
+"""Deterministic per-file queue, allocation, plan-state, relocation, and merged-removal helper.
+
+Reflection documents live in one of three tracked buckets that mirror triage state:
+``pending/`` (``triage: pending``), ``planned/`` (``triage: complete`` and
+``human_intervention: not-required``), and ``needs-comments/`` (``triage: complete`` and
+``human_intervention: required``). ``--allocate-id`` always returns a ``pending/`` path and
+``--relocate`` moves documents into the bucket their front matter now requires; every other action
+refuses a misplaced collection so the layout never drifts silently.
+"""
 
 from __future__ import annotations
 
@@ -19,8 +27,11 @@ sys.path.insert(0, str(PACKAGE_ROOT / "src"))
 
 from concorde.frontmatter import FrontMatterError, parse_document  # noqa: E402
 from concorde.reflections import (  # noqa: E402
+    BUCKETS,
+    PENDING_BUCKET,
     ParsedReflections,
     ReflectionEntry,
+    bucket_path,
     format_reflection_id,
     index_path,
     parse_reflections,
@@ -181,8 +192,22 @@ def _document_map(specification_root: Path, root: Path) -> dict[str, str]:
     return result
 
 
+def _bucket_directory(root: Path, bucket: str, *, create: bool = False) -> Path:
+    """Return one real bucket directory, optionally creating it, never following symlinks."""
+    directory = root / bucket_path(bucket)
+    _reject_symlink_components(root, directory, "reflection bucket", final_may_be_missing=True)
+    if directory.exists() and not directory.is_dir():
+        raise QueueError(f"reflection bucket must be one real directory: {bucket_path(bucket)}")
+    if create and not directory.exists():
+        try:
+            directory.mkdir(mode=0o755)
+        except OSError as error:
+            raise QueueError(f"cannot create reflection bucket {bucket_path(bucket)}: {error}") from error
+    return directory
+
+
 def _load_reflections(
-    root: Path, *, required: bool = False
+    root: Path, *, required: bool = False, allow_misplaced: bool = False
 ) -> tuple[Path, bytes, ParsedReflections, dict[str, str], dict[str, bytes]]:
     _, specification_root = _specification_root(root)
     documents_by_id = _document_map(specification_root, root)
@@ -209,7 +234,14 @@ def _load_reflections(
             raise QueueError(f"cannot read reflection allocation index: {error}") from error
     texts: dict[str, str] = {}
     raw: dict[str, bytes] = {}
-    for path in sorted(directory.glob("R-*.md")):
+    # Flat documents directly under the collection root are legacy/misplaced; they are loaded so
+    # they can be diagnosed (or relocated) rather than silently dropped.
+    candidates = list(directory.glob("R-*.md"))
+    for bucket in BUCKETS:
+        bucket_directory = _bucket_directory(root, bucket)
+        if bucket_directory.is_dir():
+            candidates.extend(bucket_directory.glob("R-*.md"))
+    for path in sorted(candidates):
         _require_real_file(root, path, "reflection document")
         relative = path.relative_to(root).as_posix()
         try:
@@ -219,11 +251,14 @@ def _load_reflections(
         except (OSError, UnicodeError) as error:
             raise QueueError(f"cannot read reflection document {relative}: {error}") from error
     parsed = parse_reflections(texts, index_text)
-    if parsed.problems:
-        raise QueueError(
-            "reflection collection is malformed: "
-            + "; ".join(f"{problem.path}: {problem.message}" for problem in parsed.problems)
-        )
+    problems = [
+        problem for problem in parsed.problems if not (allow_misplaced and problem.code == "placement")
+    ]
+    if problems:
+        detail = "; ".join(f"{problem.path}: {problem.message}" for problem in problems)
+        if any(problem.code == "placement" for problem in problems):
+            detail += "; run reflections_queue.py --relocate to file misplaced documents by triage state"
+        raise QueueError(f"reflection collection is malformed: {detail}")
     return index, index_bytes, parsed, documents_by_id, raw
 
 
@@ -290,6 +325,7 @@ def _enrich(
         "id": entry.identifier,
         "title": entry.title,
         "path": entry.path,
+        "bucket": entry.bucket,
         "text": raw[entry.path].decode("utf-8"),
         **{key.lower().replace(" ", "_"): value for key, value in entry.fields.items()},
         "feature_path": documents.get(feature_id),
@@ -317,6 +353,7 @@ def queue_payload(root: Path) -> tuple[dict[str, Any], dict[str, dict[str, Any]]
             "pending_triage": sum(1 for entry in selected if entry.triage == "pending"),
             "planned": sum(1 for item in enriched if item["plan"] is not None),
             "total": len(parsed.entries),
+            "buckets": parsed.bucket_counts(),
         },
         "config": config,
     }, plans
@@ -401,6 +438,7 @@ def allocate_id(root: Path) -> dict[str, Any]:
     plans = _load_plans(root, config)
     previous = _validate_high_water(parsed, plans)
     allocated = previous + 1
+    _bucket_directory(root, PENDING_BUCKET, create=True)
     replacement = (
         json.dumps({"high_water": format_reflection_id(allocated), "schema_version": 1}, indent=2, sort_keys=True)
         + "\n"
@@ -410,7 +448,8 @@ def allocate_id(root: Path) -> dict[str, Any]:
         "tool": "allocate-reflection-id",
         "status": "allocated",
         "index_path": index_path(),
-        "reflection_path": reflection_path(format_reflection_id(allocated)),
+        "reflection_path": reflection_path(format_reflection_id(allocated), PENDING_BUCKET),
+        "bucket": PENDING_BUCKET,
         "allocated_id": format_reflection_id(allocated),
         "previous_high_water": format_reflection_id(previous),
         "high_water": format_reflection_id(allocated),
@@ -507,12 +546,93 @@ def remove_merged(root: Path, requested: list[str]) -> dict[str, Any]:
         "tool": "remove-merged-reflections",
         "status": "removed",
         "removed": identifiers,
-        "removed_paths": [reflection_path(identifier) for identifier in identifiers],
+        "removed_paths": [entries[identifier].path for identifier in identifiers],
         "removed_count": len(identifiers),
         "remaining_count": len(parsed.entries) - len(identifiers),
         "head": head,
         "before_sha256": before_digest,
         "after_sha256": _collection_digest(remaining),
+    }
+
+
+def _move_documents(root: Path, moves: list[tuple[str, str, str]], expected: dict[str, bytes]) -> None:
+    """Move documents between buckets, rolling every completed move back on any failure."""
+    done: list[tuple[Path, Path]] = []
+    try:
+        for identifier, source_relative, target_relative in moves:
+            source = root / source_relative
+            target = root / target_relative
+            _require_real_file(root, source, "reflection document")
+            if source.read_bytes() != expected[source_relative]:
+                raise QueueError(f"reflection document changed before relocation: {source_relative}")
+            _bucket_directory(root, target.parent.name, create=True)
+            if target.exists() or target.is_symlink():
+                raise QueueError(f"relocation target for {identifier} already exists: {target_relative}")
+            os.replace(source, target)
+            done.append((source, target))
+    except (OSError, QueueError) as error:
+        for source, target in reversed(done):
+            if target.exists() and not source.exists():
+                os.replace(target, source)
+        if isinstance(error, QueueError):
+            raise
+        raise QueueError(f"reflection relocation failed: {error}") from error
+
+
+def relocate(root: Path, requested: list[str]) -> dict[str, Any]:
+    """Move reflection documents into the bucket their triage state requires.
+
+    With no identifiers every misplaced document is relocated. The bucket is derived only from
+    ``triage`` and ``human_intervention``; the document text is never changed.
+    """
+    identifiers: list[str] = []
+    seen: set[str] = set()
+    for value in requested:
+        if reflection_number(value) is None:
+            raise QueueError(f"relocate ID must be canonical: {value!r}")
+        if value in seen:
+            raise QueueError(f"relocate ID is repeated: {value}")
+        seen.add(value)
+        identifiers.append(value)
+    identifiers.sort(key=lambda item: reflection_number(item) or 0)
+
+    config = load_config(root)
+    _, _, parsed, _, raw = _load_reflections(root, required=True, allow_misplaced=True)
+    plans = _load_plans(root, config)
+    _validate_high_water(parsed, plans)
+    entries = {entry.identifier: entry for entry in parsed.entries}
+    selected = identifiers or [entry.identifier for entry in parsed.entries]
+    moves: list[tuple[str, str, str]] = []
+    for identifier in selected:
+        entry = entries.get(identifier)
+        if entry is None:
+            raise QueueError(f"reflection {identifier} has no matching document")
+        expected = entry.expected_path
+        if expected is None:
+            raise QueueError(f"reflection {identifier} has no decidable bucket; complete its triage first")
+        if entry.path != expected:
+            moves.append((identifier, entry.path, expected))
+    before_digest = _collection_digest(raw)
+    _move_documents(root, moves, raw)
+    moved = {source: target for _, source, target in moves}
+    after = {moved.get(path, path): data for path, data in raw.items()}
+    return {
+        "tool": "relocate-reflections",
+        "status": "relocated" if moves else "unchanged",
+        "moved": [
+            {
+                "id": identifier,
+                "from": source,
+                "to": target,
+                "bucket": entries[identifier].bucket,
+            }
+            for identifier, source, target in moves
+        ],
+        "moved_count": len(moves),
+        "unchanged_count": len(selected) - len(moves),
+        "buckets": parsed.bucket_counts(),
+        "before_sha256": before_digest,
+        "after_sha256": _collection_digest(after),
     }
 
 
@@ -572,6 +692,12 @@ def create_parser() -> argparse.ArgumentParser:
     actions.add_argument("--set", nargs="+", metavar=("R-NNN", "key=value"))
     actions.add_argument("--allocate-id", action="store_true")
     actions.add_argument("--remove-merged", nargs="+", metavar="R-NNN")
+    actions.add_argument(
+        "--relocate",
+        nargs="*",
+        metavar="R-NNN",
+        help="move the named (default: every misplaced) reflection into the bucket its triage state requires",
+    )
     return parser
 
 
@@ -584,6 +710,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if arguments.remove_merged:
             print(json.dumps(remove_merged(root, arguments.remove_merged), indent=2, sort_keys=True))
+            return 0
+        if arguments.relocate is not None:
+            print(json.dumps(relocate(root, arguments.relocate), indent=2, sort_keys=True))
             return 0
         if arguments.set:
             identifier, *updates = arguments.set

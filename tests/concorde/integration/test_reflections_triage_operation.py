@@ -112,6 +112,8 @@ class ReflectionsTriageOperationIntegrationTests(unittest.TestCase):
         self.assertIn("reflection-triage/v5", skill)
         self.assertIn("operation: operation.py", skill)
         self.assertIn("capabilities:", skill)
+        self.assertIn("## Bucket layout", skill)
+        self.assertIn("--relocate R-NNN", skill)
 
 
 if __name__ == "__main__":

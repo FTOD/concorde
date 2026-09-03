@@ -11,7 +11,7 @@ from typing import Any, Iterable
 
 from .diagnostics import digest_sources
 from .frontmatter import FrontMatterError, parse_document
-from .reflections import index_path, reflection_number
+from .reflections import BUCKETS, index_path, reflection_number
 from .model import (
     MODULE_DIAGRAMS_DIRECTORY,
     ArchitectureEntity,
@@ -562,7 +562,22 @@ class ProjectRepository:
             auxiliary[relative] = reflection_index.read_text(encoding="utf-8")
             artifacts.append(relative)
         if reflection_directory.is_dir():
-            for reflection in sorted(reflection_directory.glob("R-*.md")):
+            # Bucketed documents are canonical; flat documents directly under the collection root
+            # are still loaded so validation can report them as misplaced.
+            candidates = list(reflection_directory.glob("R-*.md"))
+            for bucket in BUCKETS:
+                bucket_directory = reflection_directory / bucket
+                if bucket_directory.is_symlink():
+                    raise RepositoryError(
+                        f".concorde/reflections/{bucket}: reflection buckets may not be symlinks"
+                    )
+                if bucket_directory.exists() and not bucket_directory.is_dir():
+                    raise RepositoryError(
+                        f".concorde/reflections/{bucket}: reflection buckets must be real directories"
+                    )
+                if bucket_directory.is_dir():
+                    candidates.extend(bucket_directory.glob("R-*.md"))
+            for reflection in sorted(candidates):
                 if reflection.is_symlink():
                     raise RepositoryError(
                         f"{reflection.relative_to(self.project_root).as_posix()}: reflection documents may not be symlinks"

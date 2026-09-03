@@ -75,7 +75,11 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
             for action in ("status", "investigate", "implement", "merge"):
                 self.assertIn(f"- `{action}", text)
             self.assertIn("reflection-triage/v5", text)
-            self.assertIn(".concorde/reflections/R-NNN.md", text)
+            self.assertIn(".concorde/reflections/<bucket>/R-NNN.md", text)
+            for bucket in ("`pending/`", "`planned/`", "`needs-comments/`"):
+                self.assertIn(bucket, text)
+            self.assertIn("--relocate R-NNN", text)
+            self.assertIn("CONCORDE-REFLECT-005", text)
             self.assertIn(".concorde/reflections/index.json", text)
             self.assertIn(".concorde/reflections/config.json", text)
             self.assertIn(".concorde/framework/scripts/reflections_queue.py", text)

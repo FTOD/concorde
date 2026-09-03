@@ -97,11 +97,12 @@ independent. Planning and task generation are the normal points at which reflect
 Create one for a concrete contradiction, missing path authority, unsafe dependency, or tooling
 problem encountered while decomposing the plan; do not use reflections as a second task backlog.
 
-Inspect the per-file collection under the returned `reflections` directory first. A repeated problem
-receives an `Occurrences` item in its existing `R-NNN.md`. For a new problem, run `python3
+Inspect the per-file collection under the returned `reflections` directory first (its `pending/`,
+`planned/`, and `needs-comments/` buckets). A repeated problem receives an `Occurrences` item in its
+existing `R-NNN.md`, wherever it is filed. For a new problem, run `python3
 {FRAMEWORK}/scripts/reflections_queue.py --allocate-id`, use only its `allocated_id`, never derive an
-ID from existing files, and create exactly the returned `reflection_path` from
-`templates/reflections-template.md`. Use `phase: tasks`, `status: open`,
+ID from existing files, and create exactly the returned `reflection_path` (always under
+`pending/`) from `templates/reflections-template.md`. Use `phase: tasks`, `status: open`,
 and `triage: pending`. Fill only Context, Expected, Observed, Impact, and Evidence, with enough
 specific detail for later investigation. Do not analyze root cause, recommend a change, or decide
 whether human intervention is needed. Omit `human_intervention`; leave Triage Analysis, Proposed

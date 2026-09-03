@@ -42,7 +42,7 @@ approved outer sandbox, launches the agent, and checks its receipt.
 | How does this feature use module structure? | Its Architecture Zoom referencing architecture entity IDs. |
 | How does it currently work in this revision? | Source code. |
 | What evidence supports it? | Executable tests/checks and active attempt validation evidence. |
-| What problem was recorded and how was it triaged? | The relevant `.concorde/reflections/R-NNN.md`. |
+| What problem was recorded and how was it triaged? | The relevant `.concorde/reflections/<bucket>/R-NNN.md`. |
 | What does the website or diagram show? | A generated projection with provenance back to architecture/feature sources. |
 
 ## Bounded reading

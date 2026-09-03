@@ -9,6 +9,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 
 from ..model import Finding
+from ..reflections import BUCKETS
 from ..repository import (
     FEATURE_ID,
     ProjectRepository,
@@ -34,7 +35,7 @@ LEGACY_FILES = {
     "contract.md": "embed the interface in its owning feature file",
     "spec.md": "use the direct feature file as the one feature specification",
     "tldr.md": "use the direct feature file directly",
-    "reflections.md": "move each project reflection to .concorde/reflections/R-NNN.md",
+    "reflections.md": "move each project reflection to .concorde/reflections/<bucket>/R-NNN.md",
 }
 LEGACY_DIRECTORIES = {
     "subfeatures": "flatten features into the providing module's features/ directory and use related_features",
@@ -262,7 +263,12 @@ def validate_layout(package: Any) -> list[Finding]:
 
     reflection_directory = package.project_root / ".concorde" / "reflections"
     if reflection_directory.is_dir() and not reflection_directory.is_symlink():
-        for path in sorted(reflection_directory.iterdir()):
+        candidates = list(reflection_directory.iterdir())
+        for bucket in BUCKETS:
+            bucket_directory = reflection_directory / bucket
+            if bucket_directory.is_dir() and not bucket_directory.is_symlink():
+                candidates.extend(bucket_directory.iterdir())
+        for path in sorted(candidates):
             if path.name == "log.md":
                 findings.append(
                     _finding(
@@ -270,7 +276,7 @@ def validate_layout(package: Any) -> list[Finding]:
                         "CONCORDE-LAYOUT-LEGACY",
                         path,
                         "The single-file reflection log is obsolete.",
-                        "Split each entry into .concorde/reflections/R-NNN.md and keep allocation state only in index.json.",
+                        "Split each entry into .concorde/reflections/pending/R-NNN.md and keep allocation state only in index.json.",
                     )
                 )
             elif path.name.startswith("R-") and path.suffix == ".md" and not re.fullmatch(

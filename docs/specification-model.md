@@ -28,7 +28,9 @@ direct Markdown file per level-local feature.
 │   └── validation.md
 └── reflections/
     ├── index.json                   # tracked allocation high-water only
-    ├── R-NNN.md                     # one tracked problem/triage record
+    ├── pending/R-NNN.md             # recorded; triage pending
+    ├── planned/R-NNN.md             # triaged; no maintainer input needed
+    ├── needs-comments/R-NNN.md      # triaged; waiting for User Comments
     ├── config.json                  # triage configuration
     ├── plans/                       # ignored/disposable
     └── worktrees/                   # ignored/disposable

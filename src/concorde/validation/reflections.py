@@ -8,7 +8,12 @@ from ..model import Finding
 from ..reflections import parse_auxiliary_reflections, reflection_document_paths, strip_reference_suffix
 from ..repository import RepositoryError, safe_relative_path
 
-RULE_BY_PROBLEM = {"shape": "CONCORDE-REFLECT-001", "duplicate": "CONCORDE-REFLECT-002", "vocabulary": "CONCORDE-REFLECT-003"}
+RULE_BY_PROBLEM = {
+    "shape": "CONCORDE-REFLECT-001",
+    "duplicate": "CONCORDE-REFLECT-002",
+    "vocabulary": "CONCORDE-REFLECT-003",
+    "placement": "CONCORDE-REFLECT-005",
+}
 
 
 def _visible_scenario_ids(package: Any) -> set[str]:

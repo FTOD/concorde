@@ -294,7 +294,7 @@ class ImplementationDeliveryIntegrationTests(unittest.TestCase):
             feature = root / FEATURE
             architecture = root / "specs/example/architecture.md"
             collection = write_reflection_collection(root, [reflection_entry("R-001")])
-            reflection = collection / "R-001.md"
+            reflection = collection / "pending" / "R-001.md"
             index = collection / "index.json"
             retained_before = {path: path.read_bytes() for path in (source, feature, architecture, reflection, index)}
             eligibility = propose_delivery(root)

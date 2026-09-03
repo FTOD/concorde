@@ -46,7 +46,7 @@ Validation covers Architecture Source Profile 7:
 - one Archify `architecture` system overview per module showing principal entities and directed
   relationships, plus architecture-owned diagram textual linkage, showcase profile, hidden legends,
   safe unique outputs, provenance, and freshness; and
-- stable-ID `.concorde/attempts/<feature-id>/` isolation, per-file `.concorde/reflections/R-NNN.md` grammar and allocation index,
+- stable-ID `.concorde/attempts/<feature-id>/` isolation, per-file `.concorde/reflections/<bucket>/R-NNN.md` grammar and allocation index,
   project-control path safety, generated-source boundaries, and complete
   rejection of obsolete durable layout residue.
 

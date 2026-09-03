@@ -4,7 +4,7 @@
   "target": "module.example",
   "status": "success",
   "artifacts": [
-    ".concorde/reflections/R-001.md",
+    ".concorde/reflections/pending/R-001.md",
     "specs/example/architecture.md",
     "specs/example/diagrams/level-view.json",
     "specs/example/modules/api/architecture.md"

@@ -29,9 +29,12 @@ the completed triage content and plan to the parent; the parent validates and wr
 7. Return a complete `R-NNN.md` plan with frontmatter fields `id`, `title`, `route`, `status:
    proposed`, `recorded_under`, `implement_in`, `implement_in_id`, `touches_docsite`, `effort`, and
    `files`, followed by `Problem`, `Change`, `Validation`, and `Risks and out of scope` sections.
-   The identifier is only a coordination key to `.concorde/reflections/R-NNN.md`. Do not copy the
-   reflection's prose into the plan; `Problem` contains independently established root-cause
-   evidence and links back by ID.
+   The identifier is only a coordination key to `.concorde/reflections/<bucket>/R-NNN.md`. Do not
+   copy the reflection's prose into the plan; `Problem` contains independently established
+   root-cause evidence and links back by ID.
+8. Never move, copy, or rename the document. Its folder (`pending/`, `planned/`, or
+   `needs-comments/`) is derived from `triage` and `human_intervention`; the parent relocates it
+   with the queue helper after saving your result.
 
 `fast-loop` means a bounded change under one existing feature. `specify` means behavior,
 architecture, a contract, guidance intent, or a cross-feature authority must change. `dismiss`

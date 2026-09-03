@@ -105,8 +105,8 @@ other problem worth later investigation. First inspect the per-file collection u
 
 For a new problem, run the installed `scripts/reflections_queue.py --allocate-id`, use only its
 `allocated_id`, never derive an ID from existing files, and create exactly the returned
-`reflection_path` from `templates/reflections-template.md`. Use `phase: plan`, `status:
-open`, and `triage: pending`. Fill Context, Expected, Observed, Impact, and Evidence with enough
+`reflection_path` (always under `.concorde/reflections/pending/`) from
+`templates/reflections-template.md`. Use `phase: plan`, `status: open`, and `triage: pending`. Fill Context, Expected, Observed, Impact, and Evidence with enough
 specific detail for a later investigator. Describe only the problem and its effect on this planning
 pass: do not analyze root cause, propose a resolution, or decide whether human intervention is
 needed. Omit `human_intervention` and leave the three triage-owned sections blank. Always retain the

@@ -232,10 +232,27 @@ def tree_hashes(root: Path) -> dict[str, str]:
     return {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(root.rglob("*")) if path.is_file()}
 
 
-def write_reflection_collection(project_root: Path, entries: list[dict[str, str]]) -> Path:
+REFLECTION_BUCKETS = ("pending", "planned", "needs-comments")
+
+
+def reflection_bucket_for(entry: dict[str, str]) -> str:
+    """Mirror the runtime bucket rule: triage state alone decides the folder."""
+    if entry.get("Triage", "pending") == "pending":
+        return "pending"
+    return "planned" if entry.get("Human Intervention") == "not-required" else "needs-comments"
+
+
+def write_reflection_collection(
+    project_root: Path, entries: list[dict[str, str]], *, bucket: str | None = None
+) -> Path:
+    """Write a per-file reflection collection.
+
+    The folder follows the runtime bucket rule unless an entry carries a ``bucket`` key or the
+    ``bucket`` argument forces every entry into one (possibly wrong) folder.
+    """
     directory = project_root / ".concorde" / "reflections"
     directory.mkdir(parents=True, exist_ok=True)
-    for existing in directory.glob("R-*.md"):
+    for existing in [*directory.glob("R-*.md"), *(path for name in REFLECTION_BUCKETS for path in (directory / name).glob("R-*.md"))]:
         existing.unlink()
     high_water = max((int(entry["id"][2:]) for entry in entries), default=0)
     (directory / "index.json").write_text(
@@ -307,7 +324,9 @@ def write_reflection_collection(project_root: Path, entries: list[dict[str, str]
 
 {occurrences}
 """
-        (directory / f"{identifier}.md").write_text(body.rstrip() + "\n", encoding="utf-8")
+        target = directory / (entry.get("bucket") or bucket or reflection_bucket_for(entry)) / f"{identifier}.md"
+        target.parent.mkdir(exist_ok=True)
+        target.write_text(body.rstrip() + "\n", encoding="utf-8")
     return directory
 
 

@@ -73,7 +73,7 @@ package, and public-guide reconciliation.
 Each leaf receives a distinct default-deny Codex permission profile or Claude restricted strict
 sandbox configuration. Missing/widened/unsafe/unenforceable policy stops before launch; LangGraph and
 prompts do not enforce files. Planning does not edit durable sources. Planning and task generation
-record concrete problems in `.concorde/reflections/R-NNN.md`: recording supplies detailed problem
+record concrete problems in `.concorde/reflections/<bucket>/R-NNN.md`: recording supplies detailed problem
 facts but no root-cause analysis, proposed fix, or human-intervention decision. New documents reserve
 their ID atomically through the installed helper. Reflection-triage/v5 completes those details later,
 preserves User Comments, removes only validated merged `small` `fast-loop` documents, and leaves all
@@ -169,10 +169,18 @@ uv run python operations/concorde-standard-dev-loop/operation.py "Add audit logg
 
 ## Reflections
 
-Planning and task generation are the normal recording points. Each new `R-NNN.md` contains enough
-Context, Expected, Observed, Impact, and Evidence for later investigation, but no recommendation or
-human-intervention judgment. Repeated problems add occurrences rather than duplicate files.
-Maintainers alone edit User Comments and decide resolved/dismissed status and resolution notes.
+Planning and task generation are the normal recording points. Each new `R-NNN.md` is created under
+`.concorde/reflections/pending/` and contains enough Context, Expected, Observed, Impact, and
+Evidence for later investigation, but no recommendation or human-intervention judgment. Repeated
+problems add occurrences rather than duplicate files. Maintainers alone edit User Comments and
+decide resolved/dismissed status and resolution notes.
+
+The collection is split into three tracked buckets that mirror triage state: `pending/` (not yet
+investigated), `planned/` (`human_intervention: not-required`; automation may proceed), and
+`needs-comments/` (`human_intervention: required`; waiting for maintainer input). After the parent
+persists a validated triage completion it runs `reflections_queue.py --relocate R-NNN`, which moves
+the document into the folder its front matter now requires. Nothing else moves reflection files, and
+maintainer status never changes the bucket.
 
 The reflection-triage Operation is conditional before model launch: `status` launches none,
 `investigate` launches only a zero-write analyzer, and `implement` selects exactly `fast-loop` or the
