@@ -38,7 +38,7 @@ integration-specific product internals.
 | `entity.skills.tasks-template` | document | Dependency-ordered traced task format with test-first and evidence gates. | `templates/tasks-template.md` |
 | `entity.skills.checklist-template` | document | Reviewer-owned requirements-quality checklist format. | `templates/checklist-template.md` |
 | `entity.skills.constitution-template` | document | Governance-document format reference. | `templates/constitution-template.md` |
-| `entity.skills.reflection-template` | document | Project reflection-log grammar. | `templates/reflections-template.md` |
+| `entity.skills.reflection-template` | document | Per-file Reflection Document v2 grammar. | `templates/reflections-template.md` |
 | `entity.skills.projector` | program | Parses leaf exposure/effects and mixed Operation capabilities, resolves tokens, filters internal leaves, and renders public Codex/Claude Skill files with owned kind provenance. | `src/concorde/skill_assets.py` |
 | `entity.skills.reflection-assets` | directory | Internal reflection investigator/implementer roles and integration templates. | `agent-assets/reflections` |
 | `entity.skills.checkout-sync` | program | Compares and refreshes this repository's generated agent capability surfaces. | `scripts/development/sync-agent-surfaces.py` |
@@ -59,7 +59,7 @@ integration-specific product internals.
 | `entity.skills.skill-prompt` | `calls` | `module.concorde.runtime` | Invokes deterministic workspace and lifecycle Tools when required. |
 | `entity.skills.skill-prompt` | `reads_from` | `module.concorde.workspace` | Uses one selected feature's bounded durable, temporal, and executable context. |
 | `entity.skills.coding-agent` | `implements` | `entity.skills.skill-prompt` | Follows installed instructions and their write boundaries. |
-| `entity.skills.reflection-assets` | `writes_to` | `module.concorde.workspace` | Supports reflection triage while retaining one persisted project log. |
+| `entity.skills.reflection-assets` | `writes_to` | `module.concorde.workspace` | Supports triage while retaining one persisted document per reflection. |
 
 ## Interactions
 

@@ -81,14 +81,14 @@ match an executable task and its trace. An unexpected change stops completion ma
 
 ## Reflection recording
 
-Record every difficulty encountered, including one solved by a workaround and every provisional
-prototype design choice. Before appending a new entry to `workspace.reflections`, run the installed
-`python3 ./scripts/reflections_queue.py --allocate-id`, use only its
-`allocated_id`, and never derive an ID from the remaining log entries. Append with fixed grammar,
-`Phase: implement`, and `Status: open`, or add an occurrence to the same existing problem without
-allocating a new ID. Name the concerned design, architecture, interface ID, guidance, tool, or code path. Keep
-Expected/Observed/Action concise. Never copy reflection identity or prose into code, tests, durable
-sources, diagrams, or attempt evidence.
+Planning and task generation are the normal reflection-recording points. Prefer compact attempt
+evidence for an implementation failure. If implementation encounters a distinct problem that must
+persist beyond the attempt, inspect the collection for a match, then either add an occurrence or
+allocate and create one Reflection Document v2 with `phase: implement`, `status: open`, and `triage:
+pending`. Fill only Context, Expected, Observed, Impact, and Evidence. Leave the triage-owned sections
+blank, omit `human_intervention`, retain `User Comments`, and do not analyze root cause or propose a
+resolution. Never copy reflection identity or prose into code, tests, durable sources, diagrams, or
+attempt evidence.
 
 ## Completion validation
 

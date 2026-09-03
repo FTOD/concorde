@@ -48,8 +48,8 @@ def _read_json(path: Path, label: str) -> dict[str, Any]:
 
 def _manifest(asset_root: Path) -> dict[str, Any]:
     value = _read_json(asset_root / "manifest.json", "agent-asset manifest")
-    if value.get("schema_version") != 1 or value.get("protocol") != "reflection-triage/v4":
-        raise AgentAssetError("agent-asset manifest must declare schema_version 1 and reflection-triage/v4")
+    if value.get("schema_version") != 1 or value.get("protocol") != "reflection-triage/v5":
+        raise AgentAssetError("agent-asset manifest must declare schema_version 1 and reflection-triage/v5")
     integrations = value.get("integrations")
     if not isinstance(integrations, dict) or set(integrations) != {"claude", "codex"}:
         raise AgentAssetError("agent-asset manifest must declare exactly claude and codex integrations")

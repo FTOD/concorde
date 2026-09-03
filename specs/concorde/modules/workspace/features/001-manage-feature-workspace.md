@@ -20,7 +20,7 @@ evidence_status: partial
 ## Outcome and Scope
 
 Every Concorde phase receives one authoritative direct feature with module architecture/ancestry,
-related summaries, stable-ID attempt, reflection log, and executable roots. Trusted Operation code
+related summaries, stable-ID attempt, per-file reflection collection, and executable roots. Trusted Operation code
 can validate those authorities, owned entity locators, exact task tokens, and required-interface
 owners into concrete permission paths without granting the untrusted agent ambient discovery.
 
@@ -45,7 +45,7 @@ owners into concrete permission paths without granting the untrusted agent ambie
 - **Entry points**: Installed `workspace.py` adapter and runtime resolver.
 - **Inputs**: Project root, phase, and explicit or selected `feature_path`.
 - **Outputs**: Feature/module identity, direct feature path, architecture/ancestry, related summaries,
-  stable-ID attempt paths/state, `.concorde/reflections/log.md`, and source/test roots; trusted helpers
+  stable-ID attempt paths/state, `.concorde/reflections/`, and source/test roots; trusted helpers
   may derive concrete task/control roles and Operations may add exact required-interface owner specs.
 - **Obligations**: Resolve only real project-contained direct features/control paths, bind attempts by
   validated stable ID, keep relation bodies bounded, validate concrete roles without symlinks/escapes,
@@ -61,7 +61,7 @@ owners into concrete permission paths without granting the untrusted agent ambie
 
 ### `contract.workspace.records` — Authority and lifecycle records
 
-- **Consumer**: Skills, Operations, Runtime Tools, Auto-Docs, reflection-triage/v4, and maintainers.
+- **Consumer**: Skills, Operations, Runtime Tools, Auto-Docs, reflection-triage/v5, and maintainers.
 - **Direction**: Maintained/temporal/executable/generated artifacts to role/lifecycle interpretation.
 - **Entry points**: Profile 7 path model and validation.
 - **Inputs**: Canonical architecture/direct-feature/control-attempt/reflection/code/test/installed/generated paths.
@@ -84,7 +84,7 @@ feature file, selection, architecture, and code remain.
   and executable hints without unrelated bodies; trusted role resolution MUST reject escapes,
   symlinks, unknown tokens, dependency internals, and every other attempt.
 - **FR-003**: Delivery Proposal 9 MUST transition one complete control attempt to absent without moving
-  or rewriting the feature file or reflection log.
+  or rewriting the feature file or unrelated reflection documents.
 - **FR-004**: A not-yet-authored feature MUST receive unavailable attempt fields until valid stable-ID front matter exists and the specify gate reruns.
 
 ## Edge Cases

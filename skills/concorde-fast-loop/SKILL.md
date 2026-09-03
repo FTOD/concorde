@@ -83,11 +83,11 @@ plan, tasks, implementation, and delivery.
 5. Re-read the diff and prove no out-of-scope path changed. On failure, leave a truthful report; do
    not claim completion or create an attempt retroactively.
 
-Difficulties, workarounds, or knowingly provisional choices go to the centralized reflection log
-with `Phase: fast-loop`. Before appending a new entry, run the installed
-`python3 {FRAMEWORK}/scripts/reflections_queue.py --allocate-id`, use only its
-`allocated_id`, and never derive an ID from the remaining log entries; an existing problem receives
-an occurrence without allocating a new ID.
+Planning and task generation are the normal reflection-recording points. If the fast loop itself
+encounters a distinct problem that must persist, use Reflection Document v2 with `phase: fast-loop`:
+allocate the ID, create exactly the returned file, and fill only the factual problem sections. Leave
+triage sections blank, omit `human_intervention`, retain `User Comments`, and do not propose a fix.
+An existing problem receives an occurrence without allocating a new ID.
 
 Report eligibility, changed paths, checks/results, limitations, architecture/interface impact, and
 that no attempt was created.

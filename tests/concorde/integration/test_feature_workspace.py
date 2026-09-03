@@ -35,7 +35,7 @@ class FeatureWorkspaceIntegrationTests(unittest.TestCase):
             self.assertEqual(paths.feature_id, "feature.example.deliver")
             self.assertEqual(paths.module_architecture, "specs/example/architecture.md")
             self.assertEqual(paths.attempt_dir, ".concorde/attempts/feature.example.deliver")
-            self.assertEqual(paths.reflections, ".concorde/reflections/log.md")
+            self.assertEqual(paths.reflections, ".concorde/reflections")
             self.assertEqual(paths.attempt_state, "absent")
 
     def test_related_flat_features_are_bounded_and_exclude_attempt_bodies(self):

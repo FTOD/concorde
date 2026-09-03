@@ -23,19 +23,19 @@ from concorde.agent_assets import (  # noqa: E402
 
 
 class AgentAssetTests(unittest.TestCase):
-    def test_canonical_manifest_and_both_projections_require_v4(self):
+    def test_canonical_manifest_and_both_projections_require_v5(self):
         manifest = json.loads((CANONICAL_ASSETS / "manifest.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifest["protocol"], "reflection-triage/v4")
+        self.assertEqual(manifest["protocol"], "reflection-triage/v5")
         for integration in ("claude", "codex"):
             rendered = render_projection(CANONICAL_ASSETS, integration)
-            self.assertTrue(all("reflection-triage/v4" in text for text in rendered.values()))
+            self.assertTrue(all("reflection-triage/v5" in text for text in rendered.values()))
 
         with tempfile.TemporaryDirectory() as temporary:
             legacy = Path(temporary) / "reflections"
             shutil.copytree(CANONICAL_ASSETS, legacy)
             path = legacy / "manifest.json"
-            path.write_text(path.read_text().replace("reflection-triage/v4", "reflection-triage/v3"))
-            with self.assertRaisesRegex(AgentAssetError, "reflection-triage/v4"):
+            path.write_text(path.read_text().replace("reflection-triage/v5", "reflection-triage/v4"))
+            with self.assertRaisesRegex(AgentAssetError, "reflection-triage/v5"):
                 render_projection(legacy, "codex")
 
     def test_fresh_sync_is_repeatable_and_seeds_shared_config_once(self):
@@ -52,8 +52,8 @@ class AgentAssetTests(unittest.TestCase):
             config = root / ".concorde/reflections/config.json"
             self.assertTrue(config.is_file())
             self.assertEqual((root / ".concorde/reflections/.gitignore").read_text(), "plans/\nworktrees/\n")
-            log = root / ".concorde/reflections/log.md"
-            log.write_text("# Reflections: Fixture\n", encoding="utf-8")
+            reflection = root / ".concorde/reflections/R-001.md"
+            reflection.write_text("project-authored reflection\n", encoding="utf-8")
             config.write_text(config.read_text().replace('"investigators": 1', '"investigators": 3'))
             before = tree_hashes(root)
             second = sync_agent_assets(root, CANONICAL_ASSETS, "codex", "0.9.0")
@@ -105,15 +105,15 @@ class AgentAssetTests(unittest.TestCase):
             plans = root / ".concorde/reflections/plans/R-001.md"
             plans.parent.mkdir(parents=True)
             plans.write_text("plan\n")
-            log = root / ".concorde/reflections/log.md"
-            log.write_text("# Reflections: Fixture\n", encoding="utf-8")
+            reflection = root / ".concorde/reflections/R-001.md"
+            reflection.write_text("project-authored reflection\n", encoding="utf-8")
             result = remove_agent_assets(root, "codex")
             self.assertEqual(result.status, "success")
             self.assertTrue(unrelated.is_file())
             self.assertTrue(config.is_file())
             self.assertTrue((root / ".concorde/reflections/.gitignore").is_file())
             self.assertTrue(plans.is_file())
-            self.assertTrue(log.is_file())
+            self.assertTrue(reflection.is_file())
             self.assertFalse((root / ".codex/agents/reflection_investigator.toml").exists())
             receipt = json.loads((root / ".concorde/agent-assets.json").read_text())
             self.assertNotIn("codex", receipt["integrations"])

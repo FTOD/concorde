@@ -30,7 +30,7 @@
     "quickstart": ".concorde/attempts/feature.example.api.health-check/quickstart.md",
     "tasks": ".concorde/attempts/feature.example.api.health-check/tasks.md",
     "validation": ".concorde/attempts/feature.example.api.health-check/validation.md",
-    "reflections": ".concorde/reflections/log.md",
+    "reflections": ".concorde/reflections",
     "reflections_open": 1
   },
   "changes": [
@@ -43,7 +43,7 @@
   "artifacts": [
     ".concorde/attempts/feature.example.api.health-check/tasks.md",
     ".concorde/attempts/feature.example.api.health-check/validation.md",
-    ".concorde/reflections/log.md",
+    ".concorde/reflections/R-001.md",
     "specs/example/modules/api/architecture.md",
     "specs/example/modules/api/features/002-add-health-check.md"
   ],
@@ -55,7 +55,7 @@
   "checklist_summary": {"files": 1, "complete": 22, "incomplete": 0, "malformed": 0},
   "evidence_summary": {"passed": 27, "missing": 0},
   "retained_digests": {
-    ".concorde/reflections/log.md": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    ".concorde/reflections/R-001.md": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
     "executable_context": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "specs/example/architecture.md": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
     "specs/example/modules/api/architecture.md": "sha256:3333333333333333333333333333333333333333333333333333333333333333",

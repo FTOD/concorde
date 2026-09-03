@@ -40,7 +40,7 @@ implementation behavior, test truthfulness, version-control history, or generate
 | `entity.workspace.framework` | directory | Installed projection of one standalone package, including Tools, all 17 leaf Skills (two internal), and three paired Operations. | `concept:.concorde/framework` |
 | `entity.workspace.install-receipt` | configuration | Digest/role ownership ledger for framework and agent outputs. | `concept:native-install-receipt` |
 | `entity.workspace.attempt` | directory | Temporary plan/tasks/research/checklists/validation memory keyed by exact stable feature ID. | `concept:.concorde/attempts/<stable-feature-id>` |
-| `entity.workspace.reflections` | document | Sole persisted project record for difficult choices/problems and stable reflection identities. | `.concorde/reflections/log.md` |
+| `entity.workspace.reflections` | directory | Per-file process memory with one `R-NNN.md` prose authority per problem and a metadata-only allocation index. | `.concorde/reflections` |
 | `entity.workspace.source-code` | directory | Checked-out implementation authority. | `src` |
 | `entity.workspace.tests` | test | Checked-out executable evidence and fixtures. | `tests` |
 | `entity.workspace.generated` | directory | Disposable documentation, diagram, and release projections with provenance. | `generated` |

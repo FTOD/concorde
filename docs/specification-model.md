@@ -27,7 +27,8 @@ direct Markdown file per level-local feature.
 │   ├── checklists/
 │   └── validation.md
 └── reflections/
-    ├── log.md                       # tracked process memory
+    ├── index.json                   # tracked allocation high-water only
+    ├── R-NNN.md                     # one tracked problem/triage record
     ├── config.json                  # triage configuration
     ├── plans/                       # ignored/disposable
     └── worktrees/                   # ignored/disposable
@@ -118,7 +119,7 @@ Protocol 13 returns:
 | Identity | schema version, phase/status, feature ID, `feature_path`, providing module. |
 | Durable | direct feature path, module architecture, bounded module ancestry, bounded related features. |
 | Temporal | attempt directory/state and plan/tasks/checklist/research/data-model/quickstart/validation paths. |
-| Process | `.concorde/reflections/log.md` and open count. |
+| Process | `.concorde/reflections/` and open count. |
 | Executable | deterministic source/test roots or inventory hints. |
 
 All paths are safe project-relative canonical paths. Summaries are bounded navigation and do not

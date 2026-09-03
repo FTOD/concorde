@@ -4,7 +4,7 @@
   "target": "module.example",
   "status": "success",
   "artifacts": [
-    ".concorde/reflections/log.md",
+    ".concorde/reflections/R-001.md",
     "specs/example/architecture.md",
     "specs/example/diagrams/level-view.json",
     "specs/example/modules/api/architecture.md"
@@ -77,7 +77,7 @@
       "feature_workspace": null,
       "architecture_readiness": null,
       "reflections": {
-        "path": ".concorde/reflections/log.md",
+        "path": ".concorde/reflections",
         "open": {"feature.example.deliver-workflow": 1}
       }
     }

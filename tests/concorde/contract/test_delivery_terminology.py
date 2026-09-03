@@ -44,7 +44,7 @@ class DeliveryTerminologyContractTests(unittest.TestCase):
         self.assertEqual(value["evidence_summary"]["missing"], 0)
         self.assertIn(value["workspace"]["feature_path"], value["retained_digests"])
         self.assertIn(value["workspace"]["module_architecture"], value["retained_digests"])
-        self.assertIn(value["workspace"]["reflections"], value["retained_digests"])
+        self.assertTrue(any(path.startswith(value["workspace"]["reflections"] + "/") for path in value["retained_digests"]))
         self.assertIn("executable_context", value["retained_digests"])
 
     def test_runtime_and_guidance_use_cleanup_only_delivery_language(self):

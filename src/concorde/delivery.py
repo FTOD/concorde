@@ -12,7 +12,7 @@ from typing import Any, Iterable
 from .diagnostics import canonical_json, digest_sources
 from .feature_workspace import WorkspaceError, _read_persisted_selection, _resolve_feature, resolve_phase_paths
 from .model import Finding, SourceDocument, ToolResult
-from .reflections import log_path, parse_reflection_log
+from .reflections import index_path, parse_auxiliary_reflections, reflection_document_paths
 from .repository import ProjectRepository, RepositoryError, safe_relative_path
 
 
@@ -57,8 +57,7 @@ def _attempt_files(project: Path, attempt_dir: str, ignored: str | None = None) 
 def _delivery_digest(project: Path, package: Any, paths: Any, ignored: str | None = None) -> str:
     sources = [source.path for source in package.sources]
     sources.extend(package.diagrams)
-    if (project / paths.reflections).is_file() and not (project / paths.reflections).is_symlink():
-        sources.append(paths.reflections)
+    sources.extend(_reflection_files(package))
     sources.extend(_executable_files(project, paths))
     sources.extend(_attempt_files(project, paths.attempt_dir, ignored))
     return digest_sources(project, sources)
@@ -130,9 +129,15 @@ def _authority_paths(project: Path, package: Any, paths: Any) -> list[str]:
     result = [paths.feature_path, paths.module_architecture]
     result.extend(item["architecture"] for item in paths.module_ancestry)
     result.extend(item["feature_path"] for item in paths.related_features)
-    if (project / paths.reflections).is_file():
-        result.append(paths.reflections)
+    result.extend(_reflection_files(package))
     return sorted(set(result))
+
+
+def _reflection_files(package: Any) -> list[str]:
+    result = list(reflection_document_paths(package.auxiliary))
+    if index_path() in package.auxiliary:
+        result.append(index_path())
+    return result
 
 
 def _executable_files(project: Path, paths: Any) -> list[str]:
@@ -197,11 +202,12 @@ def propose_delivery(project_root: str | Path, target: str | None = None) -> Too
         findings.append(_finding("CONCORDE-DELIVER-013", paths.validation, "Passing Attempt Evidence is missing for: " + ", ".join(evidence_missing), "Record one current **Outcome**: passed evidence block for every completed task."))
 
     reflection_summary = {"entries": 0, "open": 0, "resolved": 0, "dismissed": 0}
-    reflections_body = package.auxiliary.get(log_path())
-    if reflections_body is not None:
-        parsed = parse_reflection_log(reflections_body)
+    reflection_files = _reflection_files(package)
+    if reflection_files:
+        parsed = parse_auxiliary_reflections(package.auxiliary)
         if parsed.problems:
-            findings.append(_finding("CONCORDE-DELIVER-011", paths.reflections, "The project reflection log is malformed: " + "; ".join(problem.message for problem in parsed.problems), "Repair the centralized log and re-propose."))
+            source = parsed.problems[0].path
+            findings.append(_finding("CONCORDE-DELIVER-011", source, "The project reflection collection is malformed: " + "; ".join(problem.message for problem in parsed.problems), "Repair the per-file reflection collection and re-propose."))
         reflection_summary = parsed.summary(feature.identifier)
     result = {
         "proposal_version": 9,
@@ -216,8 +222,7 @@ def propose_delivery(project_root: str | Path, target: str | None = None) -> Too
         "reflection_summary": reflection_summary,
     }
     artifacts = [paths.feature_path, paths.module_architecture, paths.tasks, paths.validation]
-    if reflections_body is not None:
-        artifacts.append(paths.reflections)
+    artifacts.extend(reflection_files)
     return ToolResult("deliver", feature.identifier, "eligible" if not findings else "invalid", tuple(artifacts), tuple(findings), result)
 
 

@@ -1,56 +1,76 @@
-# Reflections: [PROJECT NAME]
+---
+id: R-NNN
+title: <short factual problem title>
+phase: plan | tasks | implement | analyze | converge | fast-loop
+date: YYYY-MM-DD
+feature: <stable ID of the selected feature>
+kind: specification | architecture | guidance | tooling | environment | implementation
+concerns: <stable ID or project-relative path, optional #fragment or :line>
+status: open
+triage: pending
+---
 
-**Canonical path**: `.concorde/reflections/log.md`
-
-<!-- concorde-reflection-high-water: R-000 -->
-
-The project's one reflection log: every difficulty or problem a coding agent met while planning or
-implementing any feature, attributed to the feature that was being worked on and naming the source
-the problem concerns (any feature, module architecture, interface, guidance, tool, or file).
-Ordinary recording appends entries and occurrences. Explicit rename/documentation reconciliation may
-rewrite entry text and references like other maintained docs/specs while preserving every stable,
-unique `R-NNN` identifier, required structure, maintainer decision, and problem meaning. New entries
-first reserve their identity through the installed helper's atomic `--allocate-id` operation and use
-only its `allocated_id`; the high-water marker retires allocated and removed IDs permanently.
-Maintainers may explicitly archive or remove closed entries without renumbering or reusing IDs.
-Reflection-triage/v3 also
-removes an open entry automatically after its `small` `fast-loop` plan is validated, merged, marked
-`merged`, and accepted by the helper's `--remove-merged` gate. Every other route/effort/status keeps
-the entry for maintainer disposition. This file is the sole persisted
-authority for entry identity, status, notes, occurrences, and prose; no attempt artifact,
-feature file, module architecture, interface, diagram, code, or test copies or cites that content.
-Delivery presents entries transiently and rejects copied `R-NNN` identifiers; no operation removes
-this tracked control-state file.
+# R-NNN · <short factual problem title>
 
 <!--
-  Grammar (Concorde Reflection Log v1). One H3 per entry, sequential identifiers, never reused:
+  Concorde Reflection Document v2. Canonical path: .concorde/reflections/R-NNN.md.
 
-  ### R-NNN · <short title>
-  - **Phase**: plan | tasks | implement | analyze | converge      (phase that first recorded it)
-  - **Date**: YYYY-MM-DD
-  - **Feature**: <stable ID of the selected feature>
-  - **Kind**: specification | architecture | guidance | tooling | environment | implementation
-  - **Concerns**: <stable ID or project-relative path, optional #fragment or :line>
-  - **Expected**: <what the concerned source says should hold>
-  - **Observed**: <what actually happened>
-  - **Effect**: assumed | worked-around | deferred | blocked
-  - **Action**: <what the agent did: assumption, workaround, deferral, or stop reason>
-  - **Improvement**: <the change to the concerned authority that would remove the problem>
-  - **Intervention**: <why automation cannot close this entry, and the maintainer decision or action required; write "当前不需要你的介入" when none is needed>
-  - **Status**: open | resolved | dismissed                         (maintainer-owned once set)
-  - **Note**: <required when Status is not open: why, and the resolving change>
-  - **Occurrences**:                                                 (optional; on re-encounter, never a new entry)
-    - <phase> <date> <feature-id> — <context>
+  Planning and task generation are the normal recording points. First reserve the identity through
+  reflections_queue.py --allocate-id, then create exactly the returned reflection_path. At recording
+  time, describe only the problem in Context, Expected, Observed, Impact, and Evidence. Give enough
+  detail for a later investigator to reproduce and understand it. Do not propose a fix and do not
+  decide whether a maintainer is needed.
 
-  Rules: record in the phase the problem is met; do not silently repair a protected or out-of-scope
-  feature file, module architecture, interface, diagram, or another feature's code — record the
-  problem and route an explicit owning task instead;
-  never copy an entry identifier, status, note, occurrence, or prose into another persisted artifact;
-  update an existing entry rather than duplicate it; never derive a new ID from remaining entries;
-  never let an agent manually delete an entry, renumber IDs, or reverse a maintainer's Status or
-  Note; only explicit maintainer direction or the deterministic v3 helper may remove an entry, and
-  the helper removes only an eligible merged-small entry without adding Status/Note; cite evidence paths
-  instead of pasting secrets or bulk output; keep
-  Expected/Observed/Action under about 150 words together. Old resolved or dismissed entries may be
-  moved under a "## Archive" heading in this file.
+  Keep triage: pending, omit human_intervention, and leave all three triage sections empty until
+  concorde-reflections-triage investigates the reflection. Triage changes triage to complete, adds
+  human_intervention: required | not-required, and fills all three triage sections. User Comments is
+  always retained for maintainer input and may remain blank. A non-open status also requires a
+  resolution_note in front matter.
+
+  index.json contains only {"schema_version": 1, "high_water": "R-NNN"}; it never contains
+  reflection prose. Identifiers are permanent and never reused. On re-encounter, add an Occurrences
+  item to the existing document instead of creating a duplicate. Never copy reflection prose into an
+  attempt, feature, architecture, plan, task list, code, test, diagram, or generated artifact.
 -->
+
+## Context
+
+<What work was underway, the relevant boundary, and the conditions in which the problem appeared.>
+
+## Expected
+
+<What the named authority, contract, tool, or environment led the agent to expect.>
+
+## Observed
+
+<What actually happened, including the important disagreement or missing information.>
+
+## Impact
+
+<How the problem affected planning or task generation, including any bounded assumption, workaround,
+deferral, or stop. This describes the effect; it does not recommend a solution.>
+
+## Evidence
+
+<Project-relative paths, stable IDs, commands, concise outputs, and reproduction details. Link to
+evidence rather than pasting secrets or bulk output.>
+
+## Triage Analysis
+
+<!-- Filled only by reflection triage. -->
+
+## Proposed Resolution
+
+<!-- Filled only by reflection triage. -->
+
+## Intervention Rationale
+
+<!-- Filled only by reflection triage after deciding whether human intervention is required. -->
+
+## User Comments
+
+<!-- Maintainer input when useful or requested. Do not remove this section. -->
+
+## Occurrences
+
+<!-- Optional. Use: - <phase> <YYYY-MM-DD> <feature-id> — <context and evidence> -->

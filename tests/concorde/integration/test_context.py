@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.feature_workspace import reflection_entry, write_reflection_log
+from tests.concorde.support.feature_workspace import reflection_entry, write_reflection_collection
 from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT, TWO_LEVEL_PROJECT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -60,9 +60,9 @@ class ContextTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(CONTEXT_PROJECT, root)
-            write_reflection_log(root, [reflection_entry("R-001"), reflection_entry("R-002", feature="feature.example.api.invoke")])
+            write_reflection_collection(root, [reflection_entry("R-001"), reflection_entry("R-002", feature="feature.example.api.invoke")])
             context = bounded_context(root, "module.example").result["context"]
-            self.assertEqual(context["reflections"], {"path": ".concorde/reflections/log.md", "open": {"feature.example.api.invoke": 1, "feature.example.deliver": 1}})
+            self.assertEqual(context["reflections"], {"path": ".concorde/reflections", "open": {"feature.example.api.invoke": 1, "feature.example.deliver": 1}})
             self.assertNotIn("R-001", repr(context))
 
     def test_unknown_target_is_invalid_and_read_only(self):

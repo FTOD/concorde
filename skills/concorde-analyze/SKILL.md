@@ -69,12 +69,12 @@ coverage, and LOW for wording/redundancy. Provide a concrete location and recomm
 ## Mutation boundary and reflections
 
 Do not edit design, architecture, attempt artifacts, code, tests, control state, or generated output.
-The only permitted write is a centralized reflection entry when the analysis itself encounters a
-guidance/tooling/source disagreement that cannot be represented as an ordinary report finding. Use
-`Phase: analyze`. Before appending a new entry, run the installed
-`python3 {FRAMEWORK}/scripts/reflections_queue.py --allocate-id`, use only its
-`allocated_id`, and never derive an ID from the remaining log entries. Update an existing occurrence
-without allocating a new ID, and never duplicate the entry elsewhere.
+Prefer an ordinary report finding; planning and task generation are the normal reflection-recording
+points. If the analysis itself encounters a distinct guidance/tooling/source problem that must
+persist, follow the Reflection Document v2 template with `phase: analyze`: allocate the ID, create
+exactly the returned per-file path, and fill only the factual problem sections. Leave all triage
+sections blank, omit `human_intervention`, preserve `User Comments`, and do not recommend a change.
+Update an existing occurrence without allocating a new ID, and never duplicate the reflection.
 
 Report a compact summary table, requirement-to-task/test coverage metrics, architecture/interface
 coverage, delivery readiness, and the top recommended next actions. State clearly that analysis did

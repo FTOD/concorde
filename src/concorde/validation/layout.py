@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import defaultdict
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
@@ -33,7 +34,7 @@ LEGACY_FILES = {
     "contract.md": "embed the interface in its owning feature file",
     "spec.md": "use the direct feature file as the one feature specification",
     "tldr.md": "use the direct feature file directly",
-    "reflections.md": "move the project reflection authority to .concorde/reflections/log.md",
+    "reflections.md": "move each project reflection to .concorde/reflections/R-NNN.md",
 }
 LEGACY_DIRECTORIES = {
     "subfeatures": "flatten features into the providing module's features/ directory and use related_features",
@@ -258,6 +259,32 @@ def validate_layout(package: Any) -> list[Finding]:
                                 module.identifier,
                             )
                         )
+
+    reflection_directory = package.project_root / ".concorde" / "reflections"
+    if reflection_directory.is_dir() and not reflection_directory.is_symlink():
+        for path in sorted(reflection_directory.iterdir()):
+            if path.name == "log.md":
+                findings.append(
+                    _finding(
+                        package,
+                        "CONCORDE-LAYOUT-LEGACY",
+                        path,
+                        "The single-file reflection log is obsolete.",
+                        "Split each entry into .concorde/reflections/R-NNN.md and keep allocation state only in index.json.",
+                    )
+                )
+            elif path.name.startswith("R-") and path.suffix == ".md" and not re.fullmatch(
+                r"R-(?:\d{3}|[1-9]\d{3,})\.md", path.name
+            ):
+                findings.append(
+                    _finding(
+                        package,
+                        "CONCORDE-LAYOUT-012",
+                        path,
+                        "Reflection filename is not a canonical R-NNN.md identity.",
+                        "Use exactly the identifier returned by the allocation helper.",
+                    )
+                )
 
     feature_ids: dict[str, list[Any]] = defaultdict(list)
     for source in package.documents("feature"):

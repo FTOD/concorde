@@ -17,7 +17,7 @@ Treat `$ARGUMENTS` as optional `--module-id` and `--name` values. From the targe
 `python3 scripts/concorde.py init --propose $ARGUMENTS`.
 
 The Initialization Proposal 3 must select Architecture Source Profile 7 and create exactly
-`.concorde/config.json`, `.concorde/reflections/log.md`, one root `architecture.md`, and its
+`.concorde/config.json`, `.concorde/reflections/index.json`, one root `architecture.md`, and its
 `diagrams/system-overview.json`. The
 architecture seed defines the root responsibility/boundary, immediate module and feature inventories,
 typed entity vocabulary, directed relationship vocabulary, representative interactions, and any

@@ -27,7 +27,7 @@ only that temporal workspace, leaving architecture, design, code, tests, and ref
 | `entity.concorde.cli` | Exposes delivery propose/apply through one structured Tool family. |
 | `entity.concorde.runtime` | Checks eligibility, proposal digest/path safety, project validation, rollback, and cleanup. |
 | `entity.concorde.specification` | Supplies retained durable architecture and feature authorities. |
-| `entity.concorde.control-state` | Supplies the selected stable-ID attempt and retained reflection log. |
+| `entity.concorde.control-state` | Supplies the selected stable-ID attempt and retained per-file reflection collection. |
 
 ## Interfaces
 

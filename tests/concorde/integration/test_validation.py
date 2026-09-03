@@ -46,16 +46,14 @@ class ValidationIntegrationTests(unittest.TestCase):
             self.assertEqual(len([item for item in result.findings if item.rule_id == "CONCORDE-LAYOUT-LEGACY"]), 2)
             self.assertEqual(before, {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()})
 
-    def test_malformed_reflection_log_fixture_yields_one_finding_per_rule(self):
+    def test_malformed_reflection_collection_fixture_yields_every_rule(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(VALID_PROJECT, root)
-            overlay = INVALID_PROJECTS / "reflections-malformed/.concorde/reflections/log.md"
-            log = root / ".concorde/reflections/log.md"
-            log.parent.mkdir(parents=True, exist_ok=True)
-            log.write_bytes(overlay.read_bytes())
-            rules = sorted(item.rule_id for item in validate_project(root).findings if item.rule_id.startswith("CONCORDE-REFLECT-"))
-            self.assertEqual(rules, ["CONCORDE-REFLECT-001", "CONCORDE-REFLECT-002", "CONCORDE-REFLECT-003", "CONCORDE-REFLECT-004"])
+            overlay = INVALID_PROJECTS / "reflections-malformed/.concorde/reflections"
+            shutil.copytree(overlay, root / ".concorde/reflections")
+            rules = {item.rule_id for item in validate_project(root).findings if item.rule_id.startswith("CONCORDE-REFLECT-")}
+            self.assertEqual(rules, {"CONCORDE-REFLECT-001", "CONCORDE-REFLECT-002", "CONCORDE-REFLECT-003", "CONCORDE-REFLECT-004"})
 
     def test_layout_evidence_and_freshness_defects_are_distinct(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -148,7 +146,7 @@ class ValidationIntegrationTests(unittest.TestCase):
             self.assertGreaterEqual(len(unsafe), 2, findings)
 
     @unittest.skipUnless(hasattr(os, "symlink"), "symlinks unavailable")
-    def test_symlinked_control_roots_and_reflection_log_are_rejected(self):
+    def test_symlinked_control_roots_and_reflection_documents_are_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(VALID_PROJECT, root)
@@ -161,11 +159,11 @@ class ValidationIntegrationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(VALID_PROJECT, root)
-            target = root / "external-log.md"
-            target.write_text("# Reflections\n", encoding="utf-8")
+            target = root / "external-reflection.md"
+            target.write_text("outside\n", encoding="utf-8")
             reflection_dir = root / ".concorde/reflections"
             reflection_dir.mkdir()
-            (reflection_dir / "log.md").symlink_to(target)
+            (reflection_dir / "R-001.md").symlink_to(target)
             result = validate_project(root)
             self.assertEqual(result.status, "invalid")
             self.assertTrue(any("symlink" in item.message.lower() for item in result.findings), result.findings)

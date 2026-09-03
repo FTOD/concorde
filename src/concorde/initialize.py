@@ -1,4 +1,4 @@
-"""Review-first initialization of a minimal Profile 7 root architecture and reflection log."""
+"""Review-first initialization of a minimal Profile 7 root architecture and reflection index."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def _configured_architecture(project_root: Path) -> ToolResult | None:
             path
             for path in (
                 ".concorde/config.json",
-                ".concorde/reflections/log.md",
+                ".concorde/reflections/index.json",
                 module.path,
                 *package.module_diagrams(module),
             )
@@ -204,16 +204,12 @@ None.
         },
         indent=2,
     )
-    reflections = f"""# Reflections: {project_name}
-
-<!-- concorde-reflection-high-water: R-000 -->
-
-Project-wide process memory for difficult choices, workarounds, deferrals, and blockers encountered
-while changing a selected feature. Entries use the installed Concorde Reflection Log v1 grammar.
-"""
+    reflection_index = json.dumps(
+        {"schema_version": 1, "high_water": "R-000"}, indent=2, sort_keys=True
+    )
     files = (
         _proposal_file(".concorde/config.json", config),
-        _proposal_file(".concorde/reflections/log.md", reflections),
+        _proposal_file(".concorde/reflections/index.json", reflection_index),
         _proposal_file(f"{specification_root}/architecture.md", architecture),
         _proposal_file(f"{specification_root}/diagrams/system-overview.json", diagram),
     )
@@ -262,13 +258,13 @@ def _load_accepted(root: Path, proposal_path: str) -> InitializationProposal:
     paths = {item.path for item in files}
     if (
         ".concorde/config.json" not in paths
-        or ".concorde/reflections/log.md" not in paths
+        or ".concorde/reflections/index.json" not in paths
         or not any(path.endswith("/architecture.md") for path in paths)
         or not any(path.endswith("/diagrams/system-overview.json") for path in paths)
         or len(paths) != 4
     ):
         raise ValueError(
-            "proposal must contain exactly configuration, reflection log, one root architecture.md, and its system overview diagram"
+            "proposal must contain exactly configuration, reflection index, one root architecture.md, and its system overview diagram"
         )
     return InitializationProposal(
         proposal_version=3,

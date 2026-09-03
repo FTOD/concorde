@@ -11,7 +11,7 @@ from typing import Any, Iterable
 
 from .diagnostics import digest_sources
 from .frontmatter import FrontMatterError, parse_document
-from .reflections import log_path
+from .reflections import index_path, reflection_number
 from .model import (
     MODULE_DIAGRAMS_DIRECTORY,
     ArchitectureEntity,
@@ -552,15 +552,30 @@ class ProjectRepository:
             raise RepositoryError(".concorde/reflections: project reflection state may not be a symlink")
         if reflection_directory.exists() and not reflection_directory.is_dir():
             raise RepositoryError(".concorde/reflections: project reflection state must be a real directory")
-        reflections = self.project_root / log_path()
-        if reflections.is_symlink():
-            raise RepositoryError(f"{log_path()}: the project reflection log may not be a symlink")
-        if reflections.exists() and not reflections.is_file():
-            raise RepositoryError(f"{log_path()}: the project reflection log must be one real file")
-        if reflections.is_file():
-            relative = reflections.relative_to(self.project_root).as_posix()
-            auxiliary[relative] = reflections.read_text(encoding="utf-8")
+        reflection_index = self.project_root / index_path()
+        if reflection_index.is_symlink():
+            raise RepositoryError(f"{index_path()}: the reflection allocation index may not be a symlink")
+        if reflection_index.exists() and not reflection_index.is_file():
+            raise RepositoryError(f"{index_path()}: the reflection allocation index must be one real file")
+        if reflection_index.is_file():
+            relative = reflection_index.relative_to(self.project_root).as_posix()
+            auxiliary[relative] = reflection_index.read_text(encoding="utf-8")
             artifacts.append(relative)
+        if reflection_directory.is_dir():
+            for reflection in sorted(reflection_directory.glob("R-*.md")):
+                if reflection.is_symlink():
+                    raise RepositoryError(
+                        f"{reflection.relative_to(self.project_root).as_posix()}: reflection documents may not be symlinks"
+                    )
+                if not reflection.is_file():
+                    raise RepositoryError(
+                        f"{reflection.relative_to(self.project_root).as_posix()}: reflection documents must be real files"
+                    )
+                if reflection_number(reflection.stem) is None:
+                    continue
+                relative = reflection.relative_to(self.project_root).as_posix()
+                auxiliary[relative] = reflection.read_text(encoding="utf-8")
+                artifacts.append(relative)
         attempts_root = self.project_root / ".concorde" / "attempts"
         if attempts_root.is_symlink():
             raise RepositoryError(".concorde/attempts: the project attempt root may not be a symlink")

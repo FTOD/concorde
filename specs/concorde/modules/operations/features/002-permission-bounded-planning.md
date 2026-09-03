@@ -65,7 +65,7 @@ A maintainer selects one feature and invokes `concorde-plan`. The Operation firs
 planning context: the selected feature, its providing architecture and owned implementation
 locators, its attempt paths, and the direct feature files that own its explicitly required
 interfaces. It then launches the plan author under a policy that can read only that context,
-write only the selected attempt and the centralized reflection log, and cannot mutate durable
+write only the selected attempt and authorized per-file reflection state, and cannot mutate durable
 architecture, feature, source, or test files.
 
 The same host can invoke the standard development or reflection-triage Operation. Before each direct
@@ -195,7 +195,7 @@ effective read/write/deny sets before validating their native configuration shap
 - **Example**: The planning author receives read access to
   `specs/payments/features/001-charge.md`, its own module architecture/owned locators, and an explicit
   provider feature such as `specs/ledger/features/002-record-entry.md`; it receives write access only
-  to `.concorde/attempts/feature.payments.charge/**` and `.concorde/reflections/log.md`.
+  to `.concorde/attempts/feature.payments.charge/**` and `.concorde/reflections/**`.
 - **Implementing entities**: `entity.operations.runtime`, `entity.operations.definition`,
   `entity.operations.state`, `entity.operations.permission-context`,
   `entity.operations.policy-compiler`, `entity.operations.process-launcher`, and
@@ -291,7 +291,7 @@ effective read/write/deny sets before validating their native configuration shap
 - **FR-010**: Planning context MUST exclude dependency module architecture/source/tests/attempts,
   descendant-module internals, unrelated feature bodies, and every other attempt.
 - **FR-011**: The plan-authoring invocation MUST write only the selected attempt artifacts plus an
-  authorized centralized reflection occurrence and MUST leave durable feature, architecture, code,
+  authorized per-file reflection occurrence and MUST leave durable feature, architecture, code,
   test, package, and generated sources byte-identical.
 - **FR-012**: Standard-development and reflection-triage Operations MUST adopt the same per-Skill
   policy contract without weakening their current order, state, worktree isolation, or downstream

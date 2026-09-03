@@ -10,7 +10,7 @@ from pathlib import Path
 from tests.concorde.support.feature_workspace import (
     create_feature_file,
     reflection_entry,
-    write_reflection_log,
+    write_reflection_collection,
 )
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
@@ -44,21 +44,19 @@ def create_triage_project(root: Path, *, entry_count: int = 3) -> Path:
     """Create a minimal Concorde project with open reflections and shared config."""
     create_feature_file(root)
     entries = [reflection_entry(f"R-{number:03d}") for number in range(1, entry_count + 1)]
-    log = write_reflection_log(root, entries)
-    write_high_water(log, entry_count)
+    collection = write_reflection_collection(root, entries)
+    write_high_water(collection, entry_count)
     write_config(root)
     return root
 
 
-def write_high_water(log: Path, number: int) -> Path:
-    body = log.read_text(encoding="utf-8")
-    marker = f"<!-- concorde-reflection-high-water: R-{number:03d} -->"
-    lines = body.splitlines(keepends=True)
-    insertion = 1 if lines else 0
-    ending = "\r\n" if lines and lines[0].endswith("\r\n") else "\n"
-    lines[insertion:insertion] = [ending, marker + ending]
-    log.write_text("".join(lines), encoding="utf-8", newline="")
-    return log
+def write_high_water(collection: Path, number: int) -> Path:
+    index = collection / "index.json"
+    index.write_text(
+        json.dumps({"high_water": f"R-{number:03d}", "schema_version": 1}, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return index
 
 
 def write_config(root: Path, **overrides: object) -> Path:

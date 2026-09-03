@@ -23,7 +23,7 @@ ancestry, related-feature summaries, embedded provided/required interface summar
 Zoom references, attempt state/paths, executable context hints, and deeper navigation references.
 Never expand a related feature body or any other attempt without an explicit follow-up selection.
 
-When present, return the project-control reflection-log path and open counts, but open the log only when the
+When present, return the project-control reflection-directory path and open counts, but open individual reflection files only when the
 maintainer asks about recorded problems. Generated projections may be listed with provenance and
 freshness but are never stronger than their architecture or feature source.
 

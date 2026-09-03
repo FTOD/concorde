@@ -111,7 +111,7 @@
         },
         "result": {
           "type": "object",
-          "description": "Tool-specific result. For context: optional `reflections` {path, open: {feature_id: count}} at the current level and an optional `reflections_open` integer on every feature summary, present only when the project reflection log exists."
+          "description": "Tool-specific result. For context: optional `reflections` {path, open: {feature_id: count}} at the current level and an optional `reflections_open` integer on every feature summary, present only when per-file reflection documents exist."
         }
       }
     },
