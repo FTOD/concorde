@@ -111,6 +111,7 @@ class ReflectionParserTests(unittest.TestCase):
             self.assertEqual(parsed.open_count("feature.example.deliver"), 1)
             self.assertEqual(parsed.summary("feature.example.deliver"), {"entries": 3, "open": 1, "resolved": 1, "dismissed": 1})
             self.assertEqual(parsed.entries[3].occurrences, ("analyze 2026-08-29 feature.example.deliver — seen again",))
+            self.assertEqual([entry.identifier for entry in parsed.closed()], ["R-002", "R-004"])
 
     def test_pending_record_contains_only_problem_description(self):
         with tempfile.TemporaryDirectory() as temporary:

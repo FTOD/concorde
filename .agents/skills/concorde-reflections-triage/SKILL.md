@@ -39,16 +39,18 @@ function of its triage front matter:
 Recording phases always create a document under `pending/` at the exact `reflection_path` returned
 by `--allocate-id`. Only the deterministic helper moves files: after the parent persists a validated
 triage completion it must run `reflections_queue.py --relocate R-NNN`, which moves the document into
-the folder its new front matter requires without changing a byte of its text. Maintainer-owned
-`status` never moves a file; a resolved or dismissed reflection stays in its triage bucket. No agent
-moves, copies, or renames a reflection by hand. A document whose folder disagrees with its front
-matter is a placement breach (`CONCORDE-REFLECT-005`); every helper action except `--relocate`
-refuses such a collection, so run `--relocate` with no IDs to repair drift before continuing.
+the folder its new front matter requires without changing a byte of its text. No agent moves, copies,
+or renames a reflection by hand. A document whose folder disagrees with its front matter is a
+placement breach (`CONCORDE-REFLECT-005`); every helper action except `--relocate` refuses such a
+collection, so run `--relocate` with no IDs to repair drift before continuing. Buckets only ever hold
+open reflections: once a maintainer closes one (`status: resolved | dismissed` plus a
+`resolution_note`), the `close` action removes its document with `--remove-closed`, and Git history
+keeps the record.
 
 ## Actions
 
-- `status`: run the helper with `--json`, report open, pending-triage, plan, and per-bucket counts,
-  and stop.
+- `status`: run the helper with `--json`, report open, pending-triage, plan, closed, and per-bucket
+  counts, and stop.
 - `investigate [N | R-NNN ...]`: use the Operation's investigate stage and one investigator per
   reflection. For each result, the parent validates and writes the returned triage completion to that
   reflection document in place, writes its route plan, and then runs `--relocate R-NNN` so the
@@ -60,6 +62,9 @@ refuses such a collection, so run `--relocate` with no IDs to repair drift befor
 - `implement`: follow the route and implement stages; only validated `fast-loop` plans are eligible.
 - `merge`: require clean tracked state, merge one branch at a time, validate, and remove only a
   matching merged small fast-loop entry through the helper.
+- `close [R-NNN ...]`: no model capability. Run `--remove-closed` (named IDs, or every closed
+  document when none are given), then commit the removal with each resolution_note in the commit
+  message so the reason survives in history. Never remove an open document this way.
 
 Before work, run `python3 operations/concorde-reflections-triage/operation.py "$ARGUMENTS" --framework-prefix . --describe-policy` and
 require only the capabilities reachable for the explicit action/route:
@@ -68,8 +73,9 @@ require only the capabilities reachable for the explicit action/route:
 - `investigate`: `concorde-analyze` only, under a zero-write policy;
 - `implement --route fast-loop`: analyze, isolated-worktree fast-loop, then validate;
 - `implement --route plan`: analyze, public nested `concorde-plan`, tasks, isolated-worktree
-  implement, then validate; and
-- `merge`: validate the parent state before the deterministic merge/removal Tool actions.
+  implement, then validate;
+- `merge`: validate the parent state before the deterministic merge/removal Tool actions; and
+- `close`: no model capability; run/report the removal Tool and stop.
 
 Never invoke both route alternatives. Never reference the planner's private leaves from this outer
 graph. Execute each direct leaf/internal role within its own immutable authority; investigators are

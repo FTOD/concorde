@@ -109,6 +109,10 @@ def _selected_topology(
         if route is not None:
             raise ValueError("status action does not accept a route")
         return (), ()
+    if action == "close":
+        if route is not None:
+            raise ValueError("close action does not accept a route")
+        return (), ()
     if action == "investigate":
         if route is not None:
             raise ValueError("investigate action does not accept a route")

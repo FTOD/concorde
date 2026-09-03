@@ -217,9 +217,12 @@ maintainer input is needed, and `needs-comments/` when it is; the triage parent 
 the deterministic helper, never by hand. Every document retains a `User Comments` section and
 maintainer-owned status/resolution note. Reflections are process memory, not behavioral
 requirements, and are never copied elsewhere. A metadata-only
-`index.json` allocates stable IDs atomically. Reflection-triage/v5 removes an open document only after
-its `small` `fast-loop` plan is validated, merged, and marked `merged`; other work retains maintainer
-disposition. Triage configuration shares the directory; plans and worktrees are disposable.
+`index.json` allocates stable IDs atomically. Reflection-triage/v5 removes an open document
+automatically only after its `small` `fast-loop` plan is validated, merged, and marked `merged`;
+every other route waits for the maintainer's disposition. Once the maintainer closes a reflection
+(`status: resolved | dismissed` plus a `resolution_note`), the `close` action's deterministic removal
+Tool deletes its document, so buckets hold only open work and Git history keeps the closed record.
+Triage configuration shares the directory; plans and worktrees are disposable.
 
 ## Projection
 

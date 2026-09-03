@@ -31,7 +31,8 @@ triage: pending
   human_intervention: required | not-required, fills all three triage sections, and then moves the
   file with reflections_queue.py --relocate R-NNN; never move it by hand. User Comments is always
   retained for maintainer input and may remain blank. A non-open status also requires a
-  resolution_note in front matter.
+  resolution_note in front matter; the close step then removes the document, and Git history
+  keeps it.
 
   index.json contains only {"schema_version": 1, "high_water": "R-NNN"}; it never contains
   reflection prose. Identifiers are permanent and never reused. On re-encounter, add an Occurrences

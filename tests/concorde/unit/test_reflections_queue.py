@@ -91,6 +91,7 @@ class ReflectionsQueueTests(unittest.TestCase):
                     "open": 2,
                     "pending_triage": 2,
                     "planned": 0,
+                    "closed": 0,
                     "total": 3,
                     "buckets": {"pending": 3, "planned": 0, "needs-comments": 0},
                 },
@@ -244,7 +245,135 @@ class ReflectionsQueueTests(unittest.TestCase):
                 with self.assertRaises(queue.QueueError):
                     queue.remove_merged(root, ["R-001", "R-002"])
             self.assertEqual(tree_hashes(root), before)
-            self.assertFalse((root / ".concorde/reflections/.remove-merged-stage").exists())
+            self.assertFalse((root / ".concorde/reflections/.remove-stage").exists())
+
+    def test_remove_closed_removes_named_document_and_preserves_neighbors_and_index(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary), entry_count=1)
+            collection = root / ".concorde/reflections"
+            write_reflection_collection(root, [
+                reflection_entry("R-001"),
+                reflection_entry("R-002", status="resolved"),
+                reflection_entry("R-003"),
+            ])
+            write_high_water(collection, 3)
+            index = (collection / "index.json").read_bytes()
+            retained_one = (collection / "pending" / "R-001.md").read_bytes()
+            retained_three = (collection / "pending" / "R-003.md").read_bytes()
+
+            result = json.loads(run_queue(root, "--remove-closed", "R-002").stdout)
+
+            self.assertEqual(result["tool"], "remove-closed-reflections")
+            self.assertEqual(result["status"], "removed")
+            self.assertEqual(
+                result["removed"],
+                [
+                    {
+                        "id": "R-002",
+                        "status": "resolved",
+                        "path": ".concorde/reflections/pending/R-002.md",
+                        "title": "Fixture problem R-002",
+                        "resolution_note": "Decided by the maintainer.",
+                    }
+                ],
+            )
+            self.assertEqual((result["removed_count"], result["remaining_count"]), (1, 2))
+            self.assertEqual(result["buckets"], {"pending": 2, "planned": 0, "needs-comments": 0})
+            self.assertRegex(result["before_sha256"], r"^sha256:[0-9a-f]{64}$")
+            self.assertNotEqual(result["before_sha256"], result["after_sha256"])
+            self.assertFalse((collection / "pending" / "R-002.md").exists())
+            self.assertEqual((collection / "pending" / "R-001.md").read_bytes(), retained_one)
+            self.assertEqual((collection / "pending" / "R-003.md").read_bytes(), retained_three)
+            self.assertEqual((collection / "index.json").read_bytes(), index)
+
+    def test_remove_closed_with_no_ids_removes_every_closed_document_and_is_repeatable(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary), entry_count=1)
+            collection = root / ".concorde/reflections"
+            write_reflection_collection(root, [
+                reflection_entry("R-001"),
+                reflection_entry("R-002", status="resolved"),
+                reflection_entry("R-003", status="dismissed"),
+                reflection_entry("R-004"),
+            ])
+            write_high_water(collection, 4)
+
+            first = json.loads(run_queue(root, "--remove-closed").stdout)
+            self.assertEqual(first["status"], "removed")
+            self.assertEqual([item["id"] for item in first["removed"]], ["R-002", "R-003"])
+            self.assertEqual((first["removed_count"], first["remaining_count"]), (2, 2))
+            self.assertFalse((collection / "pending" / "R-002.md").exists())
+            self.assertFalse((collection / "pending" / "R-003.md").exists())
+            self.assertTrue((collection / "pending" / "R-001.md").is_file())
+            self.assertTrue((collection / "pending" / "R-004.md").is_file())
+
+            second = json.loads(run_queue(root, "--remove-closed").stdout)
+            self.assertEqual((second["status"], second["removed"]), ("unchanged", []))
+            self.assertEqual(second["before_sha256"], second["after_sha256"])
+
+    def test_remove_closed_rejects_open_unknown_noncanonical_and_repeated_ids(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary))
+            before = tree_hashes(root)
+            for arguments, needle in (
+                (("R-001",), "still open"),
+                (("R-01",), "canonical"),
+                (("R-999",), "no matching"),
+                (("R-001", "R-001"), "repeated"),
+            ):
+                result = run_queue(root, "--remove-closed", *arguments, check=False)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn(needle, result.stderr)
+                self.assertEqual(tree_hashes(root), before)
+
+    def test_remove_closed_refuses_when_strict_loader_rejects_closed_entry_without_note(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary), entry_count=1)
+            collection = root / ".concorde/reflections"
+            write_reflection_collection(root, [reflection_entry("R-001", status="resolved")])
+            write_high_water(collection, 1)
+            document = collection / "pending" / "R-001.md"
+            stripped = "\n".join(
+                line for line in document.read_text(encoding="utf-8").splitlines()
+                if not line.startswith("resolution_note:")
+            )
+            document.write_text(stripped + "\n", encoding="utf-8")
+            before = tree_hashes(root)
+
+            result = run_queue(root, "--remove-closed", check=False)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(tree_hashes(root), before)
+
+            named = run_queue(root, "--remove-closed", "R-001", check=False)
+            self.assertEqual(named.returncode, 2)
+            self.assertEqual(tree_hashes(root), before)
+
+    def test_remove_closed_rolls_back_when_second_removal_fails(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary), entry_count=1)
+            collection = root / ".concorde/reflections"
+            write_reflection_collection(root, [
+                reflection_entry("R-001", status="resolved"),
+                reflection_entry("R-002", status="dismissed"),
+            ])
+            write_high_water(collection, 2)
+            queue = load_queue_module()
+            before = tree_hashes(root)
+            actual_replace = os.replace
+            calls = 0
+
+            def fail_second(source, target):
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise OSError("injected")
+                return actual_replace(source, target)
+
+            with mock.patch.object(queue.os, "replace", side_effect=fail_second):
+                with self.assertRaises(queue.QueueError):
+                    queue.remove_closed(root, [])
+            self.assertEqual(tree_hashes(root), before)
+            self.assertFalse((collection / ".remove-stage").exists())
 
     def test_high_water_covers_documents_and_plans_and_cli_actions_are_exclusive(self):
         with tempfile.TemporaryDirectory() as temporary:

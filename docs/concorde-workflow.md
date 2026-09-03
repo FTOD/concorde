@@ -190,3 +190,6 @@ The reflection-triage Operation is conditional before model launch: `status` lau
 public nested planner route. Only triage fills the analysis, proposed resolution, and intervention
 decision/rationale. The parent persists the validated result while preserving User Comments;
 implementer policies are restricted to isolated reflection worktrees and authorized reflection paths.
+Once a maintainer closes a reflection with `status: resolved` or `dismissed` plus a `resolution_note`,
+the `close` action removes its document with `reflections_queue.py --remove-closed`; closure means
+removal, and Git history keeps the record.

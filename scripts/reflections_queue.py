@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic per-file queue, allocation, plan-state, relocation, and merged-removal helper.
+"""Deterministic per-file queue, allocation, plan-state, relocation, and removal helper.
 
 Reflection documents live in one of three tracked buckets that mirror triage state:
 ``pending/`` (``triage: pending``), ``planned/`` (``triage: complete`` and
@@ -8,7 +8,9 @@ Reflection documents live in one of three tracked buckets that mirror triage sta
 ``--relocate`` moves documents into the bucket their front matter now requires; every other action
 refuses a misplaced collection so the layout never drifts silently; ``--validate-entry`` is the
 exception, running a bounded, read-only, project-wide validation but reporting only the findings
-attributable to one requested document.
+attributable to one requested document. A closed document (``status: resolved`` or ``dismissed``
+with a ``resolution_note``) is deleted by ``--remove-closed`` rather than retained; Git history
+keeps the record.
 """
 
 from __future__ import annotations
@@ -355,6 +357,7 @@ def queue_payload(root: Path) -> tuple[dict[str, Any], dict[str, dict[str, Any]]
             "open": len(enriched),
             "pending_triage": sum(1 for entry in selected if entry.triage == "pending"),
             "planned": sum(1 for item in enriched if item["plan"] is not None),
+            "closed": len(parsed.closed()),
             "total": len(parsed.entries),
             "buckets": parsed.bucket_counts(),
         },
@@ -463,7 +466,7 @@ def allocate_id(root: Path) -> dict[str, Any]:
 
 def _remove_documents(root: Path, paths: list[Path], expected: dict[str, bytes]) -> None:
     directory = root / reflections_path()
-    stage = directory / ".remove-merged-stage"
+    stage = directory / ".remove-stage"
     if stage.exists() or stage.is_symlink():
         raise QueueError(f"stale reflection removal staging path exists: {stage.relative_to(root)}")
     moved: list[tuple[Path, Path]] = []
@@ -553,6 +556,102 @@ def remove_merged(root: Path, requested: list[str]) -> dict[str, Any]:
         "removed_count": len(identifiers),
         "remaining_count": len(parsed.entries) - len(identifiers),
         "head": head,
+        "before_sha256": before_digest,
+        "after_sha256": _collection_digest(remaining),
+    }
+
+
+def _bucket_counts_excluding(parsed: ParsedReflections, excluded: set[str]) -> dict[str, int]:
+    counts = {bucket: 0 for bucket in BUCKETS}
+    for entry in parsed.entries:
+        if entry.identifier in excluded:
+            continue
+        bucket = entry.bucket
+        if bucket is not None:
+            counts[bucket] += 1
+    return counts
+
+
+def remove_closed(root: Path, requested: list[str]) -> dict[str, Any]:
+    """Remove every requested (or, with none named, every) closed reflection document.
+
+    A closed reflection has ``status: resolved`` or ``status: dismissed``. The maintainer's
+    disposition and ``resolution_note`` are preserved in Git history; only the working-tree document
+    is deleted. ``index.json``, plans, and every other document are left untouched.
+    """
+    identifiers: list[str] = []
+    seen: set[str] = set()
+    for value in requested:
+        if reflection_number(value) is None:
+            raise QueueError(f"remove-closed ID must be canonical: {value!r}")
+        if value in seen:
+            raise QueueError(f"remove-closed ID is repeated: {value}")
+        seen.add(value)
+        identifiers.append(value)
+    identifiers.sort(key=lambda item: reflection_number(item) or 0)
+
+    config = load_config(root)
+    _, _, parsed, _, raw = _load_reflections(root, required=True)
+    plans = _load_plans(root, config)
+    _validate_high_water(parsed, plans)
+    entries = {entry.identifier: entry for entry in parsed.entries}
+
+    if identifiers:
+        selected = identifiers
+        for identifier in selected:
+            entry = entries.get(identifier)
+            if entry is None:
+                raise QueueError(f"reflection {identifier} has no matching document")
+            if entry.status not in {"resolved", "dismissed"}:
+                raise QueueError(
+                    f"reflection {identifier} is still open; record status resolved or dismissed "
+                    "with a resolution_note before removal"
+                )
+    else:
+        selected = [entry.identifier for entry in parsed.closed()]
+
+    for identifier in selected:
+        if not entries[identifier].fields.get("Note", "").strip():
+            raise QueueError(f"reflection {identifier} is closed without a resolution_note")
+
+    before_digest = _collection_digest(raw)
+    if not selected:
+        return {
+            "tool": "remove-closed-reflections",
+            "status": "unchanged",
+            "removed": [],
+            "removed_count": 0,
+            "remaining_count": len(parsed.entries),
+            "buckets": _bucket_counts_excluding(parsed, set()),
+            "before_sha256": before_digest,
+            "after_sha256": before_digest,
+        }
+
+    removed_set = set(selected)
+    paths = [root / entries[identifier].path for identifier in selected]
+    _remove_documents(root, paths, raw)
+    removed_paths = {entries[identifier].path for identifier in selected}
+    remaining = {path: data for path, data in raw.items() if path not in removed_paths}
+    removed = sorted(
+        (
+            {
+                "id": identifier,
+                "status": entries[identifier].status,
+                "path": entries[identifier].path,
+                "title": entries[identifier].title,
+                "resolution_note": entries[identifier].fields.get("Note", ""),
+            }
+            for identifier in selected
+        ),
+        key=lambda item: reflection_number(item["id"]) or 0,
+    )
+    return {
+        "tool": "remove-closed-reflections",
+        "status": "removed",
+        "removed": removed,
+        "removed_count": len(selected),
+        "remaining_count": len(parsed.entries) - len(selected),
+        "buckets": _bucket_counts_excluding(parsed, removed_set),
         "before_sha256": before_digest,
         "after_sha256": _collection_digest(remaining),
     }
@@ -761,6 +860,12 @@ def create_parser() -> argparse.ArgumentParser:
     actions.add_argument("--allocate-id", action="store_true")
     actions.add_argument("--remove-merged", nargs="+", metavar="R-NNN")
     actions.add_argument(
+        "--remove-closed",
+        nargs="*",
+        metavar="R-NNN",
+        help="remove the named (default: every closed) resolved/dismissed reflection document",
+    )
+    actions.add_argument(
         "--relocate",
         nargs="*",
         metavar="R-NNN",
@@ -783,6 +888,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if arguments.remove_merged:
             print(json.dumps(remove_merged(root, arguments.remove_merged), indent=2, sort_keys=True))
+            return 0
+        if arguments.remove_closed is not None:
+            print(json.dumps(remove_closed(root, arguments.remove_closed), indent=2, sort_keys=True))
             return 0
         if arguments.relocate is not None:
             print(json.dumps(relocate(root, arguments.relocate), indent=2, sort_keys=True))

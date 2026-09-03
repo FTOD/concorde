@@ -9,7 +9,10 @@ The bucket directory mirrors triage state and nothing else: ``pending/`` holds r
 that triage has not investigated, ``planned/`` holds completed triage that automation may carry out
 without a maintainer, and ``needs-comments/`` holds completed triage that waits for maintainer input
 in ``User Comments``. Recording always creates a document under ``pending/``; the triage parent
-relocates it with the deterministic queue helper after persisting the completion.
+relocates it with the deterministic queue helper after persisting the completion. Buckets only ever
+hold open work: a closed document (``status: resolved`` or ``dismissed`` with a ``resolution_note``)
+is removed by the queue helper's ``--remove-closed`` action once a maintainer has recorded that
+disposition, and Git history keeps the record.
 """
 
 from __future__ import annotations
@@ -230,6 +233,10 @@ class ParsedReflections:
 
     def misplaced(self) -> tuple[ReflectionEntry, ...]:
         return tuple(entry for entry in self.entries if entry.misplaced)
+
+    def closed(self) -> tuple[ReflectionEntry, ...]:
+        """Entries whose maintainer-owned status is ``resolved`` or ``dismissed``."""
+        return tuple(entry for entry in self.entries if entry.status in {"resolved", "dismissed"})
 
 
 def strip_reference_suffix(value: str) -> str:
