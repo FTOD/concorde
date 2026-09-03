@@ -47,6 +47,12 @@ class ReflectionsTriageOperationIntegrationTests(unittest.TestCase):
         self.assertEqual(result["action"], "status")
         self.assertEqual(result["capability_results"], [])
 
+    def test_close_is_deterministic_and_launches_no_model_capability(self):
+        calls, result = self.run_graph("close")
+        self.assertEqual(calls, [])
+        self.assertEqual(result["action"], "close")
+        self.assertEqual(result["capability_results"], [])
+
     def test_investigate_is_read_only_and_terminates_after_analyze(self):
         calls, _ = self.run_graph("investigate")
         self.assertEqual([call.capability.name for call in calls], ["concorde-analyze"])
@@ -114,6 +120,8 @@ class ReflectionsTriageOperationIntegrationTests(unittest.TestCase):
         self.assertIn("capabilities:", skill)
         self.assertIn("## Bucket layout", skill)
         self.assertIn("--relocate R-NNN", skill)
+        self.assertIn("--remove-closed", skill)
+        self.assertIn("`close", skill)
 
 
 if __name__ == "__main__":

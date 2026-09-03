@@ -72,7 +72,7 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
         self.assertEqual(frontmatter(codex_skill)["name"], "concorde-reflections-triage")
         for text in (claude_skill, codex_skill):
             normalized = " ".join(text.split())
-            for action in ("status", "investigate", "implement", "merge"):
+            for action in ("status", "investigate", "implement", "merge", "close"):
                 self.assertIn(f"- `{action}", text)
             self.assertIn("reflection-triage/v5", text)
             self.assertIn(".concorde/reflections/<bucket>/R-NNN.md", text)
@@ -80,6 +80,7 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
                 self.assertIn(bucket, text)
             self.assertIn("--relocate R-NNN", text)
             self.assertIn("--validate-entry R-NNN", text)
+            self.assertIn("--remove-closed", text)
             self.assertIn("CONCORDE-REFLECT-005", text)
             self.assertIn(".concorde/reflections/index.json", text)
             self.assertIn(".concorde/reflections/config.json", text)

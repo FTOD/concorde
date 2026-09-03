@@ -33,10 +33,13 @@ triage whose plan may proceed without a maintainer (`human_intervention: not-req
 (`human_intervention: required`). Recording always creates a document under `pending/`, and only the
 deterministic relocation Tool moves a document after the parent persists its triage completion.
 
-Maintainers can explicitly choose status/investigate/implement/merge. The paired Operation launches
-only the chosen branch under per-leaf policies. A validated merge of a small `fast-loop` fix removes
-only its matching reflection file automatically; every other route retains the document for explicit
-maintainer disposition.
+Maintainers can explicitly choose status/investigate/implement/merge/close. The paired Operation
+launches only the chosen branch under per-leaf policies. A validated merge of a small `fast-loop` fix
+removes only its matching reflection file automatically; every other route waits for explicit
+maintainer disposition. Once the maintainer records that disposition — `status: resolved` or
+`dismissed` plus a `resolution_note` — the deterministic removal Tool deletes the document through
+the `close` action, so the collection only ever holds open work and Git history keeps the closed
+record.
 
 ## Architecture Zoom
 
@@ -58,7 +61,7 @@ maintainer disposition.
   removal for merged small fixes, or maintainer disposition for other routes.
 - **Entry points**: Plan/task Skill reflection rules, installed `concorde-reflections-triage`
   Operation Skill and paired graph, and `reflections_queue.py --allocate-id` / `--relocate` /
-  `--remove-merged` / `--validate-entry` Tools.
+  `--remove-merged` / `--remove-closed` / `--validate-entry` Tools.
 - **Inputs**: At recording, selected feature ID, phase/date/kind, stable concern path/ID, detailed
   context, expected and observed behavior, impact, and evidence. At triage, one selected reflection
   and explicit triage action.
@@ -66,23 +69,23 @@ maintainer disposition.
   problem-only document or occurrence; triage analysis, proposed resolution, intervention
   decision/rationale, preserved User Comments; an exact relocation manifest moving the completed
   document into `planned/` or `needs-comments/`; validated plan/worktree state; implementer commit;
-  merge result; exact removed file manifest for eligible small fixes; and a bounded validation
-  result for one requested entry with attributable findings and separately counted unrelated
-  findings.
+  merge result; exact removed file manifest for eligible small fixes; exact removed manifest with
+  resolution notes for closed documents; and a bounded validation result for one requested entry with
+  attributable findings and separately counted unrelated findings.
 - **Obligations**: Keep one prose authority per reflection and a metadata-only allocation index;
   never reuse removed IDs; avoid secrets; make status model-free and investigators read-only; keep
   recording separate from analysis; retain User Comments; keep every document in the bucket its
   `triage`/`human_intervention` state requires and move it only through the relocation Tool without
   changing its text; select exactly one route; keep nested planning public/opaque; isolate
-  worktrees; preserve maintainer disposition; remove a document only when its `small` `fast-loop`
-  plan is `merged`, `recorded_under` matches the reflection feature, its commit is present in
-  current history, and automated merge validation passed; never treat a reflection as behavioral
-  intent.
+  worktrees; remove a document only when (a) its `small` `fast-loop` plan is `merged`,
+  `recorded_under` matches the reflection feature, its commit is present in current history, and
+  automated merge validation passed, or (b) a maintainer closed it with `status: resolved |
+  dismissed` and a `resolution_note`; never treat a reflection as behavioral intent.
 - **Failures**: Malformed/unresolved documents or index, recording-time triage content, incomplete
   triage, a document filed in a bucket its front matter does not require, invalid
   action/route/policy, unavailable enforcement, duplicate identity, stale or non-ancestor commit,
-  ineligible route/effort/status, unsafe worktree/removal/relocation, or verification failure
-  preserves retained reflection files and sources.
+  ineligible route/effort/status, unsafe worktree/removal/relocation, verification failure, or
+  removing an open document preserves retained reflection files and sources.
 - **Compatibility**: Reflection Document v2 replaces the single-file Reflection Log v1. A legacy
   `.concorde/reflections/log.md` is diagnosed rather than accepted in a dual-layout mode.
   `reflection-triage/v5` reserves `tool` for queue helpers and exposes the conditional
@@ -110,6 +113,10 @@ maintainer disposition.
    owned worktrees/authorized reflection references and only validated commits merge.
 6. After a `small` `fast-loop` merge, the parent marks the plan `merged` and invokes deterministic
    removal of exactly the matching reflection file without changing the allocation index.
+7. A maintainer records `status: dismissed` with a `resolution_note` on a `needs-comments/`
+   document. `close` runs `--remove-closed` on exactly that ID, removing exactly that file, and the
+   parent commits the removal with the resolution note in the commit message so the reason survives
+   in Git history.
 
 ## Requirements
 
@@ -141,7 +148,7 @@ maintainer disposition.
   preserve every non-selected document and `index.json`, and roll back on any ineligible, missing,
   malformed, stale, or write failure.
 - **FR-011**: Plans on `specify`, `dismiss`, or `blocked` routes and failed/unmerged/non-small plans
-  MUST NOT remove their reflection documents automatically.
+  MUST NOT remove their reflection documents automatically; they wait for maintainer disposition.
 - **FR-012**: `.concorde/reflections/index.json` MUST contain only schema version and a monotonic
   high-water ID greater than or equal to every current or previously used reflection ID. Allocation
   MUST update it atomically; recording/removal MUST never lower or reuse it.
@@ -166,11 +173,18 @@ maintainer disposition.
   document or appending an occurrence. It MUST correct only its own new entry when attributable
   findings exist, and MUST NOT edit other entries or maintainer-owned fields because of that result.
   An allocated-but-unused ID MUST stay retired; the high-water mark MUST NOT be lowered.
+- **FR-018**: A reflection with `status: resolved | dismissed` and a `resolution_note` MUST be
+  removed through the deterministic `--remove-closed` action, which MUST validate every requested ID
+  before mutation, refuse open documents, remove exactly the selected files atomically with
+  rollback, preserve every other document and `index.json`, never lower the high-water, and report
+  each removed ID with its resolution note for the removal commit. Buckets MUST only hold open
+  documents once `close` has run.
 
 ## Edge Cases
 
 - A path is renamed while the reflection meaning, ID, User Comments, and triage decision stay unchanged.
-- A resolved/dismissed reflection recurs; an occurrence is recorded without reversing maintainer disposition.
+- A closed and removed reflection recurs; it receives the next never-used ID and may cite the removed
+  ID in Evidence.
 - A removed small problem recurs after closure; it receives the next never-used ID.
 - Several merged IDs are requested together and one is ineligible; every reflection file remains.
 - The index high-water is below a current document or retained plan ID; allocation and removal stop.
