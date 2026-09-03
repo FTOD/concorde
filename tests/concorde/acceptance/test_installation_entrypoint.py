@@ -13,14 +13,14 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 INSTALLER = REPOSITORY_ROOT / "scripts/install-concorde.py"
 
 
-class OneCommandInstallAcceptance(unittest.TestCase):
+class InstallationEntrypointAcceptance(unittest.TestCase):
     def run_installer(self, target: Path, *arguments: str):
         return subprocess.run(
             [sys.executable, str(INSTALLER), "--target", str(target), "--format", "json", *arguments],
             text=True, capture_output=True,
         )
 
-    def test_preview_is_default_and_apply_is_one_command(self):
+    def test_preview_is_default_and_explicit_apply_installs(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary) / "project"
             preview = self.run_installer(target, "--integration", "codex")
