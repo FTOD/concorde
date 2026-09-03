@@ -102,6 +102,22 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertNotIn(".concorde/reflections/config.json", paths)
             self.assertNotIn(".concorde/reflections/.gitignore", paths)
 
+    def test_unmigrated_legacy_config_blocks_installation_instead_of_seeding_default(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary)
+            legacy = target / ".claude/reflections.config.json"
+            legacy.parent.mkdir(parents=True)
+            legacy.write_text('{"order": "newest-first"}\n')
+            actions, desired, _ = installer.installation_plan(target, self.package, "codex")
+            item = next(entry for entry in actions if entry["path"] == ".concorde/reflections/config.json")
+            self.assertEqual(item["action"], "conflict")
+            self.assertIn(".claude/reflections.config.json", item["reason"])
+            self.assertIn("agent-asset sync", item["reason"])
+            with self.assertRaises(installer.InstallError):
+                installer.apply_plan(target, self.package, "codex", actions, desired)
+            self.assertFalse((target / ".concorde/reflections/config.json").exists())
+            self.assertTrue(legacy.is_file())
+
     def test_exact_existing_desired_bytes_are_adopted(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)

@@ -15,7 +15,12 @@ from typing import Any, Mapping, NamedTuple, Sequence
 SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPT_ROOT / "src"))
 
-from concorde.agent_assets import AgentAssetError, render_projection  # noqa: E402
+from concorde.agent_assets import (  # noqa: E402
+    CONFIG_PATH as REFLECTIONS_CONFIG_PATH,
+    LEGACY_CONFIG as LEGACY_REFLECTIONS_CONFIG,
+    AgentAssetError,
+    render_projection,
+)
 from concorde.docsite_template import DocsiteTemplateError, template_files  # noqa: E402
 from concorde.skill_assets import SkillAssetError, render_capabilities  # noqa: E402
 
@@ -211,10 +216,10 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
             raise InstallError(f"agent output collision: {path}")
         outputs[path] = (content.encode("utf-8"), "agent")
     defaults = {
-        ".concorde/reflections/config.json": (
+        REFLECTIONS_CONFIG_PATH: (
             package.root / "agent-assets/reflections/config.default.json"
         ).read_bytes(),
-        ".concorde/reflections/.gitignore": b"plans/\nworktrees/\n",
+        ".concorde/reflections/.gitignore": b"plans/\nworktrees/\nlegacy-*\n",
     }
     for path, content in defaults.items():
         outputs[path] = (content, "project-default")
@@ -260,6 +265,7 @@ def installation_plan(
     receipt = _load_receipt(target)
     prior = _prior_outputs(receipt)
     desired = desired_outputs(package, integration)
+    legacy_config = target / LEGACY_REFLECTIONS_CONFIG
     actions: list[dict[str, str]] = []
     for relative, (content, role) in desired.items():
         path = target / relative
@@ -272,6 +278,20 @@ def installation_plan(
             unsafe = str(error)
         if unsafe is not None:
             action = "conflict"
+        elif (
+            relative == REFLECTIONS_CONFIG_PATH
+            and role == "project-default"
+            and not path.exists()
+            and not path.is_symlink()
+            and (legacy_config.exists() or legacy_config.is_symlink())
+        ):
+            # Do not silently seed a default over an unmigrated legacy config: fail closed and
+            # point at agent-asset sync, which performs the reviewed, digest-bound adoption.
+            action = "conflict"
+            unsafe = (
+                f"legacy reflection-triage config exists at {LEGACY_REFLECTIONS_CONFIG}; "
+                "run Concorde agent-asset sync to adopt it before installing"
+            )
         elif role == "project-default" and path.exists() and observed is not None:
             action = "preserve"
         elif not path.exists() and not path.is_symlink():

@@ -58,6 +58,20 @@ ownership lives at `.concorde/install.json`.
 Concorde 2.1.0 packages 17 leaves and three Operation pairs, but installs exactly 18 public agent
 skills: 15 public leaves plus the three Operations. Both internal planner leaves stay in the framework.
 
+### Adopting a pre-standalone legacy reflection config
+
+A project that predates standalone Concorde may still carry the legacy triage config at
+`.claude/reflections.config.json` (v4 schema). Installation never silently seeds a default
+`.concorde/reflections/config.json` over that file — it fails closed with a `conflict` action
+naming the legacy path. Run `python3 .concorde/framework/scripts/concorde.py --project-root .
+agent-assets sync --integration codex` (or `claude`) to preview and apply the adoption: it converts
+the supported legacy fields (`order`, `investigators`, `implementers`, `require_approval`, `skip`)
+to canonical `schema_version: 1`, always uses the canonical `plans_dir`/`worktrees_dir` (legacy
+`plans_dir` names v4 plan scratch and is never mapped), and archives the legacy file byte-identically
+to `.concorde/reflections/legacy-claude-config.json` only after the canonical config is durably
+written. Legacy plan scratch at `.claude/reflection-plans`, if present, is a separate conflict that
+this adoption does not touch.
+
 ## 2. Initialize project architecture
 
 Inside the target, invoke `$concorde-init` (Claude may present `/concorde-init`). The
