@@ -36,6 +36,7 @@ this tracked control-state file.
   - **Effect**: assumed | worked-around | deferred | blocked
   - **Action**: <what the agent did: assumption, workaround, deferral, or stop reason>
   - **Improvement**: <the change to the concerned authority that would remove the problem>
+  - **Intervention**: <why automation cannot close this entry, and the maintainer decision or action required; write "当前不需要你的介入" when none is needed>
   - **Status**: open | resolved | dismissed                         (maintainer-owned once set)
   - **Note**: <required when Status is not open: why, and the resolving change>
   - **Occurrences**:                                                 (optional; on re-encounter, never a new entry)
