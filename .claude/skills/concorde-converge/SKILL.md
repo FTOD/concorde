@@ -52,6 +52,10 @@ distinct problem that must persist, record it under `workspace.reflections` with
 using Reflection Document v2: allocate the ID, fill only the factual problem sections, leave triage
 sections blank, omit `human_intervention`, and retain `User Comments`. Do not propose a resolution or
 make the intervention decision. Update an existing occurrence without allocating a new ID.
+Immediately after creating the document or appending an occurrence, run
+`scripts/reflections_queue.py --validate-entry <id>`; correct only that new entry until it reports
+`valid`. Findings on other entries are reported separately as unrelated and are not this phase's to
+fix; a reserved ID stays retired even if the entry is abandoned.
 Convergence may write only the selected task list, its compact reconciliation evidence when a check
 was actually run, and authorized per-file reflection state.
 

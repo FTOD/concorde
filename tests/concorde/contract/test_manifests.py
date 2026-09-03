@@ -71,6 +71,7 @@ class ManifestContractTests(unittest.TestCase):
         for bucket in ("pending/", "planned/", "needs-comments/"):
             self.assertIn(bucket, body)
         self.assertIn("--relocate", body)
+        self.assertIn("--validate-entry", body)
         self.assertIn("triage: pending", body)
         self.assertIn("## User Comments", body)
         self.assertIn("R-NNN", body)

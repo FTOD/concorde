@@ -20,7 +20,9 @@ triage: pending
 
   Planning and task generation are the normal recording points. First reserve the identity through
   reflections_queue.py --allocate-id, then create exactly the returned reflection_path, which is
-  always under pending/. At recording time, describe only the problem in Context, Expected,
+  always under pending/. Immediately after creating the document or appending an occurrence, run
+  reflections_queue.py --validate-entry R-NNN and correct only that new entry until it reports valid.
+  At recording time, describe only the problem in Context, Expected,
   Observed, Impact, and Evidence. Give enough detail for a later investigator to reproduce and
   understand it. Do not propose a fix and do not decide whether a maintainer is needed.
 

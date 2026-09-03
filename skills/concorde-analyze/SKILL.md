@@ -75,6 +75,10 @@ persist, follow the Reflection Document v2 template with `phase: analyze`: alloc
 exactly the returned per-file path, and fill only the factual problem sections. Leave all triage
 sections blank, omit `human_intervention`, preserve `User Comments`, and do not recommend a change.
 Update an existing occurrence without allocating a new ID, and never duplicate the reflection.
+Immediately after creating the document or appending an occurrence, run
+`scripts/reflections_queue.py --validate-entry <id>`; correct only that new entry until it reports
+`valid`. Findings on other entries are reported separately as unrelated and are not this phase's to
+fix; a reserved ID stays retired even if the entry is abandoned.
 
 Report a compact summary table, requirement-to-task/test coverage metrics, architecture/interface
 coverage, delivery readiness, and the top recommended next actions. State clearly that analysis did

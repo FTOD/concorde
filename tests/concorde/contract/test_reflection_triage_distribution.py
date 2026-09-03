@@ -79,6 +79,7 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
             for bucket in ("`pending/`", "`planned/`", "`needs-comments/`"):
                 self.assertIn(bucket, text)
             self.assertIn("--relocate R-NNN", text)
+            self.assertIn("--validate-entry R-NNN", text)
             self.assertIn("CONCORDE-REFLECT-005", text)
             self.assertIn(".concorde/reflections/index.json", text)
             self.assertIn(".concorde/reflections/config.json", text)

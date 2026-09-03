@@ -52,10 +52,11 @@ refuses such a collection, so run `--relocate` with no IDs to repair drift befor
 - `investigate [N | R-NNN ...]`: use the Operation's investigate stage and one investigator per
   reflection. For each result, the parent validates and writes the returned triage completion to that
   reflection document in place, writes its route plan, and then runs `--relocate R-NNN` so the
-  document leaves `pending/` for `planned/` or `needs-comments/`. The step is complete only when the
-  relocation result reports the document under its new bucket. When a `needs-comments/` document has
-  gained maintainer input, `investigate R-NNN` may run again; if the new decision is `not-required`,
-  the same relocation moves it to `planned/`.
+  document leaves `pending/` for `planned/` or `needs-comments/`, then runs `--validate-entry R-NNN`.
+  The step is complete only when the relocation result reports the document under its new bucket and
+  `--validate-entry R-NNN` reports `valid`. When a `needs-comments/` document has gained maintainer
+  input, `investigate R-NNN` may run again; if the new decision is `not-required`, the same relocation
+  moves it to `planned/`.
 - `implement`: follow the route and implement stages; only validated `fast-loop` plans are eligible.
 - `merge`: require clean tracked state, merge one branch at a time, validate, and remove only a
   matching merged small fast-loop entry through the helper.
