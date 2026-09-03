@@ -7,12 +7,6 @@ const moduleFeatureHierarchy = JSON.parse(
   readFileSync(resolve(__dirname, '.generated/features-sidebar.json'), 'utf8'),
 );
 
-const sidebars: SidebarsConfig = {
-  featuresSidebar: [{
-    type: 'category',
-    label: 'Features',
-    link: {type: 'generated-index', slug: '/', description: 'Direct feature files grouped by their owning module hierarchy.'},
-    items: moduleFeatureHierarchy,
-  }],
-};
+/** The module hierarchy of direct features is the whole Features navigation; the root module is its top level. */
+const sidebars: SidebarsConfig = {featuresSidebar: moduleFeatureHierarchy};
 export default sidebars;

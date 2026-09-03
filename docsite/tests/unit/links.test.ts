@@ -35,7 +35,7 @@ describe('Profile 7 source links', () => {
     expect(excluded?.ruleId).toBe('link.target.excluded');
     expect(excluded?.message).toContain('Concorde control artifact');
     expect(excluded?.remediation).toContain('architecture.md or a direct feature file');
-    expect(resolveContentLink('../.concorde/reflections/log.md', docs, registry).finding)
+    expect(resolveContentLink('../.concorde/reflections/R-001.md', docs, registry).finding)
       .toMatchObject({ruleId: 'link.target.excluded'});
     expect(resolveContentLink('../.concorde/config.json', docs, registry).finding)
       .toMatchObject({ruleId: 'link.target.excluded'});

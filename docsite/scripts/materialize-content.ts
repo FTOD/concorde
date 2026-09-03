@@ -51,7 +51,11 @@ export type SidebarItem = {
   link?: {type: 'doc'; id: string};
   items?: SidebarItem[];
   collapsed?: boolean;
+  className?: string;
 };
+
+/** Sidebar class that styles module categories as bold, larger group headings. */
+export const moduleSidebarClassName = 'sidebar-module';
 
 function publicationModel(registry: ContentRegistry) {
   const modules = registry.documents.filter((document): document is ModuleArchitecture => document.contentKind === 'module-architecture');
@@ -74,7 +78,7 @@ export function architectureSidebarItems(registry: ContentRegistry): SidebarItem
     if (included.has(moduleId)) throw new Error(`Architecture sidebar includes module "${moduleId}" more than once.`);
     included.add(moduleId);
     return {
-      type: 'category', label: module.title,
+      type: 'category', label: module.sidebarLabel ?? module.title, className: moduleSidebarClassName,
       link: {type: 'doc', id: module.stagedPath.replace(/\.md$/, '')},
       items: module.moduleIds.map((childId) => moduleItem(childId)), collapsed: !root,
     };
@@ -103,7 +107,7 @@ export function featureSidebarItems(registry: ContentRegistry): SidebarItem[] {
     if (includedModules.has(moduleId)) throw new Error(`Feature sidebar includes module "${moduleId}" more than once.`);
     includedModules.add(moduleId);
     return {
-      type: 'category', label: module.title,
+      type: 'category', label: module.sidebarLabel ?? module.title, className: moduleSidebarClassName,
       items: [
         ...module.featureIds.map(featureItem),
         ...module.moduleIds.map((childId) => moduleItem(childId)),
@@ -126,6 +130,11 @@ export async function materializeContent(providedRegistry?: ContentRegistry): Pr
     rm(generatedContentRoot, {recursive: true, force: true}),
     rm(generatedStaticRoot, {recursive: true, force: true}),
   ]);
+  // Each collection backs a Docusaurus content-docs plugin instance that requires its path to exist
+  // on disk even when the project currently registers no document in that collection (for example a
+  // freshly scaffolded project with zero features).
+  await Promise.all(['home', 'architecture', 'features'].map((collectionDirectory) =>
+    mkdir(resolve(generatedContentRoot, collectionDirectory), {recursive: true})));
 
   for (const document of registry.documents) {
     if (document.collectionId === 'docs') continue;

@@ -18,8 +18,8 @@ loading the entire repository.
 ## Standalone lifecycle boundary
 
 Concorde owns the complete lifecycle. Root `skills/`, `operations/`, and `templates/` are canonical
-capabilities/formats; `src/concorde/` and `scripts/` own deterministic Tools; `concorde.json`
-owns one package identity. The native installer projects those sources under `.concorde/framework/`
+capabilities/formats; `src/concorde/` and `scripts/` own deterministic Tools; `docsite/` is the
+packaged project docsite template; `concorde.json` owns one package identity. The native installer projects those sources under `.concorde/framework/`
 and into Codex or Claude, recording only generated framework/agent outputs in
 `.concorde/install.json`. Project configuration, selection, constitution, attempts, reflections,
 specifications, code, and tests remain project-owned.
@@ -42,7 +42,7 @@ approved outer sandbox, launches the agent, and checks its receipt.
 | How does this feature use module structure? | Its Architecture Zoom referencing architecture entity IDs. |
 | How does it currently work in this revision? | Source code. |
 | What evidence supports it? | Executable tests/checks and active attempt validation evidence. |
-| What went badly or remains provisional? | `.concorde/reflections/log.md`. |
+| What problem was recorded and how was it triaged? | The relevant `.concorde/reflections/R-NNN.md`. |
 | What does the website or diagram show? | A generated projection with provenance back to architecture/feature sources. |
 
 ## Bounded reading
@@ -67,7 +67,7 @@ the repository is already reconciled and removes the attempt; it does not author
 
 Profile 7 is a breaking source profile. Concorde does not run a dual reader for older and current
 layouts. This keeps loaders, validators, agent guidance, fixtures, publication, and packages on one
-coherent ontology. Difficult tradeoffs and knowingly provisional choices are recorded in the
-project reflection log so the prototype can proceed and be revised later. Reflection-triage/v4
-automatically removes only validated merged-small fast-loop problems; every broader or unresolved
-entry remains for maintainer disposition.
+coherent ontology. Planning and task generation record detailed problem facts in one file per
+reflection without proposing a fix or deciding whether a maintainer is needed. Reflection-triage/v5
+adds that analysis and decision later, and automatically removes only validated merged-small
+fast-loop problems; every broader or unresolved document remains for maintainer disposition.

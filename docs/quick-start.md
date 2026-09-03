@@ -39,11 +39,29 @@ Inside the target, invoke `$concorde-init` (Claude may present `/concorde-init`)
 leaf Skill invokes Concorde's native Profile 7 initializer Tool. Initialization Proposal 3 creates:
 
 - `.concorde/config.json`
-- `.concorde/reflections/log.md`
+- `.concorde/reflections/index.json`
 - `specs/<project>/architecture.md`
 - `specs/<project>/diagrams/system-overview.json`
 
 It creates no feature or attempt.
+
+### Optional: create the project docsite
+
+Ask `$concorde-init` for the docsite (or pass `--docsite`). The Skill invokes the native `docsite`
+Tool, which previews Docsite Scaffold Proposal 1 and applies it only after your explicit acceptance:
+
+```bash
+python3 .concorde/framework/scripts/concorde.py --project-root . docsite --propose \
+  --title "My Project" --repository https://github.com/org/my-project > .concorde/docsite-proposal.json
+python3 .concorde/framework/scripts/concorde.py --project-root . docsite \
+  --apply --proposal .concorde/docsite-proposal.json
+```
+
+The scaffold copies the packaged adapter into `docsite/`, writes project identity to
+`docsite/site.json`, adds a minimal `README.md` only when none exists, and adds
+`.github/workflows/deploy-docsite.yml` only with `--github-pages`. It never overwrites an existing
+`docsite/` and installs nothing: publishing needs Node.js 20+, npm, and the pinned Archify skill,
+then `npm ci && npm run check` in `docsite`.
 
 ## 3. Create/select a feature
 

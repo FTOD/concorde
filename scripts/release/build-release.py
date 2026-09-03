@@ -7,12 +7,17 @@ import argparse
 import hashlib
 import json
 import stat
+import sys
 import zipfile
 from pathlib import Path
 from typing import Iterable, NamedTuple
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
+
+from concorde.docsite_template import template_files  # noqa: E402
+
 REPOSITORY = "https://github.com/FTOD/concorde"
 FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 ARCHITECTURE_PROFILE = 7
@@ -146,6 +151,11 @@ def package_files(root: Path = REPOSITORY_ROOT) -> Iterable[Path]:
         if not _included(relative):
             continue
         yield path
+    for relative in sorted(template_files(root)):
+        if relative in seen:
+            continue
+        seen.add(relative)
+        yield root / relative
 
 
 def deterministic_archive(root: Path, destination: Path, version: str) -> str:

@@ -51,7 +51,7 @@ describe('Profile 7 content source contract', () => {
 
   it('defensively rejects any control-plane document admitted by a future collection change', async () => {
     const registry = await buildRegistry(resolve(fixtures, 'valid-project'));
-    registry.documents[0].sourcePath = '.concorde/reflections/log.md';
+    registry.documents[0].sourcePath = '.concorde/reflections/R-001.md';
     expect(validateRegistry(registry).map((finding) => finding.ruleId)).toContain('content.path.control');
   });
 

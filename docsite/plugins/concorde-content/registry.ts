@@ -36,7 +36,7 @@ function stringList(value: unknown): string[] {
 
 function headingTitle(content: string): string {
   return content.match(/^#\s+(.+?)\s*$/m)?.[1]
-    ?.replace(/^(?:Feature Design|Module Architecture):\s*/i, '').trim() ?? '';
+    ?.replace(/^(?:Feature Design|Module Architecture|Architecture):\s*/i, '').trim() ?? '';
 }
 
 function sectionText(content: string, heading: string): string {
@@ -243,7 +243,7 @@ function profileFinding(path: string): ValidationFinding | undefined {
   if (legacyAttemptPattern.test(path) || posix.basename(path) === 'reflections.md') return {
     ruleId: 'source.profile.legacy', severity: 'error', sourcePath,
     message: `${path} is specification-local control state removed in Profile 7.`,
-    remediation: 'Move attempts to .concorde/attempts/<stable-feature-id>/ and the reflection log to .concorde/reflections/log.md.',
+    remediation: 'Move attempts to .concorde/attempts/<stable-feature-id>/ and each reflection to .concorde/reflections/R-NNN.md.',
   };
   if (nestedFeaturePattern.test(path)) return {
     ruleId: 'feature.hierarchy.forbidden', severity: 'error', sourcePath,

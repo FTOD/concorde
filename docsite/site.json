@@ -1,0 +1,10 @@
+{
+  "baseUrl": "/concorde/",
+  "organizationName": "FTOD",
+  "projectName": "concorde",
+  "repository": "https://github.com/FTOD/concorde",
+  "schema_version": 1,
+  "tagline": "Architecture-aware specification workflows",
+  "title": "Concorde",
+  "url": "https://ftod.github.io"
+}

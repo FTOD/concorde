@@ -26,10 +26,11 @@ Proposal 9 delivery removes attempt only
 
 ## 1. Initialize
 
-`concorde-init` proposes Profile 7 control state, `.concorde/reflections/log.md`, and a root
+`concorde-init` proposes Profile 7 control state, `.concorde/reflections/index.json`, and a root
 `architecture.md`. The maintainer
 reviews exact files/digests before apply. Existing configured hierarchies return unchanged rather
-than receiving starter prose.
+than receiving starter prose. On request the same Skill scaffolds the packaged project docsite as a
+separate reviewed proposal.
 
 The root architecture defines responsibility/boundary, inventories, entity/relationship vocabulary,
 representative interactions, a required Archify system overview, and optional additional module diagram declarations. Product modules are created
@@ -63,19 +64,20 @@ passes its immutable result to `concorde-plan-author`. Trusted code resolves:
 - providing-module owned source code/tests (never dependency internals); and
 - existing selected attempt artifacts.
 
-The author writes plan/research/data model/quickstart only under the returned `attempt_dir` plus an
-authorized central reflection occurrence. There is no prose
+The author writes plan/research/data model/quickstart only under the returned `attempt_dir` plus
+authorized per-file reflection state. There is no prose
 implementation baseline: requested behavior is compared directly with code and tests. Planning
 names every required module architecture, feature/interface, code, test, fixture, projection,
 package, and public-guide reconciliation.
 
 Each leaf receives a distinct default-deny Codex permission profile or Claude restricted strict
 sandbox configuration. Missing/widened/unsafe/unenforceable policy stops before launch; LangGraph and
-prompts do not enforce files. Planning does not edit durable sources. It records conflicts, workarounds, and provisional prototype
-choices in `.concorde/reflections/log.md` and keeps going when a safe bounded assumption is possible.
-New entries reserve their ID atomically through the installed reflection helper. The separate
-reflection-triage/v4 merge workflow removes only validated merged `small` `fast-loop` entries and
-leaves all other routes for maintainer disposition.
+prompts do not enforce files. Planning does not edit durable sources. Planning and task generation
+record concrete problems in `.concorde/reflections/R-NNN.md`: recording supplies detailed problem
+facts but no root-cause analysis, proposed fix, or human-intervention decision. New documents reserve
+their ID atomically through the installed helper. Reflection-triage/v5 completes those details later,
+preserves User Comments, removes only validated merged `small` `fast-loop` documents, and leaves all
+other routes for maintainer disposition.
 
 ## 4. Tasks
 
@@ -89,8 +91,9 @@ behavior, implementation, and evidence coherent in the same attempt.
 
 ## 5. Analyze, implement, and converge
 
-`concorde-analyze` is a read-only consistency/coverage audit. It can append only a centralized
-reflection when the audit itself encounters a framework/tooling conflict.
+`concorde-analyze` is a read-only consistency/coverage audit. Planning and tasks are the normal
+reflection-recording points; another phase records a new document only for a distinct problem that
+must persist beyond its ordinary report/evidence.
 
 `concorde-implement` executes tasks phase-by-phase. Before checking a task it records compact attempt
 evidence: task/trace, actual command, outcome, evidence path, scope, and limitation. Only a passed
@@ -166,12 +169,13 @@ uv run python operations/concorde-standard-dev-loop/operation.py "Add audit logg
 
 ## Reflections
 
-Planning, tasks, implementation, analysis, and convergence record problems when they must assume,
-work around, defer, or stop. This includes choices that may be suboptimal but are acceptable for a
-prototype. Repeated problems add occurrences rather than duplicate entries. Maintainers alone decide
-resolved/dismissed status and notes.
+Planning and task generation are the normal recording points. Each new `R-NNN.md` contains enough
+Context, Expected, Observed, Impact, and Evidence for later investigation, but no recommendation or
+human-intervention judgment. Repeated problems add occurrences rather than duplicate files.
+Maintainers alone edit User Comments and decide resolved/dismissed status and resolution notes.
 
 The reflection-triage Operation is conditional before model launch: `status` launches none,
 `investigate` launches only a zero-write analyzer, and `implement` selects exactly `fast-loop` or the
-public nested planner route. Implementer policies are restricted to isolated reflection worktrees and
-the central reflection record.
+public nested planner route. Only triage fills the analysis, proposed resolution, and intervention
+decision/rationale. The parent persists the validated result while preserving User Comments;
+implementer policies are restricted to isolated reflection worktrees and authorized reflection paths.

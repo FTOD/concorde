@@ -57,6 +57,18 @@ def create_parser() -> argparse.ArgumentParser:
     deliver.add_argument("--proposal")
     deliver.add_argument("--format", choices=["json"], default="json")
 
+    docsite = subparsers.add_parser("docsite")
+    docsite_mode = docsite.add_mutually_exclusive_group(required=True)
+    docsite_mode.add_argument("--propose", action="store_true")
+    docsite_mode.add_argument("--apply", action="store_true")
+    docsite.add_argument("--proposal")
+    docsite.add_argument("--title")
+    docsite.add_argument("--repository")
+    docsite.add_argument("--url")
+    docsite.add_argument("--base-url")
+    docsite.add_argument("--github-pages", action="store_true")
+    docsite.add_argument("--format", choices=["json"], default="json")
+
     agent_assets = subparsers.add_parser("agent-assets")
     asset_tools = agent_assets.add_subparsers(dest="agent_asset_tool", required=True)
     for name in ("preview", "sync", "verify", "remove"):
@@ -112,6 +124,26 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                 )
             return apply_delivery(root, arguments.proposal)
         return materialize_delivery_proposal(root, propose_delivery(root, arguments.target))
+    if arguments.tool == "docsite":
+        from .docsite_scaffold import apply_docsite, propose_docsite
+
+        if arguments.apply:
+            if not arguments.proposal:
+                return ToolResult(
+                    "docsite",
+                    ".",
+                    "invalid",
+                    findings=(Finding("CONCORDE-DOCSITE-008", "error", "docsite/site.json", "--apply requires --proposal.", "Pass a project-relative accepted proposal JSON file."),),
+                )
+            return apply_docsite(root, arguments.proposal)
+        return propose_docsite(
+            root,
+            title=arguments.title,
+            repository=arguments.repository,
+            url=arguments.url,
+            base_url=arguments.base_url,
+            github_pages=arguments.github_pages,
+        )
     if arguments.tool == "agent-assets":
         from .agent_assets import (
             preview_agent_assets,
@@ -146,7 +178,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         tool = argv[0] if argv else "validate"
         payload = envelope(
             tool
-            if tool in {"init", "context", "explore", "validate", "deliver", "agent-assets"}
+            if tool in {"init", "context", "explore", "validate", "deliver", "agent-assets", "docsite"}
             else "validate",
             ".",
             "failed",

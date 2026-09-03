@@ -45,6 +45,7 @@
   ],
   "package_roots": [
     "agent-assets",
+    "docsite",
     "operations",
     "scripts",
     "skills",
