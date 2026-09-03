@@ -28,7 +28,6 @@ features:
   - feature.concorde.workflow.accept-milestone
   - feature.concorde.workflow.fast-loop
   - feature.concorde.release.publish
-  - feature.concorde.install.one-command
 diagrams:
   - source: diagrams/system-overview.json
     kind: architecture
@@ -119,7 +118,7 @@ code, Archify rendering, Docusaurus internals, or Understand Anything graph sema
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
 | `interaction.concorde.feature-work` | Maintainer invokes a leaf Skill or paired Operation skill. | Resolve Protocol 13; load bounded feature/module/code evidence; execute one phase or a declared LangGraph; invoke Tools explicitly; record attempt evidence. | Intent, architecture, implementation, tests, and temporal state remain reconciled at the completed boundary. | `contract.concorde.workflow`, `contract.skills.workflow-guidance`, `contract.operations.standard-development-loop` |
-| `interaction.concorde.install` | Maintainer previews and accepts a native installation. | Read Package Manifest 2; calculate owned create/adopt/update/remove actions; reject collisions/symlinks; atomically write framework, 18 public Skill/Operation projections, defaults, and receipt while retaining two internal leaves only in the framework. | Idempotent Concorde 2.1.0 installation or exact conflict diagnostics. | `contract.concorde.installation` |
+| `interaction.concorde.install` | Maintainer previews or explicitly applies a checkout/archive through the native installer command. | Read Package Manifest 2; calculate owned create/adopt/update/remove actions; reject collisions/symlinks; atomically write framework, 18 public Skill/Operation projections, defaults, and receipt while retaining two internal leaves only in the framework. | Idempotent Concorde 2.1.0 installation or exact conflict diagnostics in human or stable JSON form. | `contract.concorde.installation`, `interface.concorde.one-command-install` |
 | `interaction.concorde.publish` | Maintainer or CI requests project documentation. | Load validated maintained sources; render declared diagrams; create Build Manifest 10; build a candidate; atomically promote it. | Searchable read model with source provenance. | `contract.auto-docs.architecture-site` |
 | `interaction.concorde.explore` | Maintainer invokes the exploration Tool for a stable subject. | Validate Profile 7; project bounded specification truth; validate optional graph/evidence; reduce absent/stale/invalid evidence to unknown; filter and serialize one Tool result. | Read-only specification and implementation subjects remain distinct with explicit provenance/freshness. | `contract.concorde.alignment-explorer`, `contract.runtime.tools` |
 | `interaction.concorde.deliver` | Maintainer invokes the delivery Tool for a complete selected attempt. | Revalidate Proposal 9 eligibility, digest, paths, tasks, checklists, and evidence; remove exactly that stable-ID attempt. | Durable sources remain authoritative with no active attempt or implementation narrative. | `contract.concorde.workflow`, `contract.runtime.tools` |
@@ -141,7 +140,7 @@ code, Archify rendering, Docusaurus internals, or Understand Anything graph sema
 |---|---|
 | `feature.concorde.workflow` | Carry one direct feature from intent through reconciled implementation and cleanup-only delivery. |
 | `feature.concorde.publish-project-docsite` | Publish validated project knowledge as a searchable site. |
-| `feature.concorde.install` | Preview and own one standalone Concorde installation without a host framework. |
+| `feature.concorde.install` | Preview or explicitly apply a checkout/archive through one standalone native installer command without a host framework. |
 | `feature.concorde.maintain-agent-surfaces` | Keep generated Codex and Claude leaf/Operation Skill surfaces current. |
 | `feature.concorde.record-workflow-reflections` | Preserve difficult choices/problems and triage eligible work through a paired Operation. |
 | `feature.concorde.explore-alignment` | Browse evidence-qualified specification-to-code relationships through a read-only Tool. |
@@ -157,7 +156,6 @@ code, Archify rendering, Docusaurus internals, or Understand Anything graph sema
 | `feature.concorde.workflow.accept-milestone` | Remove one eligible completed attempt without creating prose history. |
 | `feature.concorde.workflow.fast-loop` | Reconcile one eligible small established change without an attempt. |
 | `feature.concorde.release.publish` | Publish immutable verified native release assets. |
-| `feature.concorde.install.one-command` | Install a checkout/archive into a target with one explicit apply. |
 
 ## Decisions
 
