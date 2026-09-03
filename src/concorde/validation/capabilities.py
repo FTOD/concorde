@@ -254,7 +254,7 @@ def validate_capabilities(package: Any) -> list[Finding]:
             "Rename colliding capabilities and update their source/projection identity together.",
         ))
 
-    expected_roots = ["agent-assets", "operations", "scripts", "skills", "src", "templates"]
+    expected_roots = ["agent-assets", "docsite", "operations", "scripts", "skills", "src", "templates"]
     if manifest.get("package_roots") != expected_roots:
         findings.append(_finding(
             "CONCORDE-CAPABILITY-MANIFEST-001",

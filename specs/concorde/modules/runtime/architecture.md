@@ -16,7 +16,7 @@ diagrams:
 ## Responsibility
 
 Provide portable, deterministic, path-safe Tools for Profile 7 discovery, native selection, bounded
-context, evidence-qualified alignment exploration, initialization, validation, workspace routing,
+context, evidence-qualified alignment exploration, initialization, docsite scaffolding, validation, workspace routing,
 reflection queue support, capability validation, and cleanup-only delivery.
 
 ## Boundary
@@ -35,7 +35,7 @@ execution, or generated documentation presentation. Operation is not a synonym f
 | `entity.runtime.powershell-launcher` | script | Invokes the same Python adapter on PowerShell systems. | `scripts/concorde.ps1` |
 | `entity.runtime.python-adapter` | program | Adds the colocated package `src` directory to imports and enters the CLI. | `scripts/concorde.py` |
 | `entity.runtime.workspace-adapter` | program | Emits Protocol 13 paths for one native-selected direct feature. | `scripts/workspace.py` |
-| `entity.runtime.reflection-queue` | program | Implements reflection-triage/v4 ID allocation and plan/merged-small state as a deterministic Tool. | `scripts/reflections_queue.py` |
+| `entity.runtime.reflection-queue` | program | Implements reflection-triage/v5 per-file queue, ID-index allocation, and plan/merged-small state as a deterministic Tool. | `scripts/reflections_queue.py` |
 | `entity.runtime.model` | package | Immutable Tool result, module, entity, relation, interface, context, and finding records. | `src/concorde/model.py` |
 | `entity.runtime.tool-result` | type | Structured `tool`, target, status, artifacts, findings, and result payload for one bounded runtime action. | `src/concorde/model.py#ToolResult` |
 | `entity.runtime.tool-envelope` | function | Serializes one Tool result with a `tool` discriminator. | `src/concorde/diagnostics.py#tool_envelope` |
@@ -47,6 +47,8 @@ execution, or generated documentation presentation. Operation is not a synonym f
 | `entity.runtime.capability-validator` | program | Validates exact Script/public-internal-Skill/Operation pairs, effects, mixed literal topology/bindings, and direct/indirect cycles without importing Operation Python. | `src/concorde/validation/capabilities.py` |
 | `entity.runtime.initializer` | program | Proposes and atomically applies Initialization Proposal 3 with a root Archify system overview. | `src/concorde/initialize.py` |
 | `entity.runtime.delivery` | program | Proposes and applies digest-bound Delivery Proposal 9 removal of one complete attempt. | `src/concorde/delivery.py` |
+| `entity.runtime.docsite-template` | program | Enumerates the packaged docsite template inventory and digest shared by the installer, release scripts, and scaffold Tool. | `src/concorde/docsite_template.py` |
+| `entity.runtime.docsite-scaffold` | program | Proposes and atomically applies Docsite Scaffold Proposal 1 with a project-owned site identity. | `src/concorde/docsite_scaffold.py` |
 | `entity.runtime.cli` | program | Dispatches supported Tools and serializes one structured Tool envelope. | `src/concorde/cli.py` |
 | `entity.runtime.tests` | test | Unit, contract, integration, and acceptance evidence for Runtime Tool semantics. | `tests/concorde` |
 
@@ -62,6 +64,8 @@ execution, or generated documentation presentation. Operation is not a synonym f
 | `entity.runtime.cli` | `calls` | `entity.runtime.validator` | Dispatches deterministic validation. |
 | `entity.runtime.cli` | `calls` | `entity.runtime.initializer` | Dispatches reviewed initialization. |
 | `entity.runtime.cli` | `calls` | `entity.runtime.delivery` | Dispatches cleanup-only delivery. |
+| `entity.runtime.cli` | `calls` | `entity.runtime.docsite-scaffold` | Dispatches reviewed docsite scaffolding. |
+| `entity.runtime.docsite-scaffold` | `reads_from` | `entity.runtime.docsite-template` | Copies exactly the packaged adapter inventory and binds its digest into the proposal. |
 | `entity.runtime.cli` | `calls` | `entity.runtime.tool-envelope` | Serializes every bounded action with Tool terminology. |
 | `entity.runtime.repository-loader` | `reads_from` | `module.concorde.workspace` | Loads only canonical maintained/control sources and declared diagrams. |
 | `entity.runtime.workspace-resolver` | `reads_from` | `entity.runtime.repository-loader` | Builds Protocol 13 context from normalized IDs and paths. |
@@ -104,7 +108,9 @@ None.
 - Files under `src/concorde` retain module ownership by responsibility: Runtime owns deterministic
   workspace/validation Tools, while Operations owns graph/policy/process-handoff programs.
 - Protocol 13, Delivery Proposal 9, architecture-service envelope 2, capability-surface status schema
-  2, and reflection-triage/v4 use `tool` discriminators.
+  2, and reflection-triage/v5 use `tool` discriminators.
+- The docsite template inventory rule lives in Runtime so installer, release scripts, and the
+  scaffold Tool never disagree about packaged adapter bytes.
 - Exploration never normalizes or rewrites input graphs and never treats adapter vocabulary or text
   similarity as identity/evidence.
 - Test relationships point from production subject to evidence (`tested_by`).

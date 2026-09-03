@@ -28,6 +28,7 @@
     {"id": "runtime-accesses-workspace", "from": "runtime", "to": "workspace", "label": "validates and updates", "labelAt": [710, 352]},
     {"id": "distribution-projects-skills", "from": "distribution", "to": "skills", "label": "projects user skills", "fromSide": "left", "toSide": "right"},
     {"id": "autodocs-read-workspace", "from": "workspace", "to": "autodocs", "label": "publishes validated sources", "fromSide": "right", "toSide": "left"},
-    {"id": "autodocs-call-archify", "from": "autodocs", "to": "archify", "label": "renders views", "labelAt": [1215, 512]}
+    {"id": "autodocs-call-archify", "from": "autodocs", "to": "archify", "label": "renders views", "labelAt": [1215, 512]},
+    {"id": "distribution-packages-autodocs", "from": "distribution", "to": "autodocs", "label": "packages template", "fromSide": "bottom", "toSide": "top", "labelAt": [1115, 300]}
   ]
 }

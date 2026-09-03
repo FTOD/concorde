@@ -41,6 +41,8 @@ validator semantics, Archify rendering, Docusaurus internals, or user-authored s
 | `entity.auto-docs.materializer` | program | Creates ignored Docusaurus content projections without changing maintained sources. | `docsite/scripts/materialize-content.ts` |
 | `entity.auto-docs.diagram-renderer` | program | Invokes Archify, validates deliveries, and promotes a complete generated diagram set. | `docsite/scripts/render-diagrams.ts` |
 | `entity.auto-docs.publisher` | program | Orders preparation/build and atomically promotes a valid candidate. | `docsite/scripts/build.ts` |
+| `entity.auto-docs.site-identity` | configuration | Project-owned site identity schema 1 (title, URL, base path, organization/project names, optional repository) that parameterizes the otherwise byte-identical adapter. | `docsite/site.json` |
+| `entity.auto-docs.pages-workflow-template` | resource | Generic GitHub Pages deployment workflow the scaffold copies on request. | `docsite/scaffold/deploy-docsite.yml` |
 | `entity.auto-docs.tests` | test | Contract/unit/integration evidence for content, accessibility, atomicity, performance, and immutability. | `docsite/tests` |
 | `entity.auto-docs.archify` | external-system | Maintained-JSON to standalone-HTML diagram renderer. | `external:archify` |
 | `entity.auto-docs.docusaurus` | external-system | Static documentation application framework. | `external:@docusaurus/core@3.10.2` |
@@ -59,6 +61,7 @@ validator semantics, Archify rendering, Docusaurus internals, or user-authored s
 | `entity.auto-docs.materializer` | `transforms` | `entity.auto-docs.registry` | Creates isolated Docusaurus source projections. |
 | `entity.auto-docs.publisher` | `calls` | `entity.auto-docs.materializer` | Prepares content before the site build. |
 | `entity.auto-docs.publisher` | `calls` | `entity.auto-docs.docusaurus` | Builds the production candidate. |
+| `entity.auto-docs.publisher` | `reads_from` | `entity.auto-docs.site-identity` | Takes title, URLs, organization/project names, and repository link only from the project-owned identity file. |
 | `entity.auto-docs.publisher` | `tested_by` | `entity.auto-docs.tests` | End-to-end tests exercise validation and atomic promotion. |
 
 ## Interactions
@@ -85,3 +88,7 @@ None.
 - `.concorde/**` is excluded control/framework state, never a published content collection.
 - Materialized Docusaurus files and diagram deliveries are disposable and retain canonical provenance.
 - The last successful site survives any registry, render, validation, or build failure.
+- The adapter is the docsite template Concorde packages for every project: project identity lives
+  only in `docsite/site.json`, the Documentation and Features collections are published only when
+  `docs/` exists or a direct feature is registered, and Concorde-repository evidence stays under
+  `docsite/tests/repository/` outside the template.

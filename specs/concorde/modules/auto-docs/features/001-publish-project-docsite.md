@@ -51,11 +51,11 @@ with one architecture page per module and one design page per feature.
 - **Consumer**: Maintainer and CI.
 - **Direction**: Script/config/source input to status, manifest, candidate, or diagnostics.
 - **Entry points**: npm `start`, `inspect`, `validate`, `render-diagrams`, `build`, and `check` scripts.
-- **Inputs**: Repository/docsite roots, canonical sources, dependencies, and optional environment configuration.
+- **Inputs**: Repository/docsite roots, site identity from `docsite/site.json`, canonical sources, dependencies, and optional environment configuration.
 - **Outputs**: Deterministic diagnostics, Manifest 10, preview, or atomically promoted build.
 - **Obligations**: Preparation order is render → registry validation → materialization → build/promotion.
 - **Failures**: Any step stops and preserves maintained sources and last successful output.
-- **Compatibility**: Node 20+ and locked package dependencies.
+- **Compatibility**: Node 20+, locked package dependencies, and site identity schema 1.
 - **Implementing entities**: `entity.auto-docs.publisher`, `entity.auto-docs.validation`, `entity.auto-docs.materializer`.
 
 ### `contract.auto-docs.build-manifest` — Build Manifest 10
@@ -98,6 +98,7 @@ manifest, materializes ignored content, builds Docusaurus, and promotes only the
 - **FR-001**: Registry MUST include each maintained source exactly once with canonical provenance.
 - **FR-002**: Manifest/page routes MUST derive from stable semantic identity, not legacy filenames.
 - **FR-003**: Diagram delivery/build failures MUST preserve the last successful site.
+- **FR-004**: The adapter MUST read project identity only from `docsite/site.json`, MUST publish the Documentation collection only when `docs/` exists, and MUST publish the Features collection only when at least one direct feature is registered.
 
 ## Edge Cases
 

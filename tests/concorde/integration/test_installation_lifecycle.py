@@ -45,6 +45,11 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         shutil.copy2(REPOSITORY_ROOT / "README.md", destination / "README.md")
         for directory in ("agent-assets", "operations", "skills", "src", "templates"):
             shutil.copytree(REPOSITORY_ROOT / directory, destination / directory, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        shutil.copytree(
+            REPOSITORY_ROOT / "docsite",
+            destination / "docsite",
+            ignore=shutil.ignore_patterns("node_modules", "build", ".generated", ".docusaurus", "coverage"),
+        )
         (destination / "scripts").mkdir()
         for script in ("concorde.py", "concorde.ps1", "concorde.sh", "reflections_queue.py", "render-capability-surfaces.py", "workspace.py"):
             shutil.copy2(REPOSITORY_ROOT / "scripts" / script, destination / "scripts" / script)

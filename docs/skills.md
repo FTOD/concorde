@@ -15,7 +15,8 @@ Creates/amends `.concorde/constitution.md` from the complete root constitution f
 ### `concorde-init`
 
 Proposes and explicitly applies Profile 7 configuration, root architecture, required Archify system
-overview, and reflection log.
+overview, and reflection allocation index. On request (or with `--docsite`) it also previews and applies the
+packaged project docsite through the native `docsite` Tool (Docsite Scaffold Proposal 1).
 
 ### `concorde-context <stable-id>`
 
@@ -122,7 +123,9 @@ python3 .concorde/framework/scripts/concorde.py --project-root . explore feature
 - `concorde-standard-dev-loop` invokes the paired four-stage graph and sees planning only as the
   opaque public nested Operation.
 - `concorde-reflections-triage` invokes only the explicitly selected conditional branch; status has no
-  model, investigators are read-only, and implementers are worktree-scoped.
+  model, investigators are read-only, and implementers are worktree-scoped. Recording normally
+  happens in plan/tasks and contains problem facts only; triage alone adds analysis, a proposed
+  resolution, and the human-intervention decision while preserving `User Comments`.
 
 Each projected Operation carries source/kind/framework-entrypoint provenance. Internal
 `concorde-plan-context` and `concorde-plan-author` remain package-only. Every direct leaf occurrence

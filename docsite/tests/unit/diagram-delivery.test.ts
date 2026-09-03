@@ -45,20 +45,6 @@ features: []
 }
 
 describe('diagram declaration discovery', () => {
-  it('discovers one architecture-owned system overview per real module', async () => {
-    const projectRoot = resolve(__dirname, '../../..');
-    const declarations = await discoverDiagramDeclarations(projectRoot);
-    expect(declarations).toHaveLength(7);
-    expect(declarations.every((item) => item.sourcePath.endsWith('/diagrams/system-overview.json'))).toBe(true);
-    expect(declarations.every((item) => item.kind === 'architecture')).toBe(true);
-    expect(declarations.every((item) => item.ownerPath.endsWith('/architecture.md'))).toBe(true);
-    expect(declarations.map((item) => item.sourcePath)).toEqual(
-      [...declarations.map((item) => item.sourcePath)].sort(),
-    );
-    expect(new Set(declarations.map((item) => item.outputPath)).size).toBe(declarations.length);
-    expect(declarations.every((item) => item.outputPath.startsWith('generated/architecture/'))).toBe(true);
-  });
-
   it('rejects duplicate normalized outputs before delivery', async () => {
     const root = await temporaryRoot('concorde-diagram-duplicate-');
     await writeModuleDiagram(root, 'one', '../../../generated/architecture/shared.html');

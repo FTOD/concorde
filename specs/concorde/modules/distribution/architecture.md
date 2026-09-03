@@ -35,9 +35,9 @@ Skill prompt semantics, Operation graph semantics, GitHub internals, or unrelate
 | `entity.distribution.archive-builder` | program | Builds one deterministic `concorde-<version>.zip` and `release.json`. | `scripts/release/build-release.py` |
 | `entity.distribution.release-verifier` | program | Checks identity, digest, safe members, capability pairs, installation, and byte-equivalent rebuild. | `scripts/release/verify-release.py` |
 | `entity.distribution.publisher` | program | Publishes verified immutable archive/pointer assets through a draft transaction. | `scripts/release/publish-release.py` |
-| `entity.distribution.archive` | resource | Allowlisted Package Manifest 2 content with a single `concorde/` root. | `concept:concorde-<version>.zip` |
+| `entity.distribution.archive` | resource | Allowlisted Package Manifest 2 content, including the docsite template, with a single `concorde/` root. | `concept:concorde-<version>.zip` |
 | `entity.distribution.release-pointer` | schema | Version/tag/profile/protocol plus archive URL and digest. | `concept:release.json` |
-| `entity.distribution.framework-projection` | directory | Installed package bytes, including Scripts, 17 leaf Skills, three Operation pairs, Runtime, templates, and support assets. | `concept:.concorde/framework` |
+| `entity.distribution.framework-projection` | directory | Installed package bytes, including Scripts, 17 leaf Skills, three Operation pairs, Runtime, templates, the docsite template, and support assets. | `concept:.concorde/framework` |
 | `entity.distribution.receipt` | configuration | Output path, role, and digest ownership for one integration/version. | `concept:native-install-receipt` |
 | `entity.distribution.codex-surface` | directory | Fifteen public leaf and three Operation skills plus internal reflection agents for Codex. | `.agents` |
 | `entity.distribution.claude-surface` | directory | Fifteen public leaf and three Operation skills plus internal reflection agents for Claude. | `.claude` |
@@ -54,7 +54,7 @@ Skill prompt semantics, Operation graph semantics, GitHub internals, or unrelate
 | `entity.distribution.release-verifier` | `validates` | `entity.distribution.archive` | Rejects unsafe, incomplete, unpaired, non-installable, or non-reproducible bytes. |
 | `entity.distribution.release-verifier` | `validates` | `entity.distribution.release-pointer` | Requires pointer identity and digest agreement. |
 | `entity.distribution.installer` | `reads_from` | `entity.distribution.manifest` | Validates exact package inventory and supported integration. |
-| `entity.distribution.installer` | `generates` | `entity.distribution.framework-projection` | Copies canonical package sources and every Operation pair into the owned framework. |
+| `entity.distribution.installer` | `generates` | `entity.distribution.framework-projection` | Copies canonical package sources, the docsite template, and every Operation pair into the owned framework. |
 | `entity.distribution.installer` | `calls` | `entity.distribution.capability-projector` | Filters two internal leaves and renders 18 public leaf/Operation skills with installed entry points and kind roles. |
 | `entity.distribution.capability-projector` | `generates` | `entity.distribution.codex-surface` | Produces Codex Skill projections when selected. |
 | `entity.distribution.capability-projector` | `generates` | `entity.distribution.claude-surface` | Produces Claude Skill projections when selected. |
@@ -84,7 +84,9 @@ None.
 - [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
   entities and directed relationships in this architecture.
 - Package Manifest 2 and version 2.1.0 define one no-shim capability layout.
-- Package roots are exactly `agent-assets`, `operations`, `scripts`, `skills`, `src`, and `templates`.
+- Package roots are exactly `agent-assets`, `docsite`, `operations`, `scripts`, `skills`, `src`, and
+  `templates`; the `docsite` root ships the adapter template without disposable output, `site.json`,
+  or repository-specific evidence.
 - Installation preview is default; mutation requires `--apply`.
 - Every leaf and both files of every Operation pair remain installed in the framework; internal
   leaves stay unprojected while each public leaf/Operation Markdown projects as a user Skill.

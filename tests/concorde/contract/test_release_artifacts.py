@@ -72,12 +72,18 @@ class ReleaseArtifactContractTests(unittest.TestCase):
                     "concorde/operations/concorde-reflections-triage/operation.py",
                     "concorde/templates/feature-template.md",
                     "concorde/agent-assets/reflections/manifest.json",
+                    "concorde/docsite/package.json",
+                    "concorde/docsite/scaffold/deploy-docsite.yml",
                 ):
                     self.assertIn(required, names)
                 self.assertEqual(archive.read("concorde/concorde.json"), (REPOSITORY_ROOT / "concorde.json").read_bytes())
                 self.assertFalse(any("/.specify/" in f"/{name}" for name in names))
                 self.assertFalse(any(name.startswith(("concorde/commands/", "concorde/examples/")) for name in names))
                 self.assertFalse(any(name.startswith(("concorde/presets/", "concorde/extensions/", "concorde/bundles/")) for name in names))
+                self.assertFalse(any(name.startswith("concorde/docsite/node_modules/") for name in names))
+                self.assertFalse(any(name.startswith("concorde/docsite/build/") for name in names))
+                self.assertFalse(any(name.startswith("concorde/docsite/tests/repository/") for name in names))
+                self.assertNotIn("concorde/docsite/site.json", names)
 
     def test_archive_embeds_manifest_capability_and_template_inventory(self):
         with tempfile.TemporaryDirectory() as temporary:

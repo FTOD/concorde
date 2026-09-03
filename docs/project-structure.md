@@ -11,7 +11,8 @@ project/
 │   ├── constitution.md                     # optional governance authority
 │   ├── attempts/<stable-feature-id>/       # optional tracked temporal work
 │   ├── reflections/
-│   │   ├── log.md                          # tracked process memory
+│   │   ├── index.json                      # tracked allocation high-water only
+│   │   ├── R-NNN.md                        # one tracked problem/triage record
 │   │   ├── config.json                     # triage configuration
 │   │   ├── plans/                          # ignored/disposable
 │   │   └── worktrees/                      # ignored/disposable
@@ -36,13 +37,15 @@ project/
 - `.concorde/attempts/<stable-feature-id>/` is optional temporal work keyed by the exact globally unique feature ID.
 - Module diagrams stay under that module's `diagrams/` and are declared/textually explained in architecture.
 - Executed schemas/examples live with source/tests. Human-readable interface semantics live in the feature.
-- `.concorde/reflections/log.md` is the only persisted reflection record.
+- Each `.concorde/reflections/R-NNN.md` is the only persisted prose record for that reflection;
+  `index.json` contains allocation metadata only.
 - Generated and installed outputs never become resolver inputs for specification behavior/structure.
 
 ## Package source versus installed projection
 
 In the Concorde framework repository, root `skills/`, `operations/`, `templates/`, `src/concorde/`,
-`scripts/`, `agent-assets/`, and `concorde.json` are distribution authorities. `.agents/**` and `.claude/**` are
+`scripts/`, `agent-assets/`, `docsite/` (the packaged docsite template), and `concorde.json` are
+distribution authorities. `.agents/**` and `.claude/**` are
 generated checkout projections. Consumer projects receive the same sources beneath
 `.concorde/framework/` plus selected integration outputs and `.concorde/install.json` ownership.
 
@@ -51,8 +54,9 @@ Every one of three Operation directories contains exactly `operation.py` plus as
 with ordered capabilities/bindings. All leaves/pairs remain in the framework; only 15 public leaves
 plus three Operations project to the agent namespace. The two internal planner leaves never project.
 
-Project-authored `.concorde/config.json`, `feature.json`, `constitution.md`, attempts, and reflection
-log are never package outputs. Installer defaults create reflection config/ignore only when absent.
+Project-authored `.concorde/config.json`, `feature.json`, `constitution.md`, attempts, reflection
+documents, and allocation index are never package outputs. Installer defaults create reflection
+config/ignore only when absent.
 
 ## Control state
 

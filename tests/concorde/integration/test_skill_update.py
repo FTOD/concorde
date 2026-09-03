@@ -30,6 +30,11 @@ class SkillUpdateIntegrationTests(unittest.TestCase):
                 destination / directory,
                 ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
             )
+        shutil.copytree(
+            REPOSITORY_ROOT / "docsite",
+            destination / "docsite",
+            ignore=shutil.ignore_patterns("node_modules", "build", ".generated", ".docusaurus", "coverage"),
+        )
         (destination / "scripts").mkdir()
         for name in (
             "concorde.py",

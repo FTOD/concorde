@@ -24,8 +24,8 @@ evidence_status: verified
 
 Skills, Operations, scripts, CI, and maintainers can invoke portable deterministic Tools that resolve
 Profile 7 sources and native control state, validate typed architecture/interfaces/capabilities,
-initialize safely, return bounded context, explore evidence-qualified alignment, maintain reflection
-queue state, and close attempts atomically.
+initialize safely, scaffold the packaged project docsite, return bounded context, explore
+evidence-qualified alignment, maintain reflection queue state, and close attempts atomically.
 
 These are bounded runtime actions, not LangGraph Operations. CLI subcommand spelling remains stable,
 while public results use Tool terminology and versioned contracts.
@@ -51,8 +51,8 @@ while public results use Tool terminology and versioned contracts.
   automation.
 - **Direction**: Safe Tool arguments to one structured result envelope.
 - **Entry points**: Colocated POSIX/PowerShell launchers and Python `scripts/concorde.py` in source or
-  `.concorde/framework`; Tools include `init`, `context`, `explore`, `validate`, `deliver`, and
-  `agent-assets`.
+  `.concorde/framework`; Tools include `init`, `docsite`, `context`, `explore`, `validate`, `deliver`,
+  and `agent-assets`.
 - **Inputs**: Project root, Tool name, stable target, format, and Tool-specific proposal/options;
   exploration additionally accepts safe graph/sidecar paths, expected revision, text query, and
   effective-status filters.
@@ -63,11 +63,12 @@ while public results use Tool terminology and versioned contracts.
 - **Failures**: Invalid config/source/target/path/proposal, unavailable input, or filesystem failure
   returns failure and preserves unrelated/current authority.
 - **Compatibility**: Architecture-service envelope 2 exposes Profile 7, Protocol 13, Initialization
-  Proposal 3, Delivery Proposal 9, and Alignment Schema 1 terminology. Concorde 2.1.0 reserves
+  Proposal 3, Docsite Scaffold Proposal 1, Delivery Proposal 9, and Alignment Schema 1 terminology. Concorde 2.1.0 reserves
   Operation for paired LangGraphs.
 - **Implementing entities**: `entity.runtime.cli`, `entity.runtime.tool-result`,
   `entity.runtime.tool-envelope`, `entity.runtime.repository-loader`,
-  `entity.runtime.alignment-explorer`, `entity.runtime.validator`, and `entity.runtime.delivery`.
+  `entity.runtime.alignment-explorer`, `entity.runtime.validator`, `entity.runtime.docsite-scaffold`,
+  and `entity.runtime.delivery`.
 - **Example**: `python3 scripts/concorde.py --project-root . validate --format json` emits a Tool
   envelope whose findings carry stable rule IDs and remediations.
 

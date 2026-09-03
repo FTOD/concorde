@@ -130,6 +130,11 @@ export async function materializeContent(providedRegistry?: ContentRegistry): Pr
     rm(generatedContentRoot, {recursive: true, force: true}),
     rm(generatedStaticRoot, {recursive: true, force: true}),
   ]);
+  // Each collection backs a Docusaurus content-docs plugin instance that requires its path to exist
+  // on disk even when the project currently registers no document in that collection (for example a
+  // freshly scaffolded project with zero features).
+  await Promise.all(['home', 'architecture', 'features'].map((collectionDirectory) =>
+    mkdir(resolve(generatedContentRoot, collectionDirectory), {recursive: true})));
 
   for (const document of registry.documents) {
     if (document.collectionId === 'docs') continue;

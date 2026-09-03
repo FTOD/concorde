@@ -16,13 +16,14 @@ SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPT_ROOT / "src"))
 
 from concorde.agent_assets import AgentAssetError, render_projection  # noqa: E402
+from concorde.docsite_template import DocsiteTemplateError, template_files  # noqa: E402
 from concorde.skill_assets import SkillAssetError, render_capabilities  # noqa: E402
 
 
 FRAMEWORK_ROOT = ".concorde/framework"
 RECEIPT_PATH = ".concorde/install.json"
 INSTALL_SCHEMA = 1
-PACKAGE_ROOTS = ["agent-assets", "operations", "scripts", "skills", "src", "templates"]
+PACKAGE_ROOTS = ["agent-assets", "docsite", "operations", "scripts", "skills", "src", "templates"]
 SKILLS = [
     "concorde-analyze",
     "concorde-checklist",
@@ -170,6 +171,11 @@ def _package_files(package: Package) -> dict[str, bytes]:
                 if "__pycache__" in PurePosixPath(relative).parts or path.suffix in {".pyc", ".pyo"}:
                     continue
                 desired[f"{FRAMEWORK_ROOT}/{relative}"] = path.read_bytes()
+    try:
+        for relative, content in template_files(package.root).items():
+            desired[f"{FRAMEWORK_ROOT}/{relative}"] = content
+    except DocsiteTemplateError as error:
+        raise InstallError(str(error)) from error
     scripts = (
         "concorde.py",
         "concorde.ps1",

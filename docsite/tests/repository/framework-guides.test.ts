@@ -77,7 +77,7 @@ describe('maintained Concorde framework guides', () => {
       .filter((document) => learningGuides.includes(document.sourcePath))
       .map((document) => document.content).join('\n');
     for (const authority of [
-      'architecture.md', 'features/', '.concorde/attempts/', '.concorde/reflections/log.md', 'source code', 'tests',
+      'architecture.md', 'features/', '.concorde/attempts/', '.concorde/reflections/', 'source code', 'tests',
     ]) {
       expect(maintainedText.toLowerCase()).toContain(authority);
     }

@@ -42,6 +42,11 @@ class NativeInstallerTests(unittest.TestCase):
         outputs = installer.desired_outputs(self.package, "codex")
         self.assertIn(".concorde/framework/src/concorde/cli.py", outputs)
         self.assertIn(".concorde/framework/src/concorde/alignment.py", outputs)
+        self.assertIn(".concorde/framework/docsite/docusaurus.config.ts", outputs)
+        self.assertIn(".concorde/framework/docsite/scaffold/deploy-docsite.yml", outputs)
+        self.assertNotIn(".concorde/framework/docsite/site.json", outputs)
+        self.assertTrue(all("node_modules" not in path and "/build/" not in path for path in outputs if path.startswith(".concorde/framework/docsite/")))
+        self.assertTrue(all(not path.startswith(".concorde/framework/docsite/tests/repository/") for path in outputs))
         self.assertIn(".agents/skills/concorde-plan/SKILL.md", outputs)
         self.assertIn(".agents/skills/concorde-standard-dev-loop/SKILL.md", outputs)
         self.assertIn(

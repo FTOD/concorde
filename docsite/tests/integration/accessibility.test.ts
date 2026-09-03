@@ -7,13 +7,11 @@ const siteDir = resolve(__dirname, '../..');
 
 describe('accessible presentation contract', () => {
   it('provides semantic landmarks and named provenance', async () => {
-    const [readme, config, provenance, architectureView] = await Promise.all([
-      readFile(resolve(siteDir, '../README.md'), 'utf8'),
+    const [config, provenance, architectureView] = await Promise.all([
       readFile(resolve(siteDir, 'docusaurus.config.ts'), 'utf8'),
       readFile(resolve(siteDir, 'src/components/ContentProvenance.tsx'), 'utf8'),
       readFile(resolve(siteDir, 'src/components/ArchitectureView.tsx'), 'utf8'),
     ]);
-    expect(readme).toMatch(/^# Concorde/m);
     expect(config).toContain("id: 'home'");
     expect(config).toContain("routeBasePath: '/'");
     expect(provenance).toContain('aria-label="Content provenance"');

@@ -14,12 +14,17 @@ and module-owned diagrams with provenance.
 | Collection | Maintained inputs | Route family |
 |---|---|---|
 | Home | Root `README.md` | `/` |
-| Documentation | Regular `docs/**/*.md` | `/docs` |
+| Documentation | Regular `docs/**/*.md`, only when `docs/` exists | `/docs` |
 | Architecture | Every configured module `architecture.md` | `/architecture/<module-id>` |
 | Features | Every direct module `features/<NNN-name>.md` | `/features/<feature-id>` |
 
-Attempt artifacts under `.concorde/attempts/<stable-feature-id>/`, the canonical
-`.concorde/reflections/log.md`, other `.concorde/**` control state, code/test fixtures, generated
+The Documentation collection, its navbar item, and its search directory register only when the host
+project has a `docs/` directory. A project scaffolded straight from Initialization Proposal 3 output
+(a root architecture and README, no `docs/`) still builds and serves; adding `docs/` later is all
+that is required to turn Documentation on.
+
+Attempt artifacts under `.concorde/attempts/<stable-feature-id>/`, per-file
+`.concorde/reflections/R-NNN.md` documents, other `.concorde/**` control state, code/test fixtures, generated
 HTML, and package receipts are outside publication discovery. They are neither pages nor broad
 Build Manifest exclusions. Links into `.concorde/**` are diagnosed as excluded control artifacts.
 Symbolic links are not followed.
@@ -31,6 +36,32 @@ at the root module with no collection-level category above it, label each module
 Do not copy canonical content into `docsite/`. Components, formatting, registry/routing, and build
 logic live there; publishable prose stays in root/docs/specs, while workflow control prose stays
 under `.concorde/`.
+
+## Site identity
+
+`docsite/` is the packaged, project-neutral template Concorde ships; every byte is identical across
+projects except the project-owned `docsite/site.json` (site identity schema 1), which
+`docusaurus.config.ts` loads once at startup through `plugins/concorde-content/site-identity.ts`.
+
+| Field | Type | Rule |
+|---|---|---|
+| `schema_version` | integer | Exactly `1`. |
+| `title` | string | Non-empty; site and navbar title. |
+| `url` | string | Absolute `http(s)://` URL without path. |
+| `baseUrl` | string | Starts and ends with `/`. |
+| `organizationName` | string | Non-empty. |
+| `projectName` | string | Non-empty. |
+| `repository` | string, optional | Absolute URL; enables the navbar repository link. |
+| `tagline` | string, optional | Falls back to a generic tagline when absent. |
+
+A missing or invalid `docsite/site.json` fails with an error naming the file and the violated rule.
+Concorde's own `docsite/site.json` reproduces this repository's identity; every other project
+scaffolds the adapter with `concorde.py docsite --propose` / `--apply --proposal <path>` (add
+`--github-pages` to also write `.github/workflows/deploy-docsite.yml` from the packaged
+`docsite/scaffold/deploy-docsite.yml` template) and edits its own `docsite/site.json` afterwards.
+Tests that assert facts specific to the Concorde repository — its diagram inventory, its maintained
+framework guides, its own identity and deployment workflow — live under `docsite/tests/repository/`,
+outside the template, so they never run against a scaffolded project's copy.
 
 ## Build pipeline
 

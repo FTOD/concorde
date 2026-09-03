@@ -33,5 +33,20 @@ features, system overview, and findings; do not compare the project with starter
 approval. After the maintainer explicitly accepts and saves that exact proposal at a safe
 project-relative path, invoke `{SCRIPT} --apply --proposal <path>`.
 
+## Project docsite
+
+When the maintainer asks for a project docsite, or `$ARGUMENTS` includes `--docsite`, run the
+scaffold only after the configured root architecture exists (status `unchanged` or a just-applied
+proposal). From the project root run
+`python3 {FRAMEWORK}/scripts/concorde.py --project-root . docsite --propose` with any explicit
+`--title`, `--repository`, `--url`, `--base-url`, or `--github-pages` values. Present the Docsite
+Scaffold Proposal 1: every path with its digest, the derived site identity, conflicts, and
+prerequisite findings (Node.js 20+, npm, the pinned Archify skill). Silence is not approval. After
+the maintainer explicitly accepts and saves that exact proposal at a safe project-relative path,
+invoke `python3 {FRAMEWORK}/scripts/concorde.py --project-root . docsite --apply --proposal <path>`.
+The scaffold copies the packaged adapter, writes only `docsite/site.json` as project identity, adds
+a minimal `README.md` only when none exists, never overwrites an existing `docsite/`, and installs
+nothing; `npm ci` and `npm run check` in `docsite` remain the maintainer's steps.
+
 Never edit maintained architecture outside the accepted Runtime Tool. Preserve exit status and
 report all findings, created paths, retained project files, and resulting source digest.

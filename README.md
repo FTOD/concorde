@@ -24,7 +24,8 @@ specs/<project>/
 ├── feature.json                  # selected direct feature path
 ├── constitution.md               # optional project governance
 ├── attempts/<stable-feature-id>/ # temporal work; removed by delivery
-├── reflections/log.md            # tracked process memory
+├── reflections/index.json        # tracked allocation high-water only
+├── reflections/R-NNN.md          # one detailed problem per tracked file
 ├── framework/                    # installed Concorde package projection
 └── install.json                  # installed-output ownership receipt
 ```
@@ -51,7 +52,7 @@ namespace while Python remains in the framework.
 | Public leaf Skill | Outcome |
 |---|---|
 | `$concorde-constitution` | Create or amend `.concorde/constitution.md`. |
-| `$concorde-init` | Propose and explicitly apply a Profile 7 root module/reflection log. |
+| `$concorde-init` | Propose and explicitly apply a Profile 7 root module/reflection index. |
 | `$concorde-specify` | Create or revise one direct level-local feature and its requirements checklist. |
 | `$concorde-clarify` | Resolve important ambiguity in that feature/interfaces. |
 | `$concorde-checklist` | Create a reviewer-owned requirements-quality checklist. |
@@ -168,7 +169,8 @@ See [Quick start](docs/quick-start.md).
 
 ## Maintain this checkout
 
-Root `skills/`, `operations/`, `templates/`, `src/concorde/`, `scripts/`, and `agent-assets/` are canonical.
+Root `skills/`, `operations/`, `templates/`, `src/concorde/`, `scripts/`, `agent-assets/`, and
+`docsite/` are canonical.
 Tracked `.agents/**` and `.claude/**` files are generated source-checkout projections; Concorde does
 not install a duplicate `.concorde/framework` into its own repository.
 
@@ -219,7 +221,7 @@ safe members, SHA-256, an isolated native installation, and byte-equivalent rebu
 | `specs/concorde/` | Self-applied module architectures and direct features. |
 | `.concorde/` | Native project configuration, selection, constitution, attempts, and reflections. |
 | `tests/concorde/` | Python unit, contract, integration, and acceptance evidence. |
-| `docsite/` | Architecture/feature publication adapter. |
+| `docsite/` | Architecture/feature publication adapter, packaged as every project's docsite template. |
 | `docs/` | Public framework and contributor guidance. |
 
 Concorde is distributed under the MIT License in `LICENSE`, declared by its package manifest and

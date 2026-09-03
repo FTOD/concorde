@@ -102,6 +102,10 @@ def verify_release(
             "concorde/operations/concorde-plan/operation.py",
             "concorde/skills/concorde-plan-context/SKILL.md",
             "concorde/skills/concorde-plan-author/SKILL.md",
+            "concorde/docsite/docusaurus.config.ts",
+            "concorde/docsite/package.json",
+            "concorde/docsite/package-lock.json",
+            "concorde/docsite/scaffold/deploy-docsite.yml",
         }
         missing = required - set(names)
         if missing:
@@ -116,6 +120,14 @@ def verify_release(
             for name in names
         ):
             raise ValueError(f"{expected_name} contains removed host-package layout")
+        disposable_docsite_prefixes = (
+            "concorde/docsite/node_modules/",
+            "concorde/docsite/build/",
+            "concorde/docsite/.generated/",
+            "concorde/docsite/tests/repository/",
+        )
+        if any(name.startswith(disposable_docsite_prefixes) or name == "concorde/docsite/site.json" for name in names):
+            raise ValueError(f"{expected_name} contains disposable or project-owned docsite members")
         manifest = json.loads(package.read("concorde/concorde.json"))
         if manifest.get("version") != version:
             raise ValueError(f"{expected_name} package manifest version does not match {version}")

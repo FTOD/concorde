@@ -36,20 +36,22 @@ desired inventory.
 
 - **Consumer**: Installer, release tooling, and maintainer.
 - **Direction**: Canonical sources to package identity, archive, and release pointer.
-- **Entry points**: `concorde.json`; `agent-assets/`, `operations/`, `scripts/`, `skills/`,
-  `src/`, and `templates/`; and the release builder.
+- **Entry points**: `concorde.json`; `agent-assets/`, `docsite/`, `operations/`, `scripts/`,
+  `skills/`, `src/`, and `templates/`; and the release builder.
 - **Inputs**: Version 2.1.0, Profile 7, Protocol 13, exact 17-Skill/three-Operation inventories,
   templates, supported integrations, and allowlisted regular files.
 - **Outputs**: Source package or deterministic single-root archive plus schema-1 release pointer.
 - **Obligations**: Reject missing/extra manifest inventory, symlinks, unsafe names, cross-kind
-  collisions, and unpaired Operations; include native installer; normalize archive metadata; bind
+  collisions, and unpaired Operations; include native installer; include the docsite template without
+  disposable output, `site.json`, or repository evidence; normalize archive metadata; bind
   URL/digest/version.
 - **Failures**: Invalid identity/inventory/member/pair/path/version/digest/rebuild prevents installation
   or release.
 - **Compatibility**: Package Manifest 2 supports Architecture Profile 7, Workspace Protocol 13,
   Delivery Proposal 9, Codex, and Claude. No legacy capability layout is read.
 - **Example**: `concorde-2.1.0.zip` contains `concorde/concorde.json`, 17 leaf directories (including
-  two internal planner leaves), and both files for each of three Operations.
+  two internal planner leaves), both files for each of three Operations, and the `concorde/docsite/`
+  template.
 - **Implementing entities**: `entity.distribution.manifest`,
   `entity.distribution.archive-builder`, `entity.distribution.archive`, and
   `entity.distribution.release-pointer`.
@@ -82,7 +84,7 @@ desired inventory.
 | `entity.distribution.manifest` | Single Package Manifest 2 identity. | Drives source validation and desired inventory. |
 | `entity.distribution.installer` | Ownership transaction. | Compares desired/prior/observed state and applies safely. |
 | `entity.distribution.capability-projector` | Agent integration renderer. | Filters internal leaves and preserves public Skill/Operation role transitions. |
-| `entity.distribution.framework-projection` | Installed canonical package copy. | Retains Scripts, all 17 leaves, three pairs, Runtime, templates, and support assets. |
+| `entity.distribution.framework-projection` | Installed canonical package copy. | Retains Scripts, all 17 leaves, three pairs, Runtime, templates, the docsite template, and support assets. |
 | `entity.distribution.archive-builder` | Deterministic packager. | Emits archive and pointer from the same identity. |
 | `entity.distribution.release-verifier` | Release gate. | Installs extracted bytes and proves reproducibility. |
 
