@@ -32,6 +32,60 @@ class PlanningContextTests(unittest.TestCase):
         self.assertIn("specs/example/modules/provider/features/001-api.md", readable)
         self.assertNotIn("specs/example/modules/provider/features/002-unrelated.md", readable)
 
+    def test_explicit_external_required_interface_needs_no_provider_feature(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            shutil.copytree(FIXTURE, project)
+            selected = project / SELECTED
+            body = selected.read_text(encoding="utf-8").replace(
+                "    - contract.provider.api\n",
+                "    - contract.provider.api\n    - contract.external.platform\n",
+            )
+            external = """
+
+### `contract.external.platform` — External platform
+
+- **Provider**: external:fixture-platform
+- **Consumer**: Consumer module
+- **Direction**: Platform input to consumer behavior.
+- **Entry points**: External platform workflow.
+- **Inputs**: One platform request.
+- **Outputs**: One platform result.
+- **Obligations**: Surface provider unavailability.
+- **Failures**: An unavailable platform stops the change.
+- **Compatibility**: The external provider owns its versions.
+"""
+            selected.write_text(
+                body.replace("\n## Usage Scenarios", external + "\n## Usage Scenarios"),
+                encoding="utf-8",
+            )
+
+            context = resolve_planning_context(project, SELECTED)
+
+            self.assertEqual(
+                [(item.feature_path, item.interface_ids) for item in context.required_feature_specs],
+                [("specs/example/modules/provider/features/001-api.md", ("contract.provider.api",))],
+            )
+
+    def test_required_interface_without_project_or_external_provider_fails_closed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            shutil.copytree(FIXTURE, project)
+            selected = project / SELECTED
+            selected.write_text(
+                selected.read_text(encoding="utf-8").replace(
+                    "    - contract.provider.api\n",
+                    "    - contract.missing.api\n",
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                PlanningContextError,
+                "required interface 'contract.missing.api' has 0 provider owners",
+            ):
+                resolve_planning_context(project, SELECTED)
+
     def test_selected_module_owned_locators_and_task_paths_are_bounded(self):
         context = resolve_planning_context(FIXTURE, SELECTED)
         self.assertEqual(

@@ -35,6 +35,12 @@
     "concorde-reflections-triage",
     "concorde-plan"
   ],
+  "operation_runtime": {
+    "launcher": "scripts/run-operation.py",
+    "python": ">=3.11",
+    "requirements": "operations/requirements.lock",
+    "venv": ".concorde/.venv"
+  },
   "templates": [
     "checklist-template.md",
     "constitution-template.md",

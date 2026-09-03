@@ -25,7 +25,8 @@ evidence_status: partial
 Users receive one complete public Skill for each Concorde lifecycle choice, while Operations may use
 packaged internal effect-declared leaves without exposing implementation entry points. The same
 public prompt semantics reach Codex and Claude, and an Operation loads canonical bodies without
-copying or flattening them.
+copying or flattening them. Projected Operation prompts retain the exact paired path but enter it
+through the colocated managed-runtime bootstrap rather than an ambient Python interpreter.
 
 This feature covers leaf Skill source, metadata, Tool crossings, projection, and phase boundaries. It
 does not define LangGraph topology, execute an agent model, or own project artifacts.
@@ -47,15 +48,16 @@ does not define LangGraph topology, execute an agent model, or own project artif
 - **Consumer**: Installer, checkout synchronization, Codex, and Claude.
 - **Direction**: Canonical public leaf and paired Operation Markdown to integration-native Skill files;
   internal leaves remain framework-only.
-- **Entry points**: `skills/<name>/SKILL.md`, `operations/<name>/SKILL.md`, and
-  `src/concorde/skill_assets.py`.
+- **Entry points**: `skills/<name>/SKILL.md`, `operations/<name>/SKILL.md`,
+  `src/concorde/skill_assets.py`, and the manifest-declared `scripts/run-operation.py` bootstrap.
 - **Inputs**: Package Manifest 2 inventories, canonical metadata/body, integration, installed
-  framework prefix, and paired Operation entry point when applicable.
+  framework prefix, paired Operation entry point, and colocated runtime-launcher path when applicable.
 - **Outputs**: One regular `.agents/skills/<name>/SKILL.md` or
   `.claude/skills/<name>/SKILL.md` file with source, kind, and entry-point provenance.
 - **Obligations**: Require globally unique safe names; validate exposure/effects and mixed acyclic
   capability topology; resolve only declared tokens; preserve bodies; filter internal leaves;
-  distinguish source/kind/entry-point role; reject extras, symlinks, collisions, or unpaired Operations.
+  distinguish source/kind/entry-point role; route Operations through the managed launcher while
+  retaining their paired path; reject extras, symlinks, collisions, or unpaired Operations.
 - **Failures**: Invalid exposure/effects, manifest drift, internal projection, unsafe source/target,
   unknown/cyclic capability, unresolved token, or output/role collision blocks projection.
 - **Compatibility**: Package Manifest 2 and Concorde 2.1.0 contain 17 packaged leaves and three Operations but
@@ -64,7 +66,9 @@ does not define LangGraph topology, execute an agent model, or own project artif
   `entity.skills.projector`.
 - **Example**: `operations/concorde-plan/SKILL.md` projects to
   `.agents/skills/concorde-plan/SKILL.md` with `kind: operation`/entry-point provenance, while
-  `concorde-plan-context` and `concorde-plan-author` do not project.
+  `concorde-plan-context` and `concorde-plan-author` do not project; its command is
+  `python3 .concorde/framework/scripts/run-operation.py
+  .concorde/framework/operations/concorde-plan/operation.py ...`.
 
 ### `contract.skills.workflow-guidance` — Leaf phase behavior
 
@@ -104,7 +108,8 @@ does not define LangGraph topology, execute an agent model, or own project artif
 - **FR-003**: A public leaf MUST remain independently invocable, an internal leaf MUST remain
   unprojected, and no leaf may declare/implement LangGraph topology over multiple Skills.
 - **FR-004**: Projection MUST preserve prompt semantics and add source/kind/entry-point provenance
-  deterministically for Codex and Claude.
+  deterministically for Codex and Claude; every Operation invocation MUST pass the paired path
+  through the source/installed managed-runtime bootstrap.
 - **FR-005**: Operations MUST load canonical leaf bodies/effects and MUST NOT embed copies or flatten
   internal/nested capability bodies in Python or Markdown.
 
@@ -113,7 +118,8 @@ does not define LangGraph topology, execute an agent model, or own project artif
 - **SC-001**: Both integrations expose exactly 15 public leaves plus three Operation skills, package
   two internal planner leaves, and have no cross-kind/role collision.
 - **SC-002**: Source/projection parity and installed workflow tests prove that leaf Skill semantics and
-  Tool entry points are equivalent across supported integrations.
+  Tool entry points are equivalent across supported integrations and that Operation prompts select
+  the intended managed venv without activation.
 
 ## Edge Cases
 
@@ -121,3 +127,4 @@ does not define LangGraph topology, execute an agent model, or own project artif
 - A leaf Skill declares an Operation token or contains multi-Skill graph topology.
 - A paired Operation uses the same public name as a leaf Skill.
 - A Skill declares a Tool script that does not resolve inside the installed framework.
+- An Operation projection resolves its pair but bypasses or cannot resolve the colocated bootstrap.

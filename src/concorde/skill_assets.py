@@ -255,8 +255,9 @@ def resolve_skill_prompt(
         ):
             raise SkillAssetError(f"Operation {name} must declare at least two valid capabilities")
         composed = tuple(capabilities_value)
+        launcher = _framework_path(framework_prefix, "scripts/run-operation.py")
         operation = _framework_path(framework_prefix, f"operations/{name}/operation.py")
-        body = body.replace("{OPERATION}", "python3 " + operation)
+        body = body.replace("{OPERATION}", f"python3 {launcher} {operation}")
         if "{SCRIPT}" in body:
             raise SkillAssetError(f"Operation {name} may not use {{SCRIPT}}")
 

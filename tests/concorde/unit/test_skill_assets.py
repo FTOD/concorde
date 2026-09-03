@@ -125,7 +125,8 @@ class SkillAssetTests(unittest.TestCase):
         )
         self.assertEqual(operation.capabilities[:2], ("concorde-specify", "concorde-plan"))
         self.assertIn(
-            "python3 operations/concorde-standard-dev-loop/operation.py",
+            "python3 scripts/run-operation.py "
+            "operations/concorde-standard-dev-loop/operation.py",
             operation.body,
         )
         for prompt in (leaf, planner, operation):
@@ -140,9 +141,13 @@ class SkillAssetTests(unittest.TestCase):
         installed = load_skill_prompt(
             REPOSITORY_ROOT, "concorde-plan", ".concorde/framework"
         )
-        self.assertIn("python3 operations/concorde-plan/operation.py", source.body)
         self.assertIn(
-            "python3 .concorde/framework/operations/concorde-plan/operation.py",
+            "python3 scripts/run-operation.py operations/concorde-plan/operation.py",
+            source.body,
+        )
+        self.assertIn(
+            "python3 .concorde/framework/scripts/run-operation.py "
+            ".concorde/framework/operations/concorde-plan/operation.py",
             installed.body,
         )
         source_operation = load_skill_prompt(
@@ -154,11 +159,13 @@ class SkillAssetTests(unittest.TestCase):
             ".concorde/framework",
         )
         self.assertIn(
-            "python3 operations/concorde-standard-dev-loop/operation.py",
+            "python3 scripts/run-operation.py "
+            "operations/concorde-standard-dev-loop/operation.py",
             source_operation.body,
         )
         self.assertIn(
-            "python3 .concorde/framework/operations/concorde-standard-dev-loop/operation.py",
+            "python3 .concorde/framework/scripts/run-operation.py "
+            ".concorde/framework/operations/concorde-standard-dev-loop/operation.py",
             installed_operation.body,
         )
 

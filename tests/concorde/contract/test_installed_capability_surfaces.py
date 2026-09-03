@@ -10,11 +10,16 @@ import unittest
 from pathlib import Path
 
 from tests.concorde.support.paths import CONTEXT_PROJECT, REPOSITORY_ROOT
+from tests.concorde.support.managed_runtime import (
+    create_langgraph_index,
+    runtime_install_environment,
+)
 
 
 class InstalledCapabilitySurfaceContractTests(unittest.TestCase):
     def install(self, base: str, integration: str) -> Path:
         root = Path(base) / integration
+        environment = runtime_install_environment(create_langgraph_index(Path(base)))
         result = subprocess.run(
             [
                 sys.executable,
@@ -29,6 +34,7 @@ class InstalledCapabilitySurfaceContractTests(unittest.TestCase):
             ],
             text=True,
             capture_output=True,
+            env=environment,
         )
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
         self.assertEqual(json.loads(result.stdout)["status"], "installed")
@@ -90,7 +96,9 @@ class InstalledCapabilitySurfaceContractTests(unittest.TestCase):
             plan = (root / ".agents/skills/concorde-plan/SKILL.md").read_text()
             specify = (root / ".agents/skills/concorde-specify/SKILL.md").read_text()
             self.assertIn(
-                "python3 .concorde/framework/operations/concorde-plan/operation.py", plan
+                "python3 .concorde/framework/scripts/run-operation.py "
+                ".concorde/framework/operations/concorde-plan/operation.py",
+                plan,
             )
             self.assertIn('kind: "operation"', plan)
             self.assertIn(".concorde/framework/templates/feature-template.md", specify)
@@ -128,8 +136,9 @@ class InstalledCapabilitySurfaceContractTests(unittest.TestCase):
             self.assertIn(relative, projected)
             result = subprocess.run(
                 [
-                    sys.executable,
-                    str(root / relative),
+                    "python3",
+                    ".concorde/framework/scripts/run-operation.py",
+                    relative,
                     "Add audit logging",
                     "--framework-prefix",
                     ".concorde/framework",
@@ -146,12 +155,52 @@ class InstalledCapabilitySurfaceContractTests(unittest.TestCase):
                 ["specify", "plan", "tasks", "tasks", "deliver", "deliver"],
             )
 
+    def test_every_installed_operation_passes_managed_runtime_check(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            for integration in ("codex", "claude"):
+                root = self.install(temporary, integration)
+                for operation in (
+                    "concorde-standard-dev-loop",
+                    "concorde-reflections-triage",
+                    "concorde-plan",
+                ):
+                    with self.subTest(integration=integration, operation=operation):
+                        result = subprocess.run(
+                            [
+                                "python3",
+                                ".concorde/framework/scripts/run-operation.py",
+                                f".concorde/framework/operations/{operation}/operation.py",
+                                "--runtime-check",
+                            ],
+                            cwd=root,
+                            text=True,
+                            capture_output=True,
+                            env={**os.environ, "PIP_NO_INDEX": "1", "UV_OFFLINE": "1"},
+                        )
+                        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+                        payload = json.loads(result.stdout)
+                        self.assertEqual(payload["operation"], operation)
+                        self.assertEqual(Path(payload["venv"]), root / ".concorde/.venv")
+                        self.assertEqual(
+                            Path(payload["python"]),
+                            root / ".concorde/.venv/bin/python",
+                        )
+
     def test_receipt_roles_cover_framework_skills_operations_and_agents(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.install(temporary, "codex")
             receipt = json.loads((root / ".concorde/install.json").read_text())
             self.assertEqual(receipt["concorde_version"], "2.1.0")
             self.assertEqual(receipt["integration"], "codex")
+            self.assertEqual(receipt["runtime"]["path"], ".concorde/.venv")
+            self.assertEqual(
+                receipt["runtime"]["verified_operations"],
+                [
+                    "concorde-standard-dev-loop",
+                    "concorde-reflections-triage",
+                    "concorde-plan",
+                ],
+            )
             roles = {item["role"] for item in receipt["outputs"]}
             self.assertEqual(roles, {"framework", "skill", "operation", "agent"})
             paths = {item["path"] for item in receipt["outputs"]}

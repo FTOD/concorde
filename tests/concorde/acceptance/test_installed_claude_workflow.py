@@ -9,15 +9,17 @@ from pathlib import Path
 
 from tests.concorde.support.feature_workspace import create_feature_file, write_selection
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.managed_runtime import create_langgraph_index, runtime_install_environment
 
 
 class InstalledClaudeWorkflowAcceptance(unittest.TestCase):
     def test_native_claude_install_exposes_capabilities_agents_and_runtime(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            environment = runtime_install_environment(create_langgraph_index(root.parent))
             install = subprocess.run(
                 [sys.executable, str(REPOSITORY_ROOT / "scripts/install-concorde.py"), "--target", str(root), "--integration", "claude", "--apply", "--format", "json"],
-                text=True, capture_output=True,
+                text=True, capture_output=True, env=environment,
             )
             self.assertEqual(install.returncode, 0, install.stderr or install.stdout)
             self.assertEqual(len(list((root / ".claude/skills").glob("concorde-*/SKILL.md"))), 18)

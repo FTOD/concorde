@@ -39,7 +39,7 @@ integration-specific product internals.
 | `entity.skills.checklist-template` | document | Reviewer-owned requirements-quality checklist format. | `templates/checklist-template.md` |
 | `entity.skills.constitution-template` | document | Governance-document format reference. | `templates/constitution-template.md` |
 | `entity.skills.reflection-template` | document | Per-file Reflection Document v2 grammar. | `templates/reflections-template.md` |
-| `entity.skills.projector` | program | Parses leaf exposure/effects and mixed Operation capabilities, resolves tokens, filters internal leaves, and renders public Codex/Claude Skill files with owned kind provenance. | `src/concorde/skill_assets.py` |
+| `entity.skills.projector` | program | Parses leaf exposure/effects and mixed Operation capabilities, resolves Tool and managed Operation-launcher tokens, filters internal leaves, and renders public Codex/Claude Skill files with owned kind provenance. | `src/concorde/skill_assets.py` |
 | `entity.skills.reflection-assets` | directory | Internal reflection investigator/implementer roles and integration templates. | `agent-assets/reflections` |
 | `entity.skills.checkout-sync` | program | Compares and refreshes this repository's generated agent capability surfaces. | `scripts/development/sync-agent-surfaces.py` |
 | `entity.skills.coding-agent` | external-system | Executes one installed Skill within its declared authority boundary. | `external:coding-agent` |
@@ -65,7 +65,7 @@ integration-specific product internals.
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.skills.project` | Installer or checkout sync requests an integration. | Validate 17 packaged leaves/three pairs, exposure/effects/capabilities, cycles, and roles; omit two internal leaves; resolve entry points/provenance; compare owned outputs. | Codex or Claude receives the same 15 public leaves plus three Operation skills. | `contract.skills.agent-surface` |
+| `interaction.skills.project` | Installer or checkout sync requests an integration. | Validate 17 packaged leaves/three pairs, exposure/effects/capabilities, cycles, and roles; omit two internal leaves; resolve Tool paths plus each paired Operation path through the colocated runtime bootstrap; add provenance; compare owned outputs. | Codex or Claude receives the same 15 public leaves plus three Operation skills without ambient-interpreter dependence. | `contract.skills.agent-surface` |
 | `interaction.skills.execute` | Maintainer or Operation invokes a leaf Skill. | Resolve Protocol 13 when path-sensitive; read only bounded authorities; perform the declared phase; invoke deterministic Tools as needed; report checks and limitations. | One independently invocable phase completes or stops without crossing its authority boundary. | `contract.skills.workflow-guidance`, `contract.runtime.tools`, `contract.workspace.feature-workspace` |
 
 ## Modules
@@ -87,7 +87,9 @@ None.
 - Leaf Skills may invoke Tools but never embed a multi-Skill LangGraph or duplicate another Skill's
   prompt body.
 - Public leaf and Operation capabilities share one global `concorde-*` installed namespace; internal
-  leaves remain packaged/loadable but never project.
+  leaves remain packaged/loadable but never project. Operation bodies retain their exact paired path,
+  but invocation first enters `scripts/run-operation.py` so source uses root `.venv` and installed
+  projects use `.concorde/.venv` without shell activation.
 - Templates remain readable format references, not fragments merged into Skill prompts.
 - Reflection role assets are internal support for the paired reflection-triage Operation, not
   additional user-facing leaf capabilities.

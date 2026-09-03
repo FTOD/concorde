@@ -104,13 +104,14 @@ checkout:
 
 ```bash
 uv sync
-uv run python operations/concorde-standard-dev-loop/operation.py "Add audit logging" --describe-policy
+python3 scripts/run-operation.py operations/concorde-standard-dev-loop/operation.py \
+  "Add audit logging" --framework-prefix . --describe-policy
 ```
 
-The base Concorde installer remains Python-only and offline; LangGraph is an optional workflow-host
-dependency constrained to `langgraph>=1.2,<2`. See
-[Workflow](docs/concorde-workflow.md#langgraph-operations) for the injected executor API
-and installation boundary.
+The checkout launcher selects its root `.venv`. Native installation instead creates and verifies a
+private `.concorde/.venv`, never touches the target project's `.venv`, and may contact the configured
+package index while applying. After installation, all paired Operations start from the private
+environment without dependency downloads or package-index access.
 
 ## Explore architecture and implementation alignment
 

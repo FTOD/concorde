@@ -10,6 +10,10 @@ import unittest
 from pathlib import Path
 
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.managed_runtime import (
+    create_langgraph_index,
+    runtime_install_environment,
+)
 
 
 INSTALLER = REPOSITORY_ROOT / "scripts/install-concorde.py"
@@ -20,6 +24,9 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name) / "target"
+        self.runtime_environment = runtime_install_environment(
+            create_langgraph_index(Path(self.temporary.name))
+        )
 
     def run_install(self, *arguments: str, checkout: Path = REPOSITORY_ROOT, check: bool = True):
         result = subprocess.run(
@@ -32,6 +39,7 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
             ],
             text=True,
             capture_output=True,
+            env=self.runtime_environment,
         )
         if check and result.returncode:
             self.fail(result.stderr or result.stdout)
@@ -51,7 +59,7 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
             ignore=shutil.ignore_patterns("node_modules", "build", ".generated", ".docusaurus", "coverage"),
         )
         (destination / "scripts").mkdir()
-        for script in ("concorde.py", "concorde.ps1", "concorde.sh", "reflections_queue.py", "render-capability-surfaces.py", "workspace.py"):
+        for script in ("concorde.py", "concorde.ps1", "concorde.sh", "reflections_queue.py", "render-capability-surfaces.py", "run-operation.py", "workspace.py"):
             shutil.copy2(REPOSITORY_ROOT / "scripts" / script, destination / "scripts" / script)
         return destination
 
@@ -72,10 +80,39 @@ class NativeInstallationLifecycleTests(unittest.TestCase):
         self.assertEqual(receipt["concorde_version"], "2.1.0")
         self.assertEqual(receipt["architecture_profile"], 7)
         self.assertEqual(receipt["workspace_protocol"], 13)
+        self.assertEqual(receipt["runtime"]["path"], ".concorde/.venv")
+        runtime_action = next(
+            item for item in applied["actions"] if item["role"] == "runtime"
+        )
+        self.assertEqual(runtime_action["action"], "create")
         before = self.tree_digest()
         _, repeated = self.run_install("--integration", "codex", "--apply")
         self.assertEqual(repeated["status"], "unchanged")
         self.assertEqual(before, self.tree_digest())
+
+    def test_rebuild_deletes_only_obsolete_managed_venv_and_preserves_project_venv(self):
+        user_sentinel = self.root / ".venv/user-package.txt"
+        user_sentinel.parent.mkdir(parents=True)
+        user_sentinel.write_text("user-owned\n", encoding="utf-8")
+        user_digest = hashlib.sha256(user_sentinel.read_bytes()).hexdigest()
+        self.run_install("--integration", "codex", "--apply")
+        obsolete = self.root / ".concorde/.venv/obsolete-package.txt"
+        obsolete.write_text("obsolete\n", encoding="utf-8")
+        marker = self.root / ".concorde/.venv/.concorde-runtime.json"
+        value = json.loads(marker.read_text(encoding="utf-8"))
+        value["requirements_sha256"] = "sha256:" + "0" * 64
+        marker.write_text(json.dumps(value), encoding="utf-8")
+
+        _, preview = self.run_install("--integration", "codex")
+        runtime = next(item for item in preview["actions"] if item["role"] == "runtime")
+        self.assertEqual(runtime["action"], "rebuild")
+        self.run_install("--integration", "codex", "--apply")
+
+        self.assertFalse(obsolete.exists())
+        self.assertEqual(
+            hashlib.sha256(user_sentinel.read_bytes()).hexdigest(), user_digest
+        )
+        self.assertTrue(marker.is_file())
 
     def test_compatible_package_update_changes_only_owned_outputs(self):
         self.run_install("--integration", "codex", "--apply")

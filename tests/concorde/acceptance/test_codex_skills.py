@@ -8,15 +8,17 @@ import unittest
 from pathlib import Path
 
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.managed_runtime import create_langgraph_index, runtime_install_environment
 
 
 class CodexSkillsAcceptance(unittest.TestCase):
     def test_native_install_exposes_complete_codex_workflow(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            environment = runtime_install_environment(create_langgraph_index(root.parent))
             result = subprocess.run(
                 [sys.executable, str(REPOSITORY_ROOT / "scripts/install-concorde.py"), "--target", str(root), "--integration", "codex", "--apply", "--format", "json"],
-                text=True, capture_output=True,
+                text=True, capture_output=True, env=environment,
             )
             self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
             manifest = json.loads((root / ".concorde/framework/concorde.json").read_text())

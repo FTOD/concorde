@@ -185,7 +185,8 @@ class StandardDevLoopOperationIntegrationTests(unittest.TestCase):
             seen["concorde-specify"],
         )
         self.assertIn(
-            "python3 .concorde/framework/operations/concorde-plan/operation.py",
+            "python3 .concorde/framework/scripts/run-operation.py "
+            ".concorde/framework/operations/concorde-plan/operation.py",
             seen["concorde-plan"],
         )
 

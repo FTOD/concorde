@@ -85,11 +85,21 @@ def _required_specs(
     grouped: dict[str, list[str]] = {}
     paths: dict[str, str] = {}
     for interface_id in feature.required_interfaces:
+        external_declarations = tuple(
+            item
+            for item in package.required_interface_declarations
+            if item.owner == feature_id
+            and item.identifier == interface_id
+            and item.provider
+            and item.provider.startswith("external:")
+        )
         declarations = tuple(
             item
             for item in package.interfaces_by_id.get(interface_id, ())
             if item.role == "provided"
         )
+        if not declarations and len(external_declarations) == 1:
+            continue
         if len(declarations) != 1:
             raise PlanningContextError(
                 f"required interface {interface_id!r} has {len(declarations)} provider owners"

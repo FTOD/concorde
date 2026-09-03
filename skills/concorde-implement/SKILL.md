@@ -93,9 +93,24 @@ match an executable task and its trace. An unexpected change stops completion ma
    resolution, require all nine Archify showcase checks with zero composition errors/warnings, run
    deterministic delivery/freshness, and truthfully record whether visual inspection occurred. A
    basic four-check receipt is not acceptance. Generated output is never authority.
-6. Before checking any task, append compact Attempt Evidence to the returned validation log: task ID
-   and trace, actual command/check, `passed`/`failed`/truthful `skipped`, evidence path, scope, and
-   limitation. Only a proportionate passed check permits `[X]`.
+6. Before checking any task, append compact Attempt Evidence to the returned validation log using
+   this exact delivery-readable shape. The task ID and trace belong in its boundary; the actual
+   command/check, evidence path, scope, and limitation belong inside the block:
+
+   ```markdown
+   - **T### · <trace>**
+     - **Outcome**: passed|failed|skipped
+     - **Check**: <actual command or check>
+     - **Evidence**: <project-relative path or concise output>
+     - **Scope**: <behavior or boundary proved>
+     - **Limitation**: <material limit or none>
+   ```
+
+   The `- **T### · <trace>**` boundary is one complete top-level line with no trailing prose and may
+   not wrap or be nested. `**Outcome**` is a separate nested field inside that task's block; writing
+   “passed” only in the boundary or surrounding prose is not evidence. Use the exact task ID, keep
+   one current block per task, and record `passed`/`failed`/truthful `skipped` as applicable. Only a
+   proportionate passed check permits `[X]`; concretely, its field must say `**Outcome**: passed`.
 7. If a sequential task fails, record the problem then stop. For independent parallel failures,
    continue only the unaffected tasks and leave failed tasks open.
 

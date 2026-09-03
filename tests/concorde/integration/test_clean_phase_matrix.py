@@ -9,6 +9,7 @@ from pathlib import Path
 
 from tests.concorde.support.feature_workspace import create_feature_file, write_selection
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.managed_runtime import create_langgraph_index, runtime_install_environment
 
 
 PHASES = {
@@ -29,6 +30,7 @@ class CleanPhaseMatrixIntegrationTests(unittest.TestCase):
     def test_every_phase_adapter_routes_one_native_selected_workspace(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            environment = runtime_install_environment(create_langgraph_index(root.parent))
             feature = create_feature_file(root)
             write_selection(root, feature.relative_to(root).as_posix())
             install = subprocess.run(
@@ -38,6 +40,7 @@ class CleanPhaseMatrixIntegrationTests(unittest.TestCase):
                 ],
                 text=True,
                 capture_output=True,
+                env=environment,
             )
             self.assertEqual(install.returncode, 0, install.stderr or install.stdout)
             adapter = root / ".concorde/framework/scripts/workspace.py"

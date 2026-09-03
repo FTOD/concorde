@@ -59,5 +59,21 @@ fix; a reserved ID stays retired even if the entry is abandoned.
 Convergence may write only the selected task list, its compact reconciliation evidence when a check
 was actually run, and authorized per-file reflection state.
 
+Any reconciliation evidence it writes must use the same delivery-readable validation grammar:
+
+```markdown
+- **T### · <trace>**
+  - **Outcome**: passed|failed|skipped
+  - **Check**: <actual command or check>
+  - **Evidence**: <project-relative path or concise output>
+  - **Scope**: <behavior or boundary proved>
+  - **Limitation**: <material limit or none>
+```
+
+Keep the `- **T### · <trace>**` boundary on one complete top-level line with no trailing prose, and
+put the exact `**Outcome**` field inside that block. Do not treat “passed” in a title or narrative as
+task evidence, duplicate a task's current block, or alter an existing outcome merely to make
+delivery eligible.
+
 Report appended task IDs and reasons, dependency placement, checks run, remaining risks, or that no
 new tasks were necessary.

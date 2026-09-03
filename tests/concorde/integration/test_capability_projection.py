@@ -38,9 +38,14 @@ class CapabilityProjectionIntegrationTests(unittest.TestCase):
         skill = REPOSITORY_ROOT / "operations/concorde-plan/SKILL.md"
         source = render_skill(skill, "codex", "", kind="operation")
         installed = render_skill(skill, "codex", ".concorde/framework", kind="operation")
-        self.assertIn("python3 operations/concorde-plan/operation.py", source)
         self.assertIn(
-            "python3 .concorde/framework/operations/concorde-plan/operation.py", installed
+            "python3 scripts/run-operation.py operations/concorde-plan/operation.py",
+            source,
+        )
+        self.assertIn(
+            "python3 .concorde/framework/scripts/run-operation.py "
+            ".concorde/framework/operations/concorde-plan/operation.py",
+            installed,
         )
         for marker in ("context", "author", "permission"):
             self.assertIn(marker, source)
@@ -53,10 +58,13 @@ class CapabilityProjectionIntegrationTests(unittest.TestCase):
             operation, "codex", ".concorde/framework", kind="operation"
         )
         self.assertIn(
-            "python3 operations/concorde-standard-dev-loop/operation.py", source
+            "python3 scripts/run-operation.py "
+            "operations/concorde-standard-dev-loop/operation.py",
+            source,
         )
         self.assertIn(
-            "python3 .concorde/framework/operations/concorde-standard-dev-loop/operation.py",
+            "python3 .concorde/framework/scripts/run-operation.py "
+            ".concorde/framework/operations/concorde-standard-dev-loop/operation.py",
             installed,
         )
         self.assertIn('kind: "operation"', installed)

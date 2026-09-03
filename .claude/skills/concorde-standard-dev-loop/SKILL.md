@@ -14,13 +14,13 @@ disable-model-invocation: false
 ---
 # Concorde Standard Development Loop
 
-Treat `$ARGUMENTS` as the complete development request. Use the paired graph at `python3 operations/concorde-standard-dev-loop/operation.py` as the
+Treat `$ARGUMENTS` as the complete development request. Use the paired graph at `python3 scripts/run-operation.py operations/concorde-standard-dev-loop/operation.py` as the
 topology authority for exactly four stages: specify, plan, tasks, and deliver.
 
 Before executing leaf Skills, run:
 
 ```bash
-python3 operations/concorde-standard-dev-loop/operation.py "$ARGUMENTS" --framework-prefix .
+python3 scripts/run-operation.py operations/concorde-standard-dev-loop/operation.py "$ARGUMENTS" --framework-prefix .
 ```
 
 Require the graph to report these ordered direct capability bundles:

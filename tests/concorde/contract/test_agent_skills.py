@@ -101,7 +101,8 @@ class AgentSkillContractTests(unittest.TestCase):
         self.assertIn("Architecture/feature-file edits are valid implementation tasks", tasks)
 
     def test_implementation_requires_task_authority_and_passed_attempt_evidence(self):
-        body = " ".join(read(SKILL_ROOT, "concorde-implement").split())
+        source = read(SKILL_ROOT, "concorde-implement")
+        body = " ".join(source.split())
         for value in (
             "Code is implementation authority",
             "tests and deterministic checks are evidence",
@@ -113,6 +114,8 @@ class AgentSkillContractTests(unittest.TestCase):
             "confirm the selected attempt still exists for explicit delivery",
         ):
             self.assertIn(value, body, value)
+        self.assertIn("- **T### · <trace>**", source)
+        self.assertIn("- **Outcome**: passed", source)
 
     def test_analysis_convergence_and_reflections_preserve_boundaries(self):
         analyze = " ".join(read(SKILL_ROOT, "concorde-analyze").split())

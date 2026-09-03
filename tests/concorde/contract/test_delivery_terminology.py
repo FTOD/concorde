@@ -60,6 +60,14 @@ class DeliveryTerminologyContractTests(unittest.TestCase):
         for body in (skill, readme):
             self.assertNotIn("accepted realization", body.lower())
 
+    def test_delivery_guidance_names_the_exact_attempt_evidence_grammar(self):
+        skill = (REPOSITORY_ROOT / "skills/concorde-deliver/SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("- **T### · <trace>**", skill)
+        self.assertIn("- **Outcome**: passed", skill)
+        self.assertIn("top-level", skill)
+
     def test_interface_fixtures_live_outside_specification_hierarchy(self):
         expected = {
             "architecture-service.schema.json",

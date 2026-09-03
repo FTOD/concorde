@@ -11,7 +11,7 @@ metadata:
 ---
 # Concorde Plan Operation
 
-Treat `$ARGUMENTS` as one complete planning request. Use the paired graph at `python3 operations/concorde-plan/operation.py` as the
+Treat `$ARGUMENTS` as one complete planning request. Use the paired graph at `python3 scripts/run-operation.py operations/concorde-plan/operation.py` as the
 execution authority for exactly `context -> author`. The public Operation retains the stable
 `concorde-plan` identity; its two implementation leaves are internal and must never be invoked or
 projected as alternative user capabilities. The trusted host resolves Workspace Protocol 13 before
@@ -20,7 +20,7 @@ the first leaf and binds its concrete paths into both native launch policies.
 To inspect concrete policies without starting a model, run:
 
 ```bash
-python3 operations/concorde-plan/operation.py "$ARGUMENTS" --framework-prefix . --integration codex --describe-policy
+python3 scripts/run-operation.py operations/concorde-plan/operation.py "$ARGUMENTS" --framework-prefix . --integration codex --describe-policy
 ```
 
 Claude uses `--integration claude`. Real execution uses `--execute` and requires a supported native

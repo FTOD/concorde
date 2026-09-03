@@ -8,7 +8,8 @@ SKILLS = REPOSITORY_ROOT / "skills"
 
 class ExecuteReconcileContractTests(unittest.TestCase):
     def test_implementation_requires_persisted_passed_evidence_before_completion(self):
-        body = " ".join((SKILLS / "concorde-implement/SKILL.md").read_text(encoding="utf-8").split())
+        source = (SKILLS / "concorde-implement/SKILL.md").read_text(encoding="utf-8")
+        body = " ".join(source.split())
         for value in (
             "Before checking any task, append compact Attempt Evidence",
             "task ID and trace",
@@ -18,6 +19,20 @@ class ExecuteReconcileContractTests(unittest.TestCase):
             "Only a proportionate passed check permits `[X]`",
         ):
             self.assertIn(value, body, value)
+        self.assertIn("- **T### · <trace>**", source)
+        self.assertIn("- **Outcome**: passed", source)
+        self.assertIn("top-level", body)
+
+    def test_task_and_convergence_guidance_share_delivery_readable_evidence_grammar(self):
+        for relative in (
+            "skills/concorde-tasks/SKILL.md",
+            "skills/concorde-converge/SKILL.md",
+            "templates/tasks-template.md",
+        ):
+            with self.subTest(relative=relative):
+                source = (REPOSITORY_ROOT / relative).read_text(encoding="utf-8")
+                self.assertIn("- **T### · <trace>**", source)
+                self.assertIn("- **Outcome**: passed", source)
 
     def test_implementation_can_reconcile_only_task_owned_durable_sources(self):
         body = " ".join((SKILLS / "concorde-implement/SKILL.md").read_text(encoding="utf-8").split())

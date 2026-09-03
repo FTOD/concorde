@@ -35,6 +35,24 @@ atomically removes exactly the selected `.concorde/attempts/<stable-feature-id>/
    every architecture/feature/code/test/projection reconciliation is already present, paths are real
    project-relative non-symlinks, and each reflection remains in its canonical per-file collection. Do not draft content.
 
+## Attempt Evidence grammar
+
+The canonical compact block in `validation.md` is:
+
+```markdown
+- **T### · <trace>**
+  - **Outcome**: passed|failed|skipped
+  - **Check**: <actual command or check>
+  - **Evidence**: <project-relative path or concise output>
+  - **Scope**: <behavior or boundary proved>
+  - **Limitation**: <material limit or none>
+```
+
+The `- **T### · <trace>**` boundary must be one complete top-level line with no trailing prose; the
+legacy `### T### ...` boundary remains readable. Only an exact in-block `- **Outcome**: passed`
+counts. A wrapped/nested boundary, “passed” in the title or prose, or `failed`/`skipped` outcome is
+missing passing evidence and blocks delivery. Delivery reports this state but never rewrites it.
+
 ## Apply
 
 The user's delivery invocation authorizes proposal and apply in one Tool run; do not ask for a

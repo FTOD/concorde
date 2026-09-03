@@ -70,7 +70,20 @@ attempt.
    and authorized action. Detection alone is never a write authorization.
 9. End each phase with a proportionate verification task where useful. Every completion task must
    require compact evidence in the returned `validation` file: task/trace, actual check, passed outcome,
-   evidence path, scope, and limitation.
+   evidence path, scope, and limitation. Require the exact delivery-readable form:
+
+   ```markdown
+   - **T### · <trace>**
+     - **Outcome**: passed|failed|skipped
+     - **Check**: <actual command or check>
+     - **Evidence**: <project-relative path or concise output>
+     - **Scope**: <behavior or boundary proved>
+     - **Limitation**: <material limit or none>
+   ```
+
+   The task boundary must be one unwrapped top-level line with no trailing prose. The nested
+   `**Outcome**` field, not status wording in the boundary or narrative, is what delivery reads;
+   only `passed` authorizes completion.
 
 ## Consistency and reflection recording
 

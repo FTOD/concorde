@@ -79,6 +79,22 @@ Before changing a task to `[X]`, the returned `validation` file names its ID/tra
 outcome (`passed` only authorizes completion), evidence path, and material limitation. A skipped,
 failed, or missing required check leaves the task unchecked.
 
+Use this exact delivery-readable block for every task:
+
+```markdown
+- **T### · <trace>**
+  - **Outcome**: passed|failed|skipped
+  - **Check**: <actual command or check>
+  - **Evidence**: <project-relative path or concise output>
+  - **Scope**: <behavior or boundary proved>
+  - **Limitation**: <material limit or none>
+```
+
+The `- **T### · <trace>**` boundary is a complete, unwrapped top-level line with no trailing prose.
+The exact nested `**Outcome**` field belongs inside that task's block; status text in a title or
+narrative does not count. Keep one current block per task, and mark `[X]` only for
+`**Outcome**: passed`.
+
 ## Dependencies and Parallel Opportunities
 
 - Setup precedes foundational work.

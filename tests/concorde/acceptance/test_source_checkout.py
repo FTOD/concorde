@@ -29,7 +29,10 @@ class SourceCheckoutAcceptance(unittest.TestCase):
             plan = (REPOSITORY_ROOT / integration_root / "concorde-plan/SKILL.md").read_text()
             self.assertIn('source: "operations/concorde-plan/SKILL.md"', plan)
             self.assertIn('kind: "operation"', plan)
-            self.assertIn("python3 operations/concorde-plan/operation.py", plan)
+            self.assertIn(
+                "python3 scripts/run-operation.py operations/concorde-plan/operation.py",
+                plan,
+            )
             self.assertNotIn(".concorde/framework", plan)
 
 

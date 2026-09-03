@@ -22,6 +22,12 @@ from concorde.agent_assets import (  # noqa: E402
     render_projection,
 )
 from concorde.docsite_template import DocsiteTemplateError, template_files  # noqa: E402
+from concorde.managed_runtime import (  # noqa: E402
+    ManagedRuntimeError,
+    load_runtime_spec,
+    plan_runtime,
+    provision_runtime,
+)
 from concorde.skill_assets import SkillAssetError, render_capabilities  # noqa: E402
 
 
@@ -53,6 +59,12 @@ OPERATIONS = [
     "concorde-reflections-triage",
     "concorde-plan",
 ]
+OPERATION_RUNTIME = {
+    "launcher": "scripts/run-operation.py",
+    "python": ">=3.11",
+    "requirements": "operations/requirements.lock",
+    "venv": ".concorde/.venv",
+}
 
 
 class InstallError(ValueError):
@@ -103,6 +115,7 @@ def load_package(root: Path) -> Package:
         "workspace_protocol",
         "skills",
         "operations",
+        "operation_runtime",
         "templates",
         "integrations",
         "install",
@@ -133,6 +146,15 @@ def load_package(root: Path) -> Package:
         raise InstallError(f"Concorde manifest must declare exactly these Operations: {OPERATIONS}")
     if set(skills) & set(operations):
         raise InstallError("Concorde Skill and Operation names must be globally unique")
+    if manifest.get("operation_runtime") != OPERATION_RUNTIME:
+        raise InstallError(
+            f"Concorde manifest must declare the exact managed Operation runtime: {OPERATION_RUNTIME}"
+        )
+    for field in ("launcher", "requirements"):
+        relative = _safe_relative(OPERATION_RUNTIME[field], f"operation_runtime.{field}")
+        path = root / relative
+        if path.is_symlink() or not path.is_file():
+            raise InstallError(f"Concorde Operation runtime {field} is missing: {relative}")
     templates = manifest.get("templates")
     if not isinstance(templates, list) or any(not isinstance(item, str) for item in templates):
         raise InstallError("Concorde manifest templates must be a string list")
@@ -158,6 +180,10 @@ def load_package(root: Path) -> Package:
         raise InstallError("Concorde package must include its declared MIT LICENSE file")
     if readme_path.is_symlink() or not readme_path.is_file():
         raise InstallError("Concorde package must include one real root README.md")
+    try:
+        load_runtime_spec(root, manifest)
+    except ManagedRuntimeError as error:
+        raise InstallError(str(error)) from error
     return Package(root, manifest)
 
 
@@ -187,6 +213,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
         "concorde.sh",
         "reflections_queue.py",
         "render-capability-surfaces.py",
+        "run-operation.py",
         "workspace.py",
     )
     for name in scripts:
@@ -328,6 +355,18 @@ def installation_plan(
         if action == "conflict":
             item["reason"] = unsafe or "superseded owned output was modified and must be preserved"
         actions.append(item)
+    try:
+        actions.append(plan_runtime(target, load_runtime_spec(package.root, package.manifest), receipt))
+    except ManagedRuntimeError as error:
+        actions.append(
+            {
+                "path": OPERATION_RUNTIME["venv"],
+                "action": "conflict",
+                "role": "runtime",
+                "sha256": "sha256:" + "0" * 64,
+                "reason": str(error),
+            }
+        )
     return sorted(actions, key=lambda item: item["path"]), desired, receipt
 
 
@@ -350,13 +389,19 @@ def _check_parent(target: Path, relative: str) -> Path:
     return path
 
 
-def _receipt(package: Package, integration: str, desired: Mapping[str, tuple[bytes, str]]) -> bytes:
+def _receipt(
+    package: Package,
+    integration: str,
+    desired: Mapping[str, tuple[bytes, str]],
+    runtime: Mapping[str, Any],
+) -> bytes:
     value = {
         "schema_version": INSTALL_SCHEMA,
         "concorde_version": package.version,
         "integration": integration,
         "architecture_profile": package.manifest["architecture_profile"],
         "workspace_protocol": package.manifest["workspace_protocol"],
+        "runtime": dict(runtime),
         "outputs": [
             {"path": path, "role": role, "sha256": _sha256(content)}
             for path, (content, role) in sorted(desired.items())
@@ -376,8 +421,15 @@ def apply_plan(
     conflicts = [item for item in actions if item["action"] == "conflict"]
     if conflicts:
         raise InstallError("installation plan has ownership conflicts")
-    mutable = [item for item in actions if item["action"] in {"create", "update", "remove"}]
-    receipt_content = _receipt(package, integration, desired)
+    mutable = [
+        item
+        for item in actions
+        if item["role"] != "runtime" and item["action"] in {"create", "update", "remove"}
+    ]
+    runtime_items = [item for item in actions if item["role"] == "runtime"]
+    if len(runtime_items) != 1:
+        raise InstallError("installation plan must contain exactly one managed runtime action")
+    runtime_action = runtime_items[0]
     receipt_path = target / RECEIPT_PATH
     previous_receipt = receipt_path.read_bytes() if receipt_path.is_file() and not receipt_path.is_symlink() else None
     previous_receipt_mode = receipt_path.stat().st_mode & 0o777 if previous_receipt is not None else None
@@ -415,6 +467,16 @@ def apply_plan(
                 path.chmod(0o755)
             else:
                 path.chmod(0o644)
+        try:
+            runtime = provision_runtime(
+                target,
+                target / FRAMEWORK_ROOT,
+                load_runtime_spec(package.root, package.manifest),
+                runtime_action,
+            )
+        except ManagedRuntimeError as error:
+            raise InstallError(str(error)) from error
+        receipt_content = _receipt(package, integration, desired, runtime)
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(dir=receipt_path.parent, prefix=".concorde-receipt-", delete=False) as handle:
             staged_receipt = Path(handle.name)
@@ -447,7 +509,13 @@ def apply_plan(
             except OSError:
                 pass
         raise
-    return "unchanged" if not mutable and previous_receipt == receipt_content else "installed"
+    return (
+        "unchanged"
+        if not mutable
+        and runtime_action["action"] == "unchanged"
+        and previous_receipt == receipt_content
+        else "installed"
+    )
 
 
 def _print_plan(package: Package, integration: str, actions: Sequence[Mapping[str, str]], status: str) -> None:
@@ -506,7 +574,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if not arguments.apply and not conflicts:
                 print("  next: rerun with --apply to accept this exact ownership plan")
         return 2 if conflicts else 0
-    except (InstallError, OSError, UnicodeError) as error:
+    except (InstallError, ManagedRuntimeError, OSError, UnicodeError) as error:
         if arguments.format == "json":
             print(json.dumps({"schema_version": INSTALL_SCHEMA, "status": "failed", "error": str(error)}, sort_keys=True))
         else:

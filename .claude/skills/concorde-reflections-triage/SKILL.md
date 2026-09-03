@@ -16,7 +16,7 @@ disable-model-invocation: false
 
 Protocol: `reflection-triage/v5`.
 
-Use the paired graph at `python3 operations/concorde-reflections-triage/operation.py` as the stage topology authority. The graph composes direct leaf
+Use the paired graph at `python3 scripts/run-operation.py operations/concorde-reflections-triage/operation.py` as the stage topology authority. The graph composes direct leaf
 Skills and the public nested planner; specialized investigator and implementer agents remain internal
 execution support.
 
@@ -69,7 +69,7 @@ keeps the record.
   document when none are given), then commit the removal with each resolution_note in the commit
   message so the reason survives in history. Never remove an open document this way.
 
-Before work, run `python3 operations/concorde-reflections-triage/operation.py "$ARGUMENTS" --framework-prefix . --describe-policy` and
+Before work, run `python3 scripts/run-operation.py operations/concorde-reflections-triage/operation.py "$ARGUMENTS" --framework-prefix . --describe-policy` and
 require only the capabilities reachable for the explicit action/route:
 
 - `status`: no model capability; run/report the queue Tool and stop;

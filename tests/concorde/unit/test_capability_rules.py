@@ -44,7 +44,9 @@ class CapabilityLayoutRuleTests(unittest.TestCase):
                 self.assertRegex(body, r"(?m)^# ")
 
     def test_each_operation_is_exactly_one_python_markdown_pair(self):
-        observed = sorted(path.name for path in (REPOSITORY_ROOT / "operations").iterdir())
+        observed = sorted(
+            path.name for path in (REPOSITORY_ROOT / "operations").iterdir() if path.is_dir()
+        )
         self.assertEqual(observed, sorted(self.manifest["operations"]))
         for name in observed:
             with self.subTest(operation=name):

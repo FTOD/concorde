@@ -28,6 +28,10 @@ specify → nested plan → tasks → deliver. Its six direct capability occurre
 internals. Every direct leaf receives its own immutable policy/configuration before the host executor,
 receives exact prior capability results, and prevents all downstream work on failure.
 
+The installed Skill enters the paired graph through `scripts/run-operation.py`, which selects the
+installer-verified `.concorde/.venv`; a source checkout selects its root `.venv`. Neither path relies
+on shell activation, and a successful installed runtime needs no package-index access.
+
 The Operation provides topology/state/failure control and policy handoff. Native Codex/Claude or
 approved outer isolation enforces the paths; LangGraph and prompts do not.
 
@@ -53,29 +57,35 @@ approved outer isolation enforces the paths; LangGraph and prompts do not.
   direct capability and nested-operation dispatchers.
 - **Direction**: Development request plus integration/enforcement context to ordered capability
   invocations, receipts, and accumulated results.
-- **Entry points**: Installed `concorde-standard-dev-loop` Skill;
+- **Entry points**: Installed `concorde-standard-dev-loop` Skill through the colocated managed-runtime
+  bootstrap;
   `operations/concorde-standard-dev-loop/operation.py`; and
   `build_standard_dev_loop(executor, project_root=..., integration=...)`.
 - **Inputs**: Request, package/framework root, selected Protocol 13 feature context, Codex/Claude
-  integration, exact direct capability inventory/bindings, leaf effects, and injected executor.
+  integration, verified managed interpreter, exact direct capability inventory/bindings, leaf
+  effects, and injected executor.
 - **Outputs**: Ordered results for six direct capability occurrences grouped under `specify`, `plan`,
   `tasks`, and `deliver`; leaf results may include enforcement receipts.
 - **Obligations**: Resolve canonical bodies/effects; preserve stage and occurrence order; expose only
   public `concorde-plan` to the outer graph; pass exact immutable prior results; compile one
   narrowing default-deny policy per leaf; require a non-null launch factory and explicit enforcing
-  nested dispatcher; start with no results; stop on any direct or nested failure.
-- **Failures**: Invalid/missing pair metadata, cycle, unknown capability/effect, binding mismatch,
-  unsafe path, unavailable enforcement, invalid input/result/receipt, unavailable LangGraph, or
-  executor exception stops construction/invocation without fabricated completion.
-- **Compatibility**: Concorde 2.1.0, Package Manifest 2, and LangGraph `>=1.2,<2`; the public four-stage
-  contract remains stable while `concorde-plan` changes kind from leaf to nested Operation.
+  nested dispatcher; start with no results; stop on any runtime, direct, or nested failure; perform
+  no dependency installation or package-index access during invocation.
+- **Failures**: Missing/corrupt managed interpreter, invalid/missing pair metadata, cycle, unknown
+  capability/effect, binding mismatch, unsafe path, unavailable enforcement, invalid
+  input/result/receipt, unavailable/mismatched LangGraph, or executor exception stops
+  construction/invocation without fabricated completion.
+- **Compatibility**: Concorde 2.1.0, Package Manifest 2, installed LangGraph `1.2.11` (runtime API
+  range `>=1.2,<2`), and source-root/installed-managed venv layouts; the public four-stage contract
+  remains stable while `concorde-plan` is one nested Operation.
 - **Implementing entities**: `entity.operations.standard-dev-loop`,
   `entity.operations.standard-dev-loop-skill`, `entity.operations.runtime`,
   `entity.operations.definition`, `entity.operations.state`, `entity.operations.policy-compiler`,
   `entity.operations.plan`, and `entity.operations.langgraph`.
-- **Example**: `python3 operations/concorde-standard-dev-loop/operation.py "Add audit logging"
-  --describe-policy` reports six outer occurrences; the plan occurrence is one public Operation and
-  its inner graph alone launches context/author.
+- **Example**: `python3 scripts/run-operation.py
+  operations/concorde-standard-dev-loop/operation.py "Add audit logging" --framework-prefix .`
+  reports six outer occurrences from a checkout; installed projections use the same bootstrap under
+  `.concorde/framework` and its inner graph alone launches context/author.
 
 ## Usage Scenarios
 
@@ -105,21 +115,25 @@ fails or returns an invalid/stale receipt, remaining occurrences stop.
 - **FR-005**: Every direct leaf MUST receive one exact narrowing policy/configuration; stage-wide
   permission unions are invalid.
 - **FR-006**: Executor/policy/receipt/nested failures MUST prevent every downstream occurrence.
-- **FR-007**: Import MUST remain LangGraph-independent until construction and report missing optional
-  dependency explicitly.
-- **FR-008**: Both agent integrations MUST project the same public Operation and installed paired
-  Python while internal planner leaves remain unprojected.
+- **FR-007**: Base Tool import and installation preview MUST remain LangGraph-independent until graph
+  construction; successful explicit installation MUST provide the pinned dependency, while a
+  missing/corrupt source or installed runtime fails explicitly.
+- **FR-008**: Both agent integrations MUST project the same public Operation through the managed
+  bootstrap and installed paired Python while internal planner leaves remain unprojected.
+- **FR-009**: Invocation after successful installation MUST execute from `.concorde/.venv` without
+  dependency resolution, download, package-index access, or use of a project root `.venv`.
 
 ## Success Criteria
 
 - **SC-001**: Real LangGraph invocation visits exactly four stages and six direct public capabilities
   in declared order, with one opaque planner occurrence.
 - **SC-002**: Source/installed/projection tests agree on pair, capability/binding literals,
-  entry-point provenance, and public/internal filtering.
+  entry-point provenance, managed interpreter identity, and public/internal filtering.
 - **SC-003**: A failure at any direct or inner planner occurrence prevents the correct later nodes
   while retaining only completed prior results.
 - **SC-004**: Policy tests prove tasks/implement and validate/deliver receive distinct non-union
-  digests and base imports/installation do not eagerly import LangGraph.
+  digests; base imports/preview do not eagerly import LangGraph; installed runtime checks and a real
+  graph invocation pass with package-index access disabled.
 
 ## Related Features
 
@@ -137,3 +151,5 @@ fails or returns an invalid/stale receipt, remaining occurrences stop.
 - A native sandbox is unavailable and no verified equivalent outer boundary exists.
 - Graph input contains prior results, an executor returns a non-string/unreceipted result, or a
   nested failure attempts to continue downstream.
+- The projected Skill is correct but `.concorde/.venv` was removed or corrupted after installation;
+  the bootstrap fails with an actionable repair path rather than falling back to ambient Python.

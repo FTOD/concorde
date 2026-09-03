@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.managed_runtime import create_langgraph_index, runtime_install_environment
 
 
 SPEC = importlib.util.spec_from_file_location(
@@ -21,6 +24,20 @@ SPEC.loader.exec_module(installer)
 
 
 class SkillUpdateIntegrationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.runtime_temporary = tempfile.TemporaryDirectory()
+        index = create_langgraph_index(Path(cls.runtime_temporary.name))
+        cls.runtime_environment = mock.patch.dict(
+            os.environ, runtime_install_environment(index)
+        )
+        cls.runtime_environment.start()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.runtime_environment.stop()
+        cls.runtime_temporary.cleanup()
+
     def copy_package(self, destination: Path) -> None:
         for name in ("concorde.json", "LICENSE", "README.md"):
             shutil.copy2(REPOSITORY_ROOT / name, destination / name)
@@ -42,6 +59,7 @@ class SkillUpdateIntegrationTests(unittest.TestCase):
             "concorde.sh",
             "reflections_queue.py",
             "render-capability-surfaces.py",
+            "run-operation.py",
             "workspace.py",
         ):
             shutil.copy2(REPOSITORY_ROOT / "scripts" / name, destination / "scripts" / name)

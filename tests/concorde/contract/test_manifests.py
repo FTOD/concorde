@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.managed_runtime import create_langgraph_index, runtime_install_environment
 
 
 class ManifestContractTests(unittest.TestCase):
@@ -26,6 +27,15 @@ class ManifestContractTests(unittest.TestCase):
             "receipt": ".concorde/install.json",
             "selection": ".concorde/feature.json",
         })
+        self.assertEqual(
+            manifest["operation_runtime"],
+            {
+                "launcher": "scripts/run-operation.py",
+                "python": ">=3.11",
+                "requirements": "operations/requirements.lock",
+                "venv": ".concorde/.venv",
+            },
+        )
 
     def test_runtime_reads_version_from_the_single_manifest(self):
         sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
@@ -37,12 +47,19 @@ class ManifestContractTests(unittest.TestCase):
 
     def test_manifest_inventory_equals_root_capabilities_and_templates(self):
         skills = sorted(path.name for path in (REPOSITORY_ROOT / "skills").iterdir())
-        operations = sorted(path.name for path in (REPOSITORY_ROOT / "operations").iterdir())
+        operations = sorted(
+            path.name for path in (REPOSITORY_ROOT / "operations").iterdir() if path.is_dir()
+        )
         templates = sorted(path.name for path in (REPOSITORY_ROOT / "templates").glob("*.md"))
         self.assertEqual(sorted(self.manifest["skills"]), skills)
         self.assertEqual(sorted(self.manifest["operations"]), operations)
         self.assertEqual(sorted(self.manifest["templates"]), templates)
         self.assertEqual((len(skills), len(operations), len(templates)), (17, 3, 6))
+        self.assertEqual(
+            (REPOSITORY_ROOT / "operations/requirements.lock").read_text(),
+            "langgraph==1.2.11\n",
+        )
+        self.assertTrue((REPOSITORY_ROOT / "scripts/run-operation.py").is_file())
 
     def test_complete_feature_template_contains_profile_and_product_sections(self):
         body = (REPOSITORY_ROOT / "templates/feature-template.md").read_text()
@@ -86,6 +103,7 @@ class ManifestContractTests(unittest.TestCase):
     def test_native_source_install_materializes_framework_and_capabilities(self):
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary)
+            environment = runtime_install_environment(create_langgraph_index(target.parent))
             result = subprocess.run(
                 [
                     sys.executable,
@@ -96,6 +114,7 @@ class ManifestContractTests(unittest.TestCase):
                 ],
                 text=True,
                 capture_output=True,
+                env=environment,
             )
             self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
             self.assertEqual(json.loads(result.stdout)["status"], "installed")

@@ -26,7 +26,8 @@ configuration compiler, injectable coding-agent process launcher, and each exact
 `operations/<name>/{operation.py,SKILL.md}` pair. Python owns executable topology and occurrence
 bindings; paired Markdown owns public invocation/behavior. Operations loads leaf prompts/effects from
 Skills and Protocol 13 roles from Workspace, but does not duplicate prompts, define Runtime Tool
-algorithms, implement LangGraph/Codex/Claude sandboxes, or treat prompt text as enforcement.
+algorithms, provision the installed virtual environment, implement LangGraph/Codex/Claude sandboxes,
+or treat prompt text as enforcement.
 
 ## Entities
 
@@ -35,7 +36,7 @@ algorithms, implement LangGraph/Codex/Claude sandboxes, or treat prompt text as 
 | `entity.operations.runtime` | program | Resolves ordered direct capabilities and bindings, builds lazy LangGraphs, attaches one immutable launch specification per leaf, preserves nested Operation opacity, and accumulates per-capability results. | `src/concorde/operation_runtime.py` |
 | `entity.operations.definition` | type | Ordered unique stages plus exact direct capability occurrences and narrowing agent/effect bindings. | `src/concorde/operation_runtime.py#OperationBinding` |
 | `entity.operations.state` | type | Original request plus append-only ordered capability results and optional enforcement receipts. | `src/concorde/operation_runtime.py#OperationState` |
-| `entity.operations.permission-context` | program | Resolves selected/providing-module paths and exact required-interface owner feature specifications while denying provider internals, symlinks, escapes, and other attempts. | `src/concorde/planning_context.py#resolve_planning_context` |
+| `entity.operations.permission-context` | program | Resolves selected/providing-module paths and exact project-owned required-interface feature specifications, skips explicitly external required providers, and denies provider internals, symlinks, escapes, and other attempts. | `src/concorde/planning_context.py#resolve_planning_context` |
 | `entity.operations.policy-compiler` | program | Compiles leaf effects and occurrence bindings into canonical normalized policies plus Codex permission profiles or Claude strict-sandbox settings. | `src/concorde/operation_permissions.py` |
 | `entity.operations.process-launcher` | program | Performs version/enforcement preflight and injectable `codex exec`/`claude -p` process handoff with structured receipts and no permissive retry. | `src/concorde/operation_executor.py#AgentProcessExecutor` |
 | `entity.operations.plan` | program | Public two-stage context → author planning LangGraph over two internal leaves. | `operations/concorde-plan/operation.py` |
@@ -44,7 +45,7 @@ algorithms, implement LangGraph/Codex/Claude sandboxes, or treat prompt text as 
 | `entity.operations.standard-dev-loop-skill` | document | Installed invocation, ordering, nested-planner, and failure contract paired with the standard graph. | `operations/concorde-standard-dev-loop/SKILL.md` |
 | `entity.operations.reflections-triage` | program | Action/route-conditional investigation, planning/fast-loop, worktree implementation, and validation LangGraph. | `operations/concorde-reflections-triage/operation.py` |
 | `entity.operations.reflections-triage-skill` | document | Installed reflection-triage/v5 branch/policy contract paired with its graph. | `operations/concorde-reflections-triage/SKILL.md` |
-| `entity.operations.langgraph` | external-system | Optional graph runtime used lazily for Operation topology. | `external:langchain-ai/langgraph@1.x` |
+| `entity.operations.langgraph` | external-system | Graph runtime imported lazily for topology and pinned into the isolated environment by every successful native installation. | `external:langchain-ai/langgraph@1.2.11` |
 | `entity.operations.coding-agent` | external-system | Codex/Claude host whose native or approved outer sandbox enforces each immutable launch specification. | `external:coding-agent` |
 | `entity.operations.tests` | test | Topology, policy/path/parity, process-receipt, installation, projection, and fail-closed evidence. | `tests/concorde` |
 
@@ -67,7 +68,7 @@ algorithms, implement LangGraph/Codex/Claude sandboxes, or treat prompt text as 
 | `entity.operations.standard-dev-loop` | `composes` | `entity.operations.plan` | Uses only the public planning Operation identity and opaque result. |
 | `entity.operations.reflections-triage` | `calls` | `entity.operations.runtime` | Builds only the branch reachable for the explicit action/route. |
 | `entity.operations.reflections-triage` | `composes` | `entity.operations.plan` | Uses public planning only on the plan route. |
-| `entity.operations.plan` | `calls` | `entity.operations.permission-context` | Resolves provider feature bodies only for exact required-interface reasons. |
+| `entity.operations.plan` | `calls` | `entity.operations.permission-context` | Resolves project provider feature bodies only for exact required-interface reasons and grants no extra body for an explicit external provider. |
 | `entity.operations.policy-compiler` | `configures` | `entity.operations.coding-agent` | Renders equivalent default-deny Codex/Claude/outer boundaries. |
 | `entity.operations.process-launcher` | `calls` | `entity.operations.coding-agent` | Starts a supported CLI only after enforcement/version/digest preflight. |
 | `entity.operations.plan` | `tested_by` | `entity.operations.tests` | Real LangGraph and sentinel tests prove order, bounded context, writes, and failure stopping. |
@@ -84,9 +85,9 @@ algorithms, implement LangGraph/Codex/Claude sandboxes, or treat prompt text as 
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.operations.invoke` | User invokes an installed Operation skill. | Resolve the pair and Protocol 13 roles; validate acyclic literal topology/effects/bindings; select the next direct capability; for a leaf compile normalized/native policy and prove enforcement; invoke the host; append its result/receipt; for a nested Operation dispatch only its public pair/result; stop on failure. | Ordered capability results or explicit pre-launch/executor failure with no downstream invocation. | `contract.operations.permission-bounded-execution`, `contract.operations.standard-development-loop`, `contract.skills.workflow-guidance` |
+| `interaction.operations.invoke` | User invokes an installed Operation skill. | Enter the pair through the standard-library bootstrap and verified `.concorde/.venv`; resolve Protocol 13 roles; validate acyclic literal topology/effects/bindings; for each leaf compile normalized/native policy and prove enforcement; append its result/receipt; dispatch a nested Operation only by its public pair/result; stop on failure. | Ordered capability results without package-index access, or explicit runtime/pre-launch/executor failure with no downstream invocation. | `contract.operations.permission-bounded-execution`, `contract.operations.standard-development-loop`, `contract.skills.workflow-guidance` |
 | `interaction.operations.plan` | User or outer Operation invokes `concorde-plan`. | Resolve selected/module/owned paths and exact required-interface feature bodies; run read-only context leaf; pass its result to author; permit only attempt/reflection writes. | Temporal plan artifacts or a bounded named failure with durable sources unchanged. | `contract.operations.plan`, `contract.workspace.feature-workspace` |
-| `interaction.operations.install` | Installer or checkout sync projects capabilities. | Validate every exact pair/effect/topology/binding/cycle; package 17 leaves and three pairs; omit two internal leaves; project 15 public leaves plus three Operations with source/kind/entry-point provenance. | Both agents receive the same 18 public capabilities while framework internals remain installed. | `contract.skills.agent-surface` |
+| `interaction.operations.install` | Installer or checkout sync projects capabilities. | Validate every exact pair/effect/topology/binding/cycle; package 17 leaves, three pairs, and the pinned dependency; omit two internal leaves; project 15 public leaves plus three Operations through the managed launcher; native install verifies each pair in `.concorde/.venv`. | Both agents receive the same 18 public capabilities while framework internals remain installed and every successfully installed Operation has an offline-capable runtime. | `contract.skills.agent-surface` |
 
 ## Modules
 
@@ -118,4 +119,6 @@ None.
   call a paid/live model.
 - Three public Operations and 15 public leaves project to both agents; two planner leaves remain
   packaged internal implementation capabilities.
-- LangGraph remains optional/lazy so base deterministic Tool imports and installation are dependency-free.
+- LangGraph remains lazy so base deterministic Tool imports and installation preview are
+  dependency-free. Explicit apply provisions the pinned version into `.concorde/.venv`; after a
+  successful install it is guaranteed rather than optional, and Operation startup stays offline.

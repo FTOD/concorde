@@ -8,6 +8,10 @@ import unittest
 from pathlib import Path
 
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.managed_runtime import (
+    create_langgraph_index,
+    runtime_install_environment,
+)
 
 
 INSTALLER = REPOSITORY_ROOT / "scripts/install-concorde.py"
@@ -15,9 +19,12 @@ INSTALLER = REPOSITORY_ROOT / "scripts/install-concorde.py"
 
 class InstallationEntrypointAcceptance(unittest.TestCase):
     def run_installer(self, target: Path, *arguments: str):
+        environment = runtime_install_environment(
+            create_langgraph_index(target.parent)
+        )
         return subprocess.run(
             [sys.executable, str(INSTALLER), "--target", str(target), "--format", "json", *arguments],
-            text=True, capture_output=True,
+            text=True, capture_output=True, env=environment,
         )
 
     def test_preview_is_default_and_explicit_apply_installs(self):
@@ -86,6 +93,45 @@ class InstallationEntrypointAcceptance(unittest.TestCase):
             self.assertEqual(result.returncode, 3)
             self.assertEqual(json.loads(result.stdout)["status"], "failed")
             self.assertFalse((target / ".concorde/framework").exists())
+
+    def test_explicit_checkout_matches_in_checkout_runtime_and_stable_actions(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            implicit = base / "implicit"
+            explicit = base / "explicit"
+            first = self.run_installer(implicit, "--integration", "codex", "--apply")
+            second = self.run_installer(
+                explicit,
+                "--checkout",
+                str(REPOSITORY_ROOT),
+                "--integration",
+                "codex",
+                "--apply",
+            )
+            self.assertEqual(first.returncode, 0, first.stderr or first.stdout)
+            self.assertEqual(second.returncode, 0, second.stderr or second.stdout)
+            first_value = json.loads(first.stdout)
+            second_value = json.loads(second.stdout)
+            self.assertEqual(
+                [(item["path"], item["action"], item["role"], item["sha256"]) for item in first_value["actions"]],
+                [(item["path"], item["action"], item["role"], item["sha256"]) for item in second_value["actions"]],
+            )
+            first_receipt = json.loads((implicit / ".concorde/install.json").read_text())
+            second_receipt = json.loads((explicit / ".concorde/install.json").read_text())
+            self.assertEqual(first_receipt["runtime"], second_receipt["runtime"])
+            self.assertEqual(
+                (implicit / ".agents/skills/concorde-plan/SKILL.md").read_bytes(),
+                (explicit / ".agents/skills/concorde-plan/SKILL.md").read_bytes(),
+            )
+            repeat = self.run_installer(
+                explicit,
+                "--checkout",
+                str(REPOSITORY_ROOT),
+                "--integration",
+                "codex",
+                "--apply",
+            )
+            self.assertEqual(json.loads(repeat.stdout)["status"], "unchanged")
 
 
 if __name__ == "__main__":

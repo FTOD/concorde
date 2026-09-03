@@ -9,15 +9,17 @@ from pathlib import Path
 
 from tests.concorde.support.feature_workspace import create_feature_file, write_complete_attempt, write_selection
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.managed_runtime import create_langgraph_index, runtime_install_environment
 
 
 class InstalledCodexWorkflowAcceptance(unittest.TestCase):
     def test_installed_runtime_resolves_validates_and_delivers_one_attempt(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            environment = runtime_install_environment(create_langgraph_index(root.parent))
             install = subprocess.run(
                 [sys.executable, str(REPOSITORY_ROOT / "scripts/install-concorde.py"), "--target", str(root), "--integration", "codex", "--apply", "--format", "json"],
-                text=True, capture_output=True,
+                text=True, capture_output=True, env=environment,
             )
             self.assertEqual(install.returncode, 0, install.stderr or install.stdout)
             feature = create_feature_file(root)
