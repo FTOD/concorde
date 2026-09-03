@@ -112,7 +112,7 @@ maintainer disposition.
 - **FR-006**: Repeated problems MUST append occurrences to the existing reflection document rather
   than allocate or duplicate an identity.
 - **FR-007**: Reflection content MUST NOT be copied into architecture, feature designs, attempts,
-  code, tests, diagrams, or generated releases; a triage plan may refer to the ID and contain
+  code, tests, diagrams, or generated outputs; a triage plan may refer to the ID and contain
   independently established implementation evidence.
 - **FR-008**: Triage actions/routes, plans/worktrees/agents, and per-leaf policies MUST be explicit,
   conditional, isolated, ownership-bounded, and validated before merge.

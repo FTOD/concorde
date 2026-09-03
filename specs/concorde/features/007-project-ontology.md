@@ -41,7 +41,7 @@ workflow state is isolated under `.concorde/`.
 
 This migration is repository-wide. It preserves the module-centered specification and control-state
 model while changing Concorde's capability vocabulary, package layout, agent projection, workflow
-runtime, installation, release, documentation, validation, fixtures, and maintained architecture.
+runtime, installation, documentation, validation, fixtures, and maintained architecture.
 
 ## Target Specification Model
 
@@ -270,7 +270,7 @@ and code/test paths without module-local attempts or removed authority fields.
 
 As a maintainer, I can validate that the entire project uses the new ontology and deliver a completed attempt without generating or retaining redundant implementation prose.
 
-**Independent Test**: Run complete Concorde validation, Python tests, docsite tests/build, package/release verification, and delivery on the selected ontology feature; verify zero legacy durable artifact names remain and delivery removes only its attempt.
+**Independent Test**: Run complete Concorde validation, Python tests, docsite tests/build, package verification, and delivery on the selected ontology feature; verify zero legacy durable artifact names remain and delivery removes only its attempt.
 
 **Acceptance Scenarios**:
 
@@ -388,7 +388,7 @@ missing effects/bindings, cycles, or pair members.
   Operations, MUST remain acyclic and keep nested Operation internals opaque, and MUST define stage
   order, occurrence policies, state, failure propagation, and branching/retry/review controls in
   Python rather than duplicating or flattening prompt bodies.
-- **FR-028**: Installation and release packaging MUST include every leaf Skill plus every complete
+- **FR-028**: Installation MUST include every leaf Skill plus every complete
   Operation pair, project only public leaves plus all Operation Markdown surfaces into the selected
   agent namespace, and keep internal leaves and Operation Python under the installed framework.
 - **FR-029**: The canonical capability layout MUST contain no `commands/` directory and no maintained
@@ -410,7 +410,7 @@ missing effects/bindings, cycles, or pair members.
 - **SC-005**: Workspace JSON and all Skill/Operation contracts contain `feature_path`, Protocol 13,
   `.concorde/attempts/<stable-feature-id>/`, and `.concorde/reflections/`, with zero module-local
   control-state or other deprecated authority fields.
-- **SC-006**: Complete Python, documentation-site, native package/release, agent-surface, and Concorde validation suites pass under the new source profile.
+- **SC-006**: Complete Python, documentation-site, native package, agent-surface, and Concorde validation suites pass under the new source profile.
 - **SC-007**: The selected ontology attempt is delivered successfully from
   `.concorde/attempts/feature.concorde.define-project-ontology/`, that directory is absent afterward,
   and both `specs/concorde/features/007-project-ontology.md` and `.concorde/reflections/` remain
@@ -425,7 +425,7 @@ missing effects/bindings, cycles, or pair members.
 - **SC-011**: Fresh Codex and Claude installations expose exactly 15 public leaves plus three
   Operations, package both internal planner leaves, and include every paired Operation Python graph
   under `.concorde/framework/operations/`.
-- **SC-012**: Complete Python, installation, release, agent-surface, documentation, and validation
+- **SC-012**: Complete Python, installation, agent-surface, documentation, and validation
   tests contain zero current terminology that classifies leaf prompts as commands or maintained
   LangGraphs as examples.
 

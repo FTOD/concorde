@@ -1,9 +1,8 @@
 """Shared docsite package template inventory rule.
 
 Owns the single definition of which bytes under ``docsite/`` travel as the packaged adapter
-template — used identically by the installer, the release builder/verifier, and the scaffold Tool
-(``docsite_scaffold``) so a project always receives exactly the same adapter Concorde runs for its
-own site.
+template — used identically by the installer and the scaffold Tool (``docsite_scaffold``) so a
+project always receives exactly the same adapter Concorde runs for its own site.
 """
 
 from __future__ import annotations

@@ -47,7 +47,7 @@ execution, or generated documentation presentation. Operation is not a synonym f
 | `entity.runtime.capability-validator` | program | Validates exact Script/public-internal-Skill/Operation pairs, effects, mixed literal topology/bindings, and direct/indirect cycles without importing Operation Python. | `src/concorde/validation/capabilities.py` |
 | `entity.runtime.initializer` | program | Proposes and atomically applies Initialization Proposal 3 with a root Archify system overview. | `src/concorde/initialize.py` |
 | `entity.runtime.delivery` | program | Proposes and applies digest-bound Delivery Proposal 9 removal of one complete attempt. | `src/concorde/delivery.py` |
-| `entity.runtime.docsite-template` | program | Enumerates the packaged docsite template inventory and digest shared by the installer, release scripts, and scaffold Tool. | `src/concorde/docsite_template.py` |
+| `entity.runtime.docsite-template` | program | Enumerates the packaged docsite template inventory and digest shared by the installer and scaffold Tool. | `src/concorde/docsite_template.py` |
 | `entity.runtime.docsite-scaffold` | program | Proposes and atomically applies Docsite Scaffold Proposal 1 with a project-owned site identity. | `src/concorde/docsite_scaffold.py` |
 | `entity.runtime.cli` | program | Dispatches supported Tools and serializes one structured Tool envelope. | `src/concorde/cli.py` |
 | `entity.runtime.tests` | test | Unit, contract, integration, and acceptance evidence for Runtime Tool semantics. | `tests/concorde` |
@@ -75,7 +75,7 @@ execution, or generated documentation presentation. Operation is not a synonym f
 | `entity.runtime.delivery` | `validates` | `module.concorde.workspace` | Checks attempt eligibility, freshness, and exact removal safety. |
 | `entity.runtime.tool-envelope` | `transforms` | `entity.runtime.tool-result` | Produces the public versioned JSON response. |
 | `entity.runtime.validator` | `tested_by` | `entity.runtime.tests` | Executable cases establish bounded validation evidence. |
-| `entity.runtime.alignment-explorer` | `tested_by` | `entity.runtime.tests` | Unit through release cases establish its bounded claims. |
+| `entity.runtime.alignment-explorer` | `tested_by` | `entity.runtime.tests` | Unit through acceptance cases establish its bounded claims. |
 | `entity.runtime.delivery` | `tested_by` | `entity.runtime.tests` | Proposal, digest, rollback, and retention cases establish cleanup safety. |
 
 ## Interactions
@@ -109,8 +109,8 @@ None.
   workspace/validation Tools, while Operations owns graph/policy/process-handoff programs.
 - Protocol 13, Delivery Proposal 9, architecture-service envelope 2, capability-surface status schema
   2, and reflection-triage/v5 use `tool` discriminators.
-- The docsite template inventory rule lives in Runtime so installer, release scripts, and the
-  scaffold Tool never disagree about packaged adapter bytes.
+- The docsite template inventory rule lives in Runtime so the installer and the scaffold Tool never
+  disagree about packaged adapter bytes.
 - Exploration never normalizes or rewrites input graphs and never treats adapter vocabulary or text
   similarity as identity/evidence.
 - Test relationships point from production subject to evidence (`tested_by`).

@@ -11,4 +11,4 @@ Start here:
 - [Project structure](project-structure.md) — canonical, temporal, executable, installed, and generated paths.
 - [Ontology](ontology.md) and [Specification model](specification-model.md) — module/entity/interface rules.
 - [Workflow](concorde-workflow.md) and [Skills](skills.md) — leaf capabilities and paired Operations.
-- [Agent-surface maintenance](agent-surfaces.md) and [Releasing](releasing.md) — framework development/distribution.
+- [Agent-surface maintenance](agent-surfaces.md) — framework development.

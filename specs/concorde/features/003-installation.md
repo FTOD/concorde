@@ -3,7 +3,6 @@ id: feature.concorde.install
 kind: feature
 module: module.concorde
 related_features:
-  - feature.concorde.release.publish
   - feature.distribution.package-concorde
   - feature.skills.project-workflow
   - feature.operations.standard-development-loop
@@ -22,16 +21,16 @@ evidence_status: verified
 ## Outcome and Scope
 
 A maintainer can use one Python entry command, in preview or explicit-apply mode, to install a
-standalone Concorde package from a source checkout or extracted release archive into a clean or
-existing project without first initializing or installing another framework. Concorde owns only its
+standalone Concorde package from a source checkout into a clean or existing project without first
+initializing or installing another framework. Concorde owns only its
 framework projection and generated integration files; it preserves project-authored
 control/specification/code and unrelated agent assets.
 
 ## Usage
 
 From a Concorde checkout, run `python3 scripts/install-concorde.py --target <project> --integration
-codex` to inspect exact file actions. Add `--apply` only after accepting that plan. From an extracted
-release archive, invoke its included installer and pass the extracted package root with `--checkout`.
+codex` to inspect exact file actions. Add `--apply` only after accepting that plan. From another
+working directory, pass the package root that contains `concorde.json` with `--checkout`.
 Repeating the same apply returns `unchanged`; a new package version updates only receipt-owned
 unchanged outputs.
 
@@ -59,13 +58,14 @@ outcomes plus preservation of unrelated files.
 1. **Given** an accepted conflict-free plan, **When** `--apply` runs, **Then** one framework projection,
    selected integration surface, reflection assets/defaults, and ownership receipt are written.
 
-### User Story 3 — Install the Same Package from an Extracted Release (Priority: P2)
+### User Story 3 — Install from an Explicit Package Root (Priority: P2)
 
-**Independent Test**: Extract a verified release archive, run its included installer, and prove its
-desired output inventory matches installation from a checkout of the same version.
+**Independent Test**: Run the installer from outside the checkout with `--checkout` pointing at the
+package root, and prove its desired output inventory matches an in-checkout installation of the same
+version.
 
-1. **Given** a verified extracted release, **When** its included installer runs with that package
-   root, **Then** the resulting installation is equivalent to a checkout installation.
+1. **Given** an explicit `--checkout` package root, **When** the installer runs from another working
+   directory, **Then** the resulting installation is equivalent to an in-checkout installation.
 2. **Given** automation requests JSON output, **When** preview, conflict, failure, or apply completes,
    **Then** the result uses stable status and action fields.
 
@@ -75,15 +75,13 @@ desired output inventory matches installation from a checkout of the same versio
 
 - **Consumer**: Project maintainer and installation automation.
 - **Direction**: Package request to preview plan or applied installation result.
-- **Entry points**: `scripts/install-concorde.py` from a checkout or
-  `concorde/scripts/install-concorde.py` from an extracted archive, with `--target`, `--checkout`,
+- **Entry points**: `scripts/install-concorde.py` with `--target`, optional `--checkout`,
   `--integration`, optional `--apply`, and output format.
-- **Inputs**: Real target directory, checkout or extracted package root containing `concorde.json`,
+- **Inputs**: Real target directory, package root containing `concorde.json`,
   Codex/Claude choice, preview/apply mode, and human or JSON output selection.
 - **Outputs**: Stable status, version, integration, receipt path, and sorted
   create/adopt/update/remove/conflict actions with role/digest in human or JSON form.
-- **Obligations**: Require only Python 3.11+; preview by default; validate manifest/inventory; make
-  checkout and extracted-archive sources equivalent; require no prior framework initialization or
+- **Obligations**: Require only Python 3.11+; preview by default; validate manifest/inventory; require no prior framework initialization or
   network access; reject symlink/ownership collisions; update only prior matching digests; write
   receipt last; restore prior bytes on apply failure.
 - **Failures**: Invalid package, unsupported integration/profile, unsafe path, modified owned output, unrelated collision, or filesystem failure returns diagnostics without claiming success.
@@ -98,8 +96,8 @@ desired output inventory matches installation from a checkout of the same versio
 
 - **Consumer**: Project maintainer and installation automation.
 - **Direction**: One installer invocation to a preview or applied native installation result.
-- **Entry points**: `python3 scripts/install-concorde.py` in a checkout or
-  `python3 concorde/scripts/install-concorde.py` after archive extraction.
+- **Entry points**: `python3 scripts/install-concorde.py` in a checkout, or from elsewhere with
+  `--checkout` pointing at one.
 - **Inputs**: `--target`, optional `--checkout`, `--integration`, preview/default or explicit
   `--apply`, and output format.
 - **Outputs**: Human-readable or stable JSON installation plan/result and
@@ -137,7 +135,7 @@ desired output inventory matches installation from a checkout of the same versio
 
 | Entity ID | Role in this feature | Interaction |
 |---|---|---|
-| `module.concorde.distribution` | Owns package/install/release semantics. | Supplies the verified package contract. |
+| `module.concorde.distribution` | Owns package/install semantics. | Supplies the validated package contract. |
 | `entity.concorde.package-manifest` | Defines identity and exact inventories. | Gates every desired output calculation. |
 | `entity.concorde.installer` | Plans and applies ownership changes. | Compares desired, prior receipt, and observed bytes. |
 | `entity.concorde.skills` | Supplies canonical public/internal leaf intent and effects. | Public leaves render; internal planner leaves remain framework-only. |
@@ -147,8 +145,7 @@ desired output inventory matches installation from a checkout of the same versio
 
 ## Related Features
 
-- `feature.distribution.package-concorde` supplies verified package bytes.
-- `feature.concorde.release.publish` publishes the same installable package immutably.
+- `feature.distribution.package-concorde` supplies validated package bytes.
 
 ## Requirements
 
@@ -161,10 +158,10 @@ desired output inventory matches installation from a checkout of the same versio
 - **FR-006**: Repeating an identical accepted installation MUST return `unchanged`.
 - **FR-007**: One installer invocation MUST discover and validate the package and calculate the
   complete installation without prior framework initialization or network access.
-- **FR-008**: Installation from a checkout and from an extracted release archive MUST produce
-  equivalent desired outputs for the same package version.
+- **FR-008**: Installation from inside a checkout and through an explicit `--checkout` package root
+  MUST produce equivalent desired outputs for the same package version.
 - **FR-009**: The command interface MUST require explicit `--apply`, support Python 3.11+, and expose
-  the same target, checkout, integration, and output-format controls for both package source forms.
+  target, checkout, integration, and output-format controls.
 - **FR-010**: JSON output MUST use stable schema, status, and action fields for automation.
 
 ## Success Criteria
@@ -173,8 +170,8 @@ desired output inventory matches installation from a checkout of the same versio
   17 leaves/three pairs, exposes exactly 18 public capabilities, retains each pair, omits both
   internal leaves from agents, and contains no alias.
 - **SC-002**: Conflict, idempotence, integration-change, rollback, and preservation tests pass.
-- **SC-003**: Checkout and extracted-archive installs of the same version produce equivalent desired
-  inventories and stable JSON results.
+- **SC-003**: In-checkout and explicit `--checkout` installs of the same version produce equivalent
+  desired inventories and stable JSON results.
 
 ## Edge Cases
 
@@ -183,4 +180,4 @@ desired output inventory matches installation from a checkout of the same versio
 - Integration changes while prior generated outputs remain owned or user-modified.
 - The target exists but is not a real directory.
 - A target parent is a symlink or non-directory even though Python can run the installer.
-- An extracted archive is incomplete, modified, or points `--checkout` at the wrong package root.
+- `--checkout` points at an incomplete, modified, or wrong package root.

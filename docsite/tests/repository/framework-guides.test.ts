@@ -19,7 +19,6 @@ const baseline = new Map([
   ['docs/concorde-workflow.md', '/docs/concorde-workflow'],
   ['docs/agent-surfaces.md', '/docs/agent-surfaces'],
   ['docs/skills.md', '/docs/skills'],
-  ['docs/releasing.md', '/docs/releasing'],
   ['docs/contributing/docsite.md', '/docs/contributing/docsite'],
 ]);
 
@@ -48,7 +47,7 @@ describe('maintained Concorde framework guides', () => {
     }
   });
 
-  it('publishes the eleven-page baseline exactly once at stable Documentation routes', async () => {
+  it('publishes the ten-page baseline exactly once at stable Documentation routes', async () => {
     const registry = await buildRegistry(projectRoot);
     expect(validateRegistry(registry)).toEqual([]);
 

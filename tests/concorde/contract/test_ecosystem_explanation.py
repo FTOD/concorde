@@ -24,7 +24,6 @@ class EcosystemExplanationContractTests(unittest.TestCase):
             REPOSITORY_ROOT / "README.md",
             REPOSITORY_ROOT / "docs/project-structure.md",
             REPOSITORY_ROOT / "docs/agent-surfaces.md",
-            REPOSITORY_ROOT / "docs/releasing.md",
         ]
         combined = "\n".join(path.read_text().lower() for path in sources)
         for term in (

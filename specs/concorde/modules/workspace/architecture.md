@@ -43,7 +43,7 @@ implementation behavior, test truthfulness, version-control history, or generate
 | `entity.workspace.reflections` | directory | Per-file process memory with one `R-NNN.md` prose authority per problem and a metadata-only allocation index. | `.concorde/reflections` |
 | `entity.workspace.source-code` | directory | Checked-out implementation authority. | `src` |
 | `entity.workspace.tests` | test | Checked-out executable evidence and fixtures. | `tests` |
-| `entity.workspace.generated` | directory | Disposable documentation, diagram, and release projections with provenance. | `generated` |
+| `entity.workspace.generated` | directory | Disposable documentation and diagram projections with provenance. | `generated` |
 | `entity.workspace.protocol13` | schema | Structured phase context for one direct feature and stable-ID attempt whose returned paths can be validated into concrete non-symlink permission roles. | `concept:Feature Workspace Protocol 13` |
 | `entity.workspace.delivery9` | schema | Digest-bound proposal/result for removing one complete attempt. | `concept:Delivery Proposal 9` |
 

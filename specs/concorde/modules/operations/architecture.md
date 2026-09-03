@@ -46,7 +46,7 @@ algorithms, implement LangGraph/Codex/Claude sandboxes, or treat prompt text as 
 | `entity.operations.reflections-triage-skill` | document | Installed reflection-triage/v5 branch/policy contract paired with its graph. | `operations/concorde-reflections-triage/SKILL.md` |
 | `entity.operations.langgraph` | external-system | Optional graph runtime used lazily for Operation topology. | `external:langchain-ai/langgraph@1.x` |
 | `entity.operations.coding-agent` | external-system | Codex/Claude host whose native or approved outer sandbox enforces each immutable launch specification. | `external:coding-agent` |
-| `entity.operations.tests` | test | Topology, policy/path/parity, process-receipt, installation, release, projection, and fail-closed evidence. | `tests/concorde` |
+| `entity.operations.tests` | test | Topology, policy/path/parity, process-receipt, installation, projection, and fail-closed evidence. | `tests/concorde` |
 
 ## Relationships
 

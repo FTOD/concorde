@@ -37,7 +37,7 @@ scenarios, requirements, embedded provided/required interfaces, and an Architect
 visible entity IDs.
 
 Source code is implementation. Tests and deterministic checks are evidence. Plans, tasks, research,
-checklists, and validation logs are temporary attempt memory. Generated sites/diagrams/releases and
+checklists, and validation logs are temporary attempt memory. Generated sites/diagrams and
 installed framework/agent files are reproducible projections, never intent authority.
 
 Read [Ontology](docs/ontology.md), [Specification model](docs/specification-model.md), and
@@ -196,17 +196,6 @@ npm run check
 The repository self-applies the model at
 [`specs/concorde/architecture.md`](specs/concorde/architecture.md).
 
-## Release
-
-```bash
-python3 scripts/release/build-release.py --output dist
-python3 scripts/release/verify-release.py --dist dist
-```
-
-The build produces exactly `concorde-<version>.zip` and `release.json`. Verification checks identity,
-safe members, SHA-256, an isolated native installation, and byte-equivalent rebuilds. See
-[Releasing](docs/releasing.md).
-
 ## Repository map
 
 | Path | Responsibility |
@@ -216,7 +205,7 @@ safe members, SHA-256, an isolated native installation, and byte-equivalent rebu
 | `templates/` | Complete feature/plan/task/checklist/constitution/reflection format references. |
 | `src/concorde/` | Deterministic Tools plus Operations-owned graph, policy, path-context, and process-handoff programs. |
 | `agent-assets/` | Canonical reflection-triage roles and integration templates. |
-| `scripts/` | Portable runtime adapters, installer, checkout sync, and release programs. |
+| `scripts/` | Portable runtime adapters, installer, and checkout sync. |
 | `concorde.json` | Single package/version/profile/protocol/inventory authority. |
 | `specs/concorde/` | Self-applied module architectures and direct features. |
 | `.concorde/` | Native project configuration, selection, constitution, attempts, and reflections. |
@@ -225,4 +214,4 @@ safe members, SHA-256, an isolated native installation, and byte-equivalent rebu
 | `docs/` | Public framework and contributor guidance. |
 
 Concorde is distributed under the MIT License in `LICENSE`, declared by its package manifest and
-included in every release/installed framework projection.
+included in every installed framework projection.

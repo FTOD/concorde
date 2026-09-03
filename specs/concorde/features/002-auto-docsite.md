@@ -38,7 +38,7 @@ projects.
 |---|---|
 | `module.concorde.auto-docs` | Owns the docsite adapter whose bytes are shipped as the template and implements discovery, validation, rendering, materialization, and atomic publication. |
 | `module.concorde.distribution` | Inventories the docsite template in Package Manifest 2 and installs it beneath `.concorde/framework/` with the rest of the package. |
-| `entity.concorde.package-manifest` | Declares the docsite template root so checkout, archive, and installed layouts scaffold identical bytes. |
+| `entity.concorde.package-manifest` | Declares the docsite template root so checkout and installed layouts scaffold identical bytes. |
 | `entity.concorde.cli` | Routes the docsite scaffold propose/apply Tool actions. |
 | `entity.concorde.runtime` | Generates, digest-binds, validates, and atomically applies the Docsite Scaffold Proposal. |
 | `entity.concorde.specification` | Supplies the maintained module and feature sources the scaffolded site projects. |
@@ -130,7 +130,7 @@ projects.
   published pages or broad Manifest exclusions; legacy `specs/**/attempts/**` and specification-root
   reflection logs MUST fail the Profile 7 publication gate.
 - **FR-005**: Any discovery, link, render, validation, or build failure MUST preserve maintained sources and the last successful site.
-- **FR-006**: The Concorde package MUST ship the docsite adapter as a template inventoried by Package Manifest 2 so checkout, archive, and installed layouts scaffold identical bytes.
+- **FR-006**: The Concorde package MUST ship the docsite adapter as a template inventoried by Package Manifest 2 so checkout and installed layouts scaffold identical bytes.
 - **FR-007**: The scaffold Tool MUST preview by default, bind the proposal to template and input digests, apply exactly that proposal atomically, and never overwrite an existing `docsite/`, unowned collision, or symlink.
 - **FR-008**: The adapter MUST NOT hardcode project identity; title, site URL, base path, organization/project names, and repository link MUST come from the project-owned site identity file, and Concorde's own `docsite/` MUST use the same mechanism.
 - **FR-009**: A docsite scaffolded into a project that holds only Initialization Proposal 3 outputs MUST pass `npm run check` and publish the root architecture page once Node.js 20+, npm, and the pinned Archify skill are present.
