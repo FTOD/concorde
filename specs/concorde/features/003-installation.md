@@ -80,11 +80,15 @@ version.
 - **Inputs**: Real target directory, package root containing `concorde.json`,
   Codex/Claude choice, preview/apply mode, and human or JSON output selection.
 - **Outputs**: Stable status, version, integration, receipt path, and sorted
-  create/adopt/update/remove/conflict actions with role/digest in human or JSON form.
+  create/adopt/update/remove/conflict actions with role/digest in human or JSON form; a legacy
+  `.claude/reflections.config.json` without its canonical `.concorde/reflections/config.json`
+  counterpart yields one `conflict` action naming the legacy path and directing the maintainer to
+  agent-asset sync rather than silently seeding a default configuration.
 - **Obligations**: Require only Python 3.11+; preview by default; validate manifest/inventory; require no prior framework initialization or
   network access; reject symlink/ownership collisions; update only prior matching digests; write
-  receipt last; restore prior bytes on apply failure.
-- **Failures**: Invalid package, unsupported integration/profile, unsafe path, modified owned output, unrelated collision, or filesystem failure returns diagnostics without claiming success.
+  receipt last; restore prior bytes on apply failure; never seed a default reflection-triage
+  configuration over an unmigrated legacy config.
+- **Failures**: Invalid package, unsupported integration/profile, unsafe path, modified owned output, unrelated collision, unmigrated legacy reflection-triage config, or filesystem failure returns diagnostics without claiming success.
 - **Compatibility**: Concorde 2.1.0 Package Manifest 2, Profile 7, and Protocol 13 must match Runtime;
   17 packaged leaves and three pairs use one global namespace while only 15 leaves project publicly.
 - **Example**: `python3 scripts/install-concorde.py --target ../app --integration codex --apply`.
@@ -163,6 +167,20 @@ version.
 - **FR-009**: The command interface MUST require explicit `--apply`, support Python 3.11+, and expose
   target, checkout, integration, and output-format controls.
 - **FR-010**: JSON output MUST use stable schema, status, and action fields for automation.
+- **FR-011**: When a project's canonical `.concorde/reflections/config.json` is absent and a legacy
+  `.claude/reflections.config.json` exists, agent-asset preview/sync MUST offer and, on apply,
+  perform one reviewed, digest-bound `adopt-legacy-config` action: convert the supported v4 schema
+  (optional `_doc`, `log`, `features_root`, `plans_dir`, `order`, `investigators`, `implementers`,
+  `require_approval`, `skip`) to canonical `schema_version: 1`, always taking the canonical
+  `plans_dir`/`worktrees_dir` defaults — legacy `plans_dir` names v4 plan scratch and MUST NOT be
+  mapped onto the canonical layout — then archive the legacy file byte-identically to
+  `.concorde/reflections/legacy-claude-config.json` only after the canonical config is durably
+  written, rolling back the written config if archiving fails so the project is unchanged. Dual
+  authority (both files present), an unsupported/malformed/symlinked legacy file, or an occupied
+  archive path MUST each conflict without writing. Native installation MUST NOT silently seed a
+  default configuration over an unmigrated legacy file; it MUST fail closed and point at agent-asset
+  sync instead. Legacy plan scratch at `.claude/reflection-plans` remains an unrelated conflict that
+  adoption MUST NOT adopt, delete, or map.
 
 ## Success Criteria
 
