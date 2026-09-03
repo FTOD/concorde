@@ -13,7 +13,9 @@ outside `docsite/`:
 The adapter publishes four collections: Home, Architecture, Documentation, and Features. Public
 module and feature routes use stable IDs (`/architecture/<module-id>` and
 `/features/<feature-id>`). Generated sidebars follow declared module containment, while features
-remain flat capabilities grouped beneath their providing modules. `related_features` become
+remain flat capabilities grouped beneath their providing modules. Module entries carry the module
+name without the `Architecture:` heading prefix, and both sidebars start at the root module rather
+than a collection-level category. `related_features` become
 cross-links, never navigation containment.
 
 Feature abstracts, accepted implementation narratives, module summary/design pairs, standalone

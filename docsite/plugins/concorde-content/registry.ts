@@ -36,7 +36,7 @@ function stringList(value: unknown): string[] {
 
 function headingTitle(content: string): string {
   return content.match(/^#\s+(.+?)\s*$/m)?.[1]
-    ?.replace(/^(?:Feature Design|Module Architecture):\s*/i, '').trim() ?? '';
+    ?.replace(/^(?:Feature Design|Module Architecture|Architecture):\s*/i, '').trim() ?? '';
 }
 
 function sectionText(content: string, heading: string): string {

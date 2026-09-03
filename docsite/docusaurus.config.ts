@@ -72,9 +72,10 @@ const config: Config = {
     navbar: {
       title: 'Concorde',
       items: [
-        {type: 'docSidebar', sidebarId: 'architectureSidebar', docsPluginId: 'architecture', label: 'Architecture', position: 'left'},
-        {type: 'docSidebar', sidebarId: 'docsSidebar', label: 'Documentation', position: 'left'},
         {type: 'docSidebar', sidebarId: 'featuresSidebar', docsPluginId: 'features', label: 'Features', position: 'left'},
+        {type: 'docSidebar', sidebarId: 'docsSidebar', label: 'Documentation', position: 'left'},
+        {type: 'docSidebar', sidebarId: 'architectureSidebar', docsPluginId: 'architecture', label: 'Architecture', position: 'left'},
+        {href: 'https://github.com/FTOD/concorde', position: 'right', className: 'header-github-link', 'aria-label': 'GitHub repository'},
       ],
     },
     footer: {style: 'dark', copyright: `Concorde project documentation · ${new Date().getUTCFullYear()}`},

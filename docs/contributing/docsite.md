@@ -24,7 +24,9 @@ HTML, and package receipts are outside publication discovery. They are neither p
 Build Manifest exclusions. Links into `.concorde/**` are diagnosed as excluded control artifacts.
 Symbolic links are not followed.
 Architecture navigation mirrors recursive module containment. Feature navigation uses providing
-module and stable related-feature links; features never form a containment tree.
+module and stable related-feature links; features never form a containment tree. Both sidebars start
+at the root module with no collection-level category above it, label each module by its name (the
+`Architecture:` heading prefix is dropped), and render module groups as bold headings.
 
 Do not copy canonical content into `docsite/`. Components, formatting, registry/routing, and build
 logic live there; publishable prose stays in root/docs/specs, while workflow control prose stays
