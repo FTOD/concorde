@@ -147,7 +147,7 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Effect**: worked-around
 - **Action**: Replaced the unresolved command string with the then-canonical package path and reran reflection validation; the concern now follows `feature.skills.project-workflow` after native migration.
 - **Improvement**: Validate each new reflection entry immediately after append, before starting the full suite.
-- **Intervention**: 当前不需要你的介入；该校验策略可直接作为自动 gate，除非你要改变 reflection 的引用规范。
+- **Intervention**: 需要你确认是否把 allocate→append→bounded validation 提升为所有 reflection writer 的强制协议；它会改变运行时、队列工具和多个 Skill 的公共契约，不能作为无审查的小修复直接实施。
 - **Status**: open
 
 ### R-013 · Execution policy retained temporary projection backups
