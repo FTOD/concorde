@@ -8,6 +8,31 @@
 
 Concorde needs no host specification framework and no network access when installing from a checkout.
 
+### Recommended software
+
+None of the following is required to install Concorde or run its deterministic Tools. Each one
+unlocks an optional step; without it that step is skipped or reported truthfully, never faked.
+
+| Software | Unlocks | Without it |
+|---|---|---|
+| `langgraph>=1.2,<2` in the project's Python environment | The paired Operations (`concorde-standard-dev-loop`, `concorde-reflections-triage`, `concorde-plan`). | Leaf Skills and Tools still run; Operation graphs cannot start. |
+| Node.js 20+ and npm | Docsite validation, diagram delivery, and production build (`npm run check` in `docsite/`). | The project docsite is not published. |
+| Chrome or Chromium | Archify `visual-check`: containment measurement plus light/dark screenshots of every delivered diagram. | The check exits 2 and records `skipped`; structural diagram validation still passes, and the delivery notes that no visual inspection occurred. |
+
+Archify auto-detects `google-chrome`, `google-chrome-stable`, `chromium`, or `chromium-browser` on
+`PATH`. Any other Chromium build works through `ARCHIFY_CHROME`. When installing a system browser is
+inconvenient, the Chromium that Playwright downloads is a self-contained alternative; the Concorde
+checkout already pins Playwright in its root `package.json`:
+
+```bash
+npm ci                                   # from the Concorde checkout root
+npx playwright install chromium          # one-time download
+export ARCHIFY_CHROME="$(node -e "console.log(require('playwright').chromium.executablePath())")"
+```
+
+Set `ARCHIFY_CHROME_NO_SANDBOX=1` only when Chromium refuses to start without `--no-sandbox`, for
+example inside a minimal container. Running as root adds the flag automatically.
+
 ## 1. Preview installation
 
 From the Concorde checkout:

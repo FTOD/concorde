@@ -124,7 +124,9 @@ Repeated builds over identical sources must produce the same page inventory, rel
 source-to-page mapping without an LLM call.
 
 Browser visual checks remain explicit review because they require Chrome/Chromium and capture
-inspection. Their HTML/JSON/images/contact sheets are disposable.
+inspection. Their HTML/JSON/images/contact sheets are disposable. Archify auto-detects a system
+Chrome/Chromium on `PATH`; point `ARCHIFY_CHROME` at any other build, such as Playwright's bundled
+Chromium (see [Recommended software](../quick-start.md#recommended-software)).
 
 Publication diagnostics identify rule, source path, reason, and remediation. Fix the canonical
 source named by a failure. A failed candidate never replaces the previous successful build.

@@ -196,6 +196,10 @@ npm run check
 The repository self-applies the model at
 [`specs/concorde/architecture.md`](specs/concorde/architecture.md).
 
+Python 3.11+ is the only hard requirement. Archify visual checks additionally need a Chrome or
+Chromium build, which Playwright's bundled Chromium can supply through `ARCHIFY_CHROME`; see
+[Recommended software](docs/quick-start.md#recommended-software).
+
 ## Repository map
 
 | Path | Responsibility |
