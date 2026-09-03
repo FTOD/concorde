@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.feature_workspace import attempt_path, create_feature_file, reflection_entry, tree_hashes, write_complete_attempt, write_reflection_log, write_selection
+from tests.concorde.support.feature_workspace import attempt_path, create_feature_file, reflection_entry, tree_hashes, write_complete_attempt, write_reflection_collection, write_selection
 from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -34,7 +34,7 @@ class FeatureWorkspaceTests(unittest.TestCase):
         self.assertEqual(paths.module_architecture, "specs/example/architecture.md")
         self.assertEqual(paths.attempt_dir, ".concorde/attempts/feature.example.deliver")
         self.assertEqual(paths.checklists_dir, paths.attempt_dir + "/checklists")
-        self.assertEqual(paths.reflections, ".concorde/reflections/log.md")
+        self.assertEqual(paths.reflections, ".concorde/reflections")
         self.assertEqual(paths.executable_context, {"source_roots": (), "test_roots": ()})
         self.assertTrue(REMOVED_FIELDS.isdisjoint(payload))
         self.assertEqual(phase_target(paths, "specify"), paths.feature_path)
@@ -67,7 +67,7 @@ class FeatureWorkspaceTests(unittest.TestCase):
             project = Path(temporary)
             first = create_feature_file(project)
             second = create_feature_file(project, "specs/example/features/002-other.md", "feature.example.other")
-            write_reflection_log(project, [reflection_entry("R-001"), reflection_entry("R-002", feature="feature.example.other")])
+            write_reflection_collection(project, [reflection_entry("R-001"), reflection_entry("R-002", feature="feature.example.other")])
             self.assertEqual(resolve_phase_paths(project, first.relative_to(project).as_posix()).reflections_open, 1)
             self.assertEqual(resolve_phase_paths(project, second.relative_to(project).as_posix()).reflections_open, 1)
 

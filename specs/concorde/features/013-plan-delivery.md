@@ -63,7 +63,7 @@ specifications, and known reflections into one temporal plan/task list without d
 - **FR-001**: Planning MUST treat the direct feature file and module architecture as intent and code/tests as current realization/evidence.
 - **FR-002**: Plan/research/data model/quickstart/task/checklist files MUST remain under `.concorde/attempts/<stable-feature-id>/`.
 - **FR-003**: Tasks MUST cover each requirement, changed interface/entity, code/test path, projection, migration, and validation consequence.
-- **FR-004**: Planning MUST preserve durable sources/code and record unresolved contradictions/compromises in `.concorde/reflections/log.md`.
+- **FR-004**: Planning MUST preserve durable sources/code and record each unresolved problem in one `.concorde/reflections/R-NNN.md` without performing triage.
 - **FR-005**: Context MUST precede author, carry required-interface reasons, exclude provider
   internals/other attempts, and compile author writes to only selected attempt/reflections.
 

@@ -209,13 +209,14 @@ projection, reflection, or selection state.
 
 ## Reflection
 
-The tracked `.concorde/reflections/log.md` records difficulties, workarounds, deferrals, blockers,
-and provisional design choices encountered by lifecycle phases. Entries have stable `R-NNN` IDs and
-maintainer-owned status/notes. Reflections are process memory, not behavioral requirements, and are
-never copied into another persisted artifact. Reflection-triage/v4 allocates IDs atomically from the
-log's high-water marker and removes an open entry only after its `small` `fast-loop` plan is validated,
-merged, and marked `merged`; other work retains maintainer disposition. Triage configuration shares
-the directory; triage plans and worktrees are disposable.
+Each tracked `.concorde/reflections/R-NNN.md` records one detailed workflow problem. Planning and task
+generation normally fill only Context, Expected, Observed, Impact, and Evidence. Reflection triage
+later owns root-cause analysis, a proposed resolution, and the human-intervention decision. Every
+document retains a `User Comments` section and maintainer-owned status/resolution note. Reflections
+are process memory, not behavioral requirements, and are never copied elsewhere. A metadata-only
+`index.json` allocates stable IDs atomically. Reflection-triage/v5 removes an open document only after
+its `small` `fast-loop` plan is validated, merged, and marked `merged`; other work retains maintainer
+disposition. Triage configuration shares the directory; plans and worktrees are disposable.
 
 ## Projection
 

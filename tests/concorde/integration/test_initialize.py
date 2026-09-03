@@ -29,16 +29,15 @@ class InitializationTests(unittest.TestCase):
                 {item["path"] for item in proposal["files"]},
                 {
                     ".concorde/config.json",
-                    ".concorde/reflections/log.md",
+                    ".concorde/reflections/index.json",
                     f"specs/{slug}/architecture.md",
                     f"specs/{slug}/diagrams/system-overview.json",
                 },
             )
             config = next(item for item in proposal["files"] if item["path"] == ".concorde/config.json")
             self.assertIn('"profile_version": 7', config["content"])
-            reflections = next(item for item in proposal["files"] if item["path"] == ".concorde/reflections/log.md")
-            self.assertIn("# Reflections:", reflections["content"])
-            self.assertIn("<!-- concorde-reflection-high-water: R-000 -->", reflections["content"])
+            reflections = next(item for item in proposal["files"] if item["path"] == ".concorde/reflections/index.json")
+            self.assertEqual(json.loads(reflections["content"]), {"high_water": "R-000", "schema_version": 1})
             architecture = next(item for item in proposal["files"] if item["path"].endswith("architecture.md"))
             for heading in ("Responsibility", "Boundary", "Entities", "Relationships", "Interactions", "Modules", "Features", "Decisions"):
                 self.assertIn(f"## {heading}", architecture["content"])
@@ -65,11 +64,8 @@ class InitializationTests(unittest.TestCase):
             self.assertEqual(applied.status, "success", applied.findings)
             self.assertTrue((root / "specs/sample/architecture.md").is_file())
             self.assertTrue((root / "specs/sample/diagrams/system-overview.json").is_file())
-            self.assertTrue((root / ".concorde/reflections/log.md").is_file())
-            self.assertIn(
-                "<!-- concorde-reflection-high-water: R-000 -->",
-                (root / ".concorde/reflections/log.md").read_text(encoding="utf-8"),
-            )
+            self.assertTrue((root / ".concorde/reflections/index.json").is_file())
+            self.assertEqual(json.loads((root / ".concorde/reflections/index.json").read_text()), {"high_water": "R-000", "schema_version": 1})
             self.assertFalse((root / "specs/sample/module.md").exists())
             self.assertEqual(validate_project(root).status, "success", validate_project(root).findings)
             self.assertEqual(apply_proposal(root, "accepted.json").status, "unchanged")
@@ -87,7 +83,7 @@ class InitializationTests(unittest.TestCase):
                 set(result.artifacts),
                 {
                     ".concorde/config.json",
-                    ".concorde/reflections/log.md",
+                    ".concorde/reflections/index.json",
                     "specs/sample/architecture.md",
                     "specs/sample/diagrams/system-overview.json",
                 },

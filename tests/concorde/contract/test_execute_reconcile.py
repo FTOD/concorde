@@ -46,12 +46,14 @@ class ExecuteReconcileContractTests(unittest.TestCase):
         self.assertIn("append dependency-ordered tasks with new monotonically increasing ids", body.lower())
         self.assertIn("If no work remains, leave the task file byte-identical", body)
 
-    def test_reflections_capture_workarounds_and_provisional_prototype_choices(self):
+    def test_reflection_recording_is_problem_only_until_triage(self):
         implement = " ".join((SKILLS / "concorde-implement/SKILL.md").read_text(encoding="utf-8").split())
         plan = " ".join((SKILLS / "concorde-plan-author/SKILL.md").read_text(encoding="utf-8").split())
-        self.assertIn("every provisional prototype design choice", implement)
-        self.assertIn("workaround", implement)
-        self.assertIn("provisional or imperfect prototype choices", plan)
+        self.assertIn("Planning and task generation are the normal reflection-recording points", implement)
+        self.assertIn("Fill only Context, Expected, Observed, Impact, and Evidence", implement)
+        self.assertIn("do not analyze root cause or propose a resolution", implement)
+        self.assertIn("Describe only the problem", plan)
+        self.assertIn("decide whether human intervention is needed", plan)
         self.assertIn("Continue with a bounded prototype", plan)
 
 

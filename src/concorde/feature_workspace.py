@@ -11,7 +11,7 @@ from typing import Any, Mapping
 
 from .model import SourceDocument
 from .projection import feature_summary
-from .reflections import log_path, parse_reflection_log
+from .reflections import parse_auxiliary_reflections, reflections_path
 from .repository import (
     FEATURE_ID,
     ProjectRepository,
@@ -123,8 +123,7 @@ def _attempt_state(attempt: Path) -> str:
 
 
 def reflections_open_count(package: Any, feature_id: str) -> int:
-    body = package.auxiliary.get(log_path())
-    return parse_reflection_log(body).open_count(feature_id) if body is not None else 0
+    return parse_auxiliary_reflections(package.auxiliary).open_count(feature_id)
 
 
 def _summary(package: Any, feature: SourceDocument) -> dict[str, Any]:
@@ -229,7 +228,7 @@ def _paths_for(package: Any, project: Path, feature: SourceDocument) -> Workspac
         quickstart=temporal["quickstart"],
         tasks=temporal["tasks"],
         validation=temporal["validation"],
-        reflections=log_path(),
+        reflections=reflections_path(),
         reflections_open=reflections_open_count(package, feature.identifier),
     )
 
@@ -303,7 +302,7 @@ def _planned_paths(
         quickstart=temporal["quickstart"],
         tasks=temporal["tasks"],
         validation=temporal["validation"],
-        reflections=log_path(),
+        reflections=reflections_path(),
         reflections_open=0,
     )
 
@@ -561,7 +560,7 @@ def workspace_role_paths(
         "reflections": existing(paths.reflections, creation=True),
         "framework": framework,
         "templates": templates,
-        "reflection-queue": existing(".concorde/reflections/log.md", creation=True),
+        "reflection-queue": existing(paths.reflections, creation=True),
         "reflection-plans": existing(".concorde/reflections/plans", creation=True)
         if reflections_root.is_dir()
         else (),

@@ -30,7 +30,7 @@ def frontmatter(text: str) -> dict[str, str]:
 
 
 class ReflectionTriageDistributionContractTests(unittest.TestCase):
-    def test_public_guidance_names_v4_and_retained_maintainer_disposition(self):
+    def test_public_guidance_names_v5_and_retained_maintainer_disposition(self):
         paths = (
             "README.md",
             "operations/concorde-reflections-triage/SKILL.md",
@@ -40,9 +40,9 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
             "docs/releasing.md",
         )
         combined = "\n".join((REPOSITORY_ROOT / path).read_text(encoding="utf-8") for path in paths)
-        self.assertIn("reflection-triage/v4", combined)
+        self.assertIn("reflection-triage/v5", combined)
         self.assertIn("maintainer disposition", combined)
-        self.assertNotIn("reflection-triage/v3", combined)
+        self.assertNotIn("reflection-triage/v4", combined)
 
     def test_projection_manifest_has_exact_claude_codex_and_shared_inventory(self):
         claude = render_projection(CANONICAL_ASSETS, "claude")
@@ -75,8 +75,9 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
             normalized = " ".join(text.split())
             for action in ("status", "investigate", "implement", "merge"):
                 self.assertIn(f"- `{action}", text)
-            self.assertIn("reflection-triage/v4", text)
-            self.assertIn(".concorde/reflections/log.md", text)
+            self.assertIn("reflection-triage/v5", text)
+            self.assertIn(".concorde/reflections/R-NNN.md", text)
+            self.assertIn(".concorde/reflections/index.json", text)
             self.assertIn(".concorde/reflections/config.json", text)
             self.assertIn(".concorde/framework/scripts/reflections_queue.py", text)
             self.assertIn("scripts/reflections_queue.py", text)
@@ -92,19 +93,19 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
             self.assertNotIn("model_reasoning_effort", role)
             for route in ("fast-loop", "specify", "dismiss", "blocked"):
                 self.assertIn(route, role["developer_instructions"])
-            self.assertIn("reflection-triage/v4", role["developer_instructions"])
+            self.assertIn("reflection-triage/v5", role["developer_instructions"])
         self.assertEqual(investigator["sandbox_mode"], "read-only")
         self.assertEqual(implementer["sandbox_mode"], "workspace-write")
-        self.assertIn("Never change reflection `Status`/`Note` decisions", implementer["developer_instructions"])
+        self.assertIn("Never change reflection `status`, `resolution_note`", implementer["developer_instructions"])
         self.assertIn("stable-ID validation rules", implementer["developer_instructions"])
 
         claude_investigator = claude[".claude/agents/reflection-investigator.md"]
         claude_implementer = claude[".claude/agents/reflection-implementer.md"]
         self.assertNotIn("model:", claude_investigator)
         self.assertNotIn("model:", claude_implementer)
-        self.assertIn("Return the complete plan", claude_investigator)
+        self.assertIn("Return the triage-owned reflection replacement, the complete plan", claude_investigator)
         self.assertIn("assigned worktree", claude_implementer)
-        self.assertIn("Never change reflection `Status`/`Note` decisions", claude_implementer)
+        self.assertIn("Never change reflection `status`, `resolution_note`", claude_implementer)
         self.assertIn("stable-ID validation rules", claude_implementer)
 
 

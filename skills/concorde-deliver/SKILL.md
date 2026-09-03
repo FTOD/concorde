@@ -46,7 +46,7 @@ atomically removes exactly the selected `.concorde/attempts/<stable-feature-id>/
    authority digests. `remove` must contain exactly the returned `workspace.attempt_dir`.
 4. Read only enough returned material to confirm that all tasks/checklists have passed evidence,
    every architecture/feature/code/test/projection reconciliation is already present, paths are real
-   project-relative non-symlinks, and the reflection log remains centralized. Do not draft content.
+   project-relative non-symlinks, and each reflection remains in its canonical per-file collection. Do not draft content.
 
 ## Apply
 
@@ -62,7 +62,7 @@ durable/executable sources.
 ## Invariants and report
 
 Delivery never changes module architecture, the direct feature file, code, tests, generated projections,
-control selection, related features, ancestor modules, or the project reflection log. It never
+control selection, related features, ancestor modules, or the project reflection collection. It never
 archives temporal work elsewhere in project control state, the module, or beside the feature source.
 
 Report the feature ID, Proposal 9 path/digest, task/checklist/evidence summaries, validation result,

@@ -96,7 +96,7 @@ class ReflectionsTriageOperationIntegrationTests(unittest.TestCase):
             )
         self.assertEqual(calls, [])
 
-    def test_operation_cli_and_markdown_pair_report_v4_conditionally(self):
+    def test_operation_cli_and_markdown_pair_report_v5_conditionally(self):
         result = subprocess.run(
             [sys.executable, str(OPERATION_PATH), "status", "--describe-policy"],
             cwd=REPOSITORY_ROOT,
@@ -109,7 +109,7 @@ class ReflectionsTriageOperationIntegrationTests(unittest.TestCase):
         self.assertEqual(payload["action"], "status")
         self.assertEqual(payload["capabilities"], [])
         skill = OPERATION_PATH.with_name("SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("reflection-triage/v4", skill)
+        self.assertIn("reflection-triage/v5", skill)
         self.assertIn("operation: operation.py", skill)
         self.assertIn("capabilities:", skill)
 

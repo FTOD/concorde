@@ -56,14 +56,14 @@ structure authority.
 
 Hash the selected feature file, providing architecture, bounded ancestry references, and canonical
 related-feature-summary JSON at plan start and completion. Record comparisons in the attempt
-validation log. Planning writes only temporal attempt artifacts plus an authorized reflection
-occurrence. Planning must leave durable sources byte-identical.
+validation log. Planning writes only temporal attempt artifacts plus authorized per-file reflection
+state. Planning must leave durable sources byte-identical.
 
 ## Planning workflow
 
 1. Resolve Technical Context. Mark unknowns, research them, and write decisions plus alternatives to
-   the returned `research` path. Record provisional or imperfect prototype choices in the project
-   reflection log rather than stopping when a safe bounded assumption allows progress.
+   the returned `research` path. Record a concrete contradiction, missing authority, or failed tool
+   as a reflection when a safe bounded assumption still allows progress.
 2. Execute the Constitution Check before research and after the technical design. Explain any
    justified exception.
 3. Build the Concorde Architecture Gate:
@@ -98,18 +98,25 @@ occurrence. Planning must leave durable sources byte-identical.
 
 ## Reflection recording
 
-Whenever planning must assume, work around, defer, or stop because feature intent, architecture,
-related interfaces, code/tests, guidance, or tooling disagree, append or update the project-wide
-reflection log only through the authorized reflection path. Before appending a new entry, run the
-installed `scripts/reflections_queue.py --allocate-id`, use only its `allocated_id`, and never derive
-an ID from remaining entries. Use fixed field grammar, `Phase: plan`, and `Status: open`; an existing
-problem receives an occurrence without allocating a new ID. Never copy reflection identity or prose
-into attempt or durable artifacts. Continue with a bounded prototype whenever a safe explicit
-assumption permits useful progress.
+Planning and task generation are the normal points at which reflections are created. Create one only
+when planning encounters a concrete contradiction, ambiguity, missing authority, tooling failure, or
+other problem worth later investigation. First inspect the per-file collection under the returned
+`reflections` directory so the same problem receives an `Occurrences` item instead of another ID.
+
+For a new problem, run the installed `scripts/reflections_queue.py --allocate-id`, use only its
+`allocated_id`, never derive an ID from existing files, and create exactly the returned
+`reflection_path` from `templates/reflections-template.md`. Use `phase: plan`, `status:
+open`, and `triage: pending`. Fill Context, Expected, Observed, Impact, and Evidence with enough
+specific detail for a later investigator. Describe only the problem and its effect on this planning
+pass: do not analyze root cause, propose a resolution, or decide whether human intervention is
+needed. Omit `human_intervention` and leave the three triage-owned sections blank. Always retain the
+blank `User Comments` section. Only `concorde-reflections-triage` may complete those details and make
+the intervention decision. Never copy reflection identity or prose into attempt or durable artifacts.
+Continue with a bounded prototype whenever a safe explicit assumption permits useful progress.
 
 ## Completion gate
 
-Verify that planning wrote only selected-attempt paths plus any authorized reflection occurrence;
+Verify that planning wrote only selected-attempt paths plus authorized reflection index/document paths;
 all unknowns are resolved or explicit bounded assumptions; every affected
 durable/interface/code/test surface has a task-ready path; diagram checks passed; and protected
 hashes show no unexpected change.

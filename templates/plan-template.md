@@ -4,7 +4,7 @@
 
 **Input**: The selected direct feature file, the providing module's `architecture.md`, current source code,
 executable tests/checks, Constitution, bounded related-feature summaries, exact required-interface
-owner feature specifications when needed, and reflection log.
+owner feature specifications when needed, and per-file reflection collection.
 
 ## Summary
 
@@ -51,14 +51,14 @@ source, tests, descendants, and attempts remain excluded.
    path, test surface, projection, package, and public guide.
 3. Compare requested behavior directly with code/tests. Do not create a prose realization baseline.
 4. Name an explicit task to reconcile each affected module architecture or feature-file authority.
-   Planning itself writes only under the returned `attempt_dir`, plus the centralized reflection log
+   Planning itself writes only under the returned `attempt_dir`, plus authorized reflection index/document
    when required.
 5. Keep executable schemas/examples with code/tests; readable promises remain in feature files.
 6. For every affected architecture-owned diagram, plan its textual counterpart, maintained JSON,
    deterministic validation, generated freshness, publication, and truthful visual-review status.
    Require one normalized unique output below `generated/` and `meta.legend.mode: hidden`.
 7. Record conflicts, workarounds, assumptions, and provisional prototype choices in the returned
-   `.concorde/reflections/log.md` authority.
+   `.concorde/reflections/R-NNN.md` authority.
 8. When the feature changes an Operation, plan explicit public/internal exposure, leaf-owned effects,
    exact ordered capability/binding parity, nested-cycle rejection, concrete path-policy resolution,
    native/outer enforcement, receipt evidence, and Codex/Claude effective-set parity. LangGraph and

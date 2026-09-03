@@ -47,13 +47,13 @@ marker, phase, and evidence entry. Do not mark tasks complete or reopen them.
    architecture diagram freshness, or proposal digest coverage is incomplete.
 6. If no work remains, leave the task file byte-identical and report convergence.
 
-Record contradictions, workarounds, or provisional decisions encountered in
-`workspace.reflections` with `Phase: converge`. Before appending a new entry, run the installed
-`python3 ./scripts/reflections_queue.py --allocate-id`, use only its
-`allocated_id`, and never derive an ID from the remaining log entries; update an existing occurrence
-without allocating a new ID.
+Planning and task generation are the normal reflection-recording points. If convergence encounters a
+distinct problem that must persist, record it under `workspace.reflections` with `phase: converge`
+using Reflection Document v2: allocate the ID, fill only the factual problem sections, leave triage
+sections blank, omit `human_intervention`, and retain `User Comments`. Do not propose a resolution or
+make the intervention decision. Update an existing occurrence without allocating a new ID.
 Convergence may write only the selected task list, its compact reconciliation evidence when a check
-was actually run, and the centralized reflection log.
+was actually run, and authorized per-file reflection state.
 
 Report appended task IDs and reasons, dependency placement, checks run, remaining risks, or that no
 new tasks were necessary.

@@ -50,7 +50,7 @@ skills as the sole conversational surface.
 - **Direction**: Maintainer intent to leaf or multi-Skill result, with structured deterministic Tool crossings.
 - **Entry points**: Installed public lifecycle leaves plus paired `concorde-plan`, standard-loop, and
   reflection-triage Operations; internal planner leaves are not entry points.
-- **Inputs**: Selected `feature_path`, providing module architecture, related feature paths, code/tests, constitution, `.concorde/reflections/log.md`, and optional corresponding stable-ID control attempt.
+- **Inputs**: Selected `feature_path`, providing module architecture, related feature paths, code/tests, constitution, `.concorde/reflections/`, and optional corresponding stable-ID control attempt.
 - **Outputs**: Revised durable intent/architecture when authorized, temporal planning/evidence, reconciled code/tests/projections, findings, and delivery cleanup result.
 - **Obligations**: Keep each fact in one authority, resolve Protocol 13/concrete paths first, trace
   every task, validate deterministically, disclose evidence limits, keep nested Operations opaque,
@@ -99,7 +99,7 @@ skills as the sole conversational surface.
 - **FR-002**: Specification/architecture/code/test/projection facts MUST remain in their single authority and be reconciled together when affected.
 - **FR-003**: Every executable task MUST have a requirement trace, exact path, dependency state, passed check, artifact, and stated evidence limitation before completion.
 - **FR-004**: Validation/read-only failures MUST be non-mutating; reviewed initialization, eligible fast loop, and cleanup delivery MUST be atomic within their explicit authority.
-- **FR-005**: Delivery MUST remove one complete current `.concorde/attempts/<stable-feature-id>/`, retain the direct feature and reflection log byte-identically, and MUST NOT author durable implementation prose or architectural intent.
+- **FR-005**: Delivery MUST remove one complete current `.concorde/attempts/<stable-feature-id>/`, retain the direct feature and per-file reflection collection byte-identically, and MUST NOT author durable implementation prose or architectural intent.
 
 ## Edge Cases
 

@@ -89,16 +89,25 @@ attempt.
    require compact evidence in the returned `validation` file: task/trace, actual check, passed outcome,
    evidence path, scope, and limitation.
 
-## Consistency and reflections
+## Consistency and reflection recording
 
 Check every requirement/interface/architecture change has task coverage, every task path is within
 the user-authorized scope, dependencies are acyclic, and independently testable stories remain
-independent. Record contradictions, missing path authority, workarounds, or provisional choices in
-the project reflection log with `Phase: tasks`. Before appending a new entry, run the installed
-`python3 {FRAMEWORK}/scripts/reflections_queue.py --allocate-id`, use only its
-`allocated_id`, and never derive an ID from the remaining log entries; update an existing occurrence
-without allocating or duplicating an entry. Do not silently rewrite the feature file, architecture,
-plan, or code during task generation.
+independent. Planning and task generation are the normal points at which reflections are created.
+Create one for a concrete contradiction, missing path authority, unsafe dependency, or tooling
+problem encountered while decomposing the plan; do not use reflections as a second task backlog.
+
+Inspect the per-file collection under the returned `reflections` directory first. A repeated problem
+receives an `Occurrences` item in its existing `R-NNN.md`. For a new problem, run `python3
+{FRAMEWORK}/scripts/reflections_queue.py --allocate-id`, use only its `allocated_id`, never derive an
+ID from existing files, and create exactly the returned `reflection_path` from
+`templates/reflections-template.md`. Use `phase: tasks`, `status: open`,
+and `triage: pending`. Fill only Context, Expected, Observed, Impact, and Evidence, with enough
+specific detail for later investigation. Do not analyze root cause, recommend a change, or decide
+whether human intervention is needed. Omit `human_intervention`; leave Triage Analysis, Proposed
+Resolution, and Intervention Rationale blank; and retain the blank `User Comments` section. Those
+details and the intervention decision belong exclusively to `concorde-reflections-triage`. Do not
+silently rewrite the feature file, architecture, plan, or code during task generation.
 
 Report total tasks by phase/story, parallel opportunities,
 independent test criteria, MVP scope, and reflections added.

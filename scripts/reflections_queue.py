@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic queue, allocation, plan-state, and merged-removal helper for reflection-triage/v4."""
+"""Deterministic per-file queue, allocation, plan-state, and merged-removal helper."""
 
 from __future__ import annotations
 
@@ -19,12 +19,14 @@ sys.path.insert(0, str(PACKAGE_ROOT / "src"))
 
 from concorde.frontmatter import FrontMatterError, parse_document  # noqa: E402
 from concorde.reflections import (  # noqa: E402
-    ParsedLog,
+    ParsedReflections,
     ReflectionEntry,
     format_reflection_id,
-    log_path,
-    parse_reflection_log,
+    index_path,
+    parse_reflections,
     reflection_number,
+    reflection_path,
+    reflections_path,
     strip_reference_suffix,
 )
 
@@ -56,13 +58,11 @@ REQUIRED_PLAN_FIELDS = (
     "effort",
     "files",
 )
+COMMIT_ID = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
 
 
 class QueueError(ValueError):
     pass
-
-
-COMMIT_ID = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
 
 
 def _safe_relative(value: str, field: str) -> str:
@@ -76,7 +76,19 @@ def _sha256(data: bytes) -> str:
     return "sha256:" + hashlib.sha256(data).hexdigest()
 
 
-def _reject_symlink_components(root: Path, path: Path, field: str, *, final_may_be_missing: bool = False) -> None:
+def _collection_digest(documents: dict[str, bytes]) -> str:
+    digest = hashlib.sha256()
+    for path, data in sorted(documents.items()):
+        digest.update(path.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(data)
+        digest.update(b"\0")
+    return "sha256:" + digest.hexdigest()
+
+
+def _reject_symlink_components(
+    root: Path, path: Path, field: str, *, final_may_be_missing: bool = False
+) -> None:
     try:
         relative = path.relative_to(root)
     except ValueError as error:
@@ -169,36 +181,50 @@ def _document_map(specification_root: Path, root: Path) -> dict[str, str]:
     return result
 
 
-def _entry_text(text: str, entry: ReflectionEntry) -> str:
-    lines = text.splitlines()
-    return "\n".join(lines[entry.line - 1 : entry.end_line]).rstrip() + "\n"
-
-
-def _load_log(root: Path, *, required: bool = False) -> tuple[Path, bytes, str, ParsedLog, dict[str, str]]:
+def _load_reflections(
+    root: Path, *, required: bool = False
+) -> tuple[Path, bytes, ParsedReflections, dict[str, str], dict[str, bytes]]:
     _, specification_root = _specification_root(root)
-    path = root / log_path()
-    documents = _document_map(specification_root, root)
-    if not path.exists() and not path.is_symlink():
+    documents_by_id = _document_map(specification_root, root)
+    directory = root / reflections_path()
+    index = root / index_path()
+    if not directory.exists() and not directory.is_symlink():
         if required:
-            raise QueueError(f"reflection log is missing: {log_path()}")
-        parsed = parse_reflection_log("")
-        return path, b"", "", parsed, documents
-    _require_real_file(root, path, "reflection log")
-    try:
-        data = path.read_bytes()
-        text = data.decode("utf-8")
-    except (OSError, UnicodeError) as error:
-        raise QueueError(f"cannot read reflection log: {error}") from error
-    parsed = parse_reflection_log(text)
+            raise QueueError(f"reflection directory is missing: {reflections_path()}")
+        return index, b"", parse_reflections({}, None), documents_by_id, {}
+    _reject_symlink_components(root, directory, "reflection directory")
+    if not directory.is_dir():
+        raise QueueError(f"reflection directory must be real: {reflections_path()}")
+    if not index.exists() and not index.is_symlink():
+        if required:
+            raise QueueError(f"reflection allocation index is missing: {index_path()}")
+        index_bytes = b""
+        index_text = None
+    else:
+        _require_real_file(root, index, "reflection allocation index")
+        try:
+            index_bytes = index.read_bytes()
+            index_text = index_bytes.decode("utf-8")
+        except (OSError, UnicodeError) as error:
+            raise QueueError(f"cannot read reflection allocation index: {error}") from error
+    texts: dict[str, str] = {}
+    raw: dict[str, bytes] = {}
+    for path in sorted(directory.glob("R-*.md")):
+        _require_real_file(root, path, "reflection document")
+        relative = path.relative_to(root).as_posix()
+        try:
+            data = path.read_bytes()
+            texts[relative] = data.decode("utf-8")
+            raw[relative] = data
+        except (OSError, UnicodeError) as error:
+            raise QueueError(f"cannot read reflection document {relative}: {error}") from error
+    parsed = parse_reflections(texts, index_text)
     if parsed.problems:
-        messages = "; ".join(problem.message for problem in parsed.problems)
-        raise QueueError(f"reflection log is malformed: {messages}")
-    return path, data, text, parsed, documents
-
-
-def _load_entries(root: Path) -> tuple[list[ReflectionEntry], str, dict[str, str]]:
-    _, _, text, parsed, documents = _load_log(root)
-    return list(parsed.entries), text, documents
+        raise QueueError(
+            "reflection collection is malformed: "
+            + "; ".join(f"{problem.path}: {problem.message}" for problem in parsed.problems)
+        )
+    return index, index_bytes, parsed, documents_by_id, raw
 
 
 def _load_plans(root: Path, config: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -230,30 +256,27 @@ def _load_plans(root: Path, config: dict[str, Any]) -> dict[str, dict[str, Any]]
             raise QueueError(f"plan {identifier} has invalid status {metadata['status']!r}")
         if reflection_number(path.stem) is None or path.stem != identifier:
             raise QueueError(f"plan filename {path.name} does not match id {identifier}")
-        result[identifier] = {
-            **metadata,
-            "path": path.relative_to(root).as_posix(),
-        }
+        result[identifier] = {**metadata, "path": path.relative_to(root).as_posix()}
     return result
 
 
-def _validate_high_water(parsed: ParsedLog, plans: dict[str, dict[str, Any]]) -> int:
+def _validate_high_water(parsed: ParsedReflections, plans: dict[str, dict[str, Any]]) -> int:
     if parsed.high_water is None:
-        raise QueueError("reflection log has no tracked high-water marker")
+        raise QueueError("reflection collection has no tracked high_water index")
     highest_entry = max((reflection_number(entry.identifier) or 0 for entry in parsed.entries), default=0)
     highest_plan = max((reflection_number(identifier) or 0 for identifier in plans), default=0)
     required = max(highest_entry, highest_plan)
     if parsed.high_water < required:
         raise QueueError(
-            f"reflection high-water {format_reflection_id(parsed.high_water)} is below retained "
-            f"entry/plan {format_reflection_id(required)}"
+            f"reflection high_water {format_reflection_id(parsed.high_water)} is below retained "
+            f"document/plan {format_reflection_id(required)}"
         )
     return parsed.high_water
 
 
 def _enrich(
     entry: ReflectionEntry,
-    text: str,
+    raw: dict[str, bytes],
     documents: dict[str, str],
     plans: dict[str, dict[str, Any]],
     root: Path,
@@ -266,8 +289,9 @@ def _enrich(
     return {
         "id": entry.identifier,
         "title": entry.title,
-        "text": _entry_text(text, entry),
-        **{key.lower(): value for key, value in entry.fields.items()},
+        "path": entry.path,
+        "text": raw[entry.path].decode("utf-8"),
+        **{key.lower().replace(" ", "_"): value for key, value in entry.fields.items()},
         "feature_path": documents.get(feature_id),
         "concerns_path": concern_path,
         "plan": plans.get(entry.identifier),
@@ -276,79 +300,38 @@ def _enrich(
 
 def queue_payload(root: Path) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
     config = load_config(root)
-    _, _, text, parsed, documents = _load_log(root, required=True)
-    entries = list(parsed.entries)
+    _, _, parsed, documents, raw = _load_reflections(root, required=True)
     plans = _load_plans(root, config)
     _validate_high_water(parsed, plans)
     skip = set(config["skip"])
-    selected = [entry for entry in entries if entry.status == "open" and entry.identifier not in skip]
-    selected.sort(key=lambda item: int(item.identifier[2:]), reverse=config["order"] == "newest-first")
-    enriched = [_enrich(entry, text, documents, plans, root) for entry in selected]
+    selected = [entry for entry in parsed.entries if entry.status == "open" and entry.identifier not in skip]
+    selected.sort(
+        key=lambda item: reflection_number(item.identifier) or 0,
+        reverse=config["order"] == "newest-first",
+    )
+    enriched = [_enrich(entry, raw, documents, plans, root) for entry in selected]
     return {
         "entries": enriched,
         "summary": {
             "open": len(enriched),
+            "pending_triage": sum(1 for entry in selected if entry.triage == "pending"),
             "planned": sum(1 for item in enriched if item["plan"] is not None),
-            "total": len(entries),
+            "total": len(parsed.entries),
         },
         "config": config,
     }, plans
 
 
-def _line_ending(line: str) -> str:
-    if line.endswith("\r\n"):
-        return "\r\n"
-    if line.endswith("\n"):
-        return "\n"
-    if line.endswith("\r"):
-        return "\r"
-    return ""
-
-
-def _render_high_water(text: str, parsed: ParsedLog, number: int) -> bytes:
-    if parsed.high_water_line is None:
-        raise QueueError("reflection log has no tracked high-water marker")
-    lines = text.splitlines(keepends=True)
-    index = parsed.high_water_line - 1
-    ending = _line_ending(lines[index])
-    lines[index] = f"<!-- concorde-reflection-high-water: {format_reflection_id(number)} -->{ending}"
-    return "".join(lines).encode("utf-8")
-
-
-def _render_without_entries(text: str, parsed: ParsedLog, identifiers: set[str]) -> bytes:
-    lines = text.splitlines(keepends=True)
-    remove: set[int] = set()
-    for entry in parsed.entries:
-        if entry.identifier in identifiers:
-            remove.update(range(entry.line - 1, entry.end_line))
-    rendered = "".join(line for index, line in enumerate(lines) if index not in remove).encode("utf-8")
-    try:
-        verified = parse_reflection_log(rendered.decode("utf-8"))
-    except UnicodeError as error:
-        raise QueueError(f"rendered reflection log is not UTF-8: {error}") from error
-    if verified.problems:
-        raise QueueError("rendered reflection log is malformed: " + "; ".join(item.message for item in verified.problems))
-    observed = {entry.identifier for entry in verified.entries}
-    expected = {entry.identifier for entry in parsed.entries} - identifiers
-    if observed != expected:
-        raise QueueError("rendered reflection log did not preserve the exact retained entry set")
-    if verified.high_water != parsed.high_water:
-        raise QueueError("reflection removal may not lower or change the high-water marker")
-    return rendered
-
-
-def _atomic_log_replace(path: Path, expected: bytes, replacement: bytes) -> None:
-    root = path.parents[2]
-    _require_real_file(root, path, "reflection log")
+def _atomic_file_replace(root: Path, path: Path, expected: bytes, replacement: bytes, field: str) -> None:
+    _require_real_file(root, path, field)
     try:
         current = path.read_bytes()
         mode = stat.S_IMODE(path.stat().st_mode)
     except OSError as error:
-        raise QueueError(f"cannot inspect reflection log before write: {error}") from error
+        raise QueueError(f"cannot inspect {field} before write: {error}") from error
     if current != expected:
-        raise QueueError("reflection log digest changed before atomic replacement")
-    stage = path.with_name(f".{path.name}.reflection-triage-stage")
-    _reject_symlink_components(root, stage.parent, "reflection log directory")
+        raise QueueError(f"{field} digest changed before atomic replacement")
+    stage = path.with_name(f".{path.name}.reflection-stage")
     if stage.exists() or stage.is_symlink():
         raise QueueError(f"stale reflection staging path exists: {stage.relative_to(root)}")
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
@@ -363,14 +346,14 @@ def _atomic_log_replace(path: Path, expected: bytes, replacement: bytes) -> None
             stream.flush()
             os.fsync(stream.fileno())
         os.chmod(stage, mode)
-        _require_real_file(root, path, "reflection log")
+        _require_real_file(root, path, field)
         if path.read_bytes() != expected:
-            raise QueueError("reflection log digest changed during atomic replacement")
+            raise QueueError(f"{field} digest changed during atomic replacement")
         os.replace(stage, path)
     except QueueError:
         raise
     except OSError as error:
-        raise QueueError(f"atomic reflection log replacement failed: {error}") from error
+        raise QueueError(f"atomic {field} replacement failed: {error}") from error
     finally:
         if descriptor is not None:
             os.close(descriptor)
@@ -382,11 +365,7 @@ def _atomic_log_replace(path: Path, expected: bytes, replacement: bytes) -> None
 
 def _git(root: Path, *arguments: str, check: bool = True) -> subprocess.CompletedProcess[str]:
     try:
-        completed = subprocess.run(
-            ["git", "-C", str(root), *arguments],
-            text=True,
-            capture_output=True,
-        )
+        completed = subprocess.run(["git", "-C", str(root), *arguments], text=True, capture_output=True)
     except OSError as error:
         raise QueueError(f"cannot execute git: {error}") from error
     if check and completed.returncode:
@@ -418,22 +397,66 @@ def _validate_commit(root: Path, identifier: str, commit: Any, head: str) -> str
 
 def allocate_id(root: Path) -> dict[str, Any]:
     config = load_config(root)
-    path, before, text, parsed, _ = _load_log(root, required=True)
+    path, before, parsed, _, _ = _load_reflections(root, required=True)
     plans = _load_plans(root, config)
     previous = _validate_high_water(parsed, plans)
     allocated = previous + 1
-    replacement = _render_high_water(text, parsed, allocated)
-    _atomic_log_replace(path, before, replacement)
+    replacement = (
+        json.dumps({"high_water": format_reflection_id(allocated), "schema_version": 1}, indent=2, sort_keys=True)
+        + "\n"
+    ).encode("utf-8")
+    _atomic_file_replace(root, path, before, replacement, "reflection allocation index")
     return {
         "tool": "allocate-reflection-id",
         "status": "allocated",
-        "log_path": log_path(),
+        "index_path": index_path(),
+        "reflection_path": reflection_path(format_reflection_id(allocated)),
         "allocated_id": format_reflection_id(allocated),
         "previous_high_water": format_reflection_id(previous),
         "high_water": format_reflection_id(allocated),
         "before_sha256": _sha256(before),
         "after_sha256": _sha256(replacement),
     }
+
+
+def _remove_documents(root: Path, paths: list[Path], expected: dict[str, bytes]) -> None:
+    directory = root / reflections_path()
+    stage = directory / ".remove-merged-stage"
+    if stage.exists() or stage.is_symlink():
+        raise QueueError(f"stale reflection removal staging path exists: {stage.relative_to(root)}")
+    moved: list[tuple[Path, Path]] = []
+    try:
+        stage.mkdir(mode=0o700)
+        for path in paths:
+            _require_real_file(root, path, "reflection document")
+            relative = path.relative_to(root).as_posix()
+            if path.read_bytes() != expected[relative]:
+                raise QueueError(f"reflection document changed before removal: {relative}")
+            staged = stage / path.name
+            os.replace(path, staged)
+            moved.append((path, staged))
+    except (OSError, QueueError) as error:
+        for original, staged in reversed(moved):
+            if staged.exists() and not original.exists():
+                os.replace(staged, original)
+        try:
+            stage.rmdir()
+        except OSError:
+            pass
+        if isinstance(error, QueueError):
+            raise
+        raise QueueError(f"atomic reflection removal failed: {error}") from error
+    # All canonical paths are absent: removal is committed. Tombstone cleanup is best-effort and
+    # cannot make a completed removal look failed after rollback is no longer possible.
+    for _, staged in moved:
+        try:
+            staged.unlink()
+        except OSError:
+            pass
+    try:
+        stage.rmdir()
+    except OSError:
+        pass
 
 
 def remove_merged(root: Path, requested: list[str]) -> dict[str, Any]:
@@ -451,7 +474,7 @@ def remove_merged(root: Path, requested: list[str]) -> dict[str, Any]:
     identifiers.sort(key=lambda item: reflection_number(item) or 0)
 
     config = load_config(root)
-    path, before, text, parsed, _ = _load_log(root, required=True)
+    _, _, parsed, _, raw = _load_reflections(root, required=True)
     plans = _load_plans(root, config)
     _validate_high_water(parsed, plans)
     entries = {entry.identifier: entry for entry in parsed.entries}
@@ -459,14 +482,14 @@ def remove_merged(root: Path, requested: list[str]) -> dict[str, Any]:
     for identifier in identifiers:
         entry = entries.get(identifier)
         if entry is None:
-            raise QueueError(f"reflection {identifier} has no matching open entry")
+            raise QueueError(f"reflection {identifier} has no matching open document")
         if entry.status != "open":
             raise QueueError(f"reflection {identifier} is not open")
         plan = plans.get(identifier)
         if plan is None:
             raise QueueError(f"reflection {identifier} has no matching plan")
         if plan.get("recorded_under") != entry.feature:
-            raise QueueError(f"plan {identifier} recorded_under does not match reflection Feature")
+            raise QueueError(f"plan {identifier} recorded_under does not match reflection feature")
         if plan.get("route") != "fast-loop":
             raise QueueError(f"plan {identifier} route is not fast-loop")
         if plan.get("effort") != "small":
@@ -474,21 +497,22 @@ def remove_merged(root: Path, requested: list[str]) -> dict[str, Any]:
         if plan.get("status") != "merged":
             raise QueueError(f"plan {identifier} status is not merged")
         _validate_commit(root, identifier, plan.get("commit"), head)
-
-    replacement = _render_without_entries(text, parsed, set(identifiers))
     if _captured_head(root) != head:
         raise QueueError("Git HEAD changed during merged-reflection validation")
-    _atomic_log_replace(path, before, replacement)
+    before_digest = _collection_digest(raw)
+    paths = [root / entries[identifier].path for identifier in identifiers]
+    _remove_documents(root, paths, raw)
+    remaining = {path: data for path, data in raw.items() if path not in {entry.path for entry in (entries[item] for item in identifiers)}}
     return {
         "tool": "remove-merged-reflections",
         "status": "removed",
-        "log_path": log_path(),
         "removed": identifiers,
+        "removed_paths": [reflection_path(identifier) for identifier in identifiers],
         "removed_count": len(identifiers),
         "remaining_count": len(parsed.entries) - len(identifiers),
         "head": head,
-        "before_sha256": _sha256(before),
-        "after_sha256": _sha256(replacement),
+        "before_sha256": before_digest,
+        "after_sha256": _collection_digest(remaining),
     }
 
 
@@ -573,27 +597,18 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.entry:
             selected = next((item for item in entries if item["id"] == arguments.entry), None)
             if selected is None:
-                raise QueueError(f"no open, unskipped entry {arguments.entry}")
+                raise QueueError(f"no open, unskipped reflection {arguments.entry}")
             print(json.dumps(selected, indent=2, sort_keys=True))
             return 0
         if arguments.next is not None:
             if arguments.next < 0:
                 raise QueueError("--next must be non-negative")
-            print(json.dumps([item for item in entries if item["plan"] is None][: arguments.next], indent=2, sort_keys=True))
+            print(json.dumps(entries[: arguments.next], indent=2, sort_keys=True))
             return 0
-        if arguments.json:
-            print(json.dumps(payload, indent=2, sort_keys=True))
-            return 0
-        print(f"{'ID':<7} {'ROUTE/STATUS':<24} CONCERNS")
-        for item in entries:
-            plan = item["plan"]
-            state = f"{plan['route']}/{plan['status']}" if plan else "-"
-            print(f"{item['id']:<7} {state:<24} {item.get('concerns', '')}")
-        summary = payload["summary"]
-        print(f"\n{summary['open']} open · {summary['planned']} planned · {summary['total']} total")
+        print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
-    except QueueError as error:
-        print(f"reflection triage: {error}", file=sys.stderr)
+    except (OSError, QueueError, UnicodeError, ValueError) as error:
+        print(f"reflection queue error: {error}", file=sys.stderr)
         return 2
 
 

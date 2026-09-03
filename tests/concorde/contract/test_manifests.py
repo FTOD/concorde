@@ -64,10 +64,12 @@ class ManifestContractTests(unittest.TestCase):
             self.assertIn(marker, tasks)
         self.assertIn("requirements-quality", checklist)
 
-    def test_reflection_template_keeps_log_v1_and_high_water(self):
+    def test_reflection_template_separates_recording_from_triage(self):
         body = (REPOSITORY_ROOT / "templates/reflections-template.md").read_text()
-        self.assertIn("Concorde Reflection Log v1", body)
-        self.assertIn("concorde-reflection-high-water", body)
+        self.assertIn("Concorde Reflection Document v2", body)
+        self.assertIn(".concorde/reflections/R-NNN.md", body)
+        self.assertIn("triage: pending", body)
+        self.assertIn("## User Comments", body)
         self.assertIn("R-NNN", body)
 
     def test_removed_host_package_layout_is_absent(self):

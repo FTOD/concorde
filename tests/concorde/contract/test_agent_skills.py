@@ -119,23 +119,24 @@ class AgentSkillContractTests(unittest.TestCase):
         converge = " ".join(read(SKILL_ROOT, "concorde-converge").split())
         implement = " ".join(read(SKILL_ROOT, "concorde-implement").split())
         self.assertIn("read-only semantic audit", analyze.lower())
-        self.assertIn("only permitted write is a centralized reflection entry", analyze)
+        self.assertIn("planning and task generation are the normal reflection-recording points", analyze.lower())
         self.assertIn("appends only genuinely remaining executable work", converge)
         self.assertIn("Preserve every existing task ID, text, marker, phase, and evidence entry", converge)
         for body in (implement, converge):
-            self.assertIn("provisional", body)
+            self.assertIn("problem", body)
             self.assertIn("reflection", body)
+            self.assertIn("do not", body.lower())
 
     def test_every_entry_writing_phase_allocates_ids_atomically(self):
-        for name in (
-            "concorde-plan-author", "concorde-tasks", "concorde-implement",
-            "concorde-analyze", "concorde-converge", "concorde-fast-loop",
-        ):
+        for name in ("concorde-plan-author", "concorde-tasks"):
             with self.subTest(name=name):
                 body = read(SKILL_ROOT, name)
                 self.assertIn("--allocate-id", body)
                 self.assertIn("allocated_id", body)
                 self.assertIn("never derive", body)
+                self.assertIn("triage: pending", body)
+                self.assertIn("User Comments", body)
+                self.assertIn("do not analyze", body.lower())
 
     def test_fast_loop_is_direct_bounded_and_never_creates_attempt_memory(self):
         body = " ".join(read(SKILL_ROOT, "concorde-fast-loop").split())
@@ -156,7 +157,7 @@ class AgentSkillContractTests(unittest.TestCase):
         self.assertIn("Initialization Proposal 3", init)
         self.assertIn("diagrams/system-overview.json", init)
         self.assertIn("Archify showcase", init)
-        self.assertIn(".concorde/reflections/log.md", init)
+        self.assertIn(".concorde/reflections/index.json", init)
         self.assertIn("Do not invent product modules", init)
         self.assertIn("typed current-level entities", context)
         self.assertIn("Never expand a child module's internal inventory", context)

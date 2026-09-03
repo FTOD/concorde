@@ -28,5 +28,5 @@ permission profile/sandbox or a verified equivalently narrow outer sandbox.
 
 The context leaf is read-only and returns the exact selected/module/provider-interface receipt. The
 author leaf receives that prior result and may write only the selected attempt plus an authorized
-central reflection occurrence. A context, policy, enforcement, or executor failure stops authorship;
+authorized per-file reflection state. A context, policy, enforcement, or executor failure stops authorship;
 the Operation never falls back to ambient repository access.

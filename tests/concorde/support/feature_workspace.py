@@ -232,23 +232,83 @@ def tree_hashes(root: Path) -> dict[str, str]:
     return {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(root.rglob("*")) if path.is_file()}
 
 
-def write_reflection_log(project_root: Path, entries: list[dict[str, str]]) -> Path:
-    order = ("Phase", "Date", "Feature", "Kind", "Concerns", "Expected", "Observed", "Effect", "Action", "Improvement", "Status", "Note")
-    blocks = ["# Reflections: Example\n\nFixture log.\n"]
+def write_reflection_collection(project_root: Path, entries: list[dict[str, str]]) -> Path:
+    directory = project_root / ".concorde" / "reflections"
+    directory.mkdir(parents=True, exist_ok=True)
+    for existing in directory.glob("R-*.md"):
+        existing.unlink()
+    high_water = max((int(entry["id"][2:]) for entry in entries), default=0)
+    (directory / "index.json").write_text(
+        json.dumps({"high_water": f"R-{high_water:03d}", "schema_version": 1}, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     for entry in entries:
-        lines = [f"### {entry['id']} · {entry.get('title', 'Fixture problem')}", ""]
-        for label in order:
-            if label in entry:
-                lines.append(f"- **{label}**: {entry[label]}")
-        for occurrence in entry.get("occurrences", []):
-            if "- **Occurrences**:" not in lines:
-                lines.append("- **Occurrences**:")
-            lines.append(f"  - {occurrence}")
-        blocks.append("\n".join(lines) + "\n")
-    path = project_root / ".concorde" / "reflections" / "log.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(blocks), encoding="utf-8")
-    return path
+        identifier = entry["id"]
+        title = entry.get("title", "Fixture problem")
+        metadata = [
+            "---",
+            f"id: {identifier}",
+            f"title: {title}",
+            f"phase: {entry['Phase']}",
+            f"date: {entry['Date']}",
+            f"feature: {entry['Feature']}",
+            f"kind: {entry['Kind']}",
+            f"concerns: {entry['Concerns']}",
+            f"status: {entry['Status']}",
+            f"triage: {entry.get('Triage', 'pending')}",
+        ]
+        if entry.get("Human Intervention"):
+            metadata.append(f"human_intervention: {entry['Human Intervention']}")
+        if entry.get("Note"):
+            metadata.append(f"resolution_note: {entry['Note']}")
+        metadata.append("---")
+        occurrences = "\n".join(f"- {item}" for item in entry.get("occurrences", []))
+        body = "\n".join(metadata) + f"""
+
+# {identifier} · {title}
+
+## Context
+
+{entry['Context']}
+
+## Expected
+
+{entry['Expected']}
+
+## Observed
+
+{entry['Observed']}
+
+## Impact
+
+{entry['Impact']}
+
+## Evidence
+
+{entry['Evidence']}
+
+## Triage Analysis
+
+{entry.get('Triage Analysis', '')}
+
+## Proposed Resolution
+
+{entry.get('Proposed Resolution', '')}
+
+## Intervention Rationale
+
+{entry.get('Intervention Rationale', '')}
+
+## User Comments
+
+{entry.get('User Comments', '')}
+
+## Occurrences
+
+{occurrences}
+"""
+        (directory / f"{identifier}.md").write_text(body.rstrip() + "\n", encoding="utf-8")
+    return directory
 
 
 def reflection_entry(identifier: str, feature: str = "feature.example.deliver", status: str = "open", **overrides: str) -> dict[str, str]:
@@ -260,11 +320,11 @@ def reflection_entry(identifier: str, feature: str = "feature.example.deliver", 
         "Feature": feature,
         "Kind": "tooling",
         "Concerns": "specs/example/architecture.md",
+        "Context": "The fixture command was run while preparing the selected feature.",
         "Expected": "The documented command succeeds.",
         "Observed": "The command failed.",
-        "Effect": "worked-around",
-        "Action": "Used the fallback.",
-        "Improvement": "Fix the command.",
+        "Impact": "Planning used a bounded fallback and retained the failure for triage.",
+        "Evidence": "`specs/example/architecture.md` and the recorded fixture command.",
         "Status": status,
     }
     if status != "open":

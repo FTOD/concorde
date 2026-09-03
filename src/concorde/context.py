@@ -7,7 +7,7 @@ from pathlib import Path
 from .feature_workspace import WorkspaceError, reflections_open_count, resolve_phase_paths
 from .model import Finding, ToolResult
 from .projection import feature_summary, module_projection
-from .reflections import log_path, parse_reflection_log
+from .reflections import index_path, parse_auxiliary_reflections, reflection_document_paths, reflections_path
 from .repository import ProjectRepository, RepositoryError
 from .validation.entities import module_ancestry
 
@@ -69,19 +69,20 @@ def bounded_context(project_root: str | Path, requested_id: str) -> ToolResult:
     }
     artifacts = {module.path, *package.module_diagrams(module), *(child.path for child in child_sources)}
     artifacts.update(item["architecture"] for item in ancestry)
-    reflections_path = log_path()
-    reflections_body = package.auxiliary.get(reflections_path)
-    if reflections_body is not None:
-        parsed = parse_reflection_log(reflections_body)
+    reflection_paths = reflection_document_paths(package.auxiliary)
+    if reflection_paths or index_path() in package.auxiliary:
+        parsed = parse_auxiliary_reflections(package.auxiliary)
         context["reflections"] = {
-            "path": reflections_path,
+            "path": reflections_path(),
             "open": {
                 feature_id: parsed.open_count(feature_id)
                 for feature_id in sorted(package.features)
                 if parsed.open_count(feature_id)
             },
         }
-        artifacts.add(reflections_path)
+        artifacts.update(reflection_paths)
+        if index_path() in package.auxiliary:
+            artifacts.add(index_path())
     if target.kind == "feature":
         from .readiness import architecture_readiness
 

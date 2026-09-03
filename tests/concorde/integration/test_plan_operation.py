@@ -30,7 +30,7 @@ def durable_hashes(root: Path) -> dict[str, str]:
         for path in sorted(root.rglob("*"))
         if path.is_file()
         and not path.relative_to(root).as_posix().startswith(".concorde/attempts/")
-        and path.relative_to(root).as_posix() != ".concorde/reflections/log.md"
+        and not path.relative_to(root).as_posix().startswith(".concorde/reflections/")
     }
 
 
@@ -67,7 +67,7 @@ class PlanOperationIntegrationTests(unittest.TestCase):
             set(calls[1].launch_specification.policy.write_paths),
             {
                 ".concorde/attempts/feature.example.consumer.change",
-                ".concorde/reflections/log.md",
+                ".concorde/reflections",
             },
         )
         self.assertEqual(

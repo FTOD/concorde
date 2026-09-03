@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tests.concorde.support.feature_workspace import attempt_path, create_feature_file, tree_hashes, write_complete_attempt, write_selection
+from tests.concorde.support.feature_workspace import attempt_path, create_feature_file, reflection_entry, tree_hashes, write_complete_attempt, write_reflection_collection, write_selection
 from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
@@ -293,10 +293,10 @@ class ImplementationDeliveryIntegrationTests(unittest.TestCase):
             source.write_text("def run():\n    return 'ok'\n", encoding="utf-8")
             feature = root / FEATURE
             architecture = root / "specs/example/architecture.md"
-            reflection = root / ".concorde/reflections/log.md"
-            reflection.parent.mkdir(parents=True, exist_ok=True)
-            reflection.write_text("# Reflections: Delivery fixture\n", encoding="utf-8")
-            retained_before = {path: path.read_bytes() for path in (source, feature, architecture, reflection)}
+            collection = write_reflection_collection(root, [reflection_entry("R-001")])
+            reflection = collection / "R-001.md"
+            index = collection / "index.json"
+            retained_before = {path: path.read_bytes() for path in (source, feature, architecture, reflection, index)}
             eligibility = propose_delivery(root)
             proposal = self.write_proposal(root, eligibility)
             result = apply_delivery(root, proposal.relative_to(root).as_posix())

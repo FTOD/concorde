@@ -17,7 +17,7 @@ evidence_status: partial
 ## Outcome and Scope
 
 Every normal phase receives one direct feature path, bounded module context, related feature paths,
-code/tests, `.concorde/reflections/log.md`, and the corresponding stable-ID control attempt.
+code/tests, `.concorde/reflections/`, and the corresponding stable-ID control attempt.
 
 ## Architecture Zoom
 
