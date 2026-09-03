@@ -56,23 +56,6 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Intervention**: 需要你决定是否允许刷新非当前 active integration，以及是否接受该集成的安装面成为维护范围。
 - **Status**: open
 
-### R-006 · Documentation gate caught MDX alias syntax and stale command expectation
-- **Phase**: implement
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.workflow.accept-milestone
-- **Kind**: implementation
-- **Concerns**: docsite/tests/integration/framework-guides.test.ts
-- **Expected**: Updated terminology tables and framework-guide tests compile and recognize only the delivery command.
-- **Observed**: The first documentation gate rejected a non-self-closing alias line break and still expected the former command in one test.
-- **Effect**: worked-around
-- **Action**: Used MDX-safe `<br />` syntax accepted by the ontology parser and updated the command inventory assertion before rebuilding.
-- **Improvement**: Add MDX compilation of terminology aliases and the canonical extension command inventory to focused pre-docsite tests.
-- **Intervention**: 当前不需要你的技术决策；若要改变文档命令或术语的 canonical 写法，请你确认兼容性边界。
-- **Occurrences**:
-  - plan 2026-09-01 feature.concorde.workflow.plan-delivery — `docs/commands.md` still names the former accept stage and `concorde-impl-accept` command after the delivery rename.
-  - plan 2026-09-01 feature.concorde.workflow.execute-and-reconcile — the selected abstract still names the former accept step after the canonical delivery rename.
-- **Status**: open
-
 ### R-007 · Plan Delivery still names the module reference as implementation
 - **Phase**: plan
 - **Date**: 2026-09-01
@@ -101,25 +84,6 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Action**: Created no child contract for this milestone and planned to reconcile the maintained command/template guidance with temporal contract proposals.
 - **Improvement**: Add `attempt/contracts/` to the planning model and require tasks to promote reviewed contract deltas with code, evidence, and compatibility updates.
 - **Intervention**: 需要你决定规划阶段是否允许提出 durable contract 变更，以及由哪个 feature 拥有该 contract；agent 不能替你改变跨模块契约所有权。
-- **Status**: open
-
-### R-010 · Focused contract test overfit equivalent bounded-context wording
-- **Phase**: implement
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.workflow.plan-delivery
-- **Kind**: implementation
-- **Concerns**: tests/concorde/contract/test_plan_delivery.py
-- **Expected**: The focused test verifies that planning and tasks never load sibling feature bodies implicitly.
-- **Observed**: The first passing candidate used the existing precise phrase `sibling design/implementation body`, while the new assertion required the less precise token `sibling bodies`.
-- **Effect**: worked-around
-- **Action**: Kept the command's stronger wording and aligned the test with that exact semantic invariant.
-- **Improvement**: Prefer stable normative phrases over newly invented shorthand when adding prose-contract assertions.
-- **Intervention**: 当前不需要你的介入；只有当你要更改规范措辞或接受更宽松的断言语义时，才需要你作兼容性决定。
-- **Occurrences**:
-  - implement 2026-09-01 feature.concorde.workflow.execute-and-reconcile — the new handoff test required lowercase `failed verification` while the contract correctly began the sentence with `Failed verification`.
-  - implement 2026-09-02 feature.concorde.explore-alignment — the first focused documentation marker required shorthand `concorde explore` while the README already carried the exact `scripts/concorde.py ... explore` invocation; the guide now also names the shorthand operation for discoverability.
-  - implement 2026-09-02 feature.concorde.explore-alignment — the integrated gate found the projection unit test still expected the former coarse `entity.concorde.runtime` zoom participant after durable reconciliation introduced the concrete `entity.concorde.alignment-explorer`; the assertion now follows the selected feature's current entity.
-  - implement 2026-09-02 feature.concorde.explore-alignment — the first final stale-language scan matched the unrelated fast-loop sentence `no accepted-realization prerequisite exists`; the alignment audit was narrowed to feature-006-owned/interface/public surfaces so negated historical terminology elsewhere is not misclassified.
 - **Status**: open
 
 ### R-011 · Partial Codex projection backup exposed lower-layer skills
@@ -234,20 +198,6 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Intervention**: 需要你决定是否在下一版引入 `interface.*` 重命名及 external-interface registry，并接受由此产生的兼容性迁移成本。
 - **Status**: open
 
-### R-021 · Canonical and installed guidance already differ before migration
-- **Phase**: plan
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.define-project-ontology
-- **Kind**: tooling
-- **Concerns**: scripts/development/sync-agent-surfaces.py
-- **Expected**: Checked-in canonical preset/extension sources and installed Spec Kit/Codex/Claude projections have one reproducible current composition.
-- **Observed**: The clean checkout contains source-only diagram-output checks in plan/specify guidance that are absent from the installed projection, so blindly treating installed files as the edit baseline would discard newer requirements.
-- **Effect**: worked-around
-- **Action**: Will edit authoritative package sources first, preserve the newer source-only checks where still applicable, then regenerate and verify every installed projection through self-hosting.
-- **Improvement**: Make clean-tree self-host freshness a deterministic pre-plan gate for framework source-profile migrations.
-- **Intervention**: 当前不需要你的介入；可以直接实现为 pre-plan gate，除非你要允许 dirty tree 作为迁移输入。
-- **Status**: open
-
 ### R-023 · Existing diagrams encode the removed source profile
 - **Phase**: implement
 - **Date**: 2026-09-01
@@ -276,20 +226,6 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Intervention**: 需要你选择 Manifest 11 的字段迁移策略和兼容窗口（rename、双写、或 breaking cutover）；这会影响下游消费者。
 - **Status**: open
 
-### R-029 · Feature wrapper directory has no remaining durable meaning
-- **Phase**: plan
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.define-project-ontology
-- **Kind**: architecture
-- **Concerns**: specs/concorde/features/007-project-ontology.md
-- **Expected**: The filesystem hierarchy reflects meaningful ontology and separates durable specification from temporal workflow state.
-- **Observed**: After Profile 5, each feature wrapper contains only `design.md` when inactive; nesting `attempt/` beside it is the sole reason the directory exists.
-- **Effect**: assumed
-- **Action**: Chose direct `features/<NNN-name>.md` authorities and separate module-level `attempts/<NNN-name>/` workspaces, with basename used only as a deterministic storage key.
-- **Improvement**: Reassess the basename mapping if feature renames or concurrent attempts become common enough to justify ID-addressed attempt storage.
-- **Intervention**: 当前不需要你的介入；只有当你要支持同一 feature 的并发 attempt 或稳定重命名时，才需要你批准存储协议升级。
-- **Status**: open
-
 ### R-030 · Spec Kit selection vocabulary assumes a feature directory
 - **Phase**: plan
 - **Date**: 2026-09-01
@@ -302,20 +238,6 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Action**: Protocol 11 uses `feature_path` and the selection record stores that direct Markdown path; no dual-layout/dual-key compatibility remains after cutover.
 - **Improvement**: Propose a typed feature-path selection field upstream in Spec Kit so host and extension terminology converge.
 - **Intervention**: 需要你决定是否向上游 Spec Kit 提交 typed `feature_path` 兼容提案，以及是否承担上游迁移协调。
-- **Status**: open
-
-### R-031 · Proposal 8 and Manifest 10 do not need path-only version bumps
-- **Phase**: plan
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.define-project-ontology
-- **Kind**: architecture
-- **Concerns**: src/concorde/delivery.py
-- **Expected**: Serialized protocols change version only when their accepted fields or semantics change.
-- **Observed**: Feature/attempt paths change under Profile 6 and Protocol 11, but Proposal 8 still binds target/digest/one remove path and Manifest 10 still records semantic pages/routes/provenance.
-- **Effect**: assumed
-- **Action**: Bump the source profile and workspace protocol only; retain Delivery Proposal 8 and Build Manifest 10, with old path proposals naturally stale or invalid.
-- **Improvement**: Add an explicit compatibility decision table to future cross-protocol migration plans.
-- **Intervention**: 当前不需要你的介入；这是计划模板改进。若要改变现有 Proposal/Manifest 版本兼容策略，请你明确批准 breaking boundary。
 - **Status**: open
 
 ### R-032 · The active attempt must bootstrap from its old location
@@ -360,22 +282,6 @@ content while preserving stable valid `R-NNN` identifiers and contract shape.
 - **Intervention**: 需要你决定哪些 control-state 文件纳入 `.concorde` 统一边界；这是仓库治理范围的选择，需维护者明确授权。
 - **Occurrences**:
   - plan 2026-09-01 feature.concorde.define-project-ontology — initialization currently creates only configuration and root architecture; the new control boundary requires a third reflection-log file and a versioned proposal contract.
-- **Status**: open
-
-### R-035 · Filename-derived attempts undermine stable feature identity
-- **Phase**: plan
-- **Date**: 2026-09-01
-- **Feature**: feature.concorde.define-project-ontology
-- **Kind**: architecture
-- **Concerns**: src/concorde/feature_workspace.py
-- **Expected**: An active attempt remains bound to the same semantic feature when its navigation filename or providing module path changes.
-- **Observed**: Protocol 11 derives attempts from the feature basename, so a harmless file rename looks like an orphaned old attempt plus a new empty workspace.
-- **Effect**: assumed
-- **Action**: Key `.concorde/attempts/` by the exact globally unique, path-safe `feature.*` ID and reject unsafe IDs or stable-ID changes with active work.
-- **Improvement**: Add an explicit attempt-instance identifier only if concurrent attempts for one feature become a supported workflow.
-- **Intervention**: 当前不需要你的介入；只有当你正式支持同一 feature 并发 attempts 时，才需要你批准新的 identity/存储模型。
-- **Occurrences**:
-  - plan 2026-09-01 feature.concorde.define-project-ontology — a planned feature has no trustworthy stable ID before its file exists, so initial specification resolution cannot derive an attempt from the filename.
 - **Status**: open
 
 ### R-036 · The control-state migration must bootstrap through paths it removes
