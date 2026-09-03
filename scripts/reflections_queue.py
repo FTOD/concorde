@@ -6,7 +6,9 @@ Reflection documents live in one of three tracked buckets that mirror triage sta
 ``human_intervention: not-required``), and ``needs-comments/`` (``triage: complete`` and
 ``human_intervention: required``). ``--allocate-id`` always returns a ``pending/`` path and
 ``--relocate`` moves documents into the bucket their front matter now requires; every other action
-refuses a misplaced collection so the layout never drifts silently.
+refuses a misplaced collection so the layout never drifts silently; ``--validate-entry`` is the
+exception, running a bounded, read-only, project-wide validation but reporting only the findings
+attributable to one requested document.
 """
 
 from __future__ import annotations
@@ -40,6 +42,7 @@ from concorde.reflections import (  # noqa: E402
     reflections_path,
     strip_reference_suffix,
 )
+from concorde.validate import validate_project  # noqa: E402
 
 
 ROUTES = frozenset({"fast-loop", "specify", "dismiss", "blocked"})
@@ -636,6 +639,71 @@ def relocate(root: Path, requested: list[str]) -> dict[str, Any]:
     }
 
 
+def _locate_reflection_document(root: Path, identifier: str) -> tuple[Path, str, str | None]:
+    """Return ``(absolute path, project-relative path, bucket)`` for one reflection ID's document.
+
+    Every tracked bucket is tried first; the legacy flat ``.concorde/reflections/R-NNN.md`` path is
+    tried last with bucket ``None``. Raises :class:`QueueError` if no such file exists.
+    """
+    candidates: list[tuple[Path, str | None]] = [
+        (root / reflection_path(identifier, bucket), bucket) for bucket in BUCKETS
+    ]
+    candidates.append((root / reflections_path() / f"{identifier}.md", None))
+    for candidate, bucket in candidates:
+        if candidate.exists() or candidate.is_symlink():
+            _require_real_file(root, candidate, "reflection document")
+            return candidate, candidate.relative_to(root).as_posix(), bucket
+    raise QueueError(f"no reflection document for {identifier}")
+
+
+def validate_entry(root: Path, identifier: str) -> dict[str, Any]:
+    """Run bounded, read-only, attributable validation for one reflection document.
+
+    Full project validation runs (nothing here bypasses any rule), but the report separates
+    findings attributable to the requested document (by ``source`` path or ``subject_id``) from
+    every other finding, which is counted and summarized by rule only. This intentionally does not
+    use ``_load_reflections``: other malformed or misplaced documents must never block validating
+    one entry.
+    """
+    if reflection_number(identifier) is None:
+        raise QueueError(f"validate-entry ID must be canonical: {identifier!r}")
+    path, relative, bucket = _locate_reflection_document(root, identifier)
+    data = path.read_bytes()
+    result = validate_project(root)
+    attributable: list[Any] = []
+    unrelated: list[Any] = []
+    for finding in result.findings:
+        if finding.source == relative or finding.subject_id == identifier:
+            attributable.append(finding)
+        else:
+            unrelated.append(finding)
+    attributable.sort(key=lambda finding: (finding.rule_id, finding.line if finding.line is not None else -1))
+    return {
+        "tool": "validate-reflection-entry",
+        "id": identifier,
+        "path": relative,
+        "bucket": bucket,
+        "status": "invalid" if attributable else "valid",
+        "sha256": _sha256(data),
+        "findings": [
+            {
+                "rule_id": finding.rule_id,
+                "severity": finding.severity,
+                "source": finding.source,
+                "line": finding.line,
+                "message": finding.message,
+                "remediation": finding.remediation,
+            }
+            for finding in attributable
+        ],
+        "unrelated": {
+            "count": len(unrelated),
+            "rules": sorted({finding.rule_id for finding in unrelated}),
+        },
+        "project_status": result.status,
+    }
+
+
 def _set_frontmatter(path: Path, updates: dict[str, str]) -> None:
     lines = path.read_text(encoding="utf-8").splitlines()
     try:
@@ -698,6 +766,11 @@ def create_parser() -> argparse.ArgumentParser:
         metavar="R-NNN",
         help="move the named (default: every misplaced) reflection into the bucket its triage state requires",
     )
+    actions.add_argument(
+        "--validate-entry",
+        metavar="R-NNN",
+        help="run bounded, read-only validation attributable to one reflection document",
+    )
     return parser
 
 
@@ -714,6 +787,10 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.relocate is not None:
             print(json.dumps(relocate(root, arguments.relocate), indent=2, sort_keys=True))
             return 0
+        if arguments.validate_entry:
+            payload = validate_entry(root, arguments.validate_entry)
+            print(json.dumps(payload, indent=2, sort_keys=True))
+            return 0 if payload["status"] == "valid" else 1
         if arguments.set:
             identifier, *updates = arguments.set
             print(json.dumps(update_plan(root, identifier, updates), indent=2, sort_keys=True))

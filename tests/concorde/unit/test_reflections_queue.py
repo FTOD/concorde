@@ -16,6 +16,7 @@ from tests.concorde.support.reflection_triage import (
     create_triage_project,
     git,
     initialize_git,
+    sha256,
     tree_hashes,
     write_config,
     write_high_water,
@@ -383,6 +384,102 @@ class ReflectionsQueueTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn("symlink", result.stderr)
             self.assertEqual(tree_hashes(root), before)
+
+    def test_validate_entry_reports_valid_for_well_formed_document_and_is_repeatable(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary), entry_count=1)
+            document = root / ".concorde/reflections/pending/R-001.md"
+            digest = "sha256:" + sha256(document)
+            before = tree_hashes(root)
+
+            first = run_queue(root, "--validate-entry", "R-001")
+            second = run_queue(root, "--validate-entry", "R-001")
+
+            self.assertEqual(first.returncode, 0)
+            self.assertEqual(second.returncode, 0)
+            payload = json.loads(first.stdout)
+            self.assertEqual(payload["tool"], "validate-reflection-entry")
+            self.assertEqual(payload["id"], "R-001")
+            self.assertEqual(payload["path"], ".concorde/reflections/pending/R-001.md")
+            self.assertEqual(payload["bucket"], "pending")
+            self.assertEqual(payload["status"], "valid")
+            self.assertEqual(payload["findings"], [])
+            self.assertEqual(payload["sha256"], digest)
+            self.assertEqual(payload["project_status"], "success")
+            self.assertEqual(payload, json.loads(second.stdout))
+            self.assertEqual(tree_hashes(root), before)
+
+    def test_validate_entry_reports_attributable_finding_for_broken_concern(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary), entry_count=1)
+            collection = root / ".concorde/reflections"
+            write_reflection_collection(root, [reflection_entry("R-001", Concerns="specs/example/missing.md")])
+            write_high_water(collection, 1)
+
+            result = run_queue(root, "--validate-entry", "R-001", check=False)
+
+            self.assertEqual(result.returncode, 1)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["status"], "invalid")
+            self.assertEqual(len(payload["findings"]), 1)
+            finding = payload["findings"][0]
+            self.assertEqual(finding["rule_id"], "CONCORDE-REFLECT-004")
+            self.assertEqual(finding["source"], ".concorde/reflections/pending/R-001.md")
+            self.assertEqual(payload["unrelated"], {"count": 0, "rules": []})
+
+    def test_validate_entry_separates_unrelated_findings_on_other_entries(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary), entry_count=1)
+            collection = root / ".concorde/reflections"
+            write_reflection_collection(
+                root,
+                [
+                    reflection_entry("R-001"),
+                    reflection_entry("R-002", Concerns="specs/example/missing.md"),
+                ],
+            )
+            write_high_water(collection, 2)
+
+            result = run_queue(root, "--validate-entry", "R-001")
+
+            self.assertEqual(result.returncode, 0)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["status"], "valid")
+            self.assertEqual(payload["findings"], [])
+            self.assertGreaterEqual(payload["unrelated"]["count"], 1)
+            self.assertIn("CONCORDE-REFLECT-004", payload["unrelated"]["rules"])
+
+    def test_validate_entry_still_runs_for_document_in_wrong_bucket(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary), entry_count=1)
+            collection = root / ".concorde/reflections"
+            write_reflection_collection(root, [reflection_entry("R-001")], bucket="planned")
+            write_high_water(collection, 1)
+
+            result = run_queue(root, "--validate-entry", "R-001", check=False)
+
+            self.assertEqual(result.returncode, 1)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["bucket"], "planned")
+            self.assertEqual(payload["path"], ".concorde/reflections/planned/R-001.md")
+            self.assertEqual(payload["status"], "invalid")
+            finding = next(item for item in payload["findings"] if item["rule_id"] == "CONCORDE-REFLECT-005")
+            self.assertEqual(finding["source"], ".concorde/reflections/planned/R-001.md")
+
+    def test_validate_entry_rejects_unknown_noncanonical_ids_and_json_combination(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary), entry_count=1)
+
+            unknown = run_queue(root, "--validate-entry", "R-999", check=False)
+            self.assertEqual(unknown.returncode, 2)
+            self.assertIn("no reflection document", unknown.stderr)
+
+            noncanonical = run_queue(root, "--validate-entry", "R-01", check=False)
+            self.assertEqual(noncanonical.returncode, 2)
+            self.assertIn("canonical", noncanonical.stderr)
+
+            combined = run_queue(root, "--validate-entry", "R-001", "--json", check=False)
+            self.assertEqual(combined.returncode, 2)
 
 
 if __name__ == "__main__":

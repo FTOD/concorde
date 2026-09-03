@@ -173,7 +173,10 @@ Planning and task generation are the normal recording points. Each new `R-NNN.md
 `.concorde/reflections/pending/` and contains enough Context, Expected, Observed, Impact, and
 Evidence for later investigation, but no recommendation or human-intervention judgment. Repeated
 problems add occurrences rather than duplicate files. Maintainers alone edit User Comments and
-decide resolved/dismissed status and resolution notes.
+decide resolved/dismissed status and resolution notes. Immediately after creating the document or
+appending an occurrence, the writer runs `reflections_queue.py --validate-entry R-NNN`, a bounded,
+read-only check that reports findings attributable to that one entry separately from unrelated ones,
+and corrects only its own new entry until it reports valid.
 
 The collection is split into three tracked buckets that mirror triage state: `pending/` (not yet
 investigated), `planned/` (`human_intervention: not-required`; automation may proceed), and

@@ -35,7 +35,7 @@ execution, or generated documentation presentation. Operation is not a synonym f
 | `entity.runtime.powershell-launcher` | script | Invokes the same Python adapter on PowerShell systems. | `scripts/concorde.ps1` |
 | `entity.runtime.python-adapter` | program | Adds the colocated package `src` directory to imports and enters the CLI. | `scripts/concorde.py` |
 | `entity.runtime.workspace-adapter` | program | Emits Protocol 13 paths for one native-selected direct feature. | `scripts/workspace.py` |
-| `entity.runtime.reflection-queue` | program | Implements reflection-triage/v5 per-file queue, ID-index allocation, and plan/merged-small state as a deterministic Tool. | `scripts/reflections_queue.py` |
+| `entity.runtime.reflection-queue` | program | Implements reflection-triage/v5 per-file queue, ID-index allocation, plan/merged-small state, and bounded per-entry validation as a deterministic Tool. | `scripts/reflections_queue.py` |
 | `entity.runtime.model` | package | Immutable Tool result, module, entity, relation, interface, context, and finding records. | `src/concorde/model.py` |
 | `entity.runtime.tool-result` | type | Structured `tool`, target, status, artifacts, findings, and result payload for one bounded runtime action. | `src/concorde/model.py#ToolResult` |
 | `entity.runtime.tool-envelope` | function | Serializes one Tool result with a `tool` discriminator. | `src/concorde/diagnostics.py#tool_envelope` |

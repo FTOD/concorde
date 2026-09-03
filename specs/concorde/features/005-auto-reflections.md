@@ -58,7 +58,7 @@ maintainer disposition.
   removal for merged small fixes, or maintainer disposition for other routes.
 - **Entry points**: Plan/task Skill reflection rules, installed `concorde-reflections-triage`
   Operation Skill and paired graph, and `reflections_queue.py --allocate-id` / `--relocate` /
-  `--remove-merged` Tools.
+  `--remove-merged` / `--validate-entry` Tools.
 - **Inputs**: At recording, selected feature ID, phase/date/kind, stable concern path/ID, detailed
   context, expected and observed behavior, impact, and evidence. At triage, one selected reflection
   and explicit triage action.
@@ -66,7 +66,9 @@ maintainer disposition.
   problem-only document or occurrence; triage analysis, proposed resolution, intervention
   decision/rationale, preserved User Comments; an exact relocation manifest moving the completed
   document into `planned/` or `needs-comments/`; validated plan/worktree state; implementer commit;
-  merge result; and exact removed file manifest for eligible small fixes.
+  merge result; exact removed file manifest for eligible small fixes; and a bounded validation
+  result for one requested entry with attributable findings and separately counted unrelated
+  findings.
 - **Obligations**: Keep one prose authority per reflection and a metadata-only allocation index;
   never reuse removed IDs; avoid secrets; make status model-free and investigators read-only; keep
   recording separate from analysis; retain User Comments; keep every document in the bucket its
@@ -92,7 +94,9 @@ maintainer disposition.
 
 1. Planning meets a new concrete problem, atomically allocates an ID, and creates the returned
    `pending/R-NNN.md` with complete Context/Expected/Observed/Impact/Evidence, `triage: pending`,
-   blank triage sections, no `human_intervention`, and a retained blank User Comments section.
+   blank triage sections, no `human_intervention`, and a retained blank User Comments section, then
+   immediately runs `--validate-entry` on it and corrects only that new entry until the result is
+   `valid`.
 2. Task generation meets the same problem and appends one evidence-bearing occurrence to the
    existing file, in whichever bucket it is filed, without allocating another ID.
 3. `status` runs no model and reports per-bucket counts. `investigate` launches one zero-write
@@ -158,6 +162,10 @@ maintainer disposition.
   buckets and existing targets, roll back every completed move on failure, and report the exact
   moved paths. The triage parent MUST invoke it immediately after persisting a triage completion,
   and every other queue action MUST refuse a collection that contains a misplaced document.
+- **FR-017**: Every recording phase MUST run the bounded validation immediately after creating a
+  document or appending an occurrence. It MUST correct only its own new entry when attributable
+  findings exist, and MUST NOT edit other entries or maintainer-owned fields because of that result.
+  An allocated-but-unused ID MUST stay retired; the high-water mark MUST NOT be lowered.
 
 ## Edge Cases
 

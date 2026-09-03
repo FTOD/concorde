@@ -95,6 +95,10 @@ whether human intervention is needed. Omit `human_intervention`; leave Triage An
 Resolution, and Intervention Rationale blank; and retain the blank `User Comments` section. Those
 details and the intervention decision belong exclusively to `concorde-reflections-triage`. Do not
 silently rewrite the feature file, architecture, plan, or code during task generation.
+Immediately after creating the document or appending an occurrence, run `python3
+./scripts/reflections_queue.py --validate-entry <id>`; correct only that new entry until
+it reports `valid`. Findings on other entries are reported separately as unrelated and are not this
+phase's to fix; a reserved ID stays retired even if the entry is abandoned.
 
 Report total tasks by phase/story, parallel opportunities,
 independent test criteria, MVP scope, and reflections added.

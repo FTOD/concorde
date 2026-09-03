@@ -137,6 +137,7 @@ class AgentSkillContractTests(unittest.TestCase):
                 self.assertIn("triage: pending", body)
                 self.assertIn("User Comments", body)
                 self.assertIn("do not analyze", body.lower())
+                self.assertIn("--validate-entry", body)
 
     def test_fast_loop_is_direct_bounded_and_never_creates_attempt_memory(self):
         body = " ".join(read(SKILL_ROOT, "concorde-fast-loop").split())

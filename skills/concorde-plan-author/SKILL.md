@@ -112,6 +112,10 @@ pass: do not analyze root cause, propose a resolution, or decide whether human i
 needed. Omit `human_intervention` and leave the three triage-owned sections blank. Always retain the
 blank `User Comments` section. Only `concorde-reflections-triage` may complete those details and make
 the intervention decision. Never copy reflection identity or prose into attempt or durable artifacts.
+Immediately after creating the document or appending an occurrence, run
+`scripts/reflections_queue.py --validate-entry <id>`; correct only that new entry until it reports
+`valid`. Findings on other entries are reported separately as unrelated and are not this phase's to
+fix; a reserved ID stays retired even if the entry is abandoned.
 Continue with a bounded prototype whenever a safe explicit assumption permits useful progress.
 
 ## Completion gate

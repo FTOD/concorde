@@ -108,7 +108,10 @@ allocate and create one Reflection Document v2 with `phase: implement`, `status:
 pending`. Fill only Context, Expected, Observed, Impact, and Evidence. Leave the triage-owned sections
 blank, omit `human_intervention`, retain `User Comments`, and do not analyze root cause or propose a
 resolution. Never copy reflection identity or prose into code, tests, durable sources, diagrams, or
-attempt evidence.
+attempt evidence. Immediately after creating the document or appending an occurrence, run
+`scripts/reflections_queue.py --validate-entry <id>`; correct only that new entry until it reports
+`valid`. Findings on other entries are reported separately as unrelated and are not this phase's to
+fix; a reserved ID stays retired even if the entry is abandoned.
 
 ## Completion validation
 

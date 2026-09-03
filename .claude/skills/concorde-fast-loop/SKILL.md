@@ -68,6 +68,10 @@ encounters a distinct problem that must persist, use Reflection Document v2 with
 allocate the ID, create exactly the returned file, and fill only the factual problem sections. Leave
 triage sections blank, omit `human_intervention`, retain `User Comments`, and do not propose a fix.
 An existing problem receives an occurrence without allocating a new ID.
+Immediately after creating the document or appending an occurrence, run
+`scripts/reflections_queue.py --validate-entry <id>`; correct only that new entry until it reports
+`valid`. Findings on other entries are reported separately as unrelated and are not this phase's to
+fix; a reserved ID stays retired even if the entry is abandoned.
 
 Report eligibility, changed paths, checks/results, limitations, architecture/interface impact, and
 that no attempt was created.
