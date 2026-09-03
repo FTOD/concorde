@@ -27,7 +27,6 @@ export default function concordeContentPlugin(
         pages: content.documents.map(pageFromDocument),
         counts: {
           architecture: content.documents.filter((document) => document.collectionId === 'architecture').length,
-          docs: content.documents.filter((document) => document.collectionId === 'docs').length,
           features: content.documents.filter((document) => document.collectionId === 'features').length,
         },
       });
@@ -35,8 +34,6 @@ export default function concordeContentPlugin(
     getPathsToWatch() {
       return [
         resolve(projectRoot, 'specs/**/*.md'), resolve(projectRoot, 'specs/**/diagrams/*.json'),
-        resolve(projectRoot, 'docs/**/*.md'),
-        resolve(projectRoot, 'README.md'),
       ];
     },
     async postBuild({outDir, routesPaths}) {

@@ -5,7 +5,7 @@ import matter from 'gray-matter';
 
 import {buildRegistry} from '../plugins/concorde-content/registry';
 import type {
-  ContentRegistry, FeatureDesign, ModuleArchitecture, ProjectDocument, SourceDocument,
+  ContentRegistry, FeatureDesign, ModuleArchitecture, SourceDocument,
 } from '../plugins/concorde-content/types';
 import {assertValidRegistry} from '../plugins/concorde-content/validation';
 
@@ -34,13 +34,6 @@ export function stageArchitectureDocument(document: ModuleArchitecture): string 
   return matter.stringify(document.content, {
     ...rendererFrontMatter(document), slug: document.route.slice('/architecture'.length),
     sidebar_label: document.sidebarLabel ?? document.title,
-  });
-}
-
-/** Add renderer-only root-route metadata while preserving the maintained README body. */
-export function stageHomepageDocument(document: ProjectDocument): string {
-  return matter.stringify(document.content, {
-    ...rendererFrontMatter(document), slug: '/', sidebar_label: document.sidebarLabel ?? document.title,
   });
 }
 
@@ -130,22 +123,18 @@ export async function materializeContent(providedRegistry?: ContentRegistry): Pr
     rm(generatedContentRoot, {recursive: true, force: true}),
     rm(generatedStaticRoot, {recursive: true, force: true}),
   ]);
-  // Each collection backs a Docusaurus content-docs plugin instance that requires its path to exist
-  // on disk even when the project currently registers no document in that collection (for example a
-  // freshly scaffolded project with zero features).
-  await Promise.all(['home', 'architecture', 'features'].map((collectionDirectory) =>
+  // Each specification collection backs a Docusaurus content-docs plugin instance that requires
+  // its path to exist even when the project currently registers no feature.
+  await Promise.all(['architecture', 'features'].map((collectionDirectory) =>
     mkdir(resolve(generatedContentRoot, collectionDirectory), {recursive: true})));
 
   for (const document of registry.documents) {
-    if (document.collectionId === 'docs') continue;
-    const collectionDirectory = document.collectionId === 'home' ? 'home' : document.collectionId;
-    const destination = resolve(generatedContentRoot, collectionDirectory, document.stagedPath ?? 'README.md');
+    if (!document.stagedPath) throw new Error(`Publication source ${document.sourcePath} has no renderer path.`);
+    const destination = resolve(generatedContentRoot, document.collectionId, document.stagedPath);
     await mkdir(dirname(destination), {recursive: true});
-    const staged = document.collectionId === 'home'
-      ? stageHomepageDocument(document as ProjectDocument)
-      : document.contentKind === 'module-architecture'
-        ? stageArchitectureDocument(document as ModuleArchitecture)
-        : stageFeatureDocument(document as FeatureDesign);
+    const staged = document.contentKind === 'module-architecture'
+      ? stageArchitectureDocument(document as ModuleArchitecture)
+      : stageFeatureDocument(document as FeatureDesign);
     await writeFile(destination, staged, 'utf8');
   }
   const copiedAssets = new Set<string>();

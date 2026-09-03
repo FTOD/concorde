@@ -7,13 +7,16 @@ const siteDir = resolve(__dirname, '../..');
 
 describe('accessible presentation contract', () => {
   it('provides semantic landmarks and named provenance', async () => {
-    const [config, provenance, architectureView] = await Promise.all([
+    const [config, rootPage, provenance, architectureView] = await Promise.all([
       readFile(resolve(siteDir, 'docusaurus.config.ts'), 'utf8'),
+      readFile(resolve(siteDir, 'src/pages/index.tsx'), 'utf8'),
       readFile(resolve(siteDir, 'src/components/ContentProvenance.tsx'), 'utf8'),
       readFile(resolve(siteDir, 'src/components/ArchitectureView.tsx'), 'utf8'),
     ]);
-    expect(config).toContain("id: 'home'");
-    expect(config).toContain("routeBasePath: '/'");
+    expect(config).toContain("label: 'Architecture'");
+    expect(config).toContain("label: 'Features'");
+    expect(rootPage).toContain('httpEquiv="refresh"');
+    expect(rootPage).toContain('<Link to={root.route}>');
     expect(provenance).toContain('aria-label="Content provenance"');
     expect(architectureView).toContain('title={`Interactive architecture view for ${page.title}: ${diagram.title}`}');
     expect(architectureView).toContain('sandbox="allow-downloads allow-scripts"');

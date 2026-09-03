@@ -1,1 +1,0 @@
-# Legacy Residue Fixture

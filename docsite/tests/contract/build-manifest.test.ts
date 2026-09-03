@@ -19,17 +19,18 @@ describe('Build Manifest 10', () => {
     expect(example.schemaVersion).toBe(10);
   });
 
-  it('projects only module architectures, feature designs, and project documents', async () => {
+  it('projects only module architectures and feature designs', async () => {
     const manifest = createManifest(await buildRegistry(fixture));
     expect(() => validateBuildManifest(manifest)).not.toThrow();
     expect(manifest.schemaVersion).toBe(10);
     expect(manifest.collections.map((collection) => collection.id)).toEqual([
-      'home', 'architecture', 'docs', 'features',
+      'architecture', 'features',
     ]);
     expect(manifest.pages.map((page) => page.kind).sort()).toEqual([
       'feature-design', 'feature-design', 'module-architecture', 'module-architecture',
-      'project-document', 'project-document', 'project-document',
     ]);
+    expect(manifest.pages.some((page) => page.sourcePath === 'README.md' || page.sourcePath.startsWith('docs/'))).toBe(false);
+    expect(manifest.routeInventory.some((route) => route === '/docs' || route.startsWith('/docs/'))).toBe(false);
     expect(JSON.stringify(manifest)).not.toMatch(/feature-abstract|feature-implementation|module-design|contracts/);
   });
 
@@ -54,7 +55,7 @@ describe('Build Manifest 10', () => {
     expect(second).toEqual(first);
     expect(first.generator).toEqual({name: 'concorde-docsite', version: '0.6.0', docusaurusVersion: '3.10.2'});
     expect(first.collections.map((collection) => collection.include)).toEqual([
-      ['README.md'], ['**/architecture.md'], ['**/*.md'], ['**/features/*.md'],
+      ['**/architecture.md'], ['**/features/*.md'],
     ]);
     expect(first.validation.checks.map((check) => check.name)).toEqual([
       'profile-7-sources', 'identity-relations-and-routes', 'rendered-route-inventory',

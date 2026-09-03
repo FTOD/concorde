@@ -46,15 +46,18 @@ describe('Profile 7 production build', () => {
     expect(() => validateBuildManifest(manifest)).not.toThrow();
     expect(manifest.schemaVersion).toBe(10);
     expect(new Set(manifest.pages.map((page) => page.kind))).toEqual(new Set([
-      'module-architecture', 'project-document', 'feature-design',
+      'module-architecture', 'feature-design',
     ]));
+    expect(manifest.collections.map((collection) => collection.id)).toEqual(['architecture', 'features']);
+    expect(manifest.pages.some((page) => page.sourcePath === 'README.md' || page.sourcePath.startsWith('docs/'))).toBe(false);
+    expect(manifest.routeInventory.some((route) => route === '/docs' || route.startsWith('/docs/'))).toBe(false);
     expect(firstManifestText).not.toMatch(/feature-abstract|feature-implementation|module-design|abstractRoute|implementationRoute/);
     expect(manifest.pages.some((page) => page.sourcePath.startsWith('.concorde/'))).toBe(false);
     expect(manifest.excludedSources.some((source) => source.sourcePath.startsWith('.concorde/'))).toBe(false);
 
     const homepage = await readFile(resolve(buildDir, 'index.html'), 'utf8');
-    expect(homepage).toContain('README.md');
-    expect(manifest.pages.filter((page) => page.sourcePath === 'README.md' && page.route === '/')).toHaveLength(1);
+    expect(homepage).toContain('/architecture/module.concorde');
+    expect(homepage).not.toContain('README.md');
 
     const rootModule = manifest.pages.find((page) => page.kind === 'module-architecture' && page.moduleId === 'module.concorde');
     expect(rootModule).toMatchObject({

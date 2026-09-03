@@ -16,8 +16,8 @@ diagrams:
 ## Responsibility
 
 Publish validated Profile 7 module architectures—including the structural Skills and Operations
-modules—direct feature designs, project documents, and architecture-owned diagrams as a hierarchical,
-searchable, accessible, provenance-preserving read model.
+modules—direct feature designs, and architecture-owned diagrams as a hierarchical, searchable,
+accessible, provenance-preserving read model with exactly Architecture and Features navigation.
 
 ## Boundary
 
@@ -31,9 +31,9 @@ validator semantics, Archify rendering, Docusaurus internals, or user-authored s
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
 | `entity.auto-docs.project` | directory | TypeScript/Docusaurus adapter and generated build workspace. | `docsite` |
-| `entity.auto-docs.registry` | program | Discovers README, module architecture, direct features, docs, and declared diagrams into one content model. | `docsite/plugins/concorde-content/registry.ts` |
+| `entity.auto-docs.registry` | program | Discovers module architecture, direct features, and declared diagrams into two specification collections while rejecting a root docs tree. | `docsite/plugins/concorde-content/registry.ts` |
 | `entity.auto-docs.types` | type | Build Manifest 10 page collections, relations, routes, and provenance records. | `docsite/plugins/concorde-content/types.ts` |
-| `entity.auto-docs.routes` | program | Assigns semantic architecture, feature, and documentation routes. | `docsite/plugins/concorde-content/routes.ts` |
+| `entity.auto-docs.routes` | program | Assigns semantic architecture/feature routes and supports the root architecture entry. | `docsite/plugins/concorde-content/routes.ts` |
 | `entity.auto-docs.links` | program | Resolves maintained Markdown links to included routes and rejects broken sources. | `docsite/plugins/concorde-content/links.ts` |
 | `entity.auto-docs.diagrams` | program | Discovers architecture-owned diagram declarations and validates source/output mappings. | `docsite/plugins/concorde-content/diagrams.ts` |
 | `entity.auto-docs.manifest` | schema | Deterministic included-source, route, relation, diagram, and provenance inventory. | `docsite/plugins/concorde-content/manifest.ts` |
@@ -51,7 +51,7 @@ validator semantics, Archify rendering, Docusaurus internals, or user-authored s
 
 | Source | Predicate | Target | Description |
 |---|---|---|---|
-| `entity.auto-docs.registry` | `reads_from` | `module.concorde.workspace` | Includes maintained specifications/docs/declared diagrams and excludes all `.concorde/**` control/framework state. |
+| `entity.auto-docs.registry` | `reads_from` | `module.concorde.workspace` | Includes maintained architecture/features/declared diagrams, rejects root docs, and excludes README plus all `.concorde/**` control/framework state. |
 | `entity.auto-docs.registry` | `calls` | `entity.auto-docs.routes` | Assigns stable routes from semantic identity. |
 | `entity.auto-docs.registry` | `calls` | `entity.auto-docs.links` | Validates and maps source links without rewriting authorities. |
 | `entity.auto-docs.registry` | `calls` | `entity.auto-docs.diagrams` | Adds architecture-owned source/delivery records. |
@@ -68,7 +68,7 @@ validator semantics, Archify rendering, Docusaurus internals, or user-authored s
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.auto-docs.publish` | Maintainer or CI invokes validate/build. | Discover four maintained collections, including every declared module; validate identity/hierarchy/links; render declared architecture views; emit Build Manifest 10; materialize content; build candidate; atomically promote. | Searchable site or preserved prior output with actionable diagnostics. | `contract.auto-docs.build-interface`, `contract.workspace.records`, `contract.auto-docs.archify-renderer`, `contract.auto-docs.build-manifest`, `contract.auto-docs.architecture-site` |
+| `interaction.auto-docs.publish` | Maintainer or CI invokes validate/build. | Reject root docs; discover Architecture and Features, including every declared module; validate identity/hierarchy/links; render declared architecture views; emit Build Manifest 10; materialize content; build candidate plus root-architecture entry; atomically promote. | Searchable two-collection site or preserved prior output with actionable diagnostics. | `contract.auto-docs.build-interface`, `contract.workspace.records`, `contract.auto-docs.archify-renderer`, `contract.auto-docs.build-manifest`, `contract.auto-docs.architecture-site` |
 
 ## Modules
 
@@ -84,11 +84,13 @@ None.
 
 - [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
   entities and directed relationships in this architecture.
-- Build Manifest 10 collections remain `home`, `architecture`, `docs`, and `features`.
+- Build Manifest 10 collections are exactly `architecture` and `features`; page kinds are exactly
+  module architecture and feature design.
 - `.concorde/**` is excluded control/framework state, never a published content collection.
+- README remains repository orientation rather than content; a root `docs/` tree fails validation as
+  a parallel authority; `/` is a source-free projection to the root architecture route.
 - Materialized Docusaurus files and diagram deliveries are disposable and retain canonical provenance.
 - The last successful site survives any registry, render, validation, or build failure.
 - The adapter is the docsite template Concorde packages for every project: project identity lives
-  only in `docsite/site.json`, the Documentation and Features collections are published only when
-  `docs/` exists or a direct feature is registered, and Concorde-repository evidence stays under
-  `docsite/tests/repository/` outside the template.
+  only in `docsite/site.json`, Features configures only when a direct feature is registered, and
+  Concorde-repository evidence stays under `docsite/tests/repository/` outside the template.

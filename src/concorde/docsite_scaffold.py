@@ -153,23 +153,14 @@ def _resolve_identity(
 
 
 def _proposal_entries(
-    root: Path,
     package: Path,
     adapter: dict[str, bytes],
     identity: dict[str, Any],
     github_pages: bool,
-    title: str,
-    architecture_path: str,
 ) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = [{"path": path, "content": content, "source": path} for path, content in adapter.items()]
     identity_bytes = (json.dumps(identity, indent=2, sort_keys=True) + "\n").encode("utf-8")
     entries.append({"path": SITE_IDENTITY_PATH, "content": identity_bytes, "source": None})
-    readme = root / "README.md"
-    if not readme.exists() and not readme.is_symlink():
-        readme_bytes = (
-            f"# {title}\n\nThis project is specified with Concorde. Start at [{architecture_path}]({architecture_path}).\n"
-        ).encode("utf-8")
-        entries.append({"path": "README.md", "content": readme_bytes, "source": None})
     if github_pages:
         entries.append({"path": WORKFLOW_TARGET, "content": workflow_template(package), "source": WORKFLOW_SOURCE})
     return sorted(entries, key=lambda entry: entry["path"])
@@ -301,7 +292,7 @@ def propose_docsite(
     identity, identity_finding = _resolve_identity(resolved_title, resolved_repository, url, base_url)
 
     adapter = adapter_files(package)
-    entries = _proposal_entries(root, package, adapter, identity, github_pages, resolved_title, architecture_path)
+    entries = _proposal_entries(package, adapter, identity, github_pages)
     files = [_file_entry(entry["path"], entry["content"], entry["source"]) for entry in entries]
     conflicts = [
         {"path": entry["path"], "reason": "target already exists"}

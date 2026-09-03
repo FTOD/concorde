@@ -107,7 +107,7 @@ For each material unknown, record:
 1. Test/fixture setup that establishes the intended failing behavior.
 2. Foundational shared entity/interface/runtime changes.
 3. Independently testable user-story slices in priority order.
-4. Cross-cutting architecture/feature/docs/projection reconciliation.
+4. Cross-cutting architecture/feature/projection reconciliation.
 5. Focused, full, package, publication, freshness, and cleanup-only delivery evidence.
 
 ## Risk Controls

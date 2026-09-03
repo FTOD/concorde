@@ -66,7 +66,6 @@ _TASK_PATH_PREFIXES = (
     ".codex/",
     ".concorde/",
     "agent-assets/",
-    "docs/",
     "docsite/",
     "generated/",
     "operations/",

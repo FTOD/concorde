@@ -32,8 +32,8 @@ implementation behavior, test truthfulness, version-control history, or generate
 | `entity.workspace.config` | configuration | Selects Profile 7, specification root, and root module identity. | `.concorde/config.json` |
 | `entity.workspace.selection` | configuration | Native pointer containing exactly one canonical direct `feature_path`. | `.concorde/feature.json` |
 | `entity.workspace.constitution` | document | Optional project governance authority used by lifecycle Skills and Operations. | `.concorde/constitution.md` |
-| `entity.workspace.module-architecture` | document | One module's responsibility, boundary, entities, relations, interactions, children, features, and decisions. | `concept:<module>/architecture.md` |
-| `entity.workspace.feature-design` | document | One direct feature's outcome, usage, scenarios, interfaces, requirements, and architecture zoom. | `concept:<module>/features/<NNN-name>.md` |
+| `entity.workspace.module-architecture` | document | One module's structural authority and maintained architecture documentation: responsibility, boundary, entities, relations, interactions, children, features, and decisions. | `concept:<module>/architecture.md` |
+| `entity.workspace.feature-design` | document | One direct feature's behavioral authority and maintained feature documentation: outcome, usage, scenarios, interfaces, requirements, and architecture zoom. | `concept:<module>/features/<NNN-name>.md` |
 | `entity.workspace.module-directory` | directory | Immediate recursive child-module container. | `concept:<module>/modules/<child>` |
 | `entity.workspace.module-diagrams` | directory | Required Archify system overview plus optional maintained explanatory sources owned by one module architecture. | `concept:<module>/diagrams` |
 | `entity.workspace.control-state` | directory | Project-wide configuration, selection, governance, attempts, reflections, framework installation, and receipts. | `.concorde` |
@@ -100,4 +100,7 @@ None.
 - Protocol 13 remains a bounded data contract; Operations-owned trusted code, not an untrusted agent,
   resolves its roles, architecture locators, task tokens, and interface owners into enforcement paths.
 - Exact stable feature IDs key attempts across file/module moves; planned files expose no guessed attempt path.
+- Module architectures and direct feature designs are the only maintained prose documentation
+  authorities. Root `docs/` is invalid parallel authority; README may remain repository orientation
+  but is neither specification input nor a published content collection.
 - Generated and installed projections never become specification or implementation authority.

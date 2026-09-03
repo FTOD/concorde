@@ -1,1 +1,0 @@
-# Duplicate Feature Fixture

@@ -11,17 +11,16 @@ import {validateRegistry} from '../../plugins/concorde-content/validation';
 const roots: string[] = [];
 afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, {recursive: true, force: true}))));
 
-it('discovers and validates 1,000 documents and 250 design-only features within five seconds', async () => {
+it('discovers and validates 1,000 architecture/feature specifications within five seconds', async () => {
   const root = await mkdtemp(resolve(tmpdir(), 'concorde-scale-')); roots.push(root);
   await Promise.all([
-    writeFile(resolve(root, 'README.md'), '# Scale Fixture\n'),
     (async () => {
       await mkdir(resolve(root, 'specs/scale'), {recursive: true});
-      await writeFile(resolve(root, 'specs/scale/architecture.md'), `---\nid: module.scale\nkind: module\nparent: null\nmodules: []\nfeatures:\n${Array.from({length: 250}, (_, index) => `  - feature.scale.${index}`).join('\n')}\n---\n# Scale Architecture\n`);
+      await writeFile(resolve(root, 'specs/scale/architecture.md'), `---\nid: module.scale\nkind: module\nparent: null\nmodules:\n${Array.from({length: 749}, (_, index) => `  - module.scale.m${index}`).join('\n')}\nfeatures:\n${Array.from({length: 250}, (_, index) => `  - feature.scale.${index}`).join('\n')}\n---\n# Scale Architecture\n`);
     })(),
-    ...Array.from({length: 1000}, async (_, index) => {
-      const dir = resolve(root, 'docs', String(Math.floor(index / 100))); await mkdir(dir, {recursive: true});
-      await writeFile(resolve(dir, `${index}.md`), `# Document ${index}\n`);
+    ...Array.from({length: 749}, async (_, index) => {
+      const dir = resolve(root, 'specs/scale/modules', `m${index}`); await mkdir(dir, {recursive: true});
+      await writeFile(resolve(dir, 'architecture.md'), `---\nid: module.scale.m${index}\nkind: module\nparent: module.scale\nmodules: []\nfeatures: []\n---\n# Module ${index}\n`);
     }),
     ...Array.from({length: 250}, async (_, index) => {
       const dir = resolve(root, 'specs/scale/features'); await mkdir(dir, {recursive: true});
@@ -31,6 +30,6 @@ it('discovers and validates 1,000 documents and 250 design-only features within 
   const start = performance.now();
   const registry = await buildRegistry(root);
   expect(validateRegistry(registry)).toEqual([]);
-  expect(registry.documents).toHaveLength(1252);
+  expect(registry.documents).toHaveLength(1000);
   expect(performance.now() - start).toBeLessThan(5000);
 }, 20_000);

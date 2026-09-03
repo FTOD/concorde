@@ -71,6 +71,18 @@ class ValidationRuleTests(unittest.TestCase):
                 {"specs/example/attempts", "specs/example/reflections.md"},
             )
 
+    def test_root_docs_tree_is_a_parallel_documentation_authority(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.project_copy(temporary)
+            docs = root / "docs"
+            docs.mkdir()
+            (docs / "guide.md").write_text("# Parallel guide\n", encoding="utf-8")
+            result = validate_project(root)
+            finding = next(item for item in result.findings if item.rule_id == "CONCORDE-LAYOUT-DOCS")
+            self.assertEqual(result.status, "invalid")
+            self.assertEqual(finding.source, "docs")
+            self.assertIn("module architecture or direct feature design", finding.remediation)
+
 
 if __name__ == "__main__":
     unittest.main()

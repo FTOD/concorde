@@ -43,12 +43,12 @@ execution, or generated documentation presentation. Operation is not a synonym f
 | `entity.runtime.context-builder` | program | Projects one bounded module or feature altitude. | `src/concorde/context.py#bounded_context` |
 | `entity.runtime.alignment-explorer` | program | Validates optional pinned UA graph/sidecar inputs and projects bounded evidence-qualified alignment without mutation. | `src/concorde/alignment.py#explore_alignment` |
 | `entity.runtime.workspace-resolver` | program | Resolves native selection, ancestry, related summaries, attempt/reflection state, executable roots, and safe concrete Protocol-13/task path roles without following symlinks. | `src/concorde/feature_workspace.py#resolve_phase_paths` |
-| `entity.runtime.validator` | program | Runs layout, hierarchy, entity, interface, capability, evidence, diagram, freshness, and reflection rules. | `src/concorde/validate.py#validate_project` |
+| `entity.runtime.validator` | program | Runs layout/parallel-authority, hierarchy, entity, interface, capability, evidence, diagram, freshness, and reflection rules. | `src/concorde/validate.py#validate_project` |
 | `entity.runtime.capability-validator` | program | Validates exact Script/public-internal-Skill/Operation pairs, effects, mixed literal topology/bindings, and direct/indirect cycles without importing Operation Python. | `src/concorde/validation/capabilities.py` |
 | `entity.runtime.initializer` | program | Proposes and atomically applies Initialization Proposal 3 with a root Archify system overview. | `src/concorde/initialize.py` |
 | `entity.runtime.delivery` | program | Proposes and applies digest-bound Delivery Proposal 9 removal of one complete attempt. | `src/concorde/delivery.py` |
 | `entity.runtime.docsite-template` | program | Enumerates the packaged docsite template inventory and digest shared by the installer and scaffold Tool. | `src/concorde/docsite_template.py` |
-| `entity.runtime.docsite-scaffold` | program | Proposes and atomically applies Docsite Scaffold Proposal 1 with a project-owned site identity. | `src/concorde/docsite_scaffold.py` |
+| `entity.runtime.docsite-scaffold` | program | Proposes and atomically applies Docsite Scaffold Proposal 1 with a project-owned site identity and no synthetic project prose. | `src/concorde/docsite_scaffold.py` |
 | `entity.runtime.cli` | program | Dispatches supported Tools and serializes one structured Tool envelope. | `src/concorde/cli.py` |
 | `entity.runtime.tests` | test | Unit, contract, integration, and acceptance evidence for Runtime Tool semantics. | `tests/concorde` |
 

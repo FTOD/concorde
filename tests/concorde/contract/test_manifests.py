@@ -96,6 +96,7 @@ class ManifestContractTests(unittest.TestCase):
     def test_removed_host_package_layout_is_absent(self):
         for relative in (".specify", "presets", "extensions", "bundles", "catalogs"):
             self.assertFalse((REPOSITORY_ROOT / relative).exists(), relative)
+        self.assertFalse((REPOSITORY_ROOT / "docsite/sidebars.docs.ts").exists())
         serialized = json.dumps(self.manifest).lower()
         for key in ("speckit_version", "bundle_id", "install_policy"):
             self.assertNotIn(key, serialized)
@@ -123,6 +124,7 @@ class ManifestContractTests(unittest.TestCase):
             self.assertTrue((target / ".concorde/framework/operations/concorde-standard-dev-loop/operation.py").is_file())
             self.assertTrue((target / ".agents/skills/concorde-constitution/SKILL.md").is_file())
             self.assertTrue((target / ".agents/skills/concorde-standard-dev-loop/SKILL.md").is_file())
+            self.assertFalse((target / ".concorde/framework/docsite/sidebars.docs.ts").exists())
             self.assertFalse((target / ".specify").exists())
 
 

@@ -10,13 +10,11 @@ import {populateLinks} from './links';
 import {featureRoute, featureStagedPath, moduleRoute, moduleStagedPath} from './routes';
 import type {
   ContentRegistry, DiagramKind, ExcludedSource, FeatureDesign, ModuleArchitecture, ModuleDiagram,
-  ProjectDocument, SourceCollection, SourceDocument, ValidationFinding,
+  SourceCollection, SourceDocument, ValidationFinding,
 } from './types';
 
 export const collections: SourceCollection[] = [
-  {id: 'home', sourceBase: '.', routeBase: '/', include: ['README.md'], contentKind: 'project-document'},
   {id: 'architecture', sourceBase: 'specs', routeBase: '/architecture', include: ['**/architecture.md'], contentKind: 'module-architecture'},
-  {id: 'docs', sourceBase: 'docs', routeBase: '/docs', include: ['**/*.md'], contentKind: 'project-document'},
   {id: 'features', sourceBase: 'specs', routeBase: '/features', include: ['**/features/*.md'], contentKind: 'feature-design'},
 ];
 
@@ -43,17 +41,6 @@ function sectionText(content: string, heading: string): string {
   const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return content.match(new RegExp(`^##\\s+${escaped}(?:\\s+and\\s+[^\\n]+)?\\s*$\\n([\\s\\S]*?)(?=^##\\s+|$)`, 'mi'))?.[1]
     ?.replace(/\s+/g, ' ').trim() ?? '';
-}
-
-function docsRoute(collection: SourceCollection, relativePath: string, slug?: unknown): string {
-  if (collection.id === 'home') return '/';
-  if (typeof slug === 'string' && slug.trim()) {
-    const clean = slug.trim().replace(/^\/+|\/+$/g, '');
-    return clean ? `${collection.routeBase}/${clean}` : collection.routeBase;
-  }
-  const withoutExtension = relativePath.replace(/\.md$/i, '').replace(/(^|\/)index$/i, '$1');
-  const clean = withoutExtension.replace(/^\/+|\/+$/g, '');
-  return clean ? `${collection.routeBase}/${clean}` : collection.routeBase;
 }
 
 async function discoverModuleDiagrams(
@@ -111,17 +98,11 @@ async function parseDocument(
     content: parsed.content,
     links: [],
     state: 'parsed' as const,
-    route: docsRoute(collection, posixPath(relativePath), parsed.data.slug),
+    route: collection.routeBase,
     sidebarLabel: typeof parsed.data.sidebar_label === 'string' ? parsed.data.sidebar_label : title,
     sidebarPosition: typeof parsed.data.sidebar_position === 'number' ? parsed.data.sidebar_position : undefined,
     slug: typeof parsed.data.slug === 'string' ? parsed.data.slug : undefined,
   };
-  if (collection.id === 'home' || collection.id === 'docs') {
-    return {
-      ...base,
-      ...(collection.id === 'home' ? {stagedPath: relativePath} : {}),
-    } as ProjectDocument;
-  }
   if (collection.id === 'architecture') {
     const moduleId = typeof parsed.data.id === 'string' ? parsed.data.id.trim() : '';
     const architecture: ModuleArchitecture = {
@@ -265,6 +246,14 @@ export async function buildRegistry(projectRoot: string): Promise<ContentRegistr
   const documents: SourceDocument[] = [];
   const excludedSources: ExcludedSource[] = [];
   const findings: ValidationFinding[] = [];
+  try {
+    await lstat(resolve(root, 'docs'));
+    findings.push({
+      ruleId: 'source.parallel.docs', severity: 'error', sourcePath: 'docs',
+      message: 'Root docs/ is a parallel prose authority outside the Profile 7 specification.',
+      remediation: 'Review every file, merge unique intent into the owning module architecture or feature design, then remove docs/.',
+    });
+  } catch { /* An absent docs/ path is the valid specs-only layout. */ }
   const specsMarkdown = new Set((await fg(['**/*.md'], {
     cwd: resolve(root, 'specs'), onlyFiles: true, unique: true, followSymbolicLinks: false,
   })).map(posixPath));
@@ -275,7 +264,7 @@ export async function buildRegistry(projectRoot: string): Promise<ContentRegistr
   for (const collection of collections) {
     const paths = await fg(collection.include, {
       cwd: resolve(root, collection.sourceBase), onlyFiles: true, unique: true, followSymbolicLinks: false,
-      ignore: collection.sourceBase === 'specs' ? legacyControlStateIgnore : [],
+      ignore: legacyControlStateIgnore,
     });
     for (const path of paths.sort()) {
       try {

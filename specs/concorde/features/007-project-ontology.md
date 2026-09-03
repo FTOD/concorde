@@ -75,6 +75,10 @@ runtime, installation, documentation, validation, fixtures, and maintained archi
 - `.concorde/attempts/<stable-feature-id>/` is temporary workflow memory keyed by the feature's globally unique semantic identity rather than its mutable filename or module path. Successful delivery validates and removes it without changing the feature file or generating another durable narrative.
 - `.concorde/reflections/<bucket>/R-NNN.md` files are tracked process memory filed by triage state (`pending/`, `planned/`, `needs-comments/`); `index.json` stores allocation metadata only. Triage configuration shares the directory, while plans and worktrees remain disposable and ignored.
 - Source code is the implementation. Tests and deterministic checks are evidence. Generated sites, diagrams, indexes, and delivery results are disposable projections.
+- Module `architecture.md` and direct feature files are also the maintained prose documentation.
+  A root `docs/` tree is a duplicate authority and is rejected after its unique intent is reconciled
+  into those owners; a repository README may orient checkout readers but is not a published content
+  collection.
 
 ## Capability Source Model
 
@@ -365,9 +369,10 @@ missing effects/bindings, cycles, or pair members.
   mapping, related-feature references, embedded interface completeness, architecture zoom references,
   one showcase Archify system overview per module with principal entity relationships, control-state
   safety, and legacy residue without mutating sources.
-- **FR-019**: Documentation generation MUST publish `architecture.md` as each module landing page and
-  each direct feature file as one feature landing page, preserve source provenance, publish
-  architecture-owned diagrams, and exclude `.concorde/` control state from public content discovery.
+- **FR-019**: Documentation generation MUST publish only `architecture.md` as each module landing
+  page and each direct feature file as one feature landing page, preserve source provenance, publish
+  architecture-owned diagrams, exclude README and `.concorde/` control state from public content
+  discovery, and reject a root `docs/` tree as a parallel prose authority.
 - **FR-020**: Delivery MUST require complete tasks and existing checklists plus current validation
   evidence, then remove exactly `.concorde/attempts/<stable-feature-id>/` without writing or moving the
   feature file or reflection collection; ineligible, unsafe, ambiguous, or stale delivery MUST be non-mutating.

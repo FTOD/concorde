@@ -31,6 +31,41 @@ through the colocated managed-runtime bootstrap rather than an ambient Python in
 This feature covers leaf Skill source, metadata, Tool crossings, projection, and phase boundaries. It
 does not define LangGraph topology, execute an agent model, or own project artifacts.
 
+## Usage
+
+Invoke the smallest public capability that owns the requested phase. The 15 projected leaf Skills
+are:
+
+| Capability | Maintained purpose |
+|---|---|
+| `concorde-constitution` | Create or amend project governance from the complete constitution format. |
+| `concorde-init` | Preview/apply root architecture and optionally a separate docsite scaffold. |
+| `concorde-context` | Return one bounded module or feature altitude. |
+| `concorde-validate` | Return deterministic sorted findings without repair. |
+| `concorde-ask` | Answer one grounded workflow/architecture question read-only with source citations. |
+| `concorde-specify` | Create or revise one direct complete feature design. |
+| `concorde-clarify` | Resolve up to three high-impact ambiguities in that design. |
+| `concorde-checklist` | Create a reviewer-owned requirements-quality checklist. |
+| `concorde-tasks` | Generate dependency-ordered, test-first executable tasks. |
+| `concorde-analyze` | Audit consistency/coverage without mutation. |
+| `concorde-implement` | Execute dependency-ready tasks and record canonical passing evidence. |
+| `concorde-converge` | Append only genuinely remaining verified work. |
+| `concorde-taskstoissues` | Create dependency-aware external issues only with explicit external-write authority. |
+| `concorde-fast-loop` | Reconcile one eligible small, already-specified change without an attempt. |
+| `concorde-deliver` | Validate and remove exactly one completed attempt. |
+
+Three public Operation skills share that namespace: `concorde-plan` runs bounded context → temporal
+author; `concorde-standard-dev-loop` runs the standard lifecycle graph; and
+`concorde-reflections-triage` runs only its explicitly selected conditional route. The packaged
+`concorde-plan-context` and `concorde-plan-author` leaves are internal Operation inputs and never
+project to users. Native deterministic functionality such as `concorde explore` remains a Tool, not
+a Skill or Operation.
+
+In a checkout, canonical Skills invoke root `scripts/` and templates. In an installed project,
+projected Skills invoke `.concorde/framework/scripts/` and
+`.concorde/framework/operations/` through the managed runtime launcher; no shell activation is
+required.
+
 ## Architecture Zoom
 
 | Entity ID | Role |

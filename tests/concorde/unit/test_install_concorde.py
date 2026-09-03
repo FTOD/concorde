@@ -68,6 +68,7 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertIn(".concorde/framework/docsite/docusaurus.config.ts", outputs)
         self.assertIn(".concorde/framework/docsite/scaffold/deploy-docsite.yml", outputs)
         self.assertNotIn(".concorde/framework/docsite/site.json", outputs)
+        self.assertNotIn(".concorde/framework/docsite/sidebars.docs.ts", outputs)
         self.assertTrue(all("node_modules" not in path and "/build/" not in path for path in outputs if path.startswith(".concorde/framework/docsite/")))
         self.assertTrue(all(not path.startswith(".concorde/framework/docsite/tests/repository/") for path in outputs))
         self.assertIn(".agents/skills/concorde-plan/SKILL.md", outputs)

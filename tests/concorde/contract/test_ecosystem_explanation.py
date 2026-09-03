@@ -5,25 +5,26 @@ from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
 class EcosystemExplanationContractTests(unittest.TestCase):
-    def test_installer_and_guides_agree_on_native_preview_apply(self):
+    def test_installer_and_specs_agree_on_native_preview_apply(self):
         installer = (REPOSITORY_ROOT / "scripts/install-concorde.py").read_text()
-        guides = [
+        specifications = [
             (REPOSITORY_ROOT / "README.md").read_text(),
-            (REPOSITORY_ROOT / "docs/quick-start.md").read_text(),
+            (REPOSITORY_ROOT / "specs/concorde/features/003-installation.md").read_text(),
         ]
         for marker in ('FRAMEWORK_ROOT = ".concorde/framework"', 'RECEIPT_PATH = ".concorde/install.json"', "installation_plan", "apply_plan"):
             self.assertIn(marker, installer)
-        for guide in guides:
+        for specification in specifications:
             for marker in ("scripts/install-concorde.py", "--target", "--integration", "--apply", "Profile 7", "Protocol 13"):
-                self.assertIn(marker, guide)
-            self.assertIn("Preview", guide)
-            self.assertNotIn("specify-cli", guide)
+                self.assertIn(marker, specification)
+            self.assertIn("preview", specification.lower())
+            self.assertNotIn("specify-cli", specification)
 
-    def test_public_guides_explain_authority_and_projection_boundaries(self):
+    def test_public_specs_explain_authority_and_projection_boundaries(self):
         sources = [
             REPOSITORY_ROOT / "README.md",
-            REPOSITORY_ROOT / "docs/project-structure.md",
-            REPOSITORY_ROOT / "docs/agent-surfaces.md",
+            REPOSITORY_ROOT / "specs/concorde/architecture.md",
+            REPOSITORY_ROOT / "specs/concorde/modules/workspace/architecture.md",
+            REPOSITORY_ROOT / "specs/concorde/features/004-agent-surfaces.md",
         ]
         combined = "\n".join(path.read_text().lower() for path in sources)
         for term in (

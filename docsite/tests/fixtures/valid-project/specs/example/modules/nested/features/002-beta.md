@@ -17,11 +17,11 @@ evidence_status: verified
 
 ## Outcome
 
-Beta links to the documentation home.
+Beta links to the root architecture.
 
 ## Usage
 
-Read the [documentation home](../../../../../docs/index.md).
+Read the [root architecture](../../../architecture.md).
 
 ## Requirements
 

@@ -79,7 +79,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         expected_adapter = set(adapter_files(REPOSITORY_ROOT))
         self.assertTrue(expected_adapter.issubset(paths))
         self.assertIn(f"{TEMPLATE_ROOT}/site.json", paths)
-        self.assertIn("README.md", paths)
+        self.assertNotIn("README.md", paths)
         self.assertTrue(all(not path.startswith(f"{TEMPLATE_ROOT}/scaffold/") for path in paths))
         site_json_entry = next(item for item in proposal["files"] if item["path"] == f"{TEMPLATE_ROOT}/site.json")
         real_site_json = (REPOSITORY_ROOT / "docsite/site.json").read_text(encoding="utf-8")
@@ -124,14 +124,14 @@ class DocsiteScaffoldTests(unittest.TestCase):
             title="Custom Title",
             repository="https://example.test/repo",
             url="https://example.test",
-            base_url="/docs/",
+            base_url="/atlas/",
             github_pages=True,
         )
         identity = result.result["proposal"]["identity"]
         self.assertEqual(identity["title"], "Custom Title")
         self.assertEqual(identity["repository"], "https://example.test/repo")
         self.assertEqual(identity["url"], "https://example.test")
-        self.assertEqual(identity["baseUrl"], "/docs/")
+        self.assertEqual(identity["baseUrl"], "/atlas/")
 
     def test_invalid_inputs_are_rejected_003(self) -> None:
         _init_project(self.root)
@@ -186,7 +186,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         identity = json.loads(identity_path.read_text(encoding="utf-8"))
         self.assertEqual(identity, proposed.result["proposal"]["identity"])
         self.assertTrue((self.root / ".github/workflows/deploy-docsite.yml").is_file())
-        self.assertTrue((self.root / "README.md").is_file())
+        self.assertFalse((self.root / "README.md").exists())
 
         second_apply = apply_docsite(self.root, ".concorde/docsite-proposal.json")
         self.assertEqual(second_apply.status, "unchanged")

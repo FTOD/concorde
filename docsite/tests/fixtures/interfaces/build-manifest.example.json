@@ -2,21 +2,10 @@
   "schemaVersion": 10,
   "generator": {"name": "concorde-docsite", "version": "0.6.0", "docusaurusVersion": "3.10.2"},
   "collections": [
-    {"id": "home", "sourceBase": ".", "routeBase": "/", "include": ["README.md"]},
     {"id": "architecture", "sourceBase": "specs", "routeBase": "/architecture", "include": ["**/architecture.md"]},
-    {"id": "docs", "sourceBase": "docs", "routeBase": "/docs", "include": ["**/*.md"]},
     {"id": "features", "sourceBase": "specs", "routeBase": "/features", "include": ["**/features/*.md"]}
   ],
   "pages": [
-    {
-      "kind": "project-document",
-      "sourcePath": "README.md",
-      "sourceSha256": "9999999999999999999999999999999999999999999999999999999999999999",
-      "route": "/",
-      "title": "Example Project",
-      "navigation": {"section": "Documentation", "label": "Example Project"},
-      "links": [{"targetSourcePath": "specs/example/architecture.md", "targetRoute": "/architecture/module.example"}]
-    },
     {
       "kind": "module-architecture",
       "sourcePath": "specs/example/architecture.md",
@@ -33,15 +22,6 @@
         "title": "Example Components",
         "route": "/architecture/example-components.html"
       }]
-    },
-    {
-      "kind": "project-document",
-      "sourcePath": "docs/index.md",
-      "sourceSha256": "3333333333333333333333333333333333333333333333333333333333333333",
-      "route": "/docs",
-      "title": "Documentation",
-      "navigation": {"section": "Documentation", "label": "Documentation"},
-      "links": []
     },
     {
       "kind": "feature-design",
@@ -65,7 +45,7 @@
     }
   ],
   "excludedSources": [],
-  "routeInventory": ["/", "/architecture/example-components.html", "/architecture/module.example", "/docs", "/features/feature.example.publish"],
+  "routeInventory": ["/", "/architecture/example-components.html", "/architecture/module.example", "/features/feature.example.publish"],
   "validation": {
     "status": "passed",
     "checks": [

@@ -30,7 +30,17 @@ describe('build interface', () => {
       resolve(siteDir, 'tests/fixtures/invalid-projects/missing-title'),
     ], {cwd: siteDir, encoding: 'utf8'});
     expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain('content.title.required docs/no-title.md:');
+    expect(result.stderr).toContain('content.title.required specs/example/architecture.md:');
     expect(result.stderr).toContain('Remediation:');
+  });
+
+  it('returns a non-zero migration diagnostic for a parallel root docs tree', () => {
+    const result = spawnSync(process.execPath, [
+      resolve(siteDir, 'node_modules/tsx/dist/cli.mjs'), 'scripts/validate.ts', '--project-root',
+      resolve(siteDir, 'tests/fixtures/invalid-projects/parallel-docs'),
+    ], {cwd: siteDir, encoding: 'utf8'});
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('source.parallel.docs docs:');
+    expect(result.stderr).toContain('merge unique intent into the owning module architecture or feature design');
   });
 });

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://concorde.dev/interfaces/documentation/build-manifest-v10.schema.json",
-  "title": "Concorde Documentation Build Manifest 10",
+  "title": "Concorde Build Manifest 10",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "generator", "collections", "pages", "excludedSources", "routeInventory", "validation"],
@@ -19,17 +19,17 @@
     },
     "collections": {
       "type": "array",
-      "minItems": 4,
-      "maxItems": 4,
+      "minItems": 2,
+      "maxItems": 2,
       "uniqueItems": true,
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["id", "sourceBase", "routeBase", "include"],
         "properties": {
-          "id": {"enum": ["home", "architecture", "docs", "features"]},
-          "sourceBase": {"enum": [".", "docs", "specs"]},
-          "routeBase": {"enum": ["/", "/architecture", "/docs", "/features"]},
+          "id": {"enum": ["architecture", "features"]},
+          "sourceBase": {"const": "specs"},
+          "routeBase": {"enum": ["/architecture", "/features"]},
           "include": {
             "type": "array",
             "minItems": 1,
@@ -87,7 +87,7 @@
       "additionalProperties": false,
       "required": ["section", "label"],
       "properties": {
-        "section": {"enum": ["Architecture", "Documentation", "Features"]},
+        "section": {"enum": ["Architecture", "Features"]},
         "label": {"type": "string", "minLength": 1},
         "parentRoute": {"$ref": "#/$defs/route"}
       }
@@ -121,7 +121,7 @@
       "additionalProperties": false,
       "required": ["kind", "sourcePath", "sourceSha256", "route", "title", "navigation", "links"],
       "properties": {
-        "kind": {"enum": ["module-architecture", "project-document", "feature-design"]},
+        "kind": {"enum": ["module-architecture", "feature-design"]},
         "sourcePath": {"$ref": "#/$defs/sourcePath"},
         "sourceSha256": {"$ref": "#/$defs/sha256"},
         "route": {"$ref": "#/$defs/route"},
@@ -144,10 +144,6 @@
         {
           "if": {"properties": {"kind": {"const": "feature-design"}}, "required": ["kind"]},
           "then": {"required": ["featureId", "moduleId", "moduleRoute", "status", "relatedFeatures"], "not": {"anyOf": [{"required": ["parentId"]}, {"required": ["architectureDiagrams"]}]}}
-        },
-        {
-          "if": {"properties": {"kind": {"const": "project-document"}}, "required": ["kind"]},
-          "then": {"not": {"anyOf": [{"required": ["moduleId"]}, {"required": ["parentId"]}, {"required": ["architectureDiagrams"]}, {"required": ["featureId"]}, {"required": ["moduleRoute"]}, {"required": ["status"]}, {"required": ["relatedFeatures"]}]}}
         }
       ]
     }

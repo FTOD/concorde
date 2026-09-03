@@ -32,6 +32,25 @@ A maintainer can direct one feature from its complete direct file through permis
 ordered implementation/evidence, deterministic validation, and cleanup-only delivery using installed
 skills as the sole conversational surface.
 
+## Usage
+
+1. Install Concorde with the preview/apply flow in `feature.concorde.install`, then initialize the
+   root module with `concorde-init` when the project has no Profile 7 architecture.
+2. Select one direct `features/<NNN-name>.md` and invoke `concorde-specify`; use
+   `concorde-clarify` for material ambiguity and `concorde-checklist` for reviewer-owned quality
+   checks. A new file is resolved again after stable-ID front matter exists.
+3. For a normal change, invoke `concorde-plan`, `concorde-tasks`, and `concorde-implement`; use
+   `concorde-analyze` for a read-only audit and `concorde-converge` only when verified work remains.
+   `concorde-standard-dev-loop` composes specify → plan → tasks/implement → validate/deliver when the
+   complete loop is desired.
+4. Run `concorde-validate`, then invoke `concorde-deliver` only after every task/checklist and its
+   canonical evidence block passes. Delivery removes the attempt, not the specification.
+5. Use `concorde-fast-loop` instead only when preflight proves the change is already specified,
+   bounded, non-structural, and has no active attempt.
+
+Planning, task, checklist, research, quickstart, and validation files live only under
+`.concorde/attempts/<stable-feature-id>/`; they are workflow memory, not another documentation set.
+
 ## Architecture Zoom
 
 | Entity ID | Role |
@@ -100,6 +119,9 @@ skills as the sole conversational surface.
 - **FR-003**: Every executable task MUST have a requirement trace, exact path, dependency state, passed check, artifact, and stated evidence limitation before completion.
 - **FR-004**: Validation/read-only failures MUST be non-mutating; reviewed initialization, eligible fast loop, and cleanup delivery MUST be atomic within their explicit authority.
 - **FR-005**: Delivery MUST remove one complete current `.concorde/attempts/<stable-feature-id>/`, retain the direct feature and per-file reflection collection byte-identically, and MUST NOT author durable implementation prose or architectural intent.
+- **FR-006**: Module architecture and direct feature files MUST also serve as the maintained project
+  documentation; lifecycle guidance MUST update those owners rather than create a parallel `docs/`
+  authority.
 
 ## Edge Cases
 

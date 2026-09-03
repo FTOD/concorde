@@ -56,16 +56,17 @@ afterAll(async () => {
 });
 
 describe('a project holding only Initialization Proposal 3 outputs', () => {
-  it('receives the packaged adapter, its identity, and a homepage, but no repository evidence', async () => {
+  it('receives the packaged adapter and identity without synthetic prose or repository evidence', async () => {
     const files = (docsiteProposal.result.proposal as {files: Array<{path: string}>}).files.map((file) => file.path);
     expect(files).toContain('docsite/docusaurus.config.ts');
     expect(files).toContain('docsite/package-lock.json');
     expect(files).toContain('docsite/site.json');
-    expect(files).toContain('README.md');
+    expect(files).not.toContain('README.md');
     expect(files.some((path) => path.startsWith('docsite/tests/repository/') || path.startsWith('docsite/scaffold/'))).toBe(false);
     expect(files).not.toContain('.github/workflows/deploy-docsite.yml');
     const identity = JSON.parse(await readFile(resolve(root, 'docsite/site.json'), 'utf8')) as Record<string, unknown>;
     expect(identity).toMatchObject({schema_version: 1, title: 'Atlas', baseUrl: '/'});
+    expect(existsSync(resolve(root, 'README.md'))).toBe(false);
     expect(existsSync(resolve(root, 'docs'))).toBe(false);
     expect(existsSync(resolve(root, 'docsite/site.json'))).toBe(true);
     expect(await readFile(resolve(root, 'docsite/docusaurus.config.ts'), 'utf8'))
@@ -84,11 +85,14 @@ describe('a project holding only Initialization Proposal 3 outputs', () => {
     expect(build.status, `${build.stdout}\n${build.stderr}`).toBe(0);
     const manifest = JSON.parse(await readFile(resolve(root, 'docsite/build/build-manifest.json'), 'utf8')) as {
       pages: Array<{route: string; kind: string}>;
+      collections: Array<{id: string}>;
+      routeInventory: string[];
     };
-    expect(manifest.pages.map((page) => page.route).sort()).toEqual(['/', '/architecture/module.atlas']);
+    expect(manifest.collections.map((collection) => collection.id)).toEqual(['architecture', 'features']);
+    expect(manifest.pages.map((page) => page.route)).toEqual(['/architecture/module.atlas']);
+    expect(manifest.routeInventory).toContain('/');
     const homepage = await readFile(resolve(root, 'docsite/index.html').replace('docsite/index.html', 'docsite/build/index.html'), 'utf8');
-    expect(homepage).toContain('Atlas');
-    expect(homepage).not.toContain('>Documentation</a>');
+    expect(homepage).toContain('/architecture/module.atlas');
     expect(existsSync(resolve(root, 'docsite/build/architecture/module.atlas.html'))).toBe(true);
   }, 240_000);
 });

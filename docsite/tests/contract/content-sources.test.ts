@@ -10,15 +10,17 @@ import {formatFinding, sortFindings, validateRegistry} from '../../plugins/conco
 const fixtures = resolve(__dirname, '../fixtures');
 
 describe('Profile 7 content source contract', () => {
-  it('publishes README, docs, module architecture.md, and direct feature Markdown only', async () => {
+  it('publishes module architecture.md and direct feature Markdown only', async () => {
     const registry = await buildRegistry(resolve(fixtures, 'valid-project'));
     expect(validateRegistry(registry)).toEqual([]);
     expect(registry.collections.map(({id, include}) => [id, include])).toEqual([
-      ['home', ['README.md']],
       ['architecture', ['**/architecture.md']],
-      ['docs', ['**/*.md']],
       ['features', ['**/features/*.md']],
     ]);
+    expect(registry.documents.every((page) =>
+      page.sourcePath.startsWith('specs/') &&
+      (page.contentKind === 'module-architecture' || page.contentKind === 'feature-design'))).toBe(true);
+    expect(registry.documents.some((page) => page.sourcePath === 'README.md' || page.sourcePath.startsWith('docs/'))).toBe(false);
     expect(registry.documents.some((page) => page.sourcePath.startsWith('.concorde/'))).toBe(false);
     expect(registry.excludedSources.some((source) => source.sourcePath.startsWith('.concorde/'))).toBe(false);
     expect(registry.excludedSources).toEqual([]);
@@ -55,13 +57,11 @@ describe('Profile 7 content source contract', () => {
     expect(validateRegistry(registry).map((finding) => finding.ruleId)).toContain('content.path.control');
   });
 
-  it('requires the source-backed README homepage and validates its links', async () => {
-    const missing = await buildRegistry(resolve(fixtures, 'invalid-projects/missing-title'));
-    missing.documents.splice(missing.documents.findIndex((page) => page.sourcePath === 'README.md'), 1);
-    expect(validateRegistry(missing).some((finding) => finding.ruleId === 'content.home.required')).toBe(true);
-    const broken = await buildRegistry(resolve(fixtures, 'invalid-projects/home-broken-link'));
-    expect(validateRegistry(broken).some((finding) =>
-      finding.ruleId === 'link.target.missing' && finding.sourcePath === 'README.md')).toBe(true);
+  it('rejects a root docs tree as a parallel prose authority', async () => {
+    const registry = await buildRegistry(resolve(fixtures, 'invalid-projects/parallel-docs'));
+    expect(validateRegistry(registry)).toContainEqual(expect.objectContaining({
+      ruleId: 'source.parallel.docs', sourcePath: 'docs',
+    }));
   });
 
   it('discovers only architecture-owned diagrams', async () => {
@@ -76,9 +76,9 @@ describe('Profile 7 content source contract', () => {
   it('formats and sorts actionable findings deterministically', () => {
     const findings: ValidationFinding[] = [
       {ruleId: 'z', severity: 'error', sourcePath: 'specs/z.md', message: 'Z.', remediation: 'Fix Z.'},
-      {ruleId: 'a', severity: 'error', sourcePath: 'docs/a.md', location: {line: 2, column: 1}, message: 'A.', remediation: 'Fix A.'},
+      {ruleId: 'a', severity: 'error', sourcePath: 'specs/a.md', location: {line: 2, column: 1}, message: 'A.', remediation: 'Fix A.'},
     ];
-    expect(sortFindings(findings).map((finding) => finding.sourcePath)).toEqual(['docs/a.md', 'specs/z.md']);
-    expect(formatFinding(findings[1])).toBe('a docs/a.md:2:1: A.\nRemediation: Fix A.');
+    expect(sortFindings(findings).map((finding) => finding.sourcePath)).toEqual(['specs/a.md', 'specs/z.md']);
+    expect(formatFinding(findings[1])).toBe('a specs/a.md:2:1: A.\nRemediation: Fix A.');
   });
 });

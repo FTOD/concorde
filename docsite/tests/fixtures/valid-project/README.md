@@ -1,6 +1,6 @@
 # Fixture Project
 
-This fixture exercises the generated project homepage.
+This repository introduction is deliberately not a published content source.
 
 ## Key features
 
@@ -9,6 +9,5 @@ This fixture exercises the generated project homepage.
 
 ## Concorde commands
 
-See the [documentation](docs/index.md), [architecture](specs/example/architecture.md),
-[feature](specs/example/features/001-alpha.md), and
+See the [architecture](specs/example/architecture.md), [feature](specs/example/features/001-alpha.md), and
 [diagram](specs/example/diagrams/fixture-level-view.json).

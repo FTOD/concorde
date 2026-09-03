@@ -217,6 +217,7 @@ class DocsiteTemplateRealRepositoryTests(unittest.TestCase):
         self.assertIn("docsite/docusaurus.config.ts", files)
         self.assertIn("docsite/package-lock.json", files)
         self.assertIn("docsite/scaffold/deploy-docsite.yml", files)
+        self.assertNotIn("docsite/sidebars.docs.ts", files)
 
     def test_real_docsite_excludes_disposable_and_project_owned_paths(self):
         files = template_files(REPOSITORY_ROOT)

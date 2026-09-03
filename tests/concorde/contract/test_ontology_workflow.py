@@ -92,8 +92,8 @@ class OntologyWorkflowContractTests(unittest.TestCase):
         self.assertEqual([path for path in root.rglob("contracts") if path.is_dir()], [])
 
     def test_project_ontology_defines_module_entities_interfaces_and_ua_boundary(self):
-        ontology = (REPOSITORY_ROOT / "docs/ontology.md").read_text(encoding="utf-8")
-        for phrase in ("## Module", "Architecture entity", "Entity relationship", "Feature interface", "Understand Anything"):
+        ontology = (REPOSITORY_ROOT / "specs/concorde/features/007-project-ontology.md").read_text(encoding="utf-8")
+        for phrase in ("## Target Specification Model", "Architecture entity", "Entity relationship", "Feature interface", "Understand Anything"):
             self.assertIn(phrase, ontology)
         self.assertIn("adapts", ontology.lower())
 

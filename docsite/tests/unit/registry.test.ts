@@ -9,22 +9,19 @@ import {validateRegistry} from '../../plugins/concorde-content/validation';
 const fixture = resolve(__dirname, '../fixtures/valid-project');
 
 describe('Profile 7 content registry', () => {
-  it('discovers four source collections and one page per durable authority', async () => {
+  it('discovers two specification collections and one page per durable authority', async () => {
     const registry = await buildRegistry(fixture);
     expect(validateRegistry(registry)).toEqual([]);
     expect(registry.collections.map((collection) => collection.id)).toEqual([
-      'home', 'architecture', 'docs', 'features',
+      'architecture', 'features',
     ]);
     expect(registry.documents.map((item) => item.sourcePath)).toEqual([
-      'README.md',
-      'docs/guide/intro.md',
-      'docs/index.md',
       'specs/example/architecture.md',
       'specs/example/features/001-alpha.md',
       'specs/example/modules/nested/architecture.md',
       'specs/example/modules/nested/features/002-beta.md',
     ]);
-    expect(new Set(registry.documents.map((item) => item.route)).size).toBe(7);
+    expect(new Set(registry.documents.map((item) => item.route)).size).toBe(4);
     expect(registry.documents.every((item) => item.sourceSha256.length === 64)).toBe(true);
     expect(registry.documents.some((item) => item.sourcePath.startsWith('.concorde/'))).toBe(false);
     expect(registry.excludedSources).toEqual([]);
@@ -55,7 +52,6 @@ describe('Profile 7 content registry', () => {
     expect(manifest.pages).toHaveLength(registry.documents.length);
     expect(manifest.pages.map((page) => page.kind).sort()).toEqual([
       'feature-design', 'feature-design', 'module-architecture', 'module-architecture',
-      'project-document', 'project-document', 'project-document',
     ]);
     expect(manifest.pages.find((page) => page.sourcePath === 'specs/example/modules/nested/architecture.md')?.navigation)
       .toEqual({section: 'Architecture', label: 'Nested Fixture Architecture', parentRoute: '/architecture/module.fixture'});

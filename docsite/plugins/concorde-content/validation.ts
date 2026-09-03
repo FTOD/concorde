@@ -52,17 +52,11 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
   const modulesById = new Map(modules.map((module) => [module.moduleId, module]));
   const diagramRoutes = new Map<string, ModuleArchitecture[]>();
 
-  if (!registry.documents.some((document) => document.collectionId === 'home')) findings.push({
-    ruleId: 'content.home.required', severity: 'error', sourcePath: 'README.md',
-    message: 'The required project README homepage is missing.',
-    remediation: 'Add a readable root README.md with a level-one title and project introduction.',
-  });
-
   for (const document of registry.documents) {
     if (!isContainedPath(registry.projectRoot, document.realPath)) findings.push({
       ruleId: 'content.path.outside-root', severity: 'error', sourcePath: document.sourcePath,
       message: 'The resolved source path escapes the project root.',
-      remediation: 'Move the source into docs/ or specs/ and remove escaping symbolic links.',
+      remediation: 'Move the source into specs/ and remove escaping symbolic links.',
     });
     if (!document.title.trim()) findings.push({
       ruleId: 'content.title.required', severity: 'error', sourcePath: document.sourcePath,
@@ -71,7 +65,7 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
     if (controlStatePattern.test(document.sourcePath)) findings.push({
       ruleId: 'content.path.control', severity: 'error', sourcePath: document.sourcePath,
       message: 'Concorde control state is never published.',
-      remediation: 'Keep publishable sources in README.md, docs/, or specs/ and control state only under .concorde/.',
+      remediation: 'Keep publishable architecture and direct feature sources in specs/ and control state only under .concorde/.',
     });
     if (isFeature(document)) {
       if (!document.featureId) findings.push({

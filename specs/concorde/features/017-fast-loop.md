@@ -51,7 +51,7 @@ reconciliation of affected architecture/design/code/test/projection sources with
 
 - **FR-001**: Every affected feature MUST already have durable design, valid architecture references, current code/tests, and no active attempt.
 - **FR-002**: Eligibility MUST reject module/feature creation/restructure, responsibility/ownership/dependency-direction, public interface, migration-policy, or ambiguous impact changes.
-- **FR-003**: Affected architecture/design/code/test/docs/projection sources MUST be discovered and reconciled completely.
+- **FR-003**: Affected architecture/design/code/test/projection sources MUST be discovered and reconciled completely; no parallel custom documentation owner may be created.
 - **FR-004**: Completion MUST disclose changed sources/features/entities/interfaces, executed checks, and evidence limitations.
 
 ## Edge Cases

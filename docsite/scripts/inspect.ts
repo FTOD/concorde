@@ -19,7 +19,6 @@ async function main() {
     projectRoot: '.',
     counts: {
       architecture: registry.documents.filter((document) => document.collectionId === 'architecture').length,
-      docs: registry.documents.filter((document) => document.collectionId === 'docs').length,
       features: registry.documents.filter((document) => document.collectionId === 'features').length,
       excluded: registry.excludedSources.length,
       findings: findings.length,

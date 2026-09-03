@@ -5,20 +5,23 @@ import {resolve} from 'node:path';
 import {afterEach, describe, expect, it} from 'vitest';
 
 import {buildRegistry} from '../../plugins/concorde-content/registry';
+import {validateRegistry} from '../../plugins/concorde-content/validation';
 
 const roots: string[] = [];
 afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, {recursive: true, force: true}))));
 
-describe('documentation authoring', () => {
-  it('reflects add, rename, hierarchy, and removal without docsite registration', async () => {
+describe('specification authoring', () => {
+  it('keeps a feature route stable across a source rename and diagnoses removal', async () => {
     const root = await mkdtemp(resolve(tmpdir(), 'concorde-authoring-')); roots.push(root);
     await cp(resolve(__dirname, '../fixtures/valid-project'), root, {recursive: true});
-    await writeFile(resolve(root, 'docs/guide/new.md'), '# New page\n', 'utf8');
-    expect((await buildRegistry(root)).documents.some((item) => item.route === '/docs/guide/new')).toBe(true);
-    await rename(resolve(root, 'docs/guide/new.md'), resolve(root, 'docs/guide/renamed.md'));
-    expect((await buildRegistry(root)).documents.some((item) => item.route === '/docs/guide/renamed')).toBe(true);
-    await rm(resolve(root, 'docs/guide/renamed.md'));
-    expect((await buildRegistry(root)).documents.some((item) => item.route.endsWith('/renamed'))).toBe(false);
+    const original = resolve(root, 'specs/example/features/001-alpha.md');
+    const renamed = resolve(root, 'specs/example/features/003-renamed.md');
+    await rename(original, renamed);
+    expect((await buildRegistry(root)).documents.find((item) => item.sourcePath.endsWith('003-renamed.md'))?.route)
+      .toBe('/features/feature.fixture.alpha');
+    await rm(renamed);
+    expect(validateRegistry(await buildRegistry(root)).map((finding) => finding.ruleId))
+      .toContain('module.feature.unresolved');
   });
 
   it('reflects terminology table edits without a parallel registry', async () => {

@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
@@ -14,6 +15,7 @@ from concorde.planning_context import (  # noqa: E402
     PlanningContextError,
     resolve_planning_context,
 )
+from concorde.feature_workspace import workspace_role_paths as resolve_workspace_roles  # noqa: E402
 
 
 FIXTURE = REPOSITORY_ROOT / "tests/concorde/fixtures/permission-planning-project"
@@ -112,6 +114,37 @@ class PlanningContextTests(unittest.TestCase):
         )
         readable = set(path for paths in context.role_paths.values() for path in paths)
         self.assertTrue(denied.isdisjoint(readable))
+
+    def test_provider_private_paths_override_exact_parent_owned_locators(self):
+        selected = "specs/concorde/features/002-auto-docsite.md"
+        def roles_without_current_attempt_tasks(project, workspace):
+            return {**resolve_workspace_roles(project, workspace), "task-authorized": ()}
+
+        with mock.patch(
+            "concorde.planning_context.workspace_role_paths",
+            side_effect=roles_without_current_attempt_tasks,
+        ):
+            context = resolve_planning_context(REPOSITORY_ROOT, selected)
+        required = {
+            item.feature_id: item.feature_path for item in context.required_feature_specs
+        }
+        self.assertEqual(
+            required,
+            {
+                "feature.auto-docs.publish-project-docsite": "specs/concorde/modules/auto-docs/features/001-publish-project-docsite.md",
+                "feature.distribution.package-concorde": "specs/concorde/modules/distribution/features/001-package-concorde.md",
+            },
+        )
+        overlaps = {
+            "concorde.json",
+            "scripts/install-concorde.py",
+            "specs/concorde/modules/auto-docs/architecture.md",
+            "specs/concorde/modules/distribution/architecture.md",
+        }
+        self.assertTrue(overlaps.issubset(context.denied_paths))
+        self.assertTrue(overlaps.isdisjoint(context.owned_implementation_paths))
+        readable = {path for paths in context.role_paths.values() for path in paths}
+        self.assertTrue(readable.isdisjoint(context.denied_paths))
 
     def test_path_escapes_symlinks_and_cross_module_task_writes_fail_closed(self):
         with tempfile.TemporaryDirectory() as temporary:

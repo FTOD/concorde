@@ -1,11 +1,11 @@
-export type CollectionId = 'home' | 'architecture' | 'docs' | 'features';
-export type ContentKind = 'module-architecture' | 'project-document' | 'feature-design';
+export type CollectionId = 'architecture' | 'features';
+export type ContentKind = 'module-architecture' | 'feature-design';
 export type SourceState = 'discovered' | 'parsed' | 'validated' | 'mapped' | 'rendered' | 'invalid';
 
 export interface SourceCollection {
   id: CollectionId;
-  sourceBase: '.' | 'docs' | 'specs';
-  routeBase: '/' | '/architecture' | '/docs' | '/features';
+  sourceBase: 'specs';
+  routeBase: '/architecture' | '/features';
   include: string[];
   contentKind: ContentKind;
 }
@@ -40,11 +40,6 @@ export interface SourceDocument {
   sidebarLabel?: string;
   sidebarPosition?: number;
   slug?: string;
-}
-
-export interface ProjectDocument extends SourceDocument {
-  collectionId: 'home' | 'docs';
-  contentKind: 'project-document';
 }
 
 export interface FeatureRelation {
@@ -123,7 +118,7 @@ export interface DiagramDeliverySet {
 }
 
 export interface NavigationEntry {
-  section: 'Architecture' | 'Documentation' | 'Features';
+  section: 'Architecture' | 'Features';
   label: string;
   parentRoute?: string;
 }

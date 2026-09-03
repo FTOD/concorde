@@ -240,10 +240,16 @@ def resolve_planning_context(
     if workspace.feature_id is None or workspace.feature_id not in package.features:
         raise PlanningContextError("planning requires one existing stable selected feature")
     required = _required_specs(package, workspace.feature_id)
-    owned = _module_locator_paths(project, package, workspace.providing_module or "")
+    raw_owned = _module_locator_paths(
+        project, package, workspace.providing_module or ""
+    )
     roles = workspace_role_paths(project, workspace)
     required_paths = tuple(item.feature_path for item in required)
     provider_private = _provider_private_paths(project, package, required)
+    private_set = set(provider_private)
+    owned = tuple(
+        path for path in raw_owned if path not in private_set
+    )
 
     task_owned: list[str] = []
     for path in roles["task-authorized"]:

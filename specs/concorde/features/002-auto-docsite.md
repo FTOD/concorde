@@ -21,9 +21,10 @@ evidence_status: verified
 ## Outcome and Scope
 
 A maintainer of any Concorde project can create the project docsite from the template shipped in the
-installed Concorde package through one reviewed proposal/apply cycle, then publish the root README,
-project documents, module architectures, feature designs, and architecture-owned diagrams as one
-searchable, accessible site with exact source provenance.
+installed Concorde package through one reviewed proposal/apply cycle, then publish module
+architectures, direct feature designs, and architecture-owned diagrams as one searchable, accessible
+site with exact source provenance. The maintained specification is the documentation authority:
+there is no parallel custom-document collection, and the site exposes only Architecture and Features.
 
 **In scope**: the packaged docsite template, its project-owned site identity file, the preview/apply
 scaffold Tool offered through `concorde-init`, and publication from the scaffolded adapter.
@@ -61,7 +62,7 @@ projects.
   applied/unchanged structured result with created paths and findings. Applied files are the
   `docsite/` adapter (package manifest and lockfile, Docusaurus configuration, sidebars, content plugin,
   scripts, theme, portable tests, README), the project-owned site identity file `docsite/site.json`,
-  a minimal project `README.md` only when the project has none, and, only when requested,
+  and, only when requested,
   `.github/workflows/deploy-docsite.yml`.
 - **Obligations**: Preview by default; apply only the current digest-bound proposal and promote its
   files atomically; never overwrite an existing `docsite/`, an unowned collision, or a symlinked
@@ -86,19 +87,21 @@ projects.
 - **Consumer**: Maintainer, contributor, and CI.
 - **Direction**: Maintained content/build request to static site and Manifest 10 result.
 - **Entry points**: `npm run start`, `npm run validate`, `npm run build`, and `npm run check` in `docsite`.
-- **Inputs**: Site identity from `docsite/site.json`; root README, `docs/**/*.md`, recursive module
-  `architecture.md`, direct `features/*.md`, and declared module diagrams; native `.concorde/**`
-  control/framework state is excluded.
+- **Inputs**: Site identity from `docsite/site.json`; recursive module `architecture.md`, direct
+  `features/*.md`, and declared module diagrams. Root README and `docs/**/*.md` are not publication
+  sources; native `.concorde/**` control/framework state is excluded.
 - **Outputs**: Searchable site, semantic routes, source provenance, delivered diagrams, and Build Manifest 10.
 - **Obligations**: Take title, site URL, base path, organization/project names, and repository link only
   from the site identity file so the adapter stays byte-identical across projects; validate
-  identities/links/routes/freshness; never discover `.concorde/**` as pages; diagnose legacy
-  specification-local control sources; atomically preserve the last successful site on failure.
+  identities/links/routes/freshness; publish only architecture and feature authorities; reject a
+  parallel root `docs/` documentation authority; never discover README or `.concorde/**` as pages;
+  diagnose legacy specification-local control sources; atomically preserve the last successful site
+  on failure.
 - **Failures**: Missing or invalid site identity, invalid sources, missing links, route collision,
   diagram failure, manifest disagreement, or build failure blocks promotion.
-- **Compatibility**: Collections are home/architecture/docs/features; the docs and features
-  collections appear only when `docs/` exists or at least one feature is published; feature pages have
-  no abstract/implementation companions; navigation starts at the root module and labels modules by name.
+- **Compatibility**: Collections are exactly architecture/features; navigation and sidebars expose
+  exactly Architecture and Features, `/` resolves to the root architecture experience, feature pages
+  have no abstract/implementation companions, and modules are labeled by name.
 - **Implementing entities**: `module.concorde.auto-docs`, `entity.concorde.specification`, `entity.concorde.archify`.
 
 ## Related Features
@@ -114,7 +117,8 @@ projects.
 ## Usage Scenarios
 
 1. After `concorde-init` has applied the root architecture, preview the docsite proposal, apply it,
-   run `npm ci && npm run check` in `docsite`, and browse the root architecture page.
+   run `npm ci && npm run check` in `docsite`, and browse Architecture or Features without a
+   Documentation section.
 2. Preview or validate the current source registry and semantic routes without changing sources.
 3. Deliver every declared module diagram, materialize ignored Docusaurus inputs, and build a candidate.
 4. Promote only a candidate whose links, provenance, Manifest 10, accessibility, and source digests pass.
@@ -123,7 +127,9 @@ projects.
 
 ### Functional Requirements
 
-- **FR-001**: Each module `architecture.md`, direct feature file, project document, and declared architecture diagram MUST appear exactly once in the normalized registry.
+- **FR-001**: Each module `architecture.md`, direct feature file, and declared architecture diagram
+  MUST appear exactly once in the normalized registry; README and `docs/**/*.md` MUST NOT appear as
+  content records.
 - **FR-002**: Routes MUST derive from stable semantic IDs and remain independent of legacy filenames or storage depth.
 - **FR-003**: Build Manifest 10 MUST inventory all included sources, module/feature relations, routes, diagram deliveries, provenance, and generator version deterministically.
 - **FR-004**: `.concorde` configuration/selection/constitution/attempt/reflection/framework/receipt state and executable/private source files MUST NOT become
@@ -135,6 +141,12 @@ projects.
 - **FR-008**: The adapter MUST NOT hardcode project identity; title, site URL, base path, organization/project names, and repository link MUST come from the project-owned site identity file, and Concorde's own `docsite/` MUST use the same mechanism.
 - **FR-009**: A docsite scaffolded into a project that holds only Initialization Proposal 3 outputs MUST pass `npm run check` and publish the root architecture page once Node.js 20+, npm, and the pinned Archify skill are present.
 - **FR-010**: The scaffold MUST report missing prerequisites with remediation and MUST complete without network access.
+- **FR-011**: Maintained module architectures and direct feature designs MUST be the only prose
+  documentation authorities; publication validation MUST reject a root `docs/` tree instead of
+  rendering, ignoring, or preserving a parallel custom-document collection.
+- **FR-012**: Docsite configuration, route generation, materialized inputs, navbar, sidebars, build
+  manifest, search records, and tests MUST contain exactly the Architecture and Features collections
+  and MUST expose no Documentation/Home content collection or `/docs` route family.
 
 ### Non-Functional Requirements
 
@@ -159,8 +171,11 @@ projects.
 - Two Markdown links differ syntactically but normalize to the same missing or colliding route.
 - The project has no `origin` remote: the proposal omits the repository link, uses base path `/`, and
   the maintainer edits `docsite/site.json` afterwards.
-- The project has no `README.md`: the proposal adds a minimal homepage README that links the root
-  architecture, so the publication gate's homepage rule still holds.
+- The project has no `README.md`: docsite behavior is unchanged because README is repository entry
+  material, not a published content authority; `/` still resolves from the root architecture.
+- A root `docs/` directory exists: validation identifies it as a parallel documentation authority,
+  blocks publication, and directs the maintainer to merge unique intent into the owning module or
+  feature spec before removing it.
 - `docsite/` already exists: the proposal is a conflict listing the existing paths; the scaffold never
   merges or overwrites.
 - Archify is absent: scaffolding succeeds with a prerequisite finding, and `npm run build` fails with

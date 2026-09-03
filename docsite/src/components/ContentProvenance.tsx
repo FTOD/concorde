@@ -3,11 +3,7 @@ import Link from '@docusaurus/Link';
 import type {ContentPage} from '../../plugins/concorde-content/types';
 
 function kindLabel(page: ContentPage): string {
-  switch (page.kind) {
-    case 'feature-design': return 'Direct feature';
-    case 'module-architecture': return 'Module architecture';
-    default: return 'Project documentation';
-  }
+  return page.kind === 'feature-design' ? 'Direct feature' : 'Module architecture';
 }
 
 export default function ContentProvenance({page}: {page: ContentPage}) {

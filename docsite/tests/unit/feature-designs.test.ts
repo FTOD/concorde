@@ -25,7 +25,7 @@ describe('single-file feature publication', () => {
     const registry = await buildRegistry(resolve(fixtures, 'valid-project'));
     const features = registry.documents.filter((item): item is FeatureDesign => item.collectionId === 'features');
     expect(features[0].relatedFeatures).toEqual([{
-      featureId: 'feature.fixture.beta', title: 'Beta', outcome: 'Beta links to the documentation home.',
+      featureId: 'feature.fixture.beta', title: 'Beta', outcome: 'Beta links to the root architecture.',
       status: 'Approved', route: '/features/feature.fixture.beta',
     }]);
     expect(features[1].relatedFeatures[0].featureId).toBe('feature.fixture.alpha');

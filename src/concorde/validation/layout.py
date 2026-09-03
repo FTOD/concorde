@@ -94,6 +94,18 @@ def _symlink_findings(package: Any, attempt: Path, subject_id: str | None) -> li
 def validate_layout(package: Any) -> list[Finding]:
     findings: list[Finding] = []
     specification = package.project_root / package.specification_root
+    parallel_docs = package.project_root / "docs"
+
+    if parallel_docs.exists() or parallel_docs.is_symlink():
+        findings.append(
+            _finding(
+                package,
+                "CONCORDE-LAYOUT-DOCS",
+                parallel_docs,
+                "Root docs/ is a parallel prose authority outside the Profile 7 specification.",
+                "Merge unique intent into the owning module architecture or direct feature design, then remove docs/.",
+            )
+        )
 
     for path in sorted(specification.rglob("*")):
         if path.name in LEGACY_FILES and path.is_file():

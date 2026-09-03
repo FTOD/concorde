@@ -1,4 +1,4 @@
-"""Normalize delegated Archify/Documentation provenance receipts."""
+"""Normalize delegated Archify and generated-projection provenance receipts."""
 
 from __future__ import annotations
 

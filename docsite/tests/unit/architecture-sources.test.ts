@@ -30,7 +30,6 @@ describe('module architecture publication', () => {
     const root = await mkdtemp(resolve(tmpdir(), 'concorde-architecture-'));
     try {
       await mkdir(resolve(root, 'specs/example/diagrams'), {recursive: true});
-      await writeFile(resolve(root, 'README.md'), '# Example\n');
       await writeFile(resolve(root, 'specs/example/architecture.md'), `---\nid: module.example\nkind: module\nparent: null\nmodules: []\nfeatures: []\n---\n# Example\n\n[View](diagrams/view.json)\n`);
       await writeFile(resolve(root, 'specs/example/diagrams/view.json'), JSON.stringify({
         schema_version: 1, diagram_type: 'architecture',

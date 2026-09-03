@@ -10,23 +10,20 @@ Concorde develops itself with Concorde.
 The adapter builds a read-only projection of its host project. Canonical content stays outside
 `docsite/`:
 
-- `../README.md` owns the repository introduction and the generated `/` homepage.
-- `../docs/**/*.md` owns project documentation, when a `docs/` directory exists.
 - Every `../specs/**/architecture.md` is its module's Architecture landing page.
 - Every direct `../specs/**/features/*.md` is its feature's only Features page and landing page.
 - Every `../specs/**/diagrams/*.json` belongs to the adjacent module `architecture.md`; generated
   Archify HTML beneath `../generated/architecture/` is disposable.
 
-The adapter publishes up to four collections: Home, Architecture, Features, and — only when the host
-project has a `docs/` directory — Documentation. A project scaffolded straight from Initialization
-Proposal 3 output (a root architecture and README only) builds and serves correctly without one;
-adding `docs/` later is all that is required to turn the Documentation collection and its navbar item
-on. Public module and feature routes use stable IDs (`/architecture/<module-id>` and
+The adapter publishes exactly Architecture and Features. Root `/` resolves to the configured root
+architecture; a repository `README.md` is not a page. A root `docs/` directory is rejected as a
+parallel prose authority and must be reconciled into owning specifications before removal. Public
+module and feature routes use stable IDs (`/architecture/<module-id>` and
 `/features/<feature-id>`). Generated sidebars follow declared module containment, while features
 remain flat capabilities grouped beneath their providing modules. Module entries carry the module
 name without the `Architecture:` heading prefix, and both sidebars start at the root module rather
-than a collection-level category. `related_features` become
-cross-links, never navigation containment.
+than a collection-level category. `related_features` become cross-links, never navigation
+containment.
 
 Feature abstracts, accepted implementation narratives, module summary/design pairs, standalone
 specification contracts, nested feature hierarchies, and feature-owned diagrams are rejected as
@@ -64,8 +61,8 @@ python3 .concorde/framework/scripts/concorde.py docsite --apply --proposal <path
 
 Add `--github-pages` to the proposal to also write `.github/workflows/deploy-docsite.yml` from
 `docsite/scaffold/deploy-docsite.yml`, the packaged GitHub Pages workflow template. The scaffold
-proposal writes a project-owned `docsite/site.json` and, when the target has no `README.md`, a
-minimal one; every other copied file is template bytes, digest-bound to the package.
+proposal writes a project-owned `docsite/site.json`; every other copied file is template bytes,
+digest-bound to the package. It neither requires nor creates a project README.
 
 ## Prerequisites
 
@@ -92,7 +89,7 @@ Run commands from `docsite/`:
 | `npm run check` | Run typechecking, all tests, source validation, and a production build. |
 
 Successful builds emit deterministic `build/build-manifest.json` using Build Manifest 10. It records
-the collections present, one page per source authority, stable routes and relations, SHA-256 source
+the two collections, one page per specification authority, stable routes and relations, SHA-256 source
 provenance, architecture diagrams, publication-root exclusions, and passed checks. The build
 validates that custom JSON boundary directly; it no longer depends on a specification-owned schema
 file.
@@ -100,13 +97,10 @@ file.
 A failed candidate is removed and never replaces the last verified `build/`. Ordinary builds do not
 run Archify `visual-check`; perceptual review remains an explicit human-evidence step.
 
-The authoring and troubleshooting guide is
-[`../docs/contributing/docsite.md`](../docs/contributing/docsite.md).
-
 ## Repository-specific evidence
 
 `docsite/tests/repository/` holds tests that assert facts about the Concorde repository itself —
-its own diagram inventory, its own maintained framework guides, and that `docsite/site.json` and
+its own diagram inventory, its own maintained specifications, and that `docsite/site.json` and
 `.github/workflows/deploy-docsite.yml` reproduce Concorde's identity and deployment workflow. These
 tests are not part of the template: every other project that scaffolds the adapter carries its own
 `docsite/site.json` and no `tests/repository/` content.

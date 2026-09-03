@@ -6,10 +6,10 @@ import {afterEach, describe, expect, it} from 'vitest';
 
 import {createManifest} from '../../plugins/concorde-content/manifest';
 import {buildRegistry} from '../../plugins/concorde-content/registry';
-import type {FeatureDesign, ProjectDocument} from '../../plugins/concorde-content/types';
+import type {FeatureDesign, ModuleArchitecture} from '../../plugins/concorde-content/types';
 import {assertValidRegistry} from '../../plugins/concorde-content/validation';
 import {
-  architectureSidebarItems, featureSidebarItems, moduleSidebarClassName, stageFeatureDocument, stageHomepageDocument,
+  architectureSidebarItems, featureSidebarItems, moduleSidebarClassName, stageArchitectureDocument, stageFeatureDocument,
 } from '../../scripts/materialize-content';
 
 const fixture = resolve(__dirname, '../fixtures/valid-project');
@@ -21,7 +21,6 @@ async function prefixedHeadingProject(): Promise<string> {
   const root = await mkdtemp(resolve(tmpdir(), 'concorde-module-labels-')); roots.push(root);
   await mkdir(resolve(root, 'specs/scale/modules/inner/features'), {recursive: true});
   await Promise.all([
-    writeFile(resolve(root, 'README.md'), '# Scale Fixture\n'),
     writeFile(resolve(root, 'specs/scale/architecture.md'),
       '---\nid: module.scale\nkind: module\nparent: null\nmodules:\n  - module.scale.inner\nfeatures: []\n---\n# Architecture: Scale\n'),
     writeFile(resolve(root, 'specs/scale/modules/inner/architecture.md'),
@@ -33,15 +32,16 @@ async function prefixedHeadingProject(): Promise<string> {
 }
 
 describe('content materialization', () => {
-  it('adds renderer-only route metadata without changing canonical bodies', async () => {
+  it('adds renderer-only specification routes without changing canonical bodies', async () => {
     const registry = await buildRegistry(fixture);
-    const homepage = registry.documents.find((item): item is ProjectDocument => item.collectionId === 'home')!;
+    const architecture = registry.documents.find((item): item is ModuleArchitecture => item.collectionId === 'architecture')!;
     const feature = registry.documents.find((item): item is FeatureDesign => item.collectionId === 'features')!;
-    expect(stageHomepageDocument(homepage)).toContain('slug: /');
+    expect(stageArchitectureDocument(architecture)).toContain('slug: /module.fixture');
     const staged = stageFeatureDocument(feature);
     expect(staged).toContain('slug: /feature.fixture.alpha');
     expect(staged).toContain(feature.content.trim());
     expect(feature.frontMatter.slug).toBeUndefined();
+    expect(architecture.frontMatter.slug).toBeUndefined();
   });
 
   it('builds architecture navigation from module containment', async () => {

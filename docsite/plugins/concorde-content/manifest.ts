@@ -7,9 +7,7 @@ const isFeature = (document: SourceDocument): document is FeatureDesign => docum
 const isModule = (document: SourceDocument): document is ModuleArchitecture => document.contentKind === 'module-architecture';
 
 function navigationFor(document: SourceDocument) {
-  const section = document.collectionId === 'home' || document.collectionId === 'docs'
-    ? 'Documentation' as const
-    : document.collectionId === 'architecture' ? 'Architecture' as const : 'Features' as const;
+  const section = document.collectionId === 'architecture' ? 'Architecture' as const : 'Features' as const;
   const parentRoute = isModule(document) && document.parentId ? moduleRoute(document.parentId) : undefined;
   return {section, label: document.sidebarLabel || document.title, ...(parentRoute ? {parentRoute} : {})};
 }
@@ -60,14 +58,15 @@ export function validateBuildManifest(value: unknown): asserts value is BuildMan
   if (manifest.generator?.name !== 'concorde-docsite' || typeof manifest.generator.version !== 'string' ||
       typeof manifest.generator.docusaurusVersion !== 'string') throw new Error('Build Manifest generator identity is incomplete.');
   const collectionIds = manifest.collections?.map((collection) => collection.id);
-  if (JSON.stringify(collectionIds) !== JSON.stringify(['home', 'architecture', 'docs', 'features'])) {
-    throw new Error('Build Manifest collections must be home, architecture, docs, and features in canonical order.');
+  if (JSON.stringify(collectionIds) !== JSON.stringify(['architecture', 'features'])) {
+    throw new Error('Build Manifest collections must be architecture and features in canonical order.');
   }
   if (!Array.isArray(manifest.pages)) throw new Error('Build Manifest pages must be an array.');
-  const pageKinds = new Set(['module-architecture', 'project-document', 'feature-design']);
+  const pageKinds = new Set(['module-architecture', 'feature-design']);
   for (const page of manifest.pages) {
     if (!pageKinds.has(page.kind)) throw new Error(`Build Manifest page kind "${page.kind}" is unsupported.`);
     if (!isRelativePath(page.sourcePath)) throw new Error(`Build Manifest sourcePath "${page.sourcePath}" must be project-relative.`);
+    if (!page.sourcePath.startsWith('specs/')) throw new Error(`Build Manifest sourcePath "${page.sourcePath}" must be a specification source.`);
     if (!/^[a-f0-9]{64}$/.test(page.sourceSha256)) throw new Error(`${page.sourcePath}: sourceSha256 must be lowercase SHA-256.`);
     if (!page.route.startsWith('/')) throw new Error(`${page.sourcePath}: route must be root-relative.`);
     if (page.kind === 'module-architecture') {

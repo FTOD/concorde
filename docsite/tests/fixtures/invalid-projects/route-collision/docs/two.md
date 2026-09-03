@@ -1,6 +1,0 @@
----
-slug: shared
----
-
-# Two
-

@@ -1,1 +1,0 @@
-# Legacy Control-State Fixture

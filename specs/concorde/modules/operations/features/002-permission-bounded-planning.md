@@ -87,6 +87,9 @@ a live model.
   layer may not widen it. A conflict stops the affected invocation.
 - A related feature that does not own one of the selected feature's required interfaces remains a summary/navigation
   reference and its body is not added to the readable set.
+- If a parent providing module's entity locator exactly names a required provider module's private
+  architecture or implementation path, the provider-private deny takes precedence and that exact
+  locator is removed from owned implementation context; the published provider feature remains readable.
 - A task that truly changes a dependency module must select that module's feature in a separate
   lifecycle rather than widening the current planner's read or write boundary silently.
 
@@ -289,7 +292,10 @@ effective read/write/deny sets before validating their native configuration shap
   deterministically own an interface listed in the selected feature's `interfaces.required` set;
   every inclusion MUST carry the required-interface ID as its reason trace.
 - **FR-010**: Planning context MUST exclude dependency module architecture/source/tests/attempts,
-  descendant-module internals, unrelated feature bodies, and every other attempt.
+  descendant-module internals, unrelated feature bodies, and every other attempt. An exact path
+  collision between a parent providing-module locator and required-provider private context MUST be
+  resolved by removing that path from owned implementation context while retaining the deny; a
+  selected feature/module authority or admitted provider feature collision MUST still fail closed.
 - **FR-011**: The plan-authoring invocation MUST write only the selected attempt artifacts plus an
   authorized per-file reflection occurrence and MUST leave durable feature, architecture, code,
   test, package, and generated sources byte-identical.

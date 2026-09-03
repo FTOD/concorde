@@ -42,8 +42,9 @@ Source code is implementation. Tests and deterministic checks are evidence. Plan
 checklists, and validation logs are temporary attempt memory. Generated sites/diagrams and
 installed framework/agent files are reproducible projections, never intent authority.
 
-Read [Ontology](docs/ontology.md), [Specification model](docs/specification-model.md), and
-[Project structure](docs/project-structure.md).
+Module architectures and direct feature files are also the maintained project documentation; there
+is no parallel custom-document tree. Read the [project ontology and specification model](specs/concorde/features/007-project-ontology.md)
+and [workspace architecture](specs/concorde/modules/workspace/architecture.md).
 
 ## Leaf Skills and Operations
 
@@ -82,7 +83,8 @@ incomplete, invalid, or unsafe delivery is non-mutating.
 
 The framework packages internal `concorde-plan-context` and `concorde-plan-author`, but neither is
 projected as a user capability. Both agents receive the same 18 public `concorde-*` skills. See
-[Workflow](docs/concorde-workflow.md) and [Skill reference](docs/skills.md).
+[Workflow](specs/concorde/features/001-concorde-workflow.md) and
+[Skill reference](specs/concorde/modules/skills/features/001-project-workflow.md).
 
 ## Compose prompts with LangGraph
 
@@ -168,7 +170,8 @@ whose observed bytes still match the prior receipt; unowned or user-modified col
 Concorde 2.1.0 installs 17 leaves and three complete Operation pairs in the framework while projecting
 only 15 public leaves plus the three Operations.
 
-See [Quick start](docs/quick-start.md).
+See the complete [installation feature](specs/concorde/features/003-installation.md) and
+[workflow usage](specs/concorde/features/001-concorde-workflow.md#usage).
 
 ## Maintain this checkout
 
@@ -182,7 +185,7 @@ python3 scripts/development/sync-agent-surfaces.py status --format json
 python3 scripts/development/sync-agent-surfaces.py apply --format json
 ```
 
-See [Agent-surface maintenance](docs/agent-surfaces.md).
+See [Agent-surface maintenance](specs/concorde/features/004-agent-surfaces.md).
 
 ## Develop and validate
 
@@ -201,7 +204,7 @@ The repository self-applies the model at
 
 Python 3.11+ is the only hard requirement. Archify visual checks additionally need a Chrome or
 Chromium build, which Playwright's bundled Chromium can supply through `ARCHIFY_CHROME`; see
-[Recommended software](docs/quick-start.md#recommended-software).
+the [Auto-Docs renderer contract](specs/concorde/modules/auto-docs/features/001-publish-project-docsite.md).
 
 ## Repository map
 
@@ -214,11 +217,10 @@ Chromium build, which Playwright's bundled Chromium can supply through `ARCHIFY_
 | `agent-assets/` | Canonical reflection-triage roles and integration templates. |
 | `scripts/` | Portable runtime adapters, installer, and checkout sync. |
 | `concorde.json` | Single package/version/profile/protocol/inventory authority. |
-| `specs/concorde/` | Self-applied module architectures and direct features. |
+| `specs/concorde/` | Self-applied module architectures and direct features; the maintained project documentation. |
 | `.concorde/` | Native project configuration, selection, constitution, attempts, and reflections. |
 | `tests/concorde/` | Python unit, contract, integration, and acceptance evidence. |
 | `docsite/` | Architecture/feature publication adapter, packaged as every project's docsite template. |
-| `docs/` | Public framework and contributor guidance. |
 
 Concorde is distributed under the MIT License in `LICENSE`, declared by its package manifest and
 included in every installed framework projection.
