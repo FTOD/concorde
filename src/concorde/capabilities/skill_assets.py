@@ -67,6 +67,7 @@ class SkillPrompt:
     operation: str | None = None
     capabilities: tuple[str, ...] = ()
     effects: EffectDeclaration | None = None
+    script_paths: tuple[str, ...] = ()
 
 
 def capability_name(path: Path) -> str:
@@ -216,6 +217,7 @@ def resolve_skill_prompt(
     operation: str | None = None
     composed: tuple[str, ...] = ()
     effects: EffectDeclaration | None = None
+    script_paths: tuple[str, ...] = ()
     if kind == "skill":
         allowed = {"name", "description", "exposure", "scripts", "effects"}
         effects = _effects(name, metadata.get("effects"))
@@ -232,7 +234,9 @@ def resolve_skill_prompt(
             if not isinstance(script, str) or not script.strip():
                 raise SkillAssetError(f"capability {name} scripts.py must be a string")
             executable, separator, arguments = script.strip().partition(" ")
-            invocation = "python3 " + _framework_path(framework_prefix, executable)
+            resolved_script = _framework_path(framework_prefix, executable)
+            script_paths = (resolved_script,)
+            invocation = "python3 " + resolved_script
             if separator:
                 invocation += " " + arguments
             body = body.replace("{SCRIPT}", invocation)
@@ -279,6 +283,7 @@ def resolve_skill_prompt(
         operation=operation,
         capabilities=composed,
         effects=effects,
+        script_paths=script_paths,
     )
 
 

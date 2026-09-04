@@ -21,7 +21,8 @@ diagrams:
 Define how every Concorde capability exists and runs on a coding agent: deterministic Tools behind
 portable entry points, exposure/effect-declared leaf Skills, acyclic paired LangGraph Operations,
 committed-base linked-worktree preflight for agent mutations, per-leaf permission compilation and
-enforced launch, and identical public projection into Codex and Claude.
+enforced launch, host-attested client bootstrap, typed semantic completion, and identical public
+projection into Codex and Claude.
 
 ## Boundary
 
@@ -29,8 +30,9 @@ Capabilities owns the three-level capability structure (Tool/Skill/Operation) as
 launchers and the Tool dispatcher/envelope; the canonical `skills/` and `operations/` source
 directories and their metadata grammar (name, exposure, effects, `capabilities:` topology, scripts
 tokens); the skill loader/projector; the package capability validator; the shared Operation runtime
-(bindings, state, lazy LangGraph); the policy compiler (normalized policy to Codex permission profile,
-Claude strict sandbox, or outer isolation); the injectable process launcher and receipts; the managed
+(bindings, state, lazy LangGraph); the policy compiler (normalized task policy to Codex permission
+profile, Claude strict sandbox, or outer isolation); client-runtime bootstrap attestation; Capability
+Completion Envelope 1; the injectable process launcher and receipts; the managed
 Operation launcher (`scripts/run-operation.py`); and checkout/installed agent-surface rendering for
 Codex and Claude. It also owns the deterministic Git worktree boundary shared by mutating Tool
 adapters and actual Operation execution; that helper reads only Git identity/commit metadata and
@@ -38,7 +40,9 @@ rejects primary-worktree mutation unless an explicit override is present.
 
 It does not own the content of any individual Skill or Operation (those belong to Understanding,
 Lifecycle, and Reflections), Protocol 13 role resolution (`module.concorde.understanding`),
-packaging/installation/managed venv (`module.concorde.distribution`), or the agent host itself.
+packaging/installation/managed venv (`module.concorde.distribution`), or the agent host itself. Its
+runtime attestation trusts only the exact selected external executable; it never owns that file or
+admits its package directory as task context.
 
 ## Entities
 
@@ -53,15 +57,17 @@ packaging/installation/managed venv (`module.concorde.distribution`), or the age
 | `entity.capabilities.tool-envelope` | function | Serializes one Tool result with a `tool` discriminator. | `src/concorde/diagnostics.py#tool_envelope` |
 | `entity.capabilities.skill-sources` | directory | Canonical directories containing exactly one public or internal leaf `SKILL.md` each. | `skills` |
 | `entity.capabilities.operation-sources` | directory | Canonical directories containing exactly one Operation Python/Markdown pair each. | `operations` |
-| `entity.capabilities.skill-prompt` | document | One complete leaf prompt with public/internal exposure and, when composed, exact read/write/network/credential effects; it may invoke Tools but never orchestrates Skills. | `concept:skills/<name>/SKILL.md` |
+| `entity.capabilities.skill-prompt` | document | One complete leaf prompt with public/internal exposure, resolved Tool script paths, and, when composed, exact read/write/network/credential effects; it may invoke Tools but never orchestrates Skills. | `concept:skills/<name>/SKILL.md` |
 | `entity.capabilities.operation-pair` | concept | One exact `operation.py` execution authority plus its associated `SKILL.md` invocation and behavioral contract, addressed as one paired capability unit. | `concept:operations/<name>/{operation.py,SKILL.md}` |
 | `entity.capabilities.projector` | program | Parses leaf exposure/effects and mixed Operation capabilities, resolves Tool and managed Operation-launcher tokens, filters internal leaves, and renders public Codex/Claude Skill files with owned kind provenance. | `src/concorde/capabilities/skill_assets.py` |
 | `entity.capabilities.capability-validator` | program | Validates exact Script/public-internal-Skill/Operation pairs, effects, mixed literal topology/bindings, and direct/indirect cycles without importing Operation Python. | `src/concorde/capabilities/validation.py` |
-| `entity.capabilities.operation-runtime` | program | Resolves ordered direct capabilities and bindings, builds lazy LangGraphs, attaches one immutable launch specification per leaf, preserves nested Operation opacity, and accumulates per-capability results. | `src/concorde/capabilities/operation_runtime.py` |
+| `entity.capabilities.operation-runtime` | program | Resolves ordered direct capabilities/bindings, creates the canonical Protocol 13 receipt, builds lazy LangGraphs, attaches each launch request, preserves nested opacity, and accumulates only validated successful capability results. | `src/concorde/capabilities/operation_runtime.py` |
 | `entity.capabilities.operation-binding` | type | Ordered unique stages plus exact direct capability occurrences and narrowing agent/effect bindings. | `src/concorde/capabilities/operation_runtime.py#OperationBinding` |
-| `entity.capabilities.operation-state` | type | Original request plus append-only ordered capability results and optional enforcement receipts. | `src/concorde/capabilities/operation_runtime.py#OperationState` |
-| `entity.capabilities.policy-compiler` | program | Compiles leaf effects and occurrence bindings into canonical normalized policies plus Codex permission profiles or Claude strict-sandbox settings. | `src/concorde/capabilities/operation_permissions.py` |
-| `entity.capabilities.process-launcher` | program | Performs version/enforcement preflight and injectable `codex exec`/`claude -p` process handoff with structured receipts and no permissive retry. | `src/concorde/capabilities/operation_executor.py#AgentProcessExecutor` |
+| `entity.capabilities.operation-state` | type | Original request plus append-only successful capability output/completion/receipt triples. | `src/concorde/capabilities/operation_runtime.py#OperationState` |
+| `entity.capabilities.policy-compiler` | program | Compiles leaf effects and occurrence bindings into normalized task policies plus Codex profiles or Claude strict-sandbox settings while keeping integration bootstrap separate. | `src/concorde/capabilities/operation_permissions.py` |
+| `entity.capabilities.runtime-bootstrap` | type | SHA-256-attested real external client executable, owner/mode/size metadata, and digest-bound read grant used only to bootstrap native enforcement. | `src/concorde/capabilities/operation_permissions.py#RuntimeBootstrapFile` |
+| `entity.capabilities.completion-envelope` | type | Capability Completion Envelope 1: exact launch/workspace/bootstrap identity, semantic status, usable output, limitations, and gate evidence. | `src/concorde/capabilities/operation_permissions.py#CapabilityCompletion` |
+| `entity.capabilities.process-launcher` | program | Attests/finalizes runtime bootstrap, performs version/enforcement preflight, invokes native structured output, validates semantic completion, and returns a matching receipt or raises without permissive retry. | `src/concorde/capabilities/operation_executor.py#AgentProcessExecutor` |
 | `entity.capabilities.operation-launcher` | program | Standard-library bootstrap that selects the source root `.venv` or installed `.concorde/.venv` and executes one exact paired Operation path. | `scripts/run-operation.py` |
 | `entity.capabilities.surface-renderer` | program | Renders one integration's complete public leaf/Operation capability surface for install-time projection. | `scripts/render-capability-surfaces.py` |
 | `entity.capabilities.checkout-sync` | program | Compares and refreshes this repository's own generated agent capability surfaces from canonical sources. | `scripts/development/sync-agent-surfaces.py` |
@@ -91,13 +97,15 @@ packaging/installation/managed venv (`module.concorde.distribution`), or the age
 | `entity.capabilities.capability-validator` | `validates` | `entity.capabilities.operation-sources` | Checks mixed literal topology, occurrence bindings, and direct/indirect cycles without importing Operation Python. |
 | `entity.capabilities.operation-runtime` | `reads_from` | `entity.capabilities.skill-prompt` | Loads canonical direct capability bodies and declared effects without duplicating them. |
 | `entity.capabilities.operation-runtime` | `calls` | `entity.capabilities.policy-compiler` | Produces one normalized/native policy per direct leaf occurrence. |
-| `entity.capabilities.operation-runtime` | `calls` | `entity.capabilities.process-launcher` | Hands an immutable leaf launch specification to the optional real process executor. |
+| `entity.capabilities.operation-runtime` | `calls` | `entity.capabilities.process-launcher` | Hands a digest-bound leaf launch request and Protocol 13 receipt to the real process executor. |
 | `entity.capabilities.operation-runtime` | `calls` | `entity.capabilities.langgraph` | Compiles ordered state/nodes/edges only when graph construction is requested. |
 | `entity.capabilities.operation-runtime` | `implements` | `entity.capabilities.operation-binding` | Declares exact stage/occurrence/agent/effect bindings the runtime enforces. |
 | `entity.capabilities.operation-runtime` | `implements` | `entity.capabilities.operation-state` | Declares the append-only request/result/receipt shape the runtime accumulates. |
 | `entity.capabilities.policy-compiler` | `reads_from` | `module.concorde.understanding` | Resolves Protocol 13 roles into concrete project-relative read/write/deny paths before compiling policy. |
 | `entity.capabilities.policy-compiler` | `configures` | `entity.concorde.coding-agent` | Renders a Codex permission profile or a Claude strict-sandbox configuration for one leaf launch. |
-| `entity.capabilities.process-launcher` | `calls` | `entity.concorde.coding-agent` | Starts a supported CLI only after enforcement/version/digest preflight. |
+| `entity.capabilities.process-launcher` | `implements` | `entity.capabilities.runtime-bootstrap` | Resolves, validates, hashes, and rechecks the selected external Codex executable before finalizing its exact read grant. |
+| `entity.capabilities.process-launcher` | `implements` | `entity.capabilities.completion-envelope` | Supplies the native schema, parses lifecycle output, validates identity/gates/status, and rejects every failed or malformed completion. |
+| `entity.capabilities.process-launcher` | `calls` | `entity.concorde.coding-agent` | Starts a supported CLI only after enforcement/version/bootstrap/digest preflight and accepts only typed success. |
 | `entity.capabilities.operation-launcher` | `calls` | `entity.capabilities.operation-runtime` | Enters a paired Operation's graph through the source root `.venv` or installed `.concorde/.venv` without shell activation. |
 | `entity.capabilities.posix-launcher` | `calls` | `entity.capabilities.python-adapter` | Forwards Tool arguments without redefining behavior. |
 | `entity.capabilities.powershell-launcher` | `calls` | `entity.capabilities.python-adapter` | Provides equivalent Windows entry behavior. |
@@ -117,14 +125,16 @@ packaging/installation/managed venv (`module.concorde.distribution`), or the age
 | `entity.capabilities.capability-validator` | `tested_by` | `entity.capabilities.tests` | Structural fixtures prove exposure/topology/cycle detection without importing Operation Python. |
 | `entity.capabilities.operation-runtime` | `tested_by` | `entity.capabilities.tests` | Real LangGraph and sentinel tests prove order, bounded context, and failure stopping. |
 | `entity.capabilities.policy-compiler` | `tested_by` | `entity.capabilities.tests` | Contract tests prove Codex/Claude effective-path parity. |
-| `entity.capabilities.process-launcher` | `tested_by` | `entity.capabilities.tests` | Injected-executor tests record exact argv/settings/receipts without a live model call. |
+| `entity.capabilities.runtime-bootstrap` | `tested_by` | `entity.capabilities.tests` | Tests reject missing, project-local, untrusted-owner, mutable, stale, and duplicate bootstrap files. |
+| `entity.capabilities.completion-envelope` | `tested_by` | `entity.capabilities.tests` | Tests distinguish transport, lifecycle, malformed/stale, explicit-failure, recovered-tool, and semantic-success outcomes. |
+| `entity.capabilities.process-launcher` | `tested_by` | `entity.capabilities.tests` | Injected-executor tests record exact finalized argv/settings/receipts without a mandatory live model call. |
 
 ## Interactions
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
 | `interaction.capabilities.tool` | A Skill, script, CI job, or maintainer invokes a Tool dispatcher entry point. | Locate the colocated package through a platform launcher or direct Python entry; dispatch the named Tool through the CLI; load the validated project package; validate inputs and safe project-relative paths; execute the bounded action; serialize one canonical Tool envelope. | Deterministic success or failure with stable diagnostics and no conversational side channel. | `contract.capabilities.tools` |
-| `interaction.capabilities.launch` | A workflow host launches an installed paired Operation. | For actual mutation, verify the project root is a linked worktree at an exact commit unless the explicit primary override is present; enter the pair through the standard-library bootstrap and verified managed environment; resolve Protocol 13 roles; validate topology/effects/bindings; compile and enforce one policy per leaf; execute and append receipts; stop on any failure. | Ordered per-leaf capability results and receipts in the owned worktree, or an explicit worktree/pre-launch/executor failure with no downstream invocation. | `contract.capabilities.permission-bounded-execution` |
+| `interaction.capabilities.launch` | A workflow host launches an installed paired Operation. | Verify worktree authority; enter the managed runtime; resolve Protocol 13 once into a canonical receipt; validate topology/effects/bindings; compile one task policy; attest the exact client bootstrap; finalize the launch; invoke native schema/JSON lifecycle output; validate semantic completion; append only success and stop on every failure. | Ordered successful output/completion/receipt triples, or an explicit workspace/policy/bootstrap/transport/lifecycle/completion failure with no downstream invocation. | `contract.capabilities.permission-bounded-execution`, `contract.capabilities.skill-contract` |
 | `interaction.capabilities.project` | An installer or checkout sync projects capabilities to Codex or Claude. | Validate the exact leaf/Operation inventory, exposure, effects, topology, and bindings; omit internal leaves; resolve each Tool and managed-launcher token; render every public leaf and Operation Markdown as one integration-native Skill with source/kind/entry-point provenance; compare against observed output; write only the exact target paths. | Codex or Claude receives the same 15 public leaves plus three Operation skills with no ambient-interpreter dependence, or an explicit conflict/failure diagnostic. | `contract.capabilities.agent-surface`, `contract.capabilities.skill-contract` |
 
 ## Modules
@@ -167,8 +177,18 @@ None.
 - Codex uses a digest-named permission profile without legacy `sandbox_mode`; Claude uses restricted
   `dontAsk` plus strict OS sandbox settings; verified outer isolation is the only fallback when no
   native sandbox is available.
-- The process executor is real and injectable; tests record exact argv/settings/receipts and never
-  call a paid/live model.
+- Integration runtime bootstrap is not task authority. The host resolves only the selected Codex
+  executable to a trusted real external file, hashes its bytes/metadata, adds that exact read to the
+  finalized native profile, and binds the attestation to launch/config/receipt digests; directories,
+  wrappers, project files, mutable or substituted binaries fail closed.
+- A host-resolved canonical Protocol 13 receipt satisfies an Operation leaf's workspace gate. The
+  leaf receives its exact declared script but never reruns the global resolver from a narrower
+  policy; direct Skill invocation still runs the Tool itself.
+- Every real agent process returns Capability Completion Envelope 1. Exit zero is transport evidence,
+  not semantic success; only identity-bound success with passed gates and no limitations enters
+  Operation state. Native lifecycle failure, explicit failure, or invalid completion raises first.
+- Codex uses JSONL plus `--output-schema`; Claude uses JSON plus `--json-schema`. Tests inject both
+  clients and never require a paid/live model; live execution is optional acceptance evidence.
 - Mutating agent entry points fail closed in the primary Git worktree. The
   `--allow-primary-worktree` escape hatch represents an explicit maintainer decision, never an
   inference from a generic change request; primary dirty contents are not inspected or transferred.

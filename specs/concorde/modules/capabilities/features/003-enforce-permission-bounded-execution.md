@@ -26,7 +26,9 @@ interfaces:
 ## Outcome and Scope
 
 **Outcome**: A workflow host can launch every Codex or Claude agent selected by a Concorde Operation
-with a committed-base isolated-worktree preflight and a validated least-privilege filesystem policy.
+with a committed-base isolated-worktree preflight, a validated least-privilege task policy, an
+attested client-runtime bootstrap, and typed semantic completion that admits only successful
+capabilities to downstream state.
 
 **In scope**:
 
@@ -36,6 +38,10 @@ with a committed-base isolated-worktree preflight and a validated least-privileg
   permission rules plus sandbox settings.
 - Concrete read/write/deny paths resolved from Workspace Protocol 13 and stable feature/interface
   relationships before an agent starts.
+- A separately attested, read-only integration runtime bootstrap that lets the selected native
+  client execute itself without making host paths part of task authority.
+- One canonical host workspace receipt per leaf and Capability Completion Envelope 1 across Codex
+  JSONL/output-schema and Claude JSON-schema output.
 - Migration of existing standard-development and reflection-triage Operations to the same policy
   contract, including their installed Codex and Claude projections.
 - Optional outer OS/container isolation when the selected integration cannot enforce the declared
@@ -48,11 +54,13 @@ with a committed-base isolated-worktree preflight and a validated least-privileg
 The same host can invoke the standard development or reflection-triage Operation. Before actual
 mutation, it requires a linked worktree created from the primary worktree's exact committed `HEAD`;
 staged, unstaged, untracked, and ignored primary state is neither read nor copied. Before each direct
-leaf Skill invocation, the runtime supplies one immutable launch specification containing the
-chosen integration, prompt/prior results, normalized policy, native configuration, and digests. The
-injectable process executor version-checks `codex exec` or restricted `claude -p`, scrubs ambient
-secret variables, and returns a matching enforcement receipt; tests inject the runner and never call
-a live model.
+leaf Skill invocation, the runtime supplies one immutable launch request containing the chosen
+integration, prompt/prior results, normalized task policy, native configuration, canonical Protocol
+13 receipt, and digests. The process executor resolves and attests the exact selected Codex native
+binary when native enforcement needs it, finalizes a new immutable launch, version-checks
+`codex exec` or restricted `claude -p`, scrubs ambient secrets, and requires Capability Completion
+Envelope 1. A zero process exit is transport evidence only. Tests inject client processes and
+runtime attestations; live model calls remain optional acceptance evidence.
 
 ## Interfaces
 
@@ -67,44 +75,57 @@ a live model.
 - **Inputs**: Operation/stage/Skill identity; selected integration; project root; isolated-worktree
   Git identity and committed `HEAD` (or explicit primary override); Protocol 13 feature,
   architecture, ancestry-summary, related-feature-summary, attempt, reflection, and executable
-  context; declared path roles; network posture; and optional outer-sandbox requirement.
-- **Outputs**: Validated worktree boundary; canonical read/write/deny path sets; Codex named permission-profile/config selection;
-  Claude `permissions` rules and strict sandbox settings; enforcement status; and an immutable launch
-  specification attached to the Skill invocation.
+  context; canonical workspace receipt; declared path roles; selected client executable; network
+  posture; and optional outer-sandbox requirement.
+- **Outputs**: Validated worktree boundary; canonical task read/write/deny sets; attested read-only
+  runtime-bootstrap files separate from those sets; Codex named profile or Claude strict sandbox;
+  finalized launch/config/bootstrap digests; Capability Completion Envelope 1; enforcement receipt;
+  and only validated successful capability state.
 - **Obligations**: Resolve real project-relative non-symlink paths; apply deny-before-allow semantics;
   keep writes a subset of the Skill's declared mutation authority; disable network unless explicitly
   required; scrub ambient credential access; reject primary mutation without the explicit override,
-  never infer authority from primary dirty state, reject profile widening; and prevent launch unless one
-  supported enforcement layer covers every declared path rule.
+  never infer authority from primary dirty state; attest only the selected real executable outside
+  project authority, reject unsafe owner/mode/path substitution and stale bootstrap identity; keep
+  runtime bootstrap out of task-policy parity; bind workspace/bootstrap/completion identity into the
+  finalized launch and receipt; require schema-constrained semantic completion; and prevent launch
+  unless one supported enforcement layer covers every declared path rule.
 - **Failures**: Primary or non-Git mutation without explicit authorization, missing committed input,
   missing policy coverage, duplicate or mismatched Skill bindings, path escape,
-  symlink/unsafe root, unavailable native sandbox without an approved outer equivalent, unsupported
-  integration, configuration widening, or executor refusal stops the invocation and all downstream
-  nodes.
+  symlink/unsafe root, unresolved or mutable runtime bootstrap, unavailable native sandbox without an
+  approved outer equivalent, unsupported integration, configuration widening, client lifecycle
+  failure, nonzero transport exit, malformed/stale/failed completion, missing gate evidence, or
+  executor refusal stops the invocation and all downstream nodes.
 - **Compatibility**: Codex uses a selected named permission profile when supported and otherwise an
-  equivalently restrictive sandbox/outer boundary. Claude uses permission rules together with an
-  enabled sandbox, `failIfUnavailable`, and no unsandboxed retry. Native syntax may evolve while the
-  normalized policy and fail-closed semantics remain stable.
+  equivalently restrictive sandbox/outer boundary. A native Codex launch may add only its attested
+  real executable as runtime-bootstrap read authority; this is digest-bound integration runtime, not
+  project/task context. Claude uses permission rules with `failIfUnavailable` and no unsandboxed
+  retry. Codex JSONL/output-schema and Claude JSON-schema output both realize Capability Completion
+  Envelope 1. Native syntax may evolve while normalized task authority and fail-closed semantics stay
+  stable.
 - **Example**: A `concorde-standard-dev-loop` leaf stage receives read access to its selected feature
   and owned module locators; it receives write access only to
   `.concorde/attempts/<stable-feature-id>/**` and `.concorde/reflections/**`. A reflection-triage
-  implementer stage instead receives write access scoped to the same isolated worktree established
-  before investigation and planning.
+  implementer stage instead receives write access scoped to the same isolated worktree. The host adds
+  one SHA-256-attested Codex binary read to bootstrap the sandbox, then accepts the leaf only after a
+  success envelope reports passed gates and no limitations.
 - **Implementing entities**: `entity.capabilities.worktree-gate`, `entity.capabilities.operation-runtime`,
   `entity.capabilities.operation-binding`, `entity.capabilities.operation-state`,
-  `entity.capabilities.policy-compiler`, `entity.capabilities.process-launcher`,
+  `entity.capabilities.policy-compiler`, `entity.capabilities.runtime-bootstrap`,
+  `entity.capabilities.completion-envelope`, `entity.capabilities.process-launcher`,
   `entity.concorde.coding-agent`, and `module.concorde.understanding`.
 
 ## Architecture Zoom
 
 | Entity ID | Role |
 |---|---|
-| `entity.capabilities.operation-runtime` | Validates direct capability/binding coverage and supplies immutable leaf launch specifications. |
+| `entity.capabilities.operation-runtime` | Validates direct capability/binding coverage, supplies the canonical workspace receipt, and admits only successfully completed leaves to state. |
 | `entity.capabilities.worktree-gate` | Reads only Git identity and exact `HEAD`, accepts linked worktrees, and rejects primary-worktree mutation unless the explicit override is present. |
 | `entity.capabilities.operation-binding` | Carries exact stage, occurrence, capability, agent, and narrowing bindings; prevents undeclared, duplicated, widened, or order-mismatched execution. |
-| `entity.capabilities.operation-state` | Carries request plus prior bounded capability results/receipts so a later stage can consume them without reopening unrelated sources. |
-| `entity.capabilities.policy-compiler` | Freezes normalized policy and Codex/Claude/outer configurations, proving native effective-set parity and narrowing-only composition. |
-| `entity.capabilities.process-launcher` | Performs injectable real CLI preflight/execution; starts only after digest/enforcement/version checks and returns a structured receipt. |
+| `entity.capabilities.operation-state` | Carries request plus validated successful capability/completion/receipt triples so later stages never consume a semantic failure. |
+| `entity.capabilities.policy-compiler` | Freezes normalized task policy and Codex/Claude/outer configurations, keeping integration runtime bootstrap out of task parity. |
+| `entity.capabilities.runtime-bootstrap` | Canonicalizes and attests the selected Codex executable, rejects project-local/mutable/substituted paths, and binds its exact read grant to the finalized launch. |
+| `entity.capabilities.completion-envelope` | Versioned semantic success/failure, output, limitations, gates, and launch/workspace/bootstrap identity shared by Codex and Claude. |
+| `entity.capabilities.process-launcher` | Finalizes runtime bootstrap, invokes native structured output, validates completion, and returns a matching receipt or raises before state admission. |
 | `entity.concorde.coding-agent` | Enforces the selected Codex, Claude, or outer sandbox configuration while model transport stays outside project network authority. |
 | `module.concorde.lifecycle` | Adopts the same per-leaf launch policy across the standard development loop's six-capability graph. |
 | `module.concorde.reflections` | Adopts the same per-leaf launch policy, keeping investigators read-only and implementers scoped to isolated worktrees. |
@@ -160,6 +181,24 @@ effective read/write/deny sets before validating their native configuration shap
    **Then** both deny undeclared paths, allow the same declared paths, disable ambient network by
    default, and fail rather than falling back to an unconfined process.
 
+### User Story 3 — Distinguish transport from phase completion (Priority: P1)
+
+A workflow host receives a zero-exit client process only as transport evidence and advances the
+Operation after a separately validated semantic completion proves every reported mandatory gate.
+
+**Why this priority**: A client can exit zero after truthfully reporting that no workspace gate or
+source inspection ran; treating that prose as success violates every downstream safety guarantee.
+
+**Independent Test**: Inject Codex and Claude results for valid success, explicit failure at exit
+zero, malformed/stale completion, lifecycle error, and a recovered command failure; require only the
+first and recovered cases to enter Operation state.
+
+**Acceptance Scenario**:
+
+1. **Given** a client exits zero but returns `status: failed` with a failed workspace gate, **When**
+   the host validates Capability Completion Envelope 1, **Then** it emits a failed receipt, raises,
+   and invokes no downstream capability.
+
 ## Requirements
 
 ### Functional Requirements
@@ -198,6 +237,28 @@ effective read/write/deny sets before validating their native configuration shap
   `--allow-primary-worktree` only as the machine assertion of explicit maintainer authorization.
   The gate MUST inspect only Git identity/commit metadata and MUST NOT read, stash, copy, reset,
   clean, or otherwise import or alter primary dirty contents.
+- **FR-012**: Before native Codex execution, the host MUST resolve the selected command to one real
+  executable outside project authority, require a trusted owner plus no group/world write, hash its
+  bytes and metadata, add only that exact path as read-only runtime bootstrap, and bind the
+  attestation to finalized configuration, launch, and receipt digests. A stale, substituted, unsafe,
+  unresolved, or project-local executable MUST fail before model launch.
+- **FR-013**: Runtime-bootstrap paths MUST remain a separately reported integration dependency and
+  MUST NOT enter normalized task read/write sets or Codex/Claude task-authority parity. Outer
+  enforcement and integrations that bootstrap themselves MUST add no Codex runtime grant.
+- **FR-014**: The host MUST give every Operation-composed leaf a canonical, digest-bound Protocol 13
+  workspace receipt. That receipt satisfies the leaf's workspace gate; the leaf MUST NOT rerun the
+  broader resolver from its narrower policy. The exact script declared by that leaf MUST remain
+  readable as framework authority for any later phase Tool invocation.
+- **FR-015**: Every real agent process MUST return Capability Completion Envelope 1 with exact
+  operation/stage/occurrence/capability, finalized launch, workspace, and runtime-bootstrap identity;
+  semantic `success | failed`; usable output; limitations; and non-empty unique gate evidence.
+- **FR-016**: Process exit zero MUST be necessary but insufficient for success. Nonzero exit, native
+  lifecycle error, malformed/missing/stale/contradictory envelope, explicit failure, failed gate, or
+  success with limitations MUST create a failed receipt and raise before `CapabilityResult` state.
+  A recovered command failure MAY complete successfully when the final envelope is valid.
+- **FR-017**: Codex MUST use JSONL lifecycle evidence plus schema-constrained final output; Claude
+  MUST use equivalent JSON-schema output. Free-form phrase matching and blanket command-exit
+  heuristics MUST NOT determine semantic completion.
 
 ### Non-Functional Requirements
 
@@ -212,6 +273,9 @@ effective read/write/deny sets before validating their native configuration shap
 
 - Workflow hosts own agent-process creation and can pass Codex or Claude native configuration; the
   injected executor contract is therefore the enforcement handoff, not LangGraph itself.
+- The selected client binary is already trusted to host the agent process; attesting and admitting
+  that exact immutable executable to bootstrap its own native sandbox does not authorize its package
+  directory, siblings, project data, or task writes.
 - Codex and Claude configuration syntax can change independently; Concorde validates a stable
   normalized policy and renders version-appropriate native configuration at the host boundary.
 - The selected feature's providing module may expose owned implementation locators needed to change
@@ -230,6 +294,12 @@ effective read/write/deny sets before validating their native configuration shap
   invokes no executor, and a failure at either level prevents the correct downstream nodes.
 - **SC-005**: Executable tests reject the primary worktree, accept a linked worktree created at the
   same committed `HEAD`, and prove tracked/untracked primary changes are absent from that target.
+- **SC-006**: A real standalone Codex 0.153.2 launch under the generated read-only profile executes an
+  authorized tool without a runtime `execvp` failure; its receipt carries distinct requested/final
+  launch and runtime-bootstrap digests.
+- **SC-007**: Injected tests cover valid success, explicit zero-exit failure, nonzero transport
+  failure, malformed/stale completion, missing/failed gates, native lifecycle error, and recovered
+  command failure for both result parsing and downstream stopping.
 
 ## Edge Cases
 
@@ -252,3 +322,9 @@ effective read/write/deny sets before validating their native configuration shap
 - A primary worktree is dirty because another programmer is active; the gate accepts a linked
   worktree at committed `HEAD` and leaves every primary byte untouched. If the required input exists
   only in dirty state, the agent reports it missing.
+- A PATH entry is a wrapper, symlink, project file, untrusted-owner file, or group/world-writable
+  executable; bootstrap attestation rejects it or resolves only its safe real external target.
+- A direct Skill invocation has no host receipt and runs Protocol 13 itself; an Operation leaf uses
+  the supplied receipt and does not reopen global resolver inputs.
+- A command fails during diagnosis and the Skill safely recovers; its final success envelope may be
+  admitted. A mandatory gate fails even though the client exits zero; its failed envelope stops.

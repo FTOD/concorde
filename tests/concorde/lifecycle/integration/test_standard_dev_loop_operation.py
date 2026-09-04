@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
@@ -225,6 +226,17 @@ class StandardDevLoopOperationIntegrationTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "plan failed"):
             self.build(execute).invoke({"request": "failure", "capability_results": []})
         self.assertEqual(calls, ["concorde-specify", "concorde-plan"])
+
+    def test_structured_result_without_completion_never_enters_prior_state(self):
+        calls: list[str] = []
+
+        def execute(invocation: OperationExecution):
+            calls.append(invocation.capability.name)
+            return SimpleNamespace(output="transport-only", receipt=object())
+
+        with self.assertRaisesRegex(TypeError, "requires completion evidence"):
+            self.build(execute).invoke({"request": "semantic completion", "capability_results": []})
+        self.assertEqual(calls, ["concorde-specify"])
 
     def test_missing_langgraph_and_prepopulated_results_fail_before_execution(self):
         real_import = __import__

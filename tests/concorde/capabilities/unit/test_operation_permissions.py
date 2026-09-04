@@ -17,8 +17,10 @@ from concorde.capabilities.operation_permissions import (  # noqa: E402
     PolicyBinding,
     compare_effective_boundaries,
     compile_policy,
+    finalize_codex_configuration,
     render_claude_configuration,
     render_codex_configuration,
+    runtime_bootstrap_file,
     verify_effective_subset,
 )
 from concorde.capabilities.skill_assets import EffectDeclaration  # noqa: E402
@@ -147,6 +149,34 @@ class OperationPermissionTests(unittest.TestCase):
             render_codex_configuration(policy, native_enforcement=True).argv,
             codex.argv,
         )
+
+        bootstrap = runtime_bootstrap_file(
+            path="/opt/codex/bin/codex",
+            sha256="sha256:" + "b" * 64,
+            size=8192,
+            mode=0o755,
+            owner=0,
+        )
+        finalized = finalize_codex_configuration(codex, (bootstrap,))
+        finalized_profile = finalized.configuration["permissions"][finalized.permission_profile]
+        self.assertEqual(finalized_profile["filesystem"][bootstrap.path], "read")
+        self.assertNotIn(bootstrap.path, finalized_profile["filesystem"][":workspace_roots"])
+        self.assertEqual(finalized.runtime_bootstrap, (bootstrap,))
+        self.assertEqual(finalized.argv[0], bootstrap.path)
+        self.assertNotEqual(finalized.digest, codex.digest)
+        self.assertTrue(compare_effective_boundaries(finalized, claude))
+        with self.assertRaisesRegex(PermissionPolicyError, "exactly one"):
+            finalize_codex_configuration(codex, ())
+        with self.assertRaisesRegex(PermissionPolicyError, "exactly one"):
+            finalize_codex_configuration(codex, (bootstrap, bootstrap))
+        with self.assertRaisesRegex(PermissionPolicyError, "sha256 must be canonical"):
+            runtime_bootstrap_file(
+                path=bootstrap.path,
+                sha256="sha256:" + "B" * 64,
+                size=bootstrap.size,
+                mode=bootstrap.mode,
+                owner=bootstrap.owner,
+            )
 
         settings = json.loads(claude.settings_json)
         self.assertEqual(settings["permissions"]["defaultMode"], "dontAsk")

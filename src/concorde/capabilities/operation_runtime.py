@@ -49,6 +49,7 @@ class CapabilityResult:
     capability: str
     output: str
     receipt: Any | None = None
+    completion: Any | None = None
 
 
 @dataclass(frozen=True)
@@ -85,6 +86,11 @@ _STAGE_NAME = re.compile(r"^[a-z][a-z0-9-]*$")
 @dataclass(frozen=True)
 class PermissionRuntimeContext:
     project_root: str
+    feature_id: str
+    feature_path: str
+    module_architecture: str
+    attempt_dir: str
+    attempt_state: str
     role_paths: dict[str, tuple[str, ...]]
     denied_paths: tuple[str, ...]
     source_digest: str
@@ -118,6 +124,11 @@ def resolve_permission_runtime_context(
     ).hexdigest()
     return PermissionRuntimeContext(
         project_root=project.as_posix(),
+        feature_id=workspace.feature_id,
+        feature_path=workspace.feature_path,
+        module_architecture=workspace.module_architecture,
+        attempt_dir=workspace.attempt_dir,
+        attempt_state=workspace.attempt_state,
         role_paths=roles,
         denied_paths=tuple(denied),
         source_digest=digest,
@@ -161,10 +172,15 @@ def permission_launch_factory(
             network=invocation.binding.network,
             credentials=invocation.binding.credentials,
         )
+        role_paths = dict(context.role_paths)
+        if "framework" in effects.reads and invocation.capability.script_paths:
+            role_paths["framework"] = tuple(
+                sorted(dict.fromkeys((*role_paths.get("framework", ()), *invocation.capability.script_paths)))
+            )
         policy = compile_policy(
             effects,
             binding,
-            context.role_paths,
+            role_paths,
             deny_paths=context.denied_paths,
             outer_sandbox_required=not native_enforcement,
         )
@@ -181,6 +197,18 @@ def permission_launch_factory(
                 outer_sandbox=outer_sandbox,
             )
         )
+        receipt = {
+            "schema_version": 13,
+            "feature_id": context.feature_id,
+            "feature_path": context.feature_path,
+            "module_architecture": context.module_architecture,
+            "attempt_dir": getattr(context, "attempt_dir", ""),
+            "attempt_state": getattr(context, "attempt_state", "unknown"),
+            "role_paths": {name: list(paths) for name, paths in sorted(role_paths.items())},
+            "denied_paths": list(context.denied_paths),
+            "source_digest": context.source_digest,
+        }
+        receipt_json = json.dumps(receipt, sort_keys=True, separators=(",", ":"))
         return build_launch_specification(
             operation=invocation.operation,
             stage=invocation.stage,
@@ -194,6 +222,7 @@ def permission_launch_factory(
             prior_results=tuple(
                 f"{item.capability}:{item.output}" for item in invocation.prior_results
             ),
+            workspace_receipt_json=receipt_json,
             workspace_digest=context.source_digest,
             policy=policy,
             native_configuration=native,
@@ -304,18 +333,27 @@ def _langgraph_api() -> tuple[Any, Any, Any]:
     return StateGraph, START, END
 
 
-def _execution_output(value: Any, capability: str) -> tuple[str, Any | None]:
+def _execution_output(value: Any, capability: str) -> tuple[str, Any | None, Any | None]:
     if isinstance(value, str):
-        return value, None
+        return value, None, None
     output = getattr(value, "output", None)
     receipt = getattr(value, "receipt", None)
+    completion = getattr(value, "completion", None)
     if not isinstance(output, str):
         raise TypeError(f"Operation executor for {capability!r} must return a string result")
     if receipt is None:
         raise TypeError(
             f"structured Operation executor result for {capability!r} requires a receipt"
         )
-    return output, receipt
+    if completion is None:
+        raise TypeError(
+            f"structured Operation executor result for {capability!r} requires completion evidence"
+        )
+    if getattr(receipt, "status", None) != "success" or getattr(completion, "status", None) != "success":
+        raise RuntimeError(f"Operation executor for {capability!r} returned unsuccessful completion")
+    if getattr(completion, "capability", None) != capability or getattr(completion, "output", None) != output:
+        raise RuntimeError(f"Operation executor for {capability!r} returned mismatched completion")
+    return output, receipt, completion
 
 
 def build_operation_graph(
@@ -406,7 +444,7 @@ def build_operation_graph(
                     value = executor(invocation)
                 else:
                     value = nested_dispatcher(invocation)  # type: ignore[misc]
-                output, receipt = _execution_output(value, capability.name)
+                output, receipt, completion = _execution_output(value, capability.name)
                 completed.append(
                     CapabilityResult(
                         operation=operation,
@@ -415,6 +453,7 @@ def build_operation_graph(
                         capability=capability.name,
                         output=output,
                         receipt=receipt,
+                        completion=completion,
                     )
                 )
             return {"capability_results": completed}

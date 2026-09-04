@@ -168,6 +168,15 @@ class SkillAssetTests(unittest.TestCase):
             ".concorde/framework/operations/concorde-standard-dev-loop/operation.py",
             installed_operation.body,
         )
+        source_analyze = load_skill_prompt(REPOSITORY_ROOT, "concorde-analyze", "")
+        installed_analyze = load_skill_prompt(
+            REPOSITORY_ROOT, "concorde-analyze", ".concorde/framework"
+        )
+        self.assertEqual(source_analyze.script_paths, ("scripts/workspace.py",))
+        self.assertEqual(
+            installed_analyze.script_paths,
+            (".concorde/framework/scripts/workspace.py",),
+        )
 
     def test_projection_preserves_complete_body_and_adds_capability_provenance(self):
         plan_path = REPOSITORY_ROOT / "operations/concorde-plan/SKILL.md"

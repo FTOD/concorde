@@ -32,8 +32,9 @@ interfaces:
 A user can invoke one installed Operation skill to run a permission-bounded four-stage LangGraph:
 specify → nested plan → tasks → deliver. Its six direct capability occurrences are specify; public
 `concorde-plan`; tasks then implement; validate then deliver. The outer graph never names planner
-internals. Every direct leaf receives its own immutable policy/configuration before the host executor,
-receives exact prior capability results, and prevents all downstream work on failure.
+internals. Every direct leaf receives its own immutable policy/configuration and host Protocol 13
+receipt, returns Capability Completion Envelope 1, receives only validated prior successes, and
+prevents all downstream work on transport or semantic failure.
 
 The installed Skill enters the paired graph through `scripts/run-operation.py`, which selects the
 installer-verified `.concorde/.venv`; a source checkout selects its root `.venv`. Neither path relies
@@ -82,17 +83,19 @@ maintainer supplied the explicit primary-mutation override.
   integration, verified managed interpreter, exact direct capability inventory/bindings, leaf
   effects, and injected executor.
 - **Outputs**: Ordered results for six direct capability occurrences grouped under `specify`, `plan`,
-  `tasks`, and `deliver`; leaf results may include enforcement receipts.
+  `tasks`, and `deliver`; every real leaf result includes validated completion and enforcement
+  receipts, while describe/test injection may retain an explicitly unreceipted string sentinel.
 - **Obligations**: Resolve canonical bodies/effects; preserve stage and occurrence order; expose only
   public `concorde-plan` to the outer graph; pass exact immutable prior results; compile one
   narrowing default-deny policy per leaf; require a non-null launch factory and explicit enforcing
-  nested dispatcher; start with no results; stop on any runtime, direct, or nested failure; perform
+  nested dispatcher; start with no results; admit only a successful identity-bound completion; stop
+  on any runtime, direct, nested, transport, lifecycle, or semantic failure; perform
   no dependency installation or package-index access during invocation; require isolation before
   the first mutating occurrence; exclude primary dirty state; and reject normative
   Concorde Protocol evolution before any graph node or workspace mutation.
 - **Failures**: Missing/corrupt managed interpreter, invalid/missing pair metadata, cycle, unknown
   capability/effect, binding mismatch, unsafe path, unavailable enforcement, invalid
-  input/result/receipt, unavailable/mismatched LangGraph, or executor exception stops
+  input/result/completion/receipt, unavailable/mismatched LangGraph, or executor exception stops
   construction/invocation without fabricated completion.
 - **Compatibility**: Concorde 2.1.0, Package Manifest 2, installed LangGraph `1.2.11` (runtime API
   range `>=1.2,<2`), and source-root/installed-managed venv layouts; the public four-stage contract
@@ -168,6 +171,12 @@ or invoke this graph and do not select a feature or create an attempt. Name
 - **FR-011**: Actual Operation execution MUST reject the primary worktree by default and run specify,
   plan/attempt creation, tasks/implementation, validation, and delivery in one linked worktree from
   committed primary `HEAD`; only an explicit maintainer-authorized override may permit primary mutation.
+- **FR-012**: Every real direct leaf MUST receive a host Protocol 13 receipt and MUST return a valid
+  Capability Completion Envelope 1; only `status: success`, passed gates, no limitations, and matching
+  launch/workspace/bootstrap identities may append a `CapabilityResult`.
+- **FR-013**: Exit-zero semantic failure, malformed/stale completion, native lifecycle failure, or a
+  missing completion MUST prevent the current occurrence and every later direct or nested occurrence
+  from entering state.
 
 ## Success Criteria
 
@@ -180,6 +189,8 @@ or invoke this graph and do not select a feature or create an attempt. Name
 - **SC-004**: Policy tests prove tasks/implement and validate/deliver receive distinct non-union
   digests; base imports/preview do not eagerly import LangGraph; installed runtime checks and a real
   graph invocation pass with package-index access disabled.
+- **SC-005**: Completion-envelope tests prove a zero-exit failed gate and every malformed/stale result
+  stop the graph, while a recoverable command failure followed by validated success may continue.
 
 ## Edge Cases
 
@@ -189,6 +200,8 @@ or invoke this graph and do not select a feature or create an attempt. Name
 - A native sandbox is unavailable and no verified equivalent outer boundary exists.
 - Graph input contains prior results, an executor returns a non-string/unreceipted result, or a
   nested failure attempts to continue downstream.
+- A client transport exits zero after reporting an unmet mandatory gate; the failed completion is
+  never retained as a prior result.
 - The projected Skill is correct but `.concorde/.venv` was removed or corrupted after installation;
   the bootstrap fails with an actionable repair path rather than falling back to ambient Python.
 - A request appears small or backward compatible but changes normative Concorde Protocol semantics;

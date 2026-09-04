@@ -56,7 +56,13 @@ class ReflectionsTriageOperationIntegrationTests(unittest.TestCase):
     def test_investigate_is_read_only_and_terminates_after_analyze(self):
         calls, _ = self.run_graph("investigate")
         self.assertEqual([call.capability.name for call in calls], ["concorde-analyze"])
-        self.assertEqual(calls[0].launch_specification.policy.write_paths, ())
+        launch = calls[0].launch_specification
+        self.assertEqual(launch.policy.write_paths, ())
+        self.assertIn("scripts/workspace.py", launch.policy.read_paths)
+        receipt = json.loads(launch.workspace_receipt_json)
+        self.assertEqual(receipt["schema_version"], 13)
+        self.assertEqual(receipt["source_digest"], launch.workspace_digest)
+        self.assertIn(receipt["feature_path"], launch.policy.read_paths)
 
     def test_plan_route_uses_nested_public_planner_and_never_fast_loop(self):
         calls, _ = self.run_graph("implement", "plan")

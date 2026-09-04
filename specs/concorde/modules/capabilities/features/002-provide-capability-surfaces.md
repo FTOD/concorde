@@ -111,18 +111,28 @@ the managed runtime launcher; no shell activation is required.
   explicitly authorized effects.
 - **Entry points**: The 17 Package Manifest 2 leaf Skills under `skills/` (15 public, two internal).
 - **Inputs**: User intent, Protocol 13 context when path-sensitive, complete canonical prompt, and
-  only the maintained/temporal/executable sources that prompt authorizes.
-- **Outputs**: Conversational result, explicit Tool results, evidence, and only phase-authorized file
-  changes.
+  only the maintained/temporal/executable sources that prompt authorizes. A direct invocation runs
+  its workspace Tool; an Operation-composed invocation instead receives the host's canonical,
+  digest-bound Protocol 13 receipt, which satisfies that same gate without reopening global resolver
+  inputs inside the narrower leaf sandbox.
+- **Outputs**: Direct invocation returns its conversational result, explicit Tool results, evidence,
+  and only phase-authorized changes. Operation invocation returns Capability Completion Envelope 1:
+  bound identity/digests, semantic `success | failed`, usable output, limitations, and non-empty gate
+  evidence.
 - **Obligations**: Preserve complete prompt/phase boundaries; keep public leaves independently
   invocable and internal leaves Operation-only; declare exact effects when composed; invoke Tools
   explicitly; preserve the committed-base isolated-worktree gate in every mutating source/projection;
+  accept a trusted Operation workspace receipt as the completed Protocol 13 gate; never rerun the
+  broad resolver from a narrower leaf policy; report every mandatory gate in the completion envelope;
   surface failures/evidence limits; contain no multi-Skill graph.
 - **Failures**: Workspace/tool failure, missing authority, invalid project state, denied permission,
   or unmet phase gate stops that Skill without fallback to another source.
-- **Compatibility**: Protocol 13 and Delivery Proposal 9 use Tool terminology. Stable public names are
-  `concorde-*`; retired dotted prompt identities are not aliases.
-- **Implementing entities**: `entity.capabilities.skill-prompt`, `entity.concorde.coding-agent`,
+- **Compatibility**: Protocol 13, Delivery Proposal 9, and Capability Completion Envelope 1 use Tool
+  terminology. Stable public names are `concorde-*`; retired dotted prompt identities are not
+  aliases. Direct conversational invocation remains unchanged; the envelope is required only when a
+  real agent process is composed by an Operation.
+- **Implementing entities**: `entity.capabilities.skill-prompt`,
+  `entity.capabilities.completion-envelope`, `entity.concorde.coding-agent`,
   `module.concorde.understanding`, `module.concorde.lifecycle`, and `module.concorde.reflections`.
 - **Example**: The plan Operation launches internal read-only context then temporal author leaves
   with distinct effect-derived policies.
@@ -134,6 +144,7 @@ the managed runtime launcher; no shell activation is required.
 | `entity.capabilities.skill-sources` | Owns one canonical directory per leaf Skill. |
 | `entity.capabilities.operation-sources` | Owns one canonical Python/Markdown pair per Operation. |
 | `entity.capabilities.skill-prompt` | Supplies a complete public/internal leaf contract with exposure/effects. |
+| `entity.capabilities.completion-envelope` | Makes Operation-hosted phase completion explicit and machine-validated. |
 | `entity.capabilities.projector` | Validates and renders public leaves plus paired Operation skills while filtering internals. |
 | `entity.concorde.coding-agent` | Executes the installed prompt within its declared boundary. |
 | `entity.concorde.package-manifest` | Declares the exact leaf inventory and shared capability namespace. |
@@ -177,6 +188,15 @@ the managed runtime launcher; no shell activation is required.
 - **FR-006**: Every canonical and projected Skill/Operation that can mutate project or external
   state MUST require a linked worktree at committed primary `HEAD` by default, exclude primary dirty
   state, and name `--allow-primary-worktree` only as an explicit maintainer-authorized override.
+- **FR-007**: An Operation-composed path-sensitive leaf MUST accept the host's canonical Protocol 13
+  receipt as its completed workspace gate, MUST NOT rerun the broader workspace resolver inside its
+  narrowed sandbox, and MUST receive the exact declared script entry point as framework authority.
+- **FR-008**: Every real agent-process leaf MUST return Capability Completion Envelope 1 with exact
+  launch/workspace/bootstrap identity, semantic status, output, limitations, and non-empty unique
+  gate evidence; process exit or free-form prose alone MUST NOT establish completion.
+- **FR-009**: A failed mandatory gate MUST produce a failed envelope. A successful envelope MUST
+  report no limitation and no failed gate; only a host-validated success may become an Operation
+  capability result.
 
 ## Success Criteria
 
@@ -185,6 +205,8 @@ the managed runtime launcher; no shell activation is required.
 - **SC-002**: Source/projection parity and installed workflow tests prove that leaf Skill semantics and
   Tool entry points are equivalent across supported integrations and that Operation prompts select
   the intended managed venv without activation.
+- **SC-003**: Injected Codex/Claude executor tests prove success, explicit failure at exit zero,
+  malformed/stale completion, recoverable tool failure, and downstream stopping without a live model.
 
 ## Edge Cases
 
@@ -193,3 +215,7 @@ the managed runtime launcher; no shell activation is required.
 - A paired Operation uses the same public name as a leaf Skill.
 - A Skill declares a Tool script that does not resolve inside the installed framework.
 - An Operation projection resolves its pair but bypasses or cannot resolve the colocated bootstrap.
+- An Operation already carries a validated workspace receipt; rerunning Protocol 13 would require
+  global inputs outside the leaf's bounded context and is forbidden.
+- A client exits zero after a mandatory gate fails; the failed completion envelope prevents state
+  admission and every downstream occurrence.

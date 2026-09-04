@@ -1,22 +1,19 @@
 <!--
 Sync Impact Report
-- Version change: 8.0.0 -> 8.1.0 (MINOR: adds a mandatory committed-base isolated-worktree
-  boundary for every agent-authored mutation)
-- Added principle:
-  - A.VII Agent Mutations Start in Isolated Worktrees: read-only work may inspect the primary
-    worktree, but planning, attempt/control creation, project edits, and external mutations default
-    to a unique linked worktree created from the primary worktree's exact committed HEAD.
+- Version change: 8.1.0 -> 8.2.0 (MINOR: adds mandatory attested agent-runtime bootstrap and typed
+  semantic completion for Operation-composed leaves)
 - Modified principles and standards:
-  - B.II Protocol evolution now binds to an exact committed base and excludes, preserves, and does
-    not require cleanliness of unrelated primary-worktree dirty state.
-  - Workflow and development gates reject staged, unstaged, untracked, or ignored primary-worktree
-    content as implicit agent input and require an explicit primary-mutation override.
-- Compatibility impact: agent mutation in a primary worktree is no longer the default. Existing
-  mutating Skills, Operations, and deterministic entry points must move to a linked worktree or carry
-  an explicit maintainer-authorized primary-worktree override; read-only capabilities are unchanged.
-- Required migration: reconcile workflow/lifecycle/reflection/capability specifications, canonical
-  and projected agent guidance, Git worktree preflight code/tests, architecture diagrams, and resolve
-  R-045 through the single Protocol cutover commit.
+  - B.I now separates integration runtime-bootstrap reads from task authority, accepts a host-bound
+    Protocol 13 receipt as an Operation leaf's workspace gate, and requires Capability Completion
+    Envelope 1 before downstream state admission.
+  - Development gates now treat process exit as transport evidence only and reject missing,
+    malformed, stale, failed, or gate-incomplete semantic completion.
+- Compatibility impact: real Codex/Claude Operation leaves must support native structured output;
+  injected describe/test executors may retain string sentinels. Codex native execution adds only the
+  attested selected executable as a separately digested read-only bootstrap dependency.
+- Required migration: reconcile capabilities/lifecycle specifications and architecture, native
+  render/executor/runtime code, tests, system overview, generated projection, and close R-052/R-053
+  through this explicitly authorized Protocol cutover.
 - Deferred placeholders: none.
 -->
 # Concorde Constitution
@@ -225,6 +222,13 @@ behavioral contract and MUST be public. Installation MUST project public leaf Sk
 skills into the user's agent Skill namespace while retaining every packaged leaf and paired Python
 graph in the installed framework.
 
+An Operation-composed path-sensitive leaf MUST consume the host's canonical digest-bound Protocol 13
+receipt as its already-completed workspace gate rather than reopening global resolver inputs from a
+narrower sandbox. Native integration bootstrap MUST be attested, read-only, separately digested, and
+excluded from task authority. A real agent process MUST return a versioned typed completion whose
+identity, semantic status, limitations, and gate evidence are validated before its result enters
+Operation state; process exit zero or free-form prose alone MUST NOT establish success.
+
 ### B.II Concorde Self-Applies and Explicitly Evolves Its Protocol
 
 Concorde MUST develop every normal change under Part A using its own tooling. Self-application is the
@@ -346,9 +350,12 @@ MUST load canonical direct capability bodies rather than duplicate or flatten th
 stage/capability order and nested boundaries, make state/control transitions inspectable, and stop or
 route failures as its paired skill documents. Before every direct leaf launch, trusted code MUST
 resolve concrete non-symlink paths, prove the Operation binding narrows the leaf's effects, render a
-supported native or equivalently narrow outer sandbox configuration, and require a matching receipt.
+supported native or equivalently narrow outer sandbox configuration, attest any exact external
+client executable needed only for runtime bootstrap, and require matching workspace, completion,
+launch, configuration, bootstrap, and enforcement receipts.
 Multi-leaf stages MUST NOT share the union of their effects. Missing, widened, unsafe, or unenforceable
-policy and Tool failures remain explicit and MUST NOT silently fall through to another source.
+policy, runtime bootstrap, semantic completion, and Tool failures remain explicit and MUST NOT enter
+prior-result state or silently fall through to another source.
 
 Tasks explicitly reconcile every affected architecture, feature interface, code path, test, and
 generated projection. Implementation records compact evidence in the attempt before completing each
@@ -378,4 +385,4 @@ or materially expands a mandatory obligation, and PATCH clarifies wording. Every
 architecture review includes a constitution check. Reviewers reject unexplained violations,
 invisible boundary changes, duplicated canonical intent, and implementation claims without evidence.
 
-**Version**: 8.1.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-04
+**Version**: 8.2.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-04

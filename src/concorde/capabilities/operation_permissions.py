@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import PurePosixPath
 from typing import Any, Literal, Mapping
 
@@ -46,6 +46,18 @@ class NormalizedPolicy:
 
 
 @dataclass(frozen=True)
+class RuntimeBootstrapFile:
+    """One host-attested client runtime file admitted outside task authority."""
+
+    path: str
+    sha256: str
+    size: int
+    mode: int
+    owner: int | None
+    digest: str
+
+
+@dataclass(frozen=True)
 class CodexLaunchConfiguration:
     integration: Literal["codex"]
     permission_profile: str
@@ -62,6 +74,8 @@ class CodexLaunchConfiguration:
     policy_digest: str
     enforcement: str
     outer_sandbox: str | None
+    runtime_bootstrap: tuple[RuntimeBootstrapFile, ...]
+    runtime_bootstrap_digest: str
     digest: str
 
 
@@ -80,6 +94,8 @@ class ClaudeLaunchConfiguration:
     policy_digest: str
     enforcement: str
     outer_sandbox: str | None
+    runtime_bootstrap: tuple[RuntimeBootstrapFile, ...]
+    runtime_bootstrap_digest: str
     digest: str
 
 
@@ -98,6 +114,7 @@ class LaunchSpecification:
     request: str
     prompt: str
     prior_results: tuple[str, ...]
+    workspace_receipt_json: str
     workspace_digest: str
     policy: NormalizedPolicy
     native_configuration: NativeLaunchConfiguration
@@ -106,6 +123,7 @@ class LaunchSpecification:
 
 @dataclass(frozen=True)
 class EnforcementReceipt:
+    requested_launch_digest: str
     launch_digest: str
     policy_digest: str
     config_digest: str
@@ -114,13 +132,40 @@ class EnforcementReceipt:
     enforcement: str
     exit_code: int
     status: Literal["success", "failed"]
+    runtime_bootstrap_digest: str
+    completion_schema_version: int
+    completion_status: Literal["success", "failed"]
     limitations: str = "none"
+
+
+@dataclass(frozen=True)
+class CompletionGate:
+    name: str
+    status: Literal["passed", "failed"]
+    evidence: str
+
+
+@dataclass(frozen=True)
+class CapabilityCompletion:
+    schema_version: int
+    operation: str
+    stage: str
+    occurrence: int
+    capability: str
+    launch_digest: str
+    workspace_digest: str
+    runtime_bootstrap_digest: str
+    status: Literal["success", "failed"]
+    output: str
+    limitations: str
+    gates: tuple[CompletionGate, ...]
 
 
 @dataclass(frozen=True)
 class OperationExecutionResult:
     output: str
     receipt: EnforcementReceipt
+    completion: CapabilityCompletion
 
 
 _CREDENTIAL_DENIES = (
@@ -139,6 +184,39 @@ def _canonical(value: Any) -> bytes:
 
 def _digest(value: Any) -> str:
     return "sha256:" + hashlib.sha256(_canonical(value)).hexdigest()
+
+
+def runtime_bootstrap_file(
+    *,
+    path: str,
+    sha256: str,
+    size: int,
+    mode: int,
+    owner: int | None,
+) -> RuntimeBootstrapFile:
+    """Create one immutable attestation whose digest covers every trusted property."""
+
+    if not path or not isinstance(path, str):
+        raise PermissionPolicyError("runtime bootstrap path must be a non-empty string")
+    if (
+        not isinstance(sha256, str)
+        or not sha256.startswith("sha256:")
+        or len(sha256) != 71
+        or any(character not in "0123456789abcdef" for character in sha256[7:])
+    ):
+        raise PermissionPolicyError("runtime bootstrap sha256 must be canonical")
+    if not isinstance(size, int) or size <= 0:
+        raise PermissionPolicyError("runtime bootstrap size must be positive")
+    if not isinstance(mode, int) or mode < 0:
+        raise PermissionPolicyError("runtime bootstrap mode must be non-negative")
+    if owner is not None and (not isinstance(owner, int) or owner < 0):
+        raise PermissionPolicyError("runtime bootstrap owner must be a non-negative integer")
+    payload = {"path": path, "sha256": sha256, "size": size, "mode": mode, "owner": owner}
+    return RuntimeBootstrapFile(**payload, digest=_digest(payload))
+
+
+def runtime_bootstrap_digest(files: tuple[RuntimeBootstrapFile, ...]) -> str:
+    return _digest([asdict(item) for item in files])
 
 
 def _path(value: str) -> str:
@@ -285,6 +363,33 @@ def _toml_value(value: Any) -> str:
     )
 
 
+def _codex_argv(
+    profile: str,
+    profile_configuration: Mapping[str, Any],
+    network: bool,
+    *,
+    executable: str = "codex",
+) -> tuple[str, ...]:
+    return (
+        executable,
+        "--ask-for-approval",
+        "never",
+        "exec",
+        "--ephemeral",
+        "--ignore-user-config",
+        "--strict-config",
+        "-c",
+        f"default_permissions={_toml_value(profile)}",
+        "-c",
+        'approval_policy="never"',
+        "-c",
+        f"permissions.{profile}={_toml_value(profile_configuration)}",
+        "-c",
+        f"features.network_proxy={_toml_value(network)}",
+        "-",
+    )
+
+
 def render_codex_configuration(
     policy: NormalizedPolicy,
     *,
@@ -313,21 +418,13 @@ def render_codex_configuration(
         "permissions": {profile: profile_configuration},
         "features": {"network_proxy": policy.network_enabled},
     }
-    argv: list[str] = [
-        "codex",
-        "--ask-for-approval",
-        "never",
-        "exec",
-        "--ephemeral",
-        "--ignore-user-config",
-        "--strict-config",
-    ]
-    if native_enforcement:
-        argv.extend(("-c", f"default_permissions={_toml_value(profile)}"))
-        argv.extend(("-c", 'approval_policy="never"'))
-        argv.extend(("-c", f"permissions.{profile}={_toml_value(profile_configuration)}"))
-        argv.extend(("-c", f"features.network_proxy={_toml_value(policy.network_enabled)}"))
-    argv.append("-")
+    argv = (
+        _codex_argv(profile, profile_configuration, policy.network_enabled)
+        if native_enforcement
+        else ("codex", "--ask-for-approval", "never", "exec", "--ephemeral", "--ignore-user-config", "--strict-config", "-")
+    )
+    bootstrap: tuple[RuntimeBootstrapFile, ...] = ()
+    bootstrap_digest = runtime_bootstrap_digest(bootstrap)
     payload = {
         "integration": "codex",
         "profile": profile,
@@ -336,13 +433,15 @@ def render_codex_configuration(
         "policy_digest": policy.digest,
         "enforcement": "native" if native_enforcement else "outer",
         "outer_sandbox": outer_sandbox,
+        "runtime_bootstrap": [],
+        "runtime_bootstrap_digest": bootstrap_digest,
     }
     return CodexLaunchConfiguration(
         integration="codex",
         permission_profile=profile,
         approval_policy="never",
         strict_config=True,
-        argv=tuple(argv),
+        argv=argv,
         configuration=configuration if native_enforcement else {},
         effective_read_paths=policy.read_paths,
         effective_write_paths=policy.write_paths,
@@ -353,6 +452,65 @@ def render_codex_configuration(
         policy_digest=policy.digest,
         enforcement="native" if native_enforcement else "outer",
         outer_sandbox=outer_sandbox,
+        runtime_bootstrap=bootstrap,
+        runtime_bootstrap_digest=bootstrap_digest,
+        digest=_digest(payload),
+    )
+
+
+def finalize_codex_configuration(
+    configuration: CodexLaunchConfiguration,
+    runtime_bootstrap: tuple[RuntimeBootstrapFile, ...],
+) -> CodexLaunchConfiguration:
+    """Return the immutable native configuration after host runtime attestation."""
+
+    if configuration.enforcement != "native":
+        if runtime_bootstrap:
+            raise PermissionPolicyError("outer Codex enforcement cannot add native runtime bootstrap files")
+        return configuration
+    if len(runtime_bootstrap) != 1:
+        raise PermissionPolicyError("native Codex launch requires exactly one runtime bootstrap file")
+    paths = [item.path for item in runtime_bootstrap]
+    if len(paths) != len(set(paths)):
+        raise PermissionPolicyError("Codex runtime bootstrap contains duplicate paths")
+    profile = configuration.permission_profile
+    source_profile = configuration.configuration.get("permissions", {}).get(profile)
+    if not isinstance(source_profile, Mapping):
+        raise PermissionPolicyError("Codex configuration has no matching named permission profile")
+    profile_configuration = json.loads(json.dumps(source_profile))
+    filesystem = profile_configuration.get("filesystem")
+    if not isinstance(filesystem, dict):
+        raise PermissionPolicyError("Codex permission profile has no filesystem table")
+    for item in runtime_bootstrap:
+        if item.path in filesystem and filesystem[item.path] != "read":
+            raise PermissionPolicyError(f"runtime bootstrap conflicts with filesystem rule: {item.path}")
+        filesystem[item.path] = "read"
+    complete_configuration = json.loads(json.dumps(configuration.configuration))
+    complete_configuration["permissions"][profile] = profile_configuration
+    bootstrap_digest = runtime_bootstrap_digest(runtime_bootstrap)
+    argv = _codex_argv(
+        profile,
+        profile_configuration,
+        configuration.network_enabled,
+        executable=runtime_bootstrap[0].path,
+    )
+    payload = {
+        "integration": "codex",
+        "profile": profile,
+        "configuration": complete_configuration,
+        "argv": argv,
+        "policy_digest": configuration.policy_digest,
+        "enforcement": configuration.enforcement,
+        "outer_sandbox": configuration.outer_sandbox,
+        "runtime_bootstrap": [asdict(item) for item in runtime_bootstrap],
+        "runtime_bootstrap_digest": bootstrap_digest,
+    }
+    return replace(
+        configuration,
+        argv=argv,
+        configuration=complete_configuration,
+        runtime_bootstrap=runtime_bootstrap,
+        runtime_bootstrap_digest=bootstrap_digest,
         digest=_digest(payload),
     )
 
@@ -425,6 +583,8 @@ def render_claude_configuration(
         "--settings",
         settings_json,
     )
+    bootstrap: tuple[RuntimeBootstrapFile, ...] = ()
+    bootstrap_digest = runtime_bootstrap_digest(bootstrap)
     payload = {
         "integration": "claude",
         "settings": settings,
@@ -432,6 +592,8 @@ def render_claude_configuration(
         "policy_digest": policy.digest,
         "enforcement": "native" if native_enforcement else "outer",
         "outer_sandbox": outer_sandbox,
+        "runtime_bootstrap": [],
+        "runtime_bootstrap_digest": bootstrap_digest,
     }
     return ClaudeLaunchConfiguration(
         integration="claude",
@@ -447,6 +609,8 @@ def render_claude_configuration(
         policy_digest=policy.digest,
         enforcement="native" if native_enforcement else "outer",
         outer_sandbox=outer_sandbox,
+        runtime_bootstrap=bootstrap,
+        runtime_bootstrap_digest=bootstrap_digest,
         digest=_digest(payload),
     )
 
@@ -484,6 +648,7 @@ def build_launch_specification(
     request: str,
     prompt: str,
     prior_results: tuple[str, ...],
+    workspace_receipt_json: str,
     workspace_digest: str,
     policy: NormalizedPolicy,
     native_configuration: NativeLaunchConfiguration,
@@ -500,6 +665,15 @@ def build_launch_specification(
         policy.agent,
     ):
         raise PermissionPolicyError("launch identity differs from normalized policy binding")
+    try:
+        workspace_receipt = json.loads(workspace_receipt_json)
+    except json.JSONDecodeError as error:
+        raise PermissionPolicyError("launch workspace receipt must be canonical JSON") from error
+    if not isinstance(workspace_receipt, dict) or workspace_receipt.get("source_digest") != workspace_digest:
+        raise PermissionPolicyError("launch workspace receipt does not match workspace digest")
+    canonical_receipt = _canonical(workspace_receipt).decode("utf-8")
+    if workspace_receipt_json != canonical_receipt:
+        raise PermissionPolicyError("launch workspace receipt must use canonical serialization")
     payload = {
         "operation": operation,
         "stage": stage,
@@ -511,6 +685,7 @@ def build_launch_specification(
         "request": request,
         "prompt": prompt,
         "prior_results": prior_results,
+        "workspace_receipt": workspace_receipt,
         "workspace_digest": workspace_digest,
         "policy_digest": policy.digest,
         "config_digest": native_configuration.digest,
@@ -526,8 +701,40 @@ def build_launch_specification(
         request=request,
         prompt=prompt,
         prior_results=prior_results,
+        workspace_receipt_json=workspace_receipt_json,
         workspace_digest=workspace_digest,
         policy=policy,
         native_configuration=native_configuration,
         digest=_digest(payload),
+    )
+
+
+def finalize_launch_specification(
+    specification: LaunchSpecification,
+    runtime_bootstrap: tuple[RuntimeBootstrapFile, ...],
+) -> LaunchSpecification:
+    """Bind attested host bootstrap files into one final immutable launch."""
+
+    native = specification.native_configuration
+    if specification.integration == "codex":
+        if not isinstance(native, CodexLaunchConfiguration):
+            raise PermissionPolicyError("Codex launch has a non-Codex native configuration")
+        native = finalize_codex_configuration(native, runtime_bootstrap)
+    elif runtime_bootstrap:
+        raise PermissionPolicyError("Claude launch cannot receive Codex runtime bootstrap files")
+    return build_launch_specification(
+        operation=specification.operation,
+        stage=specification.stage,
+        occurrence=specification.occurrence,
+        capability=specification.capability,
+        integration=specification.integration,
+        agent=specification.agent,
+        project_root=specification.project_root,
+        request=specification.request,
+        prompt=specification.prompt,
+        prior_results=specification.prior_results,
+        workspace_receipt_json=specification.workspace_receipt_json,
+        workspace_digest=specification.workspace_digest,
+        policy=specification.policy,
+        native_configuration=native,
     )
