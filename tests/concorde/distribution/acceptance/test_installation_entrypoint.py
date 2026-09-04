@@ -133,6 +133,102 @@ class InstallationEntrypointAcceptance(unittest.TestCase):
             )
             self.assertEqual(json.loads(repeat.stdout)["status"], "unchanged")
 
+    def test_installed_official_viewer_launches_raw_graph_and_rejects_explore_envelope(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            target = base / "project"
+            applied = self.run_installer(
+                target, "--integration", "codex", "--apply"
+            )
+            self.assertEqual(applied.returncode, 0, applied.stderr or applied.stdout)
+            graph = target / ".ua/knowledge-graph.json"
+            graph.parent.mkdir(parents=True)
+            graph.write_text(
+                json.dumps(
+                    {
+                        "version": "1.0.0",
+                        "project": {"name": "fixture"},
+                        "nodes": [],
+                        "edges": [],
+                        "layers": [],
+                        "tour": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            environment = runtime_install_environment(create_langgraph_index(base))
+            launcher = target / ".concorde/framework/scripts/run-viewer.py"
+            launched = subprocess.run(
+                [
+                    sys.executable,
+                    str(launcher),
+                    "--project-root",
+                    str(target),
+                    "--port",
+                    "0",
+                    "--no-open",
+                ],
+                text=True,
+                capture_output=True,
+                env=environment,
+            )
+            self.assertEqual(launched.returncode, 0, launched.stderr or launched.stdout)
+            self.assertIn(".ua/knowledge-graph.json", launched.stdout)
+            self.assertIn("FAKE NODE", launched.stdout)
+            self.assertIn("--no-open", launched.stdout)
+
+            graph.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "tool": "explore",
+                        "result": {"alignment": {}},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            rejected = subprocess.run(
+                [sys.executable, str(launcher), "--project-root", str(target)],
+                text=True,
+                capture_output=True,
+                env=environment,
+            )
+            self.assertEqual(rejected.returncode, 3)
+            self.assertIn("explore JSON is not Viewer input", rejected.stderr)
+            self.assertNotIn("FAKE NODE", rejected.stdout)
+
+    def test_installed_viewer_preserves_official_legacy_first_graph_rule(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            target = base / "project"
+            applied = self.run_installer(target, "--apply")
+            self.assertEqual(applied.returncode, 0, applied.stderr or applied.stdout)
+            raw = {
+                "version": "1.0.0",
+                "project": {"name": "fixture"},
+                "nodes": [],
+                "edges": [],
+            }
+            for directory in (".ua", ".understand-anything"):
+                graph = target / directory / "knowledge-graph.json"
+                graph.parent.mkdir(parents=True)
+                graph.write_text(json.dumps(raw), encoding="utf-8")
+            environment = runtime_install_environment(create_langgraph_index(base))
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(target / ".concorde/framework/scripts/run-viewer.py"),
+                    "--project-root",
+                    str(target),
+                    "--no-open",
+                ],
+                text=True,
+                capture_output=True,
+                env=environment,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+            self.assertIn(".understand-anything/knowledge-graph.json", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -36,6 +36,13 @@ class ManifestContractTests(unittest.TestCase):
                 "venv": ".concorde/.venv",
             },
         )
+        self.assertEqual(manifest["viewer"]["provider"], "Egonex-AI/Understand-Anything")
+        self.assertEqual(manifest["viewer"]["version"], "2.9.0")
+        self.assertEqual(manifest["viewer"]["node"], ">=18")
+        self.assertEqual(
+            manifest["viewer"]["asset_sha256"],
+            "sha256:a8626ff3ad90041e807bfdb8994eefdd986e891593c4759d08222667e5405330",
+        )
 
     def test_runtime_reads_version_from_the_single_manifest(self):
         sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
@@ -60,6 +67,11 @@ class ManifestContractTests(unittest.TestCase):
             "langgraph==1.2.11\n",
         )
         self.assertTrue((REPOSITORY_ROOT / "scripts/run-operation.py").is_file())
+        self.assertTrue((REPOSITORY_ROOT / "scripts/run-viewer.py").is_file())
+        lock = json.loads((REPOSITORY_ROOT / "viewer/package-lock.json").read_text())
+        viewer = lock["packages"]["node_modules/understand-anything-viewer"]
+        self.assertEqual(viewer["version"], "2.9.0")
+        self.assertTrue(viewer["integrity"].startswith("sha512-"))
 
     def test_complete_feature_template_contains_profile_and_product_sections(self):
         body = (REPOSITORY_ROOT / "templates/feature-template.md").read_text()

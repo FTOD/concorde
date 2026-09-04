@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -60,6 +61,27 @@ class NativeInstallerTests(unittest.TestCase):
             self.package.manifest["operation_runtime"]["venv"],
             ".concorde/.venv",
         )
+        self.assertEqual(self.package.manifest["viewer"]["version"], "2.9.0")
+        self.assertEqual(self.package.manifest["viewer"]["node"], ">=18")
+        self.assertEqual(
+            self.package.manifest["viewer"]["asset_sha256"],
+            "sha256:a8626ff3ad90041e807bfdb8994eefdd986e891593c4759d08222667e5405330",
+        )
+
+    def test_viewer_lock_identity_and_integrity_are_required(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shutil.copytree(REPOSITORY_ROOT / "viewer", root / "viewer")
+            manifest = json.loads(json.dumps(self.package.manifest))
+            lock = root / "viewer/package-lock.json"
+            value = json.loads(lock.read_text(encoding="utf-8"))
+            value["packages"]["node_modules/understand-anything-viewer"]["integrity"] = ""
+            lock.write_text(json.dumps(value), encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                managed_runtime.ManagedRuntimeError, "sha512 integrity"
+            ):
+                managed_runtime._load_viewer_spec(root, manifest)
 
     def test_desired_codex_outputs_use_native_paths_only(self):
         outputs = installer.desired_outputs(self.package, "codex")
@@ -79,6 +101,8 @@ class NativeInstallerTests(unittest.TestCase):
         )
         self.assertIn(".concorde/framework/operations/requirements.lock", outputs)
         self.assertIn(".concorde/framework/scripts/run-operation.py", outputs)
+        self.assertIn(".concorde/framework/scripts/run-viewer.py", outputs)
+        self.assertIn(".concorde/framework/viewer/package-lock.json", outputs)
         self.assertIn(".codex/agents/reflection_implementer.toml", outputs)
         plan = outputs[".agents/skills/concorde-plan/SKILL.md"][0].decode()
         self.assertIn(".concorde/framework/operations/concorde-plan/operation.py", plan)
@@ -122,6 +146,18 @@ class NativeInstallerTests(unittest.TestCase):
                 self.package.manifest["operations"],
             )
             self.assertTrue((target / ".concorde/.venv/.concorde-runtime.json").is_file())
+            viewer = target / ".concorde/.venv/share/concorde/understand-anything-viewer"
+            self.assertTrue(
+                (viewer / "node_modules/understand-anything-viewer/bin/viewer.mjs").is_file()
+            )
+            self.assertTrue(
+                (viewer / "node_modules/understand-anything-viewer/dist/index.html").is_file()
+            )
+            self.assertEqual(receipt["runtime"]["viewer"]["version"], "2.9.0")
+            self.assertEqual(receipt["runtime"]["viewer"]["node_version"], "v20.11.1")
+            self.assertFalse((target / "node_modules").exists())
+            self.assertFalse((target / "package.json").exists())
+            self.assertFalse((target / "package-lock.json").exists())
             self.assertEqual(len(receipt["outputs"]), len(desired) - 2)
             self.assertNotIn("project-default", {item["role"] for item in receipt["outputs"]})
 
@@ -203,7 +239,7 @@ class NativeInstallerTests(unittest.TestCase):
                 self.assertTrue(runtime.exists() or runtime.is_symlink())
 
     def test_dependency_or_smoke_failure_removes_partial_runtime_and_rolls_back_files(self):
-        failures = ("pip", "smoke")
+        failures = ("pip", "viewer-install", "smoke", "viewer-smoke")
         for failure in failures:
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as temporary:
                 target = Path(temporary)
@@ -221,7 +257,20 @@ class NativeInstallerTests(unittest.TestCase):
                     patcher = mock.patch.object(
                         managed_runtime, "_run", side_effect=fail_pip
                     )
-                else:
+                elif failure == "viewer-install":
+                    real_run = managed_runtime._run
+
+                    def fail_npm(command, **kwargs):
+                        if command and command[0] == "npm" and "ci" in command:
+                            return subprocess.CompletedProcess(
+                                command, 1, "", "injected npm failure"
+                            )
+                        return real_run(command, **kwargs)
+
+                    patcher = mock.patch.object(
+                        managed_runtime, "_run", side_effect=fail_npm
+                    )
+                elif failure == "smoke":
                     patcher = mock.patch.object(
                         managed_runtime,
                         "_verify_operations",
@@ -229,11 +278,59 @@ class NativeInstallerTests(unittest.TestCase):
                             "injected smoke failure"
                         ),
                     )
+                else:
+                    patcher = mock.patch.object(
+                        managed_runtime,
+                        "_verify_viewer",
+                        side_effect=managed_runtime.ManagedRuntimeError(
+                            "injected Viewer smoke failure"
+                        ),
+                    )
                 with patcher, self.assertRaises(installer.InstallError):
                     installer.apply_plan(target, self.package, "codex", actions, desired)
                 self.assertFalse((target / ".concorde/.venv").exists())
                 self.assertFalse((target / ".concorde/install.json").exists())
                 self.assertEqual(list(target.rglob("*")), [])
+
+    def test_incompatible_node_blocks_viewer_install_and_rolls_back(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary)
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
+            real_version = managed_runtime._tool_version
+
+            def incompatible(command, cwd, label):
+                if command == "node":
+                    return "v17.9.1", (17, 9, 1)
+                return real_version(command, cwd, label)
+
+            with mock.patch.object(
+                managed_runtime, "_tool_version", side_effect=incompatible
+            ), self.assertRaisesRegex(installer.InstallError, "Node.js >=18"):
+                installer.apply_plan(
+                    target, self.package, "codex", actions, desired
+                )
+            self.assertFalse((target / ".concorde/.venv").exists())
+            self.assertFalse((target / ".concorde/install.json").exists())
+
+    def test_viewer_lock_marker_drift_requires_managed_runtime_rebuild(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary)
+            actions, desired, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
+            installer.apply_plan(target, self.package, "codex", actions, desired)
+            marker = target / ".concorde/.venv/.concorde-runtime.json"
+            value = json.loads(marker.read_text(encoding="utf-8"))
+            value["viewer_lock_sha256"] = "sha256:" + "0" * 64
+            marker.write_text(json.dumps(value), encoding="utf-8")
+
+            rebuild, _, _ = installer.installation_plan(
+                target, self.package, "codex"
+            )
+            runtime = next(item for item in rebuild if item["role"] == "runtime")
+            self.assertEqual(runtime["action"], "rebuild")
 
     def test_unmigrated_legacy_config_blocks_installation_instead_of_seeding_default(self):
         with tempfile.TemporaryDirectory() as temporary:
