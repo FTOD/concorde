@@ -96,9 +96,36 @@ class OntologyWorkflowContractTests(unittest.TestCase):
 
     def test_project_ontology_defines_module_entities_interfaces_and_ua_boundary(self):
         ontology = (REPOSITORY_ROOT / "specs/concorde/features/002-project-ontology.md").read_text(encoding="utf-8")
-        for phrase in ("## Target Specification Model", "Architecture entity", "Entity relationship", "Feature interface", "Understand Anything"):
+        for phrase in ("## Target Specification Model", "Architecture entity", "Entity relationship", "Feature interface", "Concorde Protocol", "Protocol evolution", "Understand Anything"):
             self.assertIn(phrase, ontology)
         self.assertIn("adapts", ontology.lower())
+
+    def test_concorde_protocol_evolution_is_one_root_attempt_free_feature(self):
+        package = ProjectRepository(REPOSITORY_ROOT).load()
+        root = package.modules[package.root_module_id]
+        evolution = package.features["feature.concorde.evolve-protocol"]
+
+        self.assertEqual(evolution.module, root.identifier)
+        self.assertEqual(
+            set(root.features),
+            {
+                "feature.concorde.workflow",
+                "feature.concorde.define-project-ontology",
+                "feature.concorde.evolve-protocol",
+            },
+        )
+        self.assertEqual(evolution.provided_interfaces, ("interface.concorde.protocol-evolution",))
+        self.assertEqual(evolution.required_interfaces, ("contract.concorde.ontology",))
+        self.assertFalse(REPOSITORY_ROOT.joinpath(".concorde/attempts/feature.concorde.evolve-protocol").exists())
+
+        architecture = (REPOSITORY_ROOT / "specs/concorde/architecture.md").read_text(encoding="utf-8")
+        constitution = (REPOSITORY_ROOT / ".concorde/constitution.md").read_text(encoding="utf-8")
+        design = (REPOSITORY_ROOT / evolution.path).read_text(encoding="utf-8")
+        for entity in ("entity.concorde.protocol", "entity.concorde.protocol-cutover", "entity.concorde.git"):
+            self.assertIn(entity, architecture)
+        self.assertIn("**Version**: 8.0.0", constitution)
+        self.assertIn("no attempt or checklist", constitution)
+        self.assertIn("one reviewable cutover commit", design)
 
 
 if __name__ == "__main__":

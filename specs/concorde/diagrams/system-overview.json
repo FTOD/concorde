@@ -10,7 +10,7 @@
     },
     "viewBox": [
       1140,
-      660
+      840
     ]
   },
   "components": [
@@ -18,10 +18,38 @@
       "id": "maintainer",
       "type": "external",
       "label": "Maintainer",
-      "sublabel": "Selects a feature and a phase",
+      "sublabel": "Selects feature work or a cutover",
       "pos": [
         40,
         290
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "protocol",
+      "type": "messagebus",
+      "label": "Concorde Protocol",
+      "sublabel": "Normative selected-feature process",
+      "pos": [
+        40,
+        90
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "protocol-cutover",
+      "type": "backend",
+      "label": "Protocol Cutover",
+      "sublabel": "Attempt-free isolated evolution",
+      "pos": [
+        320,
+        680
       ],
       "size": [
         170,
@@ -139,6 +167,20 @@
         170,
         68
       ]
+    },
+    {
+      "id": "git",
+      "type": "external",
+      "label": "Git",
+      "sublabel": "Checkpoint, worktree, cutover commit",
+      "pos": [
+        620,
+        680
+      ],
+      "size": [
+        170,
+        68
+      ]
     }
   ],
   "connections": [
@@ -148,6 +190,73 @@
       "to": "lifecycle",
       "label": "invokes phases",
       "variant": "emphasis"
+    },
+    {
+      "id": "maintainer-authorizes-cutover",
+      "from": "maintainer",
+      "to": "protocol-cutover",
+      "label": "authorizes",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          125,
+          620
+        ],
+        [
+          260,
+          620
+        ],
+        [
+          260,
+          714
+        ]
+      ],
+      "labelAt": [
+        185,
+        610
+      ]
+    },
+    {
+      "id": "protocol-governs-understanding",
+      "from": "protocol",
+      "to": "understanding",
+      "label": "governs context"
+    },
+    {
+      "id": "cutover-evolves-protocol",
+      "from": "protocol-cutover",
+      "to": "protocol",
+      "label": "evolves outside lifecycle",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          405,
+          780
+        ],
+        [
+          20,
+          780
+        ],
+        [
+          20,
+          124
+        ]
+      ],
+      "labelAt": [
+        108,
+        770
+      ]
+    },
+    {
+      "id": "cutover-uses-git",
+      "from": "protocol-cutover",
+      "to": "git",
+      "label": "records cutover",
+      "variant": "dashed"
     },
     {
       "id": "lifecycle-calls-understanding",

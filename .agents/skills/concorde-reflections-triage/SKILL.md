@@ -25,6 +25,14 @@ checkout use `scripts/reflections_queue.py`. The tracked allocation high-water i
 persisted prose record for one reflection. Never edit maintainer-owned `status`, `resolution_note`,
 or `User Comments` while triaging.
 
+## Concorde Protocol evolution guard
+
+Status and investigation may remain read-only, but before any `implement`, nested lifecycle, merge,
+or close action whose resolution changes normative Concorde Protocol semantics in this repository,
+stop without creating an attempt or implementation worktree. Report
+`feature.concorde.evolve-protocol`; the maintainer resolves the reflection through one explicitly
+authorized isolated Protocol cutover and Git history records its disposition.
+
 ## Bucket layout
 
 Every reflection document lives in exactly one tracked bucket folder, and the folder is a pure

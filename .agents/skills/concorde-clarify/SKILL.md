@@ -19,6 +19,14 @@ $ARGUMENTS
 Clarification resolves material ambiguity in the selected feature's direct Markdown file. It does not
 invent architecture, inspect unrelated attempts, or write code.
 
+## Concorde Protocol evolution guard
+
+Before workspace resolution or any write, if this is the Concorde repository and the requested
+clarification changes normative Concorde Protocol semantics, stop without changing selection,
+feature text, or checklist state. Report `feature.concorde.evolve-protocol` and its direct isolated-
+worktree cutover. A clarification that only makes already specified semantics explicit remains
+eligible here.
+
 ## Workspace gate
 
 Run `python3 scripts/workspace.py --phase clarify` first. Require Protocol 13 and `resolved`/`selected` status. Use only the returned

@@ -16,6 +16,18 @@ WORKSPACE_SKILLS = (
     "concorde-tasks",
     "concorde-taskstoissues",
 )
+PROTOCOL_MUTATION_SKILLS = (
+    "concorde-checklist",
+    "concorde-clarify",
+    "concorde-constitution",
+    "concorde-converge",
+    "concorde-deliver",
+    "concorde-fast-loop",
+    "concorde-implement",
+    "concorde-specify",
+    "concorde-tasks",
+    "concorde-taskstoissues",
+)
 
 
 def read(directory: Path, name: str) -> str:
@@ -23,6 +35,19 @@ def read(directory: Path, name: str) -> str:
 
 
 class AgentSkillContractTests(unittest.TestCase):
+    def test_mutating_entries_route_concorde_protocol_evolution_before_workspace_mutation(self):
+        for name in PROTOCOL_MUTATION_SKILLS:
+            with self.subTest(name=name):
+                body = read(SKILL_ROOT, name)
+                self.assertIn("## Concorde Protocol evolution guard", body)
+                self.assertIn("feature.concorde.evolve-protocol", body)
+
+        for operation in ("concorde-plan", "concorde-standard-dev-loop", "concorde-reflections-triage"):
+            with self.subTest(operation=operation):
+                body = (REPOSITORY_ROOT / "operations" / operation / "SKILL.md").read_text(encoding="utf-8")
+                self.assertIn("## Concorde Protocol evolution guard", body)
+                self.assertIn("feature.concorde.evolve-protocol", body)
+
     def test_every_phase_resolves_protocol13_before_path_sensitive_work(self):
         for name in WORKSPACE_SKILLS:
             path = SKILL_ROOT / name / "SKILL.md"

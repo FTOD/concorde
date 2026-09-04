@@ -11,6 +11,13 @@ Generate a reviewer-owned checklist that evaluates whether the selected feature 
 complete, precise, consistent, and reviewable. It does not test product behavior and does not mark
 implementation complete.
 
+## Concorde Protocol evolution guard
+
+Before workspace resolution, if this is the Concorde repository and the request belongs to a
+normative Concorde Protocol semantic change, stop without creating checklist or attempt state. Name
+`feature.concorde.evolve-protocol`; its isolated-worktree cutover uses Git review and target
+validation rather than a temporal Concorde checklist.
+
 ## Workspace gate
 
 Run `{SCRIPT}` first and require a successful Protocol 13 workspace. Use the returned

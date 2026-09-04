@@ -43,6 +43,14 @@ Execute the selected attempt against the direct feature file, providing module a
 source code, and tests. Code is implementation authority; tests and deterministic checks are
 evidence. Delivery is a later cleanup-only Tool.
 
+## Concorde Protocol evolution guard
+
+Before workspace resolution, setup inspection, or any write, if this is the Concorde repository and
+the requested implementation changes normative Concorde Protocol semantics, stop without opening or
+updating an attempt. Report `feature.concorde.evolve-protocol`; the change must be authored directly
+in its isolated worktree and validated as one cutover commit. A fix that restores already specified
+Protocol behavior remains eligible for normal implementation.
+
 ## Workspace gate
 
 Before setup inspection or reads, run `{SCRIPT}`. Require Protocol 13 with a canonical

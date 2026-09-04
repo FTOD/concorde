@@ -22,7 +22,7 @@ diagrams:
 
 Carry one selected feature from specification through permission-bounded planning, dependency-ordered
 tasks, reconciled implementation, deterministic validation gates, and cleanup-only delivery, including
-the bounded fast loop.
+the bounded fast loop. Normative evolution of the Concorde repository's own Protocol is excluded.
 
 ## Boundary
 
@@ -34,6 +34,8 @@ checklist formats, Delivery Proposal 9, and the cleanup-only delivery Tool. It d
 resolution or deterministic validation rules (`module.concorde.understanding`), the LangGraph runtime,
 policy compiler, process launcher, or public projection (`module.concorde.capabilities`), reflection
 semantics (`module.concorde.reflections`), or product code.
+The root `feature.concorde.evolve-protocol` owns normative Concorde Protocol changes and runs outside
+every Lifecycle Skill, Operation, attempt, and delivery.
 
 ## Entities
 
@@ -129,8 +131,8 @@ semantics (`module.concorde.reflections`), or product code.
 | `interaction.lifecycle.plan` | Maintainer or the standard loop invokes `concorde-plan` for one selected feature. | `entity.lifecycle.plan-operation` dispatches `module.concorde.understanding`'s bounded-context leaf; passes its read-only result to `entity.lifecycle.plan-author-skill`; the author writes only `entity.lifecycle.attempt` and authorized `module.concorde.reflections` entries. | Temporal plan and task artifacts, or a bounded named failure leaving durable sources unchanged. | `interface.concorde.plan`, `contract.lifecycle.plan` |
 | `interaction.lifecycle.implement` | Maintainer delegates an approved dependency-ordered attempt to `concorde-implement`. | `entity.lifecycle.implement-skill` resolves the attempt and protected sources through `module.concorde.understanding`; executes each dependency-ready task test-first; writes `entity.concorde.source-code` and `entity.concorde.tests`; records one evidence block per task and any problems in `entity.lifecycle.attempt` and `module.concorde.reflections`. | Reconciled sources with truthful task/evidence state, or dependents stopped after a failing task while prior evidence is preserved. | `interface.concorde.implement` |
 | `interaction.lifecycle.deliver` | Maintainer invokes `concorde-deliver` for a selected feature with a complete attempt. | `entity.lifecycle.deliver-skill` calls `entity.lifecycle.delivery`; delivery revalidates tasks, checklists, evidence, and digest through `module.concorde.understanding`; verifies the safe canonical `entity.lifecycle.attempt` path; atomically removes exactly that attempt. | No-active-attempt state with every durable authority retained, or the full attempt preserved on any ineligibility. | `interface.concorde.deliver` |
-| `interaction.lifecycle.standard-loop` | Maintainer invokes the installed `concorde-standard-dev-loop` Operation skill. | `entity.lifecycle.standard-dev-loop` resolves each direct occurrence and its launch through `module.concorde.capabilities`; runs `entity.lifecycle.specify-skill`; dispatches `entity.lifecycle.plan-operation` as one opaque nested stage; runs `entity.lifecycle.tasks-skill` then `entity.lifecycle.implement-skill`; runs `module.concorde.understanding`'s validate leaf then `entity.lifecycle.deliver-skill`; stops all downstream occurrences on any failure. | Four ordered stage groups of results, or the correct completed prefix with no downstream invocation after a failure. | `contract.lifecycle.standard-development-loop` |
-| `interaction.lifecycle.fast-loop` | Maintainer explicitly requests one small, already-specified change. | `entity.lifecycle.fast-loop-skill` resolves the anchor and every explicitly discovered affected feature through `module.concorde.understanding`; rejects structural, interface, or policy ambiguity before mutation; edits every bounded owner directly; runs proportional checks. | Exact changed sources with disclosed checks and evidence limits and no attempt, or a preflight rejection redirecting to the full lifecycle. | `interface.concorde.fast-loop` |
+| `interaction.lifecycle.standard-loop` | Maintainer invokes the installed `concorde-standard-dev-loop` Operation skill for normal feature work. | Reject normative Concorde Protocol evolution before construction; otherwise `entity.lifecycle.standard-dev-loop` resolves each direct occurrence and its launch through `module.concorde.capabilities`; runs `entity.lifecycle.specify-skill`; dispatches `entity.lifecycle.plan-operation` as one opaque nested stage; runs `entity.lifecycle.tasks-skill` then `entity.lifecycle.implement-skill`; runs `module.concorde.understanding`'s validate leaf then `entity.lifecycle.deliver-skill`; stops all downstream occurrences on any failure. | Four ordered stage groups of results, the correct completed prefix after a failure, or a pre-mutation route to `feature.concorde.evolve-protocol`. | `contract.lifecycle.standard-development-loop` |
+| `interaction.lifecycle.fast-loop` | Maintainer explicitly requests one small, already-specified change. | `entity.lifecycle.fast-loop-skill` resolves the anchor and every explicitly discovered affected feature through `module.concorde.understanding`; rejects structural, interface, policy, Protocol-semantic, or other ambiguity before mutation; edits every bounded owner directly; runs proportional checks. | Exact changed sources with disclosed checks and evidence limits and no attempt; a normal rejection redirects to the full lifecycle while Protocol evolution redirects to its root isolated-worktree feature. | `interface.concorde.fast-loop` |
 
 ## Modules
 
@@ -163,9 +165,12 @@ None.
 - Leaf effects remain owned by canonical Skill metadata; occurrence bindings and effective
   configuration may narrow but never widen them.
 - The fast loop applies only when deterministic preflight establishes durable required behavior, no
-  active attempt, and no structural, interface, or policy change; any ineligible condition redirects
-  to the full lifecycle instead of mutating.
+  active attempt, and no structural, interface, policy, or normative Concorde Protocol change. A
+  normal ineligible condition redirects to the full lifecycle; Protocol evolution redirects to the
+  root isolated-worktree feature instead of mutating.
 - Delivery removes exactly one selected stable-ID attempt after revalidating eligibility and digest;
   it creates no implementation narrative and amends no architectural intent.
 - Every lifecycle phase is a use case of changing one feature; the Skills and Operations that realize
   a phase are owned here regardless of their physical directory.
+- Lifecycle never hosts normative Concorde Protocol evolution: that root feature intentionally uses
+  no Lifecycle Skill, Operation, attempt, checklist, or delivery.

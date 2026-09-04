@@ -13,6 +13,14 @@ $ARGUMENTS
 
 This leaf Skill is implemented by Concorde and has no Spec Kit runtime dependency.
 
+## Concorde Protocol evolution guard
+
+Before reading templates or writing, if this is the Concorde repository and the requested amendment
+changes normative Concorde Protocol semantics, stop without modifying the Constitution. Report
+`feature.concorde.evolve-protocol`; that explicitly authorized isolated-worktree cutover reconciles
+the Constitution with every other affected authority directly. A governance edit unrelated to
+Protocol semantics remains eligible for this Skill.
+
 ## Scope guard
 
 Limit this Skill to `.concorde/constitution.md`. Classify feature implementation, refactoring,

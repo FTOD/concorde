@@ -11,6 +11,14 @@ metadata:
 ---
 # Concorde Standard Development Loop
 
+## Concorde Protocol evolution guard
+
+Before graph construction, workspace resolution, or any direct/nested capability invocation, if this
+is the Concorde repository and the request changes normative Concorde Protocol semantics, stop with
+no completed prefix and no selection/attempt mutation. Report `feature.concorde.evolve-protocol` and
+its direct isolated-worktree cutover. A change that only restores already specified Protocol behavior
+remains normal standard-loop work.
+
 Treat `$ARGUMENTS` as the complete development request. Use the paired graph at `python3 scripts/run-operation.py operations/concorde-standard-dev-loop/operation.py` as the
 topology authority for exactly four stages: specify, plan, tasks, and deliver.
 

@@ -34,6 +34,13 @@ feature file, providing module architecture, code, tests, interface fixtures, an
 Delivery writes no durable specification or implementation narrative; it proves eligibility and
 atomically removes exactly the selected `.concorde/attempts/<stable-feature-id>/`.
 
+## Concorde Protocol evolution guard
+
+Before proposing delivery, if this is the Concorde repository and the selected work changes normative
+Concorde Protocol semantics, stop without reading, rewriting, or removing the attempt. Such an
+attempt is ineligible by Constitution 8.0.0; report `feature.concorde.evolve-protocol` and preserve
+all state for explicit maintainer disposition.
+
 ## Propose
 
 1. From the target project root invoke `{SCRIPT} $ARGUMENTS --propose`.

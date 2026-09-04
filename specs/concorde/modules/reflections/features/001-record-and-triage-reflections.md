@@ -13,6 +13,8 @@ related_features:
     relation: relates_to
   - id: feature.capabilities.permission-bounded-execution
     relation: depends_on
+  - id: feature.concorde.evolve-protocol
+    relation: relates_to
 interfaces:
   provided:
     - interface.concorde.reflections
@@ -54,6 +56,12 @@ maintainer disposition. Once the maintainer records that disposition — `status
 `dismissed` plus a `resolution_note` — the deterministic removal Tool deletes the document through
 the `close` action, so the collection only ever holds open work and Git history keeps the closed
 record.
+
+When a reflection's resolution changes normative Concorde Protocol semantics in the Concorde
+repository, status/investigation may remain read-only but implement/merge/close stops before any
+lifecycle or reflection-worktree mutation. The maintainer uses
+`feature.concorde.evolve-protocol`; its one cutover commit records and closes the disposition in Git
+history without a reflection-owned attempt.
 
 ## Architecture Zoom
 
@@ -118,7 +126,9 @@ record.
   triage, a document filed in a bucket its front matter does not require, invalid
   action/route/policy, unavailable enforcement, duplicate identity, stale or non-ancestor commit,
   ineligible route/effort/status, unsafe worktree/removal/relocation, a missing, stale, or failed
-  verification, or removing an open document preserves retained reflection files and sources.
+  verification, normative Concorde Protocol evolution, or removing an open document preserves
+  retained reflection files and sources. Protocol evolution additionally names its root cutover
+  feature before mutation.
 - **Compatibility**: Reflection Document v2 replaces the single-file Reflection Log v1. A legacy
   `.concorde/reflections/log.md` is diagnosed rather than accepted in a dual-layout mode.
   `reflection-triage/v5` reserves `tool` for queue helpers and exposes the conditional
@@ -139,6 +149,9 @@ record.
   analyze, and implement phases are the normal reflection-recording points.
 - `feature.capabilities.permission-bounded-execution` supplies `contract.capabilities.permission-bounded-execution`,
   the per-leaf policy compilation and enforced launch every direct capability occurrence requires.
+- `feature.concorde.evolve-protocol` owns any normative Concorde Protocol semantic change discovered
+  through a reflection; triage investigation remains read-only and no implement/merge/close route
+  substitutes for the root cutover.
 
 ## Usage Scenarios
 
@@ -241,6 +254,10 @@ record.
   further attempt; a problem that does not reproduce MUST route to `dismiss`, never to
   implementation. The queue Tool MUST derive and report each plan's verification state as `current`,
   `stale`, `unverified`, or `unknown` on every read rather than storing it.
+- **FR-021**: A reflection resolution that changes normative Concorde Protocol semantics MUST be
+  rejected before implement/merge/close mutation and routed to `feature.concorde.evolve-protocol`;
+  read-only status/investigation MAY establish the problem and decision without authorizing a
+  lifecycle attempt or reflection implementation worktree.
 
 ## Edge Cases
 
@@ -259,3 +276,5 @@ record.
   the next attempt re-verifies before touching any file.
 - The Observed behavior no longer reproduces at HEAD because another change fixed it; the
   investigator routes to `dismiss` with the verification as evidence and nothing is implemented.
+- A verified reflection proposes a normative Concorde Protocol change; triage reports the root
+  Protocol-evolution route and performs no implementation, merge, or close mutation itself.

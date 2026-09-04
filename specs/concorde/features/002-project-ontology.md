@@ -13,6 +13,8 @@ related_features:
     relation: depended_on_by
   - id: feature.understanding.initialize-architecture
     relation: depended_on_by
+  - id: feature.concorde.evolve-protocol
+    relation: depended_on_by
 interfaces:
   provided:
     - contract.concorde.ontology
@@ -33,7 +35,9 @@ ordered Skills or Operations without cycles or flattening. Every operation Pytho
 associated Markdown skill and public capabilities are installed as user-facing skills.
 Migrate ontology, architecture, package layout, installation, projection, validation, documentation,
 tests, and maintained sources together. Partition modules by business capability, use case, or axis
-of change rather than by artifact type, and apply that partition to Concorde's own architecture.
+of change rather than by artifact type, apply that partition to Concorde's own architecture, and
+define Concorde Protocol as the complete normative selected-feature process that only the Concorde
+repository both implements and self-applies.
 
 ## Outcome and Scope
 
@@ -151,6 +155,8 @@ residual bucket (`misc`, `common`, `shared`) is the signature of the partition t
 |---|---|---|
 | `Module` | The recursive unit of specification ownership. A module has one responsibility, one boundary, one `architecture.md`, zero or more immediate child modules, and zero or more level-local features. | `contains` → `Module`; `specifies` → `Feature`; `owns` → `Architecture specification` |
 | `Feature relation` | The typed, directed meaning of one `related_features` entry: `composes` (the declaring feature sequences the target as a part), `refines` (it narrows or extends the target's behavior), `depends_on` (it needs the target's promise), their inverse forms, or symmetric `relates_to`. Directional families stay acyclic. | `connects` → `Feature`; `projected as` → feature graph edge; `explained by` → Related Features prose |
+| `Concorde Protocol` | The complete normative process by which a selected feature is resolved, permission-bounded, specified, planned, executed, validated, reflected on, and delivered, together with its Source Profile and control-state authority rules. Feature Workspace Protocol is one serialized component, not a synonym. | `governs` → `Understanding`, `Lifecycle`, `Reflections`, `Capabilities`; `consumed by` → every Concorde project; `defined, implemented, and self-applied by` → Concorde repository |
+| `Protocol evolution` | The Concorde-repository-only, explicitly authorized change boundary for any normative Concorde Protocol semantic change: one clean Git base, one isolated worktree, no attempt/lifecycle/delivery, complete target validation, and one reviewable cutover commit. | `evolves` → `Concorde Protocol`; `depends on` → `Git`; `refines` → normal Concorde workflow |
 | `Capability module` | A module bounded by one business capability, use case, or axis of change. It owns every kind of artifact its capability needs and never collects one artifact kind across capabilities. | `is a` → `Module`; `owns` → `Skill`, `Tool`, `Operation`, `Feature`; `rejects` → artifact-type layer, residual bucket |
 | `Architecture specification` | A module's single durable account of its typed entities, organization, relationships, and interactions. | `defines` → `Architecture entity`; `defines` → `Entity relationship`; `replaces` → `Module summary`; `replaces` → `Module design reference` |
 | `Architecture entity` | An architecture-significant module, package, program, file, script, class, function, interface, data store, schema, configuration, test surface, external system, or other explicitly typed thing. | `belongs to` → `Module`; `participates in` → `Entity relationship`; `realized by` → `Source code` |
@@ -185,7 +191,10 @@ This feature governs the following root-architecture entities; their definitions
 | `module.concorde.capabilities` | module | Realizes the Script/Tool, Skill, and Operation structure, its metadata grammar, package capability validation, and public projection. |
 | `module.concorde.lifecycle` | module | Owns the stable-ID attempt and cleanup-only delivery that this profile defines. |
 | `module.concorde.auto-docs` | module | Publishes module architecture and direct feature files without interpreting a wrapper directory or `design.md` basename. |
-| `entity.concorde.specification` | directory | Self-applies the profile across six capability modules and twenty-four features. |
+| `entity.concorde.protocol` | interface | Owns the complete normative process definition and distinguishes it from Feature Workspace Protocol 13. |
+| `entity.concorde.protocol-cutover` | pipeline | Evolves Protocol semantics directly in one isolated, attempt-free, target-valid Git transition. |
+| `entity.concorde.git` | external-system | Supplies the exact bootstrap checkpoint, isolated worktree, diff/commit review, merge, abandonment, and revert boundary. |
+| `entity.concorde.specification` | directory | Self-applies the profile across six capability modules and twenty-six features. |
 | `entity.concorde.control-state` | directory | Owns Profile 7 configuration, stable-ID attempts, tracked reflections, and triage state outside module specifications. |
 | `entity.concorde.source-code` | package | Realizes every module's programs; its subpackages mirror the capability modules. |
 
@@ -394,6 +403,8 @@ features.
   relation, and vocabulary rules it enforces deterministically.
 - `feature.understanding.initialize-architecture` depends on this ontology for the minimal root
   scaffold it proposes.
+- `feature.concorde.evolve-protocol` depends on this ontology for the Concorde Protocol identity,
+  component boundary, self-application distinction, and isolated evolution semantics.
 
 ## Requirements
 
@@ -478,8 +489,9 @@ features.
   project, any child module whose ID or directory names an artifact type or residual bucket.
 - **FR-034**: Concorde's own specification MUST be partitioned into the capability modules
   `understanding`, `lifecycle`, `reflections`, `capabilities`, `distribution`, and `auto-docs`; the
-  root MUST hold only the end-to-end workflow and this ontology feature; every other feature MUST be
-  a use case of exactly one capability module.
+  root MUST hold only genuinely project-wide features—the end-to-end workflow, this ontology, and
+  Concorde Protocol evolution—while every capability-local feature MUST be a use case of exactly one
+  child capability module.
 - **FR-035**: `src/concorde` and `tests/concorde` MUST be organized into subpackages that mirror the
   capability modules, and every architecture entity locator MUST resolve to the owning subpackage.
 - **FR-036**: Every `related_features` entry MUST be a stable feature ID or an `{id, relation}` object
@@ -489,6 +501,11 @@ features.
 - **FR-037**: Validation MUST reject an unknown relation, a self-reference, and any cycle in the
   `composes`, `refines`, or `depends_on` family after inverse forms are normalized, naming every
   feature on the cycle.
+- **FR-038**: The ontology MUST define Concorde Protocol as the complete normative selected-feature
+  process and MUST distinguish it from Feature Workspace Protocol, which is one serialized component.
+- **FR-039**: Every Concorde project MUST consume Concorde Protocol, while only the Concorde repository
+  MAY define, implement, and self-apply it; every normative semantic change in that repository MUST
+  use `feature.concorde.evolve-protocol` rather than an attempt, fast loop, standard loop, or delivery.
 
 ## Success Criteria
 
@@ -517,9 +534,9 @@ features.
 - **SC-012**: Complete Python, installation, agent-surface, documentation, and validation
   tests contain zero current terminology that classifies leaf prompts as commands or maintained
   LangGraphs as examples.
-- **SC-013**: No maintained child module is named after an artifact type or residual bucket, the
-  root module declares at most two features, every child module declares at least one use-case
-  feature, and no child module has a feature whose outcome is an inventory of what it contains.
+- **SC-013**: No maintained child module is named after an artifact type or residual bucket, every
+  root feature is genuinely project-wide, every child module declares at least one use-case feature,
+  and no child module has a feature whose outcome is an inventory of what it contains.
 - **SC-014**: A change that touches one capability (for example how planning selects its context)
   changes architecture files in at most two capability modules and no artifact-type layer.
 - **SC-015**: Every maintained Concorde feature declares a typed relation for each related feature,
@@ -567,6 +584,6 @@ features.
 - **Interface**: this design embeds `contract.concorde.ontology`; the former standalone ontology contract is removed during migration.
 - **Implementation authority**: current source code and tests; feature files never contain or sit beside a prose realization artifact.
 - **Architecture authority**: the migrated root `specs/concorde/architecture.md` and recursive child module architecture files.
-- **Prototype delivery**: one repository-wide attempt is justified because partial migration would
-  leave selection, control-state routing, reflection triage, delivery, publication, guidance, fixtures,
-  and generated agent-surface paths mutually incompatible.
+- **Protocol evolution**: the original repository-wide attempt exposed the self-reference recorded
+  by R-036. Future normative Concorde Protocol changes use one direct isolated-worktree cutover with
+  no attempt or delivery, preserving a valid base until the complete target passes validation.

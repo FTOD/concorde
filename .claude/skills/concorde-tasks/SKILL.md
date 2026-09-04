@@ -22,6 +22,13 @@ $ARGUMENTS
 Turn the selected plan into an executable, dependency-ordered, test-first checklist that reconciles
 module architecture, feature file/interfaces, code, tests, and projections before delivery.
 
+## Concorde Protocol evolution guard
+
+Before workspace resolution or any write, if this is the Concorde repository and the requested work
+changes normative Concorde Protocol semantics, stop without reading/writing an attempt or generating
+tasks. Report the direct isolated-worktree route `feature.concorde.evolve-protocol`. A task set that
+only restores already specified Protocol behavior remains normal lifecycle work.
+
 ## Workspace gate
 
 Run `python3 scripts/workspace.py --phase tasks` first. Require Protocol 13 and a canonical selected feature. Use only returned

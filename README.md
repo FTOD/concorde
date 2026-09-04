@@ -47,7 +47,7 @@ installed framework/agent files are reproducible projections, never intent autho
 Module architectures and direct feature files are also the maintained project documentation; there
 is no parallel custom-document tree. Read the [project ontology and specification model](specs/concorde/features/002-project-ontology.md)
 and the [understanding module architecture](specs/concorde/modules/understanding/architecture.md),
-which owns the file-role ontology and Protocol 13.
+which owns the file-role ontology and Feature Workspace Protocol 13.
 
 Concorde applies the partition to itself. Its six capability modules are:
 
@@ -59,6 +59,23 @@ Concorde applies the partition to itself. Its six capability modules are:
 | [`capabilities`](specs/concorde/modules/capabilities/architecture.md) | Run any Tool, Skill, or Operation on a coding agent under an enforced policy and project it to Codex and Claude. |
 | [`distribution`](specs/concorde/modules/distribution/architecture.md) | Package, install, and update Concorde with an isolated Operation runtime. |
 | [`auto-docs`](specs/concorde/modules/auto-docs/architecture.md) | Scaffold and publish the validated documentation site. |
+
+### Concorde Protocol and self-evolution
+
+**Concorde Protocol** is the complete normative process by which a selected feature is resolved,
+permission-bounded, specified, planned, executed, validated, reflected on, and delivered, together
+with its Source Profile and control-state authority rules. Feature Workspace Protocol 13 is one
+serialized component of that process, not a synonym for the whole Protocol.
+
+Every Concorde project consumes Concorde Protocol. This repository alone also defines and implements
+it, so a normative Protocol change cannot safely ask an attempt governed by the old Protocol to host
+and deliver its replacement. Constitution 8.0.0 therefore requires every such change—even an
+apparently compatible one—to use the root
+[Protocol-evolution feature](specs/concorde/features/003-evolve-concorde-protocol.md): start from one
+clean commit with no active attempts, build the complete target directly in an isolated Git
+worktree, run full target validation, and merge one reviewable cutover commit. It uses no selection,
+attempt, checklist, fast loop, standard loop, or delivery. A code/test fix that restores already
+specified Protocol behavior remains normal lifecycle work.
 
 ## Leaf Skills and Operations
 
@@ -232,6 +249,13 @@ python3 scripts/development/sync-agent-surfaces.py apply --format json
 
 See [Agent-surface maintenance](specs/concorde/modules/capabilities/features/004-maintain-agent-surfaces.md).
 
+Normative Concorde Protocol evolution is the one checkout-maintenance exception. Do not invoke any
+`concorde-*` mutation Skill or Operation for it. After explicit maintainer authorization, require a
+clean tracked checkpoint and no active attempts; create a dedicated branch/worktree, reconcile every
+affected authority directly, run the complete validation commands below, and merge one cutover
+commit. Abandon a failed pre-merge worktree or immediately revert a failed merged cutover before
+later work. See [Evolve the Concorde Protocol](specs/concorde/features/003-evolve-concorde-protocol.md).
+
 ## Develop and validate
 
 ```bash
@@ -245,7 +269,8 @@ npm run check
 ```
 
 The repository self-applies the model at
-[`specs/concorde/architecture.md`](specs/concorde/architecture.md).
+[`specs/concorde/architecture.md`](specs/concorde/architecture.md). Normal changes use Concorde's
+standard lifecycle; normative Concorde Protocol changes use the isolated bootstrap cutover above.
 
 Python 3.11+ is required for Concorde itself. Native installation additionally requires Node.js 18+
 and npm so the pinned official Viewer can be provisioned. Archify visual checks need a Chrome or

@@ -13,6 +13,8 @@ related_features:
     relation: depends_on
   - id: feature.concorde.workflow
     relation: composed_by
+  - id: feature.concorde.evolve-protocol
+    relation: relates_to
 interfaces:
   provided:
     - contract.lifecycle.standard-development-loop
@@ -39,6 +41,10 @@ on shell activation, and a successful installed runtime needs no package-index a
 
 The Operation provides topology/state/failure control and policy handoff. Native Codex/Claude or
 approved outer isolation enforces the paths; LangGraph and prompts do not.
+
+The Operation is a normal-feature lifecycle only. In the Concorde repository, a request that changes
+normative Concorde Protocol semantics is rejected before graph construction and routed to the root
+isolated-worktree Protocol-evolution feature.
 
 ## Architecture Zoom
 
@@ -67,7 +73,7 @@ approved outer isolation enforces the paths; LangGraph and prompts do not.
   bootstrap;
   `operations/concorde-standard-dev-loop/operation.py`; and
   `build_standard_dev_loop(executor, project_root=..., integration=...)`.
-- **Inputs**: Request, package/framework root, selected Protocol 13 feature context, Codex/Claude
+- **Inputs**: Normal-feature request, package/framework root, selected Protocol 13 feature context, Codex/Claude
   integration, verified managed interpreter, exact direct capability inventory/bindings, leaf
   effects, and injected executor.
 - **Outputs**: Ordered results for six direct capability occurrences grouped under `specify`, `plan`,
@@ -76,7 +82,8 @@ approved outer isolation enforces the paths; LangGraph and prompts do not.
   public `concorde-plan` to the outer graph; pass exact immutable prior results; compile one
   narrowing default-deny policy per leaf; require a non-null launch factory and explicit enforcing
   nested dispatcher; start with no results; stop on any runtime, direct, or nested failure; perform
-  no dependency installation or package-index access during invocation.
+  no dependency installation or package-index access during invocation; and reject normative
+  Concorde Protocol evolution before any graph node or workspace mutation.
 - **Failures**: Missing/corrupt managed interpreter, invalid/missing pair metadata, cycle, unknown
   capability/effect, binding mismatch, unsafe path, unavailable enforcement, invalid
   input/result/receipt, unavailable/mismatched LangGraph, or executor exception stops
@@ -104,6 +111,8 @@ approved outer isolation enforces the paths; LangGraph and prompts do not.
   leaves invoke during their phase.
 - `feature.concorde.workflow` consumes the public four-stage lifecycle as the umbrella's primary
   end-to-end path.
+- `feature.concorde.evolve-protocol` owns the Concorde-repository-only changes this normal Operation
+  must reject before graph construction.
 
 ## Usage Scenarios
 
@@ -121,6 +130,12 @@ approved outer isolation enforces the paths; LangGraph and prompts do not.
 
 If policy resolution or the nested planner fails, no tasks/deliver capability runs. If any later leaf
 fails or returns an invalid/stale receipt, remaining occurrences stop.
+
+### Reject Protocol evolution
+
+If the Concorde repository request changes normative Concorde Protocol semantics, do not construct
+or invoke this graph and do not select a feature or create an attempt. Name
+`feature.concorde.evolve-protocol` and its isolated-worktree cutover instead.
 
 ## Requirements
 
@@ -142,6 +157,8 @@ fails or returns an invalid/stale receipt, remaining occurrences stop.
   bootstrap and installed paired Python while internal planner leaves remain unprojected.
 - **FR-009**: Invocation after successful installation MUST execute from `.concorde/.venv` without
   dependency resolution, download, package-index access, or use of a project root `.venv`.
+- **FR-010**: A normative Concorde Protocol semantic change MUST be rejected before graph
+  construction, selection, or attempt mutation and routed to `feature.concorde.evolve-protocol`.
 
 ## Success Criteria
 
@@ -165,3 +182,5 @@ fails or returns an invalid/stale receipt, remaining occurrences stop.
   nested failure attempts to continue downstream.
 - The projected Skill is correct but `.concorde/.venv` was removed or corrupted after installation;
   the bootstrap fails with an actionable repair path rather than falling back to ambient Python.
+- A request appears small or backward compatible but changes normative Concorde Protocol semantics;
+  the standard loop remains ineligible and performs no completed prefix.

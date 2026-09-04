@@ -10,6 +10,14 @@ capabilities:
 
 # Concorde Plan Operation
 
+## Concorde Protocol evolution guard
+
+Before policy description, graph construction, workspace resolution, or any leaf invocation, if this
+is the Concorde repository and the request changes normative Concorde Protocol semantics, stop. Do
+not select a feature, create an attempt, or dispatch either internal leaf. Report the direct isolated-
+worktree route `feature.concorde.evolve-protocol`. Planning that only restores already specified
+Protocol behavior remains eligible.
+
 Treat `$ARGUMENTS` as one complete planning request. Use the paired graph at `{OPERATION}` as the
 execution authority for exactly `context -> author`. The public Operation retains the stable
 `concorde-plan` identity; its two implementation leaves are internal and must never be invoked or

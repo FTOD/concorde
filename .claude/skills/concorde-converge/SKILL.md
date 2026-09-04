@@ -23,6 +23,12 @@ Convergence compares the current repository state and evidence with the selected
 architecture, and plan, then appends only genuinely remaining executable work. It does not implement
 the work or rewrite completed history.
 
+## Concorde Protocol evolution guard
+
+Before workspace resolution or task mutation, if this is the Concorde repository and the remaining
+work changes normative Concorde Protocol semantics, stop without appending tasks or reflections.
+Report `feature.concorde.evolve-protocol`; Protocol evolution has no attempt to converge.
+
 ## Workspace gate
 
 Run `python3 scripts/workspace.py --phase converge` first and require Protocol 13 plus an active attempt. Use only returned feature file,

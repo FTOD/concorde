@@ -35,6 +35,8 @@ related_features:
     relation: depends_on
   - id: feature.concorde.define-project-ontology
     relation: depends_on
+  - id: feature.concorde.evolve-protocol
+    relation: refined_by
 interfaces:
   provided:
     - contract.concorde.workflow
@@ -46,9 +48,10 @@ interfaces:
 
 ## Outcome and Scope
 
-A maintainer can direct one feature from its complete direct file through permission-bounded planning, dependency-
-ordered implementation/evidence, deterministic validation, and cleanup-only delivery using installed
-skills as the sole conversational surface.
+A maintainer can direct one normal feature from its complete direct file through permission-bounded
+planning, dependency-ordered implementation/evidence, deterministic validation, and cleanup-only
+delivery using installed skills as the sole conversational surface, while Concorde's own normative
+Protocol evolution is explicitly excluded and routed to its isolated bootstrap feature.
 
 ## Usage
 
@@ -67,6 +70,9 @@ skills as the sole conversational surface.
    canonical evidence block passes. Delivery removes the attempt, not the specification.
 5. Use `concorde-fast-loop` instead only when preflight proves the change is already specified,
    bounded, non-structural, and has no active attempt.
+6. In the Concorde repository, classify a change to the normative semantics of Concorde Protocol
+   before invoking any lifecycle capability. Route it to `feature.concorde.evolve-protocol`, which
+   uses no selection, attempt, checklist, fast loop, standard loop, or delivery.
 
 Planning, task, checklist, research, quickstart, and validation files live only under
 `.concorde/attempts/<stable-feature-id>/`; they are workflow memory, not another documentation set.
@@ -81,6 +87,8 @@ Planning, task, checklist, research, quickstart, and validation files live only 
 | `module.concorde.capabilities` | Declares, permission-bounds, launches, and projects every Skill and Operation the workflow invokes. |
 | `entity.concorde.coding-agent` | Authors design/plan/tasks/code/tests and follows evidence/authority rules. |
 | `entity.concorde.control-state` | Holds the selected feature, its stable-ID attempt, and the reflection collection during the workflow. |
+| `entity.concorde.protocol` | Governs this normal selected-feature lifecycle; Feature Workspace Protocol 13 is one component. |
+| `entity.concorde.protocol-cutover` | Receives every normative Protocol semantic change before lifecycle selection and evolves it outside this workflow. |
 
 ## Interfaces
 
@@ -95,8 +103,14 @@ Planning, task, checklist, research, quickstart, and validation files live only 
 - **Obligations**: Keep each fact in one authority, resolve Protocol 13/concrete paths first, trace
   every task, validate deterministically, disclose evidence limits, keep nested Operations opaque,
   and never launch a leaf without an exact narrowing enforced policy/receipt.
-- **Failures**: Invalid placement/authority, incomplete checklist/task, failed check, stale/unsafe delivery, or ambiguous impact stops the affected phase without implied authorization.
-- **Compatibility**: Profile 7 features are direct Markdown files; Protocol 13 rejects specification-local control state/redundant feature fields, while Delivery 9 retains cleanup-only semantics.
+- **Failures**: Invalid placement/authority, incomplete checklist/task, failed check, stale/unsafe
+  delivery, ambiguous impact, or a normative Concorde Protocol change stops the affected phase
+  without implied authorization; the latter routes to `interface.concorde.protocol-evolution` before
+  any workspace mutation.
+- **Compatibility**: Profile 7 features are direct Markdown files; Feature Workspace Protocol 13
+  rejects specification-local control state/redundant feature fields, while Delivery 9 retains
+  cleanup-only semantics. Constitution 8.0.0 removes normative Concorde Protocol evolution from this
+  normal lifecycle.
 - **Implementing entities**: `module.concorde.understanding`, `module.concorde.lifecycle`,
   `module.concorde.reflections`, `module.concorde.capabilities`, and `entity.concorde.coding-agent`.
 - **Example**: A maintainer specifies `features/001-change.md` with ID `feature.example.change`, runs plan/tasks/implement in `.concorde/attempts/feature.example.change/`, verifies all evidence, then invokes delivery once to remove that attempt.
@@ -139,6 +153,8 @@ Planning, task, checklist, research, quickstart, and validation files live only 
   `feature.capabilities.provide-capability-surfaces` are depended on so that every invoked Skill or
   Operation runs under one enforced policy with identical Codex and Claude semantics.
 - `feature.distribution.install-concorde` precedes the workflow in a fresh project.
+- `feature.concorde.evolve-protocol` refines this workflow with the Concorde-repository-only,
+  attempt-free cutover required for every normative Concorde Protocol semantic change.
 
 ## Usage Scenarios
 
@@ -146,6 +162,8 @@ Planning, task, checklist, research, quickstart, and validation files live only 
 2. Create its corresponding stable-ID control attempt whose plan/tasks trace every affected architecture, feature, code, test, and projection.
 3. Execute with evidence, validate the reconciled project, then deliver by removing only the attempt.
 4. Use the fast loop only when deterministic preflight proves the change is already specified, bounded, and non-structural.
+5. Reject normative Concorde Protocol evolution before selection and route it to one isolated
+   worktree cutover without lifecycle state.
 
 ## Requirements
 
@@ -159,9 +177,15 @@ Planning, task, checklist, research, quickstart, and validation files live only 
 - **FR-006**: Module architecture and direct feature files MUST also serve as the maintained project
   documentation; lifecycle guidance MUST update those owners rather than create a parallel `docs/`
   authority.
+- **FR-007**: Every canonical and projected lifecycle entry point MUST reject a normative Concorde
+  Protocol semantic change before workspace mutation and direct the Concorde maintainer to
+  `feature.concorde.evolve-protocol`; implementation fixes that restore already specified semantics
+  remain eligible for this workflow.
 
 ## Edge Cases
 
 - Related features span several immediate modules but the feature remains specified at the level where those modules are visible.
 - A passing structural check has no behavioral evidence and therefore cannot authorize a completion claim.
 - A stale proposal or unexpected protected-source change stops mutation while preserving the attempt.
+- A Concorde maintainer asks a normal lifecycle leaf or Operation to change Protocol semantics; it
+  stops before selection/attempt mutation and names the isolated protocol-evolution route.

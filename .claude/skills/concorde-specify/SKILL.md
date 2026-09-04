@@ -23,6 +23,15 @@ Create or revise exactly one complete durable feature file. A feature is a level
 capability of one module, never a hierarchy container. Its purpose, usage, requirements, embedded
 interfaces, failures, and Architecture Zoom all belong in that one document.
 
+## Concorde Protocol evolution guard
+
+Before workspace resolution or any write, detect the Concorde repository by package name
+`concorde` and root module `module.concorde`. If the request changes normative Concorde Protocol
+semantics as defined by `feature.concorde.define-project-ontology`, stop: do not persist selection,
+create/revise a feature through this Skill, or create an attempt/checklist. Report the direct,
+isolated-worktree route `feature.concorde.evolve-protocol`. A code/specification correction that only
+restores already specified Protocol semantics remains normal work.
+
 ## Workspace gate
 
 Before resolving templates, reading feature artifacts, or writing anything, run `python3 scripts/workspace.py --phase specify` from the

@@ -13,6 +13,13 @@ $ARGUMENTS
 
 # Convert Concorde Tasks to Issues
 
+## Concorde Protocol evolution guard
+
+Before workspace resolution or any external write, if this is the Concorde repository and the task
+set changes normative Concorde Protocol semantics, stop without reading an attempt or creating
+issues. Report `feature.concorde.evolve-protocol`; one isolated cutover commit, not issue-backed
+attempt work, owns that change.
+
 ## Workspace gate
 
 Run `{SCRIPT}` first and require Protocol 13. Use the returned selected feature identity,

@@ -1,35 +1,26 @@
 <!--
 Sync Impact Report
-- Version change: 7.2.0 -> 7.3.0 (MINOR: related-feature references carry a typed relation from a
-  shared vocabulary, directional families are validated acyclic, and the published feature graph is a
-  required read-model projection of those relations)
+- Version change: 7.3.0 -> 8.0.0 (MAJOR: normative Concorde Protocol changes no longer use the
+  normal attempt/delivery lifecycle; they use an explicitly authorized isolated-worktree cutover)
 - Modified principles:
-  - A.IV Feature Interfaces Are Human-Readable Promises: composition, refinement, and dependency are
-    now named on the reference itself (`composes`, `refines`, `depends_on`, their inverse forms, or
-    symmetric `relates_to`); a plain ID means `relates_to`.
-- Modified standards: a new Workflow Standard defines the relation vocabulary and its acyclicity
-  rule; validation reports unknown relations and cycles; publication derives one typed feature graph.
-- Compatibility impact: plain related-feature IDs remain valid; typed entries are additive.
-- Required migration: none; projects that want typed edges add `relation` to each entry.
-- Previous change (7.1.0 -> 7.2.0): adds mandatory principle A.VI, which requires module
-  decomposition to follow business capability, use case, or axis of change rather than artifact type
-- Added principles:
-  - A.VI Modules Follow Capabilities, Not Artifact Types: a module is defined by the capability it
-    serves; artifact-type layers (all Skills, all scripts, all Operations, all models) and residual
-    buckets (misc, common, shared) are invalid module boundaries; the root module holds only
-    project-wide features; physical distribution directories never determine ownership.
-- Modified principles:
-  - B.II Concorde Develops Itself with Concorde: the repository re-partitions its own architecture
-    into capability modules (understanding, lifecycle, reflections, capabilities, distribution,
-    auto-docs) as the first application of A.VI.
-- Modified standards: initialization, specification, planning, and analysis guidance check A.VI
-  before creating or restructuring a module; deterministic validation reports artifact-type or
-  residual module names as advisory findings.
-- Compatibility impact: stable module IDs `module.concorde.skills`, `.operations`, `.runtime`, and
-  `.workspace` are retired; their features and entities move to the owning capability modules with
-  new stable IDs. No compatibility alias remains.
-- Required migration: none for installed projects; projects that already partition by artifact type
-  receive advisory validation findings and re-partition in a normal attempt.
+  - B.II Concorde Self-Applies and Explicitly Evolves Its Protocol: normal Concorde work remains
+    self-hosted, while every normative Concorde Protocol change is performed outside the Protocol it
+    changes through one direct, isolated, validated Git cutover with no attempt or delivery.
+- Modified standards:
+  - Workflow Standards define Concorde Protocol as the complete normative selected-feature change
+    process and distinguish it from the serialized Feature Workspace Protocol.
+  - Development Workflow and Quality Gates exclude normative Concorde Protocol evolution from the
+    normal lifecycle and require a clean checkpoint, isolated worktree, complete target validation,
+    and one reviewable cutover commit.
+  - Reflection paths now name the current per-file collection rather than the retired single log.
+- Compatibility impact: an attempt, fast loop, or standard-loop invocation is no longer an eligible
+  way to change normative Concorde Protocol semantics; implementation fixes that restore already
+  specified semantics remain normal lifecycle work. External Concorde projects continue to consume
+  the Protocol and receive no automatic source-profile migration from this governance change.
+- Required migration: add the root Protocol-evolution feature and ontology identity, reconcile every
+  canonical and projected workflow surface, validate the complete target checkout, and supersede
+  R-036's proposed generic pre-loader migrator with the worktree-cutover boundary.
+- Deferred placeholders: none.
 -->
 # Concorde Constitution
 
@@ -153,7 +144,7 @@ The delivery exception applies only when one selected feature has a real active 
 least one recognizable task, every task and existing checklist item is complete and well formed,
 applicable validation has passed, and the maintainer explicitly invokes delivery. Delivery verifies
 a current digest and safe canonical paths, removes exactly that selected stable-ID control attempt,
-and leaves module architecture, feature files, `.concorde/reflections/log.md`, source code, tests,
+and leaves module architecture, feature files, `.concorde/reflections/`, source code, tests,
 and other feature attempts
 byte-identical. It MUST NOT create an implementation narrative or amend architectural intent.
 Ineligibility, ambiguity, unsafe paths, failed validation, or stale inputs preserves the full attempt.
@@ -208,14 +199,22 @@ behavioral contract and MUST be public. Installation MUST project public leaf Sk
 skills into the user's agent Skill namespace while retaining every packaged leaf and paired Python
 graph in the installed framework.
 
-### B.II Concorde Develops Itself with Concorde
+### B.II Concorde Self-Applies and Explicitly Evolves Its Protocol
 
-Concorde MUST develop itself under Part A using its own tooling. When a capability cannot yet enforce
-the new profile, maintainers apply the rule manually, record the bootstrap compromise in the one
-project reflection log, and migrate the artifact in the same prototype milestone. Self-application
-is the acceptance test that the workflow is practical rather than aspirational. Concorde's own
-architecture is therefore partitioned by capability under A.VI: understanding, lifecycle,
-reflections, capabilities, distribution, and auto-docs.
+Concorde MUST develop every normal change under Part A using its own tooling. Self-application is the
+acceptance test that the workflow is practical rather than aspirational. Concorde's own architecture
+is therefore partitioned by capability under A.VI: understanding, lifecycle, reflections,
+capabilities, distribution, and auto-docs.
+
+Concorde is also the only project that defines, implements, and consumes the complete normative
+Concorde Protocol. Every change to that Protocol's semantics MUST use the root Protocol-evolution
+feature rather than an attempt, fast loop, standard development loop, or delivery. The maintainer
+MUST explicitly authorize the cutover from a clean tracked checkpoint; the change MUST be authored
+directly in an isolated Git worktree, reconcile every affected maintained and executable authority,
+pass complete target-state validation, and merge as one reviewable cutover commit. No active
+Protocol-evolution attempt may exist. A failed cutover leaves the base checkout unchanged and is
+abandoned or reverted through Git. A code or test fix that restores already specified Protocol
+semantics remains normal lifecycle work.
 
 ## Project Constraints
 
@@ -248,7 +247,8 @@ reflections, capabilities, distribution, and auto-docs.
 - Canonical module paths are `<module>/architecture.md` and `<module>/modules/<child>/`; canonical
   feature paths are `<module>/features/<NNN-name>.md`. A module contains no workflow-control child.
   Temporal work lives at `.concorde/attempts/<stable-feature-id>/` and is absent when that feature has
-  no active attempt; the tracked process log lives at `.concorde/reflections/log.md`.
+  no active attempt; tracked process memory lives in `.concorde/reflections/<bucket>/R-NNN.md` with a
+  metadata-only allocation index.
 - Stable feature IDs, not filenames or module paths, key attempts and MUST use a safe lowercase
   qualified grammar. A planned feature with no authored ID exposes no attempt path; specification
   reruns workspace resolution after front matter before creating its checklist.
@@ -277,6 +277,12 @@ reflections, capabilities, distribution, and auto-docs.
 - Workspace Protocol 13, Delivery Proposal 9, Tool result envelopes, capability-surface status schema
   2, and reflection-triage/v4 MUST use `tool` for bounded deterministic actions. Operation metadata is
   reserved for paired LangGraph execution.
+- Concorde Protocol is the complete normative process by which a selected feature is resolved,
+  permission-bounded, specified, planned, executed, validated, reflected on, and delivered, together
+  with the Source Profile and control-state rules that make those phases authoritative. Feature
+  Workspace Protocol is one serialized component of Concorde Protocol, not its synonym. Every
+  Concorde project consumes the Protocol; only the Concorde repository defines, implements, and
+  self-applies it.
 - Structural conformance is not implementation proof. Completion claims name the executable tests
   or checks and the exact scope each result establishes.
 - No stored status substitutes for verification. A feature design carries no evidence-status field;
@@ -285,10 +291,16 @@ reflections, capabilities, distribution, and auto-docs.
 
 ## Development Workflow and Quality Gates
 
-Every material change proceeds through the Concorde lifecycle. Specification first
+Every material change except normative Concorde Protocol evolution proceeds through the Concorde
+lifecycle. Specification first
 identifies the feature's module, related features, affected architecture entities, interface changes,
 representative usage, and expected source/test evidence. Architecture changes are written in the
 owning module; feature behavior and interfaces are written in the owning feature design.
+
+Normative Concorde Protocol evolution follows B.II instead: it creates no attempt or checklist,
+invokes no lifecycle or delivery capability, and changes the complete specification/code/test/control
+boundary directly in one isolated worktree. The target checkout MUST pass all applicable deterministic
+validation before its single cutover commit is eligible to merge.
 
 Planning and review use the selected feature design, bounded module architecture and ancestry,
 bounded related-feature summaries, current code/tests, and the selected temporal attempt. They MUST
@@ -306,9 +318,10 @@ policy and Tool failures remain explicit and MUST NOT silently fall through to a
 
 Tasks explicitly reconcile every affected architecture, feature interface, code path, test, and
 generated projection. Implementation records compact evidence in the attempt before completing each
-task. Deliberate compromises or difficult choices are appended to `.concorde/reflections/log.md` with their
-scope, observed limitation, current action, and improvement path; they do not block a prototype when
-a safe bounded assumption permits progress.
+task. Deliberate compromises or difficult choices are recorded as one
+`.concorde/reflections/<bucket>/R-NNN.md` document with their scope, observed limitation, current
+action, and improvement path; they do not block a prototype when a safe bounded assumption permits
+progress.
 
 Before delivery, all applicable deterministic hierarchy, layout, entity/reference, interface,
 behavioral, package, documentation, and freshness checks pass. Delivery removes the complete attempt
@@ -331,4 +344,4 @@ or materially expands a mandatory obligation, and PATCH clarifies wording. Every
 architecture review includes a constitution check. Reviewers reject unexplained violations,
 invisible boundary changes, duplicated canonical intent, and implementation claims without evidence.
 
-**Version**: 7.3.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-04
+**Version**: 8.0.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-04

@@ -28,7 +28,9 @@ remove-closed, plan/merged-small state), the reflection parsing/validation rules
 and the internal investigator/implementer agent roles and their Codex/Claude projections. It does not
 own the lifecycle phases that record reflections (`module.concorde.lifecycle`), the Operation
 runtime/policy enforcement (`module.concorde.capabilities`), or Protocol 13
-(`module.concorde.understanding`).
+(`module.concorde.understanding`). It may investigate a Concorde Protocol problem read-only, but it
+never implements, merges, or closes a normative Protocol semantic change through reflection routes;
+the root `feature.concorde.evolve-protocol` owns that cutover.
 
 ## Entities
 
@@ -90,7 +92,7 @@ runtime/policy enforcement (`module.concorde.capabilities`), or Protocol 13
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
 | `interaction.reflections.record` | A lifecycle phase meets a new or repeated concrete problem. | Allocate a never-used ID with the queue Tool; create the returned `pending/` document with only Context, Expected, Observed, Impact, and Evidence and a retained blank User Comments section, or append an Occurrences item to an existing document instead of allocating another identity; immediately run `--validate-entry` and correct only that new entry until it reports valid. | One problem-only document or occurrence exists under `pending/` with an unmoved, un-lowered allocation index. | `interface.concorde.reflections` |
-| `interaction.reflections.triage` | A maintainer or the triage Operation selects `status`, `investigate`, `implement`, or `merge` for one or more reflections. | Describe only the capabilities reachable for the explicit action/route and require their compiled policy; for `investigate` run one read-only investigator per reflection and let the parent alone persist its validated triage completion and plan; run the relocation Tool so the document leaves `pending/` for `planned/` or `needs-comments/`, then validate it; for `implement` follow exactly the `fast-loop` or nested-plan route inside an isolated worktree and validate; for `merge` require clean tracked state before removing exactly a matching merged small `fast-loop` entry. | Exactly one route's capabilities execute, the document lands in the bucket its front matter requires, and an eligible merged small fix is deterministically removed without maintainer approval. | `interface.concorde.reflections`, `contract.capabilities.permission-bounded-execution`, `contract.lifecycle.plan` |
+| `interaction.reflections.triage` | A maintainer or the triage Operation selects `status`, `investigate`, `implement`, or `merge` for one or more reflections. | Describe only the capabilities reachable for the explicit action/route and require their compiled policy; for `investigate` run one read-only investigator per reflection and let the parent alone persist its validated triage completion and plan; run the relocation Tool so the document leaves `pending/` for `planned/` or `needs-comments/`, then validate it; reject implementation/merge/close when the resolution changes normative Concorde Protocol semantics and name the root isolated cutover; otherwise for `implement` follow exactly the `fast-loop` or nested-plan route inside an isolated worktree and validate; for `merge` require clean tracked state before removing exactly a matching merged small `fast-loop` entry. | Exactly one eligible route's capabilities execute, the document lands in the bucket its front matter requires, an eligible merged small fix is deterministically removed, or Protocol evolution stops before lifecycle mutation for maintainer cutover. | `interface.concorde.reflections`, `contract.capabilities.permission-bounded-execution`, `contract.lifecycle.plan` |
 | `interaction.reflections.close` | A maintainer records `status: resolved` or `dismissed` plus a `resolution_note` on a `needs-comments/` document. | Run the `close` action's deterministic removal on the named identifiers or every closed document when none are named; validate every requested ID before mutation; remove exactly those files atomically with rollback on any ineligible or missing entry; commit the removal with each resolution note in the message. | The collection retains only open documents while every disposition reason survives in Git history. | `interface.concorde.reflections` |
 
 ## Modules
@@ -117,6 +119,9 @@ None.
   `close` action rather than retained; Git history keeps the record.
 - The investigator and implementer roles are internal support for the paired Operation, not
   additional user-facing capabilities; only the Operation and its Skill project publicly.
+- Investigation may analyze a Concorde Protocol problem, but every implementation/merge/close route
+  that would change normative Protocol semantics stops before mutation and delegates to the root
+  Protocol-evolution feature.
 - Plans under `.concorde/reflections/plans/` and checkouts under `.concorde/reflections/worktrees/`
   are ignored scratch state, never a specification or implementation authority.
 - A reflection's status is re-verified by the acting agent at the start of every investigation and

@@ -43,6 +43,14 @@ Treat `$ARGUMENTS` as the complete requested change. Fast-loop is a direct, no-a
 small, fully understood change. It preserves the same
 module/feature ontology and evidence standard as the full workflow.
 
+## Concorde Protocol evolution guard
+
+Before workspace resolution or preflight, if this is the Concorde repository and the request changes
+normative Concorde Protocol semantics, stop without selection or mutation. Apparent size and backward
+compatibility do not make the change fast-loop eligible. Report the separate direct isolated-
+worktree route `feature.concorde.evolve-protocol`. A fix that restores already specified Protocol
+behavior may continue through normal fast-loop eligibility.
+
 ## Workspace gate
 
 Run `{SCRIPT}` first and require Protocol 13 for one existing selected feature. Use only the returned
