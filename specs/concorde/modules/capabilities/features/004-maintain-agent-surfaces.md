@@ -13,7 +13,6 @@ interfaces:
   provided:
     - interface.concorde.agent-surfaces
   required: []
-evidence_status: verified
 ---
 
 # Feature Design: Maintain Checkout Agent Surfaces

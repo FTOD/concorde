@@ -10,7 +10,6 @@ interfaces:
     - contract.example.confirmation
   required:
     - contract.example.authorization
-evidence_status: partial
 ---
 
 # Feature Design: Confirm Order

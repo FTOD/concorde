@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.dev/interfaces/documentation/feature-graph-v1.schema.json",
-  "title": "Concorde Feature Graph 1",
+  "$id": "https://concorde.dev/interfaces/documentation/feature-graph-v2.schema.json",
+  "title": "Concorde Feature Graph 2",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "generator", "source_digest", "modules", "features", "edges", "counts"],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"const": 2},
     "generator": {
       "type": "object",
       "additionalProperties": false,
@@ -42,13 +42,12 @@
     "feature": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "title", "module", "outcome", "status", "route", "source_path", "source_sha256"],
+      "required": ["id", "title", "module", "outcome", "route", "source_path", "source_sha256"],
       "properties": {
         "id": {"$ref": "#/$defs/id"},
         "title": {"type": "string", "minLength": 1},
         "module": {"$ref": "#/$defs/id"},
         "outcome": {"type": "string", "minLength": 1},
-        "status": {"type": "string", "minLength": 1},
         "route": {"$ref": "#/$defs/route"},
         "source_path": {"$ref": "#/$defs/sourcePath"},
         "source_sha256": {"$ref": "#/$defs/sha256"}

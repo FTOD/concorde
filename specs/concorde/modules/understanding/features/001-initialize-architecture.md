@@ -11,7 +11,6 @@ interfaces:
   provided:
     - interface.concorde.initialize
   required: []
-evidence_status: partial
 ---
 
 # Feature Design: Initialize Architecture

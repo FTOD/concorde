@@ -21,7 +21,6 @@ interfaces:
   required:
     - contract.understanding.feature-workspace
     - contract.understanding.records
-evidence_status: verified
 ---
 
 # Feature Design: Run Deterministic Tools

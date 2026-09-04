@@ -18,7 +18,6 @@ interfaces:
   required:
     - contract.auto-docs.architecture-site
     - contract.distribution.native-installation
-evidence_status: verified
 ---
 
 # Feature Design: Create Unified Project Docsite
@@ -82,7 +81,7 @@ projects.
   `docsite/`, unsafe target path, stale or edited proposal, or a package whose template inventory is
   missing or disagrees with Package Manifest 2 returns a non-success result and writes nothing.
 - **Compatibility**: Docsite Scaffold Proposal 1 and site identity schema 1 accompany Package
-  Manifest 2; the scaffolded adapter emits Build Manifest 12 and needs Node.js 20+ with locked
+  Manifest 2; the scaffolded adapter emits Build Manifest 13 and needs Node.js 20+ with locked
   dependencies. Initialization Proposal 3 is unchanged: the scaffold is a separate propose/apply cycle.
 - **Example**: `concorde.py --project-root . docsite --propose --title Atlas --repository
   https://github.com/org/atlas` writes nothing and prints the proposal; after review,
@@ -95,12 +94,12 @@ projects.
 ### `interface.concorde.publish-docsite` — Publish the project read model
 
 - **Consumer**: Maintainer, contributor, and CI.
-- **Direction**: Maintained content/build request to static site and Manifest 12 result.
+- **Direction**: Maintained content/build request to static site and Manifest 13 result.
 - **Entry points**: `npm run start`, `npm run validate`, `npm run build`, and `npm run check` in `docsite`.
 - **Inputs**: Site identity from `docsite/site.json`; recursive module `architecture.md`, direct
   `features/*.md`, and declared module diagrams. Root README and `docs/**/*.md` are not publication
   sources; native `.concorde/**` control/framework state is excluded.
-- **Outputs**: Searchable site, semantic routes, source provenance, delivered diagrams, and Build Manifest 12.
+- **Outputs**: Searchable site, semantic routes, source provenance, delivered diagrams, and Build Manifest 13.
 - **Obligations**: Take title, site URL, base path, organization/project names, and repository link only
   from the site identity file so the adapter stays byte-identical across projects; validate
   identities/links/routes/freshness; publish only architecture and feature authorities; reject a
@@ -132,7 +131,7 @@ projects.
    Documentation section.
 2. Preview or validate the current source registry and semantic routes without changing sources.
 3. Deliver every declared module diagram, materialize ignored Docusaurus inputs, and build a candidate.
-4. Promote only a candidate whose links, provenance, Manifest 12, accessibility, and source digests pass.
+4. Promote only a candidate whose links, provenance, Manifest 13, accessibility, and source digests pass.
 
 ## Requirements
 
@@ -142,7 +141,7 @@ projects.
   MUST appear exactly once in the normalized registry; README and `docs/**/*.md` MUST NOT appear as
   content records.
 - **FR-002**: Routes MUST derive from stable semantic IDs and remain independent of legacy filenames or storage depth.
-- **FR-003**: Build Manifest 12 MUST inventory all included sources, module/feature relations, routes, diagram deliveries, provenance, and generator version deterministically.
+- **FR-003**: Build Manifest 13 MUST inventory all included sources, module/feature relations, routes, diagram deliveries, provenance, and generator version deterministically.
 - **FR-004**: `.concorde` configuration/selection/constitution/attempt/reflection/framework/receipt state and executable/private source files MUST NOT become
   published pages or broad Manifest exclusions; legacy `specs/**/attempts/**` and specification-root
   reflection logs MUST fail the Profile 7 publication gate.

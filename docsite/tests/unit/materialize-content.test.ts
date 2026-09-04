@@ -26,7 +26,7 @@ async function prefixedHeadingProject(): Promise<string> {
     writeFile(resolve(root, 'specs/scale/modules/inner/architecture.md'),
       '---\nid: module.scale.inner\nkind: module\nparent: module.scale\nmodules: []\nfeatures:\n  - feature.scale.inner.one\n---\n# Architecture: Inner\n'),
     writeFile(resolve(root, 'specs/scale/modules/inner/features/001-one.md'),
-      '---\nid: feature.scale.inner.one\nkind: feature\nmodule: module.scale.inner\nrelated_features: []\nevidence_status: unknown\n---\n# Feature Design: One\n\n## Outcome\n\nOne.\n'),
+      '---\nid: feature.scale.inner.one\nkind: feature\nmodule: module.scale.inner\nrelated_features: []\n---\n# Feature Design: One\n\n## Outcome\n\nOne.\n'),
   ]);
   return root;
 }

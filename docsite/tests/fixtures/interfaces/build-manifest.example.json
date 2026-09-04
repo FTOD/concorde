@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 12,
+  "schemaVersion": 13,
   "generator": {"name": "concorde-docsite", "version": "0.7.0", "docusaurusVersion": "3.10.2"},
   "collections": [
     {"id": "architecture", "sourceBase": "specs", "routeBase": "/architecture", "include": ["**/architecture.md"]},
@@ -34,12 +34,10 @@
       "featureId": "feature.example.publish",
       "moduleId": "module.example",
       "moduleRoute": "/architecture/module.example",
-      "evidenceStatus": "verified",
       "relatedFeatures": [{
         "featureId": "feature.example.validate",
         "title": "Validate Example",
         "outcome": "The example is validated.",
-        "evidenceStatus": "partial",
         "route": "/features/feature.example.validate",
         "relation": "depends_on"
       }]

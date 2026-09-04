@@ -11,20 +11,6 @@ interfaces:
   required:
     - contract.understand-anything.knowledge-graph
     - contract.capabilities.tools
-evidence_status: verified
-evidence:
-  - kind: implementation
-    target: src/concorde/understanding/alignment.py
-    status: verified
-    producer: concorde
-  - kind: test
-    target: tests/concorde/understanding/integration/test_alignment_explorer.py
-    status: verified
-    producer: unittest
-  - kind: test
-    target: tests/concorde/understanding/acceptance/test_alignment_explorer_journey.py
-    status: verified
-    producer: unittest
 ---
 
 # Feature Design: Explore Alignment

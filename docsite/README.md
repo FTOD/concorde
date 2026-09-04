@@ -88,13 +88,13 @@ Run commands from `docsite/`:
 | `npm run typecheck` | Type-check maintained TypeScript. |
 | `npm run check` | Run typechecking, all tests, source validation, and a production build. |
 
-Successful builds emit deterministic `build/build-manifest.json` using Build Manifest 12. It records
+Successful builds emit deterministic `build/build-manifest.json` using Build Manifest 13. It records
 the two collections, one page per specification authority, stable routes and relations, SHA-256 source
 provenance, architecture diagrams, publication-root exclusions, and passed checks. The build
 validates that custom JSON boundary directly; it no longer depends on a specification-owned schema
-file. Feature pages and related-feature summaries carry `evidenceStatus`, which is exactly the
-front matter `evidence_status` value (`unknown`, `partial`, `verified`, or `disagrees`); Manifest 12
-removed the earlier `status` field that mixed body lifecycle prose with evidence.
+file. Feature pages, related-feature summaries, and Feature Graph 2 nodes carry no status field:
+whether a feature's promise currently holds is re-verified by the acting agent, never read from a
+stored value.
 
 A failed candidate is removed and never replaces the last verified `build/`. Ordinary builds do not
 run Archify `visual-check`; perceptual review remains an explicit human-evidence step.

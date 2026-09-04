@@ -143,7 +143,6 @@ interfaces:
     - contract.example.root
   required:
     - contract.provider.api
-evidence_status: unknown
 ---
 
 # Feature Design: Root Change
@@ -230,7 +229,6 @@ interfaces:
   provided:
     - contract.consumer.helper
   required: []
-evidence_status: unknown
 ---
 
 # Feature Design: Consumer Helper

@@ -279,6 +279,9 @@ reflections, capabilities, distribution, and auto-docs.
   reserved for paired LangGraph execution.
 - Structural conformance is not implementation proof. Completion claims name the executable tests
   or checks and the exact scope each result establishes.
+- No stored status substitutes for verification. A feature design carries no evidence-status field;
+  every attempt to resolve a reflection re-verifies the recorded problem against the current
+  checkout before acting, and a problem that no longer reproduces is dismissed, never implemented.
 
 ## Development Workflow and Quality Gates
 

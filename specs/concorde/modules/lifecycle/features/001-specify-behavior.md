@@ -11,7 +11,6 @@ interfaces:
   provided:
     - interface.concorde.specify
   required: []
-evidence_status: partial
 ---
 
 # Feature Design: Specify Behavior

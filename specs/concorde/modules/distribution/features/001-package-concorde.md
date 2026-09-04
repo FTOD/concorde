@@ -15,7 +15,6 @@ interfaces:
     - contract.distribution.native-installation
   required:
     - contract.capabilities.agent-surface
-evidence_status: partial
 ---
 
 # Feature Design: Package Standalone Concorde

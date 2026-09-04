@@ -565,7 +565,6 @@ class ProjectRepository:
                         provided_interfaces=tuple(interface_sets.get("provided", [])) if isinstance(interface_sets.get("provided"), list) else (),
                         required_interfaces=tuple(interface_sets.get("required", [])) if isinstance(interface_sets.get("required"), list) else (),
                         architecture_zoom=_parse_zoom(source),
-                        evidence_status=str(source.metadata.get("evidence_status", "")),
                         relations=relations,
                     ),
                 )

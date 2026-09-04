@@ -27,7 +27,6 @@ interfaces:
   provided:
     - {interface_id}
   required: []
-evidence_status: unknown
 ---
 
 # Feature Design: {slug.replace('-', ' ').title()}

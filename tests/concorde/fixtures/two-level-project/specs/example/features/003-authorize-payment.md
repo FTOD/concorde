@@ -9,7 +9,6 @@ interfaces:
   provided:
     - contract.example.authorization
   required: []
-evidence_status: verified
 ---
 
 # Feature Design: Authorize Payment

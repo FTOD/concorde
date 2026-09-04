@@ -53,10 +53,6 @@ export type RelationKind =
   | 'composed_by' | 'refined_by' | 'depended_on_by'
   | 'relates_to' | 'requires';
 
-/** Closed Profile 7 evidence set carried by feature front matter `evidence_status`. */
-export const EVIDENCE_STATUSES = ['unknown', 'partial', 'verified', 'disagrees'] as const;
-export type EvidenceStatus = (typeof EVIDENCE_STATUSES)[number];
-
 export interface FeatureRelationEntry {
   id: string;
   relation: RelationKind;
@@ -66,7 +62,6 @@ export interface FeatureRelation {
   featureId: string;
   title: string;
   outcome: string;
-  evidenceStatus: EvidenceStatus;
   route: string;
   relation: RelationKind;
 }
@@ -78,8 +73,6 @@ export interface FeatureDesign extends SourceDocument {
   kind: 'feature';
   moduleId: string;
   moduleRoute?: string;
-  /** Raw front matter `evidence_status`; validation constrains it to EVIDENCE_STATUSES. */
-  evidenceStatus: string;
   outcome: string;
   relatedFeatureIds: string[];
   relatedFeatureEntries: FeatureRelationEntry[];
@@ -169,7 +162,6 @@ export interface ContentPage {
   architectureDiagrams?: ModuleDiagram[];
   featureId?: string;
   moduleRoute?: string;
-  evidenceStatus?: EvidenceStatus;
   relatedFeatures?: FeatureRelation[];
 }
 
@@ -187,7 +179,7 @@ export interface ValidationFinding {
   remediation: string;
 }
 
-/** Edge kinds that can appear in a derived Feature Graph 1 document (inverse forms already normalized). */
+/** Edge kinds that can appear in a derived Feature Graph 2 document (inverse forms already normalized). */
 export type EdgeKind = 'composes' | 'refines' | 'depends_on' | 'relates_to' | 'requires';
 
 export interface FeatureGraphCounts {
@@ -208,8 +200,6 @@ export interface GraphFeature {
   title: string;
   module: string;
   outcome: string;
-  /** The feature's evidence status; Feature Graph 1 publishes it under the `status` key. */
-  status: string;
   route: string;
   source_path: string;
   source_sha256: string;
@@ -224,9 +214,9 @@ export interface GraphEdge {
   declared_by: string[];
 }
 
-/** Feature Graph 1: the deterministic, sorted JSON projection published as `feature-graph.json`. */
+/** Feature Graph 2: the deterministic, sorted JSON projection published as `feature-graph.json`. */
 export interface FeatureGraph {
-  schema_version: 1;
+  schema_version: 2;
   generator: {name: string; version: string};
   source_digest: string;
   modules: GraphModule[];
@@ -236,7 +226,7 @@ export interface FeatureGraph {
 }
 
 export interface BuildManifest {
-  schemaVersion: 12;
+  schemaVersion: 13;
   generator: {
     name: 'concorde-docsite';
     version: string;

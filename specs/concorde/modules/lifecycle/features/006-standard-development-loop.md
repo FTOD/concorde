@@ -21,7 +21,6 @@ interfaces:
     - contract.lifecycle.plan
     - contract.capabilities.skill-contract
     - contract.capabilities.agent-surface
-evidence_status: verified
 ---
 
 # Feature Design: Run the Standard Development Loop

@@ -11,7 +11,6 @@ related_features: []
 interfaces:
   provided: []
   required: []
-evidence_status: unknown
 ---
 
 # Feature Design: [FEATURE NAME]

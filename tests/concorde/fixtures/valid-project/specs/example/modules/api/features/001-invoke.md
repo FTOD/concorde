@@ -9,7 +9,6 @@ interfaces:
     - contract.example.api
   required:
     - contract.example.workflow
-evidence_status: unknown
 ---
 
 # Feature Design: Invoke API

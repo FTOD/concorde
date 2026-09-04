@@ -77,7 +77,6 @@ def feature_summary(package: Any, feature: SourceDocument) -> dict[str, Any]:
         "module": normalized.module,
         "feature_path": feature.path,
         "outcome": " ".join(normalized.outcome.split()),
-        "evidence_status": normalized.evidence_status,
     }
 
 

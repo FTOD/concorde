@@ -7,7 +7,6 @@ interfaces:
   provided:
     - contract.provider.unrelated
   required: []
-evidence_status: unknown
 ---
 
 # Feature Design: Unrelated Provider Behavior

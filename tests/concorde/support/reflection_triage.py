@@ -78,6 +78,8 @@ def write_plan(
     recorded_under: str = "feature.example.deliver",
     implement_in: str = "specs/example/features/001-deliver.md",
     implement_in_id: str = "feature.example.deliver",
+    verified: str | None = None,
+    verified_commit: str | None = None,
 ) -> Path:
     path = root / ".concorde" / "reflections" / "plans" / f"{identifier}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -95,6 +97,8 @@ effort: {effort}
 files:
   - src/example.py
 {f'commit: {commit}' if commit else ''}
+{f'verified: {verified}' if verified else ''}
+{f'verified_commit: {verified_commit}' if verified_commit else ''}
 ---
 ## Problem
 

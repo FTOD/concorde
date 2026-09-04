@@ -40,7 +40,6 @@ interfaces:
     - contract.concorde.workflow
   required:
     - contract.concorde.agent-platform
-evidence_status: partial
 ---
 
 # Feature Design: Concorde Workflow

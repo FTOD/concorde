@@ -11,13 +11,13 @@ import {buildRegistry} from '../../plugins/concorde-content/registry';
 const fixture = resolve(__dirname, '../fixtures/valid-project');
 const interfaceRoot = resolve(__dirname, '../fixtures/interfaces');
 
-describe('Feature Graph 1', () => {
+describe('Feature Graph 2', () => {
   it('accepts the executable representative example under the strict schema', async () => {
     const schema = JSON.parse(await readFile(resolve(interfaceRoot, 'feature-graph.schema.json'), 'utf8'));
     const example = JSON.parse(await readFile(resolve(interfaceRoot, 'feature-graph.example.json'), 'utf8'));
     const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(schema);
     expect(validate(example), JSON.stringify(validate.errors, null, 2)).toBe(true);
-    expect(example.schema_version).toBe(1);
+    expect(example.schema_version).toBe(2);
   });
 
   it('validates a graph derived from the valid-project fixture under the strict schema', async () => {
@@ -39,9 +39,9 @@ describe('Feature Graph 1', () => {
     }
   });
 
-  it('registers feature-graph.json and its counts in Build Manifest 12', async () => {
+  it('registers feature-graph.json and its counts in Build Manifest 13', async () => {
     const manifest = createManifest(await buildRegistry(fixture));
-    expect(manifest.schemaVersion).toBe(12);
+    expect(manifest.schemaVersion).toBe(13);
     expect(manifest.featureGraph).toBe('feature-graph.json');
     expect(manifest.featureGraphCounts).toEqual({
       features: 2, modules: 2,

@@ -83,8 +83,8 @@ an explicit dependency. Reject a selected path outside the providing module's di
    derive an ID from its filename or module, and do not create a provisional attempt.
 4. Write one self-contained design with:
 
-   - front matter containing stable `id`, `kind: feature`, `module`, `related_features`, provided and
-     required interface IDs, and `evidence_status`;
+   - front matter containing stable `id`, `kind: feature`, `module`, `related_features`, and provided
+     and required interface IDs;
    - observable Outcome and Scope;
    - representative success, edge, and failure Usage;
    - User Scenarios & Testing, testable Requirements, assumptions, and measurable Success Criteria;

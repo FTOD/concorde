@@ -24,28 +24,6 @@ interfaces:
     - contract.concorde.agent-platform
     - contract.understand-anything.knowledge-graph
     - contract.understand-anything.viewer-package
-evidence_status: verified
-evidence:
-  - kind: implementation
-    target: scripts/install-concorde.py
-    status: verified
-    producer: concorde
-  - kind: implementation
-    target: src/concorde/distribution/managed_runtime.py
-    status: verified
-    producer: concorde
-  - kind: implementation
-    target: scripts/run-viewer.py
-    status: verified
-    producer: concorde
-  - kind: test
-    target: tests/concorde/distribution/unit/test_install_concorde.py
-    status: verified
-    producer: unittest
-  - kind: test
-    target: tests/concorde/distribution/acceptance/test_installation_entrypoint.py
-    status: verified
-    producer: unittest
 ---
 
 # Feature Design: Install Concorde Natively

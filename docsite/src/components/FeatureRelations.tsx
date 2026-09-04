@@ -16,7 +16,7 @@ export default function FeatureRelations({page}: {page: ContentPage}) {
           <li key={related.featureId}>
             <Link to={related.route}>{related.title}</Link> <code>{related.featureId}</code>
             <span className="featureRelations__relation">{formatRelation(related.relation)}</span>
-            <span>{related.outcome}</span><small>Evidence: {related.evidenceStatus}</small>
+            <span>{related.outcome}</span>
           </li>
         ))}
       </ol>

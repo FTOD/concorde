@@ -28,7 +28,7 @@ grounded questions.
 ## Boundary
 
 Understanding owns the Profile 7 source model and repository loader; the layout, hierarchy, entity,
-feature, diagram, evidence, and freshness validation rules; the initialization proposal; bounded
+feature, diagram, and freshness validation rules; the initialization proposal; bounded
 module/feature context projection; Feature Workspace Protocol 13 resolution and permission-role path
 validation; the planning-context resolver; the alignment explorer and its Understand Anything adapter;
 the file-role ontology that distinguishes specification, control state, code, tests, and generated
@@ -47,8 +47,8 @@ launcher, reflection semantics, installation, or publication.
 | `entity.understanding.workspace-resolver` | program | Resolves native selection, ancestry, related summaries, attempt/reflection state, executable roots, and safe concrete Protocol-13/task path roles without following symlinks. | `src/concorde/understanding/feature_workspace.py#resolve_phase_paths` |
 | `entity.understanding.workspace-adapter` | program | Emits Protocol 13 paths for one native-selected direct feature. | `scripts/workspace.py` |
 | `entity.understanding.planning-context` | program | Resolves selected/providing-module paths and exact project-owned required-interface feature specifications, skips explicitly external required providers, and denies provider internals, symlinks, escapes, and other attempts. | `src/concorde/understanding/planning_context.py#resolve_planning_context` |
-| `entity.understanding.validator` | program | Runs layout/parallel-authority, hierarchy, entity, feature, diagram, evidence, and freshness rules. | `src/concorde/understanding/validate.py#validate_project` |
-| `entity.understanding.model-rules` | package | Layout, hierarchy, entity, feature, diagram, evidence, and freshness rule sets that give the validator its deterministic checks. | `src/concorde/understanding/validation` |
+| `entity.understanding.validator` | program | Runs layout/parallel-authority, hierarchy, entity, feature, diagram, and freshness rules. | `src/concorde/understanding/validate.py#validate_project` |
+| `entity.understanding.model-rules` | package | Layout, hierarchy, entity, feature, diagram, and freshness rule sets that give the validator its deterministic checks. | `src/concorde/understanding/validation` |
 | `entity.understanding.initializer` | program | Proposes and atomically applies Initialization Proposal 3 with a root Archify system overview. | `src/concorde/understanding/initialize.py` |
 | `entity.understanding.alignment-explorer` | program | Validates optional pinned UA graph/sidecar inputs and projects bounded evidence-qualified alignment without mutation. | `src/concorde/understanding/alignment.py#explore_alignment` |
 | `entity.understanding.protocol13` | schema | Structured phase context for one direct feature and stable-ID attempt whose returned paths can be validated into concrete non-symlink permission roles. | `concept:Feature Workspace Protocol 13` |
@@ -76,7 +76,7 @@ launcher, reflection semantics, installation, or publication.
 | `entity.understanding.repository-loader` | `reads_from` | `entity.concorde.specification` | Loads canonical module architectures, direct features, and declared diagrams. |
 | `entity.understanding.repository-loader` | `reads_from` | `entity.concorde.control-state` | Loads configuration, selection, attempt, and reflection state alongside specification sources. |
 | `entity.understanding.validator` | `reads_from` | `entity.understanding.repository-loader` | Validates the same loaded package model used by every Tool. |
-| `entity.understanding.validator` | `calls` | `entity.understanding.model-rules` | Runs layout, hierarchy, entity, feature, diagram, evidence, and freshness rule sets. |
+| `entity.understanding.validator` | `calls` | `entity.understanding.model-rules` | Runs layout, hierarchy, entity, feature, diagram, and freshness rule sets. |
 | `entity.understanding.context-builder` | `reads_from` | `entity.understanding.repository-loader` | Projects one bounded module or feature altitude from the loaded model. |
 | `entity.understanding.workspace-resolver` | `reads_from` | `entity.understanding.repository-loader` | Builds Protocol 13 context from normalized IDs and paths. |
 | `entity.understanding.alignment-explorer` | `reads_from` | `entity.understanding.repository-loader` | Projects the same validated Profile 7 identities used by every Tool. |
@@ -118,7 +118,7 @@ launcher, reflection semantics, installation, or publication.
 | `interaction.understanding.retrieve-context` | A maintainer or agent requests one stable module or feature ID. | Validate Profile 7; load only the canonical sources for that ID; project responsibility/boundary/entities/relations/interactions or feature design/interfaces/zoom; stop at immediate children and related-feature summaries. | Exactly one bounded altitude returns without descendant or unrelated bodies. | `interface.concorde.context` |
 | `interaction.understanding.resolve-workspace` | A path-sensitive Skill, Operation stage, or delivery Tool starts a phase for a selected feature. | Resolve explicit path, environment selection, or `.concorde/feature.json`; load the direct feature/module; derive stable-ID attempt/reflection/executable context; validate concrete task/role paths and reject symlinks/escapes; return Protocol 13. | Exactly one canonical direct feature plus bounded safe role inputs is routed. | `interface.concorde.workspace` |
 | `interaction.understanding.bound-planning-context` | A planning Operation or its plan-author leaf resolves context for one selected feature. | Resolve the selected feature, its providing module's owned architecture/implementation/test locators, and its attempt paths; walk `interfaces.required` to the exact feature file that owns each interface with a reason trace; deny dependency module internals, descendant modules, unrelated features, and other attempts; return one context receipt. | A plan author reads exactly the selected feature's context plus the published dependency promises it needs, never a dependency module's private internals. | `contract.understanding.planning-context` |
-| `interaction.understanding.validate` | A maintainer, CI job, or lifecycle gate requests deterministic validation. | Load the normalized source package; run layout, hierarchy, entity, feature, diagram, evidence, and freshness rules plus any composed capability-scoped rules; format one structured result with rule/severity/subject/path/remediation per finding. | A repeatable, complete, actionable account of Profile 7 and control-state integrity, with no mutation. | `interface.concorde.validate` |
+| `interaction.understanding.validate` | A maintainer, CI job, or lifecycle gate requests deterministic validation. | Load the normalized source package; run layout, hierarchy, entity, feature, diagram, and freshness rules plus any composed capability-scoped rules; format one structured result with rule/severity/subject/path/remediation per finding. | A repeatable, complete, actionable account of Profile 7 and control-state integrity, with no mutation. | `interface.concorde.validate` |
 | `interaction.understanding.explore` | A maintainer or agent requests one stable module, entity, feature, or interface alongside optional implementation evidence. | Validate Profile 7; project the target altitude; validate optional UA graph and schema-1 sidecar; compare revisions; qualify records; apply text/status bounds; serialize one Tool result. | Current explicit evidence may qualify alignment; absent, stale, incompatible, or candidate-only claims remain unknown. | `contract.concorde.alignment-explorer`, `contract.understand-anything.knowledge-graph` |
 
 ## Modules
@@ -153,7 +153,7 @@ None.
 - Generated and installed projections never become specification or implementation authority.
 - Module architectures and direct feature designs are the only maintained prose documentation
   authorities; root `docs/` is invalid parallel authority.
-- `validate_project` composes this module's layout/hierarchy/entity/feature/diagram/evidence/freshness
+- `validate_project` composes this module's layout/hierarchy/entity/feature/diagram/freshness
   rules with capability-scoped and reflection-scoped rules owned by other modules without importing
   their implementation into Understanding.
 - Understanding owns the meaning of every file role; capability modules own what they write into those

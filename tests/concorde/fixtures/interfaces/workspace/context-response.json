@@ -68,8 +68,7 @@
           "title": "Deliver Workflow",
           "module": "module.example",
           "feature_path": "specs/example/features/001-deliver-workflow.md",
-          "outcome": "A maintainer can deliver the example workflow.",
-          "evidence_status": "verified"
+          "outcome": "A maintainer can deliver the example workflow."
         }
       ],
       "externals": [],

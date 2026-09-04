@@ -13,7 +13,7 @@ const sha256Hex = (value: string) => createHash('sha256').update(value).digest('
 
 /** Every directional family a `requires` and typed `related_features` edge can belong to (FR-005). */
 export const DIRECTIONAL_EDGE_KINDS: EdgeKind[] = ['composes', 'refines', 'depends_on', 'requires'];
-/** Every edge kind Feature Graph 1 can carry, in the deterministic order `counts.edges_by_kind` reports. */
+/** Every edge kind Feature Graph 2 can carry, in the deterministic order `counts.edges_by_kind` reports. */
 export const ALL_EDGE_KINDS: EdgeKind[] = ['composes', 'refines', 'depends_on', 'relates_to', 'requires'];
 
 /** Declared relation -> {forward edge kind, whether source/target must swap} (FR-002/FR-003). */
@@ -214,7 +214,7 @@ function deriveEdges(features: FeatureDesign[], findings: ValidationFinding[]): 
 }
 
 /**
- * Derives Feature Graph 1 (FR-001, FR-006) from an already-validated registry: sorted module and
+ * Derives Feature Graph 2 (FR-001, FR-006) from an already-validated registry: sorted module and
  * feature nodes, deterministic typed and interface-derived edges, aggregate counts, and a source
  * digest over every contributing feature's stable ID and content hash. Never throws on a relation or
  * interface problem — publication rejects those beforehand via `findGraphProblems`.
@@ -231,7 +231,7 @@ export function deriveFeatureGraph(registry: ContentRegistry, generatorVersion: 
   const digestInput = features.map((feature) => `${feature.featureId}\0${feature.sourceSha256}`).sort(compareText).join('\n');
 
   return {
-    schema_version: 1,
+    schema_version: 2,
     generator: {name: 'concorde-docsite', version: generatorVersion},
     source_digest: sha256Hex(digestInput),
     modules: modules.map((module) => ({
@@ -239,7 +239,7 @@ export function deriveFeatureGraph(registry: ContentRegistry, generatorVersion: 
     })),
     features: features.map((feature) => ({
       id: feature.featureId, title: feature.title, module: feature.moduleId, outcome: feature.outcome,
-      status: feature.evidenceStatus, route: feature.route, source_path: feature.sourcePath, source_sha256: feature.sourceSha256,
+      route: feature.route, source_path: feature.sourcePath, source_sha256: feature.sourceSha256,
     })),
     edges,
     counts: {features: features.length, modules: modules.length, edges_by_kind: edgesByKind},

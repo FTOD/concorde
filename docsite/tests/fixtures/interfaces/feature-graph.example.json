@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "generator": {"name": "concorde-docsite", "version": "0.7.0"},
   "source_digest": "20a720ec1d8ba4f7a5cb6d47e5da5213d5f656ed0cd21fc769aeef75ce021b1e",
   "modules": [
@@ -12,7 +12,6 @@
       "title": "Publish Example",
       "module": "module.example",
       "outcome": "The example is published.",
-      "status": "Approved",
       "route": "/features/feature.example.publish",
       "source_path": "specs/example/features/001-publish.md",
       "source_sha256": "70b4f45ee3c2abca5b0e9f12fb46d050e9f3b2883e81d6c84d12eaf933cbfaca"
@@ -22,7 +21,6 @@
       "title": "Render Example",
       "module": "module.example.nested",
       "outcome": "The example is rendered.",
-      "status": "Draft",
       "route": "/features/feature.example.render",
       "source_path": "specs/example/modules/nested/features/001-render.md",
       "source_sha256": "5667dc94b2c40afe86a91993eefccc44f0648a95d6867845d16030d33f7a23cf"
@@ -32,7 +30,6 @@
       "title": "Validate Example",
       "module": "module.example",
       "outcome": "The example is validated.",
-      "status": "Approved",
       "route": "/features/feature.example.validate",
       "source_path": "specs/example/features/002-validate.md",
       "source_sha256": "36d2546b3419d75096f70eb6f863fc9c00249e2f9438429b4ac6bd956b14e618"

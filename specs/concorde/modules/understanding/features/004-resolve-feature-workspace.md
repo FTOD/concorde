@@ -21,7 +21,6 @@ interfaces:
     - contract.understanding.feature-workspace
     - contract.understanding.records
   required: []
-evidence_status: partial
 ---
 
 # Feature Design: Resolve Feature Workspace

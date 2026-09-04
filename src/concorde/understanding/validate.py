@@ -10,7 +10,6 @@ from ..model import Finding, SourceDocument, ToolResult
 from .repository import ProjectRepository, RepositoryError
 from .validation.diagrams import validate_diagrams
 from .validation.entities import validate_entities
-from .validation.evidence import validate_evidence
 from .validation.features import validate_features
 from .validation.freshness import validate_freshness
 from .validation.hierarchy import validate_hierarchy
@@ -26,7 +25,6 @@ FOCUSED_VALIDATORS = (
     validate_layout,
     validate_diagrams,
     validate_reflections,
-    validate_evidence,
     validate_freshness,
     validate_capabilities,
 )
