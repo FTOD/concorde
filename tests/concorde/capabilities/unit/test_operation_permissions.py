@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 import sys
 import unittest
 from dataclasses import FrozenInstanceError, replace
@@ -101,6 +103,10 @@ class OperationPermissionTests(unittest.TestCase):
 
         self.assertTrue(codex.permission_profile.startswith("concorde-"))
         self.assertEqual(codex.approval_policy, "never")
+        self.assertEqual(
+            codex.argv[:4],
+            ("codex", "--ask-for-approval", "never", "exec"),
+        )
         self.assertNotIn("--sandbox", codex.argv)
         self.assertIn("default_permissions", " ".join(codex.argv))
         self.assertTrue(codex.strict_config)
@@ -112,6 +118,21 @@ class OperationPermissionTests(unittest.TestCase):
         self.assertFalse(settings["sandbox"]["allowUnsandboxedCommands"])
         self.assertEqual(settings["sandbox"]["network"]["allowedDomains"], [])
         self.assertTrue(compare_effective_boundaries(codex, claude))
+
+    @unittest.skipUnless(shutil.which("codex"), "Codex CLI is not installed")
+    def test_codex_launch_argv_is_accepted_by_installed_cli_parser(self):
+        policy = compile_policy(self.effect, self.binding, self.roles)
+        codex = render_codex_configuration(policy, native_enforcement=True)
+
+        result = subprocess.run(
+            (*codex.argv[:-1], "--help"),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+        self.assertIn("Run Codex non-interactively", result.stdout)
 
     def test_unavailable_native_enforcement_requires_verified_outer_boundary(self):
         policy = compile_policy(self.effect, self.binding, self.roles)

@@ -90,7 +90,10 @@ class OperationExecutorTests(unittest.TestCase):
 
         self.assertEqual(len(calls), 1)
         argv, cwd, env, input_text = calls[0]
-        self.assertEqual(argv[:2], ("codex", "exec"))
+        self.assertEqual(
+            argv[:4],
+            ("codex", "--ask-for-approval", "never", "exec"),
+        )
         self.assertNotIn("--sandbox", argv)
         self.assertEqual(cwd, "/fixture/project")
         self.assertEqual(env, {"LANG": "C.UTF-8", "PATH": "/bin"})
