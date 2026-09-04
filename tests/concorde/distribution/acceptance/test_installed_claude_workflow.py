@@ -27,7 +27,7 @@ class InstalledClaudeWorkflowAcceptance(unittest.TestCase):
             feature = create_feature_file(root)
             write_selection(root, feature.relative_to(root).as_posix())
             workspace = subprocess.run(
-                [sys.executable, str(root / ".concorde/framework/scripts/workspace.py"), "--project-root", str(root), "--phase", "plan"],
+                [sys.executable, str(root / ".concorde/framework/scripts/workspace.py"), "--project-root", str(root), "--phase", "plan", "--allow-primary-worktree"],
                 text=True, capture_output=True,
             )
             self.assertEqual(workspace.returncode, 0, workspace.stdout)

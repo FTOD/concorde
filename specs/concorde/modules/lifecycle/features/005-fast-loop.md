@@ -18,7 +18,8 @@ interfaces:
 ## Outcome and Scope
 
 A maintainer can explicitly request one eligible, small, already-specified change and receive direct
-reconciliation of affected architecture/design/code/test/projection sources without creating an attempt.
+reconciliation of affected architecture/design/code/test/projection sources without creating an
+attempt, inside a linked worktree created from committed primary `HEAD` before mutation.
 
 ## Architecture Zoom
 
@@ -38,14 +39,14 @@ reconciliation of affected architecture/design/code/test/projection sources with
 - **Consumer**: Maintainer requesting a low-risk established modification.
 - **Direction**: Explicit request to directly reconciled source/test result.
 - **Entry points**: Leaf Skill `concorde-fast-loop`.
-- **Inputs**: Selected anchor, requested change, clean worktree, complete current architecture/design/code/test context.
+- **Inputs**: Selected anchor, requested change, committed-base isolated worktree (or explicit primary override), and complete current architecture/design/code/test context; primary dirty bytes are excluded.
 - **Outputs**: Exact changed sources, affected features/interfaces/entities, checks, evidence limits, or preflight rejection.
 - **Obligations**: Reject structural/interface/policy ambiguity, discover all affected authorities, preserve unrelated/user state, and run proportional checks.
 - **Failures**: Any ineligible condition stops before mutation. Normal ineligible changes redirect to
   the full attempt workflow; a normative Concorde Protocol semantic change in the Concorde repository
   redirects to `feature.concorde.evolve-protocol` instead.
 - **Compatibility**: Smallness is ownership/risk based, never line-count based; no accepted-realization
-  prerequisite exists. Constitution 8.0.0 makes Protocol semantics categorically ineligible regardless
+  prerequisite exists. Constitution 8.1.0 requires worktree isolation and makes Protocol semantics categorically ineligible regardless
   of apparent size or compatibility.
 - **Implementing entities**: `entity.lifecycle.fast-loop-skill`, `module.concorde.understanding`,
   `entity.concorde.coding-agent`.
@@ -70,6 +71,9 @@ reconciliation of affected architecture/design/code/test/projection sources with
 - **FR-002**: Eligibility MUST reject module/feature creation/restructure, responsibility/ownership/dependency-direction, public interface, migration-policy, normative Concorde Protocol semantics, or ambiguous impact changes; Protocol semantics MUST route to `feature.concorde.evolve-protocol`, not to an attempt.
 - **FR-003**: Affected architecture/design/code/test/projection sources MUST be discovered and reconciled completely; no parallel custom documentation owner may be created.
 - **FR-004**: Completion MUST disclose changed sources/features/entities/interfaces, executed checks, and evidence limitations.
+- **FR-005**: Fast-loop mutation MUST begin in a unique linked worktree at committed primary `HEAD`
+  and MUST NOT import or alter staged, unstaged, untracked, or ignored primary-worktree state unless
+  the maintainer explicitly authorizes primary mutation.
 
 ## Edge Cases
 

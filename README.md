@@ -2,7 +2,8 @@
 
 Concorde is a standalone, module-centered architecture and feature workflow for maintainers and
 coding agents. It provides one structural entry point per module, one complete specification per
-feature, bounded implementation context, deterministic validation, and cleanup-only delivery.
+feature, committed-base isolated worktrees for agent mutations, bounded implementation context,
+deterministic validation, and cleanup-only delivery.
 
 Concorde no longer depends on or composes with Spec Kit. Its public capability namespace is
 `concorde-*`: public leaf Skills perform one bounded phase, internal leaves support Operations, and
@@ -69,13 +70,21 @@ serialized component of that process, not a synonym for the whole Protocol.
 
 Every Concorde project consumes Concorde Protocol. This repository alone also defines and implements
 it, so a normative Protocol change cannot safely ask an attempt governed by the old Protocol to host
-and deliver its replacement. Constitution 8.0.0 therefore requires every such change—even an
+and deliver its replacement. Constitution 8.1.0 therefore requires every such change—even an
 apparently compatible one—to use the root
 [Protocol-evolution feature](specs/concorde/features/003-evolve-concorde-protocol.md): start from one
-clean commit with no active attempts, build the complete target directly in an isolated Git
-worktree, run full target validation, and merge one reviewable cutover commit. It uses no selection,
+exact committed base with no active attempt in that commit, build the complete target directly in an
+isolated Git worktree, run full target validation, and merge one reviewable cutover commit. Staged,
+unstaged, untracked, and ignored primary-worktree content is excluded and left untouched. It uses no selection,
 attempt, checklist, fast loop, standard loop, or delivery. A code/test fix that restores already
 specified Protocol behavior remains normal lifecycle work.
+
+The same committed-base rule is the default for normal agent changes. Read-only work may remain in
+the primary worktree, but before planning, persisting selection, creating an attempt/checklist/
+reflection, changing project files, or writing external state, the agent creates or enters a unique
+linked worktree at the primary worktree's exact committed `HEAD`. A generic change request never
+authorizes primary-worktree mutation. If required input exists only in dirty primary state, the agent
+reports it missing instead of stashing or copying it.
 
 ## Leaf Skills and Operations
 
@@ -251,7 +260,8 @@ See [Agent-surface maintenance](specs/concorde/modules/capabilities/features/004
 
 Normative Concorde Protocol evolution is the one checkout-maintenance exception. Do not invoke any
 `concorde-*` mutation Skill or Operation for it. After explicit maintainer authorization, require a
-clean tracked checkpoint and no active attempts; create a dedicated branch/worktree, reconcile every
+committed checkpoint with no active attempt in that commit; create a dedicated branch/worktree
+without importing primary dirty state, reconcile every
 affected authority directly, run the complete validation commands below, and merge one cutover
 commit. Abandon a failed pre-merge worktree or immediately revert a failed merged cutover before
 later work. See [Evolve the Concorde Protocol](specs/concorde/features/003-evolve-concorde-protocol.md).
@@ -270,7 +280,8 @@ npm run check
 
 The repository self-applies the model at
 [`specs/concorde/architecture.md`](specs/concorde/architecture.md). Normal changes use Concorde's
-standard lifecycle; normative Concorde Protocol changes use the isolated bootstrap cutover above.
+standard lifecycle from a committed-base linked worktree; normative Concorde Protocol changes use
+the isolated bootstrap cutover above.
 
 Python 3.11+ is required for Concorde itself. Native installation additionally requires Node.js 18+
 and npm so the pinned official Viewer can be provisioned. Archify visual checks need a Chrome or

@@ -251,7 +251,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
         _init_project(self.root)
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            exit_code = main(["--project-root", str(self.root), "docsite", "--propose"])
+            exit_code = main(["--project-root", str(self.root), "docsite", "--propose", "--allow-primary-worktree"])
         self.assertEqual(exit_code, 0)
         payload = json.loads(buffer.getvalue())
         self.assertEqual(payload["tool"], "docsite")
@@ -260,7 +260,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
     def test_cli_apply_without_proposal_is_008(self) -> None:
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            exit_code = main(["--project-root", str(self.root), "docsite", "--apply"])
+            exit_code = main(["--project-root", str(self.root), "docsite", "--apply", "--allow-primary-worktree"])
         self.assertEqual(exit_code, 1)
         payload = json.loads(buffer.getvalue())
         self.assertEqual(payload["status"], "invalid")

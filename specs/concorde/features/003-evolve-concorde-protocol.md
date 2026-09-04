@@ -48,20 +48,23 @@ valid until one complete target-state commit has passed review and deterministic
 ## Usage
 
 The maintainer identifies a proposed change as a semantic change to Concorde Protocol, confirms the
-tracked checkout is clean and has no active attempts, and explicitly authorizes a cutover from that
-exact commit. A dedicated branch and isolated worktree are created without changing selection or
+exact committed base contains no active attempt, and explicitly authorizes a cutover from that
+commit. A dedicated branch and isolated worktree are created without changing selection or
 creating temporal Concorde state. Governance, specifications, architecture, code, tests, templates,
 fixtures, and projections are reconciled directly in that worktree. The target checkout must pass
 the complete applicable validation suite before its single cutover commit may merge. Failure leaves
 the base checkout unchanged; the branch/worktree is abandoned before merge or the cutover commit is
-reverted before later work proceeds.
+reverted before later work proceeds. Staged, unstaged, untracked, and ignored primary-worktree state
+is excluded from the cutover, preserved untouched, and does not make the committed base invalid.
 
 ### Edge Cases
 
 - A change touches a Protocol implementation file but only restores behavior already required by the
   maintained specification; it remains normal lifecycle work.
-- A proposed cutover starts with a dirty tracked checkout, any active attempt, ignored authoritative
-  state, a stale base commit, or an already checked-out target branch; preflight rejects it.
+- A proposed cutover has no committed base, an active attempt in that commit, a dirty target
+  worktree, a stale base commit, or an already checked-out target branch; preflight rejects it.
+- The primary worktree is dirty because another programmer is active; the cutover binds its committed
+  `HEAD`, creates a separate worktree, and neither reads nor alters the dirty paths.
 - A nominally compatible change alters a normative Protocol output, obligation, failure, phase,
   authority, or permission rule; it still requires this cutover.
 - Target validation fails after direct edits; no cutover commit is eligible and the base checkout is
@@ -82,16 +85,18 @@ invalidate.
 **Why this priority**: It removes the self-reference that otherwise leaves no valid intermediate
 combination of old/new Protocol implementation and old/new control state.
 
-**Independent Test**: From a clean commit with no active attempts, create an isolated worktree,
+**Independent Test**: From an exact commit with no active attempts, leave tracked and untracked
+changes in the primary worktree, create an isolated worktree at that commit,
 change a maintained Protocol rule and all affected authorities without creating `.concorde/attempts/`,
 run complete target validation, and inspect one commit containing the entire cutover.
 
 **Acceptance Scenarios**:
 
-1. **Given** an explicitly authorized normative Protocol change and a clean attempt-free base,
+1. **Given** an explicitly authorized normative Protocol change and an exact committed attempt-free base,
    **When** the maintainer completes the isolated-worktree procedure, **Then** the target state is
    fully reconciled and validated before one cutover commit becomes mergeable.
-2. **Given** dirty state, an active attempt, a stale base, ambiguous Protocol scope, or failed target
+2. **Given** no committed base, an active committed attempt, a dirty isolated target, a stale base,
+   ambiguous Protocol scope, or failed target
    validation, **When** cutover preflight or validation runs, **Then** merge eligibility is denied and
    the base checkout remains unchanged.
 
@@ -117,23 +122,26 @@ verify that only the former route to protocol evolution.
 ### `interface.concorde.protocol-evolution` — Isolated Protocol cutover
 
 - **Consumer**: Concorde repository maintainer.
-- **Direction**: Explicitly classified and authorized normative Protocol intent plus one clean Git
+- **Direction**: Explicitly classified and authorized normative Protocol intent plus one exact committed Git
   base to either one validated target-state cutover commit or a non-mutating rejection/failure.
 - **Entry points**: Maintainer invocation of `interaction.concorde.evolve-protocol` in a dedicated Git
   branch/worktree; no Concorde Skill, Operation, attempt, checklist, selection update, or delivery.
-- **Inputs**: Exact base commit; explicit maintainer authorization; the complete affected Protocol
+- **Inputs**: Exact committed base; explicit maintainer authorization; the complete affected Protocol
   semantics and compatibility decision; current constitution, ontology, architecture, feature,
-  source, test, template, fixture, projection, and tracked control-state authorities.
+  source, test, template, fixture, projection, and tracked control-state authorities from that
+  commit. Primary-worktree dirty bytes are explicitly not inputs.
 - **Outputs**: One reviewable commit containing the complete reconciled target state and named
   deterministic validation evidence, or diagnostics that leave the base checkout unchanged.
 - **Obligations**: Classify every normative semantic change into this route regardless of apparent
-  compatibility; require clean tracked state and no active attempt; author only in the isolated
-  worktree; preserve unrelated/user state; reconcile every affected authority; validate the full
+  compatibility; require one exact committed base with no active attempt in that commit; author only
+  in the isolated worktree; exclude and preserve all primary dirty state; reconcile every affected
+  authority; validate the full
   target; and merge no partial, stale, or failed cutover.
-- **Failures**: Non-Git checkout, dirty or ambiguous state, active attempt, unsafe path/symlink,
+- **Failures**: Non-Git checkout, missing/ambiguous committed base, active attempt in that commit,
+  dirty isolated target, unsafe path/symlink,
   incomplete authority inventory, stale base, merge conflict, validation failure, or a multi-commit
   partial transition makes the cutover ineligible.
-- **Compatibility**: Constitution 8.0.0 makes this route mandatory for normative Concorde Protocol
+- **Compatibility**: Constitution 8.1.0 makes this route mandatory for normative Concorde Protocol
   changes. External projects consume the Protocol but neither define it nor invoke this self-evolution
   interface; no compatibility reader or automatic project migration is implied.
 - **Example**: A change to attempt path authority updates Constitution, ontology, workspace/lifecycle
@@ -149,7 +157,7 @@ verify that only the former route to protocol evolution.
 |---|---|---|
 | `entity.concorde.protocol` | Supplies the normative process boundary whose semantics classify the change. | The maintainer identifies a semantic change before invoking any normal lifecycle capability. |
 | `entity.concorde.protocol-cutover` | Owns the direct, attempt-free self-evolution procedure. | It binds one base commit to one isolated target worktree and admits only a completely validated cutover commit. |
-| `entity.concorde.git` | Supplies immutable base/target history, branch/worktree isolation, diff review, merge, abandonment, and revert. | It keeps the base checkout valid while the complete target is built separately. |
+| `entity.concorde.git` | Supplies immutable base/target history, branch/worktree isolation, diff review, merge, abandonment, and revert. | It materializes only the exact committed base in the target worktree and keeps unrelated primary dirty state outside the cutover. |
 | `entity.concorde.specification` | Owns the Constitution-aligned architecture and feature semantics affected by the cutover. | Protocol definitions and every affected interface are reconciled directly. |
 | `entity.concorde.control-state` | Must contain no active attempt and must remain free of provisional bootstrap state. | Tracked control authorities change only when the target Protocol requires them. |
 | `entity.concorde.source-code` | Realizes the target Protocol. | Implementation changes together with its maintained semantics rather than before or after them. |
@@ -178,11 +186,12 @@ verify that only the former route to protocol evolution.
   normal lifecycle.
 - **FR-003**: Protocol evolution MUST create no attempt, checklist, selection mutation, plan/tasks,
   fast-loop execution, standard-loop execution, or delivery action.
-- **FR-004**: Cutover preflight MUST require an explicit maintainer decision, an exact clean tracked
-  base commit, a Git repository, no active attempts, and no unresolved authoritative state outside
-  that commit.
-- **FR-005**: The complete change MUST be authored in one isolated worktree/branch while the base
-  checkout remains unchanged and usable.
+- **FR-004**: Cutover preflight MUST require an explicit maintainer decision, an exact committed base,
+  a Git repository, and no active attempt in that commit. Staged, unstaged, untracked, and ignored
+  primary-worktree state MUST remain outside authority, MUST NOT block the committed base, and MUST
+  NOT be stashed, copied, committed, reset, cleaned, or otherwise imported or altered.
+- **FR-005**: The complete change MUST be authored in one isolated worktree/branch created at the
+  exact base commit while the primary checkout remains unchanged and usable.
 - **FR-006**: The cutover MUST reconcile every affected constitution, architecture, feature,
   interface, source, test, template, fixture, tracked control-state, canonical guidance, and generated
   projection source before it is eligible to merge.
@@ -202,7 +211,8 @@ verify that only the former route to protocol evolution.
 
 ### Assumptions
 
-- The Concorde repository requires Git and treats an exact commit as the bootstrap transaction base.
+- The Concorde repository requires Git and treats an exact commit as the bootstrap transaction base;
+  working-tree/index contents outside that commit belong to their current programmer, not the cutover.
 - Maintainer classification is semantic: touching a Protocol implementation file is not sufficient
   when the change merely restores already specified behavior.
 - External projects need a separately specified upgrade mechanism only when a released Protocol
@@ -215,7 +225,8 @@ verify that only the former route to protocol evolution.
   semantic changes.
 - **SC-002**: A representative Protocol cutover produces no attempt/checklist/selection diff and yields
   one commit whose target checkout passes every applicable deterministic and executable check.
-- **SC-003**: Dirty, active-attempt, stale-base, incomplete, or failed examples are rejected before
-  merge while the base commit remains recoverable without a custom migrator.
+- **SC-003**: Missing-base, active-committed-attempt, dirty-target, stale-base, incomplete, or failed
+  examples are rejected before merge, while a dirty primary worktree remains untouched and does not
+  prevent a cutover from its committed `HEAD`.
 - **SC-004**: Normal conformance-restoring implementation fixes remain eligible for the standard
   lifecycle and the bootstrap exception cannot be selected merely from file location.

@@ -29,6 +29,21 @@ $ARGUMENTS
 
 # Deliver a Concorde Attempt
 
+## Isolated worktree gate
+
+After applying any Protocol-evolution guard, read-only inspection may remain in the primary
+worktree. Before planning, selection persistence, attempt/checklist/reflection creation, an external
+mutation, or any other write, unless the maintainer explicitly authorizes primary-worktree mutation
+for this request, resolve only the primary worktree's committed `HEAD`, create a unique branch and
+linked worktree at that exact commit, and continue the complete request there. If already in an
+isolated worktree, stay there and do not create a nested worktree. Treat every staged, unstaged,
+untracked, or ignored primary-worktree path as another programmer's state: never use it as input,
+stash it, copy it, commit it, reset it, clean it, or otherwise import or alter it. If required input
+is absent from committed `HEAD`, stop and report the missing input. `--allow-primary-worktree` is
+valid only after an explicit instruction to modify the primary worktree; a generic task request is
+not that authorization. A non-Git checkout likewise requires explicit current-directory mutation
+authorization.
+
 Delivery is cleanup-only. By this point explicit implementation tasks have already reconciled the
 feature file, providing module architecture, code, tests, interface fixtures, and projections.
 Delivery writes no durable specification or implementation narrative; it proves eligibility and
@@ -38,7 +53,7 @@ atomically removes exactly the selected `.concorde/attempts/<stable-feature-id>/
 
 Before proposing delivery, if this is the Concorde repository and the selected work changes normative
 Concorde Protocol semantics, stop without reading, rewriting, or removing the attempt. Such an
-attempt is ineligible by Constitution 8.0.0; report `feature.concorde.evolve-protocol` and preserve
+attempt is ineligible by Constitution 8.1.0; report `feature.concorde.evolve-protocol` and preserve
 all state for explicit maintainer disposition.
 
 ## Propose

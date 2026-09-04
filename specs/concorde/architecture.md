@@ -25,8 +25,9 @@ diagrams:
 
 Provide a standalone, module-centered development system in which durable architecture and feature
 intent, executable reality, evidence, temporal work state, and a permission-bounded capability
-structure have explicit, non-overlapping authority, and in which every capability a maintainer or
-coding agent needs is owned by exactly one module.
+structure have explicit, non-overlapping authority, every agent-authored mutation begins from one
+committed-base isolated Git worktree, and every capability a maintainer or coding agent needs is
+owned by exactly one module.
 
 ## Boundary
 
@@ -52,15 +53,15 @@ Understand Anything graph semantics.
 | `module.concorde.auto-docs` | module | Scaffolds and publishes validated module architectures, direct features, and architecture-owned diagrams as one searchable provenance-preserving site. | `specs/concorde/modules/auto-docs/architecture.md` |
 | `entity.concorde.package-manifest` | configuration | Concorde 2.1.0 Package Manifest 2: the single version, profile, protocol, and inventory authority for Scripts, 17 leaf Skills, three Operation pairs, templates, the docsite template, the managed Operation runtime, and supported integrations. | `concorde.json` |
 | `entity.concorde.protocol` | interface | Complete normative selected-feature change process, including Source Profile, workspace resolution, permission-bounded phases, attempts, reflections, validation, and delivery; Feature Workspace Protocol is one serialized component. | `concept:Concorde Protocol` |
-| `entity.concorde.protocol-cutover` | pipeline | Concorde-repository-only procedure that directly evolves normative Protocol semantics from one clean Git checkpoint to one complete validated commit without an attempt or delivery. | `concept:Concorde Protocol evolution` |
-| `entity.concorde.git` | external-system | Required version-control boundary for exact bootstrap checkpoints, isolated worktrees, reviewable diffs/commits, merge, abandonment, and revert. | `external:git` |
+| `entity.concorde.protocol-cutover` | pipeline | Concorde-repository-only procedure that directly evolves normative Protocol semantics from one exact committed Git checkpoint to one complete validated commit without an attempt, delivery, or imported primary dirty state. | `concept:Concorde Protocol evolution` |
+| `entity.concorde.git` | external-system | Required version-control boundary for exact committed bootstrap checkpoints, default per-agent linked worktrees, reviewable diffs/commits, merge, abandonment, and revert; primary-worktree dirty bytes are outside its agent-input contract. | `external:git` |
 | `entity.concorde.specification` | directory | Concorde's self-applied module architectures and direct feature files; the maintained project documentation. | `specs/concorde` |
 | `entity.concorde.control-state` | directory | Project configuration, feature selection, constitution, stable-ID attempts, the reflection collection, and installed framework, runtime, and receipt state. | `.concorde` |
 | `entity.concorde.source-code` | package | The standard-library Python package in which every capability module's programs are realized. | `src/concorde` |
 | `entity.concorde.tests` | test | Unit, contract, integration, and acceptance evidence for every capability module. | `tests/concorde` |
 | `entity.concorde.templates` | directory | Complete Markdown format references for features, constitutions, plans, tasks, checklists, and reflections, each owned by the capability module that consumes it. | `templates` |
 | `entity.concorde.generated` | directory | Disposable diagram and site projections that carry source provenance. | `concept:generated projections` |
-| `entity.concorde.coding-agent` | external-system | Codex or Claude host that follows projected Skills and Operations under an enforced policy and authors only explicitly authorized sources. | `external:coding-agent` |
+| `entity.concorde.coding-agent` | external-system | Codex or Claude host that follows projected Skills and Operations under an enforced policy, defaults every mutation to a unique linked worktree from committed primary `HEAD`, and authors only explicitly authorized sources. | `external:coding-agent` |
 
 ## Relationships
 
@@ -93,6 +94,7 @@ Understand Anything graph semantics.
 | `module.concorde.capabilities` | `provides` | `module.concorde.reflections` | Declares, permission-bounds, launches, and projects the triage Operation and its agents. |
 | `module.concorde.capabilities` | `reads_from` | `module.concorde.understanding` | Compiles Protocol 13 roles into concrete per-leaf policies before any launch. |
 | `module.concorde.capabilities` | `configures` | `entity.concorde.coding-agent` | Renders the Codex permission profile, Claude strict sandbox, or approved outer boundary each leaf runs under. |
+| `entity.concorde.coding-agent` | `depends_on` | `entity.concorde.git` | Establishes one committed-base linked worktree before planning, attempt/control creation, or any other write unless the maintainer explicitly authorizes primary-worktree mutation. |
 | `module.concorde.distribution` | `reads_from` | `entity.concorde.package-manifest` | Installs one allowlisted package from the native package identity. |
 | `module.concorde.distribution` | `calls` | `module.concorde.capabilities` | Projects the 18 public capabilities and verifies every installed Operation through the managed launcher. |
 | `module.concorde.distribution` | `writes_to` | `entity.concorde.control-state` | Writes the framework projection, the isolated Operation runtime, and the ownership receipt. |
@@ -114,8 +116,8 @@ Understand Anything graph semantics.
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.concorde.feature-work` | Maintainer invokes a lifecycle Skill or Operation for one selected feature. | `module.concorde.capabilities` compiles the leaf policy from `module.concorde.understanding` Protocol 13; `module.concorde.lifecycle` runs one phase against `entity.concorde.specification`, `entity.concorde.source-code`, and `entity.concorde.tests`; records evidence in `entity.concorde.control-state`; records problems in `module.concorde.reflections`; validates through `module.concorde.understanding`; delivery removes exactly the attempt. | Intent, architecture, implementation, tests, and temporal state remain reconciled at the completed boundary. | `contract.concorde.workflow` |
-| `interaction.concorde.evolve-protocol` | Maintainer explicitly classifies and authorizes a normative Concorde Protocol change from one clean commit with no active attempts. | Create one isolated branch/worktree through `entity.concorde.git`; directly reconcile `entity.concorde.specification`, `entity.concorde.control-state`, `entity.concorde.source-code`, `entity.concorde.tests`, templates, fixtures, and projections without lifecycle capabilities; validate the complete target; review and merge one cutover commit or abandon/revert it on failure. | The valid base remains available until one complete, target-valid Protocol state replaces it without a self-invalidating attempt or compatibility reader. | `interface.concorde.protocol-evolution` |
+| `interaction.concorde.feature-work` | Maintainer invokes a mutating lifecycle Skill or Operation for one selected feature. | Unless primary mutation is explicitly authorized, `entity.concorde.coding-agent` resolves the primary worktree's committed `HEAD`, creates or enters one unique linked worktree through `entity.concorde.git`, and excludes all primary dirty state before planning or control creation; `module.concorde.capabilities` then compiles the leaf policy from `module.concorde.understanding` Protocol 13; `module.concorde.lifecycle` runs the phases, records evidence/problems, validates, and delivery removes exactly the attempt. | Intent, architecture, implementation, tests, and temporal state remain reconciled in one owned worktree while unrelated primary-worktree state remains untouched. | `contract.concorde.workflow` |
+| `interaction.concorde.evolve-protocol` | Maintainer explicitly classifies and authorizes a normative Concorde Protocol change from one exact committed base with no active attempt in that commit. | Create one isolated branch/worktree through `entity.concorde.git` without importing primary dirty state; directly reconcile `entity.concorde.specification`, `entity.concorde.control-state`, `entity.concorde.source-code`, `entity.concorde.tests`, templates, fixtures, and projections without lifecycle capabilities; validate the complete target; review and merge one cutover commit or abandon/revert it on failure. | The valid committed base and unrelated primary-worktree state remain available until one complete, target-valid Protocol state replaces it without a self-invalidating attempt or compatibility reader. | `interface.concorde.protocol-evolution` |
 | `interaction.concorde.install` | Maintainer previews or explicitly applies a checkout through the native installer. | `module.concorde.distribution` reads `entity.concorde.package-manifest`; calculates owned file and isolated-runtime actions; projects 18 public capabilities through `module.concorde.capabilities`; installs the pinned official Understand Anything Viewer inside the managed runtime; writes framework, runtime, and receipt into `entity.concorde.control-state`. | Idempotent Concorde 2.1.0 installation whose Operations and Viewer start offline, or exact conflict diagnostics. | `contract.concorde.installation` |
 | `interaction.concorde.publish` | Maintainer or CI requests the project read model. | `module.concorde.understanding` validates `entity.concorde.specification`; `module.concorde.auto-docs` renders declared diagrams and builds a candidate; the candidate is promoted atomically into `entity.concorde.generated`. | Searchable Architecture/Features site with source provenance and a root architecture entry. | `interface.concorde.publish-docsite` |
 | `interaction.concorde.reflect` | A phase records a problem or the maintainer selects a triage action. | `module.concorde.lifecycle` writes one document into `module.concorde.reflections`; `module.concorde.reflections` composes `module.concorde.lifecycle` on the chosen route under policies from `module.concorde.capabilities`; maintainer disposition closes the document. | Every retained problem is tracked once and is resolved or dismissed with Git history as its record. | `interface.concorde.reflections` |
@@ -162,5 +164,9 @@ Understand Anything graph semantics.
   version 2.1.0 replace independently composed or mixed-layout capability sources; the source root
   `.venv` and installed `.concorde/.venv` remain distinct and no compatibility shim remains.
 - Stable architecture identity remains separate from mutable file/symbol locators.
+- Read-only agent work may remain in the primary checkout; every agent-authored mutation defaults to
+  one unique linked worktree from its exact committed `HEAD`. Primary staged, unstaged, untracked,
+  and ignored bytes are never implicit input, and a generic change request never authorizes the
+  primary-worktree override.
 - Code and tests remain implementation/evidence; plans and task state remain temporal; generated
   and installed projections never become specification or implementation authority.

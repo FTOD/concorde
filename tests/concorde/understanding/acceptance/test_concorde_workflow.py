@@ -17,7 +17,7 @@ class ConcordeWorkflowAcceptance(unittest.TestCase):
             shutil.copytree(CONTEXT_PROJECT, root)
             adapter = REPOSITORY_ROOT / "scripts/workspace.py"
             selected = subprocess.run(
-                [sys.executable, str(adapter), "--project-root", str(root), "--feature-path", "specs/example/features/001-deliver.md", "--persist", "--phase", "plan"],
+                [sys.executable, str(adapter), "--project-root", str(root), "--feature-path", "specs/example/features/001-deliver.md", "--persist", "--phase", "plan", "--allow-primary-worktree"],
                 check=True,
                 text=True,
                 capture_output=True,
@@ -31,7 +31,7 @@ class ConcordeWorkflowAcceptance(unittest.TestCase):
             self.assertTrue(feature_path.is_file())
             self.assertFalse((feature_path.parent / feature_path.stem).exists())
             resolved = subprocess.run(
-                [sys.executable, str(adapter), "--project-root", str(root), "--phase", "specify"],
+                [sys.executable, str(adapter), "--project-root", str(root), "--phase", "specify", "--allow-primary-worktree"],
                 check=True,
                 text=True,
                 capture_output=True,

@@ -55,12 +55,13 @@ untrusted agent ambient discovery.
 - **Consumer**: Concorde lifecycle Skills, Operation stages, and delivery Tool.
 - **Direction**: Selection/phase input to structured workspace output.
 - **Entry points**: `workspace.py --phase <phase>` with optional `--feature-path`.
-- **Inputs**: Project root, phase, and native `.concorde/feature.json` selection or canonical direct feature file.
+- **Inputs**: Project root, phase, and native `.concorde/feature.json` selection or canonical direct feature file; mutating phases additionally require a linked-worktree boundary or explicit primary override before resolution.
 - **Outputs**: Protocol 13 Tool result containing identity/`feature_path`, module
   architecture/ancestry, related feature paths, stable-ID-derived attempt paths/state, reflection
   path, and executable roots; a first-pass planned feature has unavailable attempt fields.
-- **Obligations**: Return only real project-contained direct features/control paths, validate stable-ID binding, require a second post-front-matter specify resolution, and never create later-phase artifacts implicitly.
-- **Failures**: Invalid layout/ID, missing feature/architecture, orphan/colliding attempt, attempted orphan adoption, ambiguity, symlinks, or unsafe paths stop resolution.
+- **Obligations**: For mutating phases or selection persistence, reject the primary worktree by
+  default before returning write targets; return only real project-contained direct features/control paths, validate stable-ID binding, require a second post-front-matter specify resolution, and never create later-phase artifacts implicitly.
+- **Failures**: Primary/non-Git mutation without explicit override, invalid layout/ID, missing feature/architecture, orphan/colliding attempt, attempted orphan adoption, ambiguity, symlinks, or unsafe paths stop resolution.
 - **Compatibility**: Protocol 13 removes specification-local control state while retaining `feature_path` and rejecting all earlier removed authority fields.
 - **Implementing entities**: `entity.understanding.workspace-resolver`, `entity.understanding.repository-loader`.
 - **Example**: `workspace.py --phase plan --feature-path specs/example/features/001-change.md` returns `schema_version: 13` and `attempt_dir: .concorde/attempts/feature.example.change` from the file's stable ID.
@@ -139,6 +140,9 @@ untrusted agent ambient discovery.
 - **FR-006**: A completed control attempt MUST transition to absent, when the owning lifecycle delivery
   action applies, without moving or rewriting the selected feature file or unrelated reflection
   documents.
+- **FR-007**: The installed workspace adapter MUST require a linked Git worktree for every mutating
+  phase and selection persistence, accept `--allow-primary-worktree` only as explicit maintainer
+  authorization, and leave validation/read-only resolution available without that override.
 
 ## Edge Cases
 

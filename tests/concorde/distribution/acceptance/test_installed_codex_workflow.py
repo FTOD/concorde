@@ -26,7 +26,7 @@ class InstalledCodexWorkflowAcceptance(unittest.TestCase):
             write_selection(root, feature.relative_to(root).as_posix())
             attempt = write_complete_attempt(feature)
             workspace = subprocess.run(
-                [sys.executable, str(root / ".concorde/framework/scripts/workspace.py"), "--project-root", str(root), "--phase", "implement"],
+                [sys.executable, str(root / ".concorde/framework/scripts/workspace.py"), "--project-root", str(root), "--phase", "implement", "--allow-primary-worktree"],
                 text=True, capture_output=True,
             )
             self.assertEqual(workspace.returncode, 0, workspace.stdout)
@@ -35,7 +35,7 @@ class InstalledCodexWorkflowAcceptance(unittest.TestCase):
             launcher = root / ".concorde/framework/scripts/concorde.py"
             validation = subprocess.run([sys.executable, str(launcher), "--project-root", str(root), "validate"], text=True, capture_output=True)
             self.assertEqual(validation.returncode, 0, validation.stdout)
-            proposal = subprocess.run([sys.executable, str(launcher), "--project-root", str(root), "deliver", "--propose"], text=True, capture_output=True)
+            proposal = subprocess.run([sys.executable, str(launcher), "--project-root", str(root), "deliver", "--propose", "--allow-primary-worktree"], text=True, capture_output=True)
             self.assertEqual(proposal.returncode, 0, proposal.stdout)
             payload = json.loads(proposal.stdout)
             self.assertEqual(payload["status"], "eligible")
@@ -47,7 +47,7 @@ class InstalledCodexWorkflowAcceptance(unittest.TestCase):
                 "source_digest": payload["source_digest"],
                 "remove": [payload["workspace"]["attempt_dir"]],
             })
-            apply = subprocess.run([sys.executable, str(launcher), "--project-root", str(root), "deliver", "--apply", "--proposal", proposal_path], text=True, capture_output=True)
+            apply = subprocess.run([sys.executable, str(launcher), "--project-root", str(root), "deliver", "--apply", "--proposal", proposal_path, "--allow-primary-worktree"], text=True, capture_output=True)
             self.assertEqual(apply.returncode, 0, apply.stdout)
             self.assertFalse(attempt.exists())
             self.assertTrue(feature.is_file())

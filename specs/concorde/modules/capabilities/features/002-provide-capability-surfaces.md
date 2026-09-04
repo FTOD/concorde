@@ -116,7 +116,8 @@ the managed runtime launcher; no shell activation is required.
   changes.
 - **Obligations**: Preserve complete prompt/phase boundaries; keep public leaves independently
   invocable and internal leaves Operation-only; declare exact effects when composed; invoke Tools
-  explicitly; surface failures/evidence limits; contain no multi-Skill graph.
+  explicitly; preserve the committed-base isolated-worktree gate in every mutating source/projection;
+  surface failures/evidence limits; contain no multi-Skill graph.
 - **Failures**: Workspace/tool failure, missing authority, invalid project state, denied permission,
   or unmet phase gate stops that Skill without fallback to another source.
 - **Compatibility**: Protocol 13 and Delivery Proposal 9 use Tool terminology. Stable public names are
@@ -173,6 +174,9 @@ the managed runtime launcher; no shell activation is required.
   through the source/installed managed-runtime bootstrap.
 - **FR-005**: Operations MUST load canonical leaf bodies/effects and MUST NOT embed copies or flatten
   internal/nested capability bodies in Python or Markdown.
+- **FR-006**: Every canonical and projected Skill/Operation that can mutate project or external
+  state MUST require a linked worktree at committed primary `HEAD` by default, exclude primary dirty
+  state, and name `--allow-primary-worktree` only as an explicit maintainer-authorized override.
 
 ## Success Criteria
 

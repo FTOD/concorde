@@ -156,7 +156,8 @@ residual bucket (`misc`, `common`, `shared`) is the signature of the partition t
 | `Module` | The recursive unit of specification ownership. A module has one responsibility, one boundary, one `architecture.md`, zero or more immediate child modules, and zero or more level-local features. | `contains` → `Module`; `specifies` → `Feature`; `owns` → `Architecture specification` |
 | `Feature relation` | The typed, directed meaning of one `related_features` entry: `composes` (the declaring feature sequences the target as a part), `refines` (it narrows or extends the target's behavior), `depends_on` (it needs the target's promise), their inverse forms, or symmetric `relates_to`. Directional families stay acyclic. | `connects` → `Feature`; `projected as` → feature graph edge; `explained by` → Related Features prose |
 | `Concorde Protocol` | The complete normative process by which a selected feature is resolved, permission-bounded, specified, planned, executed, validated, reflected on, and delivered, together with its Source Profile and control-state authority rules. Feature Workspace Protocol is one serialized component, not a synonym. | `governs` → `Understanding`, `Lifecycle`, `Reflections`, `Capabilities`; `consumed by` → every Concorde project; `defined, implemented, and self-applied by` → Concorde repository |
-| `Protocol evolution` | The Concorde-repository-only, explicitly authorized change boundary for any normative Concorde Protocol semantic change: one clean Git base, one isolated worktree, no attempt/lifecycle/delivery, complete target validation, and one reviewable cutover commit. | `evolves` → `Concorde Protocol`; `depends on` → `Git`; `refines` → normal Concorde workflow |
+| `Agent mutation worktree` | The default Git boundary for any coding-agent mutation: one unique linked worktree created from the primary worktree's exact committed `HEAD` before planning or control creation; primary dirty state is excluded unless the maintainer explicitly authorizes that boundary. | `depends on` → `Git`; `isolates` → `Coding agent`; `precedes` → mutating lifecycle work |
+| `Protocol evolution` | The Concorde-repository-only, explicitly authorized change boundary for any normative Concorde Protocol semantic change: one exact committed Git base, one isolated worktree that excludes primary dirty state, no attempt/lifecycle/delivery, complete target validation, and one reviewable cutover commit. | `evolves` → `Concorde Protocol`; `depends on` → `Git`; `refines` → normal Concorde workflow |
 | `Capability module` | A module bounded by one business capability, use case, or axis of change. It owns every kind of artifact its capability needs and never collects one artifact kind across capabilities. | `is a` → `Module`; `owns` → `Skill`, `Tool`, `Operation`, `Feature`; `rejects` → artifact-type layer, residual bucket |
 | `Architecture specification` | A module's single durable account of its typed entities, organization, relationships, and interactions. | `defines` → `Architecture entity`; `defines` → `Entity relationship`; `replaces` → `Module summary`; `replaces` → `Module design reference` |
 | `Architecture entity` | An architecture-significant module, package, program, file, script, class, function, interface, data store, schema, configuration, test surface, external system, or other explicitly typed thing. | `belongs to` → `Module`; `participates in` → `Entity relationship`; `realized by` → `Source code` |
@@ -193,7 +194,7 @@ This feature governs the following root-architecture entities; their definitions
 | `module.concorde.auto-docs` | module | Publishes module architecture and direct feature files without interpreting a wrapper directory or `design.md` basename. |
 | `entity.concorde.protocol` | interface | Owns the complete normative process definition and distinguishes it from Feature Workspace Protocol 13. |
 | `entity.concorde.protocol-cutover` | pipeline | Evolves Protocol semantics directly in one isolated, attempt-free, target-valid Git transition. |
-| `entity.concorde.git` | external-system | Supplies the exact bootstrap checkpoint, isolated worktree, diff/commit review, merge, abandonment, and revert boundary. |
+| `entity.concorde.git` | external-system | Supplies exact committed bootstrap checkpoints, default per-agent linked worktrees, diff/commit review, merge, abandonment, and revert while excluding primary dirty state from implicit authority. |
 | `entity.concorde.specification` | directory | Self-applies the profile across six capability modules and twenty-six features. |
 | `entity.concorde.control-state` | directory | Owns Profile 7 configuration, stable-ID attempts, tracked reflections, and triage state outside module specifications. |
 | `entity.concorde.source-code` | package | Realizes every module's programs; its subpackages mirror the capability modules. |
@@ -506,6 +507,11 @@ features.
 - **FR-039**: Every Concorde project MUST consume Concorde Protocol, while only the Concorde repository
   MAY define, implement, and self-apply it; every normative semantic change in that repository MUST
   use `feature.concorde.evolve-protocol` rather than an attempt, fast loop, standard loop, or delivery.
+- **FR-040**: Every agent-authored mutation MUST use one committed-base linked worktree before
+  planning, selection persistence, or attempt/checklist/reflection creation unless the maintainer
+  explicitly authorizes primary-worktree mutation. Primary staged, unstaged, untracked, and ignored
+  paths MUST remain outside authority and untouched; deterministic mutating entry points MUST reject
+  the primary worktree by default and expose only an explicit override.
 
 ## Success Criteria
 
@@ -542,6 +548,9 @@ features.
 - **SC-015**: Every maintained Concorde feature declares a typed relation for each related feature,
   the three directional families are acyclic, and the published feature graph reproduces every
   declaration as one typed edge.
+- **SC-016**: Canonical and projected mutating capabilities name the same committed-base isolation
+  rule, and executable preflight tests reject a primary worktree, accept a linked worktree at the
+  committed base, and prove primary dirty files do not appear in that linked worktree.
 
 ## Assumptions
 
@@ -559,6 +568,8 @@ features.
   active work, while changing the stable ID with active work is rejected rather than guessed.
 - Per-file reflections, their allocation index, and active attempt files are tracked reviewable state. Reflection-triage plans,
   worktrees, and legacy compatibility assets remain ignored/disposable.
+- A primary worktree may contain another programmer's in-progress tracked or untracked changes;
+  committed `HEAD`, not those transient bytes, is the default agent bootstrap authority.
 - Each module owns one required Archify architecture system overview; other architecture-owned JSON
   diagrams remain optional supporting sources. Feature-specific dynamic diagrams are either promoted
   to the providing module's diagram set or retired; they do not restore a multi-file feature specification.

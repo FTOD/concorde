@@ -25,6 +25,7 @@ def create_parser() -> argparse.ArgumentParser:
     initialize.add_argument("--proposal")
     initialize.add_argument("--module-id")
     initialize.add_argument("--name")
+    initialize.add_argument("--allow-primary-worktree", action="store_true")
     initialize.add_argument("--format", choices=["json"], default="json")
 
     context = subparsers.add_parser("context")
@@ -55,6 +56,7 @@ def create_parser() -> argparse.ArgumentParser:
     deliver_mode.add_argument("--propose", action="store_true")
     deliver_mode.add_argument("--apply", action="store_true")
     deliver.add_argument("--proposal")
+    deliver.add_argument("--allow-primary-worktree", action="store_true")
     deliver.add_argument("--format", choices=["json"], default="json")
 
     docsite = subparsers.add_parser("docsite")
@@ -67,6 +69,7 @@ def create_parser() -> argparse.ArgumentParser:
     docsite.add_argument("--url")
     docsite.add_argument("--base-url")
     docsite.add_argument("--github-pages", action="store_true")
+    docsite.add_argument("--allow-primary-worktree", action="store_true")
     docsite.add_argument("--format", choices=["json"], default="json")
 
     agent_assets = subparsers.add_parser("agent-assets")
@@ -76,6 +79,8 @@ def create_parser() -> argparse.ArgumentParser:
         command.add_argument("--integration", choices=["claude", "codex"], required=True)
         command.add_argument("--source-root")
         command.add_argument("--concorde-version", default="source")
+        if name in {"sync", "remove"}:
+            command.add_argument("--allow-primary-worktree", action="store_true")
         command.add_argument("--format", choices=["json"], default="json")
     return parser
 
@@ -171,11 +176,26 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = create_parser()
+    arguments: argparse.Namespace | None = None
     try:
-        result = dispatch(parser.parse_args(argv))
+        arguments = parser.parse_args(argv)
+        mutation = arguments.tool in {"init", "deliver", "docsite"} or (
+            arguments.tool == "agent-assets"
+            and arguments.agent_asset_tool in {"sync", "remove"}
+        )
+        if mutation:
+            from .worktree import require_isolated_worktree
+
+            require_isolated_worktree(
+                arguments.project_root,
+                allow_primary_worktree=getattr(
+                    arguments, "allow_primary_worktree", False
+                ),
+            )
+        result = dispatch(arguments)
         payload = tool_envelope(result)
     except Exception as error:  # command boundary: always return the normative envelope
-        tool = argv[0] if argv else "validate"
+        tool = arguments.tool if arguments is not None else (argv[0] if argv else "validate")
         payload = envelope(
             tool
             if tool in {"init", "context", "explore", "validate", "deliver", "agent-assets", "docsite"}

@@ -47,7 +47,7 @@ class CleanPhaseMatrixIntegrationTests(unittest.TestCase):
             for phase, root_kind in PHASES.items():
                 with self.subTest(phase=phase):
                     result = subprocess.run(
-                        [sys.executable, str(adapter), "--project-root", str(root), "--phase", phase],
+                        [sys.executable, str(adapter), "--project-root", str(root), "--phase", phase, "--allow-primary-worktree"],
                         text=True,
                         capture_output=True,
                     )

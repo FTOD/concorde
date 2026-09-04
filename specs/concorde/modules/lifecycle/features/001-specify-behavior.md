@@ -18,7 +18,8 @@ interfaces:
 ## Outcome and Scope
 
 A maintainer can create or revise one level-local feature's complete outcome, interfaces, usage,
-requirements, failures, related-feature links, and architecture zoom in its sole direct feature file.
+requirements, failures, related-feature links, and architecture zoom in its sole direct feature file,
+after the acting agent enters a linked worktree at the primary worktree's committed `HEAD`.
 
 ## Architecture Zoom
 
@@ -37,9 +38,9 @@ requirements, failures, related-feature links, and architecture zoom in its sole
 - **Direction**: Natural-language intent and bounded architecture to durable feature design/checklist.
 - **Entry points**: `concorde-specify`, optionally followed by `concorde-clarify` or
   `concorde-checklist` review.
-- **Inputs**: Feature description, providing module architecture, related feature IDs, and existing design when revising.
+- **Inputs**: Committed-base isolated-worktree identity (or explicit primary override), feature description, providing module architecture, related feature IDs, and existing design when revising; primary dirty bytes are excluded.
 - **Outputs**: One validated `features/<NNN-name>.md`, `feature_path` selection pointer, and temporal requirements-quality checklist in the matching stable-ID control attempt after the post-front-matter workspace rerun.
-- **Obligations**: Define every interface and architecture reference, make requirements testable, and avoid implementation prose.
+- **Obligations**: Establish isolation before selection/checklist creation or feature edits, define every interface and architecture reference, make requirements testable, and avoid implementation prose.
 - **Failures**: Unclear ownership, unresolved material ambiguity, or invalid entity/interface references block readiness.
 - **Compatibility**: Creates no abstract, implementation, feature contract directory, feature diagram, or nested subfeature.
 - **Implementing entities**: `entity.lifecycle.specify-skill`, `entity.concorde.coding-agent`, `module.concorde.understanding`.
@@ -66,6 +67,9 @@ requirements, failures, related-feature links, and architecture zoom in its sole
 - **FR-003**: Every architecture zoom entity MUST resolve visibly and MUST NOT be retyped/reowned by the feature.
 - **FR-004**: Requirements/scenarios MUST be independently testable, bounded, and free of implementation-detail authority.
 - **FR-005**: Specification MUST NOT infer a stable feature ID from a planned path or create an attempt/checklist before Protocol 13 resolves the authored ID.
+- **FR-006**: Specification MUST run in a linked worktree created from committed primary `HEAD`
+  unless primary mutation was explicitly authorized; it MUST NOT use or alter staged, unstaged,
+  untracked, or ignored primary-worktree content.
 
 ## Edge Cases
 

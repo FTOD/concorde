@@ -14,7 +14,7 @@ REMOVED = {"workspace_kind", "feature_abstract", "feature_implementation", "feat
 
 class AttemptWorkspaceIntegration(unittest.TestCase):
     def run_adapter(self, root: Path, phase: str, feature: str, persist: bool = False, feature_id: str | None = None) -> dict:
-        command = [sys.executable, str(REPOSITORY_ROOT / "scripts/workspace.py"), "--project-root", str(root), "--phase", phase, "--feature-path", feature]
+        command = [sys.executable, str(REPOSITORY_ROOT / "scripts/workspace.py"), "--project-root", str(root), "--phase", phase, "--feature-path", feature, "--allow-primary-worktree"]
         if feature_id is not None:
             command.extend(["--feature-id", feature_id])
         if persist:

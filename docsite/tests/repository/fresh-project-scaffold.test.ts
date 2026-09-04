@@ -35,18 +35,18 @@ let docsiteProposal: Envelope;
 beforeAll(async () => {
   root = await mkdtemp(resolve(tmpdir(), 'concorde-fresh-project-'));
   await mkdir(resolve(root, '.concorde'), {recursive: true});
-  const initProposal = tool(root, 'init', '--propose', '--name', 'Atlas');
+  const initProposal = tool(root, 'init', '--propose', '--name', 'Atlas', '--allow-primary-worktree');
   expect(initProposal.status).toBe('proposal');
   await writeFile(resolve(root, '.concorde/init-proposal.json'), JSON.stringify(initProposal), 'utf8');
-  expect(tool(root, 'init', '--apply', '--proposal', '.concorde/init-proposal.json').status).toBe('success');
+  expect(tool(root, 'init', '--apply', '--proposal', '.concorde/init-proposal.json', '--allow-primary-worktree').status).toBe('success');
   // Reuse this checkout's pinned Archify skill; publishing needs it, scaffolding does not.
   await symlink(resolve(repositoryRoot, '.agents'), resolve(root, '.agents'), 'dir');
   await symlink(resolve(repositoryRoot, 'skills-lock.json'), resolve(root, 'skills-lock.json'));
 
-  docsiteProposal = tool(root, 'docsite', '--propose');
+  docsiteProposal = tool(root, 'docsite', '--propose', '--allow-primary-worktree');
   expect(docsiteProposal.status).toBe('proposal');
   await writeFile(resolve(root, '.concorde/docsite-proposal.json'), JSON.stringify(docsiteProposal), 'utf8');
-  const applied = tool(root, 'docsite', '--apply', '--proposal', '.concorde/docsite-proposal.json');
+  const applied = tool(root, 'docsite', '--apply', '--proposal', '.concorde/docsite-proposal.json', '--allow-primary-worktree');
   expect(applied.status).toBe('success');
   await symlink(resolve(siteDir, 'node_modules'), resolve(root, 'docsite/node_modules'), 'dir');
 }, 300_000);
@@ -74,8 +74,8 @@ describe('a project holding only Initialization Proposal 3 outputs', () => {
   });
 
   it('is unchanged on a second proposal and refuses to overwrite', () => {
-    expect(tool(root, 'docsite', '--propose').status).toBe('unchanged');
-    expect(tool(root, 'docsite', '--apply', '--proposal', '.concorde/docsite-proposal.json').status).toBe('unchanged');
+    expect(tool(root, 'docsite', '--propose', '--allow-primary-worktree').status).toBe('unchanged');
+    expect(tool(root, 'docsite', '--apply', '--proposal', '.concorde/docsite-proposal.json', '--allow-primary-worktree').status).toBe('unchanged');
   });
 
   it('validates and builds with the adapter it received', async () => {

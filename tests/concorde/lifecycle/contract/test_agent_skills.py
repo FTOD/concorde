@@ -28,6 +28,21 @@ PROTOCOL_MUTATION_SKILLS = (
     "concorde-tasks",
     "concorde-taskstoissues",
 )
+AGENT_MUTATION_SKILLS = (
+    "concorde-analyze",
+    "concorde-checklist",
+    "concorde-clarify",
+    "concorde-constitution",
+    "concorde-converge",
+    "concorde-deliver",
+    "concorde-fast-loop",
+    "concorde-implement",
+    "concorde-init",
+    "concorde-plan-author",
+    "concorde-specify",
+    "concorde-tasks",
+    "concorde-taskstoissues",
+)
 
 
 def read(directory: Path, name: str) -> str:
@@ -35,6 +50,46 @@ def read(directory: Path, name: str) -> str:
 
 
 class AgentSkillContractTests(unittest.TestCase):
+    def test_every_mutating_agent_entry_defaults_to_committed_base_isolation(self):
+        for name in AGENT_MUTATION_SKILLS:
+            with self.subTest(name=name):
+                body = read(SKILL_ROOT, name)
+                normalized = " ".join(body.split())
+                self.assertIn("## Isolated worktree gate", body)
+                self.assertIn("committed `HEAD`", body)
+                self.assertIn("--allow-primary-worktree", body)
+                self.assertIn("staged, unstaged, untracked, or ignored", normalized)
+
+    def test_mutating_runtime_entrypoints_enforce_the_worktree_gate(self):
+        sources = (
+            "scripts/workspace.py",
+            "scripts/reflections_queue.py",
+            "src/concorde/capabilities/cli.py",
+            "operations/concorde-plan/operation.py",
+            "operations/concorde-standard-dev-loop/operation.py",
+            "operations/concorde-reflections-triage/operation.py",
+        )
+        for relative in sources:
+            with self.subTest(source=relative):
+                body = (REPOSITORY_ROOT / relative).read_text(encoding="utf-8")
+                self.assertIn("allow-primary-worktree", body)
+                self.assertIn("require_isolated_worktree", body)
+
+        for operation in (
+            "concorde-plan",
+            "concorde-standard-dev-loop",
+            "concorde-reflections-triage",
+        ):
+            with self.subTest(operation=operation):
+                body = (
+                    REPOSITORY_ROOT / "operations" / operation / "SKILL.md"
+                ).read_text(encoding="utf-8")
+                normalized = " ".join(body.split())
+                self.assertIn("## Isolated worktree gate", body)
+                self.assertIn("committed `HEAD`", body)
+                self.assertIn("--allow-primary-worktree", body)
+                self.assertIn("staged, unstaged, untracked, or ignored", normalized)
+
     def test_mutating_entries_route_concorde_protocol_evolution_before_workspace_mutation(self):
         for name in PROTOCOL_MUTATION_SKILLS:
             with self.subTest(name=name):

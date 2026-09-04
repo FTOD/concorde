@@ -271,6 +271,7 @@ def main() -> int:
     parser.add_argument("--integration", choices=("codex", "claude"), default="codex")
     parser.add_argument("--describe-policy", action="store_true")
     parser.add_argument("--execute", action="store_true")
+    parser.add_argument("--allow-primary-worktree", action="store_true")
     parser.add_argument("--no-native-enforcement", action="store_true")
     parser.add_argument("--outer-sandbox")
     arguments = parser.parse_args()
@@ -280,6 +281,19 @@ def main() -> int:
     route = arguments.route or inferred_route
     visits: list[dict[str, object]] = []
     OperationExecution, _, _, _ = _runtime()
+    if arguments.execute and action != "status":
+        from concorde.capabilities.worktree import (
+            WorktreeBoundaryError,
+            require_isolated_worktree,
+        )
+
+        try:
+            require_isolated_worktree(
+                Path.cwd(),
+                allow_primary_worktree=arguments.allow_primary_worktree,
+            )
+        except WorktreeBoundaryError as error:
+            parser.error(str(error))
     if arguments.execute:
         from concorde.capabilities.operation_executor import AgentProcessExecutor
 

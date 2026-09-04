@@ -116,6 +116,7 @@ class InstalledCapabilitySurfaceContractTests(unittest.TestCase):
                     str(root),
                     "--phase",
                     "plan",
+                    "--allow-primary-worktree",
                 ],
                 text=True,
                 capture_output=True,

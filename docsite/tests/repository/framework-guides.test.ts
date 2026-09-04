@@ -35,12 +35,17 @@ describe('maintained Concorde specification documentation', () => {
   it('carries migrated workflow, capability, ontology, and publication guidance in owning specs', async () => {
     const registry = await buildRegistry(projectRoot);
     const source = (path: string) => registry.documents.find((document) => document.sourcePath === path)?.content ?? '';
-    expect(source('specs/concorde/features/001-concorde-workflow.md')).toContain('concorde-standard-dev-loop');
+    const workflow = source('specs/concorde/features/001-concorde-workflow.md');
+    expect(workflow).toContain('concorde-standard-dev-loop');
+    expect(workflow).toContain('committed `HEAD`');
     const skills = source('specs/concorde/modules/capabilities/features/002-provide-capability-surfaces.md').toLowerCase();
     expect(skills).toContain('concorde-ask');
     expect(skills).toContain('read-only');
     expect(skills).toContain('protocol 13');
-    expect(source('specs/concorde/features/002-project-ontology.md')).toContain('## Target Specification Model');
+    expect(skills).toContain('--allow-primary-worktree');
+    const ontology = source('specs/concorde/features/002-project-ontology.md');
+    expect(ontology).toContain('## Target Specification Model');
+    expect(ontology).toContain('Agent mutation worktree');
     const publication = source('specs/concorde/modules/auto-docs/features/001-publish-project-docsite.md');
     expect(publication).toContain('docsite/site.json');
     expect(publication).toContain('parallel prose authority');

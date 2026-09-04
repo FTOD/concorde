@@ -34,6 +34,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE_ROOT / "src"))
 
 from concorde.frontmatter import FrontMatterError, parse_document  # noqa: E402
+from concorde.capabilities.worktree import require_isolated_worktree  # noqa: E402
 from concorde.reflections.reflections import (  # noqa: E402
     BUCKETS,
     PENDING_BUCKET,
@@ -900,6 +901,7 @@ def update_plan(root: Path, identifier: str, assignments: list[str]) -> dict[str
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root")
+    parser.add_argument("--allow-primary-worktree", action="store_true")
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument("--json", action="store_true")
     actions.add_argument("--next", type=int, metavar="N")
@@ -932,6 +934,18 @@ def main(argv: list[str] | None = None) -> int:
     try:
         arguments = create_parser().parse_args(argv)
         root = find_root(arguments.root)
+        mutating = (
+            arguments.allocate_id
+            or arguments.remove_merged is not None
+            or arguments.remove_closed is not None
+            or arguments.relocate is not None
+            or arguments.set is not None
+        )
+        if mutating:
+            require_isolated_worktree(
+                root,
+                allow_primary_worktree=arguments.allow_primary_worktree,
+            )
         if arguments.allocate_id:
             print(json.dumps(allocate_id(root), indent=2, sort_keys=True))
             return 0
@@ -970,7 +984,12 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
-    except (OSError, QueueError, UnicodeError, ValueError) as error:
+    except (
+        OSError,
+        QueueError,
+        UnicodeError,
+        ValueError,
+    ) as error:
         print(f"reflection queue error: {error}", file=sys.stderr)
         return 2
 

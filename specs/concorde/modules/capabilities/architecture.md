@@ -20,8 +20,8 @@ diagrams:
 
 Define how every Concorde capability exists and runs on a coding agent: deterministic Tools behind
 portable entry points, exposure/effect-declared leaf Skills, acyclic paired LangGraph Operations,
-per-leaf permission compilation and enforced launch, and identical public projection into Codex and
-Claude.
+committed-base linked-worktree preflight for agent mutations, per-leaf permission compilation and
+enforced launch, and identical public projection into Codex and Claude.
 
 ## Boundary
 
@@ -32,7 +32,9 @@ tokens); the skill loader/projector; the package capability validator; the share
 (bindings, state, lazy LangGraph); the policy compiler (normalized policy to Codex permission profile,
 Claude strict sandbox, or outer isolation); the injectable process launcher and receipts; the managed
 Operation launcher (`scripts/run-operation.py`); and checkout/installed agent-surface rendering for
-Codex and Claude.
+Codex and Claude. It also owns the deterministic Git worktree boundary shared by mutating Tool
+adapters and actual Operation execution; that helper reads only Git identity/commit metadata and
+rejects primary-worktree mutation unless an explicit override is present.
 
 It does not own the content of any individual Skill or Operation (those belong to Understanding,
 Lifecycle, and Reflections), Protocol 13 role resolution (`module.concorde.understanding`),
@@ -46,6 +48,7 @@ packaging/installation/managed venv (`module.concorde.distribution`), or the age
 | `entity.capabilities.powershell-launcher` | script | Invokes the same Python adapter on PowerShell systems. | `scripts/concorde.ps1` |
 | `entity.capabilities.python-adapter` | program | Adds the colocated package `src` directory to imports and enters the CLI. | `scripts/concorde.py` |
 | `entity.capabilities.cli` | program | Dispatches supported Tools and serializes one structured Tool envelope. | `src/concorde/capabilities/cli.py` |
+| `entity.capabilities.worktree-gate` | program | Inspects Git top-level, exact `HEAD`, worktree-specific/common Git directories, and rejects agent mutation in the primary worktree unless the maintainer-authorized override is explicit. | `src/concorde/capabilities/worktree.py` |
 | `entity.capabilities.tool-result` | type | Structured `tool`, target, status, artifacts, findings, and result payload for one bounded deterministic action. | `src/concorde/model.py#ToolResult` |
 | `entity.capabilities.tool-envelope` | function | Serializes one Tool result with a `tool` discriminator. | `src/concorde/diagnostics.py#tool_envelope` |
 | `entity.capabilities.skill-sources` | directory | Canonical directories containing exactly one public or internal leaf `SKILL.md` each. | `skills` |
@@ -99,6 +102,9 @@ packaging/installation/managed venv (`module.concorde.distribution`), or the age
 | `entity.capabilities.posix-launcher` | `calls` | `entity.capabilities.python-adapter` | Forwards Tool arguments without redefining behavior. |
 | `entity.capabilities.powershell-launcher` | `calls` | `entity.capabilities.python-adapter` | Provides equivalent Windows entry behavior. |
 | `entity.capabilities.python-adapter` | `calls` | `entity.capabilities.cli` | Enters the canonical Tool dispatcher from source or installed layout. |
+| `entity.capabilities.cli` | `calls` | `entity.capabilities.worktree-gate` | Rejects mutating init/delivery/docsite/agent-surface actions in a primary or non-Git checkout unless the explicit override is present. |
+| `entity.capabilities.operation-pair` | `calls` | `entity.capabilities.worktree-gate` | Requires actual planning, standard-loop, and mutating reflection execution to start in an isolated linked worktree before graph/agent mutation. |
+| `module.concorde.understanding` | `calls` | `entity.capabilities.worktree-gate` | Its workspace adapter rejects mutating phases and selection persistence before resolving agent write targets in a primary checkout. |
 | `entity.capabilities.cli` | `calls` | `module.concorde.understanding` | Dispatches the `init`, `context`, `explore`, and `validate` Tools. |
 | `entity.capabilities.cli` | `calls` | `module.concorde.lifecycle` | Dispatches the cleanup-only `deliver` Tool. |
 | `entity.capabilities.cli` | `calls` | `module.concorde.auto-docs` | Dispatches the reviewed `docsite` scaffold Tool. |
@@ -118,7 +124,7 @@ packaging/installation/managed venv (`module.concorde.distribution`), or the age
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
 | `interaction.capabilities.tool` | A Skill, script, CI job, or maintainer invokes a Tool dispatcher entry point. | Locate the colocated package through a platform launcher or direct Python entry; dispatch the named Tool through the CLI; load the validated project package; validate inputs and safe project-relative paths; execute the bounded action; serialize one canonical Tool envelope. | Deterministic success or failure with stable diagnostics and no conversational side channel. | `contract.capabilities.tools` |
-| `interaction.capabilities.launch` | A workflow host launches an installed paired Operation. | Enter the pair through the standard-library bootstrap and the verified managed environment; resolve Protocol 13 roles into concrete paths; validate acyclic literal topology, effects, and bindings; compile one normalized policy and native configuration per leaf occurrence; prove one supported enforcement layer covers every declared path; execute the leaf and append its result and receipt; dispatch a nested Operation only by its public pair and opaque result; stop on any failure without invoking a downstream node. | Ordered per-leaf capability results and receipts, or an explicit pre-launch/executor failure with no downstream invocation. | `contract.capabilities.permission-bounded-execution` |
+| `interaction.capabilities.launch` | A workflow host launches an installed paired Operation. | For actual mutation, verify the project root is a linked worktree at an exact commit unless the explicit primary override is present; enter the pair through the standard-library bootstrap and verified managed environment; resolve Protocol 13 roles; validate topology/effects/bindings; compile and enforce one policy per leaf; execute and append receipts; stop on any failure. | Ordered per-leaf capability results and receipts in the owned worktree, or an explicit worktree/pre-launch/executor failure with no downstream invocation. | `contract.capabilities.permission-bounded-execution` |
 | `interaction.capabilities.project` | An installer or checkout sync projects capabilities to Codex or Claude. | Validate the exact leaf/Operation inventory, exposure, effects, topology, and bindings; omit internal leaves; resolve each Tool and managed-launcher token; render every public leaf and Operation Markdown as one integration-native Skill with source/kind/entry-point provenance; compare against observed output; write only the exact target paths. | Codex or Claude receives the same 15 public leaves plus three Operation skills with no ambient-interpreter dependence, or an explicit conflict/failure diagnostic. | `contract.capabilities.agent-surface`, `contract.capabilities.skill-contract` |
 
 ## Modules
@@ -163,6 +169,9 @@ None.
   native sandbox is available.
 - The process executor is real and injectable; tests record exact argv/settings/receipts and never
   call a paid/live model.
+- Mutating agent entry points fail closed in the primary Git worktree. The
+  `--allow-primary-worktree` escape hatch represents an explicit maintainer decision, never an
+  inference from a generic change request; primary dirty contents are not inspected or transferred.
 - LangGraph remains lazy so base deterministic Tool imports stay dependency-free; a successful
   installation guarantees it inside `.concorde/.venv` and Operation startup stays offline.
 - Individual Skills and Operations are owned by the capability module whose use case they realize;

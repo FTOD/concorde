@@ -1,25 +1,22 @@
 <!--
 Sync Impact Report
-- Version change: 7.3.0 -> 8.0.0 (MAJOR: normative Concorde Protocol changes no longer use the
-  normal attempt/delivery lifecycle; they use an explicitly authorized isolated-worktree cutover)
-- Modified principles:
-  - B.II Concorde Self-Applies and Explicitly Evolves Its Protocol: normal Concorde work remains
-    self-hosted, while every normative Concorde Protocol change is performed outside the Protocol it
-    changes through one direct, isolated, validated Git cutover with no attempt or delivery.
-- Modified standards:
-  - Workflow Standards define Concorde Protocol as the complete normative selected-feature change
-    process and distinguish it from the serialized Feature Workspace Protocol.
-  - Development Workflow and Quality Gates exclude normative Concorde Protocol evolution from the
-    normal lifecycle and require a clean checkpoint, isolated worktree, complete target validation,
-    and one reviewable cutover commit.
-  - Reflection paths now name the current per-file collection rather than the retired single log.
-- Compatibility impact: an attempt, fast loop, or standard-loop invocation is no longer an eligible
-  way to change normative Concorde Protocol semantics; implementation fixes that restore already
-  specified semantics remain normal lifecycle work. External Concorde projects continue to consume
-  the Protocol and receive no automatic source-profile migration from this governance change.
-- Required migration: add the root Protocol-evolution feature and ontology identity, reconcile every
-  canonical and projected workflow surface, validate the complete target checkout, and supersede
-  R-036's proposed generic pre-loader migrator with the worktree-cutover boundary.
+- Version change: 8.0.0 -> 8.1.0 (MINOR: adds a mandatory committed-base isolated-worktree
+  boundary for every agent-authored mutation)
+- Added principle:
+  - A.VII Agent Mutations Start in Isolated Worktrees: read-only work may inspect the primary
+    worktree, but planning, attempt/control creation, project edits, and external mutations default
+    to a unique linked worktree created from the primary worktree's exact committed HEAD.
+- Modified principles and standards:
+  - B.II Protocol evolution now binds to an exact committed base and excludes, preserves, and does
+    not require cleanliness of unrelated primary-worktree dirty state.
+  - Workflow and development gates reject staged, unstaged, untracked, or ignored primary-worktree
+    content as implicit agent input and require an explicit primary-mutation override.
+- Compatibility impact: agent mutation in a primary worktree is no longer the default. Existing
+  mutating Skills, Operations, and deterministic entry points must move to a linked worktree or carry
+  an explicit maintainer-authorized primary-worktree override; read-only capabilities are unchanged.
+- Required migration: reconcile workflow/lifecycle/reflection/capability specifications, canonical
+  and projected agent guidance, Git worktree preflight code/tests, architecture diagrams, and resolve
+  R-045 through the single Protocol cutover commit.
 - Deferred placeholders: none.
 -->
 # Concorde Constitution
@@ -175,6 +172,35 @@ Rationale: a reader looking for how the system does something opens one module a
 answer, and a change to one capability touches one module instead of every artifact-type layer. Type
 layers scatter each use case across the tree and push every real feature to the root.
 
+### A.VII Agent Mutations Start in Isolated Worktrees
+
+Read-only inspection MAY run in a repository's primary Git worktree. Any coding-agent request that
+may mutate project or external state MUST establish its Git boundary before planning, persisting a
+feature selection, creating an attempt/checklist/reflection, or performing any other write. Unless
+the maintainer explicitly authorizes mutation of the primary worktree for that exact request, the
+agent MUST resolve the primary worktree's committed `HEAD`, create a unique branch and linked
+worktree at that exact commit, and continue the complete request there. An agent already assigned an
+isolated worktree MUST remain there and MUST NOT create a nested worktree merely to enter another
+phase. Independently mutating agents MUST NOT write concurrently to one worktree.
+
+Every staged, unstaged, untracked, or ignored path in the primary worktree is outside the default
+request authority and MUST be treated as another programmer's state. An agent MUST NOT use those
+bytes as planning or implementation input, stash/apply them, copy them into its worktree, commit
+them, reset them, clean them, or otherwise import or alter them. If required input is absent from the
+committed base, the agent stops and reports the missing input. A generic request to plan, implement,
+or fix something is not authorization to mutate the primary worktree; the exception must name that
+boundary explicitly. A non-Git checkout likewise requires explicit current-directory mutation
+authorization because no committed linked-worktree base exists.
+
+The worktree remains bound to its captured base until integration. If the integration branch
+advances, reconciliation occurs in isolation and all applicable validation reruns before merge.
+Merge, worktree removal, and branch deletion remain explicit integration/cleanup actions and MUST
+preserve unrelated primary-worktree state.
+
+Rationale: a dirty primary worktree commonly belongs to another programmer. Treating its transient
+bytes as authoritative input creates hidden coupling, lost files, and unsafe cleanup; an immutable
+committed base plus one isolated worktree makes ownership and review explicit.
+
 ## Part B: Project Principles
 
 ### B.I Concorde Ships a Usable Workflow
@@ -209,12 +235,14 @@ capabilities, distribution, and auto-docs.
 Concorde is also the only project that defines, implements, and consumes the complete normative
 Concorde Protocol. Every change to that Protocol's semantics MUST use the root Protocol-evolution
 feature rather than an attempt, fast loop, standard development loop, or delivery. The maintainer
-MUST explicitly authorize the cutover from a clean tracked checkpoint; the change MUST be authored
+MUST explicitly authorize the cutover from an exact committed checkpoint; the change MUST be authored
 directly in an isolated Git worktree, reconcile every affected maintained and executable authority,
 pass complete target-state validation, and merge as one reviewable cutover commit. No active
 Protocol-evolution attempt may exist. A failed cutover leaves the base checkout unchanged and is
 abandoned or reverted through Git. A code or test fix that restores already specified Protocol
-semantics remains normal lifecycle work.
+semantics remains normal lifecycle work. Staged, unstaged, untracked, or ignored state in the
+primary worktree is neither cutover input nor a preflight blocker; it remains untouched and absent
+from the isolated target.
 
 ## Project Constraints
 
@@ -249,6 +277,9 @@ semantics remains normal lifecycle work.
   Temporal work lives at `.concorde/attempts/<stable-feature-id>/` and is absent when that feature has
   no active attempt; tracked process memory lives in `.concorde/reflections/<bucket>/R-NNN.md` with a
   metadata-only allocation index.
+- Every agent-authored mutation uses A.VII's committed-base isolated-worktree boundary before
+  planning or control-state creation. Primary-worktree dirty bytes never extend a feature's input
+  authority, and only an explicit maintainer instruction may enable the primary-worktree override.
 - Stable feature IDs, not filenames or module paths, key attempts and MUST use a safe lowercase
   qualified grammar. A planned feature with no authored ID exposes no attempt path; specification
   reruns workspace resolution after front matter before creating its checklist.
@@ -292,14 +323,17 @@ semantics remains normal lifecycle work.
 ## Development Workflow and Quality Gates
 
 Every material change except normative Concorde Protocol evolution proceeds through the Concorde
-lifecycle. Specification first
+lifecycle inside the A.VII worktree boundary. Before specification, planning, attempt creation, or
+any other mutation, the acting agent creates or enters its committed-base isolated worktree unless
+the maintainer explicitly authorized primary-worktree mutation. Specification first
 identifies the feature's module, related features, affected architecture entities, interface changes,
 representative usage, and expected source/test evidence. Architecture changes are written in the
 owning module; feature behavior and interfaces are written in the owning feature design.
 
 Normative Concorde Protocol evolution follows B.II instead: it creates no attempt or checklist,
 invokes no lifecycle or delivery capability, and changes the complete specification/code/test/control
-boundary directly in one isolated worktree. The target checkout MUST pass all applicable deterministic
+boundary directly in one isolated worktree created from the exact committed base. Uncommitted primary
+state is excluded and preserved. The target checkout MUST pass all applicable deterministic
 validation before its single cutover commit is eligible to merge.
 
 Planning and review use the selected feature design, bounded module architecture and ancestry,
@@ -344,4 +378,4 @@ or materially expands a mandatory obligation, and PATCH clarifies wording. Every
 architecture review includes a constitution check. Reviewers reject unexplained violations,
 invisible boundary changes, duplicated canonical intent, and implementation claims without evidence.
 
-**Version**: 8.0.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-04
+**Version**: 8.1.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-04

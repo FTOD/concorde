@@ -31,7 +31,8 @@ interfaces:
 A maintainer invokes the public `concorde-plan` Operation to resolve a read-only bounded planning
 context, then turn the selected feature, providing architecture/owned code/tests, exact
 required-interface provider feature specifications, and known reflections into one temporal plan and
-dependency-ordered task scaffold without dependency internals.
+dependency-ordered task scaffold without dependency internals. Before context or attempt authorship,
+the acting agent must enter one linked worktree at the primary worktree's exact committed `HEAD`.
 
 Context resolution is delegated whole to `module.concorde.understanding` through
 `contract.understanding.planning-context` and always precedes authorship; the plan author never
@@ -61,12 +62,13 @@ permission-bounded through `module.concorde.capabilities` via
 - **Direction**: Durable feature/architecture/code context to a separate stable-ID control plan and tasks.
 - **Entry points**: Paired Operation `concorde-plan`, public leaf `concorde-tasks`, and optional
   `concorde-taskstoissues`.
-- **Inputs**: `feature_path`, providing architecture/owned locators, module ancestry/related summaries,
+- **Inputs**: Committed-base isolated-worktree identity (or explicit primary override), `feature_path`, providing architecture/owned locators, module ancestry/related summaries,
   exact `interfaces.required` owner feature specs/reasons, selected attempt, constitution/reflections.
 - **Outputs**: `.concorde/attempts/<stable-feature-id>/plan.md`, research/data model/quickstart, and dependency-ordered tasks with exact traces/paths.
 - **Obligations**: Run read-only context before author; include dependency bodies only for unique
   required-interface ownership; deny dependency architecture/source/tests/attempts; write only the
-  selected attempt/authorized reflection; map every affected authority and preserve durable bytes.
+  selected attempt/authorized reflection; map every affected authority and preserve durable bytes;
+  never use or transfer primary-worktree dirty state.
 - **Failures**: Context/policy/enforcement mismatch, ambiguous provider, Constitution violation,
   unresolved clarification, missing ownership, or incomplete trace coverage stops authorship.
 - **Compatibility**: `concorde-plan` is a paired Operation; no leaf alias remains.
@@ -163,6 +165,9 @@ remain denied.
 - **FR-006**: The plan-authoring invocation MUST write only the selected attempt artifacts plus an
   authorized per-file reflection occurrence and MUST leave durable feature, architecture, code, test,
   package, and generated sources byte-identical.
+- **FR-007**: Planning and attempt creation MUST begin only after the agent enters a unique linked
+  worktree at committed primary `HEAD`, unless the maintainer explicitly authorizes primary mutation;
+  missing committed input MUST stop instead of being recovered from a stash or dirty primary path.
 
 ## Success Criteria
 

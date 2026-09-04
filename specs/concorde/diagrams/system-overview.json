@@ -158,7 +158,7 @@
       "id": "agent",
       "type": "external",
       "label": "Coding Agent",
-      "sublabel": "Codex or Claude",
+      "sublabel": "Runs in isolated worktree",
       "pos": [
         940,
         290
@@ -172,7 +172,7 @@
       "id": "git",
       "type": "external",
       "label": "Git",
-      "sublabel": "Checkpoint, worktree, cutover commit",
+      "sublabel": "Committed base, worktrees, merge",
       "pos": [
         620,
         680
@@ -302,6 +302,17 @@
       "from": "capabilities",
       "to": "agent",
       "label": "enforces sandbox"
+    },
+    {
+      "id": "agent-isolates-with-git",
+      "from": "agent",
+      "to": "git",
+      "label": "starts from committed HEAD",
+      "variant": "emphasis",
+      "labelAt": [
+        865,
+        572
+      ]
     },
     {
       "id": "understanding-validates-specification",

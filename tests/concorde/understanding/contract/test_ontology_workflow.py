@@ -96,7 +96,7 @@ class OntologyWorkflowContractTests(unittest.TestCase):
 
     def test_project_ontology_defines_module_entities_interfaces_and_ua_boundary(self):
         ontology = (REPOSITORY_ROOT / "specs/concorde/features/002-project-ontology.md").read_text(encoding="utf-8")
-        for phrase in ("## Target Specification Model", "Architecture entity", "Entity relationship", "Feature interface", "Concorde Protocol", "Protocol evolution", "Understand Anything"):
+        for phrase in ("## Target Specification Model", "Architecture entity", "Entity relationship", "Feature interface", "Concorde Protocol", "Agent mutation worktree", "Protocol evolution", "Understand Anything"):
             self.assertIn(phrase, ontology)
         self.assertIn("adapts", ontology.lower())
 
@@ -123,9 +123,16 @@ class OntologyWorkflowContractTests(unittest.TestCase):
         design = (REPOSITORY_ROOT / evolution.path).read_text(encoding="utf-8")
         for entity in ("entity.concorde.protocol", "entity.concorde.protocol-cutover", "entity.concorde.git"):
             self.assertIn(entity, architecture)
-        self.assertIn("**Version**: 8.0.0", constitution)
+        self.assertIn("**Version**: 8.1.0", constitution)
         self.assertIn("no attempt or checklist", constitution)
+        self.assertIn("Agent Mutations Start in Isolated Worktrees", constitution)
+        self.assertIn("committed `HEAD`", constitution)
         self.assertIn("one reviewable cutover commit", design)
+
+        capabilities = (
+            REPOSITORY_ROOT / "specs/concorde/modules/capabilities/architecture.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("entity.capabilities.worktree-gate", capabilities)
 
 
 if __name__ == "__main__":

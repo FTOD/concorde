@@ -14,6 +14,21 @@ capabilities:
 
 # Concorde Reflection Triage
 
+## Isolated worktree gate
+
+After applying any Protocol-evolution guard, read-only inspection may remain in the primary
+worktree. Before planning, selection persistence, attempt/checklist/reflection creation, an external
+mutation, or any other write, unless the maintainer explicitly authorizes primary-worktree mutation
+for this request, resolve only the primary worktree's committed `HEAD`, create a unique branch and
+linked worktree at that exact commit, and continue the complete request there. If already in an
+isolated worktree, stay there and do not create a nested worktree. Treat every staged, unstaged,
+untracked, or ignored primary-worktree path as another programmer's state: never use it as input,
+stash it, copy it, commit it, reset it, clean it, or otherwise import or alter it. If required input
+is absent from committed `HEAD`, stop and report the missing input. `--allow-primary-worktree` is
+valid only after an explicit instruction to modify the primary worktree; a generic task request is
+not that authorization. A non-Git checkout likewise requires explicit current-directory mutation
+authorization.
+
 Protocol: `reflection-triage/v5`.
 
 Use the paired graph at `{OPERATION}` as the stage topology authority. The graph composes direct leaf
@@ -104,9 +119,9 @@ require only the capabilities reachable for the explicit action/route:
 
 - `status`: no model capability; run/report the queue Tool and stop;
 - `investigate`: `concorde-analyze` only, under a zero-write policy;
-- `implement --route fast-loop`: analyze, isolated-worktree fast-loop, then validate;
-- `implement --route plan`: analyze, public nested `concorde-plan`, tasks, isolated-worktree
-  implement, then validate;
+- `implement --route fast-loop`: analyze, fast-loop, then validate in the action's existing isolated worktree;
+- `implement --route plan`: analyze, public nested `concorde-plan`, tasks, implementation in that same isolated worktree,
+  then validate;
 - `merge`: validate the parent state before the deterministic merge/removal Tool actions; and
 - `close`: no model capability; run/report the removal Tool and stop.
 
@@ -130,5 +145,6 @@ that keeps `triage: pending` stays under `pending/`, and a completed one is move
 never by hand.
 
 The parent remains the only plan-file and triage-completion writer and the only caller of
-`--relocate`. Never run parallel implementers in the main checkout, never change maintainer
+`--relocate`. Never run parallel implementers in one worktree or any implementer in the primary
+checkout without the explicit override, never change maintainer
 disposition, and never maintain a second integration-specific queue.

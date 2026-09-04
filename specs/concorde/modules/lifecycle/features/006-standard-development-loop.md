@@ -46,6 +46,11 @@ The Operation is a normal-feature lifecycle only. In the Concorde repository, a 
 normative Concorde Protocol semantics is rejected before graph construction and routed to the root
 isolated-worktree Protocol-evolution feature.
 
+Before actual graph execution, the outer agent establishes one linked worktree at the primary
+worktree's exact committed `HEAD` and runs all four stages there. Policy description may remain
+read-only in the primary checkout. The execution entry point rejects the primary worktree unless the
+maintainer supplied the explicit primary-mutation override.
+
 ## Architecture Zoom
 
 | Entity ID | Role |
@@ -73,7 +78,7 @@ isolated-worktree Protocol-evolution feature.
   bootstrap;
   `operations/concorde-standard-dev-loop/operation.py`; and
   `build_standard_dev_loop(executor, project_root=..., integration=...)`.
-- **Inputs**: Normal-feature request, package/framework root, selected Protocol 13 feature context, Codex/Claude
+- **Inputs**: Normal-feature request, committed-base isolated-worktree identity (or explicit primary override), package/framework root, selected Protocol 13 feature context, Codex/Claude
   integration, verified managed interpreter, exact direct capability inventory/bindings, leaf
   effects, and injected executor.
 - **Outputs**: Ordered results for six direct capability occurrences grouped under `specify`, `plan`,
@@ -82,7 +87,8 @@ isolated-worktree Protocol-evolution feature.
   public `concorde-plan` to the outer graph; pass exact immutable prior results; compile one
   narrowing default-deny policy per leaf; require a non-null launch factory and explicit enforcing
   nested dispatcher; start with no results; stop on any runtime, direct, or nested failure; perform
-  no dependency installation or package-index access during invocation; and reject normative
+  no dependency installation or package-index access during invocation; require isolation before
+  the first mutating occurrence; exclude primary dirty state; and reject normative
   Concorde Protocol evolution before any graph node or workspace mutation.
 - **Failures**: Missing/corrupt managed interpreter, invalid/missing pair metadata, cycle, unknown
   capability/effect, binding mismatch, unsafe path, unavailable enforcement, invalid
@@ -159,6 +165,9 @@ or invoke this graph and do not select a feature or create an attempt. Name
   dependency resolution, download, package-index access, or use of a project root `.venv`.
 - **FR-010**: A normative Concorde Protocol semantic change MUST be rejected before graph
   construction, selection, or attempt mutation and routed to `feature.concorde.evolve-protocol`.
+- **FR-011**: Actual Operation execution MUST reject the primary worktree by default and run specify,
+  plan/attempt creation, tasks/implementation, validation, and delivery in one linked worktree from
+  committed primary `HEAD`; only an explicit maintainer-authorized override may permit primary mutation.
 
 ## Success Criteria
 

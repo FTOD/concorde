@@ -54,18 +54,20 @@ Profile validation; no Tool writes an explorer index or repairs input.
   and `agent-assets`.
 - **Inputs**: Project root, Tool name, stable target, format, and Tool-specific proposal/options;
   exploration additionally accepts safe graph/sidecar paths, expected revision, text query, and
-  effective-status filters.
+  effective-status filters. Mutating actions additionally require linked-worktree Git identity or
+  the explicit maintainer-authorized primary/current-directory override.
 - **Outputs**: `tool`, target, status, artifacts, findings, and versioned result payload; exploration
   returns Alignment Schema 1 specification/implementation/provenance/alignment projections.
 - **Obligations**: Deterministic behavior, safe paths, non-mutating reads, atomic reviewed mutations,
-  actionable diagnostics, and no import of optional LangGraph during base Tool use.
-- **Failures**: Invalid config/source/target/path/proposal, unavailable input, or filesystem failure
+  committed-base isolation before agent-driven writes, actionable diagnostics, and no import of
+  optional LangGraph during base Tool use.
+- **Failures**: Primary/non-Git mutation without explicit override, invalid config/source/target/path/proposal, unavailable input, or filesystem failure
   returns failure and preserves unrelated/current authority.
 - **Compatibility**: Architecture-service envelope 2 exposes Profile 7, Protocol 13, Initialization
   Proposal 3, Docsite Scaffold Proposal 1, Delivery Proposal 9, and Alignment Schema 1 terminology.
   Concorde 2.1.0 reserves Operation for paired LangGraphs.
 - **Implementing entities**: `entity.capabilities.cli`, `entity.capabilities.tool-result`,
-  `entity.capabilities.tool-envelope`, `entity.capabilities.python-adapter`,
+  `entity.capabilities.tool-envelope`, `entity.capabilities.python-adapter`, `entity.capabilities.worktree-gate`,
   `module.concorde.understanding`, `module.concorde.lifecycle`, and `module.concorde.auto-docs`.
 - **Example**: `python3 scripts/concorde.py --project-root . validate --format json` emits a Tool
   envelope whose findings carry stable rule IDs and remediations.
@@ -75,6 +77,7 @@ Profile validation; no Tool writes an explorer index or repairs input.
 | Entity ID | Role |
 |---|---|
 | `entity.capabilities.cli` | Dispatches Tools into one envelope contract. |
+| `entity.capabilities.worktree-gate` | Rejects agent-driven mutating Tool actions in a primary/non-Git checkout unless the explicit override is present. |
 | `entity.capabilities.tool-result` | Carries the structured result of one bounded action. |
 | `entity.capabilities.tool-envelope` | Serializes the public `tool` discriminator. |
 | `entity.capabilities.python-adapter` | Enters the CLI dispatcher from a portable launcher in source or installed layout. |
@@ -105,6 +108,8 @@ Profile validation; no Tool writes an explorer index or repairs input.
    bounded module or feature altitude, never a conversational summary.
 3. `concorde explore` validates an optional pinned implementation graph and sidecar, then returns
    bounded alignment projections without writing an index or repairing the input.
+4. An agent invokes delivery from the primary worktree without an explicit override; the Tool fails
+   before proposal materialization and directs the agent to a linked worktree at committed `HEAD`.
 
 ## Requirements
 
@@ -119,6 +124,9 @@ Profile validation; no Tool writes an explorer index or repairs input.
 - **FR-006**: Package capability validation MUST inspect exposure/effects, mixed Skill/Operation
   literals, exact occurrence bindings, and cycles from source/metadata/AST without importing or
   executing arbitrary Operation Python.
+- **FR-007**: Agent-driven mutating Tool actions MUST fail closed outside a linked Git worktree unless
+  `--allow-primary-worktree` explicitly represents maintainer authorization; the preflight MUST NOT
+  read or transfer primary dirty file contents.
 
 ## Edge Cases
 

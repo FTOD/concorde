@@ -9,6 +9,7 @@
     "viewBox": [1200, 660]
   },
   "components": [
+    {"id": "worktree", "type": "security", "label": "Committed-base Worktree", "sublabel": "Before investigate, plan, or write", "pos": [40, 30], "size": [250, 70]},
     {"id": "triage-operation", "type": "backend", "label": "Triage Operation", "sublabel": "status · investigate · implement · merge · close", "pos": [465, 30], "size": [270, 70]},
     {"id": "agents", "type": "external", "label": "Investigator & Implementer", "sublabel": "internal support agents", "pos": [900, 30], "size": [260, 70]},
     {"id": "lifecycle-phases", "type": "backend", "label": "Lifecycle Phases", "sublabel": "plan · tasks · analyze · fast-loop", "pos": [40, 270], "size": [230, 70]},
@@ -17,6 +18,7 @@
     {"id": "collection", "type": "database", "label": "Reflection Collection", "sublabel": "pending · planned · needs-comments", "pos": [465, 510], "size": [270, 70]}
   ],
   "connections": [
+    {"id": "worktree-isolates-triage", "from": "worktree", "to": "triage-operation", "label": "isolates mutation", "variant": "security"},
     {"id": "lifecycle-writes-collection", "from": "lifecycle-phases", "to": "collection", "label": "records problem"},
     {"id": "queue-writes-collection", "from": "queue", "to": "collection", "label": "allocates & relocates", "variant": "emphasis"},
     {"id": "triage-calls-queue", "from": "triage-operation", "to": "queue", "label": "runs queue actions", "variant": "emphasis"},

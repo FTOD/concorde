@@ -15,11 +15,12 @@
     {"id": "sources", "type": "frontend", "label": "Skill + Operation Sources", "sublabel": "skills/ + operations/", "pos": [40, 220], "size": [230, 68]},
     {"id": "projector", "type": "backend", "label": "Projector", "sublabel": "Capability renderer", "pos": [370, 220], "size": [180, 68]},
     {"id": "surfaces", "type": "frontend", "label": "Codex / Claude Surfaces", "sublabel": "Public Skill namespace", "pos": [670, 220], "size": [220, 68]},
-    {"id": "operation-runtime", "type": "backend", "label": "Operation Runtime", "sublabel": "Bindings + state", "pos": [40, 400], "size": [200, 68]},
-    {"id": "policy-compiler", "type": "security", "label": "Policy Compiler", "sublabel": "Normalized to native policy", "pos": [370, 400], "size": [210, 68]},
-    {"id": "coding-agent", "type": "external", "label": "Coding Agent", "sublabel": "Codex / Claude process", "pos": [700, 400], "size": [190, 68]},
-    {"id": "langgraph", "type": "external", "label": "LangGraph", "sublabel": "Lazy graph runtime", "pos": [40, 580], "size": [180, 68]},
-    {"id": "understanding", "type": "backend", "label": "Understanding", "sublabel": "Protocol 13 roles", "pos": [370, 580], "size": [200, 68]}
+    {"id": "worktree-gate", "type": "security", "label": "Worktree Gate", "sublabel": "Committed HEAD only", "pos": [40, 400], "size": [170, 68]},
+    {"id": "operation-runtime", "type": "backend", "label": "Operation Runtime", "sublabel": "Bindings + state", "pos": [260, 400], "size": [190, 68]},
+    {"id": "policy-compiler", "type": "security", "label": "Policy Compiler", "sublabel": "Normalized to native policy", "pos": [500, 400], "size": [200, 68]},
+    {"id": "coding-agent", "type": "external", "label": "Coding Agent", "sublabel": "Codex / Claude process", "pos": [740, 400], "size": [190, 68]},
+    {"id": "langgraph", "type": "external", "label": "LangGraph", "sublabel": "Lazy graph runtime", "pos": [260, 580], "size": [180, 68]},
+    {"id": "understanding", "type": "backend", "label": "Understanding", "sublabel": "Protocol 13 roles", "pos": [500, 580], "size": [200, 68]}
   ],
   "connections": [
     {"id": "maintainer-invokes-launchers", "from": "maintainer", "to": "launchers-cli", "label": "invokes Tool", "fromSide": "right", "toSide": "left"},
@@ -27,9 +28,10 @@
     {"id": "sources-load-projector", "from": "sources", "to": "projector", "label": "loads sources", "fromSide": "right", "toSide": "left"},
     {"id": "projector-projects-surfaces", "from": "projector", "to": "surfaces", "label": "projects capabilities", "fromSide": "right", "toSide": "left", "variant": "emphasis"},
     {"id": "sources-supply-runtime", "from": "sources", "to": "operation-runtime", "label": "supplies capability bodies", "fromSide": "bottom", "toSide": "top"},
+    {"id": "worktree-admits-runtime", "from": "worktree-gate", "to": "operation-runtime", "label": "admits isolated root", "fromSide": "right", "toSide": "left", "variant": "security", "labelAt": [235, 482]},
     {"id": "runtime-compiles-langgraph", "from": "operation-runtime", "to": "langgraph", "label": "compiles graph lazily", "fromSide": "bottom", "toSide": "top"},
-    {"id": "runtime-requests-policy", "from": "operation-runtime", "to": "policy-compiler", "label": "requests per-leaf policy", "fromSide": "right", "toSide": "left"},
+    {"id": "runtime-requests-policy", "from": "operation-runtime", "to": "policy-compiler", "label": "requests per-leaf policy", "fromSide": "right", "toSide": "left", "labelAt": [475, 482]},
     {"id": "understanding-resolves-roles", "from": "understanding", "to": "policy-compiler", "label": "resolves Protocol 13 roles", "fromSide": "top", "toSide": "bottom"},
-    {"id": "policy-configures-agent", "from": "policy-compiler", "to": "coding-agent", "label": "configures launch", "fromSide": "right", "toSide": "left", "variant": "emphasis"}
+    {"id": "policy-configures-agent", "from": "policy-compiler", "to": "coding-agent", "label": "configures launch", "fromSide": "right", "toSide": "left", "variant": "emphasis", "labelAt": [720, 482]}
   ]
 }

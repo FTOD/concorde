@@ -26,7 +26,7 @@ interfaces:
 ## Outcome and Scope
 
 **Outcome**: A workflow host can launch every Codex or Claude agent selected by a Concorde Operation
-with a validated least-privilege filesystem policy.
+with a committed-base isolated-worktree preflight and a validated least-privilege filesystem policy.
 
 **In scope**:
 
@@ -40,10 +40,14 @@ with a validated least-privilege filesystem policy.
   contract, including their installed Codex and Claude projections.
 - Optional outer OS/container isolation when the selected integration cannot enforce the declared
   boundary itself.
+- A fail-closed Git preflight for actual mutating Operation/workspace/Tool entry points, with one
+  explicit maintainer-authorized primary-worktree override and no dirty-state materialization.
 
 ## Usage
 
-The same host can invoke the standard development or reflection-triage Operation. Before each direct
+The same host can invoke the standard development or reflection-triage Operation. Before actual
+mutation, it requires a linked worktree created from the primary worktree's exact committed `HEAD`;
+staged, unstaged, untracked, and ignored primary state is neither read nor copied. Before each direct
 leaf Skill invocation, the runtime supplies one immutable launch specification containing the
 chosen integration, prompt/prior results, normalized policy, native configuration, and digests. The
 injectable process executor version-checks `codex exec` or restricted `claude -p`, scrubs ambient
@@ -60,17 +64,20 @@ a live model.
   policy and integration-native launch configuration per composed leaf Skill.
 - **Entry points**: Shared Operation runtime, each `operations/<name>/operation.py` policy
   declaration, and the injected executor contract.
-- **Inputs**: Operation/stage/Skill identity; selected integration; project root; Protocol 13 feature,
+- **Inputs**: Operation/stage/Skill identity; selected integration; project root; isolated-worktree
+  Git identity and committed `HEAD` (or explicit primary override); Protocol 13 feature,
   architecture, ancestry-summary, related-feature-summary, attempt, reflection, and executable
   context; declared path roles; network posture; and optional outer-sandbox requirement.
-- **Outputs**: Canonical read/write/deny path sets; Codex named permission-profile/config selection;
+- **Outputs**: Validated worktree boundary; canonical read/write/deny path sets; Codex named permission-profile/config selection;
   Claude `permissions` rules and strict sandbox settings; enforcement status; and an immutable launch
   specification attached to the Skill invocation.
 - **Obligations**: Resolve real project-relative non-symlink paths; apply deny-before-allow semantics;
   keep writes a subset of the Skill's declared mutation authority; disable network unless explicitly
-  required; scrub ambient credential access; reject profile widening; and prevent launch unless one
+  required; scrub ambient credential access; reject primary mutation without the explicit override,
+  never infer authority from primary dirty state, reject profile widening; and prevent launch unless one
   supported enforcement layer covers every declared path rule.
-- **Failures**: Missing policy coverage, duplicate or mismatched Skill bindings, path escape,
+- **Failures**: Primary or non-Git mutation without explicit authorization, missing committed input,
+  missing policy coverage, duplicate or mismatched Skill bindings, path escape,
   symlink/unsafe root, unavailable native sandbox without an approved outer equivalent, unsupported
   integration, configuration widening, or executor refusal stops the invocation and all downstream
   nodes.
@@ -81,8 +88,9 @@ a live model.
 - **Example**: A `concorde-standard-dev-loop` leaf stage receives read access to its selected feature
   and owned module locators; it receives write access only to
   `.concorde/attempts/<stable-feature-id>/**` and `.concorde/reflections/**`. A reflection-triage
-  implementer stage instead receives write access scoped to its isolated worktree.
-- **Implementing entities**: `entity.capabilities.operation-runtime`,
+  implementer stage instead receives write access scoped to the same isolated worktree established
+  before investigation and planning.
+- **Implementing entities**: `entity.capabilities.worktree-gate`, `entity.capabilities.operation-runtime`,
   `entity.capabilities.operation-binding`, `entity.capabilities.operation-state`,
   `entity.capabilities.policy-compiler`, `entity.capabilities.process-launcher`,
   `entity.concorde.coding-agent`, and `module.concorde.understanding`.
@@ -92,6 +100,7 @@ a live model.
 | Entity ID | Role |
 |---|---|
 | `entity.capabilities.operation-runtime` | Validates direct capability/binding coverage and supplies immutable leaf launch specifications. |
+| `entity.capabilities.worktree-gate` | Reads only Git identity and exact `HEAD`, accepts linked worktrees, and rejects primary-worktree mutation unless the explicit override is present. |
 | `entity.capabilities.operation-binding` | Carries exact stage, occurrence, capability, agent, and narrowing bindings; prevents undeclared, duplicated, widened, or order-mismatched execution. |
 | `entity.capabilities.operation-state` | Carries request plus prior bounded capability results/receipts so a later stage can consume them without reopening unrelated sources. |
 | `entity.capabilities.policy-compiler` | Freezes normalized policy and Codex/Claude/outer configurations, proving native effective-set parity and narrowing-only composition. |
@@ -184,6 +193,11 @@ effective read/write/deny sets before validating their native configuration shap
   resolution MUST reject cycles and a missing explicit enforcing dispatcher, preserve nested
   state/failure/policy boundaries, and make the standard-development and reflection-routing graphs
   reference `concorde-plan` rather than its private leaves wherever they invoke planning.
+- **FR-011**: Every actual mutating Operation and workspace/Tool adapter MUST reject the primary Git
+  worktree by default, accept a linked worktree at an exact commit, and expose
+  `--allow-primary-worktree` only as the machine assertion of explicit maintainer authorization.
+  The gate MUST inspect only Git identity/commit metadata and MUST NOT read, stash, copy, reset,
+  clean, or otherwise import or alter primary dirty contents.
 
 ### Non-Functional Requirements
 
@@ -214,6 +228,8 @@ effective read/write/deny sets before validating their native configuration shap
 - **SC-004**: Nested-operation tests prove the outer graph sees only public `concorde-plan`, a trusted
   dispatcher runs inner context/author with independent non-null launches, missing dispatcher/factory
   invokes no executor, and a failure at either level prevents the correct downstream nodes.
+- **SC-005**: Executable tests reject the primary worktree, accept a linked worktree created at the
+  same committed `HEAD`, and prove tracked/untracked primary changes are absent from that target.
 
 ## Edge Cases
 
@@ -233,3 +249,6 @@ effective read/write/deny sets before validating their native configuration shap
   isolation layer; graph construction may succeed, but agent launch fails before the first Skill.
 - Two Skills share one LangGraph stage but require different write sets; each receives its own agent
   launch policy and neither receives the other Skill's rights.
+- A primary worktree is dirty because another programmer is active; the gate accepts a linked
+  worktree at committed `HEAD` and leaves every primary byte untouched. If the required input exists
+  only in dirty state, the agent reports it missing.

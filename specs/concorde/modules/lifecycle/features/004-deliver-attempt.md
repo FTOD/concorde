@@ -18,7 +18,8 @@ interfaces:
 ## Outcome and Scope
 
 A maintainer invokes delivery once to verify a complete current feature attempt and atomically remove
-only that temporal workspace, leaving architecture, design, code, tests, and reflections unchanged.
+only that temporal workspace inside its owning isolated worktree, leaving architecture, design,
+code, tests, reflections, and unrelated primary-worktree state unchanged.
 
 ## Architecture Zoom
 
@@ -39,7 +40,7 @@ only that temporal workspace, leaving architecture, design, code, tests, and ref
 - **Direction**: Complete attempt to proposal/result and attempt removal.
 - **Entry points**: Leaf Skill `concorde-deliver` and native Runtime Tool
   `deliver --propose/--apply`.
-- **Inputs**: Selected feature ID/root, complete tasks/checklists, validation containing one
+- **Inputs**: Owning isolated-worktree identity (or explicit primary override), selected feature ID/root, complete tasks/checklists, validation containing one
   top-level `- **T### · <trace>**` or legacy `### T###` evidence boundary per checked task with an
   exact in-block `**Outcome**: passed`, safe attempt path, and current source digest.
 - **Outputs**: Proposal 9 eligibility/details, applied cleanup manifest, retained-authority digests,
@@ -79,6 +80,9 @@ only that temporal workspace, leaving architecture, design, code, tests, and ref
 - **FR-005**: Eligibility MUST count task evidence only when `validation.md` contains either a
   top-level `- **T### · <trace>**` compact boundary or legacy `### T###` heading and the bounded block
   contains `**Outcome**: passed`; outcome wording in the boundary or unrelated prose MUST NOT count.
+- **FR-006**: Delivery propose/apply MUST reject a primary worktree by default, remain in the
+  attempt's owning linked worktree, and preserve all primary dirty state; only an explicit
+  maintainer-authorized primary-worktree override may change that boundary.
 
 ## Edge Cases
 

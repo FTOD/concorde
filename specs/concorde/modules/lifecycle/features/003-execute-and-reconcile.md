@@ -20,7 +20,8 @@ interfaces:
 ## Outcome and Scope
 
 A coding agent executes every dependency-ready task, reconciles affected architecture/design/code/
-test/projection sources, and records proportionate evidence before marking work complete.
+test/projection sources, and records proportionate evidence before marking work complete, all inside
+the committed-base isolated worktree that owns the attempt.
 
 ## Architecture Zoom
 
@@ -40,7 +41,7 @@ test/projection sources, and records proportionate evidence before marking work 
 - **Consumer**: Maintainer delegating an approved dependency-ordered implementation.
 - **Direction**: Complete attempt input to reconciled sources, tests, evidence, tasks, and reflections.
 - **Entry points**: Leaf Skills `concorde-implement`, `concorde-analyze`, and `concorde-converge`.
-- **Inputs**: Feature design, module architecture, source/tests, complete plan/tasks/checklists, and active reflection context.
+- **Inputs**: Owning isolated-worktree identity, feature design, module architecture, source/tests, complete plan/tasks/checklists, and active reflection context; primary dirty paths are excluded.
 - **Outputs**: Product/specification changes authorized by tasks; checked tasks; appended difficult
   choices/problems; and one delivery-readable block per task in the selected stable-ID attempt's
   `validation.md`, beginning with a top-level `- **T### · <trace>**` boundary and containing a nested
@@ -80,6 +81,8 @@ test/projection sources, and records proportionate evidence before marking work 
   task; `failed` and `skipped` outcomes MUST remain unchecked.
 - **FR-004**: Unexpected protected-authority changes or blocking failures MUST stop dependents and remain truthfully unchecked/reflected.
 - **FR-005**: Completion MUST reconcile every affected module architecture, feature design/interface, code, test, fixture, guide, and generated projection.
+- **FR-006**: Implementation MUST remain in the attempt's assigned linked worktree and MUST NOT
+  import, overwrite, reset, clean, or otherwise alter primary-worktree dirty state.
 
 ## Edge Cases
 

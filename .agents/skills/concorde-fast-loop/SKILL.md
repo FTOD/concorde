@@ -16,6 +16,21 @@ $ARGUMENTS
 
 # Concorde Fast Loop
 
+## Isolated worktree gate
+
+After applying any Protocol-evolution guard, read-only inspection may remain in the primary
+worktree. Before planning, selection persistence, attempt/checklist/reflection creation, an external
+mutation, or any other write, unless the maintainer explicitly authorizes primary-worktree mutation
+for this request, resolve only the primary worktree's committed `HEAD`, create a unique branch and
+linked worktree at that exact commit, and continue the complete request there. If already in an
+isolated worktree, stay there and do not create a nested worktree. Treat every staged, unstaged,
+untracked, or ignored primary-worktree path as another programmer's state: never use it as input,
+stash it, copy it, commit it, reset it, clean it, or otherwise import or alter it. If required input
+is absent from committed `HEAD`, stop and report the missing input. `--allow-primary-worktree` is
+valid only after an explicit instruction to modify the primary worktree; a generic task request is
+not that authorization. A non-Git checkout likewise requires explicit current-directory mutation
+authorization.
+
 Treat `$ARGUMENTS` as the complete requested change. Fast-loop is a direct, no-attempt path for one
 small, fully understood change. It preserves the same
 module/feature ontology and evidence standard as the full workflow.

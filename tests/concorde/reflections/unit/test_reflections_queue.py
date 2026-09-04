@@ -38,7 +38,7 @@ def load_queue_module():
 
 def run_queue(root: Path, *arguments: str, check: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["python3", str(SCRIPT), "--root", str(root), *arguments],
+        ["python3", str(SCRIPT), "--root", str(root), "--allow-primary-worktree", *arguments],
         text=True,
         capture_output=True,
         check=check,

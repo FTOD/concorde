@@ -50,8 +50,10 @@ interfaces:
 
 A maintainer can direct one normal feature from its complete direct file through permission-bounded
 planning, dependency-ordered implementation/evidence, deterministic validation, and cleanup-only
-delivery using installed skills as the sole conversational surface, while Concorde's own normative
-Protocol evolution is explicitly excluded and routed to its isolated bootstrap feature.
+delivery using installed skills as the sole conversational surface. Every mutating agent session
+starts in one linked worktree from the primary worktree's exact committed `HEAD`; unrelated primary
+dirty state is excluded. Concorde's own normative Protocol evolution is explicitly excluded and
+routed to its isolated bootstrap feature.
 
 ## Usage
 
@@ -59,18 +61,23 @@ Protocol evolution is explicitly excluded and routed to its isolated bootstrap f
    initialize the root module with `concorde-init` when the project has no Profile 7 architecture.
    When the project grows child modules, partition them by capability, use case, or axis of change,
    never by artifact type (constitution A.VI).
-2. Select one direct `features/<NNN-name>.md` and invoke `concorde-specify`; use
+2. Before any agent plans, persists selection, creates an attempt/checklist/reflection, or writes,
+   resolve the primary worktree's committed `HEAD` and create a unique branch/linked worktree there.
+   Continue the complete request in that worktree. Never import staged, unstaged, untracked, or
+   ignored primary-worktree bytes; only an explicit instruction to modify the primary worktree
+   enables the override.
+3. Select one direct `features/<NNN-name>.md` and invoke `concorde-specify`; use
    `concorde-clarify` for material ambiguity and `concorde-checklist` for reviewer-owned quality
    checks. A new file is resolved again after stable-ID front matter exists.
-3. For a normal change, invoke `concorde-plan`, `concorde-tasks`, and `concorde-implement`; use
+4. For a normal change, invoke `concorde-plan`, `concorde-tasks`, and `concorde-implement`; use
    `concorde-analyze` for a read-only audit and `concorde-converge` only when verified work remains.
    `concorde-standard-dev-loop` composes specify → plan → tasks/implement → validate/deliver when the
    complete loop is desired.
-4. Run `concorde-validate`, then invoke `concorde-deliver` only after every task/checklist and its
+5. Run `concorde-validate`, then invoke `concorde-deliver` only after every task/checklist and its
    canonical evidence block passes. Delivery removes the attempt, not the specification.
-5. Use `concorde-fast-loop` instead only when preflight proves the change is already specified,
+6. Use `concorde-fast-loop` instead only when preflight proves the change is already specified,
    bounded, non-structural, and has no active attempt.
-6. In the Concorde repository, classify a change to the normative semantics of Concorde Protocol
+7. In the Concorde repository, classify a change to the normative semantics of Concorde Protocol
    before invoking any lifecycle capability. Route it to `feature.concorde.evolve-protocol`, which
    uses no selection, attempt, checklist, fast loop, standard loop, or delivery.
 
@@ -89,6 +96,7 @@ Planning, task, checklist, research, quickstart, and validation files live only 
 | `entity.concorde.control-state` | Holds the selected feature, its stable-ID attempt, and the reflection collection during the workflow. |
 | `entity.concorde.protocol` | Governs this normal selected-feature lifecycle; Feature Workspace Protocol 13 is one component. |
 | `entity.concorde.protocol-cutover` | Receives every normative Protocol semantic change before lifecycle selection and evolves it outside this workflow. |
+| `entity.concorde.git` | Supplies the exact committed base, unique linked worktree, reviewable branch, and later integration boundary for every mutating agent session. |
 
 ## Interfaces
 
@@ -98,19 +106,25 @@ Planning, task, checklist, research, quickstart, and validation files live only 
 - **Direction**: Maintainer intent to leaf or multi-Skill result, with structured deterministic Tool crossings.
 - **Entry points**: Installed public lifecycle leaves plus paired `concorde-plan`, standard-loop, and
   reflection-triage Operations; internal planner leaves are not entry points.
-- **Inputs**: Selected `feature_path`, providing module architecture, related feature paths, code/tests, constitution, `.concorde/reflections/`, and optional corresponding stable-ID control attempt.
+- **Inputs**: Exact committed primary `HEAD`, isolated-worktree identity (or an explicit
+  primary-mutation override), selected `feature_path`, providing module architecture, related
+  feature paths, code/tests, constitution, `.concorde/reflections/`, and optional corresponding
+  stable-ID control attempt. Primary staged/unstaged/untracked/ignored bytes are not inputs.
 - **Outputs**: Revised durable intent/architecture when authorized, temporal planning/evidence, reconciled code/tests/projections, findings, and delivery cleanup result.
 - **Obligations**: Keep each fact in one authority, resolve Protocol 13/concrete paths first, trace
   every task, validate deterministically, disclose evidence limits, keep nested Operations opaque,
-  and never launch a leaf without an exact narrowing enforced policy/receipt.
-- **Failures**: Invalid placement/authority, incomplete checklist/task, failed check, stale/unsafe
+  never launch a mutating phase before the committed-base worktree gate, and never launch a leaf
+  without an exact narrowing enforced policy/receipt.
+- **Failures**: Primary-worktree mutation without explicit authorization, missing committed input,
+  non-Git mutation without an explicit current-directory override, invalid placement/authority,
+  incomplete checklist/task, failed check, stale/unsafe
   delivery, ambiguous impact, or a normative Concorde Protocol change stops the affected phase
   without implied authorization; the latter routes to `interface.concorde.protocol-evolution` before
   any workspace mutation.
 - **Compatibility**: Profile 7 features are direct Markdown files; Feature Workspace Protocol 13
   rejects specification-local control state/redundant feature fields, while Delivery 9 retains
-  cleanup-only semantics. Constitution 8.0.0 removes normative Concorde Protocol evolution from this
-  normal lifecycle.
+  cleanup-only semantics. Constitution 8.1.0 makes committed-base worktree isolation the mutation
+  default and retains normative Concorde Protocol evolution outside this normal lifecycle.
 - **Implementing entities**: `module.concorde.understanding`, `module.concorde.lifecycle`,
   `module.concorde.reflections`, `module.concorde.capabilities`, and `entity.concorde.coding-agent`.
 - **Example**: A maintainer specifies `features/001-change.md` with ID `feature.example.change`, runs plan/tasks/implement in `.concorde/attempts/feature.example.change/`, verifies all evidence, then invokes delivery once to remove that attempt.
@@ -123,13 +137,16 @@ Planning, task, checklist, research, quickstart, and validation files live only 
   leaf phase or paired LangGraph workflow.
 - **Entry points**: `.agents/skills/**` and `.codex/agents/**`, or `.claude/skills/**` and `.claude/agents/**`.
 - **Inputs**: Regular rendered Markdown/TOML, project root, user arguments, concrete normalized path
-  policy, integration-native Codex/Claude or approved outer configuration, and prior results.
+  policy, committed-base linked-worktree identity for mutation (or explicit primary override),
+  integration-native Codex/Claude or approved outer configuration, and prior results.
 - **Outputs**: Conversational phase/Operation result plus only authorized file/Tool effects and, for
   Operation leaves, a digest-bound enforcement receipt.
 - **Obligations**: Load project-local metadata/body, invoke paired Python when declared, enforce
   default-deny paths/network/credentials outside LangGraph, prohibit unsandboxed retry, surface
-  Tool/graph/policy failures, and keep `concorde-*` identity consistent.
-- **Failures**: Missing/unsupported integration assets, invalid capability metadata or pairing,
+  Tool/graph/policy failures, reject implicit primary-worktree mutation, and keep `concorde-*`
+  identity consistent.
+- **Failures**: Missing/unsupported worktree authorization or integration assets, invalid capability
+  metadata or pairing,
   unavailable Tools/dependencies, or denied permissions stop execution without hidden fallback behavior.
 - **Compatibility**: Concorde 2.1.0 Package Manifest 2 packages 17 leaves/three pairs and exposes the
   same 15 public leaves plus three Operations in Codex and Claude.
@@ -158,11 +175,13 @@ Planning, task, checklist, research, quickstart, and validation files live only 
 
 ## Usage Scenarios
 
-1. Establish or revise one direct module feature file and its interface/architecture references.
-2. Create its corresponding stable-ID control attempt whose plan/tasks trace every affected architecture, feature, code, test, and projection.
-3. Execute with evidence, validate the reconciled project, then deliver by removing only the attempt.
-4. Use the fast loop only when deterministic preflight proves the change is already specified, bounded, and non-structural.
-5. Reject normative Concorde Protocol evolution before selection and route it to one isolated
+1. Before the first mutation, create or enter one unique linked worktree at the primary worktree's
+   committed `HEAD`; ignore and preserve all primary dirty state.
+2. Establish or revise one direct module feature file and its interface/architecture references.
+3. Create its corresponding stable-ID control attempt whose plan/tasks trace every affected architecture, feature, code, test, and projection.
+4. Execute with evidence, validate the reconciled project, then deliver by removing only the attempt.
+5. Use the fast loop only when deterministic preflight proves the change is already specified, bounded, and non-structural.
+6. Reject normative Concorde Protocol evolution before selection and route it to one isolated
    worktree cutover without lifecycle state.
 
 ## Requirements
@@ -181,6 +200,11 @@ Planning, task, checklist, research, quickstart, and validation files live only 
   Protocol semantic change before workspace mutation and direct the Concorde maintainer to
   `feature.concorde.evolve-protocol`; implementation fixes that restore already specified semantics
   remain eligible for this workflow.
+- **FR-008**: Every agent-authored mutation MUST begin in a unique linked worktree created from the
+  primary worktree's exact committed `HEAD`, before planning, selection persistence, or attempt/
+  checklist/reflection creation, unless the maintainer explicitly authorizes primary-worktree
+  mutation. Primary staged, unstaged, untracked, and ignored bytes MUST remain excluded and
+  untouched; missing committed input MUST stop rather than trigger stash/copy recovery.
 
 ## Edge Cases
 
@@ -189,3 +213,8 @@ Planning, task, checklist, research, quickstart, and validation files live only 
 - A stale proposal or unexpected protected-source change stops mutation while preserving the attempt.
 - A Concorde maintainer asks a normal lifecycle leaf or Operation to change Protocol semantics; it
   stops before selection/attempt mutation and names the isolated protocol-evolution route.
+- The primary worktree is dirty because another programmer is active; the agent branches from its
+  committed `HEAD`, leaves every dirty byte untouched, and performs the complete workflow in the
+  linked worktree.
+- A required feature or attempt exists only as an untracked primary-worktree path; the agent reports
+  it missing and does not import it without an explicit primary-state handoff.

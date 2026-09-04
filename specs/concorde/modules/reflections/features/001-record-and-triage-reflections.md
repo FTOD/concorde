@@ -47,6 +47,12 @@ against the current checkout, and the plan carries only that last verification (
 `verified_commit`, and a `Verification` section) as scratch coordination state. A problem that no
 longer reproduces is routed to dismissal, never implemented.
 
+Read-only status may run in the primary worktree. Every triage action that will persist analysis,
+author a plan, implement, relocate, merge, or close first creates or enters one linked worktree at
+the primary worktree's exact committed `HEAD`. Investigation, planning, and implementation remain in
+that worktree; no stage imports staged, unstaged, untracked, or ignored primary state through a stash
+or copy. A required input absent from the commit stops the route.
+
 Maintainers can explicitly choose status/investigate/implement/merge/close. The paired
 `concorde-reflections-triage` Operation launches only the chosen branch, composing the direct
 capabilities `module.concorde.lifecycle` provides under per-leaf policies that
@@ -70,7 +76,7 @@ history without a reflection-owned attempt.
 | `entity.reflections.template` | Defines the Reflection Document v2 grammar every recorded and triaged document must satisfy. |
 | `entity.reflections.collection` | Holds one open `R-NNN.md` document per problem, filed by triage state into `pending/`, `planned/`, or `needs-comments/`. |
 | `entity.reflections.index` | Tracks only the monotonic allocation high-water mark that the queue Tool advances. |
-| `entity.reflections.worktrees` | Isolates every implementer commit from the main checkout until a maintainer merges it. |
+| `entity.reflections.worktrees` | Isolates a complete mutating triage action from the primary checkout, beginning before investigation/plan persistence and continuing through implementation/validation. |
 | `entity.reflections.document-model` | Parses front matter/sections and derives the canonical path and bucket for every document. |
 | `entity.reflections.collection-rules` | Adds project-wide shape, duplicate, vocabulary, and placement checks during `concorde validate`. |
 | `entity.reflections.queue` | Allocates IDs, validates entries, relocates documents, and removes merged-small or closed documents. |
@@ -98,7 +104,8 @@ history without a reflection-owned attempt.
 - **Entry points**: Lifecycle plan and task phases' reflection-recording rules, the installed
   `concorde-reflections-triage` Operation Skill and paired graph, and `reflections_queue.py
   --allocate-id` / `--relocate` / `--remove-merged` / `--remove-closed` / `--validate-entry` Tools.
-- **Inputs**: At recording, selected feature ID, phase/date/kind, stable concern path/ID, detailed
+- **Inputs**: For mutating triage, exact committed base plus linked-worktree identity (or explicit
+  primary override), with primary dirty bytes excluded. At recording, selected feature ID, phase/date/kind, stable concern path/ID, detailed
   context, expected and observed behavior, impact, and evidence. At triage, one selected reflection,
   an explicit status/investigate/implement/merge/close action, and, for investigate/implement, a
   fresh verification of the problem at the current HEAD.
@@ -118,11 +125,13 @@ history without a reflection-owned attempt.
   before every investigation and implementation attempt, persist that verification on the plan,
   never implement a plan whose problem does not reproduce or whose `verified_commit` is not the
   current HEAD, and never treat any stored field as the problem's status; keep nested planning
-  public/opaque; isolate worktrees; remove a document only when (a) its `small` `fast-loop` plan is `merged`,
+  public/opaque; establish isolation before investigation/plan persistence and keep later stages in
+  that same worktree; remove a document only when (a) its `small` `fast-loop` plan is `merged`,
   `recorded_under` matches the reflection feature, its commit is present in current history, and
   automated merge validation passed, or (b) a maintainer closed it with `status: resolved |
   dismissed` and a `resolution_note`; never treat a reflection as behavioral intent.
-- **Failures**: Malformed/unresolved documents or index, recording-time triage content, incomplete
+- **Failures**: Primary-worktree mutation without explicit authorization, required input present only
+  in primary dirty state, malformed/unresolved documents or index, recording-time triage content, incomplete
   triage, a document filed in a bucket its front matter does not require, invalid
   action/route/policy, unavailable enforcement, duplicate identity, stale or non-ancestor commit,
   ineligible route/effort/status, unsafe worktree/removal/relocation, a missing, stale, or failed
@@ -169,8 +178,9 @@ history without a reflection-owned attempt.
    Comments untouched for the maintainer. When it is not required, the document moves to `planned/`
    and triage records why automation can proceed. After a maintainer comments, a repeated
    `investigate` may flip the decision and the same Tool moves the document to `planned/`.
-5. `implement` chooses exactly fast-loop or public nested plan; implementers write only isolated
-   owned worktrees/authorized reflection references and only validated commits merge.
+5. Before persisted investigation or implementation, triage enters one linked worktree at committed
+   primary `HEAD`; `implement` chooses exactly fast-loop or public nested plan in that same worktree,
+   and only validated commits merge.
 6. After a `small` `fast-loop` merge, the parent marks the plan `merged` and invokes deterministic
    removal of exactly the matching reflection file without changing the allocation index.
 7. A maintainer records `status: dismissed` with a `resolution_note` on a `needs-comments/`
@@ -258,6 +268,11 @@ history without a reflection-owned attempt.
   rejected before implement/merge/close mutation and routed to `feature.concorde.evolve-protocol`;
   read-only status/investigation MAY establish the problem and decision without authorizing a
   lifecycle attempt or reflection implementation worktree.
+- **FR-022**: Read-only status MAY run in the primary checkout, but any triage persistence or
+  implementation MUST begin in one linked worktree created from exact committed primary `HEAD` and
+  remain there through validation. Primary staged, unstaged, untracked, and ignored content MUST NOT
+  be stashed, copied, materialized, or altered; missing committed input MUST stop the route unless the
+  maintainer explicitly authorizes primary-worktree mutation.
 
 ## Edge Cases
 
@@ -278,3 +293,6 @@ history without a reflection-owned attempt.
   investigator routes to `dismiss` with the verification as evidence and nothing is implemented.
 - A verified reflection proposes a normative Concorde Protocol change; triage reports the root
   Protocol-evolution route and performs no implementation, merge, or close mutation itself.
+- The primary worktree contains another programmer's untracked feature/attempt files; triage ignores
+  them, starts from committed `HEAD`, and reports any required absent path instead of constructing a
+  stash snapshot or cherry-picking an untracked-files parent.

@@ -15,7 +15,7 @@ ADAPTER = REPOSITORY_ROOT / "scripts/workspace.py"
 
 
 def run_phase(root: Path, feature: str, phase: str) -> dict:
-    completed = subprocess.run([sys.executable, str(ADAPTER), "--project-root", str(root), "--feature-path", feature, "--phase", phase], cwd=root, check=True, capture_output=True, text=True)
+    completed = subprocess.run([sys.executable, str(ADAPTER), "--project-root", str(root), "--feature-path", feature, "--phase", phase, "--allow-primary-worktree"], cwd=root, check=True, capture_output=True, text=True)
     return json.loads(completed.stdout)
 
 
