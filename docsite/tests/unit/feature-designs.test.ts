@@ -26,9 +26,10 @@ describe('single-file feature publication', () => {
     const features = registry.documents.filter((item): item is FeatureDesign => item.collectionId === 'features');
     expect(features[0].relatedFeatures).toEqual([{
       featureId: 'feature.fixture.beta', title: 'Beta', outcome: 'Beta links to the root architecture.',
-      status: 'Approved', route: '/features/feature.fixture.beta',
+      status: 'Approved', route: '/features/feature.fixture.beta', relation: 'relates_to',
     }]);
     expect(features[1].relatedFeatures[0].featureId).toBe('feature.fixture.alpha');
+    expect(features[1].relatedFeatures[0].relation).toBe('relates_to');
     expect(JSON.stringify(features)).not.toMatch(/parentFeature|subfeatures|siblings|refinements/);
   });
 

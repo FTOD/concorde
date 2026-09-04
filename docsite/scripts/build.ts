@@ -53,7 +53,17 @@ async function validateGeneratedManifest(candidate: string): Promise<void> {
   const manifest = JSON.parse(manifestText) as unknown;
   validateBuildManifest(manifest);
   const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(JSON.parse(schemaText));
-  if (!validate(manifest)) throw new Error(`Generated manifest violates Build Manifest 10 schema: ${JSON.stringify(validate.errors)}`);
+  if (!validate(manifest)) throw new Error(`Generated manifest violates Build Manifest 11 schema: ${JSON.stringify(validate.errors)}`);
+}
+
+async function validateGeneratedFeatureGraph(candidate: string): Promise<void> {
+  const [schemaText, graphText] = await Promise.all([
+    readFile(resolve(siteDir, 'tests/fixtures/interfaces/feature-graph.schema.json'), 'utf8'),
+    readFile(resolve(candidate, 'feature-graph.json'), 'utf8'),
+  ]);
+  const graph = JSON.parse(graphText) as unknown;
+  const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(JSON.parse(schemaText));
+  if (!validate(graph)) throw new Error(`Generated feature graph violates Feature Graph 1 schema: ${JSON.stringify(validate.errors)}`);
 }
 
 export async function buildSite(): Promise<void> {
@@ -65,6 +75,7 @@ export async function buildSite(): Promise<void> {
     await preparePublication(projectRoot);
     await runDocusaurus(candidate);
     await validateGeneratedManifest(candidate);
+    await validateGeneratedFeatureGraph(candidate);
     await promoteCandidate(candidate, destination, backup);
     process.stdout.write(`Verified site promoted to ${destination}\n`);
   } catch (error) {

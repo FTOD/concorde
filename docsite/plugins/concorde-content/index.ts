@@ -3,10 +3,11 @@ import {resolve} from 'node:path';
 
 import type {LoadContext, Plugin} from '@docusaurus/types';
 
-import {createManifest, pageFromDocument} from './manifest';
+import {deriveFeatureGraph} from './graph';
+import {GENERATOR_VERSION, createManifest, pageFromDocument} from './manifest';
 import {buildRegistry} from './registry';
 import {canonicalRoute, normalizeRoute} from './routes';
-import type {ConcordeContentOptions, ContentRegistry} from './types';
+import type {ConcordeContentOptions, ContentRegistry, FeatureGraph} from './types';
 import {assertValidRegistry} from './validation';
 
 export default function concordeContentPlugin(
@@ -16,10 +17,12 @@ export default function concordeContentPlugin(
   const options = (rawOptions ?? {}) as ConcordeContentOptions;
   const projectRoot = resolve(options.projectRoot ?? resolve(context.siteDir, '..'));
   let loadedRegistry: ContentRegistry | undefined;
+  let loadedGraph: FeatureGraph | undefined;
   return {
     name: 'concorde-content',
     async loadContent() {
       loadedRegistry = assertValidRegistry(await buildRegistry(projectRoot));
+      loadedGraph = deriveFeatureGraph(loadedRegistry, GENERATOR_VERSION);
       return loadedRegistry;
     },
     async contentLoaded({content, actions}) {
@@ -29,6 +32,7 @@ export default function concordeContentPlugin(
           architecture: content.documents.filter((document) => document.collectionId === 'architecture').length,
           features: content.documents.filter((document) => document.collectionId === 'features').length,
         },
+        featureGraph: loadedGraph,
       });
     },
     getPathsToWatch() {
@@ -37,7 +41,7 @@ export default function concordeContentPlugin(
       ];
     },
     async postBuild({outDir, routesPaths}) {
-      if (!loadedRegistry) throw new Error('Concorde content registry was not loaded before postBuild.');
+      if (!loadedRegistry || !loadedGraph) throw new Error('Concorde content registry was not loaded before postBuild.');
       const canonicalRoutes = routesPaths.map((route) => canonicalRoute(route, context.baseUrl));
       const rendered = new Set(canonicalRoutes.map(normalizeRoute));
       const missing = loadedRegistry.documents
@@ -47,11 +51,13 @@ export default function concordeContentPlugin(
       const manifest = createManifest(loadedRegistry, canonicalRoutes);
       await mkdir(outDir, {recursive: true});
       await writeFile(resolve(outDir, 'build-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+      await writeFile(resolve(outDir, 'feature-graph.json'), `${JSON.stringify(loadedGraph, null, 2)}\n`, 'utf8');
     },
   };
 }
 
-export {createManifest} from './manifest';
+export {deriveFeatureGraph, findGraphProblems} from './graph';
+export {GENERATOR_VERSION, createManifest} from './manifest';
 export {buildRegistry} from './registry';
 export {canonicalRoute} from './routes';
 export {assertValidRegistry, formatFinding, validateRegistry} from './validation';

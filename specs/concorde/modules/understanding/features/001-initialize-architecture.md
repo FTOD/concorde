@@ -3,7 +3,10 @@ id: feature.understanding.initialize-architecture
 kind: feature
 module: module.concorde.understanding
 related_features:
-  - feature.concorde.workflow
+  - id: feature.concorde.workflow
+    relation: composed_by
+  - id: feature.concorde.define-project-ontology
+    relation: depends_on
 interfaces:
   provided:
     - interface.concorde.initialize

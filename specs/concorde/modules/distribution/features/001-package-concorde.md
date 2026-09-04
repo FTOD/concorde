@@ -3,9 +3,12 @@ id: feature.distribution.package-concorde
 kind: feature
 module: module.concorde.distribution
 related_features:
-  - feature.distribution.install-concorde
-  - feature.capabilities.provide-capability-surfaces
-  - feature.lifecycle.standard-development-loop
+  - id: feature.distribution.install-concorde
+    relation: depended_on_by
+  - id: feature.capabilities.provide-capability-surfaces
+    relation: depends_on
+  - id: feature.lifecycle.standard-development-loop
+    relation: relates_to
 interfaces:
   provided:
     - contract.distribution.standalone-package

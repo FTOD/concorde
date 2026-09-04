@@ -9,7 +9,7 @@ const siteDir = resolve(__dirname, '../..');
 describe('build interface', () => {
   it('exposes every stable command', async () => {
     const packageJson = JSON.parse(await readFile(resolve(siteDir, 'package.json'), 'utf8'));
-    expect(packageJson.version).toBe('0.6.0');
+    expect(packageJson.version).toBe('0.7.0');
     expect(Object.keys(packageJson.scripts)).toEqual(expect.arrayContaining([
       'inspect', 'validate', 'render-diagrams', 'start', 'test', 'build', 'typecheck', 'check',
     ]));

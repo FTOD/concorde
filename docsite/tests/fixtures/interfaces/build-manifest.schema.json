@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.dev/interfaces/documentation/build-manifest-v10.schema.json",
-  "title": "Concorde Build Manifest 10",
+  "$id": "https://concorde.dev/interfaces/documentation/build-manifest-v11.schema.json",
+  "title": "Concorde Build Manifest 11",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "generator", "collections", "pages", "excludedSources", "routeInventory", "validation"],
+  "required": ["schemaVersion", "generator", "collections", "pages", "excludedSources", "routeInventory", "featureGraph", "featureGraphCounts", "validation"],
   "properties": {
-    "schemaVersion": {"const": 10},
+    "schemaVersion": {"const": 11},
     "generator": {
       "type": "object",
       "additionalProperties": false,
@@ -53,6 +53,8 @@
       }
     },
     "routeInventory": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/route"}},
+    "featureGraph": {"const": "feature-graph.json"},
+    "featureGraphCounts": {"$ref": "#/$defs/featureGraphCounts"},
     "validation": {
       "type": "object",
       "additionalProperties": false,
@@ -95,13 +97,35 @@
     "featureRelation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["featureId", "title", "outcome", "status", "route"],
+      "required": ["featureId", "title", "outcome", "status", "route", "relation"],
       "properties": {
         "featureId": {"type": "string", "minLength": 1},
         "title": {"type": "string", "minLength": 1},
         "outcome": {"type": "string", "minLength": 1},
         "status": {"type": "string", "minLength": 1},
-        "route": {"$ref": "#/$defs/route"}
+        "route": {"$ref": "#/$defs/route"},
+        "relation": {"enum": ["composes", "refines", "depends_on", "composed_by", "refined_by", "depended_on_by", "relates_to"]}
+      }
+    },
+    "featureGraphCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["features", "modules", "edges_by_kind"],
+      "properties": {
+        "features": {"type": "integer", "minimum": 0},
+        "modules": {"type": "integer", "minimum": 0},
+        "edges_by_kind": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["composes", "refines", "depends_on", "relates_to", "requires"],
+          "properties": {
+            "composes": {"type": "integer", "minimum": 0},
+            "refines": {"type": "integer", "minimum": 0},
+            "depends_on": {"type": "integer", "minimum": 0},
+            "relates_to": {"type": "integer", "minimum": 0},
+            "requires": {"type": "integer", "minimum": 0}
+          }
+        }
       }
     },
     "moduleDiagram": {

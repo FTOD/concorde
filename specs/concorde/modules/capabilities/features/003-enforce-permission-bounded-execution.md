@@ -3,11 +3,16 @@ id: feature.capabilities.permission-bounded-execution
 kind: feature
 module: module.concorde.capabilities
 related_features:
-  - feature.lifecycle.plan-attempt
-  - feature.lifecycle.standard-development-loop
-  - feature.reflections.record-and-triage
-  - feature.understanding.bound-planning-context
-  - feature.capabilities.provide-capability-surfaces
+  - id: feature.lifecycle.plan-attempt
+    relation: depended_on_by
+  - id: feature.lifecycle.standard-development-loop
+    relation: depended_on_by
+  - id: feature.reflections.record-and-triage
+    relation: depended_on_by
+  - id: feature.understanding.bound-planning-context
+    relation: depends_on
+  - id: feature.capabilities.provide-capability-surfaces
+    relation: depends_on
 interfaces:
   provided:
     - contract.capabilities.permission-bounded-execution

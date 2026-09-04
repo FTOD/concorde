@@ -92,7 +92,10 @@ an explicit dependency. Reject a selected path outside the providing module's di
      outputs, obligations, failures, compatibility, example, and implementing architecture entities;
    - one `## Architecture Zoom` that references visible entity IDs and explains their collaboration
      without redefining entity identity, type, locator, or ownership; and
-   - stable related-feature IDs with explicit composition, refinement, or dependency meaning.
+   - typed `related_features` entries, each `{id, relation}` with `relation` from `composes`,
+     `refines`, `depends_on`, their inverse forms `composed_by`/`refined_by`/`depended_on_by`, or
+     symmetric `relates_to`, explained in `## Related Features`; a feature that requires another
+     feature's interface declares at least `depends_on`; directional relations stay acyclic.
 
 5. Existing `contract.*` identifiers may remain as interface identities, but their semantics live in
    this design. Do not create a separate interface document or directory. Executed schemas/examples
@@ -128,7 +131,8 @@ Before reporting readiness, verify:
   compatibility, examples where needed, and implementing entities;
 - every Architecture Zoom entity resolves in the providing module or permitted ancestry;
 - no architecture entity is redefined by the feature;
-- related feature IDs resolve and their relationship meaning is explicit;
+- related feature IDs resolve, every entry carries a vocabulary relation, and no directional cycle
+  is introduced;
 - requirements are testable and scenarios cover success plus material failures;
 - the providing module's Archify architecture system overview represents its principal entities and
   directed relationships and passes showcase validation;

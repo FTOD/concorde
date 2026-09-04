@@ -16,7 +16,18 @@
         "boundary": "Own orchestration, not API internals."
       }
     ],
-    "related_features": [],
+    "related_features": [
+      {
+        "feature_id": "feature.example.api.invoke",
+        "title": "Invoke API",
+        "module": "module.example.api",
+        "feature_path": "specs/example/modules/api/features/001-invoke.md",
+        "outcome": "The API accepts and validates one workflow invocation.",
+        "evidence_status": "unknown",
+        "reflections_open": 0,
+        "relation": "depends_on"
+      }
+    ],
     "executable_context": {
       "source_roots": ["src"],
       "test_roots": ["tests"]

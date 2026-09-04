@@ -9,20 +9,20 @@ import {buildRegistry} from '../../plugins/concorde-content/registry';
 
 const fixture = resolve(__dirname, '../fixtures/valid-project');
 
-describe('Build Manifest 10', () => {
+describe('Build Manifest 11', () => {
   it('accepts the executable representative example under the strict schema', async () => {
     const interfaceRoot = resolve(__dirname, '../fixtures/interfaces');
     const schema = JSON.parse(await readFile(resolve(interfaceRoot, 'build-manifest.schema.json'), 'utf8'));
     const example = JSON.parse(await readFile(resolve(interfaceRoot, 'build-manifest.example.json'), 'utf8'));
     const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(schema);
     expect(validate(example), JSON.stringify(validate.errors, null, 2)).toBe(true);
-    expect(example.schemaVersion).toBe(10);
+    expect(example.schemaVersion).toBe(11);
   });
 
   it('projects only module architectures and feature designs', async () => {
     const manifest = createManifest(await buildRegistry(fixture));
     expect(() => validateBuildManifest(manifest)).not.toThrow();
-    expect(manifest.schemaVersion).toBe(10);
+    expect(manifest.schemaVersion).toBe(11);
     expect(manifest.collections.map((collection) => collection.id)).toEqual([
       'architecture', 'features',
     ]);
@@ -45,15 +45,26 @@ describe('Build Manifest 10', () => {
       .toMatchObject({
         route: '/features/feature.fixture.alpha', moduleId: 'module.fixture',
         moduleRoute: '/architecture/module.fixture', status: 'Draft',
-        relatedFeatures: [expect.objectContaining({featureId: 'feature.fixture.beta', route: '/features/feature.fixture.beta'})],
+        relatedFeatures: [expect.objectContaining({
+          featureId: 'feature.fixture.beta', route: '/features/feature.fixture.beta', relation: 'relates_to',
+        })],
       });
+  });
+
+  it('registers the Feature Graph 1 document and its counts', async () => {
+    const manifest = createManifest(await buildRegistry(fixture));
+    expect(manifest.featureGraph).toBe('feature-graph.json');
+    expect(manifest.featureGraphCounts).toEqual({
+      features: 2, modules: 2,
+      edges_by_kind: {composes: 0, refines: 0, depends_on: 0, relates_to: 1, requires: 0},
+    });
   });
 
   it('is deterministic, sorted, project-relative, and timestamp-free', async () => {
     const first = createManifest(await buildRegistry(fixture));
     const second = createManifest(await buildRegistry(fixture));
     expect(second).toEqual(first);
-    expect(first.generator).toEqual({name: 'concorde-docsite', version: '0.6.0', docusaurusVersion: '3.10.2'});
+    expect(first.generator).toEqual({name: 'concorde-docsite', version: '0.7.0', docusaurusVersion: '3.10.2'});
     expect(first.collections.map((collection) => collection.include)).toEqual([
       ['**/architecture.md'], ['**/features/*.md'],
     ]);
@@ -76,7 +87,7 @@ describe('Build Manifest 10', () => {
 
   it('rejects unsupported versions, absolute provenance, and unsorted routes', async () => {
     const manifest = createManifest(await buildRegistry(fixture));
-    expect(() => validateBuildManifest({...manifest, schemaVersion: 9} as never)).toThrow(/schemaVersion 10/);
+    expect(() => validateBuildManifest({...manifest, schemaVersion: 9} as never)).toThrow(/schemaVersion 11/);
     const absolute = structuredClone(manifest);
     absolute.pages[0].sourcePath = '/tmp/source.md';
     expect(() => validateBuildManifest(absolute)).toThrow(/project-relative/);

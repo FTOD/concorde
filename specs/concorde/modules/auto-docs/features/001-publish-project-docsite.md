@@ -3,9 +3,12 @@ id: feature.auto-docs.publish-project-docsite
 kind: feature
 module: module.concorde.auto-docs
 related_features:
-  - feature.auto-docs.create-project-docsite
-  - feature.understanding.validate-architecture
-  - feature.understanding.resolve-feature-workspace
+  - id: feature.auto-docs.create-project-docsite
+    relation: depended_on_by
+  - id: feature.understanding.validate-architecture
+    relation: depends_on
+  - id: feature.understanding.resolve-feature-workspace
+    relation: depends_on
 interfaces:
   provided:
     - contract.auto-docs.architecture-site
@@ -33,7 +36,7 @@ parallel prose authority.
 | `entity.auto-docs.registry` | Discovers/classifies the Architecture and Features collections and rejects parallel docs. |
 | `entity.auto-docs.routes` | Assigns semantic module/feature routes and resolves `/` to root architecture. |
 | `entity.auto-docs.diagrams` | Resolves architecture-owned maintained/delivered views. |
-| `entity.auto-docs.manifest` | Records Build Manifest 10 source/route/provenance state. |
+| `entity.auto-docs.manifest` | Records Build Manifest 11 source/route/provenance state. |
 | `entity.auto-docs.publisher` | Builds and atomically promotes only a valid complete candidate. |
 
 ## Interfaces
@@ -43,7 +46,7 @@ parallel prose authority.
 - **Consumer**: Maintainer browser and static-site host.
 - **Direction**: Validated build output to read-only HTML/search/assets.
 - **Entry points**: Generated site root and semantic routes.
-- **Inputs**: Build Manifest 10, materialized content, Docusaurus assets, and delivered architecture diagrams.
+- **Inputs**: Build Manifest 11, materialized content, Docusaurus assets, and delivered architecture diagrams.
 - **Outputs**: Accessible searchable pages with canonical source provenance and navigation.
 - **Obligations**: No source mutation, no `.concorde` control/framework pages, unique stable routes, accessible text fallback, and last-good preservation.
 - **Failures**: Invalid/incomplete candidate is never promoted.
@@ -68,7 +71,7 @@ parallel prose authority.
 - **Compatibility**: Node 20+, locked package dependencies, and site identity schema 1.
 - **Implementing entities**: `entity.auto-docs.publisher`, `entity.auto-docs.validation`, `entity.auto-docs.materializer`.
 
-### `contract.auto-docs.build-manifest` — Build Manifest 10
+### `contract.auto-docs.build-manifest` — Build Manifest 11
 
 - **Consumer**: Maintainer, CI, freshness checks, and publication tests.
 - **Direction**: Normalized registry/diagram state to deterministic JSON record.
@@ -134,7 +137,7 @@ delivery remains truthful when no browser is available.
 
 The build discovers the two collections, validates identities/hierarchy/links/routes, delivers
 declared module diagrams, materializes ignored Architecture/Feature renderer inputs, builds a
-Docusaurus candidate, validates Build Manifest 10 and provenance/freshness, then promotes only that
+Docusaurus candidate, validates Build Manifest 11 and provenance/freshness, then promotes only that
 complete candidate. Any failure leaves maintained sources and the previous successful build intact.
 
 ## Requirements

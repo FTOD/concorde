@@ -46,7 +46,8 @@ class FeatureWorkspaceTests(unittest.TestCase):
         self.assertEqual(paths.module_architecture, "specs/example/modules/api/architecture.md")
         self.assertEqual([item["module_id"] for item in paths.module_ancestry], ["module.example"])
         self.assertEqual([item["feature_id"] for item in paths.related_features], ["feature.example.deliver"])
-        self.assertEqual(set(paths.related_features[0]), {"feature_id", "title", "module", "feature_path", "outcome", "evidence_status", "reflections_open"})
+        self.assertEqual(set(paths.related_features[0]), {"feature_id", "title", "module", "feature_path", "outcome", "evidence_status", "reflections_open", "relation"})
+        self.assertEqual(paths.related_features[0]["relation"], "relates_to")
         self.assertNotIn("attempt", repr(paths.related_features))
 
     def test_attempt_state_distinguishes_absent_active_and_complete(self):

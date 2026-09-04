@@ -3,7 +3,8 @@ id: feature.understanding.retrieve-bounded-context
 kind: feature
 module: module.concorde.understanding
 related_features:
-  - feature.concorde.workflow
+  - id: feature.concorde.workflow
+    relation: composed_by
 interfaces:
   provided:
     - interface.concorde.context

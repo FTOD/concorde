@@ -83,6 +83,7 @@ const config: Config = {
         ...(hasFeatures ? [
           {type: 'docSidebar', sidebarId: 'featuresSidebar', docsPluginId: 'features', label: 'Features', position: 'left'},
         ] : []),
+        {to: '/graph', label: 'Graph', position: 'left'},
         ...(identity.repository ? [
           repositoryHost === 'github.com'
             ? {href: identity.repository, position: 'right', className: 'header-github-link', 'aria-label': 'GitHub repository'}

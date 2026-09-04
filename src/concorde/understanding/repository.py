@@ -19,6 +19,7 @@ from ..model import (
     EntityRelationship,
     Feature,
     FeatureInterface,
+    FeatureRelation,
     Interaction,
     Module,
     SourceDocument,
@@ -287,6 +288,29 @@ def _parse_interactions(source: SourceDocument) -> list[Interaction]:
     return interactions
 
 
+def _parse_related_features(value: Any) -> tuple[FeatureRelation, ...]:
+    """Parse ``related_features`` entries into typed relations.
+
+    A plain string means ``relates_to``; a mapping with exactly the string keys ``id`` and
+    ``relation`` carries its own declared relation. Anything else is skipped here and left for
+    CONCORDE-FEATURE-003 to report.
+    """
+    if not isinstance(value, list):
+        return ()
+    relations: list[FeatureRelation] = []
+    for item in value:
+        if isinstance(item, str):
+            relations.append(FeatureRelation(target=item, relation="relates_to"))
+        elif (
+            isinstance(item, dict)
+            and set(item) == {"id", "relation"}
+            and isinstance(item.get("id"), str)
+            and isinstance(item.get("relation"), str)
+        ):
+            relations.append(FeatureRelation(target=item["id"], relation=item["relation"]))
+    return tuple(relations)
+
+
 def _parse_zoom(source: SourceDocument) -> tuple[str, ...]:
     headers, rows = _table_rows(_section(source.body, "Architecture Zoom"))
     index = {re.sub(r"[^a-z0-9]+", "_", item.casefold()).strip("_"): offset for offset, item in enumerate(headers)}
@@ -529,7 +553,7 @@ class ProjectRepository:
                     elif interface.role == "required":
                         required_interface_declarations.append(interface)
                 interface_sets = source.metadata.get("interfaces") if isinstance(source.metadata.get("interfaces"), dict) else {}
-                related = source.metadata.get("related_features", [])
+                relations = _parse_related_features(source.metadata.get("related_features", []))
                 features.setdefault(
                     source.identifier,
                     Feature(
@@ -537,11 +561,12 @@ class ProjectRepository:
                         module=str(source.metadata.get("module", "")),
                         path=source.path,
                         outcome=_section(source.body, "Outcome and Scope") or _section(source.body, "Outcome"),
-                        related_features=tuple(related) if isinstance(related, list) else (),
+                        related_features=tuple(relation.target for relation in relations),
                         provided_interfaces=tuple(interface_sets.get("provided", [])) if isinstance(interface_sets.get("provided"), list) else (),
                         required_interfaces=tuple(interface_sets.get("required", [])) if isinstance(interface_sets.get("required"), list) else (),
                         architecture_zoom=_parse_zoom(source),
                         evidence_status=str(source.metadata.get("evidence_status", "")),
+                        relations=relations,
                     ),
                 )
 

@@ -1,5 +1,6 @@
 import {relative, resolve, sep} from 'node:path';
 
+import {findGraphProblems} from './graph';
 import type {
   ContentRegistry, FeatureDesign, ModuleArchitecture, SourceDocument, ValidationFinding,
 } from './types';
@@ -47,7 +48,7 @@ function duplicateFindings(
 }
 
 export function validateRegistry(registry: ContentRegistry): ValidationFinding[] {
-  const findings: ValidationFinding[] = [...registry.findings];
+  const findings: ValidationFinding[] = [...registry.findings, ...findGraphProblems(registry)];
   const modules = registry.documents.filter(isModule);
   const modulesById = new Map(modules.map((module) => [module.moduleId, module]));
   const diagramRoutes = new Map<string, ModuleArchitecture[]>();

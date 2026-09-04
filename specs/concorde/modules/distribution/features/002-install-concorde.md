@@ -3,11 +3,16 @@ id: feature.distribution.install-concorde
 kind: feature
 module: module.concorde.distribution
 related_features:
-  - feature.distribution.package-concorde
-  - feature.capabilities.provide-capability-surfaces
-  - feature.lifecycle.standard-development-loop
-  - feature.capabilities.permission-bounded-execution
-  - feature.auto-docs.create-project-docsite
+  - id: feature.distribution.package-concorde
+    relation: depends_on
+  - id: feature.capabilities.provide-capability-surfaces
+    relation: depends_on
+  - id: feature.lifecycle.standard-development-loop
+    relation: depended_on_by
+  - id: feature.capabilities.permission-bounded-execution
+    relation: depended_on_by
+  - id: feature.auto-docs.create-project-docsite
+    relation: depended_on_by
 interfaces:
   provided:
     - contract.concorde.installation

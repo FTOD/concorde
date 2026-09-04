@@ -1,7 +1,18 @@
 <!--
 Sync Impact Report
-- Version change: 7.1.0 -> 7.2.0 (MINOR: adds mandatory principle A.VI, which requires module
-  decomposition to follow business capability, use case, or axis of change rather than artifact type)
+- Version change: 7.2.0 -> 7.3.0 (MINOR: related-feature references carry a typed relation from a
+  shared vocabulary, directional families are validated acyclic, and the published feature graph is a
+  required read-model projection of those relations)
+- Modified principles:
+  - A.IV Feature Interfaces Are Human-Readable Promises: composition, refinement, and dependency are
+    now named on the reference itself (`composes`, `refines`, `depends_on`, their inverse forms, or
+    symmetric `relates_to`); a plain ID means `relates_to`.
+- Modified standards: a new Workflow Standard defines the relation vocabulary and its acyclicity
+  rule; validation reports unknown relations and cycles; publication derives one typed feature graph.
+- Compatibility impact: plain related-feature IDs remain valid; typed entries are additive.
+- Required migration: none; projects that want typed edges add `relation` to each entry.
+- Previous change (7.1.0 -> 7.2.0): adds mandatory principle A.VI, which requires module
+  decomposition to follow business capability, use case, or axis of change rather than artifact type
 - Added principles:
   - A.VI Modules Follow Capabilities, Not Artifact Types: a module is defined by the capability it
     serves; artifact-type layers (all Skills, all scripts, all Operations, all models) and residual
@@ -101,8 +112,9 @@ of the parts plus the relationships that make those parts a system.
 
 A feature is one module-level functionality or interface specified exactly once in
 `features/<NNN-name>.md`. Features MUST NOT contain features. Composition, refinement, or
-dependency among features is expressed through stable related-feature references and MUST remain
-acyclic where directional.
+dependency among features is expressed through stable related-feature references that name their
+relation (`composes`, `refines`, `depends_on`, an inverse form, or symmetric `relates_to`; a plain
+ID means `relates_to`) and MUST remain acyclic where directional.
 
 Every externally meaningful entry point or promise MUST be defined inside the feature design that
 exposes it. The interface definition states the consumer and provider, direction, entry point,
@@ -250,6 +262,11 @@ reflections, capabilities, distribution, and auto-docs.
   diagram never defines an entity, relationship, feature requirement, or interface independently.
 - Interface format, semantics, examples, affected feature references, implementing entity links, and
   evidence change together.
+- A `related_features` entry is `{id, relation}` with `relation` from `composes`, `refines`,
+  `depends_on`, `composed_by`, `refined_by`, `depended_on_by`, or `relates_to`; a plain ID is
+  `relates_to`. After inverse forms normalize, each directional family MUST be acyclic, validation
+  MUST report unknown relations and cycles, and publication MUST derive one typed feature graph from
+  these entries and interface ownership as a projection with a textual counterpart.
 - Generated pages and diagrams carry source provenance and generator version, provide a textual
   representation, and are reproducible from maintained sources.
 - Package Manifest 2 MUST inventory leaf Skills and paired Operations separately, require globally
@@ -311,4 +328,4 @@ or materially expands a mandatory obligation, and PATCH clarifies wording. Every
 architecture review includes a constitution check. Reviewers reject unexplained violations,
 invisible boundary changes, duplicated canonical intent, and implementation claims without evidence.
 
-**Version**: 7.2.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-04
+**Version**: 7.3.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-04

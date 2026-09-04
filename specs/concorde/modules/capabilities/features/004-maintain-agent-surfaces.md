@@ -3,9 +3,12 @@ id: feature.capabilities.maintain-agent-surfaces
 kind: feature
 module: module.concorde.capabilities
 related_features:
-  - feature.capabilities.provide-capability-surfaces
-  - feature.lifecycle.standard-development-loop
-  - feature.distribution.install-concorde
+  - id: feature.capabilities.provide-capability-surfaces
+    relation: depends_on
+  - id: feature.lifecycle.standard-development-loop
+    relation: relates_to
+  - id: feature.distribution.install-concorde
+    relation: relates_to
 interfaces:
   provided:
     - interface.concorde.agent-surfaces

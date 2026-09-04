@@ -830,8 +830,11 @@ def _all_relations(package: ArchitecturePackage) -> list[dict[str, Any]]:
             for entity in feature.architecture_zoom
         )
         relations.extend(
-            _relation(feature.identifier, "related", related, "Feature declares a bounded related feature.")
-            for related in feature.related_features
+            _relation(
+                feature.identifier, relation.relation, relation.target,
+                "Feature declares a bounded related feature.",
+            )
+            for relation in feature.relations
         )
     unique = {
         (

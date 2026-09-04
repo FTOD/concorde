@@ -26,9 +26,9 @@ describe('maintained Concorde specification documentation', () => {
     const registry = await buildRegistry(projectRoot);
     expect(validateRegistry(registry)).toEqual([]);
     expect(registry.collections.map((collection) => collection.id)).toEqual(['architecture', 'features']);
-    expect(registry.documents).toHaveLength(31);
+    expect(registry.documents).toHaveLength(32);
     expect(registry.documents.filter((document) => document.contentKind === 'module-architecture')).toHaveLength(7);
-    expect(registry.documents.filter((document) => document.contentKind === 'feature-design')).toHaveLength(24);
+    expect(registry.documents.filter((document) => document.contentKind === 'feature-design')).toHaveLength(25);
     expect(registry.documents.every((document) => document.sourcePath.startsWith('specs/'))).toBe(true);
   });
 

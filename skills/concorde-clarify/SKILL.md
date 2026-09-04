@@ -30,7 +30,8 @@ concerns that feature's declared interface.
    referenced entities, relationships, interactions, and feature inventory.
 2. Build an internal coverage map for outcome/scope, consumers, successful usage, edge/failure
    behavior, interface shapes and obligations, compatibility, architecture entity references,
-   related-feature semantics, requirements, assumptions, and measurable evidence.
+   related-feature semantics (each entry's typed relation and its explanation), requirements,
+   assumptions, and measurable evidence.
 3. Rank gaps by implementation or validation risk. Ask at most five concise questions, one at a
    time, each with a recommended answer or a short constrained choice. Do not ask stylistic or
    already-resolved questions.

@@ -3,8 +3,10 @@ id: feature.lifecycle.specify-behavior
 kind: feature
 module: module.concorde.lifecycle
 related_features:
-  - feature.concorde.workflow
-  - feature.understanding.resolve-feature-workspace
+  - id: feature.concorde.workflow
+    relation: composed_by
+  - id: feature.understanding.resolve-feature-workspace
+    relation: depends_on
 interfaces:
   provided:
     - interface.concorde.specify

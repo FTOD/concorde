@@ -9,8 +9,8 @@ import {diagramKinds, listModuleDiagramSources} from './diagrams';
 import {populateLinks} from './links';
 import {featureRoute, featureStagedPath, moduleRoute, moduleStagedPath} from './routes';
 import type {
-  ContentRegistry, DiagramKind, ExcludedSource, FeatureDesign, ModuleArchitecture, ModuleDiagram,
-  SourceCollection, SourceDocument, ValidationFinding,
+  ContentRegistry, DiagramKind, ExcludedSource, FeatureDesign, FeatureRelationEntry, ModuleArchitecture,
+  ModuleDiagram, RelationKind, SourceCollection, SourceDocument, ValidationFinding,
 } from './types';
 
 export const collections: SourceCollection[] = [
@@ -30,6 +30,62 @@ const compareText = (left: string, right: string) => left < right ? -1 : left > 
 
 function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && Boolean(item.trim())).map((item) => item.trim()) : [];
+}
+
+/**
+ * Parses `related_features` entries per FR-002: a plain string ID reads as `relates_to`; an object
+ * entry carries its own `id`/`relation`. An unrecognized relation is kept verbatim (rather than
+ * defaulted or dropped) so `findGraphProblems` can reject it as `feature.relation.unknown` with the
+ * offending value visible in the finding.
+ */
+function relatedFeatureEntries(value: unknown): FeatureRelationEntry[] {
+  if (!Array.isArray(value)) return [];
+  const entries: FeatureRelationEntry[] = [];
+  for (const item of value) {
+    if (typeof item === 'string') {
+      const id = item.trim();
+      if (id) entries.push({id, relation: 'relates_to'});
+      continue;
+    }
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      const record = item as Record<string, unknown>;
+      const id = typeof record.id === 'string' ? record.id.trim() : '';
+      const relation = typeof record.relation === 'string' ? record.relation.trim() : '';
+      if (id) entries.push({id, relation: relation as RelationKind});
+    }
+  }
+  return entries;
+}
+
+function interfaceIdLists(value: unknown): {provided: string[]; required: string[]} {
+  const record = value && typeof value === 'object' && !Array.isArray(value) ? value as {provided?: unknown; required?: unknown} : {};
+  return {provided: stringList(record.provided), required: stringList(record.required)};
+}
+
+/** Every H3 heading in a feature body that names a stable interface ID, e.g. `### \`contract.x.y\` — Title`. */
+const interfaceHeadingPattern = /^`([^`]+)`/;
+const externalProviderLinePattern = /^\s*-\s*\*\*Provider\*\*:\s*`external:[^`]*`/;
+
+/**
+ * Required interface IDs whose Interfaces H3 block declares an external provider (FR-004): the block
+ * heading names the interface in backticks and the block body has a `**Provider**: `external:...``
+ * line before the next heading of any level.
+ */
+function externalProviderInterfaceIds(content: string, requiredInterfaceIds: string[]): string[] {
+  if (!requiredInterfaceIds.length) return [];
+  const required = new Set(requiredInterfaceIds);
+  const found = new Set<string>();
+  let currentInterfaceId: string | undefined;
+  for (const line of content.split('\n')) {
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      const interfaceId = heading[1] === '###' ? heading[2].match(interfaceHeadingPattern)?.[1] : undefined;
+      currentInterfaceId = interfaceId && required.has(interfaceId) ? interfaceId : undefined;
+      continue;
+    }
+    if (currentInterfaceId && externalProviderLinePattern.test(line)) found.add(currentInterfaceId);
+  }
+  return [...found].sort();
 }
 
 function headingTitle(content: string): string {
@@ -124,6 +180,8 @@ async function parseDocument(
     return architecture;
   }
   const featureId = typeof parsed.data.id === 'string' ? parsed.data.id.trim() : '';
+  const entries = relatedFeatureEntries(parsed.data.related_features);
+  const {provided, required} = interfaceIdLists(parsed.data.interfaces);
   return {
     ...base,
     collectionId: 'features',
@@ -136,8 +194,12 @@ async function parseDocument(
     status: parsed.content.match(/^\*\*Status\*\*:\s*(.+?)\s*$/m)?.[1]?.trim() ??
       (typeof parsed.data.evidence_status === 'string' ? parsed.data.evidence_status.trim() : ''),
     outcome: sectionText(parsed.content, 'Outcome') || title,
-    relatedFeatureIds: stringList(parsed.data.related_features),
+    relatedFeatureIds: entries.map((entry) => entry.id),
+    relatedFeatureEntries: entries,
     relatedFeatures: [],
+    providedInterfaceIds: provided,
+    requiredInterfaceIds: required,
+    externalRequiredInterfaceIds: externalProviderInterfaceIds(parsed.content, required),
   } as FeatureDesign;
 }
 
@@ -196,12 +258,12 @@ function resolveRelations(documents: SourceDocument[], findings: ValidationFindi
         remediation: 'Place the feature directly under its providing module and register its stable ID once.',
       });
     }
-    feature.relatedFeatures = feature.relatedFeatureIds.flatMap((relatedId) => {
-      const related = featuresById.get(relatedId);
-      if (related) return [relationSummary(related)];
+    feature.relatedFeatures = feature.relatedFeatureEntries.flatMap((entry) => {
+      const related = featuresById.get(entry.id);
+      if (related) return [{...relationSummary(related), relation: entry.relation}];
       findings.push({
         ruleId: 'feature.related.unresolved', severity: 'error', sourcePath: feature.sourcePath,
-        message: `Related feature "${relatedId}" does not resolve.`,
+        message: `Related feature "${entry.id}" does not resolve.`,
         remediation: 'Reference a published feature stable ID or remove the dangling relation.',
       });
       return [];

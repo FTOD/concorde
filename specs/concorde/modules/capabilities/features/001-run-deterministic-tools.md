@@ -3,12 +3,18 @@ id: feature.capabilities.run-deterministic-tools
 kind: feature
 module: module.concorde.capabilities
 related_features:
-  - feature.concorde.workflow
-  - feature.understanding.explore-alignment
-  - feature.capabilities.maintain-agent-surfaces
-  - feature.reflections.record-and-triage
-  - feature.lifecycle.standard-development-loop
-  - feature.capabilities.permission-bounded-execution
+  - id: feature.concorde.workflow
+    relation: composed_by
+  - id: feature.understanding.explore-alignment
+    relation: depended_on_by
+  - id: feature.capabilities.maintain-agent-surfaces
+    relation: depended_on_by
+  - id: feature.reflections.record-and-triage
+    relation: depended_on_by
+  - id: feature.lifecycle.standard-development-loop
+    relation: depended_on_by
+  - id: feature.capabilities.permission-bounded-execution
+    relation: depended_on_by
 interfaces:
   provided:
     - contract.capabilities.tools

@@ -3,11 +3,16 @@ id: feature.reflections.record-and-triage
 kind: feature
 module: module.concorde.reflections
 related_features:
-  - feature.concorde.workflow
-  - feature.lifecycle.plan-attempt
-  - feature.lifecycle.fast-loop
-  - feature.lifecycle.standard-development-loop
-  - feature.capabilities.permission-bounded-execution
+  - id: feature.concorde.workflow
+    relation: composed_by
+  - id: feature.lifecycle.plan-attempt
+    relation: depends_on
+  - id: feature.lifecycle.fast-loop
+    relation: composes
+  - id: feature.lifecycle.standard-development-loop
+    relation: relates_to
+  - id: feature.capabilities.permission-bounded-execution
+    relation: depends_on
 interfaces:
   provided:
     - interface.concorde.reflections

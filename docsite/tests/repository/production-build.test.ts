@@ -3,14 +3,16 @@ import {readdir, readFile, rm} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 
+import Ajv2020 from 'ajv/dist/2020.js';
 import {beforeAll, describe, expect, it} from 'vitest';
 
 import {validateBuildManifest} from '../../plugins/concorde-content/manifest';
-import type {BuildManifest} from '../../plugins/concorde-content/types';
+import type {BuildManifest, FeatureGraph} from '../../plugins/concorde-content/types';
 
 const siteDir = resolve(__dirname, '../..');
 const buildDir = resolve(siteDir, 'build');
 let firstManifestText = '';
+let firstFeatureGraphText = '';
 let firstDiagramHashes: Record<string, string> = {};
 
 async function diagramHashes(): Promise<Record<string, string>> {
@@ -37,6 +39,7 @@ beforeAll(async () => {
   await rm(resolve(siteDir, '../generated'), {recursive: true, force: true});
   build();
   firstManifestText = await readFile(resolve(buildDir, 'build-manifest.json'), 'utf8');
+  firstFeatureGraphText = await readFile(resolve(buildDir, 'feature-graph.json'), 'utf8');
   firstDiagramHashes = await diagramHashes();
 }, 120_000);
 
@@ -44,7 +47,7 @@ describe('Profile 7 production build', () => {
   it('publishes architecture and design landing pages with provenance and architecture-owned diagrams', async () => {
     const manifest = JSON.parse(firstManifestText) as BuildManifest;
     expect(() => validateBuildManifest(manifest)).not.toThrow();
-    expect(manifest.schemaVersion).toBe(10);
+    expect(manifest.schemaVersion).toBe(11);
     expect(new Set(manifest.pages.map((page) => page.kind))).toEqual(new Set([
       'module-architecture', 'feature-design',
     ]));
@@ -101,11 +104,34 @@ describe('Profile 7 production build', () => {
     }
   });
 
-  it('emits an identical manifest and diagram set on an unchanged second build', async () => {
+  it('emits a schema-valid feature-graph.json and a /graph page carrying the same edges as text', async () => {
+    const manifest = JSON.parse(firstManifestText) as BuildManifest;
+    const graph = JSON.parse(firstFeatureGraphText) as FeatureGraph;
+    const schema = JSON.parse(await readFile(resolve(siteDir, 'tests/fixtures/interfaces/feature-graph.schema.json'), 'utf8'));
+    const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(schema);
+    expect(validate(graph), JSON.stringify(validate.errors, null, 2)).toBe(true);
+    expect(graph.features.length).toBeGreaterThan(0);
+    expect(graph.edges.length).toBeGreaterThan(0);
+    expect(manifest.featureGraph).toBe('feature-graph.json');
+    expect(manifest.featureGraphCounts).toEqual(graph.counts);
+
+    const graphPage = await readFile(resolve(buildDir, 'graph.html'), 'utf8');
+    expect(graphPage).toContain('<table');
+    for (const feature of graph.features) expect(graphPage).toContain(feature.id);
+    for (const edge of graph.edges) {
+      expect(graphPage).toContain(edge.source);
+      expect(graphPage).toContain(edge.target);
+    }
+  });
+
+  it('emits an identical manifest, feature graph, and diagram set on an unchanged second build', async () => {
     const beforeHash = createHash('sha256').update(firstManifestText).digest('hex');
+    const beforeGraphHash = createHash('sha256').update(firstFeatureGraphText).digest('hex');
     build();
     const second = await readFile(resolve(buildDir, 'build-manifest.json'), 'utf8');
+    const secondGraph = await readFile(resolve(buildDir, 'feature-graph.json'), 'utf8');
     expect(createHash('sha256').update(second).digest('hex')).toBe(beforeHash);
+    expect(createHash('sha256').update(secondGraph).digest('hex')).toBe(beforeGraphHash);
     expect(await diagramHashes()).toEqual(firstDiagramHashes);
   }, 120_000);
 });

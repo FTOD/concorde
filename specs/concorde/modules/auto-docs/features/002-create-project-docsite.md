@@ -3,9 +3,14 @@ id: feature.auto-docs.create-project-docsite
 kind: feature
 module: module.concorde.auto-docs
 related_features:
-  - feature.auto-docs.publish-project-docsite
-  - feature.understanding.initialize-architecture
-  - feature.distribution.install-concorde
+  - id: feature.auto-docs.publish-project-docsite
+    relation: depends_on
+  - id: feature.understanding.initialize-architecture
+    relation: relates_to
+  - id: feature.distribution.install-concorde
+    relation: depends_on
+  - id: feature.concorde.define-project-ontology
+    relation: depends_on
 interfaces:
   provided:
     - interface.concorde.scaffold-docsite
@@ -77,7 +82,7 @@ projects.
   `docsite/`, unsafe target path, stale or edited proposal, or a package whose template inventory is
   missing or disagrees with Package Manifest 2 returns a non-success result and writes nothing.
 - **Compatibility**: Docsite Scaffold Proposal 1 and site identity schema 1 accompany Package
-  Manifest 2; the scaffolded adapter emits Build Manifest 10 and needs Node.js 20+ with locked
+  Manifest 2; the scaffolded adapter emits Build Manifest 11 and needs Node.js 20+ with locked
   dependencies. Initialization Proposal 3 is unchanged: the scaffold is a separate propose/apply cycle.
 - **Example**: `concorde.py --project-root . docsite --propose --title Atlas --repository
   https://github.com/org/atlas` writes nothing and prints the proposal; after review,
@@ -95,7 +100,7 @@ projects.
 - **Inputs**: Site identity from `docsite/site.json`; recursive module `architecture.md`, direct
   `features/*.md`, and declared module diagrams. Root README and `docs/**/*.md` are not publication
   sources; native `.concorde/**` control/framework state is excluded.
-- **Outputs**: Searchable site, semantic routes, source provenance, delivered diagrams, and Build Manifest 10.
+- **Outputs**: Searchable site, semantic routes, source provenance, delivered diagrams, and Build Manifest 11.
 - **Obligations**: Take title, site URL, base path, organization/project names, and repository link only
   from the site identity file so the adapter stays byte-identical across projects; validate
   identities/links/routes/freshness; publish only architecture and feature authorities; reject a
@@ -137,7 +142,7 @@ projects.
   MUST appear exactly once in the normalized registry; README and `docs/**/*.md` MUST NOT appear as
   content records.
 - **FR-002**: Routes MUST derive from stable semantic IDs and remain independent of legacy filenames or storage depth.
-- **FR-003**: Build Manifest 10 MUST inventory all included sources, module/feature relations, routes, diagram deliveries, provenance, and generator version deterministically.
+- **FR-003**: Build Manifest 11 MUST inventory all included sources, module/feature relations, routes, diagram deliveries, provenance, and generator version deterministically.
 - **FR-004**: `.concorde` configuration/selection/constitution/attempt/reflection/framework/receipt state and executable/private source files MUST NOT become
   published pages or broad Manifest exclusions; legacy `specs/**/attempts/**` and specification-root
   reflection logs MUST fail the Profile 7 publication gate.

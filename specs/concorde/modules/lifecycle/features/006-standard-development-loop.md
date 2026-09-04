@@ -3,11 +3,16 @@ id: feature.lifecycle.standard-development-loop
 kind: feature
 module: module.concorde.lifecycle
 related_features:
-  - feature.capabilities.permission-bounded-execution
-  - feature.lifecycle.plan-attempt
-  - feature.capabilities.provide-capability-surfaces
-  - feature.capabilities.run-deterministic-tools
-  - feature.concorde.workflow
+  - id: feature.capabilities.permission-bounded-execution
+    relation: depends_on
+  - id: feature.lifecycle.plan-attempt
+    relation: composes
+  - id: feature.capabilities.provide-capability-surfaces
+    relation: depends_on
+  - id: feature.capabilities.run-deterministic-tools
+    relation: depends_on
+  - id: feature.concorde.workflow
+    relation: composed_by
 interfaces:
   provided:
     - contract.lifecycle.standard-development-loop

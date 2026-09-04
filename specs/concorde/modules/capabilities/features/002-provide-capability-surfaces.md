@@ -3,13 +3,20 @@ id: feature.capabilities.provide-capability-surfaces
 kind: feature
 module: module.concorde.capabilities
 related_features:
-  - feature.concorde.workflow
-  - feature.lifecycle.standard-development-loop
-  - feature.capabilities.permission-bounded-execution
-  - feature.capabilities.run-deterministic-tools
-  - feature.understanding.resolve-feature-workspace
-  - feature.capabilities.maintain-agent-surfaces
-  - feature.distribution.package-concorde
+  - id: feature.concorde.workflow
+    relation: depended_on_by
+  - id: feature.lifecycle.standard-development-loop
+    relation: depended_on_by
+  - id: feature.capabilities.permission-bounded-execution
+    relation: depended_on_by
+  - id: feature.capabilities.run-deterministic-tools
+    relation: depends_on
+  - id: feature.understanding.resolve-feature-workspace
+    relation: depends_on
+  - id: feature.capabilities.maintain-agent-surfaces
+    relation: depended_on_by
+  - id: feature.distribution.package-concorde
+    relation: depended_on_by
 interfaces:
   provided:
     - contract.capabilities.agent-surface

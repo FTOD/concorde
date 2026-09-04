@@ -3,9 +3,12 @@ id: feature.lifecycle.execute-and-reconcile
 kind: feature
 module: module.concorde.lifecycle
 related_features:
-  - feature.concorde.workflow
-  - feature.lifecycle.plan-attempt
-  - feature.lifecycle.deliver-attempt
+  - id: feature.concorde.workflow
+    relation: composed_by
+  - id: feature.lifecycle.plan-attempt
+    relation: depends_on
+  - id: feature.lifecycle.deliver-attempt
+    relation: depended_on_by
 interfaces:
   provided:
     - interface.concorde.implement

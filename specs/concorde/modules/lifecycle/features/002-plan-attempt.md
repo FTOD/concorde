@@ -3,12 +3,18 @@ id: feature.lifecycle.plan-attempt
 kind: feature
 module: module.concorde.lifecycle
 related_features:
-  - feature.lifecycle.specify-behavior
-  - feature.lifecycle.execute-and-reconcile
-  - feature.lifecycle.standard-development-loop
-  - feature.understanding.bound-planning-context
-  - feature.capabilities.permission-bounded-execution
-  - feature.reflections.record-and-triage
+  - id: feature.lifecycle.specify-behavior
+    relation: depends_on
+  - id: feature.lifecycle.execute-and-reconcile
+    relation: depended_on_by
+  - id: feature.lifecycle.standard-development-loop
+    relation: composed_by
+  - id: feature.understanding.bound-planning-context
+    relation: depends_on
+  - id: feature.capabilities.permission-bounded-execution
+    relation: depends_on
+  - id: feature.reflections.record-and-triage
+    relation: relates_to
 interfaces:
   provided:
     - interface.concorde.plan

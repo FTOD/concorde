@@ -9,9 +9,38 @@
   --concorde-surface: #f6f7ff;
   --concorde-border: #dfe2f8;
   --concorde-github-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z'/%3E%3C/svg%3E");
+  /* Feature Graph palette: read at render time by FeatureGraph.tsx via getComputedStyle, so a theme
+     switch (including the MutationObserver on data-theme) recolors the canvas without a page reload. */
+  --graph-module-bg: #eef0fd;
+  --graph-module-border: #c7cbf0;
+  --graph-module-text: #2b2f57;
+  --graph-feature-bg: #3f4fd7;
+  --graph-feature-text: #ffffff;
+  --graph-feature-border: #232f99;
+  --graph-selected: #ff8a00;
+  --graph-edge-composes: #3f4fd7;
+  --graph-edge-refines: #00897b;
+  --graph-edge-depends-on: #c2410c;
+  --graph-edge-relates-to: #8992a6;
+  --graph-edge-requires: #b3245c;
 }
 
-[data-theme='dark'] {--concorde-surface: #202238; --concorde-border: #363a63;}
+[data-theme='dark'] {
+  --concorde-surface: #202238;
+  --concorde-border: #363a63;
+  --graph-module-bg: #262a4d;
+  --graph-module-border: #3a3f70;
+  --graph-module-text: #dfe2f8;
+  --graph-feature-bg: #5967dc;
+  --graph-feature-text: #f5f6ff;
+  --graph-feature-border: #b6bdf3;
+  --graph-selected: #ffb347;
+  --graph-edge-composes: #8992e7;
+  --graph-edge-refines: #4fd1c5;
+  --graph-edge-depends-on: #f6a35a;
+  --graph-edge-relates-to: #9096b8;
+  --graph-edge-requires: #ff85ac;
+}
 .provenanceShell {max-width: var(--ifm-container-width); margin: 1rem auto -1rem; padding: 0 var(--ifm-spacing-horizontal);}
 .provenance {display: flex; flex-wrap: wrap; gap: .55rem 1rem; align-items: center; padding: .75rem 1rem; border: 1px solid var(--concorde-border); border-radius: .65rem; background: var(--concorde-surface); font-size: .8rem;}
 .provenance__kind {font-weight: 700;}
@@ -21,6 +50,10 @@
 .featureRelations ol {margin-bottom: 0;}
 .featureRelations li span, .featureRelations li small {display: block;}
 .featureRelations li small {color: var(--ifm-color-emphasis-700);}
+.featureRelations__relation {display: inline-block; margin: 0 .4rem .3rem 0; border-radius: 99px; padding: .1rem .55rem; background: var(--ifm-color-emphasis-200); font-size: .75rem; font-weight: 600; text-transform: capitalize;}
+.featureNeighborhoodShell {max-width: var(--ifm-container-width); margin: 1.5rem auto 0; padding: 0 var(--ifm-spacing-horizontal);}
+.featureNeighborhood {padding: 1rem; border: 1px solid var(--concorde-border); border-radius: .85rem; background: var(--concorde-surface);}
+.featureNeighborhood__empty {color: var(--ifm-color-emphasis-700); font-size: .85rem;}
 .architectureViewShell {max-width: var(--ifm-container-width); margin: 1.5rem auto 0; padding: 0 var(--ifm-spacing-horizontal);}
 .architectureView {padding: 1rem; border: 1px solid var(--concorde-border); border-radius: .85rem; background: var(--concorde-surface);}
 .architectureView__heading {display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: .75rem;}
@@ -28,6 +61,32 @@
 .architectureView__eyebrow {margin: 0 0 .25rem; color: var(--ifm-color-primary); font-size: .75rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;}
 .architectureView__frame {display: block; width: 100%; min-height: 38rem; border: 1px solid var(--concorde-border); border-radius: .55rem; background: white;}
 .architectureView__source {margin: .75rem 0 0; font-size: .8rem;}
+/* /graph page */
+.featureGraphPage__empty {padding: 1rem; border: 1px dashed var(--concorde-border); border-radius: .65rem; color: var(--ifm-color-emphasis-700);}
+.featureGraphLegend ul {display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; list-style: none; margin: 0 0 1.25rem; padding: 0; font-size: .85rem;}
+.featureGraphLegend li {display: flex; align-items: center; gap: .4rem;}
+.featureGraphLegend__swatch {display: inline-block; width: 1.1rem; height: .65rem; border-radius: .2rem; background: var(--ifm-color-emphasis-400);}
+.featureGraphLegend__swatch--module {background: var(--graph-module-bg); border: 1px solid var(--graph-module-border);}
+.featureGraphLegend__swatch--feature {background: var(--graph-feature-bg); border-radius: 99px;}
+.featureGraphLegend__swatch--edge-composes {background: var(--graph-edge-composes);}
+.featureGraphLegend__swatch--edge-refines {background: var(--graph-edge-refines);}
+.featureGraphLegend__swatch--edge-depends_on {background: var(--graph-edge-depends-on);}
+.featureGraphLegend__swatch--edge-relates_to {background: var(--graph-edge-relates-to); height: 2px; align-self: center;}
+.featureGraphLegend__swatch--edge-requires {background: var(--graph-edge-requires);}
+.featureGraphControls {display: flex; flex-wrap: wrap; gap: 1.25rem 2rem; align-items: start; margin-bottom: 1rem; padding: .85rem 1rem; border: 1px solid var(--concorde-border); border-radius: .65rem; background: var(--concorde-surface);}
+.featureGraphControls fieldset {margin: 0; padding: 0; border: 0;}
+.featureGraphControls legend {padding: 0 0 .3rem; font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em;}
+.featureGraphControls__option {display: flex; align-items: center; gap: .35rem; margin: 0 0 .3rem; font-size: .85rem; text-transform: capitalize;}
+.featureGraphControls__search {display: flex; flex-direction: column; gap: .3rem; font-size: .85rem;}
+.featureGraphControls__search label {font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em;}
+.featureGraphControls__search input {border: 1px solid var(--concorde-border); border-radius: .4rem; padding: .35rem .6rem; min-width: 14rem;}
+.featureGraphLayout {display: grid; grid-template-columns: minmax(0, 1fr) 18rem; gap: 1rem; align-items: start; margin-bottom: 1.5rem;}
+.featureGraph__canvas {position: relative; display: block; width: 100%; border: 1px solid var(--concorde-border); border-radius: .55rem; background: var(--ifm-background-surface-color);}
+.featureGraph__placeholder::after {content: attr(aria-label); display: flex; align-items: center; justify-content: center; height: 100%; padding: 1.5rem; text-align: center; color: var(--ifm-color-emphasis-700); font-size: .85rem;}
+.featureGraphDetail {padding: 1rem; border: 1px solid var(--concorde-border); border-radius: .65rem; background: var(--concorde-surface); font-size: .85rem;}
+.featureGraphDetail h2 {margin: 0 0 .5rem; font-size: 1.05rem;}
+.featureGraphTable {overflow-x: auto; margin-bottom: 1.5rem;}
+.featureGraphTable table {width: 100%; font-size: .85rem;}
 /* Module categories in the Architecture and Features sidebars read as group headings. */
 .sidebar-module > .menu__list-item-collapsible > .menu__link {font-weight: 700; font-size: 1.05rem;}
 /* Navbar GitHub link: icon-only, colored like other navbar links so it follows the theme. */
@@ -40,4 +99,5 @@ a:focus-visible, button:focus-visible {outline: 3px solid var(--ifm-color-primar
   .provenance {align-items: flex-start; flex-direction: column;}
   .architectureView__heading {align-items: flex-start; flex-direction: column;}
   .architectureView__frame {min-height: 30rem;}
+  .featureGraphLayout {grid-template-columns: minmax(0, 1fr);}
 }

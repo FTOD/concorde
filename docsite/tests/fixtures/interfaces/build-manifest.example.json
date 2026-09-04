@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 10,
-  "generator": {"name": "concorde-docsite", "version": "0.6.0", "docusaurusVersion": "3.10.2"},
+  "schemaVersion": 11,
+  "generator": {"name": "concorde-docsite", "version": "0.7.0", "docusaurusVersion": "3.10.2"},
   "collections": [
     {"id": "architecture", "sourceBase": "specs", "routeBase": "/architecture", "include": ["**/architecture.md"]},
     {"id": "features", "sourceBase": "specs", "routeBase": "/features", "include": ["**/features/*.md"]}
@@ -40,12 +40,19 @@
         "title": "Validate Example",
         "outcome": "The example is validated.",
         "status": "Approved",
-        "route": "/features/feature.example.validate"
+        "route": "/features/feature.example.validate",
+        "relation": "depends_on"
       }]
     }
   ],
   "excludedSources": [],
   "routeInventory": ["/", "/architecture/example-components.html", "/architecture/module.example", "/features/feature.example.publish"],
+  "featureGraph": "feature-graph.json",
+  "featureGraphCounts": {
+    "features": 1,
+    "modules": 1,
+    "edges_by_kind": {"composes": 0, "refines": 0, "depends_on": 1, "relates_to": 0, "requires": 0}
+  },
   "validation": {
     "status": "passed",
     "checks": [

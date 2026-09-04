@@ -3,11 +3,16 @@ id: feature.concorde.define-project-ontology
 kind: feature
 module: module.concorde
 related_features:
-  - feature.concorde.workflow
-  - feature.auto-docs.create-project-docsite
-  - feature.understanding.explore-alignment
-  - feature.understanding.validate-architecture
-  - feature.understanding.initialize-architecture
+  - id: feature.concorde.workflow
+    relation: depended_on_by
+  - id: feature.auto-docs.create-project-docsite
+    relation: depended_on_by
+  - id: feature.understanding.explore-alignment
+    relation: depended_on_by
+  - id: feature.understanding.validate-architecture
+    relation: depended_on_by
+  - id: feature.understanding.initialize-architecture
+    relation: depended_on_by
 interfaces:
   provided:
     - contract.concorde.ontology
@@ -73,6 +78,7 @@ runtime, installation, documentation, validation, fixtures, and maintained archi
 - A module is the only hierarchical specification unit. A child module is stored directly under its parent's `modules/` directory.
 - `architecture.md` is the module's single architectural authority. It replaces `module.md`, the adjacent module `design.md`, and module-owned contract documents.
 - A feature is specified exactly once as `features/<NNN-name>.md`. Features do not contain features; composition and refinement are explicit stable-ID relationships.
+- Every `related_features` entry names its relation from one shared vocabulary: `composes`, `refines`, and `depends_on` are directional from the declaring feature to the target; `composed_by`, `refined_by`, and `depended_on_by` are their inverse forms so each side can state its own view; `relates_to` is symmetric. An entry is written as `{id, relation}`; a plain stable ID means `relates_to`. Each directional family is acyclic, and validation reports the cycle otherwise. Feature interfaces add a fourth directional family: a feature that requires an interface another feature provides depends on that provider, which the published feature graph exposes as a `requires` edge.
 - The feature file contains its outcome, interfaces, usage, requirements, and architecture zoom. Its filename is storage/navigation; the stable feature ID remains semantic identity.
 - `.concorde/` is project control state, outside the recursive specification hierarchy. It owns source-profile configuration, active attempts, and reflection workflow state.
 - `.concorde/attempts/<stable-feature-id>/` is temporary workflow memory keyed by the feature's globally unique semantic identity rather than its mutable filename or module path. Successful delivery validates and removes it without changing the feature file or generating another durable narrative.
@@ -100,7 +106,7 @@ Concorde applies the partition to itself. Each child of `module.concorde` is one
 | `module.concorde.reflections` | Record and resolve process problems. | Reflection Document v2, the per-file collection and index, the queue Tool, the triage Operation, investigator/implementer roles and their agent projections. |
 | `module.concorde.capabilities` | Run any capability on a coding agent under an enforced policy. | Portable launchers and the Tool envelope, Skill/Operation source grammar and loader, capability validation, the Operation runtime, policy compiler, process launcher, managed launcher, Codex/Claude projection. |
 | `module.concorde.distribution` | Ship and install the package. | Package Manifest 2 semantics, installer, managed runtime, framework projection, receipt. |
-| `module.concorde.auto-docs` | Publish the validated read model. | Docsite scaffold and template, content registry, routes, Build Manifest 10, diagram rendering, atomic promotion. |
+| `module.concorde.auto-docs` | Publish the validated read model. | Docsite scaffold and template, content registry, routes, Build Manifest 11, diagram rendering, atomic promotion. |
 
 A module named after an artifact type (`skills`, `operations`, `runtime`, `scripts`, `models`) or a
 residual bucket (`misc`, `common`, `shared`) is the signature of the partition this profile rejects.
@@ -147,6 +153,7 @@ residual bucket (`misc`, `common`, `shared`) is the signature of the partition t
 | Term | Meaning | Relationships |
 |---|---|---|
 | `Module` | The recursive unit of specification ownership. A module has one responsibility, one boundary, one `architecture.md`, zero or more immediate child modules, and zero or more level-local features. | `contains` → `Module`; `specifies` → `Feature`; `owns` → `Architecture specification` |
+| `Feature relation` | The typed, directed meaning of one `related_features` entry: `composes` (the declaring feature sequences the target as a part), `refines` (it narrows or extends the target's behavior), `depends_on` (it needs the target's promise), their inverse forms, or symmetric `relates_to`. Directional families stay acyclic. | `connects` → `Feature`; `projected as` → feature graph edge; `explained by` → Related Features prose |
 | `Capability module` | A module bounded by one business capability, use case, or axis of change. It owns every kind of artifact its capability needs and never collects one artifact kind across capabilities. | `is a` → `Module`; `owns` → `Skill`, `Tool`, `Operation`, `Feature`; `rejects` → artifact-type layer, residual bucket |
 | `Architecture specification` | A module's single durable account of its typed entities, organization, relationships, and interactions. | `defines` → `Architecture entity`; `defines` → `Entity relationship`; `replaces` → `Module summary`; `replaces` → `Module design reference` |
 | `Architecture entity` | An architecture-significant module, package, program, file, script, class, function, interface, data store, schema, configuration, test surface, external system, or other explicitly typed thing. | `belongs to` → `Module`; `participates in` → `Entity relationship`; `realized by` → `Source code` |
@@ -232,7 +239,7 @@ The feature is cross-cutting because these entities share one source profile. Th
 - **Compatibility**: Profile 7 / Protocol 13 are an intentional breaking control-state path revision
   with no dual-layout mode. Initialization Proposal 3 adds the reflection allocation index and
   required root system overview. Reflection Document v2 replaces the single-file log. Stable
-  module/feature/interface IDs, Delivery Proposal 9 semantics, and Build Manifest 10 semantics remain unchanged.
+  module/feature/interface IDs, Delivery Proposal 9 semantics, and Build Manifest 11 semantics remain unchanged.
 - **Implementing entities**: `module.concorde.understanding`, `module.concorde.capabilities`, `module.concorde.lifecycle`, `entity.concorde.specification`, `entity.concorde.control-state`.
 - **Example**: A module `architecture.md` defines `entity.example.worker`; a feature design references it in Architecture Zoom and exposes an interface whose entry point and implementing entities include that stable ID.
 
@@ -378,6 +385,19 @@ features.
 - An operation skill is projected to an agent while its Python graph is absent from the installed framework.
 - Two operations compose the same leaf skill in different stage orders without changing that leaf's canonical prompt.
 
+## Related Features
+
+- `feature.concorde.workflow` depends on this ontology for the module, feature, interface, and
+  relation model every lifecycle phase reads and writes.
+- `feature.auto-docs.create-project-docsite` depends on this ontology for the page kinds and file
+  roles the docsite publishes.
+- `feature.understanding.explore-alignment` depends on this ontology for the stable identities it
+  projects beside implementation evidence.
+- `feature.understanding.validate-architecture` depends on this ontology for the layout, identity,
+  relation, and vocabulary rules it enforces deterministically.
+- `feature.understanding.initialize-architecture` depends on this ontology for the minimal root
+  scaffold it proposes.
+
 ## Requirements
 
 ### Functional Requirements
@@ -465,6 +485,13 @@ features.
   a use case of exactly one capability module.
 - **FR-035**: `src/concorde` and `tests/concorde` MUST be organized into subpackages that mirror the
   capability modules, and every architecture entity locator MUST resolve to the owning subpackage.
+- **FR-036**: Every `related_features` entry MUST be a stable feature ID or an `{id, relation}` object
+  whose relation is `composes`, `refines`, `depends_on`, `composed_by`, `refined_by`,
+  `depended_on_by`, or `relates_to`; a plain ID MUST be read as `relates_to`; the loader, validator,
+  bounded context, Protocol 13 summaries, templates, and authoring guidance MUST carry the relation.
+- **FR-037**: Validation MUST reject an unknown relation, a self-reference, and any cycle in the
+  `composes`, `refines`, or `depends_on` family after inverse forms are normalized, naming every
+  feature on the cycle.
 
 ## Success Criteria
 
@@ -498,6 +525,9 @@ features.
   feature, and no child module has a feature whose outcome is an inventory of what it contains.
 - **SC-014**: A change that touches one capability (for example how planning selects its context)
   changes architecture files in at most two capability modules and no artifact-type layer.
+- **SC-015**: Every maintained Concorde feature declares a typed relation for each related feature,
+  the three directional families are acyclic, and the published feature graph reproduces every
+  declaration as one typed edge.
 
 ## Assumptions
 

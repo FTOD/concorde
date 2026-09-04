@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from typing import Any
 
-from ...model import Finding, SourceDocument
+from ...model import DIRECTIONAL_RELATIONS, FEATURE_RELATIONS, INVERSE_RELATIONS, Finding, SourceDocument
 from ..repository import FEATURE_ID, architecture_zoom_rows
 from .entities import visible_entity_ids
 
@@ -31,6 +32,78 @@ def _finding(rule: str, source: SourceDocument | str, message: str, remediation:
     return Finding(rule, "error", source, message, remediation, subject_id=subject)
 
 
+def _is_well_formed_relation_entry(item: Any) -> bool:
+    """A related_features entry is a plain ID or an {id, relation} mapping of exactly those keys."""
+    if isinstance(item, str):
+        return True
+    return (
+        isinstance(item, dict)
+        and set(item) == {"id", "relation"}
+        and isinstance(item.get("id"), str)
+        and isinstance(item.get("relation"), str)
+    )
+
+
+def _directional_edges(package: Any) -> dict[str, set[tuple[str, str]]]:
+    """Directed feature-to-feature edges per family, normalized to their forward relation."""
+    edges: dict[str, set[tuple[str, str]]] = {name: set() for name in DIRECTIONAL_RELATIONS}
+    for feature in package.features.values():
+        for relation in feature.relations:
+            if relation.relation in DIRECTIONAL_RELATIONS:
+                family, source_id, target_id = relation.relation, feature.identifier, relation.target
+            elif relation.relation in INVERSE_RELATIONS:
+                family, source_id, target_id = INVERSE_RELATIONS[relation.relation], relation.target, feature.identifier
+            else:
+                continue
+            if source_id == target_id or target_id not in package.features:
+                continue
+            edges[family].add((source_id, target_id))
+
+    requires: set[tuple[str, str]] = set()
+    for feature in package.features.values():
+        for interface_id in feature.required_interfaces:
+            provider = package.interfaces.get(interface_id)
+            if provider is None:
+                continue
+            owner = provider.owner
+            if owner and owner != feature.identifier and owner in package.features:
+                requires.add((feature.identifier, owner))
+    edges["requires"] = requires
+    return edges
+
+
+def _cycle_groups(edges: set[tuple[str, str]]) -> list[frozenset[str]]:
+    """Every maximal set of mutually reachable nodes (size > 1) in a directed edge set."""
+    graph: dict[str, set[str]] = defaultdict(set)
+    nodes: set[str] = set()
+    for source_id, target_id in edges:
+        graph[source_id].add(target_id)
+        nodes.add(source_id)
+        nodes.add(target_id)
+
+    def reachable(start: str) -> set[str]:
+        seen: set[str] = set()
+        stack = list(graph.get(start, ()))
+        while stack:
+            current = stack.pop()
+            if current in seen:
+                continue
+            seen.add(current)
+            stack.extend(graph.get(current, ()))
+        return seen
+
+    reach = {node: reachable(node) for node in nodes}
+    seen_groups: set[frozenset[str]] = set()
+    groups: list[frozenset[str]] = []
+    for node in sorted(nodes):
+        if node in reach[node]:
+            component = frozenset(other for other in nodes if other in reach[node] and node in reach[other])
+            if component not in seen_groups:
+                seen_groups.add(component)
+                groups.append(component)
+    return groups
+
+
 def validate_features(package: Any) -> list[Finding]:
     findings: list[Finding] = []
     sources = {source.identifier: source for source in package.documents("feature")}
@@ -50,14 +123,35 @@ def validate_features(package: Any) -> list[Finding]:
             if not present:
                 findings.append(_finding("CONCORDE-FEATURE-002", source, f"Feature section '## {heading}' is missing or empty.", f"Add the complete {heading} section to the single durable feature file."))
         related = source.metadata.get("related_features")
-        if not isinstance(related, list) or not all(isinstance(item, str) for item in related):
-            findings.append(_finding("CONCORDE-FEATURE-003", source, "related_features must be an explicit list of stable feature IDs.", "Use [] or list each related feature once and explain its relationship in the design."))
-        elif len(related) != len(set(related)):
-            findings.append(_finding("CONCORDE-FEATURE-003", source, "related_features contains a duplicate ID.", "Keep each related feature once."))
+        if not isinstance(related, list) or not all(_is_well_formed_relation_entry(item) for item in related):
+            findings.append(_finding(
+                "CONCORDE-FEATURE-003",
+                source,
+                "related_features must be an explicit list of stable feature IDs or {id, relation} mappings with exactly those two string keys.",
+                "Use [] or list each related feature once as a plain ID or {id, relation}.",
+            ))
         else:
-            for related_id in related:
-                if related_id not in package.features:
-                    findings.append(_finding("CONCORDE-FEATURE-004", source, f"Related feature '{related_id}' does not resolve.", "Correct the stable ID or add the level-local feature design."))
+            targets = [relation.target for relation in feature.relations]
+            if len(targets) != len(set(targets)):
+                findings.append(_finding("CONCORDE-FEATURE-003", source, "related_features contains a duplicate target ID.", "Keep each related feature once."))
+            else:
+                for relation in feature.relations:
+                    if relation.target not in package.features:
+                        findings.append(_finding("CONCORDE-FEATURE-004", source, f"Related feature '{relation.target}' does not resolve.", "Correct the stable ID or add the level-local feature design."))
+                    if relation.relation not in FEATURE_RELATIONS:
+                        findings.append(_finding(
+                            "CONCORDE-FEATURE-006",
+                            source,
+                            f"Related feature relation '{relation.relation}' for '{relation.target}' is not in the supported vocabulary.",
+                            "Use composes, refines, depends_on, composed_by, refined_by, depended_on_by, or relates_to.",
+                        ))
+                    if relation.target == feature_id:
+                        findings.append(_finding(
+                            "CONCORDE-FEATURE-006",
+                            source,
+                            f"Feature '{feature_id}' declares a related-feature relation to itself.",
+                            "Remove the self-reference or point the relation to a different feature.",
+                        ))
         if feature.module not in package.modules:
             findings.append(_finding("CONCORDE-FEATURE-005", source, f"Providing module '{feature.module}' does not resolve.", "Set module to the stable ID of the physical providing module."))
 
@@ -142,5 +236,20 @@ def validate_features(package: Any) -> list[Finding]:
         for entry_point in interface.entry_points:
             if entry_point.startswith(("entity.", "module.")) and entry_point not in visible:
                 findings.append(_finding("CONCORDE-INTERFACE-010", interface.source, f"Entry point '{entry_point}' for interface '{identifier}' does not resolve.", "Reference a visible architecture entity or describe an explicit human workflow entry point.", identifier))
+
+    for family, family_edges in _directional_edges(package).items():
+        for group in _cycle_groups(family_edges):
+            members = sorted(group)
+            for member in members:
+                member_source = sources.get(member)
+                if member_source is None:
+                    continue
+                findings.append(_finding(
+                    "CONCORDE-FEATURE-007",
+                    member_source,
+                    f"Feature '{member}' is on a {family} cycle: {', '.join(members)}.",
+                    f"Break the {family} cycle by removing or redirecting one relation among {', '.join(members)}.",
+                    subject=member,
+                ))
 
     return findings

@@ -144,11 +144,13 @@ def _module_ancestry_summary(package: Any, identifier: str) -> dict[str, Any]:
 
 def _related_summaries(package: Any, feature: SourceDocument) -> tuple[dict[str, Any], ...]:
     result = []
-    for identifier in package.features[feature.identifier].related_features:
-        matches = package.by_id.get(identifier, ())
+    for relation in package.features[feature.identifier].relations:
+        matches = package.by_id.get(relation.target, ())
         if len(matches) != 1 or matches[0].kind != "feature":
-            raise WorkspaceError(f"related feature '{identifier}' does not resolve exactly once")
-        result.append(_summary(package, matches[0]))
+            raise WorkspaceError(f"related feature '{relation.target}' does not resolve exactly once")
+        summary = _summary(package, matches[0])
+        summary["relation"] = relation.relation
+        result.append(summary)
     return tuple(result)
 
 

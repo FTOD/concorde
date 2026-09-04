@@ -10,6 +10,7 @@ import type {ContentPage} from '../../../../plugins/concorde-content/types';
 import {canonicalRoute, normalizeRoute} from '../../../../plugins/concorde-content/routes';
 import ArchitectureView from '../../../components/ArchitectureView';
 import ContentProvenance from '../../../components/ContentProvenance';
+import FeatureNeighborhood from '../../../components/FeatureNeighborhood';
 import FeatureRelations from '../../../components/FeatureRelations';
 
 type Props = WrapperProps<typeof OriginalLayoutType>;
@@ -24,6 +25,7 @@ export default function LayoutWrapper(props: Props) {
   return <>
     {page && <div className="provenanceShell"><ContentProvenance page={page} /></div>}
     {page?.relatedFeatures?.length ? <div className="featureRelationsShell"><FeatureRelations page={page} /></div> : null}
+    {page?.featureId ? <div className="featureNeighborhoodShell"><FeatureNeighborhood featureId={page.featureId} /></div> : null}
     {page?.architectureDiagrams?.length ? <div className="architectureViewShell"><ArchitectureView page={page} /></div> : null}
     <OriginalLayout {...props} />
   </>;

@@ -10,6 +10,15 @@ from typing import Any, Mapping
 MODULE_DIAGRAMS_DIRECTORY = "diagrams"
 MODULE_CHILDREN_DIRECTORY = "modules"
 
+# Shared related-feature relation vocabulary (constitution Workflow Standards; A.IV).
+INVERSE_RELATIONS: Mapping[str, str] = {
+    "composed_by": "composes",
+    "refined_by": "refines",
+    "depended_on_by": "depends_on",
+}
+DIRECTIONAL_RELATIONS = frozenset({"composes", "refines", "depends_on"})
+FEATURE_RELATIONS = frozenset({*DIRECTIONAL_RELATIONS, *INVERSE_RELATIONS, "relates_to"})
+
 
 @dataclass(frozen=True)
 class SourceDocument:
@@ -73,6 +82,12 @@ class FeatureInterface:
 
 
 @dataclass(frozen=True)
+class FeatureRelation:
+    target: str
+    relation: str
+
+
+@dataclass(frozen=True)
 class Module:
     identifier: str
     parent: str | None
@@ -98,6 +113,7 @@ class Feature:
     required_interfaces: tuple[str, ...]
     architecture_zoom: tuple[str, ...]
     evidence_status: str
+    relations: tuple[FeatureRelation, ...] = ()
 
 
 @dataclass(frozen=True)

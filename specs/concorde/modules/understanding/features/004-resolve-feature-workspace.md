@@ -3,12 +3,18 @@ id: feature.understanding.resolve-feature-workspace
 kind: feature
 module: module.concorde.understanding
 related_features:
-  - feature.concorde.workflow
-  - feature.auto-docs.publish-project-docsite
-  - feature.reflections.record-and-triage
-  - feature.understanding.bound-planning-context
-  - feature.lifecycle.plan-attempt
-  - feature.capabilities.permission-bounded-execution
+  - id: feature.concorde.workflow
+    relation: composed_by
+  - id: feature.auto-docs.publish-project-docsite
+    relation: depended_on_by
+  - id: feature.reflections.record-and-triage
+    relation: depended_on_by
+  - id: feature.understanding.bound-planning-context
+    relation: refined_by
+  - id: feature.lifecycle.plan-attempt
+    relation: depended_on_by
+  - id: feature.capabilities.permission-bounded-execution
+    relation: depended_on_by
 interfaces:
   provided:
     - interface.concorde.workspace

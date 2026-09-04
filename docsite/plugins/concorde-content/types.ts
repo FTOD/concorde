@@ -42,12 +42,29 @@ export interface SourceDocument {
   slug?: string;
 }
 
+/**
+ * The shared related-feature relation vocabulary (Ontology FR-036/FR-037). The first seven values are
+ * the only ones a maintainer may write in front matter `related_features`; `requires` never appears
+ * there and is instead derived from interface ownership. Inverse forms (`composed_by`, `refined_by`,
+ * `depended_on_by`) normalize to their forward kind during Feature Graph derivation.
+ */
+export type RelationKind =
+  | 'composes' | 'refines' | 'depends_on'
+  | 'composed_by' | 'refined_by' | 'depended_on_by'
+  | 'relates_to' | 'requires';
+
+export interface FeatureRelationEntry {
+  id: string;
+  relation: RelationKind;
+}
+
 export interface FeatureRelation {
   featureId: string;
   title: string;
   outcome: string;
   status: string;
   route: string;
+  relation: RelationKind;
 }
 
 export interface FeatureDesign extends SourceDocument {
@@ -60,7 +77,18 @@ export interface FeatureDesign extends SourceDocument {
   status: string;
   outcome: string;
   relatedFeatureIds: string[];
+  relatedFeatureEntries: FeatureRelationEntry[];
   relatedFeatures: FeatureRelation[];
+  /** Stable interface IDs this feature's front matter declares under `interfaces.provided`. */
+  providedInterfaceIds: string[];
+  /** Stable interface IDs this feature's front matter declares under `interfaces.required`. */
+  requiredInterfaceIds: string[];
+  /**
+   * Required interface IDs whose body has an Interfaces H3 block naming that interface with a
+   * `**Provider**: `external:...`` line; these never derive a `requires` edge and never fail
+   * publication for lacking a published provider.
+   */
+  externalRequiredInterfaceIds: string[];
 }
 
 export type DiagramKind = 'architecture' | 'workflow' | 'sequence' | 'dataflow' | 'lifecycle';
@@ -154,8 +182,55 @@ export interface ValidationFinding {
   remediation: string;
 }
 
+/** Edge kinds that can appear in a derived Feature Graph 1 document (inverse forms already normalized). */
+export type EdgeKind = 'composes' | 'refines' | 'depends_on' | 'relates_to' | 'requires';
+
+export interface FeatureGraphCounts {
+  features: number;
+  modules: number;
+  edges_by_kind: Record<EdgeKind, number>;
+}
+
+export interface GraphModule {
+  id: string;
+  title: string;
+  parent?: string;
+  route: string;
+}
+
+export interface GraphFeature {
+  id: string;
+  title: string;
+  module: string;
+  outcome: string;
+  status: string;
+  route: string;
+  source_path: string;
+  source_sha256: string;
+}
+
+export interface GraphEdge {
+  id: string;
+  kind: EdgeKind;
+  source: string;
+  target: string;
+  interface?: string;
+  declared_by: string[];
+}
+
+/** Feature Graph 1: the deterministic, sorted JSON projection published as `feature-graph.json`. */
+export interface FeatureGraph {
+  schema_version: 1;
+  generator: {name: string; version: string};
+  source_digest: string;
+  modules: GraphModule[];
+  features: GraphFeature[];
+  edges: GraphEdge[];
+  counts: FeatureGraphCounts;
+}
+
 export interface BuildManifest {
-  schemaVersion: 10;
+  schemaVersion: 11;
   generator: {
     name: 'concorde-docsite';
     version: string;
@@ -165,6 +240,8 @@ export interface BuildManifest {
   pages: ContentPage[];
   excludedSources: ExcludedSource[];
   routeInventory: string[];
+  featureGraph: 'feature-graph.json';
+  featureGraphCounts: FeatureGraphCounts;
   validation: {
     status: 'passed';
     checks: Array<{name: string; status: 'passed'}>;

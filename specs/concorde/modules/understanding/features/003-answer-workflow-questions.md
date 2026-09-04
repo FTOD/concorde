@@ -3,7 +3,8 @@ id: feature.understanding.answer-workflow-questions
 kind: feature
 module: module.concorde.understanding
 related_features:
-  - feature.concorde.workflow
+  - id: feature.concorde.workflow
+    relation: composed_by
 interfaces:
   provided:
     - interface.concorde.ask

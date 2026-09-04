@@ -3,7 +3,8 @@ id: feature.understanding.explore-alignment
 kind: feature
 module: module.concorde.understanding
 related_features:
-  - feature.concorde.define-project-ontology
+  - id: feature.concorde.define-project-ontology
+    relation: depends_on
 interfaces:
   provided:
     - contract.concorde.alignment-explorer

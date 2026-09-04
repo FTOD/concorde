@@ -3,6 +3,11 @@ id: feature.[namespace].[outcome]
 kind: feature
 module: module.[namespace]
 related_features: []
+# Each entry is {id, relation}; relation is composes | refines | depends_on | composed_by |
+# refined_by | depended_on_by | relates_to. A plain ID means relates_to. Directional families stay
+# acyclic. Example:
+#   - id: feature.[namespace].[other]
+#     relation: depends_on
 interfaces:
   provided: []
   required: []
@@ -37,7 +42,7 @@ evidence_status: unknown
 
 [Describe one representative successful use in plain language.]
 
-### Edge and failure cases
+### Edge Cases
 
 - [Boundary condition and expected behavior.]
 - [Externally visible failure and expected handling.]
@@ -111,8 +116,8 @@ evidence_status: unknown
 
 ## Related Features
 
-[For every `related_features` ID, state whether this feature composes, refines, or depends on it and
-why. Write `None.` when the list is empty.]
+[For every `related_features` entry, explain the declared relation (composes, refines, depends on,
+its inverse, or relates to) and why. Write `None.` when the list is empty.]
 
 ## Requirements
 

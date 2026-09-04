@@ -3,8 +3,10 @@ id: feature.lifecycle.deliver-attempt
 kind: feature
 module: module.concorde.lifecycle
 related_features:
-  - feature.concorde.workflow
-  - feature.lifecycle.execute-and-reconcile
+  - id: feature.concorde.workflow
+    relation: composed_by
+  - id: feature.lifecycle.execute-and-reconcile
+    relation: depends_on
 interfaces:
   provided:
     - interface.concorde.deliver

@@ -3,7 +3,8 @@ id: feature.lifecycle.fast-loop
 kind: feature
 module: module.concorde.lifecycle
 related_features:
-  - feature.concorde.workflow
+  - id: feature.concorde.workflow
+    relation: composed_by
 interfaces:
   provided:
     - interface.concorde.fast-loop

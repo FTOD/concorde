@@ -45,10 +45,12 @@ def bounded_context(project_root: str | Path, requested_id: str) -> ToolResult:
     ]
     related = []
     if target.kind == "feature":
-        for identifier in package.features[target.identifier].related_features:
-            candidates = package.by_id.get(identifier, ())
+        for relation in package.features[target.identifier].relations:
+            candidates = package.by_id.get(relation.target, ())
             if len(candidates) == 1 and candidates[0].kind == "feature":
-                related.append(feature_summary(package, candidates[0]))
+                summary = feature_summary(package, candidates[0])
+                summary["relation"] = relation.relation
+                related.append(summary)
     else:
         for identifier in package.modules[module_id].features:
             candidates = package.by_id.get(identifier, ())

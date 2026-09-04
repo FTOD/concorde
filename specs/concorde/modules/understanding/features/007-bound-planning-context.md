@@ -3,9 +3,12 @@ id: feature.understanding.bound-planning-context
 kind: feature
 module: module.concorde.understanding
 related_features:
-  - feature.lifecycle.plan-attempt
-  - feature.capabilities.permission-bounded-execution
-  - feature.understanding.resolve-feature-workspace
+  - id: feature.lifecycle.plan-attempt
+    relation: depended_on_by
+  - id: feature.capabilities.permission-bounded-execution
+    relation: depended_on_by
+  - id: feature.understanding.resolve-feature-workspace
+    relation: refines
 interfaces:
   provided:
     - contract.understanding.planning-context

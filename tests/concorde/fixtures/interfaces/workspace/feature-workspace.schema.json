@@ -55,7 +55,7 @@
     "featureSummary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["feature_id", "title", "module", "feature_path", "outcome", "evidence_status", "reflections_open"],
+      "required": ["feature_id", "title", "module", "feature_path", "outcome", "evidence_status", "reflections_open", "relation"],
       "properties": {
         "feature_id": {"type": "string", "pattern": "^feature\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$"},
         "title": {"type": "string", "minLength": 1},
@@ -63,7 +63,10 @@
         "feature_path": {"$ref": "#/$defs/safePath"},
         "outcome": {"type": "string"},
         "evidence_status": {"enum": ["unknown", "partial", "verified", "disagrees"]},
-        "reflections_open": {"type": "integer", "minimum": 0}
+        "reflections_open": {"type": "integer", "minimum": 0},
+        "relation": {
+          "enum": ["composes", "refines", "depends_on", "composed_by", "refined_by", "depended_on_by", "relates_to"]
+        }
       }
     },
     "executableContext": {

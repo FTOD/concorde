@@ -3,21 +3,38 @@ id: feature.concorde.workflow
 kind: feature
 module: module.concorde
 related_features:
-  - feature.understanding.initialize-architecture
-  - feature.understanding.retrieve-bounded-context
-  - feature.understanding.answer-workflow-questions
-  - feature.understanding.resolve-feature-workspace
-  - feature.understanding.validate-architecture
-  - feature.lifecycle.specify-behavior
-  - feature.lifecycle.plan-attempt
-  - feature.lifecycle.execute-and-reconcile
-  - feature.lifecycle.deliver-attempt
-  - feature.lifecycle.fast-loop
-  - feature.lifecycle.standard-development-loop
-  - feature.reflections.record-and-triage
-  - feature.capabilities.permission-bounded-execution
-  - feature.capabilities.provide-capability-surfaces
-  - feature.distribution.install-concorde
+  - id: feature.understanding.initialize-architecture
+    relation: composes
+  - id: feature.understanding.retrieve-bounded-context
+    relation: composes
+  - id: feature.understanding.answer-workflow-questions
+    relation: composes
+  - id: feature.understanding.resolve-feature-workspace
+    relation: composes
+  - id: feature.understanding.validate-architecture
+    relation: composes
+  - id: feature.lifecycle.specify-behavior
+    relation: composes
+  - id: feature.lifecycle.plan-attempt
+    relation: composes
+  - id: feature.lifecycle.execute-and-reconcile
+    relation: composes
+  - id: feature.lifecycle.deliver-attempt
+    relation: composes
+  - id: feature.lifecycle.fast-loop
+    relation: composes
+  - id: feature.lifecycle.standard-development-loop
+    relation: composes
+  - id: feature.reflections.record-and-triage
+    relation: composes
+  - id: feature.capabilities.permission-bounded-execution
+    relation: depends_on
+  - id: feature.capabilities.provide-capability-surfaces
+    relation: depends_on
+  - id: feature.distribution.install-concorde
+    relation: depends_on
+  - id: feature.concorde.define-project-ontology
+    relation: depends_on
 interfaces:
   provided:
     - contract.concorde.workflow
