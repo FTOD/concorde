@@ -4,6 +4,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tomllib
 import unittest
 from dataclasses import FrozenInstanceError, replace
 
@@ -111,6 +112,42 @@ class OperationPermissionTests(unittest.TestCase):
         self.assertIn("default_permissions", " ".join(codex.argv))
         self.assertTrue(codex.strict_config)
 
+        overrides = tuple(
+            codex.argv[index + 1]
+            for index, value in enumerate(codex.argv)
+            if value == "-c"
+        )
+        override_keys = tuple(value.split("=", 1)[0] for value in overrides)
+        self.assertEqual(
+            override_keys,
+            (
+                "default_permissions",
+                "approval_policy",
+                f"permissions.{codex.permission_profile}",
+                "features.network_proxy",
+            ),
+        )
+        profile_override = overrides[2].split("=", 1)[1]
+        parsed_profile = tomllib.loads(f"profile={profile_override}")["profile"]
+        expected_profile = codex.configuration["permissions"][codex.permission_profile]
+        self.assertEqual(parsed_profile, expected_profile)
+        self.assertEqual(expected_profile["workspace_roots"], {".": True})
+        filesystem = expected_profile["filesystem"]
+        self.assertEqual(
+            {key: filesystem[key] for key in (":root", ":minimal", ":tmpdir", ":slash_tmp")},
+            {":root": "deny", ":minimal": "read", ":tmpdir": "deny", ":slash_tmp": "deny"},
+        )
+        workspace_rules = filesystem[":workspace_roots"]
+        self.assertEqual(workspace_rules[".concorde/attempts/feature.example.change"], "write")
+        self.assertEqual(workspace_rules["specs/consumer/architecture.md"], "read")
+        self.assertNotIn(":root", workspace_rules)
+        for path in (*policy.read_paths, *policy.write_paths, *policy.deny_paths):
+            self.assertTrue(all(path not in key for key in override_keys), path)
+        self.assertEqual(
+            render_codex_configuration(policy, native_enforcement=True).argv,
+            codex.argv,
+        )
+
         settings = json.loads(claude.settings_json)
         self.assertEqual(settings["permissions"]["defaultMode"], "dontAsk")
         self.assertTrue(settings["sandbox"]["enabled"])
@@ -120,19 +157,24 @@ class OperationPermissionTests(unittest.TestCase):
         self.assertTrue(compare_effective_boundaries(codex, claude))
 
     @unittest.skipUnless(shutil.which("codex"), "Codex CLI is not installed")
-    def test_codex_launch_argv_is_accepted_by_installed_cli_parser(self):
+    def test_codex_launch_argv_loads_configuration_in_installed_cli_without_a_model(self):
         policy = compile_policy(self.effect, self.binding, self.roles)
         codex = render_codex_configuration(policy, native_enforcement=True)
 
         result = subprocess.run(
-            (*codex.argv[:-1], "--help"),
+            codex.argv,
+            input="",
             text=True,
             capture_output=True,
             check=False,
+            timeout=30,
         )
 
-        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
-        self.assertIn("Run Codex non-interactively", result.stdout)
+        diagnostic = result.stderr or result.stdout
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("No prompt provided via stdin", diagnostic)
+        self.assertNotIn("Error loading config.toml", diagnostic)
+        self.assertNotIn("invalid type", diagnostic)
 
     def test_unavailable_native_enforcement_requires_verified_outer_boundary(self):
         policy = compile_policy(self.effect, self.binding, self.roles)

@@ -258,7 +258,7 @@ def verify_effective_subset(declared: NormalizedPolicy, effective: NormalizedPol
 
 
 def _codex_rules(policy: NormalizedPolicy) -> dict[str, str]:
-    rules: dict[str, str] = {":root": "deny", ":minimal": "read", ":tmpdir": "deny", ":slash_tmp": "deny"}
+    rules: dict[str, str] = {}
     for path in policy.read_paths:
         rules[path] = "read"
     for path in policy.write_paths:
@@ -271,7 +271,18 @@ def _codex_rules(policy: NormalizedPolicy) -> dict[str, str]:
 def _toml_value(value: Any) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
-    return json.dumps(value, separators=(",", ":"))
+    if isinstance(value, str):
+        return json.dumps(value, separators=(",", ":"))
+    if isinstance(value, Mapping):
+        keys = tuple(value)
+        if any(not isinstance(key, str) for key in keys):
+            raise PermissionPolicyError("Codex permission-profile TOML keys must be strings")
+        return "{" + ",".join(
+            f"{_toml_value(key)}={_toml_value(value[key])}" for key in sorted(keys)
+        ) + "}"
+    raise PermissionPolicyError(
+        f"unsupported Codex permission-profile TOML value: {type(value).__name__}"
+    )
 
 
 def render_codex_configuration(
@@ -285,16 +296,21 @@ def render_codex_configuration(
             "Codex native permission-profile enforcement is unavailable and no outer enforcement was verified"
         )
     profile = "concorde-" + policy.digest.removeprefix("sha256:")[:16]
+    profile_configuration = {
+        "workspace_roots": {".": True},
+        "filesystem": {
+            ":root": "deny",
+            ":minimal": "read",
+            ":tmpdir": "deny",
+            ":slash_tmp": "deny",
+            ":workspace_roots": _codex_rules(policy),
+        },
+        "network": {"enabled": policy.network_enabled, "domains": {}},
+    }
     configuration = {
         "default_permissions": profile,
         "approval_policy": "never",
-        "permissions": {
-            profile: {
-                "workspace_roots": {".": True},
-                "filesystem": {":workspace_roots": _codex_rules(policy)},
-                "network": {"enabled": policy.network_enabled, "domains": {}},
-            }
-        },
+        "permissions": {profile: profile_configuration},
         "features": {"network_proxy": policy.network_enabled},
     }
     argv: list[str] = [
@@ -309,11 +325,8 @@ def render_codex_configuration(
     if native_enforcement:
         argv.extend(("-c", f"default_permissions={_toml_value(profile)}"))
         argv.extend(("-c", 'approval_policy="never"'))
-        argv.extend(("-c", f'permissions.{profile}.workspace_roots."."=true'))
-        for path, access in _codex_rules(policy).items():
-            key = json.dumps(path)
-            argv.extend(("-c", f'permissions.{profile}.filesystem.":workspace_roots".{key}={_toml_value(access)}'))
-        argv.extend(("-c", f"permissions.{profile}.network.enabled={_toml_value(policy.network_enabled)}"))
+        argv.extend(("-c", f"permissions.{profile}={_toml_value(profile_configuration)}"))
+        argv.extend(("-c", f"features.network_proxy={_toml_value(policy.network_enabled)}"))
     argv.append("-")
     payload = {
         "integration": "codex",
