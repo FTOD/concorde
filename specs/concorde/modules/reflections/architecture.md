@@ -32,10 +32,25 @@ runtime/policy enforcement (`module.concorde.capabilities`), or Protocol 13
 never implements, merges, or closes a normative Protocol semantic change through reflection routes;
 the root `feature.concorde.evolve-protocol` owns that cutover.
 
+## Operation Contract Boundary
+
+This module owns the concrete `concorde-reflections-triage` Operation, its associated Skill, and the
+target triage input/result types defined in its feature. It owns reflection selection, action,
+route, and disposition; project integration/enforcement belongs to the common configuration contract.
+The implement/plan route maps explicit task fields into `concorde-plan-context@1` and consumes only
+the child's `concorde-plan-result@1`, while retaining reflection IDs in the parent. Lifecycle owns
+that child and its attempt; triage never owns or flattens the child graph.
+
+Current action/route parsing and string results are implementation facts. Typed selection,
+configuration inheritance, and plan-result mapping are target runtime work, not behavior already
+provided by reflection-triage/v5. Existing merge/close and Protocol-evolution authority still apply.
+
 ## Entities
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
+| `entity.reflections.triage-input` | type | Target concorde-reflections-triage-context@1: explicit action, selected IDs, conditional route, and feature task fields. | `concept:concorde-reflections-triage-context@1` |
+| `entity.reflections.triage-result` | type | Target concorde-reflections-triage-result@1: exact selection/dispositions plus a typed plan result only while its attempt remains live. | `concept:concorde-reflections-triage-result@1` |
 | `entity.reflections.template` | document | Complete per-file Reflection Document v2 grammar: required front matter, Context/Expected/Observed/Impact/Evidence problem sections, Triage Analysis/Proposed Resolution/Intervention Rationale triage sections, a retained User Comments section, and optional Occurrences. | `templates/reflections-template.md` |
 | `entity.reflections.collection` | directory | Per-file process memory holding one open `R-NNN.md` prose authority per problem, filed into `pending/`, `planned/`, or `needs-comments/` by triage state. | `.concorde/reflections` |
 | `entity.reflections.index` | configuration | Metadata-only allocation record holding schema version and the monotonic, never-reused ID high-water mark. | `.concorde/reflections/index.json` |
@@ -57,6 +72,8 @@ the root `feature.concorde.evolve-protocol` owns that cutover.
 
 | Source | Predicate | Target | Description |
 |---|---|---|---|
+| `entity.reflections.triage-operation` | `reads_from` | `entity.reflections.triage-input` | Target: selects action/route from fields, retaining reflection IDs when passing task fields to Lifecycle. |
+| `entity.reflections.triage-operation` | `generates` | `entity.reflections.triage-result` | Target: records verified dispositions and exposes only the published plan result from nested planning. |
 | `entity.reflections.triage-skill` | `documents` | `entity.reflections.triage-operation` | Supplies the installed `reflection-triage/v5` action/route/bucket/policy contract paired with the graph. |
 | `entity.reflections.triage-operation` | `composes` | `module.concorde.lifecycle` | Uses the public analyze, fast-loop, plan, tasks, implement, and validate direct capabilities for the investigate, route, implement, and validate stages without taking ownership of their internals. |
 | `entity.reflections.triage-operation` | `calls` | `entity.reflections.queue` | Invokes the deterministic queue Tool for status, relocation, merged-removal, and closed-removal actions outside the graph. |

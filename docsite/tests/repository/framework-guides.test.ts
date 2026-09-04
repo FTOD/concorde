@@ -63,9 +63,13 @@ describe('maintained Concorde specification documentation', () => {
       (document): document is ModuleArchitecture => document.contentKind === 'module-architecture',
     );
     expect(architecturePages).toHaveLength(7);
-    expect(architecturePages.every((document) => document.architectureDiagrams.length === 1)).toBe(true);
-    expect(architecturePages.flatMap((document) => document.architectureDiagrams)
-      .every((diagram) => diagram.kind === 'architecture' && diagram.source.endsWith('/diagrams/system-overview.json'))).toBe(true);
+    expect(architecturePages.every((document) => document.architectureDiagrams.filter(
+      (diagram) => diagram.kind === 'architecture' && diagram.source.endsWith('/diagrams/system-overview.json'),
+    ).length === 1)).toBe(true);
+    const root = architecturePages.find((document) => document.sourcePath === 'specs/concorde/architecture.md');
+    expect(root?.architectureDiagrams.some(
+      (diagram) => diagram.kind === 'dataflow' && diagram.source.endsWith('/diagrams/operation-dataflow.json'),
+    )).toBe(true);
     expect(registry.documents.filter((document) => document.contentKind !== 'module-architecture')
       .every((document) => !('architectureDiagrams' in document))).toBe(true);
   });

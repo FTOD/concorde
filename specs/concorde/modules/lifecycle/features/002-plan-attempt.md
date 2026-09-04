@@ -3,6 +3,8 @@ id: feature.lifecycle.plan-attempt
 kind: feature
 module: module.concorde.lifecycle
 related_features:
+  - id: feature.capabilities.provide-capability-surfaces
+    relation: depends_on
   - id: feature.lifecycle.specify-behavior
     relation: depends_on
   - id: feature.lifecycle.execute-and-reconcile
@@ -20,6 +22,7 @@ interfaces:
     - interface.concorde.plan
     - contract.lifecycle.plan
   required:
+    - contract.capabilities.operation-data
     - contract.understanding.planning-context
     - contract.capabilities.permission-bounded-execution
 ---
@@ -42,10 +45,89 @@ sources stay byte-identical. Both the Operation's own launch and every leaf it c
 permission-bounded through `module.concorde.capabilities` via
 `contract.capabilities.permission-bounded-execution`.
 
+## Target Contract Examples
+
+### Author input and public planning output
+
+The author receives both task and resolved context. The public result contains only the contracted fields.
+
+Illustrative fixture IDs/digests describe the wire shape; they are not live execution receipts.
+
+```json
+{
+  "type_id": "concorde-plan-author-context",
+  "schema_version": 1,
+  "data": {
+    "task": {
+      "type_id": "concorde-plan-context",
+      "schema_version": 1,
+      "data": {
+        "feature_path": "specs/example/features/001-search.md",
+        "request": "Plan the approved search change",
+        "constraints": []
+      }
+    },
+    "planning_context": {
+      "type_id": "concorde-planning-context",
+      "schema_version": 1,
+      "data": {
+        "feature_id": "feature.example.search",
+        "feature_path": "specs/example/features/001-search.md",
+        "module_id": "module.example",
+        "module_architecture": {
+          "id": "module.example",
+          "path": "specs/example/architecture.md",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "attempt_dir": ".concorde/attempts/feature.example.search",
+        "source_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "owned_artifacts": [
+          {
+            "id": "feature.example.search",
+            "path": "specs/example/features/001-search.md",
+            "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        ],
+        "provider_features": [],
+        "denied_paths": []
+      }
+    }
+  }
+}
+```
+
+```json
+{
+  "type_id": "concorde-plan-result",
+  "schema_version": 1,
+  "data": {
+    "feature_id": "feature.example.search",
+    "feature_path": "specs/example/features/001-search.md",
+    "attempt_dir": ".concorde/attempts/feature.example.search",
+    "source_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "artifacts": [
+      {
+        "id": "attempt:feature.example.search:plan.md",
+        "path": ".concorde/attempts/feature.example.search/plan.md",
+        "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "id": "attempt:feature.example.search:tasks.md",
+        "path": ".concorde/attempts/feature.example.search/tasks.md",
+        "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  }
+}
+```
+
 ## Architecture Zoom
 
 | Entity ID | Role |
 |---|---|
+| `entity.lifecycle.plan-input` | Defines the target caller task fields independently of project configuration. |
+| `entity.lifecycle.plan-author-input` | Defines the explicit task plus resolved-context handoff. |
+| `entity.lifecycle.plan-result` | Defines the target public result parents may consume without planner internals. |
 | `entity.lifecycle.plan-operation` | Owns the public context → author graph and keeps the internal context leaf and plan author behind one stable identity. |
 | `entity.lifecycle.plan-operation-skill` | Documents and installs the public planning invocation, policy, and failure contract. |
 | `entity.lifecycle.plan-author-skill` | Authors the temporal plan, research, data model, quickstart, and initial tasks from the resolved context. |
@@ -104,7 +186,60 @@ permission-bounded through `module.concorde.capabilities` via
   `entity.lifecycle.plan-author-skill`, `module.concorde.understanding`, `module.concorde.capabilities`,
   `entity.concorde.coding-agent`.
 
+## Target Planning Data Types
+
+These field definitions extend `contract.lifecycle.plan` for the target
+`contract.capabilities.operation-data` transport. Current `operation.py` still parses a positional
+request and `--feature-path`; this section does not claim a working JSON entry point. Each value
+uses the common TypedValue wrapper. Fields below are required except the stated default.
+
+| Type ID @1 | `data` field | JSON type | Meaning / constraints |
+|---|---|---|---|
+| `concorde-plan-context` | `feature_path` | string | Existing canonical project-relative direct feature file. Required explicitly at the typed boundary; an adapter may resolve selection before constructing it. Never a stable ID inferred from the filename. |
+| `concorde-plan-context` | `request` | nonempty string | Planning objective; it carries intent, not hidden key/value configuration. |
+| `concorde-plan-context` | `constraints` | array of nonempty strings | Optional, defaults to `[]`; task restrictions may narrow but never grant authority. |
+| `concorde-plan-author-context` | `task` | TypedValue `concorde-plan-context@1` | Original caller input, preserved as structured data. |
+| `concorde-plan-author-context` | `planning_context` | TypedValue `concorde-planning-context@1` | Exact validated context from Understanding, with field semantics in its providing feature. |
+| `concorde-plan-result` | `feature_id` | string | Stable authored `feature.*` identity from the host workspace. |
+| `concorde-plan-result` | `feature_path` | string | Same selected canonical feature file as the invocation. |
+| `concorde-plan-result` | `attempt_dir` | string | Exactly `.concorde/attempts/<feature_id>`; host-derived and checked before use. |
+| `concorde-plan-result` | `source_digest` | SHA-256 string | The admitted planning source digest; not a digest of newly written attempt files. |
+| `concorde-plan-result` | `artifacts` | array of ArtifactRef | Unique refs to authored attempt files, including `plan.md` and initial `tasks.md`; optional research/data-model/quickstart appear only when created. IDs follow `attempt:<feature_id>:<attempt-relative-path>`. |
+
+`concorde-plan-context` is a data type ID here. It is not the identity of an invocation of the internal
+Skill with the same spelling. `concorde-planning-context` is a different type: resolved information
+produced by Understanding, not caller arguments.
+
+```json
+{
+  "type_id": "concorde-plan-context",
+  "schema_version": 1,
+  "data": {
+    "feature_path": "specs/concorde/modules/lifecycle/features/002-plan-attempt.md",
+    "request": "Plan explicit producer-to-consumer data contracts",
+    "constraints": ["Keep durable source files unchanged during planning"]
+  }
+}
+```
+
+The mapping is explicit: the context provider receives `task.data.feature_path`; the host retains the
+complete task while resolving context. The author receives `{task, planning_context}` after feature
+identity, source digest, references, and policy are checked. The plan Operation exposes only the
+validated `concorde-plan-result` to its parent, not the internal context/author result list. Standard
+loop and triage callers copy `feature_path`, `request`, and `constraints` into the plan input and
+inherit the host configuration/worktree unchanged. They consume result identity, source digest,
+attempt path, and artifact refs to prepare tasks/implementation; they do not infer those from prose.
+
+Missing input, wrong type/version, unknown fields, a non-feature path, ambiguous provider, stale
+context, or a result for another feature prevents the next stage. Refs into a completed attempt
+expire when delivery removes it. A future caller must not retry a partially failed author solely
+because a plan file exists; it must inspect the failed result and current attempt state.
+
 ## Related Features
+
+- The target typed boundary depends on `feature.capabilities.provide-capability-surfaces` for
+  `contract.capabilities.operation-data`; executable adoption is a separately identified runtime gap.
+
 
 - `feature.lifecycle.specify-behavior` produces the durable feature file this phase turns into a
   temporal attempt.

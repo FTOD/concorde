@@ -3,6 +3,8 @@ id: feature.understanding.bound-planning-context
 kind: feature
 module: module.concorde.understanding
 related_features:
+  - id: feature.capabilities.provide-capability-surfaces
+    relation: depends_on
   - id: feature.lifecycle.plan-attempt
     relation: depended_on_by
   - id: feature.capabilities.permission-bounded-execution
@@ -12,7 +14,8 @@ related_features:
 interfaces:
   provided:
     - contract.understanding.planning-context
-  required: []
+  required:
+    - contract.capabilities.operation-data
 ---
 
 # Feature Design: Bound Planning Context
@@ -26,10 +29,82 @@ required interfaces, each with a reason trace, plus an explicit deny list for ev
 maintainer can therefore invoke planning without granting ambient access to every module's private
 architecture and implementation.
 
+## Target Planning Context Payload
+
+The current `resolve_planning_context` returns an in-process `PlanningContext` record. The target
+serialized `concorde-planning-context@1` extends `contract.understanding.planning-context` using the
+common TypedValue/ArtifactRef forms from `contract.capabilities.operation-data`. It is host-resolved
+data, not a caller-supplied replacement for workspace or permission receipts.
+
+| Required `data` field | JSON type | Meaning |
+|---|---|---|
+| `feature_id` | string | Exact stable authored feature ID resolved from `feature_path`. |
+| `feature_path` | string | Existing canonical direct feature file relative to the host project root. |
+| `module_id` | string | Providing module's stable ID. |
+| `module_architecture` | ArtifactRef | Providing module's architecture file with identity and current byte digest. |
+| `attempt_dir` | string | Canonical `.concorde/attempts/<feature_id>` path, whether or not the attempt exists yet. |
+| `source_digest` | SHA-256 string | Digest of admitted planning inputs under this contract's source-digest semantics. |
+| `owned_artifacts` | array of ArtifactRef | Selected feature and bounded owned source/test files, plus admitted governance/ancestry inputs; no foreign implementation bodies. |
+| `provider_features` | array of ProviderFeature | Exactly the required-interface provider feature files with reasons, or `[]`. |
+| `denied_paths` | array of strings | Canonical project-relative excluded paths; `[]` is valid. These explain exclusions, not enforce them. |
+
+`ProviderFeature` has exactly `feature_id` (stable string), `artifact` (ArtifactRef to the provider
+feature file), and `interface_ids` (nonempty unique array of required interface IDs explaining why
+the body is admitted). Array entries and artifact IDs are unique; no untyped payload or directory
+snapshot is embedded. The source digest and host receipt cover membership as well as bytes, so a
+new/removed relevant file invalidates a stale context. Existing authority and dependency-exclusion
+rules above remain binding.
+
+The producer receives `concorde-plan-context@1.data.feature_path`, resolves its canonical identity and
+bounded artifact set, and emits this typed payload. The plan author receives it unchanged under
+`concorde-plan-author-context@1.data.planning_context`, alongside the original task. It must match
+the host workspace and current inputs before authorship. Missing refs, changed bytes or membership,
+wrong feature identity, or unsupported type/version block the author; they never broaden reads.
+
+The serialization adapter and typed dispatch are pending runtime work. Existing structured Python
+fields and receipts provide source evidence for this design, but do not yet expose this wire type.
+
+## Target Contract Examples
+
+### Resolved planning context
+
+The minimal fixture has no foreign providers. The real host computes digests and bound membership.
+
+Illustrative fixture IDs/digests describe the wire shape; they are not live execution receipts.
+
+```json
+{
+  "type_id": "concorde-planning-context",
+  "schema_version": 1,
+  "data": {
+    "feature_id": "feature.example.search",
+    "feature_path": "specs/example/features/001-search.md",
+    "module_id": "module.example",
+    "module_architecture": {
+      "id": "module.example",
+      "path": "specs/example/architecture.md",
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "attempt_dir": ".concorde/attempts/feature.example.search",
+    "source_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "owned_artifacts": [
+      {
+        "id": "feature.example.search",
+        "path": "specs/example/features/001-search.md",
+        "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ],
+    "provider_features": [],
+    "denied_paths": []
+  }
+}
+```
+
 ## Architecture Zoom
 
 | Entity ID | Role |
 |---|---|
+| `entity.understanding.planning-context-data` | Defines target serialized context fields separately from caller input and host authority. |
 | `entity.understanding.workspace-resolver` | Supplies the Protocol 13 feature/module/ancestry result that planning-context narrows. |
 | `entity.understanding.planning-context` | Resolves owned and required-interface paths, reason traces, and denies from Protocol 13 and `interfaces.required`. |
 | `entity.understanding.plan-context-skill` | Reports the resolved context receipt for one selected planning attempt. |
@@ -97,6 +172,10 @@ denied.
    the reference remains a summary and its body is not readable by the planning agent.
 
 ## Related Features
+
+- The target typed boundary depends on `feature.capabilities.provide-capability-surfaces` for
+  `contract.capabilities.operation-data`; executable adoption is a separately identified runtime gap.
+
 
 - `feature.lifecycle.plan-attempt` depends on this feature's context receipt before its plan-author
   leaf writes any temporal plan artifact.

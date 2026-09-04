@@ -266,6 +266,20 @@ affected authority directly, run the complete validation commands below, and mer
 commit. Abandon a failed pre-merge worktree or immediately revert a failed merged cutover before
 later work. See [Evolve the Concorde Protocol](specs/concorde/features/003-evolve-concorde-protocol.md).
 
+## Operation Concept and Data Contracts
+
+Start with the [project concept model](specs/concorde/architecture.md#project-concept-model): an
+Operation definition, its agent Skill and executable Python, a particular invocation, project
+configuration, typed runtime input/result, and artifact handoffs are distinct entities.
+The architecture includes cardinalities, ownership/lifetimes, producer-to-consumer field mappings,
+and a current-to-target review. Its entity view and Archify dataflow complement the module map.
+
+The [target JSON boundary](specs/concorde/modules/capabilities/features/002-provide-capability-surfaces.md#target-operation-data-contract)
+separates initialized configuration from per-call input such as `concorde-plan-context@1`.
+It is a design contract awaiting runtime migration; the executable commands documented above still
+use the existing CLI. This revision strengthens authoring/review guidance and reports the gaps
+without changing the shipped Operation ABI.
+
 ## Develop and validate
 
 ```bash

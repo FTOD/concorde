@@ -1,20 +1,17 @@
 <!--
 Sync Impact Report
-- Version change: 8.1.0 -> 8.2.0 (MINOR: adds mandatory attested agent-runtime bootstrap and typed
-  semantic completion for Operation-composed leaves)
-- Modified principles and standards:
-  - B.I now separates integration runtime-bootstrap reads from task authority, accepts a host-bound
-    Protocol 13 receipt as an Operation leaf's workspace gate, and requires Capability Completion
-    Envelope 1 before downstream state admission.
-  - Development gates now treat process exit as transport evidence only and reject missing,
-    malformed, stale, failed, or gate-incomplete semantic completion.
-- Compatibility impact: real Codex/Claude Operation leaves must support native structured output;
-  injected describe/test executors may retain string sentinels. Codex native execution adds only the
-  attested selected executable as a separately digested read-only bootstrap dependency.
-- Required migration: reconcile capabilities/lifecycle specifications and architecture, native
-  render/executor/runtime code, tests, system overview, generated projection, and close R-052/R-053
-  through this explicitly authorized Protocol cutover.
-- Deferred placeholders: none.
+- Version change: 8.2.0 -> 8.3.0 (MINOR: makes project concepts, relationship constraints,
+  configuration/input separation, and explicit data handoffs architecture-review obligations).
+- Modified principles: A.III requires a project concept model before physical inventory; A.IV
+  requires named data contracts and field-level handoffs; review separates design from realization.
+- Compatibility impact: Architecture Source Profile 7, Workspace Protocol 13, Package Manifest 2,
+  current Operation entry points, and runtime behavior are unchanged. This revision changes
+  authoring/review guidance, not the executable Operation ABI.
+- Required migration: reconcile Constitution, ontology, feature/plan templates, canonical guidance,
+  Codex/Claude projections, and Concorde's own architectures in this commit.
+- Named implementation gaps: the target JSON Operation boundary, project operation configuration,
+  and typed domain-result dispatch are specified under contract.capabilities.operation-data;
+  existing CLI/string transport remains explicitly documented until an executable cutover.
 -->
 # Concorde Constitution
 
@@ -93,6 +90,19 @@ grandchildren and child internals remain owned below.
 Rationale: architecture is not a folder list or a feature catalog. Its core is the identity and type
 of the parts plus the relationships that make those parts a system.
 
+The root architecture MUST lead with the project's domain concepts and their relationships before
+its implementation inventory. Define what each concept means, its stable identity, owning module,
+cardinality, lifetime, and source of truth. Distinguish a definition from an instance or execution;
+directories and technology choices alone do not define a concept. A parent owns shared concept
+definitions and exposes child capabilities through their contracts without copying child internals.
+
+For each significant data relationship, architecture MUST identify producer, consumer, named payload
+type/version, carried fields or artifact references, transformation, and failure behavior. Structural
+ownership, execution order, and data transfer are different relationships. A data-flow diagram MAY
+explain transfers, but entity/relationship tables remain necessary for ownership and cardinality.
+Review MUST distinguish implemented behavior, target design, and unverified claims; a structurally
+valid diagram or table does not prove semantic completeness or runtime conformance.
+
 ### A.IV Feature Interfaces Are Human-Readable Promises
 
 A feature is one module-level functionality or interface specified exactly once in
@@ -115,6 +125,14 @@ exist, its owning module architecture changes in the same reviewed lifecycle.
 
 Rationale: an interface belongs beside the functionality a consumer chooses. Separating promises
 into architecture contract inventories obscures how the module is actually used.
+
+Interface design MUST separate reusable project configuration, per-invocation runtime input, and
+host-derived execution context. Configuration has an initialization/change owner and explicit
+defaults; runtime input has a stable type ID, version, field semantics, required/optional rules, and
+an example. Derived identities, resolved paths, and execution receipts are not caller configuration.
+For structured boundaries, specify how producer output fields become consumer input fields and how
+missing, incompatible, or stale data prevents advancement. A field called `context`, `request`, or
+`result` is insufficient unless its contents and authority are defined.
 
 ### A.V Deterministic Validation, Risk-Proportional Review
 
@@ -205,8 +223,10 @@ committed base plus one isolated worktree makes ownership and review explicit.
 Concorde's product MUST be a repeatable, installable, end-to-end workflow that lets a project live by
 Part A: initialize a root architecture, find a feature's module, retrieve bounded context, specify a
 feature and its interface, plan and execute against code reality, validate the entity model, deliver
-the attempt, and publish comprehensible views. Its capability structure MUST have three explicit
-levels: Scripts expose bounded deterministic Tools; canonical leaf Skills invoke Tools and declare
+the attempt, and publish comprehensible views. Its core callable concept is an Operation: one stable definition exposed by one associated Skill
+and realized by at least one executable Python script with one primary entry point. A particular
+invocation and its configuration/input/result are distinct entities. The current Package Manifest 2
+realization MUST preserve three explicit levels: Scripts expose bounded deterministic Tools; canonical leaf Skills invoke Tools and declare
 exposure plus integration-neutral effects; and paired LangGraph Operations compose two or more
 ordered direct Skills or public Operations with state, ordering, branching, retries, gates, or other
 controls. Operation composition MUST be acyclic and nested Operations MUST remain opaque to parents.
@@ -257,7 +277,8 @@ from the isolated target.
 - Canonical distributable sources are root `scripts/`, `skills/`, `operations/`, `templates/`,
   `src/concorde/`, and `agent-assets/` plus Package Manifest 2 in `concorde.json`. Generated
   Codex/Claude surfaces are projections.
-- Operation is reserved for a LangGraph that composes at least two ordered direct capabilities, each
+- In the current Package Manifest 2 realization, a registered Operation is a LangGraph that
+  composes at least two ordered direct capabilities, each
   a canonical leaf Skill or another public paired Operation. Composition cycles are invalid. Initialization,
   context retrieval, exploration, validation, delivery, and other bounded deterministic runtime
   actions are Tools, even when invoked through a CLI subcommand or Skill.
@@ -385,4 +406,4 @@ or materially expands a mandatory obligation, and PATCH clarifies wording. Every
 architecture review includes a constitution check. Reviewers reject unexplained violations,
 invisible boundary changes, duplicated canonical intent, and implementation claims without evidence.
 
-**Version**: 8.2.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-04
+**Version**: 8.3.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-04

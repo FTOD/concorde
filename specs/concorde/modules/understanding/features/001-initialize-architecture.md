@@ -3,6 +3,8 @@ id: feature.understanding.initialize-architecture
 kind: feature
 module: module.concorde.understanding
 related_features:
+  - id: feature.capabilities.provide-capability-surfaces
+    relation: depends_on
   - id: feature.concorde.workflow
     relation: composed_by
   - id: feature.concorde.define-project-ontology
@@ -10,7 +12,8 @@ related_features:
 interfaces:
   provided:
     - interface.concorde.initialize
-  required: []
+  required:
+    - contract.capabilities.operation-data
 ---
 
 # Feature Design: Initialize Architecture
@@ -53,6 +56,9 @@ inventing product structure or overwriting an existing configured hierarchy.
 
 ## Related Features
 
+- The target configuration extension depends on `feature.capabilities.provide-capability-surfaces`
+  for the common Operation data contract; current Proposal 3 remains unchanged.
+
 - `feature.concorde.workflow` composes this feature as the entry point that establishes a project's
   root architecture before any other lifecycle phase can select a feature.
 
@@ -67,3 +73,12 @@ inventing product structure or overwriting an existing configured hierarchy.
 
 - Configuration exists but the root architecture is missing or malformed.
 - The root ID is valid but the target path is a symlink or already owned by unrelated content.
+
+## Concept Completeness and Target Operation Configuration
+
+Initialization Proposal 3 produces a minimal root boundary scaffold, not a complete domain model.
+The initialized project must apply the ontology's concept/relationship review using its own product
+evidence before describing the architecture as complete. The target Operation configuration under
+`operation_configuration` in `.concorde/config.json` is specified by
+`contract.capabilities.operation-data`; adding it to init/config proposals is pending runtime work.
+The current four-file proposal and source-profile keys remain the supported implementation.

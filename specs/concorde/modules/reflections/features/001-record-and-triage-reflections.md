@@ -3,6 +3,8 @@ id: feature.reflections.record-and-triage
 kind: feature
 module: module.concorde.reflections
 related_features:
+  - id: feature.capabilities.provide-capability-surfaces
+    relation: depends_on
   - id: feature.concorde.workflow
     relation: composed_by
   - id: feature.lifecycle.plan-attempt
@@ -19,6 +21,7 @@ interfaces:
   provided:
     - interface.concorde.reflections
   required:
+    - contract.capabilities.operation-data
     - contract.capabilities.permission-bounded-execution
     - contract.lifecycle.plan
 ---
@@ -69,10 +72,69 @@ lifecycle or reflection-worktree mutation. The maintainer uses
 `feature.concorde.evolve-protocol`; its one cutover commit records and closes the disposition in Git
 history without a reflection-owned attempt.
 
+## Target Triage Data Types
+
+These field definitions extend the reflection interface for target
+`contract.capabilities.operation-data`. Current graph dispatch still parses action/route from a
+request string. The target uses the common TypedValue wrapper with these exact fields.
+
+| Type ID @1 | `data` field / JSON type | Meaning and conditional requirements |
+|---|---|---|
+| `concorde-reflections-triage-context` | `action`: enum string | Required: `status`, `investigate`, `implement`, `merge`, or `close`. Never infer it by splitting request prose. |
+| `concorde-reflections-triage-context` | `reflection_ids`: array of unique `R-NNN` strings | Required. Empty means all visible records for read-only status; other actions require an explicit nonempty selection at this typed boundary. The adapter must resolve any user shorthand first. |
+| `concorde-reflections-triage-context` | optional `route`: enum string | Required only for `implement`: `fast-loop` or `plan`; forbidden for other actions. |
+| `concorde-reflections-triage-context` | optional `feature_path`: string | Required for investigate/implement/merge; one canonical existing direct feature shared by the selected records. Forbidden for status/close. Mixed-feature input must be split before dispatch. |
+| `concorde-reflections-triage-context` | optional `request`: nonempty string | Required for investigate/implement/merge; task intent only. Forbidden for status/close. |
+| `concorde-reflections-triage-context` | optional `constraints`: array of nonempty strings | Defaults to `[]` for investigate/implement/merge; forbidden for status/close. |
+| `concorde-reflections-triage-result` | `action`: enum string; `reflection_ids`: array of unique strings; `dispositions`: array of Disposition | Required; action matches input and IDs are the exact resolved selection. |
+| `concorde-reflections-triage-result` | optional `plan_result`: TypedValue `concorde-plan-result@1` | Present only for successful implement/plan, when the plan attempt remains live; omitted after cleanup. |
+| `Disposition` | `reflection_id`: string; `outcome`: enum string | Exactly one per resolved ID; outcome is `inspected`, `planned`, `implemented`, `merged`, `closed`, or `needs-comments`, based on verified state. |
+
+For implement/plan, the parent constructs `concorde-plan-context@1` by copying `feature_path`,
+`request`, and `constraints`, while retaining `reflection_ids` and route state itself. Configuration
+and host workspace are inherited without re-resolution from ambient defaults. The child returns
+only `concorde-plan-result@1`; the parent checks feature identity and refs before tasks/implementation
+or reflection-state advancement. Fast-loop follows its published feature contract and does not
+manufacture a PlanResult. Invalid IDs/routes, mixed features, stale refs, failed child execution, or
+the existing Protocol-evolution guard stop the relevant route before downstream effects.
+
+```json
+{
+  "type_id": "concorde-reflections-triage-context",
+  "schema_version": 1,
+  "data": {"action": "status", "reflection_ids": []}
+}
+```
+
+This is design evidence only. In particular, the typed selection rules require adapter/runtime
+changes; they do not silently change today's reflection-triage/v5 selection behavior.
+
+## Target Contract Examples
+
+### Empty collection status
+
+A status request against an empty collection succeeds with no selected IDs or dispositions.
+
+Illustrative fixture IDs/digests describe the wire shape; they are not live execution receipts.
+
+```json
+{
+  "type_id": "concorde-reflections-triage-result",
+  "schema_version": 1,
+  "data": {
+    "action": "status",
+    "reflection_ids": [],
+    "dispositions": []
+  }
+}
+```
+
 ## Architecture Zoom
 
 | Entity ID | Role |
 |---|---|
+| `entity.reflections.triage-input` | Defines explicit target action/selection/route and task fields. |
+| `entity.reflections.triage-result` | Defines target verified dispositions and any still-live planning result. |
 | `entity.reflections.template` | Defines the Reflection Document v2 grammar every recorded and triaged document must satisfy. |
 | `entity.reflections.collection` | Holds one open `R-NNN.md` document per problem, filed by triage state into `pending/`, `planned/`, or `needs-comments/`. |
 | `entity.reflections.index` | Tracks only the monotonic allocation high-water mark that the queue Tool advances. |
@@ -150,6 +212,10 @@ history without a reflection-owned attempt.
   and `entity.concorde.control-state`.
 
 ## Related Features
+
+- The target typed boundary depends on `feature.capabilities.provide-capability-surfaces` for
+  `contract.capabilities.operation-data`; executable adoption is a separately identified runtime gap.
+
 
 - `feature.concorde.workflow` composes this feature as the reflection-recording and triage stage of
   the end-to-end project workflow.

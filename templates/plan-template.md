@@ -64,6 +64,19 @@ source, tests, descendants, and attempts remain excluded.
    native/outer enforcement, receipt evidence, and Codex/Claude effective-set parity. LangGraph and
    prompt instructions never count as filesystem enforcement.
 
+## Entity and Data Contract Delta
+
+Identify which concepts, owners, identity/lifetime rules, and relationship cardinalities change.
+Separate initialized configuration, typed runtime input/output, and host-derived context. For each
+producer/consumer edge, name its interface, type ID/version, field mapping, and missing/stale-data
+behavior. Trace each current-to-target gap to an implementation and behavioral-evidence task; a
+schema/example in a plan does not establish runtime support. Preserve published nested Operation
+boundaries and expose only the child's contracted result.
+
+| Changed concept / handoff | Current behavior | Target contract | Owning architecture / feature | Code and evidence work |
+|---|---|---|---|---|
+| [stable ID or producer → consumer] | [observed baseline] | [typed delta] | [authority] | [bounded task] |
+
 ## Source Structure
 
 ```text

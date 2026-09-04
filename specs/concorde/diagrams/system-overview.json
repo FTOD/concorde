@@ -2,338 +2,227 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Concorde System Overview",
+    "title": "Concorde：Operation 与数据实体",
+    "locale": "zh-CN",
     "output": "../../../generated/architecture/concorde-system-overview.html",
     "quality_profile": "showcase",
     "legend": {
       "mode": "hidden"
     },
     "viewBox": [
-      1140,
-      840
+      1120,
+      820
     ]
   },
   "components": [
     {
-      "id": "maintainer",
-      "type": "external",
-      "label": "Maintainer",
-      "sublabel": "Selects feature work or a cutover",
-      "pos": [
-        40,
-        290
-      ],
-      "size": [
-        170,
-        68
-      ]
-    },
-    {
-      "id": "protocol",
-      "type": "messagebus",
-      "label": "Concorde Protocol",
-      "sublabel": "Normative selected-feature process",
-      "pos": [
-        40,
-        90
-      ],
-      "size": [
-        170,
-        68
-      ]
-    },
-    {
-      "id": "protocol-cutover",
-      "type": "backend",
-      "label": "Protocol Cutover",
-      "sublabel": "Attempt-free isolated evolution",
-      "pos": [
-        320,
-        680
-      ],
-      "size": [
-        170,
-        68
-      ]
-    },
-    {
-      "id": "lifecycle",
-      "type": "backend",
-      "label": "Lifecycle",
-      "sublabel": "Specify, plan, implement, deliver",
-      "pos": [
-        320,
-        290
-      ],
-      "size": [
-        170,
-        68
-      ]
-    },
-    {
-      "id": "understanding",
-      "type": "backend",
-      "label": "Understanding",
-      "sublabel": "Model, context, validation",
-      "pos": [
-        320,
-        90
-      ],
-      "size": [
-        170,
-        68
-      ]
-    },
-    {
-      "id": "reflections",
-      "type": "messagebus",
-      "label": "Reflections",
-      "sublabel": "One problem per file, triaged",
-      "pos": [
-        320,
-        490
-      ],
-      "size": [
-        170,
-        68
-      ]
-    },
-    {
-      "id": "capabilities",
-      "type": "security",
-      "label": "Capabilities",
-      "sublabel": "Tools, Skills, Operations, policy",
-      "pos": [
-        620,
-        290
-      ],
-      "size": [
-        190,
-        68
-      ]
-    },
-    {
-      "id": "specification",
-      "type": "database",
-      "label": "Specification",
-      "sublabel": "Architectures and features",
-      "pos": [
-        620,
-        90
-      ],
-      "size": [
-        190,
-        68
-      ]
-    },
-    {
-      "id": "distribution",
-      "type": "cloud",
-      "label": "Distribution",
-      "sublabel": "Package and install",
-      "pos": [
-        620,
-        490
-      ],
-      "size": [
-        190,
-        68
-      ]
-    },
-    {
-      "id": "autodocs",
+      "id": "skill",
       "type": "frontend",
-      "label": "Auto-Docs",
-      "sublabel": "Published read model",
+      "label": "Operation Skill",
+      "sublabel": "Agent CLI 的调用与行为契约",
       "pos": [
-        940,
-        90
+        50,
+        80
       ],
       "size": [
-        170,
-        68
+        220,
+        78
       ]
     },
     {
-      "id": "agent",
-      "type": "external",
-      "label": "Coding Agent",
-      "sublabel": "Runs in isolated worktree",
+      "id": "operation",
+      "type": "backend",
+      "label": "Operation 定义",
+      "sublabel": "稳定名称 · 一个能力模块拥有",
       "pos": [
-        940,
-        290
+        450,
+        80
       ],
       "size": [
-        170,
-        68
+        220,
+        78
       ]
     },
     {
-      "id": "git",
-      "type": "external",
-      "label": "Git",
-      "sublabel": "Committed base, worktrees, merge",
+      "id": "python",
+      "type": "backend",
+      "label": "Python 脚本",
+      "sublabel": "指定一个主执行入口",
       "pos": [
-        620,
-        680
+        850,
+        80
       ],
       "size": [
-        170,
-        68
+        220,
+        78
       ]
+    },
+    {
+      "id": "configuration",
+      "type": "database",
+      "label": "项目配置",
+      "sublabel": "init 建立 · 复用于多次执行",
+      "pos": [
+        50,
+        350
+      ],
+      "size": [
+        220,
+        78
+      ],
+      "tag": "目标 JSON 契约"
+    },
+    {
+      "id": "invocation",
+      "type": "backend",
+      "label": "Operation 执行",
+      "sublabel": "一次调用 · 一个工作区",
+      "pos": [
+        450,
+        350
+      ],
+      "size": [
+        220,
+        78
+      ]
+    },
+    {
+      "id": "input",
+      "type": "messagebus",
+      "label": "Runtime Input",
+      "sublabel": "本次任务 · type_id + version",
+      "pos": [
+        850,
+        350
+      ],
+      "size": [
+        220,
+        78
+      ],
+      "tag": "目标 JSON 契约"
+    },
+    {
+      "id": "artifacts",
+      "type": "database",
+      "label": "ArtifactRef",
+      "sublabel": "id · path · digest",
+      "pos": [
+        50,
+        620
+      ],
+      "size": [
+        220,
+        78
+      ],
+      "tag": "保留原有所有权"
+    },
+    {
+      "id": "result",
+      "type": "messagebus",
+      "label": "Operation Result",
+      "sublabel": "领域数据与执行凭据分开",
+      "pos": [
+        450,
+        620
+      ],
+      "size": [
+        220,
+        78
+      ],
+      "tag": "目标 JSON 契约"
+    },
+    {
+      "id": "contract",
+      "type": "security",
+      "label": "Data Contract",
+      "sublabel": "字段 · 类型 · 约束 · 版本",
+      "pos": [
+        850,
+        620
+      ],
+      "size": [
+        220,
+        78
+      ],
+      "tag": "提供方 feature 定义"
     }
   ],
   "connections": [
     {
-      "id": "maintainer-invokes-lifecycle",
-      "from": "maintainer",
-      "to": "lifecycle",
-      "label": "invokes phases",
-      "variant": "emphasis"
+      "id": "definition-skill",
+      "from": "operation",
+      "to": "skill",
+      "label": "恰好 1 个"
     },
     {
-      "id": "maintainer-authorizes-cutover",
-      "from": "maintainer",
-      "to": "protocol-cutover",
-      "label": "authorizes",
-      "variant": "emphasis",
-      "fromSide": "bottom",
-      "toSide": "left",
-      "via": [
-        [
-          125,
-          620
-        ],
-        [
-          260,
-          620
-        ],
-        [
-          260,
-          714
-        ]
-      ],
+      "id": "definition-script",
+      "from": "operation",
+      "to": "python",
+      "label": "至少 1 个"
+    },
+    {
+      "id": "run-definition",
+      "from": "invocation",
+      "to": "operation",
+      "label": "执行 1 个定义"
+    },
+    {
+      "id": "config-run",
+      "from": "configuration",
+      "to": "invocation",
+      "label": "固定配置快照"
+    },
+    {
+      "id": "input-run",
+      "from": "input",
+      "to": "invocation",
+      "label": "1 个类型化输入"
+    },
+    {
+      "id": "run-result",
+      "from": "invocation",
+      "to": "result",
+      "label": "1 个终态结果",
       "labelAt": [
-        185,
-        610
+        560,
+        520
       ]
     },
     {
-      "id": "protocol-governs-understanding",
-      "from": "protocol",
-      "to": "understanding",
-      "label": "governs context"
+      "id": "result-artifacts",
+      "from": "result",
+      "to": "artifacts",
+      "label": "0..N 个引用"
     },
     {
-      "id": "cutover-evolves-protocol",
-      "from": "protocol-cutover",
-      "to": "protocol",
-      "label": "evolves outside lifecycle",
-      "variant": "dashed",
-      "fromSide": "bottom",
-      "toSide": "left",
-      "via": [
-        [
-          405,
-          780
-        ],
-        [
-          20,
-          780
-        ],
-        [
-          20,
-          124
-        ]
-      ],
-      "labelAt": [
-        108,
-        770
+      "id": "contract-input",
+      "from": "contract",
+      "to": "input",
+      "label": "定义输入结构"
+    },
+    {
+      "id": "contract-result",
+      "from": "contract",
+      "to": "result",
+      "label": "定义输出结构"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "定义、执行与存储",
+      "items": [
+        "Operation 定义跨多次执行复用；一次执行不同于 feature attempt。",
+        "Skill 和 Python 配对已经存在；JSON 领域契约尚待运行时迁移。"
       ]
     },
     {
-      "id": "cutover-uses-git",
-      "from": "protocol-cutover",
-      "to": "git",
-      "label": "records cutover",
-      "variant": "dashed"
-    },
-    {
-      "id": "lifecycle-calls-understanding",
-      "from": "lifecycle",
-      "to": "understanding",
-      "label": "resolves and validates",
-      "fromSide": "top",
-      "toSide": "bottom"
-    },
-    {
-      "id": "lifecycle-records-reflections",
-      "from": "lifecycle",
-      "to": "reflections",
-      "label": "records problems",
-      "fromSide": "bottom",
-      "toSide": "top",
-      "labelAt": [
-        300,
-        424
+      "dot": "amber",
+      "title": "数据与权限",
+      "items": [
+        "配置不包含 feature_path；runtime input 不覆盖项目设置。",
+        "ArtifactRef 保留原有生命周期；数据类型不能替代权限凭据。"
       ]
-    },
-    {
-      "id": "reflections-composes-lifecycle",
-      "from": "reflections",
-      "to": "lifecycle",
-      "label": "triages through",
-      "variant": "dashed",
-      "fromSide": "top",
-      "toSide": "bottom",
-      "labelAt": [
-        462,
-        424
-      ]
-    },
-    {
-      "id": "capabilities-launches-lifecycle",
-      "from": "capabilities",
-      "to": "lifecycle",
-      "label": "launches under policy"
-    },
-    {
-      "id": "capabilities-configures-agent",
-      "from": "capabilities",
-      "to": "agent",
-      "label": "enforces sandbox"
-    },
-    {
-      "id": "agent-isolates-with-git",
-      "from": "agent",
-      "to": "git",
-      "label": "starts from committed HEAD",
-      "variant": "emphasis",
-      "labelAt": [
-        865,
-        572
-      ]
-    },
-    {
-      "id": "understanding-validates-specification",
-      "from": "understanding",
-      "to": "specification",
-      "label": "validates"
-    },
-    {
-      "id": "specification-feeds-autodocs",
-      "from": "specification",
-      "to": "autodocs",
-      "label": "publishes",
-      "variant": "dashed"
-    },
-    {
-      "id": "distribution-projects-capabilities",
-      "from": "distribution",
-      "to": "capabilities",
-      "label": "projects public skills",
-      "fromSide": "top",
-      "toSide": "bottom"
     }
   ]
 }

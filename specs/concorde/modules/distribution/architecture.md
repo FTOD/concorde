@@ -32,6 +32,19 @@ graph semantics remain outside Distribution. Distribution does not own project s
 the project's root `.venv`, `node_modules` or package-manager state, coding-agent behavior after
 projection, Skill prompt semantics, Operation graph semantics, or Viewer UI behavior.
 
+## Operation Contract Boundary
+
+Distribution installs Operation definitions and projects each associated Skill into an agent CLI;
+it does not create invocation state or own domain input types. Package Manifest 2 currently owns
+three exact pairs, their launcher, and managed-runtime verification. The root concept's one-or-more
+Python realization rule is presently satisfied by one primary `operation.py` per pair.
+
+The target JSON invocation contract requires coordinated launcher/Skill projection and installation
+tests when runtime support lands. Project Operation settings belong to the target init/config
+contract, not package defaults silently repeated by installed scripts. Installation must preserve
+project-authored configuration and expose any required migration explicitly. This specification
+revision does not change installed payloads to an unsupported JSON ABI.
+
 ## Entities
 
 | Entity ID | Type | Definition | Locator |

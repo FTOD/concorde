@@ -56,6 +56,20 @@ features, system overview, and findings; do not compare the project with starter
 approval. After the maintainer explicitly accepts and saves that exact proposal at a safe
 project-relative path, invoke `python3 scripts/concorde.py init --apply --proposal <path>`.
 
+## Concept-model review
+
+Treat the generated root as a minimal scaffold. Before calling it a complete architecture, identify
+the project's core concepts from user intent and repository evidence, with stable IDs, owners,
+identity/lifetime rules, and relationship cardinalities. Separate concepts from physical files and
+definitions from executions. Explain significant producer/consumer payloads, type IDs/versions,
+field mappings, and failures in text; use a dataflow view when it clarifies those transfers.
+
+Classify reusable configuration separately from runtime input and host-derived context. Specify
+which settings initialization establishes, where they live, and how later calls consume them.
+Do not invent supported configuration keys or write a future schema into the current proposal.
+Report the seed's remaining semantic gaps and use the authorized architecture-editing boundary to
+resolve them; structural proposal validation alone does not prove a complete project model.
+
 ## Project docsite
 
 When the maintainer asks for a project docsite, or `$ARGUMENTS` includes `--docsite`, run the

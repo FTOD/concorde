@@ -107,6 +107,14 @@ attempt.
    `**Outcome**` field, not status wording in the boundary or narrative, is what delivery reads;
    only `passed` authorizes completion.
 
+## Trace data contracts into work
+
+For each planned entity/handoff delta, include the owning definition, caller and producer/consumer
+changes, typed field validation, configuration initialization, projection update, and compatibility
+decision where affected. Verify a successful handoff and rejection of missing, wrong-version, or
+stale input at the real boundary. Task order must make the producer's output contract available
+before wiring the consumer. Keep target-only designs distinguishable from completed runtime work.
+
 ## Consistency and reflection recording
 
 Check every requirement/interface/architecture change has task coverage, every task path is within

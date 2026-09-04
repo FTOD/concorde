@@ -123,7 +123,7 @@ class OntologyWorkflowContractTests(unittest.TestCase):
         design = (REPOSITORY_ROOT / evolution.path).read_text(encoding="utf-8")
         for entity in ("entity.concorde.protocol", "entity.concorde.protocol-cutover", "entity.concorde.git"):
             self.assertIn(entity, architecture)
-        self.assertIn("**Version**: 8.2.0", constitution)
+        self.assertIn("**Version**: 8.3.0", constitution)
         self.assertIn("no attempt or checklist", constitution)
         self.assertIn("Agent Mutations Start in Isolated Worktrees", constitution)
         self.assertIn("committed `HEAD`", constitution)

@@ -28,6 +28,18 @@ orchestration, Build Manifest 13, Docusaurus materialization, publication valida
 promotion. It does not own maintained intent, `.concorde` project control/framework bytes, Concorde
 validator semantics, Archify rendering, Docusaurus internals, or user-authored sources.
 
+## Operation Contract Boundary
+
+Auto-Docs publishes the root concept inventory, constrained relationships, target/current review,
+and architecture-owned diagrams. It must preserve the distinction between Operation definition,
+invocation, and data type, plus the labels identifying unimplemented target contracts. Publication
+does not implement or validate the JSON Operation ABI.
+
+The root entity/component view explains structure; its dataflow explains typed producer/consumer
+transfers, while the module collaboration view explains capability ownership. All are projections
+of textual architecture and feature contracts, with separate declared outputs and normal freshness
+checks. Diagram nodes do not create new entities or take ownership from a feature's data definition.
+
 ## Entities
 
 | Entity ID | Type | Definition | Locator |

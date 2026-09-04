@@ -70,6 +70,17 @@ Use stable finding IDs by category and severity: CRITICAL for constitutional or 
 HIGH for blocking requirement/interface/entity/task gaps, MEDIUM for ambiguity or incomplete
 coverage, and LOW for wording/redundancy. Provide a concrete location and recommendation for each.
 
+## Concept and data-flow review
+
+Prioritize missing project concepts and undefined transfers before layout/style findings. For each
+significant entity verify identity, owner, cardinality, lifetime, and source of truth; distinguish
+Operation definitions, invocations, and stored artifacts. For each cross-boundary transfer trace
+producer output fields to a consumer's named input type/version and governing interface. Separate
+initialized configuration, runtime input, and host-derived context. Flag opaque context blobs,
+free-form prior-result assumptions, missing field/null/default rules, and unspecified stale/failure
+handling. Walk one success and one rejected handoff. Compare the target contract with actual code;
+a diagram or structural validator pass does not prove runtime support. Keep the review read-only.
+
 ## Mutation boundary and reflections
 
 Do not edit design, architecture, attempt artifacts, code, tests, control state, or generated output.

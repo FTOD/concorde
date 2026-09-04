@@ -125,6 +125,17 @@ an explicit dependency. Reject a selected path outside the providing module's di
 10. Persist Concorde selection in `.concorde/feature.json`; it is control state, not design
    authority.
 
+## Entity and handoff completeness
+
+Start from the project's core concepts rather than directory names. Check stable identity, owner,
+definition-versus-instance, lifetime/source of truth, and structural relationship cardinality in
+the owning architecture. For each data-bearing interface separate initialized configuration,
+runtime input, and host-derived context. Define stable payload type IDs/versions, fields/types,
+required/default/null rules, and JSON examples. Record producer → consumer field mappings and
+missing/incompatible/stale-input behavior; `context` or `prior results` without field semantics is
+an unresolved contract. Use entity tables for structure and a DFD for transfers when useful.
+Distinguish target design from supported invocation and name the current implementation gap.
+
 ## Quality gate
 
 Before reporting readiness, verify:

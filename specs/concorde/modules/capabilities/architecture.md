@@ -44,10 +44,24 @@ packaging/installation/managed venv (`module.concorde.distribution`), or the age
 runtime attestation trusts only the exact selected external executable; it never owns that file or
 admits its package directory as task context.
 
+## Operation Contract Boundary
+
+The root's `entity.concorde.operation` defines the shared concept. This module owns its executable
+packaging/launch mechanism and the target `contract.capabilities.operation-data`: separate
+configuration and runtime-input JSON, stable type/version resolution, and result admission. It does
+not own planning or reflection payload semantics. The existing `entity.capabilities.operation-pair`
+is the concrete Manifest 2 specialization with one primary Python file and one associated Skill.
+
+`OperationState.request` and `CapabilityResult.output` are currently strings; prior leaf outputs are
+rendered into prompts and nested dispatch serializes child result lists. Capability Completion
+Envelope 1 validates execution identity/status/gates but does not type those domain fields. The
+target domain envelopes, initialized config snapshot, and typed dispatch remain explicitly pending.
+
 ## Entities
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
+| `entity.capabilities.operation-data-contract` | schema | Target common JSON configuration/invocation/result grammar; declared in contract.capabilities.operation-data and not yet wired into the runtime. | `concept:Operation Data Contract 1` |
 | `entity.capabilities.posix-launcher` | script | Invokes the colocated Python adapter on POSIX systems. | `scripts/concorde.sh` |
 | `entity.capabilities.powershell-launcher` | script | Invokes the same Python adapter on PowerShell systems. | `scripts/concorde.ps1` |
 | `entity.capabilities.python-adapter` | program | Adds the colocated package `src` directory to imports and enters the CLI. | `scripts/concorde.py` |
@@ -80,6 +94,8 @@ admits its package directory as task context.
 
 | Source | Predicate | Target | Description |
 |---|---|---|---|
+| `entity.capabilities.operation-data-contract` | `defines` | `entity.concorde.runtime-input` | Defines the common type/version wrapper; domain fields remain with the providing feature. |
+| `entity.capabilities.operation-data-contract` | `defines` | `entity.concorde.operation-result` | Defines target domain-result admission separately from current execution/completion evidence. |
 | `entity.concorde.package-manifest` | `declares` | `entity.capabilities.python-adapter` | Binds the Tool dispatcher entry point that every projected Skill invokes. |
 | `entity.concorde.package-manifest` | `declares` | `entity.capabilities.operation-launcher` | Binds the managed Operation launcher, Python floor, lock, and venv path in `operation_runtime`. |
 | `entity.concorde.package-manifest` | `declares` | `entity.capabilities.skill-sources` | Inventories every leaf Skill exactly once across public and internal exposure. |

@@ -56,3 +56,10 @@ Tool never repairs or migrates a project.
 After structural validation succeeds, run Archify showcase validation for every declared system
 overview. Require the nine artifact checks, zero composition errors, and zero warnings; a basic
 four-check receipt is not acceptance. Report structural and Archify results separately.
+
+## Semantic review boundary
+
+Report structural validation separately from semantic architecture review. A successful check does
+not prove that core concepts, cardinality/lifetime rules, or producer-to-consumer payload mappings
+are complete, nor that target JSON Operation contracts are implemented. Name those limits in the
+report and preserve the validation Tool's actual result.

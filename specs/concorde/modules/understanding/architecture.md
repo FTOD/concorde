@@ -37,10 +37,28 @@ projections; and the `concorde-init`, `concorde-context`, `concorde-ask`, `conco
 references. It does not own lifecycle phase prompts, the capability runtime/policy compiler/process
 launcher, reflection semantics, installation, or publication.
 
+## Operation Contract Boundary
+
+Understanding provides initialization and host-resolved context to `entity.concorde.operation`.
+`entity.understanding.config` currently stores source-profile/root selection only. The target
+Operation configuration is separately typed under `operation_configuration` in that file and must
+be established by a future reviewed init/config proposal; it is not yet written by Proposal 3.
+
+This module owns `concorde-planning-context@1` field semantics in its bounded-planning-context
+feature. It derives feature identity, admitted file references/reasons, attempt path, and source
+digest; a caller's `feature_path` selects input but cannot dictate those derived facts. The internal
+Skill named `concorde-plan-context` is distinct from the caller data type of that spelling owned by
+Lifecycle. Current resolution returns a Python record; its target serialization remains pending.
+
+The generic initializer emits a minimal root scaffold. Structural validation proves Profile 7
+shape/reference conformance, not that all product concepts, cardinalities, or data handoffs have
+been adequately defined. The ontology's authoring/review contract supplies that semantic review.
+
 ## Entities
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
+| `entity.understanding.planning-context-data` | type | Target concorde-planning-context@1: host-resolved feature/module identity, bounded artifact references/reasons, attempt path, exclusions, and source digest. | `concept:concorde-planning-context@1` |
 | `entity.understanding.model` | package | Immutable Tool result, module, entity, relation, interface, context, and finding records. | `src/concorde/model.py` |
 | `entity.understanding.repository-loader` | program | Discovers Profile 7 module architectures, direct features, diagrams, and control authorities. | `src/concorde/understanding/repository.py#ProjectRepository.load` |
 | `entity.understanding.context-builder` | program | Projects one bounded module or feature altitude. | `src/concorde/understanding/context.py#bounded_context` |
@@ -73,6 +91,7 @@ launcher, reflection semantics, installation, or publication.
 
 | Source | Predicate | Target | Description |
 |---|---|---|---|
+| `entity.understanding.planning-context` | `generates` | `entity.understanding.planning-context-data` | Target: serializes the resolved context for Lifecycle; the consumer must bind it to its host receipt. |
 | `entity.understanding.repository-loader` | `reads_from` | `entity.concorde.specification` | Loads canonical module architectures, direct features, and declared diagrams. |
 | `entity.understanding.repository-loader` | `reads_from` | `entity.concorde.control-state` | Loads configuration, selection, attempt, and reflection state alongside specification sources. |
 | `entity.understanding.validator` | `reads_from` | `entity.understanding.repository-loader` | Validates the same loaded package model used by every Tool. |

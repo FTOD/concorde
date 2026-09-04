@@ -21,6 +21,7 @@ interfaces:
   provided:
     - contract.capabilities.agent-surface
     - contract.capabilities.skill-contract
+    - contract.capabilities.operation-data
   required:
     - contract.capabilities.tools
     - contract.understanding.feature-workspace
@@ -137,10 +138,196 @@ the managed runtime launcher; no shell activation is required.
 - **Example**: The plan Operation launches internal read-only context then temporal author leaves
   with distinct effect-derived policies.
 
+
+### Target Operation Data Contract
+
+### `contract.capabilities.operation-data` — Separate configuration and typed runtime data
+
+- **Consumer**: Operation authors, agent Skill adapters, nested Operation dispatchers, and project init.
+- **Direction**: Initialized configuration plus typed caller input to one typed domain result.
+- **Entry points**: Target Python boundary `run(configuration, runtime_input, *, host_context)`;
+  a target process adapter reads one UTF-8 JSON invocation from stdin and writes one JSON result to
+  stdout. Logs use stderr. Domain fields are not positional arguments or individual CLI flags.
+- **Inputs**: One `concorde-operation-invocation@1` containing separate `configuration` and `input`
+  values as defined below. The installed Skill loads project configuration; callers supply runtime
+  input. The trusted host checks that the submitted configuration matches its project snapshot.
+- **Outputs**: One `concorde-operation-result@1`, whose `output` type is fixed by the selected
+  Operation. Host execution/completion receipts remain separate validation evidence.
+- **Obligations**: Validate type/version/fields before effects, bind the configuration and host
+  workspace, validate domain output before handing it on, and keep nested operations opaque.
+- **Failures**: Unknown type/version/field, invalid field or configuration, selection mismatch,
+  incompatible handoff, stale reference, or invalid semantic completion blocks downstream work.
+  Failure after execution may leave partial authorized artifacts; no automatic rollback is implied.
+- **Compatibility**: **Target design, not the current executable ABI.** Package Manifest 2 currently
+  invokes paired graph parsers with CLI arguments. Runtime adoption requires one explicit executable
+  cutover of parsers, schemas, dispatch, init/config, projected Operation Skills, and tests. It must
+  not silently reinterpret old arguments or fall back from malformed JSON to prose.
+- **Example**: The complete planning invocation below carries integration configuration separately
+  from `feature_path` and task intent.
+- **Implementing entities**: `entity.capabilities.operation-pair`,
+  `entity.capabilities.operation-launcher`, `entity.capabilities.operation-runtime`,
+  `entity.capabilities.operation-data-contract`, and `module.concorde.understanding`.
+
+- **Field definitions**: The following sections define the target serialized contract.
+
+#### Type identity and field rules
+
+A **TypedValue** is exactly `{ "type_id": string, "schema_version": integer, "data": object }`.
+`(type_id, schema_version)` resolves exactly one field definition; it does not select executable code.
+`operation_id` selects a registered Operation. The internal Skill named `concorde-plan-context` and
+the payload type with that spelling occupy separate namespaces. Moving a script does not rename a
+type. Version 1 rejects unknown fields and versions; incompatible changes increment the version and
+update producer/consumer bindings together. Optional fields have only the defaults stated below;
+null is rejected unless explicitly allowed. All listed fields are required unless marked optional.
+
+The common version-1 objects are:
+
+| Object | Fields / JSON types | Meaning and constraints |
+|---|---|---|
+| `concorde-operation-invocation@1` | `type_id` (constant), `schema_version` (1), `operation_id` (registered string), `mode` (`describe-policy` or `execute`), `configuration` (TypedValue), `input` (TypedValue) | A transport envelope, not a TypedValue itself. The registered Operation fixes the input/output types. No other fields are accepted. |
+| `concorde-operation-configuration@1.data` | `integration` (`codex` or `claude`), `enforcement` (`native` or `outer`) | Both explicitly configured during init; no per-script default. `outer` requires independently verified host enforcement. Neither setting grants filesystem or external-action authority. |
+| `concorde-operation-result@1` | `type_id` (constant), `schema_version` (1), `operation_id` (registered string, or null before resolution), `invocation_id` (nonempty host-issued string), `mode` (same as request, or null before decoding), `status` (`succeeded`, `described`, `blocked`, or `failed`), `output` (TypedValue or null), `errors` (Error array) | A transport envelope. `succeeded` requires execute mode, the registered domain output type, no errors, and valid completion evidence. `described` requires describe-policy mode, null output, and no errors; it never satisfies a data dependency. Blocked/failed results have null output and at least one error. Null operation/mode is allowed only when rejection occurs before those fields can be resolved. |
+| `Error` | `code` (string), `field` (JSON Pointer string), `message` (nonempty string), optional `stage` (string, absent outside a stage) | Codes: `invalid_json`, `unknown_type`, `unsupported_version`, `invalid_field`, `configuration_mismatch`, `workspace_mismatch`, `stale_reference`, `incompatible_handoff`, `execution_failed`. Use the empty pointer for a whole-request error. |
+| `ArtifactRef` | `id` (nonempty stable artifact string), `path` (nonempty project-relative POSIX string), `digest` (`sha256:` plus 64 lowercase hex digits) | No absolute/drive path, parent traversal, or symlink. Consumer rechecks bytes and existing permission rights; a reference grants no read access. Directory inventories use refs to individual files. An absent/deleted artifact is not a live reference. |
+
+The host derives project/framework roots, stable feature identity, attempt paths, source digest,
+invocation identity, policy, and execution receipts. They are not accepted from arbitrary caller
+fields. A resolved context payload may report those facts, but the host validates it against its
+own resolver/receipt before use. Domain data never substitutes for a permission receipt.
+
+#### Project configuration lifecycle
+
+The target location is `.concorde/config.json` under a new `operation_configuration` key containing
+the configuration TypedValue. Existing `profile_version`, `root_module_id`, and
+`specification_root` keep their meanings. The initializer proposes the selected integration and
+enforcement setting together with the project config; apply establishes them once. Existing
+projects need an explicit configuration proposal instead of implicit defaults or silent overwrite.
+Until that implementation exists, current init creates only the existing source-profile settings.
+
+Every invocation loads one complete project configuration; version 1 has no per-call or per-Operation
+override merge. The host snapshots and binds it with the work context, and all nested calls inherit
+that snapshot. A later project edit applies only to new runs. No runtime input may supply integration,
+framework location, credentials, sandbox grants, or an authorization override. Install-time
+integration selection and reflection-triage settings are separate existing authorities until the
+runtime migration explicitly reconciles them.
+
+#### Complete target example
+
+The following is the JSON a future Skill/host adapter would send on the Python entry point's stdin.
+It is not a command supported by the current launcher.
+
+```json
+{
+  "type_id": "concorde-operation-invocation",
+  "schema_version": 1,
+  "operation_id": "concorde-plan",
+  "mode": "execute",
+  "configuration": {
+    "type_id": "concorde-operation-configuration",
+    "schema_version": 1,
+    "data": {"integration": "codex", "enforcement": "native"}
+  },
+  "input": {
+    "type_id": "concorde-plan-context",
+    "schema_version": 1,
+    "data": {
+      "feature_path": "specs/example/features/001-search.md",
+      "request": "Plan the approved search change",
+      "constraints": []
+    }
+  }
+}
+```
+
+#### Target result example
+
+This illustrative result shows the wrapper/domain distinction; its fixture digests are not live
+execution evidence. Real hosts must additionally validate completion and workspace receipts.
+
+```json
+{
+  "type_id": "concorde-operation-result",
+  "schema_version": 1,
+  "operation_id": "concorde-plan",
+  "invocation_id": "example-invocation-1",
+  "mode": "execute",
+  "status": "succeeded",
+  "output": {
+    "type_id": "concorde-plan-result",
+    "schema_version": 1,
+    "data": {
+      "feature_id": "feature.example.search",
+      "feature_path": "specs/example/features/001-search.md",
+      "attempt_dir": ".concorde/attempts/feature.example.search",
+      "source_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "artifacts": [
+        {
+          "id": "attempt:feature.example.search:plan.md",
+          "path": ".concorde/attempts/feature.example.search/plan.md",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        {
+          "id": "attempt:feature.example.search:tasks.md",
+          "path": ".concorde/attempts/feature.example.search/tasks.md",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  },
+  "errors": []
+}
+```
+
+#### Rejected handoff example
+
+An otherwise valid planning invocation with `input.schema_version: 2` has no supported input
+binding. The host emits the following blocked result before launching either planning stage:
+
+```json
+{
+  "type_id": "concorde-operation-result",
+  "schema_version": 1,
+  "operation_id": "concorde-plan",
+  "invocation_id": "example-rejected-invocation",
+  "mode": "execute",
+  "status": "blocked",
+  "output": null,
+  "errors": [{
+    "code": "unsupported_version",
+    "field": "/input/schema_version",
+    "message": "concorde-plan-context requires schema_version 1"
+  }]
+}
+```
+
+#### Domain type ownership and handoff validation
+
+| Operation / boundary | Input type @1 | Output type @1 | Field-definition authority |
+|---|---|---|---|
+| `concorde-plan` | `concorde-plan-context` | `concorde-plan-result` | [Planning](../../lifecycle/features/002-plan-attempt.md#target-planning-data-types) |
+| Planning context provider | `concorde-plan-context` | `concorde-planning-context` | [Bounded context](../../understanding/features/007-bound-planning-context.md#target-planning-context-payload) |
+| Internal plan author | `concorde-plan-author-context` | `concorde-plan-result` | [Planning](../../lifecycle/features/002-plan-attempt.md#target-planning-data-types) |
+| `concorde-standard-dev-loop` | `concorde-standard-dev-loop-context` | `concorde-standard-dev-loop-result` | [Standard loop](../../lifecycle/features/006-standard-development-loop.md#target-standard-loop-data-types) |
+| `concorde-reflections-triage` | `concorde-reflections-triage-context` | `concorde-reflections-triage-result` | [Reflection triage](../../reflections/features/001-record-and-triage-reflections.md#target-triage-data-types) |
+
+This table specifies types; `concorde.json` remains the current executable capability inventory.
+Before a consumer runs, its host resolves the declared output-to-input mapping, checks both versions,
+validates all required fields and references, and verifies feature/worktree identity. It forwards
+only the mapped data. The parent receives a nested Operation's domain result, never a JSON string
+of the child's internal `CapabilityResult` list. Existing `CapabilityResult.output: str`, prompt
+`prior_results`, and native completion checks are the current implementation baseline, not evidence
+of target-domain conformance.
+
+Runtime migration evidence must cover configuration load/snapshot inheritance, wrong-operation
+types, missing fields, old versions, unknown fields, stale/cross-feature refs, child failures, and a
+complete standard-loop/triage → plan → context/author → parent round trip. Schema-valid data alone
+must never advance a failed or unreceipted execution.
+
 ## Architecture Zoom
 
 | Entity ID | Role |
 |---|---|
+| `entity.capabilities.operation-data-contract` | Defines target JSON envelopes and type/version admission separately from domain field ownership. |
 | `entity.capabilities.skill-sources` | Owns one canonical directory per leaf Skill. |
 | `entity.capabilities.operation-sources` | Owns one canonical Python/Markdown pair per Operation. |
 | `entity.capabilities.skill-prompt` | Supplies a complete public/internal leaf contract with exposure/effects. |

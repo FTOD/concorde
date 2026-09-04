@@ -112,7 +112,50 @@ Concorde applies the partition to itself. Each child of `module.concorde` is one
 A module named after an artifact type (`skills`, `operations`, `runtime`, `scripts`, `models`) or a
 residual bucket (`misc`, `common`, `shared`) is the signature of the partition this profile rejects.
 
-## Capability Source Model
+## Architecture Authoring and Review Contract
+
+The architecture's first job is to define the system's concepts and how they collaborate. Module
+and file inventories are useful implementation navigation after that model is understood. For
+Concorde the organizing concept is an Operation: a named callable unit exposed by one associated
+Skill and realized by at least one executable Python script. A definition, its installed projection,
+and a particular execution are different things. The shipped Package Manifest 2 specialization is
+the paired LangGraph described below; it currently has exactly one primary `operation.py` per
+Operation. The concept model does not turn existing public leaf Skills into registered Operations
+or claim support for arbitrary script layouts.
+
+Apply this review sequence when authoring or changing architecture:
+
+1. Identify the project's own significant concepts from user intent and repository evidence. Define
+   each once with a stable ID, type, non-circular meaning, owner, identity rule, lifetime, and source
+   of truth. Separate definitions, runtime instances, payloads, and stored artifacts. Do not impose
+   Concorde's Operation vocabulary on an unrelated product.
+2. Define structural relationships with direction, cardinality, ownership, and invariants. Define
+   execution dependencies separately from data handoffs; `calls` does not explain a payload.
+3. For each entry point separate project configuration, caller runtime input, and host-derived
+   context. Name initialization/default/change behavior. Define each input/output type ID and
+   version, fields/types, requiredness, allowed values, empty/null behavior, and a conforming example.
+4. For each handoff name the producer, consumer, governing interface, source fields, destination
+   fields, transformation, artifact lifetime, and rejection behavior. References carry identity,
+   safe locator, and freshness evidence; natural-language prior results are not a typed contract.
+5. Walk one successful use and one missing/incompatible/stale-input failure using those definitions.
+   A reader must be able to state what crosses every boundary without reading scripts or prompts.
+6. Use an entity/component view for structure and a dataflow view when payload movement is the
+   question. Give every diagram node/edge a textual counterpart. Do not use a DFD as the sole
+   ownership model or a stage-order diagram as evidence of data compatibility.
+7. Compare against actual code and tests. Name concrete current gaps and their owning feature;
+   label future contracts as target design and keep current invocation examples truthful. Do not
+   silently change runtime metadata or claim a schema/validator exists because prose requires it.
+
+An architecture review reports missing definitions and broken handoffs as primary findings, ahead
+of folder-layout or diagram polish. Structural validation checks references and shape; these
+semantic questions require review. Initialization's minimal seed is only a boundary scaffold and
+must be expanded from project evidence before being described as a complete product model.
+
+For Concorde, the [root concept model](../architecture.md) owns shared abstractions;
+[Operation data contracts](../modules/capabilities/features/002-provide-capability-surfaces.md#target-operation-data-contract)
+own the common target transport; domain payload fields stay with the feature that provides them.
+
+## Current Capability Source Model (Package Manifest 2)
 
 ```text
 <project>/
@@ -126,8 +169,10 @@ residual bucket (`misc`, `common`, `shared`) is the signature of the partition t
         └── SKILL.md                      # required user-facing operation skill
 ```
 
-- A script is a basic runnable tool. It may parse inputs, inspect or mutate within its explicit
-  contract, and return deterministic results; it does not define a conversational capability graph.
+- A Tool script in the current `scripts/` inventory exposes a basic deterministic Tool. It may
+  parse inputs and inspect or mutate within its explicit contract; that inventory contains no
+  conversational graph. An Operation Python entry point is also an executable script in the project
+  concept model, but is inventoried under `operations/`, not under Tool scripts.
 - A skill is a leaf capability whose canonical authority is one `skills/<skill-name>/SKILL.md`. It
   may invoke scripts/tools, but it does not orchestrate multiple skills into a loop. Its metadata
   declares `exposure: public|internal` and, when composed, exact read/write/network/credential
@@ -165,9 +210,9 @@ residual bucket (`misc`, `common`, `shared`) is the signature of the partition t
 | `Entity relationship` | A typed, directed structural or behavioral connection between architecture entities, such as contains, imports, calls, implements, exposes, reads, writes, produces, consumes, validates, renders, or depends on. | `connects` → `Architecture entity`; `governs` → `Interaction` |
 | `Interaction` | An ordered or conditional collaboration among architecture entities described at the current module level. | `uses` → `Entity relationship`; `supports` → `Feature` |
 | `Tool` | One basic deterministic runnable capability, normally exposed by a script or program entry point. It performs a bounded action but does not compose conversational skills. | `implemented by` → `Script`; `invoked by` → `Skill`; `returns` → `Tool result` |
-| `Script` | A directly runnable source entry point for one or more basic tools. Scripts are the lowest executable layer and contain no multi-skill LangGraph topology. | `implements` → `Tool`; `used by` → `Skill` |
+| `Script` | Executable source entry point. A Tool script exposes bounded deterministic actions; an Operation script executes its callable definition. Package Manifest 2 inventories these separately under scripts/ and operations/. | `realizes` → `Tool` or `Operation`; `invoked by` → `Skill` or runtime |
 | `Skill` | One public or internal leaf capability defined by a canonical `skills/<skill-name>/SKILL.md`. Its complete prompt may call tools, contains no multi-skill loop, and owns integration-neutral effects when composed. | `invokes` → `Tool`; `composed by` → `Operation`; `declares` → `Exposure`; `declares` → `Effects`; `projected to` → `Agent skill` when public |
-| `Operation` | A public controlled LangGraph above the leaf layer that composes ordered direct Skills or Operations into an acyclic stateful workflow. Its canonical directory contains exactly `operation.py` and its associated `SKILL.md`. | `composes` → `Skill` or `Operation`; `implemented by` → `operation.py`; `exposed by` → `Operation skill`; `uses` → `LangGraph` |
+| `Operation` | A stable named callable definition exposed by one associated Skill and realized by at least one executable Python script with one primary entry point. The current Manifest 2 specialization is a paired controlled LangGraph; a particular invocation is a separate entity. | `exposed by` → `Operation skill`; `realized by` → `Script`; `instantiated by` → invocation; composite specialization `composes` → `Skill` or `Operation` |
 | `Operation skill` | The required Markdown surface paired with an operation Python graph and installed to users as an agent skill. | `describes` → `Operation`; `invokes` → `operation.py`; `projected to` → `Agent skill` |
 | `Exposure` | `public` makes a leaf projectable; `internal` keeps it package-loadable only for Operations. Operations are always public. | `controls` → `Agent skill`; `declared by` → `Skill` |
 | `Effects` | Leaf-owned path-role reads/writes plus network and credential posture that Operation bindings may narrow but never widen. | `declared by` → `Skill`; `compiled by` → `Operation runtime`; `enforced by` → `Coding-agent sandbox` |
@@ -188,6 +233,9 @@ This feature governs the following root-architecture entities; their definitions
 
 | Entity ID | Type | Role in this feature |
 |---|---|---|
+| `entity.concorde.operation` | concept | Defines the project-wide callable unit independently of its physical source paths. |
+| `entity.concorde.operation-invocation` | concept | Separates one execution from the definition and the feature attempt. |
+| `entity.concorde.data-handoff` | type | Names typed producer/consumer mappings, distinct from control order. |
 | `module.concorde.understanding` | module | Discovers and models recursive `architecture.md` modules, direct feature files, typed entities/relations, interfaces, control-state attempts/reflections, evidence, and projections; resolves Protocol 13; validates the profile. |
 | `module.concorde.capabilities` | module | Realizes the Script/Tool, Skill, and Operation structure, its metadata grammar, package capability validation, and public projection. |
 | `module.concorde.lifecycle` | module | Owns the stable-ID attempt and cleanup-only delivery that this profile defines. |
@@ -512,6 +560,15 @@ features.
   explicitly authorizes primary-worktree mutation. Primary staged, unstaged, untracked, and ignored
   paths MUST remain outside authority and untouched; deterministic mutating entry points MUST reject
   the primary worktree by default and expose only an explicit override.
+
+- **FR-041**: Architecture authoring and review MUST start with project concepts, identity,
+  ownership, lifetime, and relationship cardinality; implementation inventories alone are incomplete.
+- **FR-042**: Significant data handoffs MUST name producer/consumer, payload type/version, field
+  mapping, governing interface, reference lifetime, and missing/incompatible/stale-data behavior.
+- **FR-043**: Interface review MUST distinguish initialized project configuration, caller runtime
+  input, and host-derived context; fixed type IDs require readable field definitions and examples.
+- **FR-044**: Review MUST explicitly distinguish target design from code-supported contracts;
+  validation success MUST NOT be presented as evidence that an unimplemented JSON ABI is available.
 
 ## Success Criteria
 

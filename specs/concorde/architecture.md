@@ -17,6 +17,12 @@ diagrams:
   - source: diagrams/system-overview.json
     kind: architecture
     output: generated/architecture/concorde-system-overview.html
+  - source: diagrams/module-collaboration.json
+    kind: architecture
+    output: generated/architecture/concorde-module-collaboration.html
+  - source: diagrams/operation-dataflow.json
+    kind: dataflow
+    output: generated/architecture/concorde-operation-dataflow.html
 ---
 
 # Architecture: Concorde
@@ -41,10 +47,44 @@ without self-hosting the cutover in an attempt. It does not own a coding-agent/m
 project's own virtual environment, project product code, Archify rendering, Docusaurus internals, or
 Understand Anything graph semantics.
 
+## Project Concept Model
+
+**Operation is Concorde's core execution concept.** It is a stable named callable unit with exactly
+one associated Skill for an agent CLI and at least one executable Python script; one primary entry
+point is designated. The Skill describes invocation and behavior, while Python executes it. A
+particular invocation is separate from that reusable definition. A composite Operation additionally
+declares its ordered/conditional children and the data each child consumes and produces.
+
+The installed specialization today consists of three paired LangGraphs: `concorde-plan` and
+`concorde-standard-dev-loop` in Lifecycle, and `concorde-reflections-triage` in Reflections. Each has
+one `operation.py` and one associated `SKILL.md`. Public leaf Skills remain leaf capabilities in
+Package Manifest 2; an installed Skill name alone does not make a registered Operation.
+
+The shared model below is project-owned; concrete Operations and their domain payloads stay owned
+by the capability modules. Configuration expresses reusable project choices such as integration.
+Runtime input expresses the current task, such as `feature_path`. The host derives workspace paths,
+stable feature identity, and receipts. Typed results and explicit field mappings connect invocations.
+Modules partition responsibility; directories locate implementations of this model.
+
+**Realization boundary:** paired Operations and permission/completion receipts exist today. The
+separate JSON configuration/input envelopes, project-wide Operation defaults, and typed domain
+handoffs below are target contracts for runtime migration. They are not supported CLI examples.
+The current/target review and owner map below identify that work explicitly.
+
 ## Entities
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
+| `entity.concorde.operation` | concept | Reusable named callable definition, owned by one capability module, exposed by one associated Skill and realized by one or more Python scripts with one primary entry point. | `concept:Operation definition` |
+| `entity.concorde.operation-skill` | document | One Operation's canonical agent invocation/behavioral surface; installed Codex/Claude copies are projections, not additional definitions. | `concept:Operation Skill` |
+| `entity.concorde.execution-script` | script | Executable Python authority realizing an Operation; script paths locate code but do not identify the Operation. | `concept:Operation execution script` |
+| `entity.concorde.operation-configuration` | configuration | Target project-owned reusable Operation settings, established during initialization and snapshotted for a run; excludes task input and credentials. | `concept:Operation configuration` |
+| `entity.concorde.runtime-input` | type | Target per-invocation caller data with a stable type ID/version, complete fields, and no ambient project-setting overrides. | `concept:Typed runtime input` |
+| `entity.concorde.data-contract` | schema | A named versioned data definition owned by its providing feature, including fields, requiredness, constraints, and compatibility rules. | `concept:Operation data contract` |
+| `entity.concorde.operation-invocation` | concept | One execution of one Operation definition in one host-bound workspace, with one configuration snapshot and one typed runtime input. | `concept:Operation invocation` |
+| `entity.concorde.operation-result` | type | Target typed success/failure result of one invocation; separates domain data from execution/completion evidence. | `concept:Operation result` |
+| `entity.concorde.artifact-reference` | type | Stable artifact identity, project-relative locator, and digest for data kept in its owning durable or temporal store. | `concept:Artifact reference` |
+| `entity.concorde.data-handoff` | type | Explicit mapping of a successful producer result to one consumer input, bound to compatible contracts and the same selected work context. | `concept:Operation data handoff` |
 | `module.concorde.understanding` | module | Knows what a project is: models it as a validated Profile 7 hierarchy, loads it deterministically, bounds one feature's context and permission paths, explores alignment with code evidence, and answers grounded questions. | `specs/concorde/modules/understanding/architecture.md` |
 | `module.concorde.lifecycle` | module | Carries one selected feature from specification through permission-bounded planning, dependency-ordered tasks, reconciled implementation, deterministic validation gates, and cleanup-only delivery, including the bounded fast loop. | `specs/concorde/modules/lifecycle/architecture.md` |
 | `module.concorde.reflections` | module | Records one tracked problem per file during workflow phases and triages it through the conditional permission-bounded reflection Operation until maintainer disposition closes it. | `specs/concorde/modules/reflections/architecture.md` |
@@ -67,6 +107,17 @@ Understand Anything graph semantics.
 
 | Source | Predicate | Target | Description |
 |---|---|---|---|
+| `entity.concorde.operation` | `has_entry_point` | `entity.concorde.operation-skill` | One definition has exactly one canonical Skill; each such Skill exposes one Operation. Installation may generate several integration projections. |
+| `entity.concorde.operation` | `composed_of` | `entity.concorde.execution-script` | One definition has one or more executable Python scripts and exactly one primary entry point; the shipped pair currently uses one operation.py. |
+| `entity.concorde.operation-invocation` | `realizes` | `entity.concorde.operation` | Each invocation runs exactly one definition; a definition may have zero or many invocations. |
+| `entity.concorde.operation-configuration` | `configures` | `entity.concorde.operation-invocation` | Target: one initialized project configuration can serve many runs; each run pins exactly one immutable effective snapshot, inherited by nested Operations. |
+| `entity.concorde.operation-invocation` | `reads_from` | `entity.concorde.runtime-input` | Target: exactly one typed input object per invocation, validated before side effects; task data cannot widen configuration or host authority. |
+| `entity.concorde.data-contract` | `defines` | `entity.concorde.runtime-input` | Target: every input has exactly one resolvable type_id/schema_version pair with field semantics owned by its provider. |
+| `entity.concorde.data-contract` | `defines` | `entity.concorde.operation-result` | Target: every domain result has exactly one declared type/version; semantic completion evidence alone is not that domain schema. |
+| `entity.concorde.operation-invocation` | `generates` | `entity.concorde.operation-result` | Target: one terminal result for an admitted invocation; only validated success data may feed a consumer. |
+| `entity.concorde.operation-result` | `contains` | `entity.concorde.artifact-reference` | Target: zero or more artifact references; each retains its actual owner/lifetime instead of copying the artifact into global state. |
+| `entity.concorde.data-handoff` | `reads_from` | `entity.concorde.operation-result` | Target: names one successful producer result and its selected fields; fan-in names each producer explicitly. |
+| `entity.concorde.data-handoff` | `transforms` | `entity.concorde.runtime-input` | Target: maps selected fields into one consumer's declared input, rejecting missing, incompatible, cross-feature, or stale data. |
 | `entity.concorde.package-manifest` | `declares` | `module.concorde.capabilities` | Inventories every Script, leaf Skill, and Operation pair by globally unique safe name. |
 | `entity.concorde.package-manifest` | `declares` | `entity.concorde.templates` | Inventories every complete Markdown format reference. |
 | `entity.concorde.package-manifest` | `declares` | `module.concorde.auto-docs` | Inventories the docsite adapter as the packaged template root. |
@@ -103,6 +154,62 @@ Understand Anything graph semantics.
 | `entity.concorde.coding-agent` | `reads_from` | `entity.concorde.specification` | Reads only the bounded architecture and feature context its policy admits. |
 | `entity.concorde.source-code` | `realizes` | `entity.concorde.specification` | Code is the actual implementation of every module's entities and features. |
 | `entity.concorde.source-code` | `tested_by` | `entity.concorde.tests` | Tests provide bounded executable evidence. |
+
+## Identity, Ownership, and Lifetime
+
+| Concept | Identity / cardinality | Owner and source of truth | Lifetime |
+|---|---|---|---|
+| Operation definition | Stable `concorde-*` name; one owner, one Skill, one primary Python entry point | Its capability module and canonical pair, inventoried by `concorde.json` | Across many runs; paths may change without changing identity |
+| Invocation | Target host-issued `invocation_id`; exactly one definition, config snapshot, and input | Trusted runtime; input JSON cannot invent workspace authority | One run, including its nested calls; distinct from a feature attempt |
+| Configuration | Target `concorde-operation-configuration@1`; one effective snapshot shared by a run | Project configuration, with settings established by init | Reused until explicitly changed; in-flight runs retain their snapshot |
+| Runtime input / result | Target `(type_id, schema_version)` identifies a type, not an instance or Skill | Field definitions in the providing feature's interface | One invocation / one producer-to-consumer transfer |
+| Feature and attempt | Stable `feature.*` identity; at most one active attempt per feature | Durable feature file; Lifecycle owns `.concorde/attempts/<feature-id>/` | Feature persists; attempt is removed by delivery |
+| Artifact reference | Target `id`, `path`, `digest`; never path alone | Original artifact's owner; references grant no additional read rights | Expires when bytes change or delivery removes the attempt |
+| Host context | Resolved feature/workspace identity and digest-bound receipts | Understanding resolves; Capabilities binds/enforces | Bound to current source/worktree and checked before use |
+
+## Operation Data Flow
+
+The [Operation dataflow](diagrams/operation-dataflow.json) is a **target data-contract view** of the
+planning boundary shared by the standard loop and reflection triage. The
+[system overview](diagrams/system-overview.json) shows the shared concept structure; the
+[module collaboration view](diagrams/module-collaboration.json) retains the implementation ownership
+map. These views answer different questions and share the definitions above.
+
+In the following table, `@1` means `schema_version: 1`; each type's `data` fields are defined by its
+owning feature. A host workspace receipt is bound alongside data, never accepted as caller authority.
+
+| Producer | Consumer | Payload and exact mapping | Storage / rejection | Governing feature |
+|---|---|---|---|---|
+| Project init/configuration | Any Operation invocation | `concorde-operation-configuration@1`: copy the validated `integration` and `enforcement` settings into an immutable snapshot | Project config persists; missing settings block execution instead of each script silently selecting Codex | `feature.capabilities.provide-capability-surfaces` |
+| Standard development loop | Plan Operation | `concorde-standard-dev-loop-context@1` → `concorde-plan-context@1`: copy `feature_path`, `request`, `constraints` after specification; inherit config/worktree | Re-resolve the authored feature and reject absent or mismatched identity | `feature.lifecycle.standard-development-loop` |
+| Reflection triage, implement/plan route | Plan Operation | `concorde-reflections-triage-context@1` → `concorde-plan-context@1`: copy `feature_path`, `request`, `constraints`; retain `reflection_ids` in the parent only | Recheck selected reflections and route; unrelated records are not implicit plan inputs | `feature.reflections.record-and-triage` |
+| Plan Operation | Understanding context provider | `concorde-plan-context@1`: `feature_path` selects one workspace; request/constraints remain task intent | Read-only resolution; dependency access follows published required interfaces | `feature.lifecycle.plan-attempt` |
+| Understanding context provider | Plan author | `concorde-planning-context@1` → `concorde-plan-author-context@1`: copy the resolved context plus the original `concorde-plan-context@1` task | Context carries feature, owned/provider artifact refs and source digest; ambiguity/staleness stops the author | `feature.understanding.bound-planning-context` |
+| Plan author / Plan Operation | Standard loop or triage parent | `concorde-plan-result@1`: `feature_id`, `feature_path`, `attempt_dir`, `source_digest`, `artifacts`; parent checks identity and forwards only these fields to tasks/implementation | Attempt remains authoritative; parents do not parse child traces or inherit arbitrary prior prose | `feature.lifecycle.plan-attempt` |
+| Validation and delivery | Parent final result | Typed final domain result plus separately bound completion evidence; copy feature identity and terminal outcome | Failed validation stops delivery; delivered attempt refs must not be treated as live artifacts | `feature.lifecycle.standard-development-loop` |
+
+The current runtime does not yet implement these domain envelopes: its nested dispatch returns
+JSON-encoded lists of `CapabilityResult` and its leaf prompts receive string prior results. The
+target requires explicit adapters and domain validation at these exact boundaries, preserving
+existing workspace, permission, and completion checks.
+
+## Review of Current Architecture and Required Runtime Work
+
+| Finding | Specification correction in this revision | Current implementation / next owner |
+|---|---|---|
+| Project-level inventory hid the core Operation concept behind folders and modules | Shared concepts, ownership/lifetime table, constrained relationships, and complementary diagrams above | Existing three Operation pairs are concrete instances; module ownership stays unchanged |
+| `--integration`, task request, and `--feature-path` were mixed in parser arguments | Separate project config, typed runtime input, and host-derived context | Capabilities: introduce JSON boundary/config snapshot; Understanding: extend init through a reviewed proposal |
+| No fixed domain input type identified a planning request | `concorde-plan-context@1` fields and examples in the planning feature | Lifecycle: replace positional request parsing in the executable Operation cutover |
+| Stage ordering obscured data transfer; nested results were opaque strings | Explicit producer/consumer mappings and domain result contracts | Capabilities/Lifecycle/Reflections: validate types, map fields, and retain nested opacity |
+| Semantic completion could be mistaken for a domain data schema | Domain payload and execution evidence have separate authorities | Existing Capability Completion Envelope 1 remains supported; typed domain results are additional target work |
+| Initializer/validator success appeared to imply a complete concept model | Prompt/template review checks distinguish semantic completeness from structural checks | Init still produces a minimal seed; Profile 7 validation still checks structure/references, not this full semantic review |
+| Installation and publication implications were not visible | All module boundaries below link to the shared contract and its realization status | Distribution must migrate/project the new invocation only when executable support exists; Auto-Docs publishes source-declared dataflow |
+
+This revision changes architecture-authoring obligations and specifications. It does not migrate the
+three executable Operation parsers, project configuration on disk, Package Manifest 2, Workspace
+Protocol 13, or the installed launcher ABI. Runtime adoption must reconcile those code paths,
+schemas, tests, canonical Operation Skills, and installation verification together. No current
+command should be rewritten to the target JSON syntax before that cutover.
 
 ## Relationship Types
 

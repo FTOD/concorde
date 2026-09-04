@@ -19,6 +19,7 @@ interfaces:
   provided:
     - contract.lifecycle.standard-development-loop
   required:
+    - contract.capabilities.operation-data
     - contract.capabilities.permission-bounded-execution
     - contract.lifecycle.plan
     - contract.capabilities.skill-contract
@@ -52,10 +53,85 @@ worktree's exact committed `HEAD` and runs all four stages there. Policy descrip
 read-only in the primary checkout. The execution entry point rejects the primary worktree unless the
 maintainer supplied the explicit primary-mutation override.
 
+## Target Standard Loop Data Types
+
+These are target domain types for `contract.lifecycle.standard-development-loop` under
+`contract.capabilities.operation-data`; the executable graph still uses the CLI/string request ABI.
+Every value uses the common TypedValue wrapper, with required fields unless stated otherwise.
+
+| Type ID @1 | `data` fields / JSON types | Meaning and constraints |
+|---|---|---|
+| `concorde-standard-dev-loop-context` | `feature_path` (string), `request` (nonempty string), optional `constraints` (array of nonempty strings, default `[]`) | One canonical direct feature path and task intent. Specification may author a planned path; the host must resolve its authored stable ID before plan. Configuration is inherited separately. |
+| `concorde-standard-dev-loop-result` | `feature_id` (string), `feature_path` (string), `completed_capabilities` (array of strings), `delivery` (DeliveryOutcome) | Only produced after all six direct capabilities succeed. Order is exactly specify, plan, tasks, implement, validate, deliver using their `concorde-*` names. Child planner internals are not included. |
+| `DeliveryOutcome` | `status` (constant `delivered`), `attempt_dir` (string), `retained_source_digest` (SHA-256 string) | Historical path of the removed selected attempt and current retained-source evidence. The path is not a live ArtifactRef. |
+
+| Producer → consumer | Field mapping and gate |
+|---|---|
+| Specify → parent host | Re-resolve the authored `feature_path` into a stable feature ID and current workspace; never carry a guessed ID from the planned filename. |
+| Parent → Plan | Construct `concorde-plan-context@1` by copying `feature_path`, `request`, `constraints` from the original input. Pass the already bound worktree and configuration through the host. |
+| Plan → Tasks | Validate `concorde-plan-result@1`; map `feature_id`, `feature_path`, `attempt_dir`, `source_digest`, and the `plan.md`/`tasks.md` ArtifactRefs into the task-generation context. |
+| Tasks → Implement | Rehash the updated `tasks.md` and other consumed attempt files; retain selected feature identity and only mapped task/plan refs. Old plan-stage task digests are no longer current. |
+| Implement → Validate | Resolve the changed source/test/spec set and current evidence in the same workspace; test completion is not inferred from task prose. |
+| Validate → Deliver | Pass the actual successful validation evidence; obtain a fresh Delivery Proposal 9 through the existing delivery contract and verify its current digest before cleanup. |
+| Deliver → Parent | Return DeliveryOutcome and the six completed public/direct capability identities; never return removed attempt files as live refs. |
+
+The table specifies data obligations for existing leaf interfaces; it does not invent new public
+Operations for tasks, implementation, validation, or delivery. Their concrete typed adapters must
+be reconciled with those owning interfaces during runtime migration. Any missing, incompatible,
+cross-feature, stale, or failed producer result prevents its consumer. A JSON list of all prior
+capability output strings is not a conforming handoff.
+
+```json
+{
+  "type_id": "concorde-standard-dev-loop-context",
+  "schema_version": 1,
+  "data": {
+    "feature_path": "specs/concorde/modules/lifecycle/features/002-plan-attempt.md",
+    "request": "Implement the approved planning feature change",
+    "constraints": []
+  }
+}
+```
+
+## Target Contract Examples
+
+### Completed loop
+
+The removed attempt path records an outcome; it is no longer a live ArtifactRef.
+
+Illustrative fixture IDs/digests describe the wire shape; they are not live execution receipts.
+
+```json
+{
+  "type_id": "concorde-standard-dev-loop-result",
+  "schema_version": 1,
+  "data": {
+    "feature_id": "feature.example.search",
+    "feature_path": "specs/example/features/001-search.md",
+    "completed_capabilities": [
+      "concorde-specify",
+      "concorde-plan",
+      "concorde-tasks",
+      "concorde-implement",
+      "concorde-validate",
+      "concorde-deliver"
+    ],
+    "delivery": {
+      "status": "delivered",
+      "attempt_dir": ".concorde/attempts/feature.example.search",
+      "retained_source_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  }
+}
+```
+
 ## Architecture Zoom
 
 | Entity ID | Role |
 |---|---|
+| `entity.lifecycle.standard-loop-input` | Defines target task fields mapped into the nested plan input. |
+| `entity.lifecycle.standard-loop-result` | Defines the final domain result after validated cleanup. |
+| `entity.lifecycle.plan-result` | Supplies typed feature/attempt refs for downstream tasks and implementation. |
 | `entity.lifecycle.standard-dev-loop` | Declares four stages, six direct capabilities, and exact occurrence bindings. |
 | `entity.lifecycle.standard-dev-loop-skill` | Installs the public Operation and documents nested planning/policy behavior. |
 | `module.concorde.capabilities` | Loads canonical direct capability bodies/effects, preserves opaque nesting, attaches per-leaf launches, compiles policy, and builds the LangGraph. |
@@ -109,6 +185,10 @@ maintainer supplied the explicit primary-mutation override.
   `.concorde/framework` and its inner graph alone launches context/author.
 
 ## Related Features
+
+- The target typed boundary depends on `feature.capabilities.provide-capability-surfaces` for
+  `contract.capabilities.operation-data`; executable adoption is a separately identified runtime gap.
+
 
 - `feature.capabilities.permission-bounded-execution` supplies the per-leaf enforcement contract every
   direct occurrence in this Operation launches under.

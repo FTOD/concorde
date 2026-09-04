@@ -101,11 +101,32 @@ interfaces:
 - **Example**: [representative use when serialized or non-obvious]
 - **Implementing entities**: [stable entity IDs from module architecture]
 
+### Configuration and Runtime Data
+
+<!-- Include for a data-bearing boundary; write None with a reason when not applicable.
+  Configuration: owner, initialization/storage, defaults, change rules, and snapshot scope.
+  Runtime input/output: stable type_id + schema_version and a conforming JSON example.
+  Host-derived context: resolved identities, paths, receipts; never implicit caller authority.
+  Name any target-only ABI and the current implementation gap explicitly.
+-->
+
+| Class / type ID and version | Field | JSON type | Required / default | Meaning and constraints |
+|---|---|---|---|---|
+| [configuration or runtime payload] | [field] | [type] | [rule] | [semantic meaning, source, null/empty behavior] |
+
+### Data Handoffs
+
+| Producer | Consumer | Contract / payload type | Source → destination fields | Lifetime / failure |
+|---|---|---|---|---|
+| [entity ID] | [entity ID] | [interface, type ID, version] | [copy or explicit transformation] | [freshness and rejection] |
+
 ## Architecture Zoom
 
 <!--
   Reference only entities visible in the providing module architecture or permitted ancestry. Explain
   feature-specific collaboration without redefining entity identity, type, ownership, or locator.
+  Identify definition versus execution, ownership cardinalities, data sources of truth, and
+  artifact lifetimes. A directory list or sequence of calls is not the entity/data model.
   Diagrams belong to module architecture and may be linked here only as explanatory projections.
 -->
 

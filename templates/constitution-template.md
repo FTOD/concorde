@@ -9,9 +9,9 @@
 <!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
 
 ### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
+<!-- Example: II. Explicit Entity and Data Contracts -->
 [PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+<!-- Example: Define project concepts, ownership/cardinality, and data handoffs before physical layout; separate initialized configuration from typed runtime input and host-derived context; specify JSON fields, versions, producer/consumer mappings, and failures; label target contracts and current implementation gaps -->
 
 ### [PRINCIPLE_3_NAME]
 <!-- Example: III. Test-First (NON-NEGOTIABLE) -->

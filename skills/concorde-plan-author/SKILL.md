@@ -115,6 +115,15 @@ state. Planning must leave durable sources byte-identical.
 7. Keep ignore/tool setup inspection read-only unless one dependency-ready task explicitly names a
    trace token, detected tool, exact setup file, and authorized edit.
 
+## Plan the entity and contract delta
+
+Use the admitted architecture's core concepts to identify definition/instance, identity, ownership,
+cardinality, lifetime, and producer/consumer changes. Separate project configuration from typed
+runtime input/output and host-derived context. For every changed handoff record its type ID/version,
+field mapping, and missing/incompatible/stale-data behavior. Map current-to-target gaps to concrete
+source, schema, example, projection, and behavioral-evidence tasks within the admitted context.
+Do not claim target JSON transport is implemented or redefine durable entities in the temporal plan.
+
 ## Reflection recording
 
 Planning and task generation are the normal points at which reflections are created. Create one only
