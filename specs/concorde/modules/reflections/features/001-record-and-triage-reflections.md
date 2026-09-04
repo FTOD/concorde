@@ -100,7 +100,8 @@ history without a reflection-owned attempt.
 - **Consumer**: Lifecycle plan/task phases, maintainer, and supported reflection investigator/implementer agents.
 - **Direction**: Encountered problem to problem-only document; explicit triage action to completed analysis,
   proposed resolution, human-intervention decision, plans/worktree commits/merge, deterministic
-  removal for merged small fixes, or maintainer disposition for other routes.
+  removal of the document and its plan for merged small fixes, or maintainer disposition for other
+  routes.
 - **Entry points**: Lifecycle plan and task phases' reflection-recording rules, the installed
   `concorde-reflections-triage` Operation Skill and paired graph, and `reflections_queue.py
   --allocate-id` / `--relocate` / `--remove-merged` / `--remove-closed` / `--validate-entry` Tools.
@@ -114,9 +115,10 @@ history without a reflection-owned attempt.
   decision/rationale, preserved User Comments; an exact relocation manifest moving the completed
   document into `planned/` or `needs-comments/`; validated plan/worktree state including the plan's
   verification record and its derived `current | stale | unverified` state; implementer commit;
-  merge result; exact removed file manifest for eligible small fixes; exact removed manifest with
-  resolution notes for closed documents; and a bounded validation result for one requested entry with
-  attributable findings and separately counted unrelated findings.
+  merge result; exact removed document-and-plan manifest for eligible small fixes; exact removed
+  manifest with resolution notes and plan paths for closed documents; the identifiers of orphan
+  plans whose document no longer exists; and a bounded validation result for one requested entry
+  with attributable findings and separately counted unrelated findings.
 - **Obligations**: Keep one prose authority per reflection and a metadata-only allocation index;
   never reuse removed IDs; avoid secrets; make status model-free and investigators read-only; keep
   recording separate from analysis; retain User Comments; keep every document in the bucket its
@@ -129,7 +131,8 @@ history without a reflection-owned attempt.
   that same worktree; remove a document only when (a) its `small` `fast-loop` plan is `merged`,
   `recorded_under` matches the reflection feature, its commit is present in current history, and
   automated merge validation passed, or (b) a maintainer closed it with `status: resolved |
-  dismissed` and a `resolution_note`; never treat a reflection as behavioral intent.
+  dismissed` and a `resolution_note`, and delete the reflection's plan in that same atomic action
+  so that no plan outlives its document; never treat a reflection as behavioral intent.
 - **Failures**: Primary-worktree mutation without explicit authorization, required input present only
   in primary dirty state, malformed/unresolved documents or index, recording-time triage content, incomplete
   triage, a document filed in a bucket its front matter does not require, invalid
@@ -182,11 +185,12 @@ history without a reflection-owned attempt.
    primary `HEAD`; `implement` chooses exactly fast-loop or public nested plan in that same worktree,
    and only validated commits merge.
 6. After a `small` `fast-loop` merge, the parent marks the plan `merged` and invokes deterministic
-   removal of exactly the matching reflection file without changing the allocation index.
+   removal of exactly the matching reflection file and its plan without changing the allocation
+   index.
 7. A maintainer records `status: dismissed` with a `resolution_note` on a `needs-comments/`
-   document. `close` runs `--remove-closed` on exactly that ID, removing exactly that file, and the
-   parent commits the removal with the resolution note in the commit message so the reason survives
-   in Git history.
+   document. `close` runs `--remove-closed` on exactly that ID, removing exactly that file together
+   with its plan when one exists, and the parent commits the removal with the resolution note in the
+   commit message so the reason survives in Git history.
 8. `implement` runs on a plan whose problem was verified at an earlier commit. The investigate stage
    re-verifies at the current HEAD: if the behavior still reproduces, the parent records the new
    `verified`/`verified_commit` and implementation proceeds; if it does not, the parent sets the plan
@@ -218,10 +222,10 @@ history without a reflection-owned attempt.
   conditional, isolated, ownership-bounded, and validated before merge.
 - **FR-009**: After validation and merge, a plan with `route: fast-loop`, `effort: small`, `status:
   merged`, a recorded commit reachable from current `HEAD`, and a matching open document MUST be
-  eligible for deterministic removal of exactly that file without maintainer approval.
-- **FR-010**: Removal MUST validate every requested ID before mutation, report exact removed paths,
-  preserve every non-selected document and `index.json`, and roll back on any ineligible, missing,
-  malformed, stale, or write failure.
+  eligible for deterministic removal of exactly that file and its plan without maintainer approval.
+- **FR-010**: Removal MUST validate every requested ID before mutation, report exact removed
+  document and plan paths, preserve every non-selected document, every other plan, and
+  `index.json`, and roll back on any ineligible, missing, malformed, stale, or write failure.
 - **FR-011**: Plans on `specify`, `dismiss`, or `blocked` routes and failed/unmerged/non-small plans
   MUST NOT remove their reflection documents automatically; they wait for maintainer disposition.
 - **FR-012**: `.concorde/reflections/index.json` MUST contain only schema version and a monotonic
@@ -250,10 +254,10 @@ history without a reflection-owned attempt.
   An allocated-but-unused ID MUST stay retired; the high-water mark MUST NOT be lowered.
 - **FR-018**: A reflection with `status: resolved | dismissed` and a `resolution_note` MUST be
   removed through the deterministic `--remove-closed` action, which MUST validate every requested ID
-  before mutation, refuse open documents, remove exactly the selected files atomically with
-  rollback, preserve every other document and `index.json`, never lower the high-water, and report
-  each removed ID with its resolution note for the removal commit. Buckets MUST only hold open
-  documents once `close` has run.
+  before mutation, refuse open documents, remove exactly the selected documents and their plans
+  (when present) atomically with rollback, preserve every other document, every other plan, and
+  `index.json`, never lower the high-water, and report each removed ID with its resolution note and
+  plan path for the removal commit. Buckets MUST only hold open documents once `close` has run.
 - **FR-019**: Every investigation and every implementation attempt MUST begin by re-verifying the
   recorded Observed behavior against the current checkout HEAD, and MUST persist that verification
   (`verified` date, full `verified_commit`, and a `Verification` section with method and outcome) on
@@ -264,6 +268,11 @@ history without a reflection-owned attempt.
   further attempt; a problem that does not reproduce MUST route to `dismiss`, never to
   implementation. The queue Tool MUST derive and report each plan's verification state as `current`,
   `stale`, `unverified`, or `unknown` on every read rather than storing it.
+- **FR-021**: A plan MUST NOT outlive its reflection. Every deterministic removal of a reflection
+  document (`--remove-merged`, `--remove-closed`) MUST delete `plans/R-NNN.md` in the same atomic
+  action when it exists, report its path, and roll the plan back together with the document on any
+  failure. A plan whose document no longer exists is an orphan that `status` MUST report by ID and
+  that no action MAY use to recreate or reopen a document.
 - **FR-021**: A reflection resolution that changes normative Concorde Protocol semantics MUST be
   rejected before implement/merge/close mutation and routed to `feature.concorde.evolve-protocol`;
   read-only status/investigation MAY establish the problem and decision without authorizing a
@@ -280,7 +289,12 @@ history without a reflection-owned attempt.
 - A closed and removed reflection recurs; it receives the next never-used ID and may cite the removed
   ID in Evidence.
 - A removed small problem recurs after closure; it receives the next never-used ID.
-- Several merged IDs are requested together and one is ineligible; every reflection file remains.
+- Several merged IDs are requested together and one is ineligible; every reflection file and plan
+  remains.
+- A merged or closed reflection has no plan on this machine because plans are machine-local
+  scratch state; removal deletes the document alone and reports `plan: null`.
+- A plan file remains for a reflection that was removed before plans were deleted with documents;
+  `status` lists it as an orphan and nothing recreates the document from it.
 - The index high-water is below a current document or retained plan ID; allocation and removal stop.
 - A recorder has a suspected fix or believes a maintainer is needed; it still records only problem
   facts and leaves both judgments for triage.

@@ -67,8 +67,9 @@ or renames a reflection by hand. A document whose folder disagrees with its fron
 placement breach (`CONCORDE-REFLECT-005`); every helper action except `--relocate` refuses such a
 collection, so run `--relocate` with no IDs to repair drift before continuing. Buckets only ever hold
 open reflections: once a maintainer closes one (`status: resolved | dismissed` plus a
-`resolution_note`), the `close` action removes its document with `--remove-closed`, and Git history
-keeps the record.
+`resolution_note`), the `close` action removes its document together with its plan through
+`--remove-closed`, and Git history keeps the record. No plan outlives its reflection; `status` lists
+any orphan plan whose document is gone.
 
 ## Verification before every attempt
 
@@ -90,7 +91,7 @@ before any further attempt.
 ## Actions
 
 - `status`: run the helper with `--json`, report open, pending-triage, plan, closed, and per-bucket
-  counts, and stop.
+  counts plus any orphan plans, and stop.
 - `investigate [N | R-NNN ...]`: use the Operation's investigate stage and one investigator per
   reflection; the investigator re-verifies the problem at HEAD first. For each result, the parent
   checks the returned `verified_commit` against that HEAD, validates and writes the returned triage
@@ -106,10 +107,11 @@ before any further attempt.
   (`--set R-NNN status=stale`) and stops every downstream node. Only validated `fast-loop` plans
   whose `verification` is `current` are eligible.
 - `merge`: require clean tracked state, merge one branch at a time, validate, and remove only a
-  matching merged small fast-loop entry through the helper.
+  matching merged small fast-loop entry, document and plan together, through the helper.
 - `close [R-NNN ...]`: no model capability. Run `--remove-closed` (named IDs, or every closed
-  document when none are given), then commit the removal with each resolution_note in the commit
-  message so the reason survives in history. Never remove an open document this way.
+  document when none are given); it deletes each document together with its plan when one exists.
+  Then commit the removal with each resolution_note in the commit message so the reason survives
+  in history. Never remove an open document this way.
 
 Before work, run `python3 scripts/run-operation.py operations/concorde-reflections-triage/operation.py "$ARGUMENTS" --framework-prefix . --describe-policy` and
 require only the capabilities reachable for the explicit action/route:

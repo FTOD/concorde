@@ -94,6 +94,7 @@ class ReflectionsQueueTests(unittest.TestCase):
                     "closed": 0,
                     "total": 3,
                     "buckets": {"pending": 3, "planned": 0, "needs-comments": 0},
+                    "orphan_plans": [],
                 },
             )
 
@@ -181,14 +182,22 @@ class ReflectionsQueueTests(unittest.TestCase):
             collection = root / ".concorde/reflections"
             retained = (collection / "pending" / "R-003.md").read_bytes()
             index = (collection / "index.json").read_bytes()
+            retained_plan = (collection / "plans" / "R-003.md").read_bytes()
             result = json.loads(run_queue(root, "--remove-merged", "R-002", "R-001").stdout)
             self.assertEqual(result["removed"], ["R-001", "R-002"])
             self.assertEqual(result["removed_paths"], [".concorde/reflections/pending/R-001.md", ".concorde/reflections/pending/R-002.md"])
+            self.assertEqual(result["removed_plans"], [".concorde/reflections/plans/R-001.md", ".concorde/reflections/plans/R-002.md"])
             self.assertEqual((result["removed_count"], result["remaining_count"]), (2, 1))
             self.assertFalse((collection / "pending" / "R-001.md").exists())
             self.assertFalse((collection / "pending" / "R-002.md").exists())
+            self.assertFalse((collection / "plans" / "R-001.md").exists())
+            self.assertFalse((collection / "plans" / "R-002.md").exists())
             self.assertEqual((collection / "pending" / "R-003.md").read_bytes(), retained)
+            self.assertEqual((collection / "plans" / "R-003.md").read_bytes(), retained_plan)
             self.assertEqual((collection / "index.json").read_bytes(), index)
+            self.assertFalse((collection / ".remove-stage").exists())
+            payload = json.loads(run_queue(root, "--json").stdout)
+            self.assertEqual(payload["summary"]["orphan_plans"], [])
 
     def test_remove_merged_rejects_mixed_mismatched_or_nonopen_without_writes(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -288,6 +297,22 @@ class ReflectionsQueueTests(unittest.TestCase):
                     queue.remove_merged(root, ["R-001", "R-002"])
             self.assertEqual(tree_hashes(root), before)
             self.assertFalse((root / ".concorde/reflections/.remove-stage").exists())
+            # The document/plan pairs interleave, so a failure on the third move (the second
+            # document) must also restore the first document and its already-staged plan.
+            calls = 0
+
+            def fail_third(source, target):
+                nonlocal calls
+                calls += 1
+                if calls == 3:
+                    raise OSError("injected")
+                return actual_replace(source, target)
+
+            with mock.patch.object(queue.os, "replace", side_effect=fail_third):
+                with self.assertRaises(queue.QueueError):
+                    queue.remove_merged(root, ["R-001", "R-002"])
+            self.assertEqual(tree_hashes(root), before)
+            self.assertFalse((root / ".concorde/reflections/.remove-stage").exists())
 
     def test_remove_closed_removes_named_document_and_preserves_neighbors_and_index(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -299,9 +324,12 @@ class ReflectionsQueueTests(unittest.TestCase):
                 reflection_entry("R-003"),
             ])
             write_high_water(collection, 3)
+            write_plan(root, "R-002", route="dismiss")
+            write_plan(root, "R-003", route="dismiss")
             index = (collection / "index.json").read_bytes()
             retained_one = (collection / "pending" / "R-001.md").read_bytes()
             retained_three = (collection / "pending" / "R-003.md").read_bytes()
+            retained_plan = (collection / "plans" / "R-003.md").read_bytes()
 
             result = json.loads(run_queue(root, "--remove-closed", "R-002").stdout)
 
@@ -316,6 +344,7 @@ class ReflectionsQueueTests(unittest.TestCase):
                         "path": ".concorde/reflections/pending/R-002.md",
                         "title": "Fixture problem R-002",
                         "resolution_note": "Decided by the maintainer.",
+                        "plan": ".concorde/reflections/plans/R-002.md",
                     }
                 ],
             )
@@ -324,8 +353,10 @@ class ReflectionsQueueTests(unittest.TestCase):
             self.assertRegex(result["before_sha256"], r"^sha256:[0-9a-f]{64}$")
             self.assertNotEqual(result["before_sha256"], result["after_sha256"])
             self.assertFalse((collection / "pending" / "R-002.md").exists())
+            self.assertFalse((collection / "plans" / "R-002.md").exists())
             self.assertEqual((collection / "pending" / "R-001.md").read_bytes(), retained_one)
             self.assertEqual((collection / "pending" / "R-003.md").read_bytes(), retained_three)
+            self.assertEqual((collection / "plans" / "R-003.md").read_bytes(), retained_plan)
             self.assertEqual((collection / "index.json").read_bytes(), index)
 
     def test_remove_closed_with_no_ids_removes_every_closed_document_and_is_repeatable(self):
@@ -339,13 +370,16 @@ class ReflectionsQueueTests(unittest.TestCase):
                 reflection_entry("R-004"),
             ])
             write_high_water(collection, 4)
+            write_plan(root, "R-003", route="dismiss")
 
             first = json.loads(run_queue(root, "--remove-closed").stdout)
             self.assertEqual(first["status"], "removed")
             self.assertEqual([item["id"] for item in first["removed"]], ["R-002", "R-003"])
+            self.assertEqual([item["plan"] for item in first["removed"]], [None, ".concorde/reflections/plans/R-003.md"])
             self.assertEqual((first["removed_count"], first["remaining_count"]), (2, 2))
             self.assertFalse((collection / "pending" / "R-002.md").exists())
             self.assertFalse((collection / "pending" / "R-003.md").exists())
+            self.assertFalse((collection / "plans" / "R-003.md").exists())
             self.assertTrue((collection / "pending" / "R-001.md").is_file())
             self.assertTrue((collection / "pending" / "R-004.md").is_file())
 
@@ -399,6 +433,7 @@ class ReflectionsQueueTests(unittest.TestCase):
                 reflection_entry("R-002", status="dismissed"),
             ])
             write_high_water(collection, 2)
+            write_plan(root, "R-001", route="dismiss")
             queue = load_queue_module()
             before = tree_hashes(root)
             actual_replace = os.replace
@@ -416,6 +451,23 @@ class ReflectionsQueueTests(unittest.TestCase):
                     queue.remove_closed(root, [])
             self.assertEqual(tree_hashes(root), before)
             self.assertFalse((collection / ".remove-stage").exists())
+            self.assertTrue((collection / "plans" / "R-001.md").is_file())
+
+    def test_status_reports_orphan_plans_without_touching_them(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary))
+            collection = root / ".concorde/reflections"
+            write_high_water(collection, 5)
+            write_plan(root, "R-002")
+            orphan = write_plan(root, "R-005", route="dismiss")
+            before = tree_hashes(root)
+            payload = json.loads(run_queue(root, "--json").stdout)
+            self.assertEqual(payload["summary"]["orphan_plans"], ["R-005"])
+            self.assertEqual(tree_hashes(root), before)
+            self.assertTrue(orphan.is_file())
+            unchanged = json.loads(run_queue(root, "--remove-closed").stdout)
+            self.assertEqual(unchanged["status"], "unchanged")
+            self.assertTrue(orphan.is_file())
 
     def test_high_water_covers_documents_and_plans_and_cli_actions_are_exclusive(self):
         with tempfile.TemporaryDirectory() as temporary:

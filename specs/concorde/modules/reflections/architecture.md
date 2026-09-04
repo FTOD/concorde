@@ -23,7 +23,7 @@ permission-bounded reflection Operation until maintainer disposition closes it.
 Reflections owns the Reflection Document v2 grammar and template, the per-file collection under
 `.concorde/reflections/` with its `pending/`, `planned/`, `needs-comments/` buckets and metadata-only
 allocation index, the deterministic reflection queue Tool (allocate-id, validate-entry, relocate,
-remove-closed, plan/merged-small state), the reflection parsing/validation rules, the paired
+remove-merged/remove-closed with plan cleanup, plan/merged-small state), the reflection parsing/validation rules, the paired
 `concorde-reflections-triage` Operation with its status/investigate/implement/merge/close branches,
 and the internal investigator/implementer agent roles and their Codex/Claude projections. It does not
 own the lifecycle phases that record reflections (`module.concorde.lifecycle`), the Operation
@@ -42,7 +42,7 @@ the root `feature.concorde.evolve-protocol` owns that cutover.
 | `entity.reflections.worktrees` | directory | One committed-base linked checkout established before a mutating triage action, shared by its investigation/plan/implementation sequence and never bootstrapped from primary dirty state. | `concept:.concorde/reflections/worktrees` |
 | `entity.reflections.document-model` | package | Parses Reflection Document v2 front matter/sections and derives each document's canonical path, bucket, and occurrences. | `src/concorde/reflections/reflections.py` |
 | `entity.reflections.collection-rules` | program | Adds project-wide shape, duplicate, vocabulary, and placement rules for every reflection document during validation. | `src/concorde/reflections/validation.py` |
-| `entity.reflections.queue` | program | Deterministic per-file queue Tool: atomic ID allocation, bounded per-entry validation, front-matter-driven relocation, derived plan verification state, plan/merged-small state transitions, and closed-document removal. | `scripts/reflections_queue.py` |
+| `entity.reflections.queue` | program | Deterministic per-file queue Tool: atomic ID allocation, bounded per-entry validation, front-matter-driven relocation, derived plan verification state, plan/merged-small state transitions, and merged/closed document removal that deletes the reflection's plan with it. | `scripts/reflections_queue.py` |
 | `entity.reflections.triage-operation` | program | Action/route-conditional investigation, fast-loop/nested-plan implementation, and validation LangGraph that selects only the capabilities reachable for one explicit status/investigate/implement/merge/close request. | `operations/concorde-reflections-triage/operation.py` |
 | `entity.reflections.triage-skill` | document | Installed `reflection-triage/v5` action/route/bucket/policy contract paired with its graph. | `operations/concorde-reflections-triage/SKILL.md` |
 | `entity.reflections.assets` | directory | Internal reflection investigator/implementer roles, default triage configuration, and Claude/Codex projection templates. | `agent-assets/reflections` |
@@ -61,7 +61,7 @@ the root `feature.concorde.evolve-protocol` owns that cutover.
 | `entity.reflections.triage-operation` | `composes` | `module.concorde.lifecycle` | Uses the public analyze, fast-loop, plan, tasks, implement, and validate direct capabilities for the investigate, route, implement, and validate stages without taking ownership of their internals. |
 | `entity.reflections.triage-operation` | `calls` | `entity.reflections.queue` | Invokes the deterministic queue Tool for status, relocation, merged-removal, and closed-removal actions outside the graph. |
 | `entity.reflections.queue` | `reads_from` | `entity.reflections.collection` | Loads every tracked document before validating bucket placement or allocating an identifier. |
-| `entity.reflections.queue` | `writes_to` | `entity.reflections.collection` | Creates, relocates, and removes exactly the reflection documents its explicit action selects. |
+| `entity.reflections.queue` | `writes_to` | `entity.reflections.collection` | Creates, relocates, and removes exactly the reflection documents its explicit action selects, deleting each removed document's plan with it. |
 | `entity.reflections.queue` | `reads_from` | `entity.reflections.index` | Reads the current allocation high-water mark before minting a new identifier. |
 | `entity.reflections.queue` | `writes_to` | `entity.reflections.index` | Atomically raises the high-water mark and never lowers or reuses an identifier. |
 | `entity.reflections.document-model` | `validates` | `entity.reflections.collection` | Parses front matter/sections and rejects a malformed, duplicate, or misplaced document. |
@@ -92,8 +92,8 @@ the root `feature.concorde.evolve-protocol` owns that cutover.
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
 | `interaction.reflections.record` | A lifecycle phase meets a new or repeated concrete problem. | Allocate a never-used ID with the queue Tool; create the returned `pending/` document with only Context, Expected, Observed, Impact, and Evidence and a retained blank User Comments section, or append an Occurrences item to an existing document instead of allocating another identity; immediately run `--validate-entry` and correct only that new entry until it reports valid. | One problem-only document or occurrence exists under `pending/` with an unmoved, un-lowered allocation index. | `interface.concorde.reflections` |
-| `interaction.reflections.triage` | A maintainer or the triage Operation selects `status`, `investigate`, `implement`, or `merge` for one or more reflections. | `status` remains read-only; before any persistence, create or enter one linked worktree at committed primary `HEAD` and exclude all primary dirty state; describe only reachable capabilities and require policy; run investigation, parent-authored plan/relocation, and the selected implementation route in that same worktree without nested stash-based bootstrap; reject Protocol-semantic implementation/merge/close in favor of the root cutover; validate before explicit integration. | Exactly one eligible route's capabilities executes in one owned worktree, the document lands in its required bucket, an eligible merged small fix is removed, or Protocol evolution stops before lifecycle mutation. | `interface.concorde.reflections`, `contract.capabilities.permission-bounded-execution`, `contract.lifecycle.plan` |
-| `interaction.reflections.close` | A maintainer records `status: resolved` or `dismissed` plus a `resolution_note` on a `needs-comments/` document. | Run the `close` action's deterministic removal on the named identifiers or every closed document when none are named; validate every requested ID before mutation; remove exactly those files atomically with rollback on any ineligible or missing entry; commit the removal with each resolution note in the message. | The collection retains only open documents while every disposition reason survives in Git history. | `interface.concorde.reflections` |
+| `interaction.reflections.triage` | A maintainer or the triage Operation selects `status`, `investigate`, `implement`, or `merge` for one or more reflections. | `status` remains read-only; before any persistence, create or enter one linked worktree at committed primary `HEAD` and exclude all primary dirty state; describe only reachable capabilities and require policy; run investigation, parent-authored plan/relocation, and the selected implementation route in that same worktree without nested stash-based bootstrap; reject Protocol-semantic implementation/merge/close in favor of the root cutover; validate before explicit integration. | Exactly one eligible route's capabilities executes in one owned worktree, the document lands in its required bucket, an eligible merged small fix is removed with its plan, or Protocol evolution stops before lifecycle mutation. | `interface.concorde.reflections`, `contract.capabilities.permission-bounded-execution`, `contract.lifecycle.plan` |
+| `interaction.reflections.close` | A maintainer records `status: resolved` or `dismissed` plus a `resolution_note` on a `needs-comments/` document. | Run the `close` action's deterministic removal on the named identifiers or every closed document when none are named; validate every requested ID before mutation; remove exactly those documents and their plans atomically with rollback on any ineligible or missing entry; commit the removal with each resolution note in the message. | The collection retains only open documents while every disposition reason survives in Git history. | `interface.concorde.reflections` |
 
 ## Modules
 
@@ -123,7 +123,9 @@ None.
   that would change normative Protocol semantics stops before mutation and delegates to the root
   Protocol-evolution feature.
 - Plans under `.concorde/reflections/plans/` and checkouts under `.concorde/reflections/worktrees/`
-  are ignored scratch state, never a specification or implementation authority.
+  are ignored scratch state, never a specification or implementation authority. A plan never
+  outlives its reflection: merged-small and closed removal delete the plan with the document in one
+  atomic action, and `status` reports any plan left without a document as an orphan.
 - Mutating triage establishes its linked worktree before investigation or plan authorship and keeps
   every later stage there. It never snapshots, stashes, copies, or otherwise materializes dirty
   primary-worktree files; a missing committed concern/feature/plan input stops the route.

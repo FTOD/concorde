@@ -11,8 +11,8 @@ without a maintainer, and ``needs-comments/`` holds completed triage that waits 
 in ``User Comments``. Recording always creates a document under ``pending/``; the triage parent
 relocates it with the deterministic queue helper after persisting the completion. Buckets only ever
 hold open work: a closed document (``status: resolved`` or ``dismissed`` with a ``resolution_note``)
-is removed by the queue helper's ``--remove-closed`` action once a maintainer has recorded that
-disposition, and Git history keeps the record.
+is removed, together with its plan, by the queue helper's ``--remove-closed`` action once a
+maintainer has recorded that disposition, and Git history keeps the record.
 """
 
 from __future__ import annotations

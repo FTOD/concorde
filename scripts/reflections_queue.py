@@ -10,8 +10,11 @@ refuses a misplaced collection so the layout never drifts silently; ``--validate
 exception, running a bounded, read-only, project-wide validation but reporting only the findings
 attributable to one requested document. A closed document (``status: resolved`` or ``dismissed``
 with a ``resolution_note``) is deleted by ``--remove-closed`` rather than retained; Git history
-keeps the record. A plan records only the last verification of its problem (``verified`` date and
-``verified_commit``); ``--json``/``--plans`` report each plan's ``verification`` as ``current``,
+keeps the record. ``--remove-merged`` and ``--remove-closed`` delete the removed reflection's plan in
+the same atomic action, so no plan outlives its document, and ``--json`` lists any orphan plan whose
+document is already gone. A plan records only the last verification of its problem (``verified``
+date and ``verified_commit``); ``--json``/``--plans`` report each plan's ``verification`` as
+``current``,
 ``stale``, ``unverified``, or ``unknown`` against the checkout HEAD, ``--set`` accepts those two
 keys, a plan cannot become ``approved`` or ``implemented`` without them, and ``status=stale``
 sends a plan back to investigation.
@@ -397,6 +400,11 @@ def queue_payload(root: Path) -> tuple[dict[str, Any], dict[str, dict[str, Any]]
         reverse=config["order"] == "newest-first",
     )
     enriched = [_enrich(entry, raw, documents, plans, root) for entry in selected]
+    documented = {entry.identifier for entry in parsed.entries}
+    orphan_plans = sorted(
+        (identifier for identifier in plans if identifier not in documented),
+        key=lambda item: reflection_number(item) or 0,
+    )
     return {
         "entries": enriched,
         "summary": {
@@ -406,6 +414,7 @@ def queue_payload(root: Path) -> tuple[dict[str, Any], dict[str, dict[str, Any]]
             "closed": len(parsed.closed()),
             "total": len(parsed.entries),
             "buckets": parsed.bucket_counts(),
+            "orphan_plans": orphan_plans,
         },
         "config": config,
     }, plans
@@ -510,7 +519,13 @@ def allocate_id(root: Path) -> dict[str, Any]:
     }
 
 
-def _remove_documents(root: Path, paths: list[Path], expected: dict[str, bytes]) -> None:
+def _remove_files(root: Path, items: list[tuple[Path, str]], expected: dict[str, bytes]) -> None:
+    """Atomically remove reflection documents and plans, rolling every move back on any failure.
+
+    ``items`` pairs each absolute path with its label (``reflection document`` or ``reflection
+    plan``); ``expected`` holds the bytes each project-relative path must still contain. A document
+    and its plan share the ``R-NNN.md`` basename, so staged names carry the parent directory.
+    """
     directory = root / reflections_path()
     stage = directory / ".remove-stage"
     if stage.exists() or stage.is_symlink():
@@ -518,12 +533,12 @@ def _remove_documents(root: Path, paths: list[Path], expected: dict[str, bytes])
     moved: list[tuple[Path, Path]] = []
     try:
         stage.mkdir(mode=0o700)
-        for path in paths:
-            _require_real_file(root, path, "reflection document")
+        for path, label in items:
+            _require_real_file(root, path, label)
             relative = path.relative_to(root).as_posix()
             if path.read_bytes() != expected[relative]:
-                raise QueueError(f"reflection document changed before removal: {relative}")
-            staged = stage / path.name
+                raise QueueError(f"{label} changed before removal: {relative}")
+            staged = stage / f"{path.parent.name}--{path.name}"
             os.replace(path, staged)
             moved.append((path, staged))
     except (OSError, QueueError) as error:
@@ -550,7 +565,23 @@ def _remove_documents(root: Path, paths: list[Path], expected: dict[str, bytes])
         pass
 
 
+def _plan_removal(root: Path, plan: dict[str, Any] | None) -> tuple[list[tuple[Path, str]], dict[str, bytes], str | None]:
+    """Return the removal item, expected bytes, and relative path for one plan (none when absent)."""
+    if plan is None:
+        return [], {}, None
+    relative = str(plan["path"])
+    path = root / relative
+    _require_real_file(root, path, "reflection plan")
+    return [(path, "reflection plan")], {relative: path.read_bytes()}, relative
+
+
 def remove_merged(root: Path, requested: list[str]) -> dict[str, Any]:
+    """Remove merged small fast-loop reflections together with their plans.
+
+    Every requested ID must name an open document whose plan is ``route: fast-loop``,
+    ``effort: small``, ``status: merged``, ``recorded_under`` the same feature, and committed on an
+    ancestor of the captured HEAD. The document and its plan leave in one atomic action.
+    """
     if not requested:
         raise QueueError("remove-merged requires at least one reflection ID")
     identifiers: list[str] = []
@@ -591,14 +622,23 @@ def remove_merged(root: Path, requested: list[str]) -> dict[str, Any]:
     if _captured_head(root) != head:
         raise QueueError("Git HEAD changed during merged-reflection validation")
     before_digest = _collection_digest(raw)
-    paths = [root / entries[identifier].path for identifier in identifiers]
-    _remove_documents(root, paths, raw)
+    items: list[tuple[Path, str]] = []
+    expected: dict[str, bytes] = dict(raw)
+    removed_plans: list[str] = []
+    for identifier in identifiers:
+        items.append((root / entries[identifier].path, "reflection document"))
+        plan_items, plan_bytes, plan_path = _plan_removal(root, plans[identifier])
+        items.extend(plan_items)
+        expected.update(plan_bytes)
+        removed_plans.append(str(plan_path))
+    _remove_files(root, items, expected)
     remaining = {path: data for path, data in raw.items() if path not in {entry.path for entry in (entries[item] for item in identifiers)}}
     return {
         "tool": "remove-merged-reflections",
         "status": "removed",
         "removed": identifiers,
         "removed_paths": [entries[identifier].path for identifier in identifiers],
+        "removed_plans": removed_plans,
         "removed_count": len(identifiers),
         "remaining_count": len(parsed.entries) - len(identifiers),
         "head": head,
@@ -622,8 +662,9 @@ def remove_closed(root: Path, requested: list[str]) -> dict[str, Any]:
     """Remove every requested (or, with none named, every) closed reflection document.
 
     A closed reflection has ``status: resolved`` or ``status: dismissed``. The maintainer's
-    disposition and ``resolution_note`` are preserved in Git history; only the working-tree document
-    is deleted. ``index.json``, plans, and every other document are left untouched.
+    disposition and ``resolution_note`` are preserved in Git history; the working-tree document and
+    its plan (when one exists) are deleted together. ``index.json`` and every other document and
+    plan are left untouched.
     """
     identifiers: list[str] = []
     seen: set[str] = set()
@@ -674,8 +715,16 @@ def remove_closed(root: Path, requested: list[str]) -> dict[str, Any]:
         }
 
     removed_set = set(selected)
-    paths = [root / entries[identifier].path for identifier in selected]
-    _remove_documents(root, paths, raw)
+    items: list[tuple[Path, str]] = []
+    expected: dict[str, bytes] = dict(raw)
+    removed_plan_paths: dict[str, str | None] = {}
+    for identifier in selected:
+        items.append((root / entries[identifier].path, "reflection document"))
+        plan_items, plan_bytes, plan_path = _plan_removal(root, plans.get(identifier))
+        items.extend(plan_items)
+        expected.update(plan_bytes)
+        removed_plan_paths[identifier] = plan_path
+    _remove_files(root, items, expected)
     removed_paths = {entries[identifier].path for identifier in selected}
     remaining = {path: data for path, data in raw.items() if path not in removed_paths}
     removed = sorted(
@@ -686,6 +735,7 @@ def remove_closed(root: Path, requested: list[str]) -> dict[str, Any]:
                 "path": entries[identifier].path,
                 "title": entries[identifier].title,
                 "resolution_note": entries[identifier].fields.get("Note", ""),
+                "plan": removed_plan_paths[identifier],
             }
             for identifier in selected
         ),
