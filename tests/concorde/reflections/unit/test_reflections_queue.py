@@ -103,17 +103,59 @@ class ReflectionsQueueTests(unittest.TestCase):
             first = write_plan(root, "R-001")
             second = write_plan(root, "R-002")
             second_before = second.read_bytes()
+            unverified = run_queue(root, "--set", "R-001", "status=approved", check=False)
+            self.assertEqual(unverified.returncode, 2)
+            self.assertIn("requires verified and verified_commit", unverified.stderr)
+            stale = json.loads(run_queue(root, "--set", "R-001", "status=stale").stdout)
+            self.assertEqual(stale["status"], "stale")
+            reproposed = json.loads(run_queue(
+                root, "--set", "R-001", "status=proposed", "verified=2026-09-04", f"verified_commit={'a' * 40}",
+            ).stdout)
+            self.assertEqual(reproposed["verified_commit"], "a" * 40)
             updated = json.loads(run_queue(root, "--set", "R-001", "status=approved").stdout)
             self.assertEqual(updated["status"], "approved")
-            self.assertIn("status: approved", first.read_text(encoding="utf-8"))
+            text = first.read_text(encoding="utf-8")
+            self.assertIn("status: approved", text)
+            self.assertIn("verified: 2026-09-04", text)
             self.assertEqual(second.read_bytes(), second_before)
+            plans = json.loads(run_queue(root, "--plans").stdout)
+            self.assertEqual(plans["R-001"]["verification"], "unknown")
+            self.assertEqual(plans["R-002"]["verification"], "unverified")
             for arguments in (
                 ("--set", "R-001", "route=dismiss"),
                 ("--set", "R-001", "status=merged"),
+                ("--set", "R-001", "verified=yesterday"),
+                ("--set", "R-002", "verified=2026-09-04"),
+                ("--set", "R-002", f"verified_commit={'b' * 40}"),
+                ("--set", "R-002", "status=implemented"),
                 ("--set", "R-999", "status=approved"),
             ):
                 result = run_queue(root, *arguments, check=False)
-                self.assertEqual(result.returncode, 2)
+                self.assertEqual(result.returncode, 2, arguments)
+            self.assertEqual(second.read_bytes(), second_before)
+
+    def test_plan_verification_state_is_derived_from_the_checkout_head(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = create_triage_project(Path(temporary))
+            initialize_git(root)
+            verified_at = commit_change(root)
+            write_plan(root, "R-001", verified="2026-09-04", verified_commit=verified_at)
+            write_plan(root, "R-002")
+            plans = json.loads(run_queue(root, "--plans").stdout)
+            self.assertEqual(plans["R-001"]["verification"], "current")
+            self.assertEqual(plans["R-002"]["verification"], "unverified")
+            commit_change(root, 3)
+            plans = json.loads(run_queue(root, "--plans").stdout)
+            self.assertEqual(plans["R-001"]["verification"], "stale")
+            entry = json.loads(run_queue(root, "--entry", "R-001").stdout)
+            self.assertEqual(entry["plan"]["verification"], "stale")
+            self.assertNotIn("verification", (root / ".concorde/reflections/plans/R-001.md").read_text(encoding="utf-8"))
+            broken = root / ".concorde/reflections/plans/R-003.md"
+            write_plan(root, "R-003", verified="2026-09-04")
+            result = run_queue(root, "--plans", check=False)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("both verified and verified_commit", result.stderr)
+            broken.unlink()
 
     def test_allocate_id_advances_index_atomically_and_returns_document_path(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -8,7 +8,6 @@ interfaces:
   provided:
     - contract.example.workflow
   required: []
-evidence_status: unknown
 ---
 
 # Feature Design: Deliver

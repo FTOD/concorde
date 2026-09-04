@@ -9,20 +9,20 @@ import {buildRegistry} from '../../plugins/concorde-content/registry';
 
 const fixture = resolve(__dirname, '../fixtures/valid-project');
 
-describe('Build Manifest 12', () => {
+describe('Build Manifest 13', () => {
   it('accepts the executable representative example under the strict schema', async () => {
     const interfaceRoot = resolve(__dirname, '../fixtures/interfaces');
     const schema = JSON.parse(await readFile(resolve(interfaceRoot, 'build-manifest.schema.json'), 'utf8'));
     const example = JSON.parse(await readFile(resolve(interfaceRoot, 'build-manifest.example.json'), 'utf8'));
     const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(schema);
     expect(validate(example), JSON.stringify(validate.errors, null, 2)).toBe(true);
-    expect(example.schemaVersion).toBe(12);
+    expect(example.schemaVersion).toBe(13);
   });
 
   it('projects only module architectures and feature designs', async () => {
     const manifest = createManifest(await buildRegistry(fixture));
     expect(() => validateBuildManifest(manifest)).not.toThrow();
-    expect(manifest.schemaVersion).toBe(12);
+    expect(manifest.schemaVersion).toBe(13);
     expect(manifest.collections.map((collection) => collection.id)).toEqual([
       'architecture', 'features',
     ]);
@@ -44,14 +44,14 @@ describe('Build Manifest 12', () => {
     expect(manifest.pages.find((page) => page.kind === 'feature-design' && page.featureId === 'feature.fixture.alpha'))
       .toMatchObject({
         route: '/features/feature.fixture.alpha', moduleId: 'module.fixture',
-        moduleRoute: '/architecture/module.fixture', evidenceStatus: 'partial',
+        moduleRoute: '/architecture/module.fixture',
         relatedFeatures: [expect.objectContaining({
           featureId: 'feature.fixture.beta', route: '/features/feature.fixture.beta', relation: 'relates_to',
         })],
       });
   });
 
-  it('registers the Feature Graph 1 document and its counts', async () => {
+  it('registers the Feature Graph 2 document and its counts', async () => {
     const manifest = createManifest(await buildRegistry(fixture));
     expect(manifest.featureGraph).toBe('feature-graph.json');
     expect(manifest.featureGraphCounts).toEqual({
@@ -87,7 +87,7 @@ describe('Build Manifest 12', () => {
 
   it('rejects unsupported versions, absolute provenance, and unsorted routes', async () => {
     const manifest = createManifest(await buildRegistry(fixture));
-    expect(() => validateBuildManifest({...manifest, schemaVersion: 9} as never)).toThrow(/schemaVersion 12/);
+    expect(() => validateBuildManifest({...manifest, schemaVersion: 9} as never)).toThrow(/schemaVersion 13/);
     const absolute = structuredClone(manifest);
     absolute.pages[0].sourcePath = '/tmp/source.md';
     expect(() => validateBuildManifest(absolute)).toThrow(/project-relative/);
@@ -96,22 +96,21 @@ describe('Build Manifest 12', () => {
     expect(() => validateBuildManifest(unsorted)).toThrow(/routeInventory.*sorted/);
   });
 
-  it('rejects legacy feature status and unsupported evidence values at both boundaries', async () => {
+  it('publishes no feature-level status field and rejects any that appears', async () => {
     const schema = JSON.parse(await readFile(resolve(__dirname, '../fixtures/interfaces/build-manifest.schema.json'), 'utf8'));
     const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(schema);
     const manifest = createManifest(await buildRegistry(fixture));
+    expect(JSON.stringify(manifest.pages)).not.toMatch(/"status"|"evidenceStatus"/);
     const featureIndex = manifest.pages.findIndex((page) => page.kind === 'feature-design');
-    const legacy = structuredClone(manifest);
-    Object.assign(legacy.pages[featureIndex], {status: 'Draft'});
-    expect(() => validateBuildManifest(legacy)).toThrow(/legacy feature status/);
-    expect(validate(legacy)).toBe(false);
-    const unsupported = structuredClone(manifest);
-    Object.assign(unsupported.pages[featureIndex], {evidenceStatus: 'Approved'});
-    expect(() => validateBuildManifest(unsupported)).toThrow(/evidenceStatus must be one of/);
-    expect(validate(unsupported)).toBe(false);
-    const related = structuredClone(manifest);
-    Object.assign(related.pages[featureIndex].relatedFeatures![0], {evidenceStatus: 'Draft'});
-    expect(() => validateBuildManifest(related)).toThrow(/related feature .* evidenceStatus/);
-    expect(validate(related)).toBe(false);
+    for (const field of [{status: 'Draft'}, {evidenceStatus: 'verified'}]) {
+      const page = structuredClone(manifest);
+      Object.assign(page.pages[featureIndex], field);
+      expect(() => validateBuildManifest(page)).toThrow(/no status field/);
+      expect(validate(page)).toBe(false);
+      const related = structuredClone(manifest);
+      Object.assign(related.pages[featureIndex].relatedFeatures![0], field);
+      expect(() => validateBuildManifest(related)).toThrow(/related feature .* no status field/);
+      expect(validate(related)).toBe(false);
+    }
   });
 });

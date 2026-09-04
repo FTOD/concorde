@@ -22,7 +22,6 @@ interfaces:
   required:
     - contract.understanding.planning-context
     - contract.capabilities.permission-bounded-execution
-evidence_status: partial
 ---
 
 # Feature Design: Plan One Attempt

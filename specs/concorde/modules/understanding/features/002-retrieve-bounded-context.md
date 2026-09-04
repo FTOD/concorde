@@ -9,7 +9,6 @@ interfaces:
   provided:
     - interface.concorde.context
   required: []
-evidence_status: partial
 ---
 
 # Feature Design: Retrieve Bounded Context

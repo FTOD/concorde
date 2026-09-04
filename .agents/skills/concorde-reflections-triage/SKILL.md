@@ -47,19 +47,41 @@ open reflections: once a maintainer closes one (`status: resolved | dismissed` p
 `resolution_note`), the `close` action removes its document with `--remove-closed`, and Git history
 keeps the record.
 
+## Verification before every attempt
+
+A reflection's real status is never read from a stored field; the acting agent re-establishes it
+each time work on that reflection begins. Every `investigate` and every `implement` therefore
+starts by re-verifying, against the current checkout HEAD, that the recorded Observed behavior
+still occurs. The investigator records that check in the plan (`verified: <YYYY-MM-DD>`,
+`verified_commit: <full HEAD commit ID>`, and a `## Verification` section naming the method and
+outcome); the parent confirms `verified_commit` equals the HEAD the investigator ran against before
+writing the plan; and the implementer repeats the check in its worktree before editing. The queue
+Tool derives each plan's `verification` on every read as `current` (verified at HEAD), `stale`
+(verified at another commit), `unverified`, or `unknown`; refuses `status=approved` or
+`status=implemented` without a recorded verification; accepts `--set R-NNN verified=<date>
+verified_commit=<HEAD>`; and accepts `status=stale` from `proposed`, `approved`, or `hold`. A
+problem that no longer reproduces is never implemented: the investigator routes it to `dismiss`
+with the verification as evidence, and the parent marks any stale plan `stale` and re-investigates
+before any further attempt.
+
 ## Actions
 
 - `status`: run the helper with `--json`, report open, pending-triage, plan, closed, and per-bucket
   counts, and stop.
 - `investigate [N | R-NNN ...]`: use the Operation's investigate stage and one investigator per
-  reflection. For each result, the parent validates and writes the returned triage completion to that
-  reflection document in place, writes its route plan, and then runs `--relocate R-NNN` so the
-  document leaves `pending/` for `planned/` or `needs-comments/`, then runs `--validate-entry R-NNN`.
+  reflection; the investigator re-verifies the problem at HEAD first. For each result, the parent
+  checks the returned `verified_commit` against that HEAD, validates and writes the returned triage
+  completion to that reflection document in place, writes its route plan, and then runs
+  `--relocate R-NNN` so the document leaves `pending/` for `planned/` or `needs-comments/`, then
+  runs `--validate-entry R-NNN`.
   The step is complete only when the relocation result reports the document under its new bucket and
   `--validate-entry R-NNN` reports `valid`. When a `needs-comments/` document has gained maintainer
   input, `investigate R-NNN` may run again; if the new decision is `not-required`, the same relocation
   moves it to `planned/`.
-- `implement`: follow the route and implement stages; only validated `fast-loop` plans are eligible.
+- `implement`: follow the route and implement stages. The investigate stage re-verifies the problem
+  at the current HEAD before anything else; a `not-reproduced` outcome marks the plan `stale`
+  (`--set R-NNN status=stale`) and stops every downstream node. Only validated `fast-loop` plans
+  whose `verification` is `current` are eligible.
 - `merge`: require clean tracked state, merge one branch at a time, validate, and remove only a
   matching merged small fast-loop entry through the helper.
 - `close [R-NNN ...]`: no model capability. Run `--remove-closed` (named IDs, or every closed

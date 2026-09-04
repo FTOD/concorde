@@ -10,7 +10,6 @@ interfaces:
     - contract.example.consumer.change
   required:
     - contract.provider.api
-evidence_status: unknown
 ---
 
 # Feature Design: Change Consumer

@@ -53,7 +53,7 @@ async function validateGeneratedManifest(candidate: string): Promise<void> {
   const manifest = JSON.parse(manifestText) as unknown;
   validateBuildManifest(manifest);
   const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(JSON.parse(schemaText));
-  if (!validate(manifest)) throw new Error(`Generated manifest violates Build Manifest 12 schema: ${JSON.stringify(validate.errors)}`);
+  if (!validate(manifest)) throw new Error(`Generated manifest violates Build Manifest 13 schema: ${JSON.stringify(validate.errors)}`);
 }
 
 async function validateGeneratedFeatureGraph(candidate: string): Promise<void> {
@@ -63,7 +63,7 @@ async function validateGeneratedFeatureGraph(candidate: string): Promise<void> {
   ]);
   const graph = JSON.parse(graphText) as unknown;
   const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(JSON.parse(schemaText));
-  if (!validate(graph)) throw new Error(`Generated feature graph violates Feature Graph 1 schema: ${JSON.stringify(validate.errors)}`);
+  if (!validate(graph)) throw new Error(`Generated feature graph violates Feature Graph 2 schema: ${JSON.stringify(validate.errors)}`);
 }
 
 export async function buildSite(): Promise<void> {

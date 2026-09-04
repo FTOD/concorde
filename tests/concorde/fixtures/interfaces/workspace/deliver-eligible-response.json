@@ -23,7 +23,6 @@
         "module": "module.example.api",
         "feature_path": "specs/example/modules/api/features/001-invoke.md",
         "outcome": "The API accepts and validates one workflow invocation.",
-        "evidence_status": "unknown",
         "reflections_open": 0,
         "relation": "depends_on"
       }

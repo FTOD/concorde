@@ -13,7 +13,6 @@ interfaces:
   provided:
     - contract.understanding.planning-context
   required: []
-evidence_status: partial
 ---
 
 # Feature Design: Bound Planning Context

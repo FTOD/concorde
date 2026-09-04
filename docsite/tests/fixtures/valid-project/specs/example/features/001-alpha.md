@@ -8,7 +8,6 @@ interfaces:
   provided:
     - contract.fixture.alpha
   required: []
-evidence_status: partial
 ---
 
 # Feature Design: Alpha

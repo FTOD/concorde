@@ -4,7 +4,6 @@ kind: feature
 module: module.fixture
 parent_feature: feature.fixture.parent
 related_features: []
-evidence_status: unknown
 ---
 # Feature Design: Child
 

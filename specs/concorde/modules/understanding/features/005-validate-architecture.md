@@ -11,7 +11,6 @@ interfaces:
   provided:
     - interface.concorde.validate
   required: []
-evidence_status: partial
 ---
 
 # Feature Design: Validate Architecture
@@ -19,8 +18,8 @@ evidence_status: partial
 ## Outcome and Scope
 
 A maintainer receives a repeatable, complete, actionable account of Profile 7 layout, module/entity/
-relationship/interface/reference integrity, Script/Skill/Operation structure, evidence status,
-diagrams, freshness, and reflections.
+relationship/interface/reference integrity, Script/Skill/Operation structure, diagrams, freshness,
+and reflections.
 
 ## Architecture Zoom
 
@@ -28,7 +27,7 @@ diagrams, freshness, and reflections.
 |---|---|
 | `module.concorde.capabilities` | Routes validation targets and formats one structured result. |
 | `entity.understanding.validator` | Loads the normalized source package and executes focused/full validators. |
-| `entity.understanding.model-rules` | Supplies the deterministic layout/hierarchy/entity/feature/diagram/evidence/freshness rule sets the validator composes. |
+| `entity.understanding.model-rules` | Supplies the deterministic layout/hierarchy/entity/feature/diagram/freshness rule sets the validator composes. |
 | `entity.concorde.specification` | Supplies all maintained Profile 7 architecture/design/diagram sources. |
 | `entity.concorde.control-state` | Supplies the reflection authority and active stable-ID attempts for control-state validation. |
 
@@ -65,7 +64,7 @@ diagrams, freshness, and reflections.
 - **FR-001**: Validation MUST check Profile 7 config/layout, rooted module cycles, exact inventories,
   path-safe IDs, stable-ID control bindings, entity types/locators, and relationship endpoints/direction.
 - **FR-002**: It MUST check flat feature placement, related IDs, embedded interface completeness/ownership,
-  zoom visibility, requirements/evidence state, one showcase Archify architecture system overview per
+  zoom visibility, requirements state, one showcase Archify architecture system overview per
   module with principal entity relationships, diagram freshness, and reflection grammar/paths.
 - **FR-003**: Legacy module-pair/trio/contracts/subfeatures and unsafe/symlinked sources MUST receive distinct actionable findings.
 - **FR-004**: Validation MUST enumerate all applicable findings deterministically and MUST NOT mutate or claim implementation correctness.

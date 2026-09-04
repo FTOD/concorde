@@ -19,7 +19,6 @@ interfaces:
   required:
     - contract.capabilities.skill-contract
     - contract.understanding.feature-workspace
-evidence_status: verified
 ---
 
 # Feature Design: Enforce Permission-Bounded Execution

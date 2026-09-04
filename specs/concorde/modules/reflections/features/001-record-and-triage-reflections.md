@@ -19,7 +19,6 @@ interfaces:
   required:
     - contract.capabilities.permission-bounded-execution
     - contract.lifecycle.plan
-evidence_status: partial
 ---
 
 # Feature Design: Record and Triage Reflections
@@ -39,6 +38,12 @@ triage whose plan may proceed without a maintainer (`human_intervention: not-req
 `needs-comments/` holds completed triage waiting for maintainer input in `User Comments`
 (`human_intervention: required`). Recording always creates a document under `pending/`, and only the
 deterministic relocation Tool moves a document after the parent persists its triage completion.
+
+No stored field records whether a reflection's problem still exists. Every attempt to resolve one,
+whether investigation or implementation, begins by re-verifying the recorded Observed behavior
+against the current checkout, and the plan carries only that last verification (`verified`,
+`verified_commit`, and a `Verification` section) as scratch coordination state. A problem that no
+longer reproduces is routed to dismissal, never implemented.
 
 Maintainers can explicitly choose status/investigate/implement/merge/close. The paired
 `concorde-reflections-triage` Operation launches only the chosen branch, composing the direct
@@ -86,12 +91,14 @@ record.
   `concorde-reflections-triage` Operation Skill and paired graph, and `reflections_queue.py
   --allocate-id` / `--relocate` / `--remove-merged` / `--remove-closed` / `--validate-entry` Tools.
 - **Inputs**: At recording, selected feature ID, phase/date/kind, stable concern path/ID, detailed
-  context, expected and observed behavior, impact, and evidence. At triage, one selected reflection
-  and an explicit status/investigate/implement/merge/close action.
+  context, expected and observed behavior, impact, and evidence. At triage, one selected reflection,
+  an explicit status/investigate/implement/merge/close action, and, for investigate/implement, a
+  fresh verification of the problem at the current HEAD.
 - **Outputs**: Atomically allocated never-used ID and exact `pending/` document path; one
   problem-only document or occurrence; triage analysis, proposed resolution, intervention
   decision/rationale, preserved User Comments; an exact relocation manifest moving the completed
-  document into `planned/` or `needs-comments/`; validated plan/worktree state; implementer commit;
+  document into `planned/` or `needs-comments/`; validated plan/worktree state including the plan's
+  verification record and its derived `current | stale | unverified` state; implementer commit;
   merge result; exact removed file manifest for eligible small fixes; exact removed manifest with
   resolution notes for closed documents; and a bounded validation result for one requested entry with
   attributable findings and separately counted unrelated findings.
@@ -99,16 +106,19 @@ record.
   never reuse removed IDs; avoid secrets; make status model-free and investigators read-only; keep
   recording separate from analysis; retain User Comments; keep every document in the bucket its
   `triage`/`human_intervention` state requires and move it only through the relocation Tool without
-  changing its text; select exactly one route; keep nested planning public/opaque; isolate
-  worktrees; remove a document only when (a) its `small` `fast-loop` plan is `merged`,
+  changing its text; select exactly one route; re-verify the recorded problem at the current HEAD
+  before every investigation and implementation attempt, persist that verification on the plan,
+  never implement a plan whose problem does not reproduce or whose `verified_commit` is not the
+  current HEAD, and never treat any stored field as the problem's status; keep nested planning
+  public/opaque; isolate worktrees; remove a document only when (a) its `small` `fast-loop` plan is `merged`,
   `recorded_under` matches the reflection feature, its commit is present in current history, and
   automated merge validation passed, or (b) a maintainer closed it with `status: resolved |
   dismissed` and a `resolution_note`; never treat a reflection as behavioral intent.
 - **Failures**: Malformed/unresolved documents or index, recording-time triage content, incomplete
   triage, a document filed in a bucket its front matter does not require, invalid
   action/route/policy, unavailable enforcement, duplicate identity, stale or non-ancestor commit,
-  ineligible route/effort/status, unsafe worktree/removal/relocation, verification failure, or
-  removing an open document preserves retained reflection files and sources.
+  ineligible route/effort/status, unsafe worktree/removal/relocation, a missing, stale, or failed
+  verification, or removing an open document preserves retained reflection files and sources.
 - **Compatibility**: Reflection Document v2 replaces the single-file Reflection Log v1. A legacy
   `.concorde/reflections/log.md` is diagnosed rather than accepted in a dual-layout mode.
   `reflection-triage/v5` reserves `tool` for queue helpers and exposes the conditional
@@ -154,6 +164,11 @@ record.
    document. `close` runs `--remove-closed` on exactly that ID, removing exactly that file, and the
    parent commits the removal with the resolution note in the commit message so the reason survives
    in Git history.
+8. `implement` runs on a plan whose problem was verified at an earlier commit. The investigate stage
+   re-verifies at the current HEAD: if the behavior still reproduces, the parent records the new
+   `verified`/`verified_commit` and implementation proceeds; if it does not, the parent sets the plan
+   `stale`, no implementer runs, and re-investigation routes the reflection to `dismiss` with the
+   verification as evidence.
 
 ## Requirements
 
@@ -216,6 +231,16 @@ record.
   rollback, preserve every other document and `index.json`, never lower the high-water, and report
   each removed ID with its resolution note for the removal commit. Buckets MUST only hold open
   documents once `close` has run.
+- **FR-019**: Every investigation and every implementation attempt MUST begin by re-verifying the
+  recorded Observed behavior against the current checkout HEAD, and MUST persist that verification
+  (`verified` date, full `verified_commit`, and a `Verification` section with method and outcome) on
+  the plan. No stored field, earlier plan, or reflection prose MAY substitute for it.
+- **FR-020**: A plan MUST NOT become `approved` or `implemented` without a recorded verification,
+  MUST be marked `stale` when its problem no longer reproduces or its `verified_commit` is not the
+  current HEAD, and a `stale` plan MUST return to investigation or maintainer rejection before any
+  further attempt; a problem that does not reproduce MUST route to `dismiss`, never to
+  implementation. The queue Tool MUST derive and report each plan's verification state as `current`,
+  `stale`, `unverified`, or `unknown` on every read rather than storing it.
 
 ## Edge Cases
 
@@ -230,3 +255,7 @@ record.
 - A triage completion is persisted but the parent stops before relocation; the document is
   diagnosed as misplaced and `--relocate` with no IDs repairs the layout without editing text.
 - A maintainer resolves or dismisses a `needs-comments/` reflection; it stays in that bucket.
+- A plan was verified before an unrelated merge moved HEAD; its `verification` reports `stale` and
+  the next attempt re-verifies before touching any file.
+- The Observed behavior no longer reproduces at HEAD because another change fixed it; the
+  investigator routes to `dismiss` with the verification as evidence and nothing is implemented.

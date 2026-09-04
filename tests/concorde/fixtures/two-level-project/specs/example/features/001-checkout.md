@@ -12,7 +12,6 @@ interfaces:
   required:
     - contract.example.authorization
     - contract.example.confirmation
-evidence_status: partial
 ---
 
 # Feature Design: Checkout

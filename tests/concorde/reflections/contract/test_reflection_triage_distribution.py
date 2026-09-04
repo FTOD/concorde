@@ -88,6 +88,8 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
             self.assertIn("scripts/reflections_queue.py", text)
             self.assertIn("Operation", text)
             self.assertIn("maintainer disposition", normalized)
+            self.assertIn("verified_commit", text)
+            self.assertIn("status=stale", text)
             self.assertNotIn(str(Path.cwd()), text)
 
         investigator = tomllib.loads(codex[".codex/agents/reflection_investigator.toml"])
@@ -99,6 +101,7 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
             for route in ("fast-loop", "specify", "dismiss", "blocked"):
                 self.assertIn(route, role["developer_instructions"])
             self.assertIn("reflection-triage/v5", role["developer_instructions"])
+            self.assertIn("verified_commit", role["developer_instructions"])
         self.assertEqual(investigator["sandbox_mode"], "read-only")
         self.assertEqual(implementer["sandbox_mode"], "workspace-write")
         self.assertIn("Never change reflection `status`, `resolution_note`", implementer["developer_instructions"])
@@ -110,6 +113,8 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
         self.assertNotIn("model:", claude_implementer)
         self.assertIn("Return the triage-owned reflection replacement, the complete plan", claude_investigator)
         self.assertIn("assigned worktree", claude_implementer)
+        self.assertIn("`verified_commit` (the full HEAD commit ID", claude_investigator)
+        self.assertIn("`Verification` section", claude_implementer)
         self.assertIn("Never change reflection `status`, `resolution_note`", claude_implementer)
         self.assertIn("stable-ID validation rules", claude_implementer)
 

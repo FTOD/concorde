@@ -10,7 +10,11 @@ refuses a misplaced collection so the layout never drifts silently; ``--validate
 exception, running a bounded, read-only, project-wide validation but reporting only the findings
 attributable to one requested document. A closed document (``status: resolved`` or ``dismissed``
 with a ``resolution_note``) is deleted by ``--remove-closed`` rather than retained; Git history
-keeps the record.
+keeps the record. A plan records only the last verification of its problem (``verified`` date and
+``verified_commit``); ``--json``/``--plans`` report each plan's ``verification`` as ``current``,
+``stale``, ``unverified``, or ``unknown`` against the checkout HEAD, ``--set`` accepts those two
+keys, a plan cannot become ``approved`` or ``implemented`` without them, and ``status=stale``
+sends a plan back to investigation.
 """
 
 from __future__ import annotations
@@ -49,19 +53,22 @@ from concorde.understanding.validate import validate_project  # noqa: E402
 
 ROUTES = frozenset({"fast-loop", "specify", "dismiss", "blocked"})
 PLAN_STATUSES = frozenset(
-    {"proposed", "approved", "hold", "rejected", "implemented", "ineligible", "failed", "merged"}
+    {"proposed", "approved", "hold", "stale", "rejected", "implemented", "ineligible", "failed", "merged"}
 )
 TRANSITIONS = {
-    "proposed": frozenset({"approved", "hold", "rejected", "implemented", "ineligible", "failed"}),
-    "approved": frozenset({"hold", "rejected", "implemented", "ineligible", "failed"}),
-    "hold": frozenset({"approved", "rejected"}),
+    "proposed": frozenset({"approved", "hold", "stale", "rejected", "implemented", "ineligible", "failed"}),
+    "approved": frozenset({"hold", "stale", "rejected", "implemented", "ineligible", "failed"}),
+    "hold": frozenset({"approved", "stale", "rejected"}),
+    "stale": frozenset({"proposed", "rejected"}),
     "implemented": frozenset({"merged"}),
     "rejected": frozenset(),
     "ineligible": frozenset(),
     "failed": frozenset(),
     "merged": frozenset(),
 }
-SETTABLE_KEYS = frozenset({"status", "branch", "worktree", "commit"})
+# Statuses that assert the problem was verified at a known commit before work proceeds.
+VERIFIED_STATUSES = frozenset({"approved", "implemented"})
+SETTABLE_KEYS = frozenset({"status", "branch", "worktree", "commit", "verified", "verified_commit"})
 REQUIRED_PLAN_FIELDS = (
     "id",
     "title",
@@ -75,6 +82,7 @@ REQUIRED_PLAN_FIELDS = (
     "files",
 )
 COMMIT_ID = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
+VERIFIED_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 class QueueError(ValueError):
@@ -267,6 +275,39 @@ def _load_reflections(
     return index, index_bytes, parsed, documents_by_id, raw
 
 
+def _validate_verification_fields(identifier: str, fields: dict[str, Any]) -> None:
+    """A plan carries both ``verified`` and ``verified_commit`` or neither, each well-formed."""
+    verified, commit = fields.get("verified"), fields.get("verified_commit")
+    if (verified is None) != (commit is None):
+        raise QueueError(f"plan {identifier} must carry both verified and verified_commit or neither")
+    if verified is not None and not VERIFIED_DATE.fullmatch(str(verified)):
+        raise QueueError(f"plan {identifier} verified must be one YYYY-MM-DD date")
+    if commit is not None and not (isinstance(commit, str) and COMMIT_ID.fullmatch(commit)):
+        raise QueueError(f"plan {identifier} verified_commit must be one full canonical Git object ID")
+
+
+def _head_or_none(root: Path) -> str | None:
+    try:
+        return _captured_head(root)
+    except QueueError:
+        return None
+
+
+def _verification_state(plan: dict[str, Any], head: str | None) -> str:
+    """Whether the plan's recorded verification still applies to the current checkout.
+
+    ``unverified``: nothing recorded; ``current``: verified at the current HEAD; ``stale``: verified
+    at another commit, so the problem must be re-verified before any further attempt; ``unknown``:
+    no Git HEAD is available to compare against. The state is derived on every read and never stored.
+    """
+    commit = plan.get("verified_commit")
+    if commit is None:
+        return "unverified"
+    if head is None:
+        return "unknown"
+    return "current" if commit == head else "stale"
+
+
 def _load_plans(root: Path, config: dict[str, Any]) -> dict[str, dict[str, Any]]:
     directory = root / config["plans_dir"]
     result: dict[str, dict[str, Any]] = {}
@@ -294,6 +335,7 @@ def _load_plans(root: Path, config: dict[str, Any]) -> dict[str, dict[str, Any]]
             raise QueueError(f"plan {identifier} has invalid route {metadata['route']!r}")
         if metadata["status"] not in PLAN_STATUSES:
             raise QueueError(f"plan {identifier} has invalid status {metadata['status']!r}")
+        _validate_verification_fields(identifier, metadata)
         if reflection_number(path.stem) is None or path.stem != identifier:
             raise QueueError(f"plan filename {path.name} does not match id {identifier}")
         result[identifier] = {**metadata, "path": path.relative_to(root).as_posix()}
@@ -344,6 +386,9 @@ def queue_payload(root: Path) -> tuple[dict[str, Any], dict[str, dict[str, Any]]
     _, _, parsed, documents, raw = _load_reflections(root, required=True)
     plans = _load_plans(root, config)
     _validate_high_water(parsed, plans)
+    head = _head_or_none(root)
+    for plan in plans.values():
+        plan["verification"] = _verification_state(plan, head)
     skip = set(config["skip"])
     selected = [entry for entry in parsed.entries if entry.status == "open" and entry.identifier not in skip]
     selected.sort(
@@ -839,11 +884,15 @@ def update_plan(root: Path, identifier: str, assignments: list[str]) -> dict[str
         if not value:
             raise QueueError(f"plan field {key!r} cannot be empty")
         updates[key] = value
+    merged = {**plan, **updates}
+    _validate_verification_fields(identifier, merged)
     if "status" in updates:
         before = str(plan["status"])
         after = updates["status"]
         if after not in PLAN_STATUSES or after not in TRANSITIONS[before]:
             raise QueueError(f"invalid plan status transition: {before} -> {after}")
+        if after in VERIFIED_STATUSES and merged.get("verified_commit") is None:
+            raise QueueError(f"plan status {after} requires verified and verified_commit")
     _set_frontmatter(root / str(plan["path"]), updates)
     return {"updated": str(plan["path"]), **updates}
 

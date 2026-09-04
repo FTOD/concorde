@@ -40,7 +40,7 @@ runtime/policy enforcement (`module.concorde.capabilities`), or Protocol 13
 | `entity.reflections.worktrees` | directory | Isolated per-plan checkout where the implementer role commits only validated `fast-loop` changes. | `concept:.concorde/reflections/worktrees` |
 | `entity.reflections.document-model` | package | Parses Reflection Document v2 front matter/sections and derives each document's canonical path, bucket, and occurrences. | `src/concorde/reflections/reflections.py` |
 | `entity.reflections.collection-rules` | program | Adds project-wide shape, duplicate, vocabulary, and placement rules for every reflection document during validation. | `src/concorde/reflections/validation.py` |
-| `entity.reflections.queue` | program | Deterministic per-file queue Tool: atomic ID allocation, bounded per-entry validation, front-matter-driven relocation, plan/merged-small state transitions, and closed-document removal. | `scripts/reflections_queue.py` |
+| `entity.reflections.queue` | program | Deterministic per-file queue Tool: atomic ID allocation, bounded per-entry validation, front-matter-driven relocation, derived plan verification state, plan/merged-small state transitions, and closed-document removal. | `scripts/reflections_queue.py` |
 | `entity.reflections.triage-operation` | program | Action/route-conditional investigation, fast-loop/nested-plan implementation, and validation LangGraph that selects only the capabilities reachable for one explicit status/investigate/implement/merge/close request. | `operations/concorde-reflections-triage/operation.py` |
 | `entity.reflections.triage-skill` | document | Installed `reflection-triage/v5` action/route/bucket/policy contract paired with its graph. | `operations/concorde-reflections-triage/SKILL.md` |
 | `entity.reflections.assets` | directory | Internal reflection investigator/implementer roles, default triage configuration, and Claude/Codex projection templates. | `agent-assets/reflections` |
@@ -119,3 +119,7 @@ None.
   additional user-facing capabilities; only the Operation and its Skill project publicly.
 - Plans under `.concorde/reflections/plans/` and checkouts under `.concorde/reflections/worktrees/`
   are ignored scratch state, never a specification or implementation authority.
+- A reflection's status is re-verified by the acting agent at the start of every investigation and
+  implementation attempt; a plan carries only the last verification (`verified`, `verified_commit`)
+  as scratch coordination state, the queue derives `current | stale | unverified` from it on every
+  read, and no stored field is ever the problem's status.

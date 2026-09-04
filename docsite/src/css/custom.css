@@ -44,7 +44,6 @@
 .provenanceShell {max-width: var(--ifm-container-width); margin: 1rem auto -1rem; padding: 0 var(--ifm-spacing-horizontal);}
 .provenance {display: flex; flex-wrap: wrap; gap: .55rem 1rem; align-items: center; padding: .75rem 1rem; border: 1px solid var(--concorde-border); border-radius: .65rem; background: var(--concorde-surface); font-size: .8rem;}
 .provenance__kind {font-weight: 700;}
-.provenance__status {border-radius: 99px; padding: .15rem .55rem; background: var(--ifm-color-primary); color: white;}
 .featureRelationsShell {max-width: var(--ifm-container-width); margin: 1.5rem auto 0; padding: 0 var(--ifm-spacing-horizontal);}
 .featureRelations {padding: 1rem; border: 1px solid var(--concorde-border); border-radius: .65rem; background: var(--concorde-surface);}
 .featureRelations ol {margin-bottom: 0;}

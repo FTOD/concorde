@@ -24,7 +24,6 @@ interfaces:
   required:
     - contract.capabilities.tools
     - contract.understanding.feature-workspace
-evidence_status: partial
 ---
 
 # Feature Design: Provide Capability Surfaces

@@ -9,7 +9,6 @@ interfaces:
   provided:
     - interface.concorde.fast-loop
   required: []
-evidence_status: unknown
 ---
 
 # Feature Design: Fast Loop

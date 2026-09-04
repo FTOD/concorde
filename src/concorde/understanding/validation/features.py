@@ -12,7 +12,6 @@ from .entities import visible_entity_ids
 
 
 INTERFACE_ID = re.compile(r"^(?:interface|contract)\.[a-z0-9][a-z0-9.-]*$")
-EVIDENCE_STATES = frozenset({"unknown", "partial", "verified", "disagrees"})
 REQUIRED_SECTIONS = ("Outcome and Scope", "Architecture Zoom", "Interfaces", "Usage Scenarios", "Requirements", "Edge Cases")
 
 
@@ -112,8 +111,6 @@ def validate_features(package: Any) -> list[Finding]:
         feature = package.features[feature_id]
         if not FEATURE_ID.fullmatch(feature_id):
             findings.append(_finding("CONCORDE-FEATURE-001", source, f"Feature ID '{feature_id}' is not a qualified feature.* identity.", "Use one stable feature ID owned by the providing module."))
-        if feature.evidence_status not in EVIDENCE_STATES:
-            findings.append(_finding("CONCORDE-EVIDENCE-001", source, f"Evidence status '{feature.evidence_status}' is not supported.", "Use unknown, partial, verified, or disagrees."))
         for heading in REQUIRED_SECTIONS:
             present = _section(source.body, heading)
             if heading == "Usage Scenarios":

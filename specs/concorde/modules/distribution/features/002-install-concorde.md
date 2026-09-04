@@ -19,7 +19,6 @@ interfaces:
     - interface.concorde.one-command-install
   required:
     - contract.concorde.agent-platform
-evidence_status: verified
 ---
 
 # Feature Design: Install Concorde Natively

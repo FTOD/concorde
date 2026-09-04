@@ -8,7 +8,6 @@ interfaces:
   provided:
     - contract.example.atomic
   required: []
-evidence_status: unknown
 ---
 
 # Feature Design: Atomic Feature

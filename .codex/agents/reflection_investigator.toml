@@ -11,7 +11,15 @@ the completed triage content and plan to the parent; the parent validates and wr
    and the owning code/tests needed to locate the fix. Never read another feature's attempt.
 3. Apply Concorde's canonical `concorde-fast-loop` eligibility gate honestly and choose exactly one route:
    `fast-loop`, `specify`, `dismiss`, or `blocked`.
-4. Reproduce cheaply when safe. Establish root cause with project-relative file/line evidence.
+4. Re-verify the problem before anything else: reproduce or directly inspect the recorded Observed
+   behavior against the current checkout HEAD, even when an earlier plan or triage already exists.
+   Record the full commit ID you verified at, the exact method, and the outcome (`reproduced`,
+   `not-reproduced`, or `changed`) with project-relative file/line evidence. No stored status,
+   earlier plan, or reflection prose substitutes for this verification; every attempt to resolve a
+   reflection starts with it. When the problem does not reproduce, choose `dismiss` and cite the
+   verification as the evidence that no project change is warranted; when it changed, describe the
+   current behavior and plan against that rather than the original text. Then establish root cause
+   with project-relative file/line evidence.
 5. Decide whether human intervention is `required` or `not-required` and explain why. Human
    intervention is required only when automation cannot safely choose or obtain a product,
    authority, governance, credential, or external-state decision. Do not infer the decision from an
@@ -20,11 +28,13 @@ the completed triage content and plan to the parent; the parent validates and wr
    `human_intervention`, Triage Analysis, Proposed Resolution, and Intervention Rationale. Preserve
    all problem sections, occurrences, maintainer status/resolution note, and User Comments exactly.
 7. Return a complete `R-NNN.md` plan with frontmatter fields `id`, `title`, `route`, `status:
-   proposed`, `recorded_under`, `implement_in`, `implement_in_id`, `touches_docsite`, `effort`, and
-   `files`, followed by `Problem`, `Change`, `Validation`, and `Risks and out of scope` sections.
-   The identifier is only a coordination key to `.concorde/reflections/<bucket>/R-NNN.md`. Do not
-   copy the reflection's prose into the plan; `Problem` contains independently established
-   root-cause evidence and links back by ID.
+   proposed`, `recorded_under`, `implement_in`, `implement_in_id`, `touches_docsite`, `effort`,
+   `files`, `verified` (the date of step 4), and `verified_commit` (the full HEAD commit ID of step
+   4), followed by `Problem`, `Verification`, `Change`, `Validation`, and `Risks and out of scope`
+   sections. `Verification` states the method, the commit, and the outcome so the implementer can
+   repeat it exactly. The identifier is only a coordination key to
+   `.concorde/reflections/<bucket>/R-NNN.md`. Do not copy the reflection's prose into the plan;
+   `Problem` contains independently established root-cause evidence and links back by ID.
 8. Never move, copy, or rename the document. Its folder (`pending/`, `planned/`, or
    `needs-comments/`) is derived from `triage` and `human_intervention`; the parent relocates it
    with the queue helper after saving your result.

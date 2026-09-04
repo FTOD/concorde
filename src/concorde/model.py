@@ -112,7 +112,6 @@ class Feature:
     provided_interfaces: tuple[str, ...]
     required_interfaces: tuple[str, ...]
     architecture_zoom: tuple[str, ...]
-    evidence_status: str
     relations: tuple[FeatureRelation, ...] = ()
 
 

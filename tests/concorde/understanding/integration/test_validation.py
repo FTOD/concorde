@@ -55,16 +55,11 @@ class ValidationIntegrationTests(unittest.TestCase):
             rules = {item.rule_id for item in validate_project(root).findings if item.rule_id.startswith("CONCORDE-REFLECT-")}
             self.assertEqual(rules, {"CONCORDE-REFLECT-001", "CONCORDE-REFLECT-002", "CONCORDE-REFLECT-003", "CONCORDE-REFLECT-004", "CONCORDE-REFLECT-005"})
 
-    def test_layout_evidence_and_freshness_defects_are_distinct(self):
+    def test_layout_and_freshness_defects_are_distinct(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "project"
             shutil.copytree(VALID_PROJECT, root)
-            feature = root / "specs/example/features/001-deliver.md"
             (root / "specs/example/plan.md").write_text("invalid root plan", encoding="utf-8")
-            feature.write_text(feature.read_text(encoding="utf-8").replace(
-                "evidence_status: unknown",
-                "evidence_status: disagrees\nevidence:\n  - kind: test\n    target: tests/missing.py\n    status: verified\n    producer: unittest",
-            ), encoding="utf-8")
             receipt = root / ".concorde/receipts/archify.json"
             receipt.parent.mkdir(parents=True)
             receipt.write_text(json.dumps({
@@ -75,7 +70,6 @@ class ValidationIntegrationTests(unittest.TestCase):
             }), encoding="utf-8")
             rules = {item.rule_id for item in validate_project(root).findings}
             self.assertIn("CONCORDE-LAYOUT-001", rules)
-            self.assertIn("CONCORDE-EVIDENCE-002", rules)
             self.assertIn("CONCORDE-FRESHNESS-001", rules)
 
     def test_feature_filename_rename_keeps_stable_id_attempt_binding(self):

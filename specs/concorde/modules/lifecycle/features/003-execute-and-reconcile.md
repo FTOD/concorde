@@ -13,7 +13,6 @@ interfaces:
   provided:
     - interface.concorde.implement
   required: []
-evidence_status: partial
 ---
 
 # Feature Design: Execute and Reconcile

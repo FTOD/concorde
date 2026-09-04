@@ -9,7 +9,6 @@ interfaces:
   provided:
     - interface.concorde.ask
   required: []
-evidence_status: partial
 ---
 
 # Feature Design: Answer Workflow Questions

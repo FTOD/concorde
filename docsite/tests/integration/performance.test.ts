@@ -24,7 +24,7 @@ it('discovers and validates 1,000 architecture/feature specifications within fiv
     }),
     ...Array.from({length: 250}, async (_, index) => {
       const dir = resolve(root, 'specs/scale/features'); await mkdir(dir, {recursive: true});
-      await writeFile(resolve(dir, `${String(index).padStart(3, '0')}-feature.md`), `---\nid: feature.scale.${index}\nkind: feature\nmodule: module.scale\nrelated_features: []\nevidence_status: unknown\n---\n# Feature Design: Feature ${index}\n\n## Outcome\n\nScale.\n`);
+      await writeFile(resolve(dir, `${String(index).padStart(3, '0')}-feature.md`), `---\nid: feature.scale.${index}\nkind: feature\nmodule: module.scale\nrelated_features: []\n---\n# Feature Design: Feature ${index}\n\n## Outcome\n\nScale.\n`);
     }),
   ]);
   const start = performance.now();

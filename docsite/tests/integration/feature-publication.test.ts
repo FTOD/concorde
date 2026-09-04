@@ -22,7 +22,7 @@ describe('single-file feature publication', () => {
     expect(manifest.pages.find((page) => page.featureId === 'feature.fixture.alpha')).toMatchObject({
       kind: 'feature-design', sourcePath: 'specs/example/features/001-alpha.md',
       route: '/features/feature.fixture.alpha', moduleId: 'module.fixture',
-      moduleRoute: '/architecture/module.fixture', evidenceStatus: 'partial',
+      moduleRoute: '/architecture/module.fixture',
       relatedFeatures: [expect.objectContaining({
         featureId: 'feature.fixture.beta', route: '/features/feature.fixture.beta',
       })],

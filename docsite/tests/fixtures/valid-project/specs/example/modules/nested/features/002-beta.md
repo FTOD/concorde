@@ -8,7 +8,6 @@ interfaces:
   provided:
     - contract.fixture.beta
   required: []
-evidence_status: verified
 ---
 
 # Feature Design: Beta
