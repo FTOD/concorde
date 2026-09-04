@@ -299,12 +299,12 @@ def render_codex_configuration(
     }
     argv: list[str] = [
         "codex",
+        "--ask-for-approval",
+        "never",
         "exec",
         "--ephemeral",
         "--ignore-user-config",
         "--strict-config",
-        "--ask-for-approval",
-        "never",
     ]
     if native_enforcement:
         argv.extend(("-c", f"default_permissions={_toml_value(profile)}"))
