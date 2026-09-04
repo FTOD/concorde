@@ -13,8 +13,6 @@ evidence_status: partial
 
 # Feature Design: Alpha
 
-**Status**: Draft
-
 ## Outcome
 
 Alpha produces a visible fixture result.

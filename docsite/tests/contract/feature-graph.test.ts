@@ -39,9 +39,9 @@ describe('Feature Graph 1', () => {
     }
   });
 
-  it('registers feature-graph.json and its counts in Build Manifest 11', async () => {
+  it('registers feature-graph.json and its counts in Build Manifest 12', async () => {
     const manifest = createManifest(await buildRegistry(fixture));
-    expect(manifest.schemaVersion).toBe(11);
+    expect(manifest.schemaVersion).toBe(12);
     expect(manifest.featureGraph).toBe('feature-graph.json');
     expect(manifest.featureGraphCounts).toEqual({
       features: 2, modules: 2,

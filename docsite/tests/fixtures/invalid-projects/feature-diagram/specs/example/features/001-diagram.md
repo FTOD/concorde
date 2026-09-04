@@ -5,10 +5,9 @@ module: module.fixture
 related_features: []
 diagrams:
   - source: specs/example/diagrams/view.json
+evidence_status: unknown
 ---
 # Feature Design: Diagram Owner
-
-**Status**: Draft
 
 ## Outcome
 

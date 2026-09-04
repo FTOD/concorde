@@ -1,7 +1,8 @@
 import {ALL_EDGE_KINDS, deriveFeatureGraph} from './graph';
 import {moduleRoute} from './routes';
+import {EVIDENCE_STATUSES} from './types';
 import type {
-  BuildManifest, ContentPage, ContentRegistry, FeatureDesign, FeatureGraphCounts, ModuleArchitecture, SourceDocument,
+  BuildManifest, ContentPage, ContentRegistry, EvidenceStatus, FeatureDesign, FeatureGraphCounts, ModuleArchitecture, SourceDocument,
 } from './types';
 
 const isFeature = (document: SourceDocument): document is FeatureDesign => document.contentKind === 'feature-design';
@@ -37,7 +38,7 @@ export function pageFromDocument(document: SourceDocument): ContentPage {
       featureId: document.featureId,
       moduleId: document.moduleId,
       ...(document.moduleRoute ? {moduleRoute: document.moduleRoute} : {}),
-      status: document.status,
+      evidenceStatus: document.evidenceStatus as EvidenceStatus,
       relatedFeatures: document.relatedFeatures,
     } : {}),
   };
@@ -63,11 +64,15 @@ function assertFeatureGraphCounts(counts: FeatureGraphCounts | undefined): void 
   }
 }
 
-/** Runtime boundary validation for the custom Build Manifest 11 JSON interface. */
+function isEvidenceStatus(value: unknown): value is EvidenceStatus {
+  return typeof value === 'string' && (EVIDENCE_STATUSES as readonly string[]).includes(value);
+}
+
+/** Runtime boundary validation for the custom Build Manifest 12 JSON interface. */
 export function validateBuildManifest(value: unknown): asserts value is BuildManifest {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Build Manifest 11 must be an object.');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Build Manifest 12 must be an object.');
   const manifest = value as Partial<BuildManifest>;
-  if (manifest.schemaVersion !== 11) throw new Error('Build Manifest requires schemaVersion 11.');
+  if (manifest.schemaVersion !== 12) throw new Error('Build Manifest requires schemaVersion 12.');
   if (manifest.generator?.name !== 'concorde-docsite' || typeof manifest.generator.version !== 'string' ||
       typeof manifest.generator.docusaurusVersion !== 'string') throw new Error('Build Manifest generator identity is incomplete.');
   const collectionIds = manifest.collections?.map((collection) => collection.id);
@@ -88,9 +93,17 @@ export function validateBuildManifest(value: unknown): asserts value is BuildMan
         throw new Error(`${page.sourcePath}: diagram source must be project-relative.`);
       }
     }
-    if (page.kind === 'feature-design' && (!page.featureId || !page.moduleId || !page.moduleRoute ||
-        typeof page.status !== 'string' || !Array.isArray(page.relatedFeatures))) {
-      throw new Error(`${page.sourcePath}: feature page metadata is incomplete.`);
+    if (page.kind === 'feature-design') {
+      if (!page.featureId || !page.moduleId || !page.moduleRoute || !Array.isArray(page.relatedFeatures)) {
+        throw new Error(`${page.sourcePath}: feature page metadata is incomplete.`);
+      }
+      if ('status' in page) throw new Error(`${page.sourcePath}: legacy feature status is not part of Build Manifest 12; publish evidenceStatus.`);
+      if (!isEvidenceStatus(page.evidenceStatus)) {
+        throw new Error(`${page.sourcePath}: evidenceStatus must be one of ${EVIDENCE_STATUSES.join(', ')}.`);
+      }
+      for (const related of page.relatedFeatures) if (!isEvidenceStatus(related.evidenceStatus)) {
+        throw new Error(`${page.sourcePath}: related feature ${related.featureId} evidenceStatus must be one of ${EVIDENCE_STATUSES.join(', ')}.`);
+      }
     }
   }
   assertSorted(manifest.pages.map((page) => page.sourcePath), 'Build Manifest pages');
@@ -114,7 +127,7 @@ export function createManifest(registry: ContentRegistry, routeInventory?: strin
   const pages = registry.documents.map(pageFromDocument).sort((left, right) => left.sourcePath < right.sourcePath ? -1 : left.sourcePath > right.sourcePath ? 1 : 0);
   const graph = deriveFeatureGraph(registry, GENERATOR_VERSION);
   const manifest: BuildManifest = {
-    schemaVersion: 11,
+    schemaVersion: 12,
     generator: {name: 'concorde-docsite', version: GENERATOR_VERSION, docusaurusVersion: '3.10.2'},
     collections: registry.collections.map(({id, sourceBase, routeBase, include}) => ({id, sourceBase, routeBase, include})),
     pages,

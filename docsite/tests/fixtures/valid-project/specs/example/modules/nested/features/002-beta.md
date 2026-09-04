@@ -13,8 +13,6 @@ evidence_status: verified
 
 # Feature Design: Beta
 
-**Status**: Approved
-
 ## Outcome
 
 Beta links to the root architecture.

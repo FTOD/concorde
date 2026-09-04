@@ -3,10 +3,11 @@ id: feature.fixture.legacy
 kind: feature
 module: module.fixture
 related_features: []
-evidence_status: unknown
 ---
-# Feature Design: Legacy Residue
+# Feature Design: Legacy
+
+**Status**: Draft
 
 ## Outcome
 
-The feature design itself is valid.
+Legacy carries only body lifecycle prose.

@@ -47,7 +47,7 @@ describe('Profile 7 production build', () => {
   it('publishes architecture and design landing pages with provenance and architecture-owned diagrams', async () => {
     const manifest = JSON.parse(firstManifestText) as BuildManifest;
     expect(() => validateBuildManifest(manifest)).not.toThrow();
-    expect(manifest.schemaVersion).toBe(11);
+    expect(manifest.schemaVersion).toBe(12);
     expect(new Set(manifest.pages.map((page) => page.kind))).toEqual(new Set([
       'module-architecture', 'feature-design',
     ]));

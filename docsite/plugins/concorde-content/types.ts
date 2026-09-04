@@ -53,6 +53,10 @@ export type RelationKind =
   | 'composed_by' | 'refined_by' | 'depended_on_by'
   | 'relates_to' | 'requires';
 
+/** Closed Profile 7 evidence set carried by feature front matter `evidence_status`. */
+export const EVIDENCE_STATUSES = ['unknown', 'partial', 'verified', 'disagrees'] as const;
+export type EvidenceStatus = (typeof EVIDENCE_STATUSES)[number];
+
 export interface FeatureRelationEntry {
   id: string;
   relation: RelationKind;
@@ -62,7 +66,7 @@ export interface FeatureRelation {
   featureId: string;
   title: string;
   outcome: string;
-  status: string;
+  evidenceStatus: EvidenceStatus;
   route: string;
   relation: RelationKind;
 }
@@ -74,7 +78,8 @@ export interface FeatureDesign extends SourceDocument {
   kind: 'feature';
   moduleId: string;
   moduleRoute?: string;
-  status: string;
+  /** Raw front matter `evidence_status`; validation constrains it to EVIDENCE_STATUSES. */
+  evidenceStatus: string;
   outcome: string;
   relatedFeatureIds: string[];
   relatedFeatureEntries: FeatureRelationEntry[];
@@ -164,7 +169,7 @@ export interface ContentPage {
   architectureDiagrams?: ModuleDiagram[];
   featureId?: string;
   moduleRoute?: string;
-  status?: string;
+  evidenceStatus?: EvidenceStatus;
   relatedFeatures?: FeatureRelation[];
 }
 
@@ -203,6 +208,7 @@ export interface GraphFeature {
   title: string;
   module: string;
   outcome: string;
+  /** The feature's evidence status; Feature Graph 1 publishes it under the `status` key. */
   status: string;
   route: string;
   source_path: string;
@@ -230,7 +236,7 @@ export interface FeatureGraph {
 }
 
 export interface BuildManifest {
-  schemaVersion: 11;
+  schemaVersion: 12;
   generator: {
     name: 'concorde-docsite';
     version: string;

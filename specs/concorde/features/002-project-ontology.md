@@ -27,8 +27,6 @@ evidence_status: verified
 
 **Revised**: 2026-09-04
 
-**Status**: Implemented; the capability partition is delivered through the selected attempt
-
 **Input**: Preserve the module-centered durable specification and replace the flat command/example
 concept with a structural capability hierarchy. Scripts are basic runnable tools; public or internal
 skills are effect-declared leaves; operations are public LangGraph control graphs that compose
@@ -106,7 +104,7 @@ Concorde applies the partition to itself. Each child of `module.concorde` is one
 | `module.concorde.reflections` | Record and resolve process problems. | Reflection Document v2, the per-file collection and index, the queue Tool, the triage Operation, investigator/implementer roles and their agent projections. |
 | `module.concorde.capabilities` | Run any capability on a coding agent under an enforced policy. | Portable launchers and the Tool envelope, Skill/Operation source grammar and loader, capability validation, the Operation runtime, policy compiler, process launcher, managed launcher, Codex/Claude projection. |
 | `module.concorde.distribution` | Ship and install the package. | Package Manifest 2 semantics, installer, managed runtime, framework projection, receipt. |
-| `module.concorde.auto-docs` | Publish the validated read model. | Docsite scaffold and template, content registry, routes, Build Manifest 11, diagram rendering, atomic promotion. |
+| `module.concorde.auto-docs` | Publish the validated read model. | Docsite scaffold and template, content registry, routes, Build Manifest 12, diagram rendering, atomic promotion. |
 
 A module named after an artifact type (`skills`, `operations`, `runtime`, `scripts`, `models`) or a
 residual bucket (`misc`, `common`, `shared`) is the signature of the partition this profile rejects.
@@ -239,7 +237,7 @@ The feature is cross-cutting because these entities share one source profile. Th
 - **Compatibility**: Profile 7 / Protocol 13 are an intentional breaking control-state path revision
   with no dual-layout mode. Initialization Proposal 3 adds the reflection allocation index and
   required root system overview. Reflection Document v2 replaces the single-file log. Stable
-  module/feature/interface IDs, Delivery Proposal 9 semantics, and Build Manifest 11 semantics remain unchanged.
+  module/feature/interface IDs, Delivery Proposal 9 semantics, and Build Manifest 12 semantics remain unchanged.
 - **Implementing entities**: `module.concorde.understanding`, `module.concorde.capabilities`, `module.concorde.lifecycle`, `entity.concorde.specification`, `entity.concorde.control-state`.
 - **Example**: A module `architecture.md` defines `entity.example.worker`; a feature design references it in Architecture Zoom and exposes an interface whose entry point and implementing entities include that stable ID.
 

@@ -239,7 +239,7 @@ export function deriveFeatureGraph(registry: ContentRegistry, generatorVersion: 
     })),
     features: features.map((feature) => ({
       id: feature.featureId, title: feature.title, module: feature.moduleId, outcome: feature.outcome,
-      status: feature.status, route: feature.route, source_path: feature.sourcePath, source_sha256: feature.sourceSha256,
+      status: feature.evidenceStatus, route: feature.route, source_path: feature.sourcePath, source_sha256: feature.sourceSha256,
     })),
     edges,
     counts: {features: features.length, modules: modules.length, edges_by_kind: edgesByKind},

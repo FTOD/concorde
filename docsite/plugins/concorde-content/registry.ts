@@ -9,7 +9,7 @@ import {diagramKinds, listModuleDiagramSources} from './diagrams';
 import {populateLinks} from './links';
 import {featureRoute, featureStagedPath, moduleRoute, moduleStagedPath} from './routes';
 import type {
-  ContentRegistry, DiagramKind, ExcludedSource, FeatureDesign, FeatureRelationEntry, ModuleArchitecture,
+  ContentRegistry, DiagramKind, EvidenceStatus, ExcludedSource, FeatureDesign, FeatureRelationEntry, ModuleArchitecture,
   ModuleDiagram, RelationKind, SourceCollection, SourceDocument, ValidationFinding,
 } from './types';
 
@@ -191,8 +191,7 @@ async function parseDocument(
     featureId,
     kind: parsed.data.kind as 'feature',
     moduleId: typeof parsed.data.module === 'string' ? parsed.data.module.trim() : '',
-    status: parsed.content.match(/^\*\*Status\*\*:\s*(.+?)\s*$/m)?.[1]?.trim() ??
-      (typeof parsed.data.evidence_status === 'string' ? parsed.data.evidence_status.trim() : ''),
+    evidenceStatus: typeof parsed.data.evidence_status === 'string' ? parsed.data.evidence_status.trim() : '',
     outcome: sectionText(parsed.content, 'Outcome') || title,
     relatedFeatureIds: entries.map((entry) => entry.id),
     relatedFeatureEntries: entries,
@@ -204,7 +203,7 @@ async function parseDocument(
 }
 
 function relationSummary(feature: FeatureDesign) {
-  return {featureId: feature.featureId, title: feature.title, outcome: feature.outcome, status: feature.status, route: feature.route};
+  return {featureId: feature.featureId, title: feature.title, outcome: feature.outcome, evidenceStatus: feature.evidenceStatus as EvidenceStatus, route: feature.route};
 }
 
 function resolveRelations(documents: SourceDocument[], findings: ValidationFinding[]): void {

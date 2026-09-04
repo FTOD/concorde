@@ -140,9 +140,10 @@ byte; introduce a `composes` cycle in a fixture and verify publication fails nam
   ownership) to one JSON document plus one rendered page and per-feature views.
 - **Entry points**: `entity.auto-docs.graph` derivation during publication; build output
   `feature-graph.json`; route `/graph`; `entity.auto-docs.neighborhood-view` on feature routes.
-- **Inputs**: Every published feature's stable ID, title, module, outcome, status, route, source path
-  and digest; its typed `related_features` entries; its `interfaces.provided` and
-  `interfaces.required`; every published module's ID, title, parent, and route.
+- **Inputs**: Every published feature's stable ID, title, module, outcome, evidence status (published
+  under the graph `status` key), route, source path and digest; its typed `related_features`
+  entries; its `interfaces.provided` and `interfaces.required`; every published module's ID, title,
+  parent, and route.
 - **Outputs**: `{schema_version: 1, generator: {name, version}, source_digest, modules: [{id, title,
   parent, route}], features: [{id, title, module, outcome, status, route, source_path,
   source_sha256}], edges: [{id, kind, source, target, interface?, declared_by: [...]}], counts:
@@ -160,7 +161,7 @@ byte; introduce a `composes` cycle in a fixture and verify publication fails nam
 - **Failures**: Unknown relation, unresolved endpoint, self-reference, required interface with zero
   or several published providers and no external provider block, or a directional cycle fails
   publication with sourced findings and leaves the last successful site in place.
-- **Compatibility**: Feature Graph 1 is additive to Build Manifest 11, which registers
+- **Compatibility**: Feature Graph 1 is additive to Build Manifest 12, which registers
   `featureGraph: "feature-graph.json"`. Plain string `related_features` entries remain valid as
   `relates_to`. Cytoscape version and layout are renderer details that may change without changing
   the document.
@@ -183,7 +184,7 @@ byte; introduce a `composes` cycle in a fixture and verify publication fails nam
 | `entity.auto-docs.graph` | Derives Feature Graph 1 nodes, module groups, and typed edges. | Normalizes inverse relations, merges reciprocal declarations, derives `requires` edges, and orders everything deterministically. |
 | `entity.auto-docs.feature-graph` | Defines the versioned JSON shape. | Validated by schema in tests and by the publisher before promotion. |
 | `entity.auto-docs.validation` | Rejects unknown relations, unresolved endpoints, duplicate providers, and directional cycles. | Fails publication before any candidate is built. |
-| `entity.auto-docs.manifest` | Registers the graph document in Build Manifest 11. | Keeps provenance for the graph alongside pages and diagrams. |
+| `entity.auto-docs.manifest` | Registers the graph document in Build Manifest 12. | Keeps provenance for the graph alongside pages and diagrams. |
 | `entity.auto-docs.publisher` | Writes `feature-graph.json` into the candidate and promotes it atomically with the site. | Same all-or-nothing promotion as pages and diagrams. |
 | `entity.auto-docs.graph-page` | Renders `/graph` with filters, search, legend, detail panel, and the textual edge table. | Reads the graph from plugin global data; the canvas is client-only. |
 | `entity.auto-docs.graph-view` | Draws nodes, compound module groups, and typed edges with Cytoscape. | Shared by the global page and the neighborhood view. |
@@ -220,7 +221,7 @@ byte; introduce a `composes` cycle in a fixture and verify publication fails nam
   a cycle MUST fail publication naming every feature on it.
 - **FR-006**: The document MUST be deterministic and sorted, carry generator name/version and the
   source digest of every contributing feature, and be written as `feature-graph.json` beside
-  `build-manifest.json`; Build Manifest 11 MUST register its path.
+  `build-manifest.json`; Build Manifest 12 MUST register its path.
 - **FR-007**: The `/graph` page MUST group features by module, draw every edge with a visible kind,
   offer edge-kind and module filters and search, highlight a selected node's neighbors, link every
   node to its feature page, and render a textual edge table with source, target, kind, and interface.

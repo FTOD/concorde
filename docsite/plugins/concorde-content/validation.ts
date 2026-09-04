@@ -1,6 +1,7 @@
 import {relative, resolve, sep} from 'node:path';
 
 import {findGraphProblems} from './graph';
+import {EVIDENCE_STATUSES} from './types';
 import type {
   ContentRegistry, FeatureDesign, ModuleArchitecture, SourceDocument, ValidationFinding,
 } from './types';
@@ -81,10 +82,15 @@ export function validateRegistry(registry: ContentRegistry): ValidationFinding[]
         ruleId: 'feature.module.required', severity: 'error', sourcePath: document.sourcePath,
         message: 'Feature designs require an owning module.', remediation: 'Add the providing module.* ID.',
       });
-      if (!document.status) findings.push({
-        ruleId: 'feature.status.required', severity: 'error', sourcePath: document.sourcePath,
-        message: 'Feature designs require publication status metadata.',
-        remediation: 'Add evidence_status front matter (or a maintained **Status** field for an older compatible fixture).',
+      if (!document.evidenceStatus) findings.push({
+        ruleId: 'feature.evidence_status.required', severity: 'error', sourcePath: document.sourcePath,
+        message: 'Feature designs require evidence_status front matter.',
+        remediation: 'Add evidence_status front matter with one of unknown, partial, verified, or disagrees.',
+      });
+      else if (!(EVIDENCE_STATUSES as readonly string[]).includes(document.evidenceStatus)) findings.push({
+        ruleId: 'feature.evidence_status.invalid', severity: 'error', sourcePath: document.sourcePath,
+        message: `Feature design evidence_status "${document.evidenceStatus}" is unsupported.`,
+        remediation: 'Use one of unknown, partial, verified, or disagrees.',
       });
     }
     if (isModule(document)) {

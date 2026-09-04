@@ -15,7 +15,7 @@ export default function ContentProvenance({page}: {page: ContentPage}) {
         ? <Link to={page.moduleRoute}><code>{page.moduleId}</code></Link>
         : <code>{page.moduleId}</code>}</span>}
       {page.parentId && <span>Parent: <code>{page.parentId}</code></span>}
-      {page.status && <span className="provenance__status">Status: {page.status}</span>}
+      {page.evidenceStatus && <span className="provenance__status">Evidence: {page.evidenceStatus}</span>}
       <span>Canonical source: <code>{page.sourcePath}</code></span>
     </aside>
   );

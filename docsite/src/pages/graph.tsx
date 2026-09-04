@@ -170,7 +170,7 @@ export default function FeatureGraphPage() {
                     <h2><Link to={selectedFeature.route}>{selectedFeature.title}</Link></h2>
                     <p>{selectedFeature.outcome}</p>
                     <p><code>{selectedFeature.id}</code></p>
-                    <p>Status: {selectedFeature.status}</p>
+                    <p>Evidence: {selectedFeature.status}</p>
                   </>
                 ) : (
                   <p>Select a node to see its title, outcome, and a link to its page.</p>

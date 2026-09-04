@@ -53,7 +53,7 @@ async function validateGeneratedManifest(candidate: string): Promise<void> {
   const manifest = JSON.parse(manifestText) as unknown;
   validateBuildManifest(manifest);
   const validate = new Ajv2020({allErrors: true, strictTypes: true, strictTuples: true}).compile(JSON.parse(schemaText));
-  if (!validate(manifest)) throw new Error(`Generated manifest violates Build Manifest 11 schema: ${JSON.stringify(validate.errors)}`);
+  if (!validate(manifest)) throw new Error(`Generated manifest violates Build Manifest 12 schema: ${JSON.stringify(validate.errors)}`);
 }
 
 async function validateGeneratedFeatureGraph(candidate: string): Promise<void> {

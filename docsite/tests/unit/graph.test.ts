@@ -30,7 +30,7 @@ function feature(overrides: Partial<FeatureDesign> & {featureId: string} & {rela
     sourcePath: `specs/features/${overrides.featureId}.md`, realPath: `/project/specs/features/${overrides.featureId}.md`,
     title: overrides.featureId, sourceSha256: sha(overrides.featureId), frontMatter: {}, content: '', links: [],
     state: 'validated', route: `/features/${overrides.featureId}`,
-    kind: 'feature', moduleId: 'module.test', status: 'Draft', outcome: `${overrides.featureId} outcome.`,
+    kind: 'feature', moduleId: 'module.test', evidenceStatus: 'unknown', outcome: `${overrides.featureId} outcome.`,
     relatedFeatureIds: (overrides.relatedFeatureEntries ?? []).map((entry) => entry.id),
     relatedFeatureEntries: [], relatedFeatures: [],
     providedInterfaceIds: [], requiredInterfaceIds: [], externalRequiredInterfaceIds: [],
@@ -59,7 +59,7 @@ describe('Feature Graph derivation', () => {
     expect(graph.modules.find((module) => module.id === 'module.fixture')?.parent).toBeUndefined();
     expect(graph.features.map((feature_) => feature_.id)).toEqual(['feature.fixture.alpha', 'feature.fixture.beta']);
     expect(graph.features[0]).toMatchObject({
-      module: 'module.fixture', route: '/features/feature.fixture.alpha', status: 'Draft',
+      module: 'module.fixture', route: '/features/feature.fixture.alpha', status: 'partial',
       source_path: 'specs/example/features/001-alpha.md',
     });
     expect(graph.features[0].source_sha256).toMatch(/^[a-f0-9]{64}$/);

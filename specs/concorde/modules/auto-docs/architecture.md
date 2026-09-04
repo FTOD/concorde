@@ -24,7 +24,7 @@ provenance-preserving read model with exactly Architecture and Features navigati
 ## Boundary
 
 Auto-Docs owns content discovery/classification, semantic routes, maintained-link mapping, diagram
-orchestration, Build Manifest 11, Docusaurus materialization, publication validation, and atomic site
+orchestration, Build Manifest 12, Docusaurus materialization, publication validation, and atomic site
 promotion. It does not own maintained intent, `.concorde` project control/framework bytes, Concorde
 validator semantics, Archify rendering, Docusaurus internals, or user-authored sources.
 
@@ -36,7 +36,7 @@ validator semantics, Archify rendering, Docusaurus internals, or user-authored s
 | `entity.auto-docs.docsite-scaffold` | program | Proposes and atomically applies Docsite Scaffold Proposal 1 with a project-owned site identity and no synthetic project prose. | `src/concorde/autodocs/docsite_scaffold.py` |
 | `entity.auto-docs.docsite-template` | program | Enumerates the packaged docsite template inventory and digest shared by the installer and the scaffold Tool. | `src/concorde/autodocs/docsite_template.py` |
 | `entity.auto-docs.registry` | program | Discovers module architecture, direct features, and declared diagrams into two specification collections while rejecting a root docs tree. | `docsite/plugins/concorde-content/registry.ts` |
-| `entity.auto-docs.types` | type | Build Manifest 11 page collections, relations, routes, and provenance records. | `docsite/plugins/concorde-content/types.ts` |
+| `entity.auto-docs.types` | type | Build Manifest 12 page collections, relations, routes, and provenance records. | `docsite/plugins/concorde-content/types.ts` |
 | `entity.auto-docs.routes` | program | Assigns semantic architecture/feature routes and supports the root architecture entry. | `docsite/plugins/concorde-content/routes.ts` |
 | `entity.auto-docs.links` | program | Resolves maintained Markdown links to included routes and rejects broken sources. | `docsite/plugins/concorde-content/links.ts` |
 | `entity.auto-docs.diagrams` | program | Discovers architecture-owned diagram declarations and validates source/output mappings. | `docsite/plugins/concorde-content/diagrams.ts` |
@@ -76,7 +76,7 @@ validator semantics, Archify rendering, Docusaurus internals, or user-authored s
 | `entity.auto-docs.graph` | `reads_from` | `entity.auto-docs.registry` | Derives the graph only from validated feature front matter and interface ownership. |
 | `entity.auto-docs.graph` | `generates` | `entity.auto-docs.feature-graph` | Produces the deterministic Feature Graph 1 document. |
 | `entity.auto-docs.validation` | `validates` | `entity.auto-docs.feature-graph` | Rejects unknown relations, unresolved endpoints, duplicate providers, and directional cycles before promotion. |
-| `entity.auto-docs.manifest` | `documents` | `entity.auto-docs.feature-graph` | Build Manifest 11 registers the published graph path beside pages and diagrams. |
+| `entity.auto-docs.manifest` | `documents` | `entity.auto-docs.feature-graph` | Build Manifest 12 registers the published graph path beside pages and diagrams. |
 | `entity.auto-docs.publisher` | `generates` | `entity.auto-docs.feature-graph` | Writes `feature-graph.json` into the candidate and promotes it with the site. |
 | `entity.auto-docs.graph-page` | `reads_from` | `entity.auto-docs.feature-graph` | Renders the global view and the textual edge table from plugin global data. |
 | `entity.auto-docs.graph-page` | `calls` | `entity.auto-docs.graph-view` | Mounts the client-only interactive canvas. |
@@ -92,7 +92,7 @@ validator semantics, Archify rendering, Docusaurus internals, or user-authored s
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.auto-docs.publish` | Maintainer or CI invokes validate/build. | Reject root docs; discover Architecture and Features, including every declared module; validate identity/hierarchy/links; render declared architecture views; emit Build Manifest 11; materialize content; build candidate plus root-architecture entry; atomically promote. | Searchable two-collection site or preserved prior output with actionable diagnostics. | `contract.auto-docs.build-interface`, `contract.understanding.records`, `contract.auto-docs.archify-renderer`, `contract.auto-docs.build-manifest`, `contract.auto-docs.architecture-site` |
+| `interaction.auto-docs.publish` | Maintainer or CI invokes validate/build. | Reject root docs; discover Architecture and Features, including every declared module; validate identity/hierarchy/links; render declared architecture views; emit Build Manifest 12; materialize content; build candidate plus root-architecture entry; atomically promote. | Searchable two-collection site or preserved prior output with actionable diagnostics. | `contract.auto-docs.build-interface`, `contract.understanding.records`, `contract.auto-docs.archify-renderer`, `contract.auto-docs.build-manifest`, `contract.auto-docs.architecture-site` |
 | `interaction.auto-docs.scaffold` | Maintainer requests a project docsite after initialization. | Verify the configured root architecture; read the packaged docsite template and derive site identity; emit a digest-bound Docsite Scaffold Proposal 1; after explicit acceptance, atomically promote exactly its files. | A project-owned docsite adapter and identity file ready for publication, or exact conflict diagnostics. | `interface.concorde.scaffold-docsite`, `contract.capabilities.tools` |
 
 | `interaction.auto-docs.graph` | A reader opens `/graph` or a feature page after publication. | `entity.auto-docs.graph` derived Feature Graph 1 from `entity.auto-docs.registry` during the build; `entity.auto-docs.validation` rejected unknown relations, unresolved endpoints, duplicate providers, and directional cycles; `entity.auto-docs.publisher` wrote `feature-graph.json` and `entity.auto-docs.manifest` registered it; `entity.auto-docs.graph-page` or `entity.auto-docs.neighborhood-view` renders the typed edges through `entity.auto-docs.graph-view` and the textual table. | The reader sees how features compose, refine, depend on, and require one another, grouped by module, with links to each feature page. | `interface.auto-docs.feature-graph` |
@@ -113,7 +113,7 @@ None.
 
 - [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
   entities and directed relationships in this architecture.
-- Build Manifest 11 collections are exactly `architecture` and `features`; page kinds are exactly
+- Build Manifest 12 collections are exactly `architecture` and `features`; page kinds are exactly
   module architecture and feature design.
 - `.concorde/**` is excluded control/framework state, never a published content collection.
 - README remains repository orientation rather than content; a root `docs/` tree fails validation as

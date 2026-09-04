@@ -36,7 +36,7 @@ parallel prose authority.
 | `entity.auto-docs.registry` | Discovers/classifies the Architecture and Features collections and rejects parallel docs. |
 | `entity.auto-docs.routes` | Assigns semantic module/feature routes and resolves `/` to root architecture. |
 | `entity.auto-docs.diagrams` | Resolves architecture-owned maintained/delivered views. |
-| `entity.auto-docs.manifest` | Records Build Manifest 11 source/route/provenance state. |
+| `entity.auto-docs.manifest` | Records Build Manifest 12 source/route/provenance state. |
 | `entity.auto-docs.publisher` | Builds and atomically promotes only a valid complete candidate. |
 
 ## Interfaces
@@ -46,7 +46,7 @@ parallel prose authority.
 - **Consumer**: Maintainer browser and static-site host.
 - **Direction**: Validated build output to read-only HTML/search/assets.
 - **Entry points**: Generated site root and semantic routes.
-- **Inputs**: Build Manifest 11, materialized content, Docusaurus assets, and delivered architecture diagrams.
+- **Inputs**: Build Manifest 12, materialized content, Docusaurus assets, and delivered architecture diagrams.
 - **Outputs**: Accessible searchable pages with canonical source provenance and navigation.
 - **Obligations**: No source mutation, no `.concorde` control/framework pages, unique stable routes, accessible text fallback, and last-good preservation.
 - **Failures**: Invalid/incomplete candidate is never promoted.
@@ -63,7 +63,7 @@ parallel prose authority.
 - **Inputs**: Repository/docsite roots, site identity from `docsite/site.json`, recursive
   `specs/**/architecture.md`, direct `specs/**/features/*.md`, declared module diagrams, locked
   dependencies, and optional renderer environment configuration.
-- **Outputs**: Deterministic diagnostics, Manifest 10, preview, or atomically promoted build.
+- **Outputs**: Deterministic diagnostics, Manifest 12, preview, or atomically promoted build.
 - **Obligations**: Preparation order is render → registry validation → materialization →
   build/manifest validation → atomic promotion; never discover README as content and fail with
   migration remediation when root `docs/` exists.
@@ -71,17 +71,23 @@ parallel prose authority.
 - **Compatibility**: Node 20+, locked package dependencies, and site identity schema 1.
 - **Implementing entities**: `entity.auto-docs.publisher`, `entity.auto-docs.validation`, `entity.auto-docs.materializer`.
 
-### `contract.auto-docs.build-manifest` — Build Manifest 11
+### `contract.auto-docs.build-manifest` — Build Manifest 12
 
 - **Consumer**: Maintainer, CI, freshness checks, and publication tests.
 - **Direction**: Normalized registry/diagram state to deterministic JSON record.
 - **Entry points**: Registry inspection/validation/build preparation.
 - **Inputs**: `architecture` and `features` collection records plus diagram deliveries.
-- **Outputs**: `schemaVersion: 10`; pages of kind `module-architecture` or `feature-design`;
+- **Outputs**: `schemaVersion: 12`; pages of kind `module-architecture` or `feature-design`;
   routes/provenance/relations/diagram records.
-- **Obligations**: Module pages include `moduleId`, `parentId`, `architectureDiagrams`; feature pages include `featureId`, `moduleId`, `moduleRoute`, `status`, `relatedFeatures`.
-- **Failures**: Missing fields, duplicate source/route/ID, unknown relation, or stale diagram invalidates publication.
-- **Compatibility**: Removes abstract/design/implementation companion and feature-diagram fields from Manifest 9.
+- **Obligations**: Module pages include `moduleId`, `parentId`, `architectureDiagrams`; feature pages include `featureId`, `moduleId`, `moduleRoute`, `evidenceStatus`, `relatedFeatures`.
+  `evidenceStatus` on feature pages and related-feature summaries is exactly the front matter
+  `evidence_status` value (`unknown`, `partial`, `verified`, or `disagrees`); it is never synthesized
+  from body prose, and no other feature-level status field exists.
+- **Failures**: Missing fields, duplicate source/route/ID, unknown relation, stale diagram, a missing or
+  unsupported `evidence_status`, or a legacy feature-level `status` field invalidates publication.
+- **Compatibility**: Manifest 12 replaces the feature-level `status` field, which mixed body lifecycle
+  prose with `evidence_status`, by the closed `evidenceStatus`; Manifest 11 removed abstract/design/
+  implementation companion and feature-diagram fields from Manifest 9.
 - **Implementing entities**: `entity.auto-docs.manifest`, `entity.auto-docs.registry`, `entity.auto-docs.diagrams`.
 - **Example**: A feature page record maps direct source `specs/example/features/001-change.md` to `/features/feature.example.change` and its providing module route.
 
@@ -137,7 +143,7 @@ delivery remains truthful when no browser is available.
 
 The build discovers the two collections, validates identities/hierarchy/links/routes, delivers
 declared module diagrams, materializes ignored Architecture/Feature renderer inputs, builds a
-Docusaurus candidate, validates Build Manifest 11 and provenance/freshness, then promotes only that
+Docusaurus candidate, validates Build Manifest 12 and provenance/freshness, then promotes only that
 complete candidate. Any failure leaves maintained sources and the previous successful build intact.
 
 ## Requirements

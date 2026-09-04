@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://concorde.dev/interfaces/documentation/build-manifest-v11.schema.json",
-  "title": "Concorde Build Manifest 11",
+  "$id": "https://concorde.dev/interfaces/documentation/build-manifest-v12.schema.json",
+  "title": "Concorde Build Manifest 12",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "generator", "collections", "pages", "excludedSources", "routeInventory", "featureGraph", "featureGraphCounts", "validation"],
   "properties": {
-    "schemaVersion": {"const": 11},
+    "schemaVersion": {"const": 12},
     "generator": {
       "type": "object",
       "additionalProperties": false,
@@ -78,6 +78,7 @@
     "sourcePath": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$"},
     "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "route": {"type": "string", "pattern": "^/"},
+    "evidenceStatus": {"enum": ["unknown", "partial", "verified", "disagrees"]},
     "link": {
       "type": "object",
       "additionalProperties": false,
@@ -97,12 +98,12 @@
     "featureRelation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["featureId", "title", "outcome", "status", "route", "relation"],
+      "required": ["featureId", "title", "outcome", "evidenceStatus", "route", "relation"],
       "properties": {
         "featureId": {"type": "string", "minLength": 1},
         "title": {"type": "string", "minLength": 1},
         "outcome": {"type": "string", "minLength": 1},
-        "status": {"type": "string", "minLength": 1},
+        "evidenceStatus": {"$ref": "#/$defs/evidenceStatus"},
         "route": {"$ref": "#/$defs/route"},
         "relation": {"enum": ["composes", "refines", "depends_on", "composed_by", "refined_by", "depended_on_by", "relates_to"]}
       }
@@ -157,17 +158,17 @@
         "architectureDiagrams": {"type": "array", "items": {"$ref": "#/$defs/moduleDiagram"}},
         "featureId": {"type": "string", "minLength": 1},
         "moduleRoute": {"$ref": "#/$defs/route"},
-        "status": {"type": "string", "minLength": 1},
+        "evidenceStatus": {"$ref": "#/$defs/evidenceStatus"},
         "relatedFeatures": {"type": "array", "items": {"$ref": "#/$defs/featureRelation"}}
       },
       "allOf": [
         {
           "if": {"properties": {"kind": {"const": "module-architecture"}}, "required": ["kind"]},
-          "then": {"required": ["moduleId", "architectureDiagrams"], "not": {"anyOf": [{"required": ["featureId"]}, {"required": ["moduleRoute"]}, {"required": ["status"]}, {"required": ["relatedFeatures"]}]}}
+          "then": {"required": ["moduleId", "architectureDiagrams"], "not": {"anyOf": [{"required": ["featureId"]}, {"required": ["moduleRoute"]}, {"required": ["evidenceStatus"]}, {"required": ["relatedFeatures"]}]}}
         },
         {
           "if": {"properties": {"kind": {"const": "feature-design"}}, "required": ["kind"]},
-          "then": {"required": ["featureId", "moduleId", "moduleRoute", "status", "relatedFeatures"], "not": {"anyOf": [{"required": ["parentId"]}, {"required": ["architectureDiagrams"]}]}}
+          "then": {"required": ["featureId", "moduleId", "moduleRoute", "evidenceStatus", "relatedFeatures"], "not": {"anyOf": [{"required": ["parentId"]}, {"required": ["architectureDiagrams"]}]}}
         }
       ]
     }
