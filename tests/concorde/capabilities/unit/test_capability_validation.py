@@ -19,7 +19,7 @@ from concorde.capabilities.validation import (  # noqa: E402
 )
 
 
-PACKAGE_ROOTS = ["agent-assets", "docsite", "operations", "scripts", "skills", "src", "templates"]
+PACKAGE_ROOTS = ["agent-assets", "docsite", "operations", "scripts", "skills", "src", "templates", "viewer"]
 
 
 def write_capabilities(root: Path) -> None:

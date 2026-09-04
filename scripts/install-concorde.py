@@ -34,7 +34,16 @@ from concorde.capabilities.skill_assets import SkillAssetError, render_capabilit
 FRAMEWORK_ROOT = ".concorde/framework"
 RECEIPT_PATH = ".concorde/install.json"
 INSTALL_SCHEMA = 1
-PACKAGE_ROOTS = ["agent-assets", "docsite", "operations", "scripts", "skills", "src", "templates"]
+PACKAGE_ROOTS = [
+    "agent-assets",
+    "docsite",
+    "operations",
+    "scripts",
+    "skills",
+    "src",
+    "templates",
+    "viewer",
+]
 SKILLS = [
     "concorde-analyze",
     "concorde-checklist",
@@ -64,6 +73,24 @@ OPERATION_RUNTIME = {
     "python": ">=3.11",
     "requirements": "operations/requirements.lock",
     "venv": ".concorde/.venv",
+}
+VIEWER = {
+    "provider": "Egonex-AI/Understand-Anything",
+    "version": "2.9.0",
+    "package": "understand-anything-viewer",
+    "asset_url": "https://github.com/Egonex-AI/Understand-Anything/releases/download/v2.9.0/understand-anything-viewer.tgz",
+    "asset_sha256": "sha256:a8626ff3ad90041e807bfdb8994eefdd986e891593c4759d08222667e5405330",
+    "asset_bytes": 794982,
+    "node": ">=18",
+    "npm_package": "viewer/package.json",
+    "npm_lock": "viewer/package-lock.json",
+    "install_relative": "share/concorde/understand-anything-viewer",
+    "entrypoint": "node_modules/understand-anything-viewer/bin/viewer.mjs",
+    "launcher": "scripts/run-viewer.py",
+    "graph_paths": [
+        ".understand-anything/knowledge-graph.json",
+        ".ua/knowledge-graph.json",
+    ],
 }
 
 
@@ -116,6 +143,7 @@ def load_package(root: Path) -> Package:
         "skills",
         "operations",
         "operation_runtime",
+        "viewer",
         "templates",
         "integrations",
         "install",
@@ -150,11 +178,20 @@ def load_package(root: Path) -> Package:
         raise InstallError(
             f"Concorde manifest must declare the exact managed Operation runtime: {OPERATION_RUNTIME}"
         )
+    if manifest.get("viewer") != VIEWER:
+        raise InstallError(
+            f"Concorde manifest must declare the exact official Viewer runtime: {VIEWER}"
+        )
     for field in ("launcher", "requirements"):
         relative = _safe_relative(OPERATION_RUNTIME[field], f"operation_runtime.{field}")
         path = root / relative
         if path.is_symlink() or not path.is_file():
             raise InstallError(f"Concorde Operation runtime {field} is missing: {relative}")
+    for field in ("npm_package", "npm_lock", "launcher"):
+        relative = _safe_relative(VIEWER[field], f"viewer.{field}")
+        path = root / relative
+        if path.is_symlink() or not path.is_file():
+            raise InstallError(f"Concorde Viewer {field} is missing: {relative}")
     templates = manifest.get("templates")
     if not isinstance(templates, list) or any(not isinstance(item, str) for item in templates):
         raise InstallError("Concorde manifest templates must be a string list")
@@ -192,7 +229,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
     desired[f"{FRAMEWORK_ROOT}/concorde.json"] = (package.root / "concorde.json").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/LICENSE"] = (package.root / "LICENSE").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/README.md"] = (package.root / "README.md").read_bytes()
-    for directory in ("agent-assets", "operations", "skills", "src", "templates"):
+    for directory in ("agent-assets", "operations", "skills", "src", "templates", "viewer"):
         source_root = package.root / directory
         for path in sorted(source_root.rglob("*")):
             if path.is_symlink():
@@ -213,6 +250,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
         "concorde.sh",
         "reflections_queue.py",
         "render-capability-surfaces.py",
+        "run-viewer.py",
         "run-operation.py",
         "workspace.py",
     )

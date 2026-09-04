@@ -160,7 +160,8 @@ index or source file. Installed projects use
 
 ## Install
 
-Concorde requires Python 3.11+ and no host framework. Preview is the default:
+Concorde requires Python 3.11+, Node.js 18+, npm, and no host framework. Preview is the default and
+does not contact either the Python package index or the official Viewer release:
 
 ```bash
 python3 scripts/install-concorde.py \
@@ -182,15 +183,45 @@ copies one package beneath `.concorde/framework/`, renders the selected integrat
 missing reflection defaults, and writes `.concorde/install.json` last. It updates/removes only files
 whose observed bytes still match the prior receipt; unowned or user-modified collisions fail closed.
 Concorde 2.1.0 installs 17 leaves and three complete Operation pairs in the framework while projecting
-only 15 public leaves plus the three Operations.
+only 15 public leaves plus the three Operations. During explicit apply it also runs
+`npm ci --ignore-scripts` from the shipped lock to install the official Understand Anything Viewer
+v2.9.0 beneath `.concorde/.venv/share/concorde/understand-anything-viewer`. The target project's
+`package.json`, lock files, `node_modules`, and root `.venv` are never used or modified. Once apply
+succeeds, both Operations and the Viewer start without dependency downloads.
+
+### Open the official Understand Anything Viewer
+
+First generate the raw graph with Understand Anything so the installed project contains
+`.ua/knowledge-graph.json` (or the official legacy `.understand-anything/knowledge-graph.json`). Then,
+from that project, run:
+
+```bash
+python3 .concorde/framework/scripts/run-viewer.py --project-root .
+```
+
+The official Viewer binds to `127.0.0.1`, prints its tokenized dashboard URL, and opens the browser.
+Use `--no-open` on a headless host and `--port 0` to select any free port:
+
+```bash
+python3 .concorde/framework/scripts/run-viewer.py \
+  --project-root . \
+  --port 0 \
+  --no-open
+```
+
+This launcher accepts only the original UA graph in its conventional project directory. The JSON
+printed by `concorde explore` is a bounded specification-to-code evidence envelope for agents and CI;
+it is deliberately rejected as Viewer input. If launch reports that the Viewer is missing or
+unhealthy, rerun `scripts/install-concorde.py ... --apply` from the matching Concorde checkout. If it
+reports a Node/npm prerequisite failure, install Node.js 18+ with its npm command and apply again.
 
 See the complete [installation feature](specs/concorde/modules/distribution/features/002-install-concorde.md) and
 [workflow usage](specs/concorde/features/001-concorde-workflow.md#usage).
 
 ## Maintain this checkout
 
-Root `skills/`, `operations/`, `templates/`, `src/concorde/`, `scripts/`, `agent-assets/`, and
-`docsite/` are canonical.
+Root `skills/`, `operations/`, `templates/`, `src/concorde/`, `scripts/`, `agent-assets/`, `viewer/`,
+and `docsite/` are canonical.
 Tracked `.agents/**` and `.claude/**` files are generated source-checkout projections; Concorde does
 not install a duplicate `.concorde/framework` into its own repository.
 
@@ -216,7 +247,8 @@ npm run check
 The repository self-applies the model at
 [`specs/concorde/architecture.md`](specs/concorde/architecture.md).
 
-Python 3.11+ is the only hard requirement. Archify visual checks additionally need a Chrome or
+Python 3.11+ is required for Concorde itself. Native installation additionally requires Node.js 18+
+and npm so the pinned official Viewer can be provisioned. Archify visual checks need a Chrome or
 Chromium build, which Playwright's bundled Chromium can supply through `ARCHIFY_CHROME`; see
 the [Auto-Docs renderer contract](specs/concorde/modules/auto-docs/features/001-publish-project-docsite.md).
 
@@ -230,6 +262,7 @@ the [Auto-Docs renderer contract](specs/concorde/modules/auto-docs/features/001-
 | `src/concorde/` | The Python package realizing every capability module: understanding, lifecycle, reflections, capabilities, distribution, and the docsite scaffold. |
 | `agent-assets/` | Canonical reflection-triage roles and integration templates. |
 | `scripts/` | Portable runtime adapters, installer, and checkout sync. |
+| `viewer/` | Pinned npm package and lock that install the official Understand Anything Viewer into Concorde's managed runtime. |
 | `concorde.json` | Single package/version/profile/protocol/inventory authority. |
 | `specs/concorde/` | Self-applied capability-partitioned module architectures and direct features; the maintained project documentation. |
 | `.concorde/` | Native project configuration, selection, constitution, attempts, and reflections. |

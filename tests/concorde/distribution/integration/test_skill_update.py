@@ -41,7 +41,7 @@ class SkillUpdateIntegrationTests(unittest.TestCase):
     def copy_package(self, destination: Path) -> None:
         for name in ("concorde.json", "LICENSE", "README.md"):
             shutil.copy2(REPOSITORY_ROOT / name, destination / name)
-        for directory in ("agent-assets", "operations", "skills", "src", "templates"):
+        for directory in ("agent-assets", "operations", "skills", "src", "templates", "viewer"):
             shutil.copytree(
                 REPOSITORY_ROOT / directory,
                 destination / directory,
@@ -59,6 +59,7 @@ class SkillUpdateIntegrationTests(unittest.TestCase):
             "concorde.sh",
             "reflections_queue.py",
             "render-capability-surfaces.py",
+            "run-viewer.py",
             "run-operation.py",
             "workspace.py",
         ):

@@ -41,6 +41,24 @@
     "requirements": "operations/requirements.lock",
     "venv": ".concorde/.venv"
   },
+  "viewer": {
+    "provider": "Egonex-AI/Understand-Anything",
+    "version": "2.9.0",
+    "package": "understand-anything-viewer",
+    "asset_url": "https://github.com/Egonex-AI/Understand-Anything/releases/download/v2.9.0/understand-anything-viewer.tgz",
+    "asset_sha256": "sha256:a8626ff3ad90041e807bfdb8994eefdd986e891593c4759d08222667e5405330",
+    "asset_bytes": 794982,
+    "node": ">=18",
+    "npm_package": "viewer/package.json",
+    "npm_lock": "viewer/package-lock.json",
+    "install_relative": "share/concorde/understand-anything-viewer",
+    "entrypoint": "node_modules/understand-anything-viewer/bin/viewer.mjs",
+    "launcher": "scripts/run-viewer.py",
+    "graph_paths": [
+      ".understand-anything/knowledge-graph.json",
+      ".ua/knowledge-graph.json"
+    ]
+  },
   "templates": [
     "checklist-template.md",
     "constitution-template.md",
@@ -56,7 +74,8 @@
     "scripts",
     "skills",
     "src",
-    "templates"
+    "templates",
+    "viewer"
   ],
   "integrations": [
     "claude",

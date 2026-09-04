@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import os
+import sys
 import zipfile
 from pathlib import Path
 
@@ -47,6 +48,7 @@ def create_langgraph_index(root: Path) -> Path:
 
 
 def runtime_install_environment(index: Path) -> dict[str, str]:
+    tools = _create_viewer_tools(index.parent)
     environment = os.environ.copy()
     environment.update(
         {
@@ -55,9 +57,65 @@ def runtime_install_environment(index: Path) -> dict[str, str]:
             "PIP_NO_INDEX": "1",
             "PYTHONNOUSERSITE": "1",
             "UV_OFFLINE": "1",
+            "PATH": str(tools) + os.pathsep + environment.get("PATH", ""),
         }
     )
     return environment
+
+
+def _create_viewer_tools(root: Path) -> Path:
+    tools = root / "viewer-tools"
+    tools.mkdir(parents=True, exist_ok=True)
+    node = tools / ("node.cmd" if os.name == "nt" else "node")
+    npm = tools / ("npm.cmd" if os.name == "nt" else "npm")
+    if os.name == "nt":  # pragma: no cover - Windows CI uses the real command shim shape
+        node.write_text(f'@"{sys.executable}" "%~dp0\\node.py" %*\n', encoding="utf-8")
+        npm.write_text(f'@"{sys.executable}" "%~dp0\\npm.py" %*\n', encoding="utf-8")
+        node_script = tools / "node.py"
+        npm_script = tools / "npm.py"
+    else:
+        node_script = node
+        npm_script = npm
+    node_script.write_text(
+        f"#!{sys.executable}\n"
+        "from __future__ import annotations\n"
+        "import json,sys\n"
+        "if sys.argv[1:] == ['--version']:\n"
+        "    print('v20.11.1')\n"
+        "else:\n"
+        "    print('FAKE NODE ' + json.dumps(sys.argv[1:]))\n",
+        encoding="utf-8",
+    )
+    npm_script.write_text(
+        f"#!{sys.executable}\n"
+        "from __future__ import annotations\n"
+        "import json,sys\n"
+        "from pathlib import Path\n"
+        "args = sys.argv[1:]\n"
+        "if args == ['--version']:\n"
+        "    print('10.8.2')\n"
+        "    raise SystemExit(0)\n"
+        "if '--prefix' not in args or 'ci' not in args:\n"
+        "    print('unsupported fake npm invocation', file=sys.stderr)\n"
+        "    raise SystemExit(2)\n"
+        "root = Path(args[args.index('--prefix') + 1])\n"
+        "package = root / 'node_modules/understand-anything-viewer'\n"
+        "(package / 'bin').mkdir(parents=True, exist_ok=True)\n"
+        "(package / 'dist').mkdir(parents=True, exist_ok=True)\n"
+        "(package / 'bin/viewer.mjs').write_text('// fixture viewer\\n', encoding='utf-8')\n"
+        "(package / 'dist/index.html').write_text('<!doctype html>fixture\\n', encoding='utf-8')\n"
+        "(package / 'README.md').write_text('fixture viewer\\n', encoding='utf-8')\n"
+        "(package / 'package.json').write_text(json.dumps({\n"
+        "    'name': 'understand-anything-viewer',\n"
+        "    'version': '2.9.0',\n"
+        "    'engines': {'node': '>=18'},\n"
+        "    'bin': {'understand-anything-viewer': 'bin/viewer.mjs'},\n"
+        "}), encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    for path in (node_script, npm_script):
+        path.chmod(0o755)
+    return tools
 
 
 def _graph_source() -> str:

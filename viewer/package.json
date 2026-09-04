@@ -1,0 +1,12 @@
+{
+  "name": "@concorde/understand-anything-viewer-runtime",
+  "version": "2.1.0",
+  "private": true,
+  "description": "Installer-owned lock for the official Understand Anything Viewer",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "understand-anything-viewer": "https://github.com/Egonex-AI/Understand-Anything/releases/download/v2.9.0/understand-anything-viewer.tgz"
+  }
+}
