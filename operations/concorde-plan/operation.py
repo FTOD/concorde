@@ -35,12 +35,12 @@ def _runtime():
     source = str(root / "src")
     if source not in sys.path:
         sys.path.insert(0, source)
-    from concorde.operation_runtime import (
+    from concorde.capabilities.operation_runtime import (
         OperationExecution,
         build_operation,
         permission_launch_factory,
     )
-    from concorde.planning_context import resolve_planning_context
+    from concorde.understanding.planning_context import resolve_planning_context
 
     return OperationExecution, build_operation, permission_launch_factory, resolve_planning_context
 
@@ -93,7 +93,7 @@ def main() -> int:
     OperationExecution, _, _, _ = _runtime()
 
     if arguments.execute:
-        from concorde.operation_executor import AgentProcessExecutor
+        from concorde.capabilities.operation_executor import AgentProcessExecutor
 
         process = AgentProcessExecutor()
 

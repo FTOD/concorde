@@ -41,6 +41,9 @@ Report findings for:
 
 - duplication, ambiguity, underspecification, conflicting terminology, or unmeasurable criteria;
 - unresolved or redefined architecture entity IDs/types/locators/ownership;
+- a providing or affected module whose responsibility is an artifact type or residual bucket
+  rather than a capability, features that are inventories rather than use cases, or a feature placed
+  by artifact kind instead of by the capability it serves (constitution A.VI);
 - unresolved relationship endpoints or interaction/interface governance;
 - incomplete interface consumer/direction, entry point, input/output, obligations, failures,
   compatibility, example, or implementing-entity semantics;

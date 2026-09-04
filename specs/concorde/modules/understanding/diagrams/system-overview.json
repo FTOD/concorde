@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Understanding System Overview",
+    "output": "../../../../../generated/architecture/concorde-understanding-system-overview.html",
+    "quality_profile": "showcase",
+    "legend": {"mode": "hidden"},
+    "viewBox": [1100, 600]
+  },
+  "components": [
+    {"id": "maintainer", "type": "external", "label": "Maintainer / Agent", "sublabel": "Lifecycle consumer", "pos": [40, 270], "size": [160, 68]},
+    {"id": "skills", "type": "frontend", "label": "Understanding Skills", "sublabel": "init, context, ask, validate", "pos": [280, 270], "size": [190, 68]},
+    {"id": "tools", "type": "backend", "label": "Understanding Tools", "sublabel": "Loader, validator, context, alignment", "pos": [560, 270], "size": [200, 68]},
+    {"id": "specification", "type": "database", "label": "Specification", "sublabel": "Module architectures + features", "pos": [820, 70], "size": [190, 68]},
+    {"id": "control-state", "type": "database", "label": "Control State", "sublabel": "Config, selection, attempts", "pos": [820, 460], "size": [190, 68]},
+    {"id": "understand-anything", "type": "external", "label": "Understand Anything", "sublabel": "Optional knowledge graph", "pos": [560, 460], "size": [200, 68]}
+  ],
+  "connections": [
+    {"id": "maintainer-invokes-skills", "from": "maintainer", "to": "skills", "label": "invokes leaf skill", "variant": "emphasis", "labelDy": -28},
+    {"id": "skills-invoke-tools", "from": "skills", "to": "tools", "label": "invoke bounded Tools", "labelDy": -28},
+    {"id": "tools-scaffold-specification", "from": "tools", "to": "specification", "label": "loads and writes reviewed scaffold", "variant": "emphasis", "fromSide": "top", "toSide": "bottom"},
+    {"id": "control-state-feeds-tools", "from": "control-state", "to": "tools", "label": "feeds config, selection, attempts", "fromSide": "top", "toSide": "bottom"},
+    {"id": "understand-anything-feeds-tools", "from": "understand-anything", "to": "tools", "label": "supplies optional graph evidence", "variant": "dashed", "fromSide": "top", "toSide": "bottom"}
+  ]
+}

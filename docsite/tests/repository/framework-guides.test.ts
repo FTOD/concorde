@@ -36,11 +36,11 @@ describe('maintained Concorde specification documentation', () => {
     const registry = await buildRegistry(projectRoot);
     const source = (path: string) => registry.documents.find((document) => document.sourcePath === path)?.content ?? '';
     expect(source('specs/concorde/features/001-concorde-workflow.md')).toContain('concorde-standard-dev-loop');
-    const skills = source('specs/concorde/modules/skills/features/001-project-workflow.md').toLowerCase();
+    const skills = source('specs/concorde/modules/capabilities/features/002-provide-capability-surfaces.md').toLowerCase();
     expect(skills).toContain('concorde-ask');
     expect(skills).toContain('read-only');
     expect(skills).toContain('protocol 13');
-    expect(source('specs/concorde/features/007-project-ontology.md')).toContain('## Target Specification Model');
+    expect(source('specs/concorde/features/002-project-ontology.md')).toContain('## Target Specification Model');
     const publication = source('specs/concorde/modules/auto-docs/features/001-publish-project-docsite.md');
     expect(publication).toContain('docsite/site.json');
     expect(publication).toContain('parallel prose authority');

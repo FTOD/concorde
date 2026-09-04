@@ -9,7 +9,7 @@
     "viewBox": [1380, 660]
   },
   "components": [
-    {"id": "workspace", "type": "database", "label": "Workspace Sources", "sublabel": "Validated authorities", "pos": [40, 280], "size": [180, 68]},
+    {"id": "specification", "type": "database", "label": "Specification", "sublabel": "Validated architecture/features", "pos": [40, 280], "size": [180, 68]},
     {"id": "registry", "type": "backend", "label": "Content Registry", "sublabel": "Source discovery", "pos": [300, 280], "size": [180, 68]},
     {"id": "routes", "type": "backend", "label": "Routes + Links", "sublabel": "Semantic navigation", "pos": [570, 100], "size": [180, 68]},
     {"id": "diagrams", "type": "backend", "label": "Diagram Discovery", "sublabel": "Owned declarations", "pos": [570, 460], "size": [180, 68]},
@@ -20,7 +20,7 @@
     {"id": "site", "type": "frontend", "label": "Architecture Site", "sublabel": "Searchable read model", "pos": [1230, 460], "size": [140, 68]}
   ],
   "connections": [
-    {"id": "workspace-feeds-registry", "from": "workspace", "to": "registry", "label": "loads", "variant": "emphasis"},
+    {"id": "specification-feeds-registry", "from": "specification", "to": "registry", "label": "loads", "variant": "emphasis"},
     {"id": "registry-calls-routes", "from": "registry", "to": "routes", "label": "routes", "fromSide": "right", "toSide": "left"},
     {"id": "registry-calls-diagrams", "from": "registry", "to": "diagrams", "label": "discovers", "fromSide": "right", "toSide": "left"},
     {"id": "routes-feed-manifest", "from": "routes", "to": "manifest", "label": "records", "fromSide": "right", "toSide": "top"},

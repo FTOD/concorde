@@ -11,7 +11,7 @@ from pathlib import Path
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE_ROOT / "src"))
 
-from concorde.feature_workspace import (  # noqa: E402
+from concorde.understanding.feature_workspace import (  # noqa: E402
     WorkspaceError,
     persist_selection,
     phase_target,

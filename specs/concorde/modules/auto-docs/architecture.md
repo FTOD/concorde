@@ -5,6 +5,7 @@ parent: module.concorde
 modules: []
 features:
   - feature.auto-docs.publish-project-docsite
+  - feature.auto-docs.create-project-docsite
 diagrams:
   - source: diagrams/system-overview.json
     kind: architecture
@@ -15,9 +16,9 @@ diagrams:
 
 ## Responsibility
 
-Publish validated Profile 7 module architectures—including the structural Skills and Operations
-modules—direct feature designs, and architecture-owned diagrams as a hierarchical, searchable,
-accessible, provenance-preserving read model with exactly Architecture and Features navigation.
+Publish validated Profile 7 module architectures—including every capability module—direct feature
+designs, and architecture-owned diagrams as a hierarchical, searchable, accessible,
+provenance-preserving read model with exactly Architecture and Features navigation.
 
 ## Boundary
 
@@ -31,6 +32,8 @@ validator semantics, Archify rendering, Docusaurus internals, or user-authored s
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
 | `entity.auto-docs.project` | directory | TypeScript/Docusaurus adapter and generated build workspace. | `docsite` |
+| `entity.auto-docs.docsite-scaffold` | program | Proposes and atomically applies Docsite Scaffold Proposal 1 with a project-owned site identity and no synthetic project prose. | `src/concorde/autodocs/docsite_scaffold.py` |
+| `entity.auto-docs.docsite-template` | program | Enumerates the packaged docsite template inventory and digest shared by the installer and the scaffold Tool. | `src/concorde/autodocs/docsite_template.py` |
 | `entity.auto-docs.registry` | program | Discovers module architecture, direct features, and declared diagrams into two specification collections while rejecting a root docs tree. | `docsite/plugins/concorde-content/registry.ts` |
 | `entity.auto-docs.types` | type | Build Manifest 10 page collections, relations, routes, and provenance records. | `docsite/plugins/concorde-content/types.ts` |
 | `entity.auto-docs.routes` | program | Assigns semantic architecture/feature routes and supports the root architecture entry. | `docsite/plugins/concorde-content/routes.ts` |
@@ -51,7 +54,7 @@ validator semantics, Archify rendering, Docusaurus internals, or user-authored s
 
 | Source | Predicate | Target | Description |
 |---|---|---|---|
-| `entity.auto-docs.registry` | `reads_from` | `module.concorde.workspace` | Includes maintained architecture/features/declared diagrams, rejects root docs, and excludes README plus all `.concorde/**` control/framework state. |
+| `entity.auto-docs.registry` | `reads_from` | `entity.concorde.specification` | Includes maintained architecture/features/declared diagrams, rejects root docs, and excludes README plus all `.concorde/**` control/framework state. |
 | `entity.auto-docs.registry` | `calls` | `entity.auto-docs.routes` | Assigns stable routes from semantic identity. |
 | `entity.auto-docs.registry` | `calls` | `entity.auto-docs.links` | Validates and maps source links without rewriting authorities. |
 | `entity.auto-docs.registry` | `calls` | `entity.auto-docs.diagrams` | Adds architecture-owned source/delivery records. |
@@ -63,12 +66,17 @@ validator semantics, Archify rendering, Docusaurus internals, or user-authored s
 | `entity.auto-docs.publisher` | `calls` | `entity.auto-docs.docusaurus` | Builds the production candidate. |
 | `entity.auto-docs.publisher` | `reads_from` | `entity.auto-docs.site-identity` | Takes title, URLs, organization/project names, and repository link only from the project-owned identity file. |
 | `entity.auto-docs.publisher` | `tested_by` | `entity.auto-docs.tests` | End-to-end tests exercise validation and atomic promotion. |
+| `entity.auto-docs.docsite-scaffold` | `reads_from` | `entity.auto-docs.docsite-template` | Reuses the single packaged adapter file inventory and digest rule. |
+| `entity.auto-docs.docsite-scaffold` | `generates` | `entity.auto-docs.project` | Applies the accepted Docsite Scaffold Proposal 1 as the project's `docsite/` adapter and site identity. |
+| `module.concorde.distribution` | `reads_from` | `entity.auto-docs.docsite-template` | Packages the same template root into the installed framework projection. |
+| `module.concorde.capabilities` | `calls` | `entity.auto-docs.docsite-scaffold` | Dispatches the CLI `docsite` Tool for propose/apply scaffold actions. |
 
 ## Interactions
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.auto-docs.publish` | Maintainer or CI invokes validate/build. | Reject root docs; discover Architecture and Features, including every declared module; validate identity/hierarchy/links; render declared architecture views; emit Build Manifest 10; materialize content; build candidate plus root-architecture entry; atomically promote. | Searchable two-collection site or preserved prior output with actionable diagnostics. | `contract.auto-docs.build-interface`, `contract.workspace.records`, `contract.auto-docs.archify-renderer`, `contract.auto-docs.build-manifest`, `contract.auto-docs.architecture-site` |
+| `interaction.auto-docs.publish` | Maintainer or CI invokes validate/build. | Reject root docs; discover Architecture and Features, including every declared module; validate identity/hierarchy/links; render declared architecture views; emit Build Manifest 10; materialize content; build candidate plus root-architecture entry; atomically promote. | Searchable two-collection site or preserved prior output with actionable diagnostics. | `contract.auto-docs.build-interface`, `contract.understanding.records`, `contract.auto-docs.archify-renderer`, `contract.auto-docs.build-manifest`, `contract.auto-docs.architecture-site` |
+| `interaction.auto-docs.scaffold` | Maintainer requests a project docsite after initialization. | Verify the configured root architecture; read the packaged docsite template and derive site identity; emit a digest-bound Docsite Scaffold Proposal 1; after explicit acceptance, atomically promote exactly its files. | A project-owned docsite adapter and identity file ready for publication, or exact conflict diagnostics. | `interface.concorde.scaffold-docsite`, `contract.capabilities.tools` |
 
 ## Modules
 
@@ -79,6 +87,7 @@ None.
 | Feature | Outcome |
 |---|---|
 | `feature.auto-docs.publish-project-docsite` | Convert validated maintained content into a reproducible site with one architecture page per module and one design page per feature. |
+| `feature.auto-docs.create-project-docsite` | Scaffold the project docsite from the packaged template through one reviewed proposal/apply cycle, then expose the entry points that publish it. |
 
 ## Decisions
 

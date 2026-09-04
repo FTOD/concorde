@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Lifecycle System Overview",
+    "output": "../../../../../generated/architecture/concorde-lifecycle-system-overview.html",
+    "quality_profile": "showcase",
+    "legend": {"mode": "hidden"},
+    "viewBox": [1320, 820]
+  },
+  "components": [
+    {"id": "capabilities", "type": "security", "label": "Capabilities", "sublabel": "Policy compiler + launch", "pos": [700, 40], "size": [180, 68]},
+    {"id": "standard-loop", "type": "backend", "label": "Standard Loop", "sublabel": "Four-stage direct loop", "pos": [380, 200], "size": [190, 68]},
+    {"id": "plan-operation", "type": "backend", "label": "Plan Operation", "sublabel": "context -> author", "pos": [700, 200], "size": [190, 68]},
+    {"id": "understanding", "type": "backend", "label": "Understanding", "sublabel": "Workspace + validation Tools", "pos": [1080, 200], "size": [190, 68]},
+    {"id": "maintainer", "type": "external", "label": "Maintainer", "sublabel": "Selects a feature and a phase", "pos": [40, 460], "size": [170, 68]},
+    {"id": "phase-skills", "type": "frontend", "label": "Phase Skills", "sublabel": "specify ... fast-loop leaves", "pos": [380, 460], "size": [190, 68]},
+    {"id": "attempt", "type": "database", "label": "Attempt", "sublabel": "Plan, tasks, evidence", "pos": [700, 460], "size": [170, 68]},
+    {"id": "reflections", "type": "messagebus", "label": "Reflections", "sublabel": "One problem per file", "pos": [380, 700], "size": [190, 68]},
+    {"id": "specification-code", "type": "database", "label": "Specification & Code", "sublabel": "Feature, architecture, tests", "pos": [700, 700], "size": [220, 68]}
+  ],
+  "connections": [
+    {"id": "maintainer-invokes-phase-skills", "from": "maintainer", "to": "phase-skills", "label": "invokes one phase", "variant": "emphasis", "labelAt": [330, 494]},
+    {"id": "maintainer-invokes-standard-loop", "from": "maintainer", "to": "standard-loop", "label": "invokes the full loop", "fromSide": "top", "toSide": "left", "labelAt": [300, 250]},
+    {"id": "standard-loop-composes-phase-skills", "from": "standard-loop", "to": "phase-skills", "label": "composes the direct leaves", "fromSide": "bottom", "toSide": "top", "labelAt": [475, 364]},
+    {"id": "standard-loop-composes-plan-operation", "from": "standard-loop", "to": "plan-operation", "label": "nests planning", "variant": "dashed", "fromSide": "right", "toSide": "left"},
+    {"id": "capabilities-enforces-plan-operation", "from": "capabilities", "to": "plan-operation", "label": "enforces launch policy", "fromSide": "bottom", "toSide": "top"},
+    {"id": "phase-skills-calls-understanding", "from": "phase-skills", "to": "understanding", "label": "resolves workspace, validates", "fromSide": "right", "toSide": "bottom"},
+    {"id": "phase-skills-writes-attempt", "from": "phase-skills", "to": "attempt", "label": "writes plan, tasks, evidence", "fromSide": "right", "toSide": "left", "labelAt": [700, 400]},
+    {"id": "phase-skills-writes-specification", "from": "phase-skills", "to": "specification-code", "label": "reconciles feature, code, tests"},
+    {"id": "phase-skills-records-reflections", "from": "phase-skills", "to": "reflections", "label": "records one problem per file", "fromSide": "bottom", "toSide": "top", "labelAt": [475, 614]}
+  ]
+}

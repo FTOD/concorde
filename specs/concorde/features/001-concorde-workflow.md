@@ -3,19 +3,21 @@ id: feature.concorde.workflow
 kind: feature
 module: module.concorde
 related_features:
-  - feature.concorde.workflow.initialize-architecture
-  - feature.concorde.workflow.retrieve-bounded-context
-  - feature.concorde.workflow.answer-workflow-questions
-  - feature.concorde.workflow.manage-feature-workspaces
-  - feature.concorde.workflow.specify-behavior
-  - feature.concorde.workflow.plan-delivery
-  - feature.concorde.workflow.execute-and-reconcile
-  - feature.concorde.workflow.validate-architecture
-  - feature.concorde.workflow.accept-milestone
-  - feature.concorde.workflow.fast-loop
-  - feature.operations.standard-development-loop
-  - feature.operations.permission-bounded-planning
-  - feature.skills.project-workflow
+  - feature.understanding.initialize-architecture
+  - feature.understanding.retrieve-bounded-context
+  - feature.understanding.answer-workflow-questions
+  - feature.understanding.resolve-feature-workspace
+  - feature.understanding.validate-architecture
+  - feature.lifecycle.specify-behavior
+  - feature.lifecycle.plan-attempt
+  - feature.lifecycle.execute-and-reconcile
+  - feature.lifecycle.deliver-attempt
+  - feature.lifecycle.fast-loop
+  - feature.lifecycle.standard-development-loop
+  - feature.reflections.record-and-triage
+  - feature.capabilities.permission-bounded-execution
+  - feature.capabilities.provide-capability-surfaces
+  - feature.distribution.install-concorde
 interfaces:
   provided:
     - contract.concorde.workflow
@@ -34,8 +36,10 @@ skills as the sole conversational surface.
 
 ## Usage
 
-1. Install Concorde with the preview/apply flow in `feature.concorde.install`, then initialize the
-   root module with `concorde-init` when the project has no Profile 7 architecture.
+1. Install Concorde with the preview/apply flow in `feature.distribution.install-concorde`, then
+   initialize the root module with `concorde-init` when the project has no Profile 7 architecture.
+   When the project grows child modules, partition them by capability, use case, or axis of change,
+   never by artifact type (constitution A.VI).
 2. Select one direct `features/<NNN-name>.md` and invoke `concorde-specify`; use
    `concorde-clarify` for material ambiguity and `concorde-checklist` for reviewer-owned quality
    checks. A new file is resolved again after stable-ID front matter exists.
@@ -55,11 +59,12 @@ Planning, task, checklist, research, quickstart, and validation files live only 
 
 | Entity ID | Role |
 |---|---|
-| `module.concorde.skills` | Presents public leaves and package-only internal effect-declared leaves. |
-| `module.concorde.operations` | Composes acyclic Skill/Operation graphs and enforces one native/outer policy per leaf. |
-| `module.concorde.runtime` | Resolves workspaces and performs deterministic init/context/validate/deliver Tools. |
-| `module.concorde.workspace` | Defines durable specification paths plus stable-ID attempts and reflections in project control state. |
+| `module.concorde.understanding` | Resolves Protocol 13 workspaces, bounded context, planning context, and deterministic validation for every phase. |
+| `module.concorde.lifecycle` | Owns the specify, plan, tasks, implement, deliver, and fast-loop Skills and the paired plan and standard-loop Operations. |
+| `module.concorde.reflections` | Receives one problem document per phase-level problem and triages it back through lifecycle capabilities. |
+| `module.concorde.capabilities` | Declares, permission-bounds, launches, and projects every Skill and Operation the workflow invokes. |
 | `entity.concorde.coding-agent` | Authors design/plan/tasks/code/tests and follows evidence/authority rules. |
+| `entity.concorde.control-state` | Holds the selected feature, its stable-ID attempt, and the reflection collection during the workflow. |
 
 ## Interfaces
 
@@ -76,8 +81,8 @@ Planning, task, checklist, research, quickstart, and validation files live only 
   and never launch a leaf without an exact narrowing enforced policy/receipt.
 - **Failures**: Invalid placement/authority, incomplete checklist/task, failed check, stale/unsafe delivery, or ambiguous impact stops the affected phase without implied authorization.
 - **Compatibility**: Profile 7 features are direct Markdown files; Protocol 13 rejects specification-local control state/redundant feature fields, while Delivery 9 retains cleanup-only semantics.
-- **Implementing entities**: `module.concorde.skills`, `module.concorde.operations`,
-  `module.concorde.runtime`, `module.concorde.workspace`, and `entity.concorde.coding-agent`.
+- **Implementing entities**: `module.concorde.understanding`, `module.concorde.lifecycle`,
+  `module.concorde.reflections`, `module.concorde.capabilities`, and `entity.concorde.coding-agent`.
 - **Example**: A maintainer specifies `features/001-change.md` with ID `feature.example.change`, runs plan/tasks/implement in `.concorde/attempts/feature.example.change/`, verifies all evidence, then invokes delivery once to remove that attempt.
 
 ### `contract.concorde.agent-platform` — Supported coding-agent execution surface
@@ -98,10 +103,26 @@ Planning, task, checklist, research, quickstart, and validation files live only 
   unavailable Tools/dependencies, or denied permissions stop execution without hidden fallback behavior.
 - **Compatibility**: Concorde 2.1.0 Package Manifest 2 packages 17 leaves/three pairs and exposes the
   same 15 public leaves plus three Operations in Codex and Claude.
-- **Implementing entities**: `entity.concorde.coding-agent`, `entity.concorde.skills`,
-  `entity.concorde.operations`, and `entity.concorde.agent-assets`.
+- **Implementing entities**: `entity.concorde.coding-agent`, `module.concorde.capabilities`, and
+  `module.concorde.reflections`.
 - **Example**: Codex loads `.agents/skills/concorde-plan/SKILL.md`, whose Operation runs bounded
   context → author with two distinct permission profiles.
+
+## Related Features
+
+- `feature.understanding.initialize-architecture`, `feature.understanding.retrieve-bounded-context`,
+  `feature.understanding.answer-workflow-questions`, `feature.understanding.resolve-feature-workspace`,
+  and `feature.understanding.validate-architecture` are composed as the orientation and gate phases
+  of this workflow.
+- `feature.lifecycle.specify-behavior`, `feature.lifecycle.plan-attempt`,
+  `feature.lifecycle.execute-and-reconcile`, `feature.lifecycle.deliver-attempt`, and
+  `feature.lifecycle.fast-loop` are the change phases this workflow sequences;
+  `feature.lifecycle.standard-development-loop` composes them as one Operation.
+- `feature.reflections.record-and-triage` is depended on for recording every phase-level problem.
+- `feature.capabilities.permission-bounded-execution` and
+  `feature.capabilities.provide-capability-surfaces` are depended on so that every invoked Skill or
+  Operation runs under one enforced policy with identical Codex and Claude semantics.
+- `feature.distribution.install-concorde` precedes the workflow in a fresh project.
 
 ## Usage Scenarios
 

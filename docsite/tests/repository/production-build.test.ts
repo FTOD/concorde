@@ -75,12 +75,12 @@ describe('Profile 7 production build', () => {
       diagram.kind === 'architecture' && diagram.source.endsWith('/diagrams/system-overview.json'))).toBe(true);
     expect(Object.keys(firstDiagramHashes).sort()).toEqual([
       'concorde-auto-docs-system-overview.html',
+      'concorde-capabilities-system-overview.html',
       'concorde-distribution-system-overview.html',
-      'concorde-operations-system-overview.html',
-      'concorde-runtime-system-overview.html',
-      'concorde-skills-system-overview.html',
+      'concorde-lifecycle-system-overview.html',
+      'concorde-reflections-system-overview.html',
       'concorde-system-overview.html',
-      'concorde-workspace-system-overview.html',
+      'concorde-understanding-system-overview.html',
     ]);
     expect(manifest.pages.filter((page) => page.kind !== 'module-architecture')
       .every((page) => page.architectureDiagrams === undefined)).toBe(true);

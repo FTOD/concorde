@@ -3,11 +3,11 @@
   "implementation_revision": "0123456789abcdef0123456789abcdef01234567",
   "records": [
     {
-      "subject_id": "feature.concorde.explore-alignment",
+      "subject_id": "feature.understanding.explore-alignment",
       "status": "verified",
       "basis": "executable-evidence",
-      "implementation_node_ids": ["function:src/concorde/alignment.py:explore_alignment"],
-      "evidence_node_ids": ["file:tests/concorde/integration/test_alignment_explorer.py"],
+      "implementation_node_ids": ["function:src/concorde/understanding/alignment.py:explore_alignment"],
+      "evidence_node_ids": ["file:tests/concorde/understanding/integration/test_alignment_explorer.py"],
       "finding_ids": [],
       "rationale": "The focused integration test exercises the public explorer entry point."
     }

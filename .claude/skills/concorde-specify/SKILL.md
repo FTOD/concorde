@@ -52,7 +52,12 @@ an explicit dependency. Reject a selected path outside the providing module's di
    intended capability.
 2. Read the providing module's `architecture.md` as bounded structural authority. Confirm the
    module responsibility and boundary, immediate feature inventory, and all entities/interfaces the
-   proposed feature will reference. Require its declared Archify `architecture` system overview to
+   proposed feature will reference. Confirm placement by capability (constitution A.VI): the
+   providing module must be the one whose capability this feature is a use case of, not the module
+   that happens to hold the same kind of artifact, and a project-wide use case belongs at the root
+   only when no single capability module owns it. If the honest providing module would be an
+   artifact-type layer or a residual bucket, route the partition to architecture work before
+   specifying the feature. Require its declared Archify `architecture` system overview to
    show the principal entities and directed relationships. If the overview is absent, invalid, or
    inconsistent with the architecture text, route that module to architecture work before declaring
    the feature ready. Do not descend into child modules merely because they exist.

@@ -36,15 +36,29 @@ A module is the only recursive specification unit. Its `architecture.md` owns re
 boundary, immediate children/features, significant typed entities, directed relationships, and
 representative interactions. A feature is one direct Markdown file with outcome/scope, usage,
 scenarios, requirements, embedded provided/required interfaces, and an Architecture Zoom over
-visible entity IDs.
+visible entity IDs. Modules are partitioned by business capability, use case, or axis of change,
+never by artifact type: a module owns every Skill, Tool, Operation, template, and rule its
+capability needs, and its features are use cases of that capability.
 
 Source code is implementation. Tests and deterministic checks are evidence. Plans, tasks, research,
 checklists, and validation logs are temporary attempt memory. Generated sites/diagrams and
 installed framework/agent files are reproducible projections, never intent authority.
 
 Module architectures and direct feature files are also the maintained project documentation; there
-is no parallel custom-document tree. Read the [project ontology and specification model](specs/concorde/features/007-project-ontology.md)
-and [workspace architecture](specs/concorde/modules/workspace/architecture.md).
+is no parallel custom-document tree. Read the [project ontology and specification model](specs/concorde/features/002-project-ontology.md)
+and the [understanding module architecture](specs/concorde/modules/understanding/architecture.md),
+which owns the file-role ontology and Protocol 13.
+
+Concorde applies the partition to itself. Its six capability modules are:
+
+| Module | Capability |
+|---|---|
+| [`understanding`](specs/concorde/modules/understanding/architecture.md) | Know what a project is: model, load, validate, bound context, explore alignment, answer questions. |
+| [`lifecycle`](specs/concorde/modules/lifecycle/architecture.md) | Change one feature safely from specify through plan, tasks, implement, validate, and deliver. |
+| [`reflections`](specs/concorde/modules/reflections/architecture.md) | Record one problem per file and triage it to maintainer disposition. |
+| [`capabilities`](specs/concorde/modules/capabilities/architecture.md) | Run any Tool, Skill, or Operation on a coding agent under an enforced policy and project it to Codex and Claude. |
+| [`distribution`](specs/concorde/modules/distribution/architecture.md) | Package, install, and update Concorde with an isolated Operation runtime. |
+| [`auto-docs`](specs/concorde/modules/auto-docs/architecture.md) | Scaffold and publish the validated documentation site. |
 
 ## Leaf Skills and Operations
 
@@ -84,7 +98,7 @@ incomplete, invalid, or unsafe delivery is non-mutating.
 The framework packages internal `concorde-plan-context` and `concorde-plan-author`, but neither is
 projected as a user capability. Both agents receive the same 18 public `concorde-*` skills. See
 [Workflow](specs/concorde/features/001-concorde-workflow.md) and
-[Skill reference](specs/concorde/modules/skills/features/001-project-workflow.md).
+[Capability surfaces](specs/concorde/modules/capabilities/features/002-provide-capability-surfaces.md).
 
 ## Compose prompts with LangGraph
 
@@ -170,7 +184,7 @@ whose observed bytes still match the prior receipt; unowned or user-modified col
 Concorde 2.1.0 installs 17 leaves and three complete Operation pairs in the framework while projecting
 only 15 public leaves plus the three Operations.
 
-See the complete [installation feature](specs/concorde/features/003-installation.md) and
+See the complete [installation feature](specs/concorde/modules/distribution/features/002-install-concorde.md) and
 [workflow usage](specs/concorde/features/001-concorde-workflow.md#usage).
 
 ## Maintain this checkout
@@ -185,7 +199,7 @@ python3 scripts/development/sync-agent-surfaces.py status --format json
 python3 scripts/development/sync-agent-surfaces.py apply --format json
 ```
 
-See [Agent-surface maintenance](specs/concorde/features/004-agent-surfaces.md).
+See [Agent-surface maintenance](specs/concorde/modules/capabilities/features/004-maintain-agent-surfaces.md).
 
 ## Develop and validate
 
@@ -213,11 +227,11 @@ the [Auto-Docs renderer contract](specs/concorde/modules/auto-docs/features/001-
 | `skills/` | Canonical public/internal leaf capabilities, one `SKILL.md` with exposure/effects per directory. |
 | `operations/` | Paired public LangGraph `operation.py`/`SKILL.md` with ordered capabilities/bindings. |
 | `templates/` | Complete feature/plan/task/checklist/constitution/reflection format references. |
-| `src/concorde/` | Deterministic Tools plus Operations-owned graph, policy, path-context, and process-handoff programs. |
+| `src/concorde/` | The Python package realizing every capability module: understanding, lifecycle, reflections, capabilities, distribution, and the docsite scaffold. |
 | `agent-assets/` | Canonical reflection-triage roles and integration templates. |
 | `scripts/` | Portable runtime adapters, installer, and checkout sync. |
 | `concorde.json` | Single package/version/profile/protocol/inventory authority. |
-| `specs/concorde/` | Self-applied module architectures and direct features; the maintained project documentation. |
+| `specs/concorde/` | Self-applied capability-partitioned module architectures and direct features; the maintained project documentation. |
 | `.concorde/` | Native project configuration, selection, constitution, attempts, and reflections. |
 | `tests/concorde/` | Python unit, contract, integration, and acceptance evidence. |
 | `docsite/` | Architecture/feature publication adapter, packaged as every project's docsite template. |

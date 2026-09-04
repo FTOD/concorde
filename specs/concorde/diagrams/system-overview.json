@@ -5,30 +5,215 @@
     "title": "Concorde System Overview",
     "output": "../../../generated/architecture/concorde-system-overview.html",
     "quality_profile": "showcase",
-    "legend": {"mode": "hidden"},
-    "viewBox": [1380, 650]
+    "legend": {
+      "mode": "hidden"
+    },
+    "viewBox": [
+      1140,
+      660
+    ]
   },
   "components": [
-    {"id": "maintainer", "type": "external", "label": "Maintainer", "sublabel": "Lifecycle consumer", "pos": [40, 270], "size": [140, 68]},
-    {"id": "skills", "type": "frontend", "label": "Leaf Skills", "sublabel": "Bounded capabilities", "pos": [260, 100], "size": [160, 68]},
-    {"id": "operations", "type": "backend", "label": "Operations", "sublabel": "Controlled LangGraphs", "pos": [260, 430], "size": [170, 68]},
-    {"id": "runtime", "type": "backend", "label": "Runtime Tools", "sublabel": "Deterministic actions", "pos": [520, 270], "size": [170, 68]},
-    {"id": "workspace", "type": "database", "label": "Workspace", "sublabel": "Sources and control state", "pos": [760, 270], "size": [180, 68]},
-    {"id": "distribution", "type": "cloud", "label": "Distribution", "sublabel": "Package and install", "pos": [1030, 110], "size": [170, 68]},
-    {"id": "autodocs", "type": "frontend", "label": "Auto-Docs", "sublabel": "Validated read model", "pos": [1030, 430], "size": [170, 68]},
-    {"id": "archify", "type": "external", "label": "Archify", "sublabel": "Diagram renderer", "pos": [1230, 430], "size": [120, 68]}
+    {
+      "id": "maintainer",
+      "type": "external",
+      "label": "Maintainer",
+      "sublabel": "Selects a feature and a phase",
+      "pos": [
+        40,
+        290
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "lifecycle",
+      "type": "backend",
+      "label": "Lifecycle",
+      "sublabel": "Specify, plan, implement, deliver",
+      "pos": [
+        320,
+        290
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "understanding",
+      "type": "backend",
+      "label": "Understanding",
+      "sublabel": "Model, context, validation",
+      "pos": [
+        320,
+        90
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "reflections",
+      "type": "messagebus",
+      "label": "Reflections",
+      "sublabel": "One problem per file, triaged",
+      "pos": [
+        320,
+        490
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "capabilities",
+      "type": "security",
+      "label": "Capabilities",
+      "sublabel": "Tools, Skills, Operations, policy",
+      "pos": [
+        620,
+        290
+      ],
+      "size": [
+        190,
+        68
+      ]
+    },
+    {
+      "id": "specification",
+      "type": "database",
+      "label": "Specification",
+      "sublabel": "Architectures and features",
+      "pos": [
+        620,
+        90
+      ],
+      "size": [
+        190,
+        68
+      ]
+    },
+    {
+      "id": "distribution",
+      "type": "cloud",
+      "label": "Distribution",
+      "sublabel": "Package and install",
+      "pos": [
+        620,
+        490
+      ],
+      "size": [
+        190,
+        68
+      ]
+    },
+    {
+      "id": "autodocs",
+      "type": "frontend",
+      "label": "Auto-Docs",
+      "sublabel": "Published read model",
+      "pos": [
+        940,
+        90
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "agent",
+      "type": "external",
+      "label": "Coding Agent",
+      "sublabel": "Codex or Claude",
+      "pos": [
+        940,
+        290
+      ],
+      "size": [
+        170,
+        68
+      ]
+    }
   ],
   "connections": [
-    {"id": "maintainer-invokes-skills", "from": "maintainer", "to": "skills", "label": "invokes leaf", "variant": "emphasis"},
-    {"id": "maintainer-invokes-operations", "from": "maintainer", "to": "operations", "label": "invokes loop", "variant": "emphasis"},
-    {"id": "operations-compose-skills", "from": "operations", "to": "skills", "label": "composes", "fromSide": "top", "toSide": "bottom"},
-    {"id": "skills-call-runtime", "from": "skills", "to": "runtime", "label": "invoke Tools"},
-    {"id": "skills-read-workspace", "from": "skills", "to": "workspace", "label": "read bounded context", "variant": "dashed"},
-    {"id": "operations-use-runtime", "from": "operations", "to": "runtime", "label": "use graph support"},
-    {"id": "runtime-accesses-workspace", "from": "runtime", "to": "workspace", "label": "validates and updates", "labelAt": [710, 352]},
-    {"id": "distribution-projects-skills", "from": "distribution", "to": "skills", "label": "projects user skills", "fromSide": "left", "toSide": "right"},
-    {"id": "autodocs-read-workspace", "from": "workspace", "to": "autodocs", "label": "publishes validated sources", "fromSide": "right", "toSide": "left"},
-    {"id": "autodocs-call-archify", "from": "autodocs", "to": "archify", "label": "renders views", "labelAt": [1215, 512]},
-    {"id": "distribution-packages-autodocs", "from": "distribution", "to": "autodocs", "label": "packages template", "fromSide": "bottom", "toSide": "top", "labelAt": [1115, 300]}
+    {
+      "id": "maintainer-invokes-lifecycle",
+      "from": "maintainer",
+      "to": "lifecycle",
+      "label": "invokes phases",
+      "variant": "emphasis"
+    },
+    {
+      "id": "lifecycle-calls-understanding",
+      "from": "lifecycle",
+      "to": "understanding",
+      "label": "resolves and validates",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "lifecycle-records-reflections",
+      "from": "lifecycle",
+      "to": "reflections",
+      "label": "records problems",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        300,
+        424
+      ]
+    },
+    {
+      "id": "reflections-composes-lifecycle",
+      "from": "reflections",
+      "to": "lifecycle",
+      "label": "triages through",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelAt": [
+        462,
+        424
+      ]
+    },
+    {
+      "id": "capabilities-launches-lifecycle",
+      "from": "capabilities",
+      "to": "lifecycle",
+      "label": "launches under policy"
+    },
+    {
+      "id": "capabilities-configures-agent",
+      "from": "capabilities",
+      "to": "agent",
+      "label": "enforces sandbox"
+    },
+    {
+      "id": "understanding-validates-specification",
+      "from": "understanding",
+      "to": "specification",
+      "label": "validates"
+    },
+    {
+      "id": "specification-feeds-autodocs",
+      "from": "specification",
+      "to": "autodocs",
+      "label": "publishes",
+      "variant": "dashed"
+    },
+    {
+      "id": "distribution-projects-capabilities",
+      "from": "distribution",
+      "to": "capabilities",
+      "label": "projects public skills",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
   ]
 }

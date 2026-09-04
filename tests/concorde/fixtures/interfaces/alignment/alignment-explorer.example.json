@@ -2,7 +2,7 @@
   "alignment_schema_version": 1,
   "source_profile": 7,
   "source_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-  "target": "feature.concorde.explore-alignment",
+  "target": "feature.understanding.explore-alignment",
   "query": null,
   "status_filter": [],
   "provenance": {
@@ -20,17 +20,17 @@
   "specification": {
     "subjects": [
       {
-        "id": "feature.concorde.explore-alignment",
+        "id": "feature.understanding.explore-alignment",
         "kind": "feature",
         "profile_kind": "feature",
         "adapter_type": "concept",
         "name": "Alignment Explorer",
         "description": "Browse evidence-qualified specification-to-code relationships.",
         "module_id": "module.concorde",
-        "feature_id": "feature.concorde.explore-alignment",
+        "feature_id": "feature.understanding.explore-alignment",
         "declaring_feature_ids": [],
-        "source_path": "specs/concorde/features/006-alignment-explorer.md",
-        "source_paths": ["specs/concorde/features/006-alignment-explorer.md"]
+        "source_path": "specs/concorde/modules/understanding/features/006-explore-alignment.md",
+        "source_paths": ["specs/concorde/modules/understanding/features/006-explore-alignment.md"]
       }
     ],
     "relationships": [],
@@ -47,20 +47,20 @@
     },
     "nodes": [
       {
-        "id": "function:src/concorde/alignment.py:explore_alignment",
+        "id": "function:src/concorde/understanding/alignment.py:explore_alignment",
         "type": "function",
         "name": "explore_alignment",
-        "filePath": "src/concorde/alignment.py",
+        "filePath": "src/concorde/understanding/alignment.py",
         "lineRange": [1, 1],
         "summary": "Returns a bounded read-only alignment query result.",
         "tags": ["entry-point", "alignment"],
         "complexity": "moderate"
       },
       {
-        "id": "file:tests/concorde/integration/test_alignment_explorer.py",
+        "id": "file:tests/concorde/understanding/integration/test_alignment_explorer.py",
         "type": "file",
         "name": "test_alignment_explorer.py",
-        "filePath": "tests/concorde/integration/test_alignment_explorer.py",
+        "filePath": "tests/concorde/understanding/integration/test_alignment_explorer.py",
         "summary": "Exercises explorer projection, evidence, freshness, and query behavior.",
         "tags": ["test", "evidence"],
         "complexity": "moderate"
@@ -68,8 +68,8 @@
     ],
     "edges": [
       {
-        "source": "function:src/concorde/alignment.py:explore_alignment",
-        "target": "file:tests/concorde/integration/test_alignment_explorer.py",
+        "source": "function:src/concorde/understanding/alignment.py:explore_alignment",
+        "target": "file:tests/concorde/understanding/integration/test_alignment_explorer.py",
         "type": "tested_by",
         "direction": "forward",
         "description": "Integration tests provide executable evidence.",
@@ -88,14 +88,14 @@
   "alignment": {
     "records": [
       {
-        "subject_id": "feature.concorde.explore-alignment",
+        "subject_id": "feature.understanding.explore-alignment",
         "status": "verified",
         "requested_status": "verified",
         "basis": "executable-evidence",
         "implementation_revision": "0123456789abcdef0123456789abcdef01234567",
         "freshness": "current",
-        "implementation_node_ids": ["function:src/concorde/alignment.py:explore_alignment"],
-        "evidence_node_ids": ["file:tests/concorde/integration/test_alignment_explorer.py"],
+        "implementation_node_ids": ["function:src/concorde/understanding/alignment.py:explore_alignment"],
+        "evidence_node_ids": ["file:tests/concorde/understanding/integration/test_alignment_explorer.py"],
         "finding_ids": [],
         "rationale": "The focused integration test exercises the public explorer entry point."
       }

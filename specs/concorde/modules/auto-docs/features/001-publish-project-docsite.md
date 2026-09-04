@@ -3,14 +3,16 @@ id: feature.auto-docs.publish-project-docsite
 kind: feature
 module: module.concorde.auto-docs
 related_features:
-  - feature.concorde.publish-project-docsite
+  - feature.auto-docs.create-project-docsite
+  - feature.understanding.validate-architecture
+  - feature.understanding.resolve-feature-workspace
 interfaces:
   provided:
     - contract.auto-docs.architecture-site
     - contract.auto-docs.build-interface
     - contract.auto-docs.build-manifest
   required:
-    - contract.workspace.records
+    - contract.understanding.records
     - contract.auto-docs.archify-renderer
 evidence_status: verified
 ---
@@ -96,6 +98,15 @@ parallel prose authority.
 - **Implementing entities**: `entity.auto-docs.diagram-renderer`, `entity.auto-docs.archify`.
 - **Example**: A module system overview is showcase-validated and rendered before its architecture page
   is admitted to the publication candidate.
+
+## Related Features
+
+- `feature.auto-docs.create-project-docsite` scaffolds the `docsite/` adapter this feature publishes;
+  this feature depends on it for the project-owned site identity and packaged template bytes.
+- `feature.understanding.validate-architecture` is depended on for the deterministic module/feature
+  identity and hierarchy checks that gate publication before a candidate is promoted.
+- `feature.understanding.resolve-feature-workspace` is depended on for the canonical maintained-source
+  records this feature discovers, classifies, and renders as the Architecture and Features collections.
 
 ## Usage Scenarios
 

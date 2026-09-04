@@ -6,16 +6,16 @@
     "output": "../../../../../generated/architecture/concorde-distribution-system-overview.html",
     "quality_profile": "showcase",
     "legend": {"mode": "hidden"},
-    "viewBox": [1160, 600]
+    "viewBox": [1160, 620]
   },
   "components": [
-    {"id": "manifest", "type": "cloud", "label": "Manifest 2", "sublabel": "Files + runtime identity", "pos": [40, 50], "size": [170, 68]},
-    {"id": "installer", "type": "backend", "label": "Installer", "sublabel": "Files + venv transaction", "pos": [300, 50], "size": [190, 68]},
-    {"id": "receipt", "type": "security", "label": "Install Receipt", "sublabel": "Files + runtime evidence", "pos": [610, 50], "size": [190, 68]},
-    {"id": "runtime-lock", "type": "security", "label": "Runtime Lock", "sublabel": "Pinned LangGraph", "pos": [40, 460], "size": [170, 68]},
-    {"id": "managed-runtime", "type": "backend", "label": "Managed Runtime", "sublabel": ".concorde/.venv", "pos": [300, 460], "size": [190, 68]},
-    {"id": "framework", "type": "database", "label": "Framework Projection", "sublabel": "Pairs + bootstrap", "pos": [610, 460], "size": [200, 68]},
-    {"id": "surfaces", "type": "frontend", "label": "Agent Skills", "sublabel": "Managed Operation entry", "pos": [920, 460], "size": [190, 68]}
+    {"id": "manifest", "type": "cloud", "label": "Manifest 2", "sublabel": "Files + runtime identity", "pos": [40, 80], "size": [170, 68]},
+    {"id": "installer", "type": "backend", "label": "Installer", "sublabel": "Files + venv transaction", "pos": [300, 80], "size": [190, 68]},
+    {"id": "receipt", "type": "security", "label": "Install Receipt", "sublabel": "Files + runtime evidence", "pos": [610, 80], "size": [190, 68]},
+    {"id": "runtime-lock", "type": "security", "label": "Runtime Lock", "sublabel": "Pinned LangGraph", "pos": [40, 470], "size": [170, 68]},
+    {"id": "managed-runtime", "type": "backend", "label": "Managed Runtime", "sublabel": ".concorde/.venv", "pos": [300, 470], "size": [190, 68]},
+    {"id": "framework", "type": "database", "label": "Framework Projection", "sublabel": "Pairs + bootstrap", "pos": [610, 470], "size": [200, 68]},
+    {"id": "capabilities", "type": "backend", "label": "Capabilities", "sublabel": "Projector + launcher", "pos": [920, 470], "size": [190, 68]}
   ],
   "connections": [
     {"id": "manifest-guides-installer", "from": "manifest", "to": "installer", "label": "declares install"},
@@ -24,8 +24,8 @@
     {"id": "installer-generates-framework", "from": "installer", "to": "framework", "label": "installs files"},
     {"id": "installer-provisions-runtime", "from": "installer", "to": "managed-runtime", "label": "provisions", "labelDy": 24},
     {"id": "runtime-lock-configures-runtime", "from": "runtime-lock", "to": "managed-runtime", "label": "installs pin"},
-    {"id": "runtime-verifies-framework", "from": "managed-runtime", "to": "framework", "label": "verifies Operations", "variant": "emphasis", "labelDy": 24},
+    {"id": "runtime-verifies-capabilities", "from": "managed-runtime", "to": "capabilities", "label": "verifies Operations offline", "fromSide": "bottom", "toSide": "bottom", "variant": "emphasis"},
     {"id": "receipt-documents-framework", "from": "receipt", "to": "framework", "label": "documents", "variant": "dashed", "fromSide": "bottom", "toSide": "top"},
-    {"id": "framework-projects-surfaces", "from": "framework", "to": "surfaces", "label": "projects", "variant": "emphasis"}
+    {"id": "installer-calls-capabilities", "from": "installer", "to": "capabilities", "label": "renders projections", "fromSide": "top", "toSide": "top", "variant": "emphasis"}
   ]
 }

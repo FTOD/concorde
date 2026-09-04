@@ -3,30 +3,15 @@ id: module.concorde
 kind: module
 parent: null
 modules:
-  - module.concorde.skills
-  - module.concorde.operations
-  - module.concorde.runtime
-  - module.concorde.workspace
+  - module.concorde.understanding
+  - module.concorde.lifecycle
+  - module.concorde.reflections
+  - module.concorde.capabilities
   - module.concorde.distribution
   - module.concorde.auto-docs
 features:
   - feature.concorde.workflow
-  - feature.concorde.publish-project-docsite
-  - feature.concorde.install
-  - feature.concorde.maintain-agent-surfaces
-  - feature.concorde.record-workflow-reflections
-  - feature.concorde.explore-alignment
   - feature.concorde.define-project-ontology
-  - feature.concorde.workflow.initialize-architecture
-  - feature.concorde.workflow.retrieve-bounded-context
-  - feature.concorde.workflow.answer-workflow-questions
-  - feature.concorde.workflow.manage-feature-workspaces
-  - feature.concorde.workflow.specify-behavior
-  - feature.concorde.workflow.plan-delivery
-  - feature.concorde.workflow.execute-and-reconcile
-  - feature.concorde.workflow.validate-architecture
-  - feature.concorde.workflow.accept-milestone
-  - feature.concorde.workflow.fast-loop
 diagrams:
   - source: diagrams/system-overview.json
     kind: architecture
@@ -38,138 +23,120 @@ diagrams:
 ## Responsibility
 
 Provide a standalone, module-centered development system in which durable architecture and feature
-intent, executable reality, evidence, temporal work state, and a permission-bounded structural
-capability hierarchy have explicit, non-overlapping authority.
+intent, executable reality, evidence, temporal work state, and a permission-bounded capability
+structure have explicit, non-overlapping authority, and in which every capability a maintainer or
+coding agent needs is owned by exactly one module.
 
 ## Boundary
 
-Concorde owns Scripts that expose deterministic Tools, public/internal effect-declared leaf Skills,
-acyclic paired LangGraph Operations, complete Markdown format references, project-control semantics, agent
-projection, direct installation, evidence-qualified alignment exploration, and optional
-documentation projections, including an isolated installed Python environment for Operation
-dependencies. It does not own a coding-agent/model runtime, a project's own virtual environment, project product
-code, Archify rendering, Docusaurus internals, or Understand Anything graph semantics.
+Concorde owns six capability modules: understanding a project, changing one feature through its
+lifecycle, recording and triaging reflections, running any capability on a coding agent,
+distributing and installing the package, and publishing the documentation read model. It owns the
+project-wide file roles those modules share (package manifest, specification, control state, source
+code, tests, templates, generated projections) and the Package Manifest 2 identity. It does not own
+a coding-agent/model runtime, a project's own virtual environment, project product code, Archify
+rendering, Docusaurus internals, or Understand Anything graph semantics.
 
 ## Entities
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
-| `module.concorde.skills` | module | Canonical public/internal leaf prompts, effect/exposure metadata, format references, capability parsing, and public agent projection semantics. | `specs/concorde/modules/skills/architecture.md` |
-| `module.concorde.operations` | module | Paired LangGraph control graphs, nested public planning, and per-leaf Codex/Claude policy/process enforcement. | `specs/concorde/modules/operations/architecture.md` |
-| `module.concorde.runtime` | module | Deterministic Tools, repository loading, workspace routing, validation, reflection support, and delivery. | `specs/concorde/modules/runtime/architecture.md` |
-| `module.concorde.workspace` | module | Durable specification, project control, source/evidence, installed, and projection placement rules. | `specs/concorde/modules/workspace/architecture.md` |
-| `module.concorde.distribution` | module | One native package and its owned installation. | `specs/concorde/modules/distribution/architecture.md` |
-| `module.concorde.auto-docs` | module | Validation-gated publication of maintained module architecture and direct feature specifications. | `specs/concorde/modules/auto-docs/architecture.md` |
-| `entity.concorde.package-manifest` | configuration | Concorde 2.1.0 Package Manifest 2 identity and exact Script, 17-leaf, three-Operation, managed-runtime, template, docsite-template, protocol, and integration inventory. | `concorde.json` |
-| `entity.concorde.scripts` | directory | Directly runnable entry points that expose bounded deterministic Tools, package automation, and the managed Operation bootstrap. | `scripts` |
-| `entity.concorde.skills` | directory | Canonical leaf capability directories, each containing exactly one `SKILL.md`. | `skills` |
-| `entity.concorde.operations` | directory | Canonical LangGraph capability directories, each containing exactly `operation.py` and associated `SKILL.md`. | `operations` |
-| `entity.concorde.templates` | directory | Complete feature, plan, task, checklist, constitution, and reflection Markdown format references. | `templates` |
-| `entity.concorde.agent-assets` | directory | Internal reflection-triage roles and integration templates. | `agent-assets` |
-| `entity.concorde.runtime` | package | Standard-library implementation of Concorde source, Tool, workspace, capability validation, permission compilation/process handoff, and read-only alignment contracts plus lazy Operation support. | `src/concorde` |
-| `entity.concorde.cli` | program | Structured Tool dispatcher for initialization, docsite scaffolding, context, exploration, validation, delivery, and agent assets. | `src/concorde/cli.py#create_parser` |
-| `entity.concorde.workspace-resolver` | program | Resolves one direct feature, its module/ancestry/relations, and stable-ID control paths through Protocol 13. | `src/concorde/feature_workspace.py#resolve_phase_paths` |
-| `entity.concorde.alignment-explorer` | program | Validates optional pinned graph/evidence and returns a bounded evidence-qualified read-only Tool result. | `src/concorde/alignment.py#explore_alignment` |
-| `entity.concorde.installer` | program | Previews and applies one digest-owned native package plus its isolated `.concorde/.venv` Operation runtime to Codex or Claude projects. | `scripts/install-concorde.py` |
-| `entity.concorde.agent-surface-sync` | program | Verifies or refreshes this checkout's generated integration surfaces from canonical capabilities/assets. | `scripts/development/sync-agent-surfaces.py` |
-| `entity.concorde.specification` | directory | Concorde's self-applied module architectures and direct feature authorities. | `specs/concorde` |
-| `entity.concorde.control-state` | directory | Project configuration, selection, constitution, attempts, reflections, and native install ownership. | `.concorde` |
-| `entity.concorde.coding-agent` | external-system | Host that follows installed leaf or Operation skills and authors only explicitly authorized sources. | `external:coding-agent` |
-| `entity.concorde.archify` | external-system | Renderer for architecture-owned explanatory diagrams. | `external:archify` |
-| `entity.concorde.understand-anything` | external-system | Optional executable graph provider for evidence-qualified alignment exploration. | `external:Egonex-AI/Understand-Anything@ba450c4` |
+| `module.concorde.understanding` | module | Knows what a project is: models it as a validated Profile 7 hierarchy, loads it deterministically, bounds one feature's context and permission paths, explores alignment with code evidence, and answers grounded questions. | `specs/concorde/modules/understanding/architecture.md` |
+| `module.concorde.lifecycle` | module | Carries one selected feature from specification through permission-bounded planning, dependency-ordered tasks, reconciled implementation, deterministic validation gates, and cleanup-only delivery, including the bounded fast loop. | `specs/concorde/modules/lifecycle/architecture.md` |
+| `module.concorde.reflections` | module | Records one tracked problem per file during workflow phases and triages it through the conditional permission-bounded reflection Operation until maintainer disposition closes it. | `specs/concorde/modules/reflections/architecture.md` |
+| `module.concorde.capabilities` | module | Defines how every Concorde capability exists and runs on a coding agent: deterministic Tools behind portable entry points, exposure/effect-declared leaf Skills, acyclic paired LangGraph Operations, per-leaf permission compilation and enforced launch, and identical public projection into Codex and Claude. | `specs/concorde/modules/capabilities/architecture.md` |
+| `module.concorde.distribution` | module | Packages, validates, installs, and updates Concorde while preserving identity, integrity, path safety, explicit ownership, and user-authored files. | `specs/concorde/modules/distribution/architecture.md` |
+| `module.concorde.auto-docs` | module | Scaffolds and publishes validated module architectures, direct features, and architecture-owned diagrams as one searchable provenance-preserving site. | `specs/concorde/modules/auto-docs/architecture.md` |
+| `entity.concorde.package-manifest` | configuration | Concorde 2.1.0 Package Manifest 2: the single version, profile, protocol, and inventory authority for Scripts, 17 leaf Skills, three Operation pairs, templates, the docsite template, the managed Operation runtime, and supported integrations. | `concorde.json` |
+| `entity.concorde.specification` | directory | Concorde's self-applied module architectures and direct feature files; the maintained project documentation. | `specs/concorde` |
+| `entity.concorde.control-state` | directory | Project configuration, feature selection, constitution, stable-ID attempts, the reflection collection, and installed framework, runtime, and receipt state. | `.concorde` |
+| `entity.concorde.source-code` | package | The standard-library Python package in which every capability module's programs are realized. | `src/concorde` |
+| `entity.concorde.tests` | test | Unit, contract, integration, and acceptance evidence for every capability module. | `tests/concorde` |
+| `entity.concorde.templates` | directory | Complete Markdown format references for features, constitutions, plans, tasks, checklists, and reflections, each owned by the capability module that consumes it. | `templates` |
+| `entity.concorde.generated` | directory | Disposable diagram and site projections that carry source provenance. | `generated` |
+| `entity.concorde.coding-agent` | external-system | Codex or Claude host that follows projected Skills and Operations under an enforced policy and authors only explicitly authorized sources. | `external:coding-agent` |
 
 ## Relationships
 
 | Source | Predicate | Target | Description |
 |---|---|---|---|
-| `entity.concorde.package-manifest` | `declares` | `entity.concorde.scripts` | Inventories distributable deterministic entry points. |
-| `entity.concorde.package-manifest` | `declares` | `entity.concorde.skills` | Inventories every leaf Skill by globally unique safe name. |
-| `entity.concorde.package-manifest` | `declares` | `entity.concorde.operations` | Inventories every exact Python/Markdown Operation pair. |
+| `entity.concorde.package-manifest` | `declares` | `module.concorde.capabilities` | Inventories every Script, leaf Skill, and Operation pair by globally unique safe name. |
 | `entity.concorde.package-manifest` | `declares` | `entity.concorde.templates` | Inventories every complete Markdown format reference. |
-| `entity.concorde.package-manifest` | `declares` | `entity.concorde.runtime` | Pins the runtime profile/protocol shipped in the native package. |
 | `entity.concorde.package-manifest` | `declares` | `module.concorde.auto-docs` | Inventories the docsite adapter as the packaged template root. |
-| `module.concorde.skills` | `calls` | `module.concorde.runtime` | Leaf Skills request deterministic workspace and lifecycle Tools. |
-| `module.concorde.skills` | `reads_from` | `module.concorde.workspace` | Leaf Skills use bounded durable/control/executable paths for a selected feature. |
-| `module.concorde.operations` | `composes` | `module.concorde.skills` | LangGraphs sequence canonical leaf Skills by effect-declared occurrence without duplicating prompts. |
-| `module.concorde.operations` | `depends_on` | `module.concorde.runtime` | Uses shared package parsing and may cause Skills to invoke Tools. |
-| `module.concorde.runtime` | `validates` | `module.concorde.workspace` | Loads and checks the Profile 7 authority model used by every Tool. |
+| `module.concorde.understanding` | `validates` | `entity.concorde.specification` | Loads and deterministically validates the Profile 7 model that every other module reads. |
+| `module.concorde.understanding` | `reads_from` | `entity.concorde.control-state` | Resolves native selection, stable-ID attempt state, and reflection state into Protocol 13. |
+| `module.concorde.lifecycle` | `calls` | `module.concorde.understanding` | Every phase resolves its workspace, bounded context, and validation through understanding Tools before it changes anything. |
+| `module.concorde.lifecycle` | `writes_to` | `entity.concorde.control-state` | Phases create, update, and finally remove exactly one stable-ID attempt. |
+| `module.concorde.lifecycle` | `writes_to` | `entity.concorde.specification` | Specification and implementation reconcile module architectures and direct feature files. |
+| `module.concorde.lifecycle` | `writes_to` | `entity.concorde.source-code` | Implementation and the fast loop change code only within task-authorized paths. |
+| `module.concorde.lifecycle` | `writes_to` | `entity.concorde.tests` | Implementation records executable evidence beside the code it proves. |
+| `module.concorde.lifecycle` | `writes_to` | `module.concorde.reflections` | Planning, task generation, implementation, and the fast loop record one problem per file. |
+| `module.concorde.reflections` | `composes` | `module.concorde.lifecycle` | Triage routes a reflection through analyze, fast-loop, plan, tasks, implement, and validate as opaque direct capabilities. |
+| `module.concorde.capabilities` | `provides` | `module.concorde.understanding` | Declares, validates, launches, and projects the understanding Skills and Tools. |
+| `module.concorde.capabilities` | `provides` | `module.concorde.lifecycle` | Declares, permission-bounds, launches, and projects the lifecycle Skills and Operations. |
+| `module.concorde.capabilities` | `provides` | `module.concorde.reflections` | Declares, permission-bounds, launches, and projects the triage Operation and its agents. |
+| `module.concorde.capabilities` | `reads_from` | `module.concorde.understanding` | Compiles Protocol 13 roles into concrete per-leaf policies before any launch. |
+| `module.concorde.capabilities` | `configures` | `entity.concorde.coding-agent` | Renders the Codex permission profile, Claude strict sandbox, or approved outer boundary each leaf runs under. |
 | `module.concorde.distribution` | `reads_from` | `entity.concorde.package-manifest` | Installs one allowlisted package from the native package identity. |
-| `entity.concorde.installer` | `transforms` | `entity.concorde.skills` | Projects canonical leaf Skills into the selected integration. |
-| `entity.concorde.installer` | `transforms` | `entity.concorde.operations` | Installs each pair, provisions its pinned dependency in `.concorde/.venv`, and projects its Markdown through the managed bootstrap. |
-| `entity.concorde.installer` | `provides` | `entity.concorde.coding-agent` | Installs owned framework, verified Operation runtime, and agent surfaces under preview/apply control without touching a project `.venv`. |
-| `entity.concorde.agent-surface-sync` | `transforms` | `entity.concorde.skills` | Keeps checkout leaf Skill projections byte-current. |
-| `entity.concorde.agent-surface-sync` | `transforms` | `entity.concorde.operations` | Keeps checkout Operation skill projections byte-current. |
-| `module.concorde.auto-docs` | `reads_from` | `module.concorde.workspace` | Builds only from validated module architecture, direct feature, and architecture-owned diagram sources. |
-| `module.concorde.auto-docs` | `calls` | `entity.concorde.archify` | Renders declared architecture views before site publication. |
-| `entity.concorde.workspace-resolver` | `reads_from` | `entity.concorde.specification` | Selects exactly one direct feature and its bounded structural context. |
-| `entity.concorde.workspace-resolver` | `reads_from` | `entity.concorde.control-state` | Resolves native selection, stable-ID attempt state, and reflection authority. |
-| `entity.concorde.cli` | `calls` | `entity.concorde.alignment-explorer` | Dispatches the native read-only exploration Tool and its filters. |
-| `entity.concorde.alignment-explorer` | `reads_from` | `entity.concorde.specification` | Projects validated Profile 7 identity and relationship truth. |
-| `entity.concorde.understand-anything` | `provides` | `entity.concorde.alignment-explorer` | Supplies optional pinned graph evidence without replacing Concorde identity. |
+| `module.concorde.distribution` | `calls` | `module.concorde.capabilities` | Projects the 18 public capabilities and verifies every installed Operation through the managed launcher. |
+| `module.concorde.distribution` | `writes_to` | `entity.concorde.control-state` | Writes the framework projection, the isolated Operation runtime, and the ownership receipt. |
+| `module.concorde.auto-docs` | `reads_from` | `entity.concorde.specification` | Publishes only validated architectures, direct features, and architecture-owned diagrams. |
+| `module.concorde.auto-docs` | `generates` | `entity.concorde.generated` | Renders diagram deliveries and the site as disposable provenance-bearing projections. |
+| `entity.concorde.coding-agent` | `reads_from` | `entity.concorde.specification` | Reads only the bounded architecture and feature context its policy admits. |
+| `entity.concorde.source-code` | `realizes` | `entity.concorde.specification` | Code is the actual implementation of every module's entities and features. |
+| `entity.concorde.source-code` | `tested_by` | `entity.concorde.tests` | Tests provide bounded executable evidence. |
 
 ## Relationship Types
 
 | Predicate | Direction and meaning |
 |---|---|
-| `composes` | From a controlling Operation to direct Skills or public Operations whose identities/results it sequences without taking ownership or flattening internals. |
+| `composes` | From a controlling Operation or module to direct Skills, public Operations, or the module that owns them, whose identities and results it sequences without taking ownership or flattening internals. |
 
 ## Interactions
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.concorde.feature-work` | Maintainer invokes a leaf Skill or paired Operation skill. | Resolve Protocol 13; load bounded feature/module/code evidence; execute one phase or a declared LangGraph; invoke Tools explicitly; record attempt evidence. | Intent, architecture, implementation, tests, and temporal state remain reconciled at the completed boundary. | `contract.concorde.workflow`, `contract.skills.workflow-guidance`, `contract.operations.standard-development-loop` |
-| `interaction.concorde.install` | Maintainer previews or explicitly applies a checkout through the native installer command. | Read Package Manifest 2; calculate owned file and isolated-runtime actions; reject collisions/symlinks; write framework and 18 projections; provision and verify `.concorde/.venv`; then write the receipt last while retaining two internal leaves only in the framework. | Idempotent Concorde 2.1.0 installation whose Operations start offline, or exact conflict/failure diagnostics in human or stable JSON form. | `contract.concorde.installation`, `interface.concorde.one-command-install` |
-| `interaction.concorde.scaffold-docsite` | Maintainer requests a project docsite after initialization. | Verify the configured root architecture; read the packaged docsite template and derive site identity; emit a digest-bound Docsite Scaffold Proposal 1; after explicit acceptance, atomically promote exactly its files. | A project-owned docsite adapter and identity file ready for publication, or exact conflict diagnostics. | `interface.concorde.scaffold-docsite`, `contract.runtime.tools` |
-| `interaction.concorde.publish` | Maintainer or CI requests the project read model. | Reject parallel root docs; load validated architecture/features; render declared diagrams; create Build Manifest 10; build a candidate; atomically promote it. | Searchable Architecture/Features site with source provenance and root architecture entry. | `contract.auto-docs.architecture-site` |
-| `interaction.concorde.explore` | Maintainer invokes the exploration Tool for a stable subject. | Validate Profile 7; project bounded specification truth; validate optional graph/evidence; reduce absent/stale/invalid evidence to unknown; filter and serialize one Tool result. | Read-only specification and implementation subjects remain distinct with explicit provenance/freshness. | `contract.concorde.alignment-explorer`, `contract.runtime.tools` |
-| `interaction.concorde.deliver` | Maintainer invokes the delivery Tool for a complete selected attempt. | Revalidate Proposal 9 eligibility, digest, paths, tasks, checklists, and evidence; remove exactly that stable-ID attempt. | Durable sources remain authoritative with no active attempt or implementation narrative. | `contract.concorde.workflow`, `contract.runtime.tools` |
+| `interaction.concorde.feature-work` | Maintainer invokes a lifecycle Skill or Operation for one selected feature. | `module.concorde.capabilities` compiles the leaf policy from `module.concorde.understanding` Protocol 13; `module.concorde.lifecycle` runs one phase against `entity.concorde.specification`, `entity.concorde.source-code`, and `entity.concorde.tests`; records evidence in `entity.concorde.control-state`; records problems in `module.concorde.reflections`; validates through `module.concorde.understanding`; delivery removes exactly the attempt. | Intent, architecture, implementation, tests, and temporal state remain reconciled at the completed boundary. | `contract.concorde.workflow` |
+| `interaction.concorde.install` | Maintainer previews or explicitly applies a checkout through the native installer. | `module.concorde.distribution` reads `entity.concorde.package-manifest`; calculates owned file and isolated-runtime actions; projects 18 public capabilities through `module.concorde.capabilities`; writes framework, runtime, and receipt into `entity.concorde.control-state`. | Idempotent Concorde 2.1.0 installation whose Operations start offline, or exact conflict diagnostics. | `contract.concorde.installation` |
+| `interaction.concorde.publish` | Maintainer or CI requests the project read model. | `module.concorde.understanding` validates `entity.concorde.specification`; `module.concorde.auto-docs` renders declared diagrams and builds a candidate; the candidate is promoted atomically into `entity.concorde.generated`. | Searchable Architecture/Features site with source provenance and a root architecture entry. | `interface.concorde.publish-docsite` |
+| `interaction.concorde.reflect` | A phase records a problem or the maintainer selects a triage action. | `module.concorde.lifecycle` writes one document into `module.concorde.reflections`; `module.concorde.reflections` composes `module.concorde.lifecycle` on the chosen route under policies from `module.concorde.capabilities`; maintainer disposition closes the document. | Every retained problem is tracked once and is resolved or dismissed with Git history as its record. | `interface.concorde.reflections` |
 
 ## Modules
 
 | Module | Responsibility | Boundary interaction |
 |---|---|---|
-| `module.concorde.skills` | Own canonical leaf phase prompts and capability projection semantics. | Invokes Runtime Tools and reads Workspace. |
-| `module.concorde.operations` | Own paired LangGraph multi-Skill workflows and shared graph state/control. | Composes Skills and installs its Markdown pairs as user Skills. |
-| `module.concorde.runtime` | Own deterministic path-safe Tools and envelopes. | Reads/validates Workspace and returns structured Tool results. |
-| `module.concorde.workspace` | Own source roles, paths, identity, and lifetime rules. | Supplies maintained, temporal, executable, installed, and generated authorities. |
-| `module.concorde.distribution` | Own one native package and its installation lifecycle. | Projects Skills/Operations/support assets and provisions their isolated installed Operation runtime. |
-| `module.concorde.auto-docs` | Own the validated documentation read model. | Consumes Workspace and Archify outputs. |
+| `module.concorde.understanding` | Know what a project is. | Validates the specification and supplies bounded context, Protocol 13, and planning context to every other module. |
+| `module.concorde.lifecycle` | Change one feature safely from specify to deliver. | Calls understanding, writes specification/code/tests/attempts, and records reflections. |
+| `module.concorde.reflections` | Record and resolve process problems. | Receives documents from lifecycle phases and composes lifecycle capabilities during triage. |
+| `module.concorde.capabilities` | Run any Concorde capability on a coding agent under an enforced policy. | Provides the Tool, Skill, and Operation mechanism to the three capability modules and configures the coding agent. |
+| `module.concorde.distribution` | Ship and install the package. | Reads the manifest, calls capabilities for projection and verification, and writes installed control state. |
+| `module.concorde.auto-docs` | Publish the validated read model. | Reads the specification and writes generated projections. |
 
 ## Features
 
 | Feature | Outcome |
 |---|---|
-| `feature.concorde.workflow` | Carry one direct feature from intent through reconciled implementation and cleanup-only delivery. |
-| `feature.concorde.publish-project-docsite` | Scaffold the project docsite from the packaged template and publish validated project knowledge as a searchable site. |
-| `feature.concorde.install` | Preview or explicitly apply a checkout through one standalone native installer command without a host framework. |
-| `feature.concorde.maintain-agent-surfaces` | Keep generated Codex and Claude leaf/Operation Skill surfaces current. |
-| `feature.concorde.record-workflow-reflections` | Preserve one detailed problem per file, then analyze and route it only through reflection triage. |
-| `feature.concorde.explore-alignment` | Browse evidence-qualified specification-to-code relationships through a read-only Tool. |
-| `feature.concorde.define-project-ontology` | Define and validate recursive module architecture plus Script/Tool/Skill/Operation structure. |
-| `feature.concorde.workflow.initialize-architecture` | Propose and apply a minimal reviewed root architecture. |
-| `feature.concorde.workflow.retrieve-bounded-context` | Retrieve exactly one module or feature altitude. |
-| `feature.concorde.workflow.answer-workflow-questions` | Answer read-only framework questions from bounded sources. |
-| `feature.concorde.workflow.manage-feature-workspaces` | Resolve native feature selection and stable-ID temporal paths. |
-| `feature.concorde.workflow.specify-behavior` | Author one complete direct feature authority. |
-| `feature.concorde.workflow.plan-delivery` | Plan from feature, architecture, code, and tests into one attempt. |
-| `feature.concorde.workflow.execute-and-reconcile` | Execute traced tasks and reconcile every affected authority. |
-| `feature.concorde.workflow.validate-architecture` | Diagnose layout, identity, capability, relationship, interface, evidence, and freshness state. |
-| `feature.concorde.workflow.accept-milestone` | Remove one eligible completed attempt without creating prose history. |
-| `feature.concorde.workflow.fast-loop` | Reconcile one eligible small established change without an attempt. |
+| `feature.concorde.workflow` | Carry one direct feature from intent through reconciled implementation and cleanup-only delivery using installed capabilities as the sole conversational surface. |
+| `feature.concorde.define-project-ontology` | Define and validate the recursive, capability-partitioned module architecture plus the Script/Tool/Skill/Operation structure that every Concorde project, including this one, follows. |
 
 ## Decisions
 
 - [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
   entities and directed relationships in this architecture.
+- Child modules are partitioned by capability, use case, and axis of change (constitution A.VI), not
+  by artifact type: each owns every Skill, Tool, Operation, template, schema, and rule its capability
+  needs. The flat `skills/`, `operations/`, `templates/`, `scripts/`, and `agent-assets/` directories
+  are the distribution format fixed by Package Manifest 2; ownership is expressed by stable entity
+  identity in the owning module, never by directory.
+- The root owns only project-wide features (the end-to-end workflow and the ontology) and the shared
+  file roles; every use case descends to the capability module that provides it.
 - Scripts expose deterministic Tools; public/internal leaf Skills invoke Tools and own effects;
   paired LangGraph Operations compose ordered direct capabilities with explicit controls and
-  per-leaf enforced launches.
-- Every Operation Python has one associated Markdown skill, and both leaf and Operation skills are
-  installed into one global `concorde-*` agent namespace.
+  per-leaf enforced launches. Every Operation Python has one associated Markdown skill, and both leaf
+  and Operation skills are installed into one global `concorde-*` agent namespace.
 - Package Manifest 2, one installation receipt, one isolated installed Operation environment, and
   version 2.1.0 replace independently composed or mixed-layout capability sources; the source root
   `.venv` and installed `.concorde/.venv` remain distinct and no compatibility shim remains.
 - Stable architecture identity remains separate from mutable file/symbol locators.
-- Understand Anything types remain adapter metadata; only explicit revision-current sidecar claims
-  qualify an alignment, and names/similarity never verify one.
-- Code and tests remain implementation/evidence; plans and task state remain temporal.
+- Code and tests remain implementation/evidence; plans and task state remain temporal; generated
+  and installed projections never become specification or implementation authority.

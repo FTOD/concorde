@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Capabilities System Overview",
+    "output": "../../../../../generated/architecture/concorde-capabilities-system-overview.html",
+    "quality_profile": "showcase",
+    "legend": {"mode": "hidden"},
+    "viewBox": [960, 760]
+  },
+  "components": [
+    {"id": "maintainer", "type": "external", "label": "Maintainer", "sublabel": "Skill, script, or CI caller", "pos": [40, 40], "size": [170, 68]},
+    {"id": "launchers-cli", "type": "backend", "label": "Launchers + CLI", "sublabel": "Tool dispatcher", "pos": [340, 40], "size": [200, 68]},
+    {"id": "tool-envelope", "type": "database", "label": "Tool Envelope", "sublabel": "Structured result", "pos": [670, 40], "size": [180, 68]},
+    {"id": "sources", "type": "frontend", "label": "Skill + Operation Sources", "sublabel": "skills/ + operations/", "pos": [40, 220], "size": [230, 68]},
+    {"id": "projector", "type": "backend", "label": "Projector", "sublabel": "Capability renderer", "pos": [370, 220], "size": [180, 68]},
+    {"id": "surfaces", "type": "frontend", "label": "Codex / Claude Surfaces", "sublabel": "Public Skill namespace", "pos": [670, 220], "size": [220, 68]},
+    {"id": "operation-runtime", "type": "backend", "label": "Operation Runtime", "sublabel": "Bindings + state", "pos": [40, 400], "size": [200, 68]},
+    {"id": "policy-compiler", "type": "security", "label": "Policy Compiler", "sublabel": "Normalized to native policy", "pos": [370, 400], "size": [210, 68]},
+    {"id": "coding-agent", "type": "external", "label": "Coding Agent", "sublabel": "Codex / Claude process", "pos": [700, 400], "size": [190, 68]},
+    {"id": "langgraph", "type": "external", "label": "LangGraph", "sublabel": "Lazy graph runtime", "pos": [40, 580], "size": [180, 68]},
+    {"id": "understanding", "type": "backend", "label": "Understanding", "sublabel": "Protocol 13 roles", "pos": [370, 580], "size": [200, 68]}
+  ],
+  "connections": [
+    {"id": "maintainer-invokes-launchers", "from": "maintainer", "to": "launchers-cli", "label": "invokes Tool", "fromSide": "right", "toSide": "left"},
+    {"id": "launchers-serialize-envelope", "from": "launchers-cli", "to": "tool-envelope", "label": "serializes result", "fromSide": "right", "toSide": "left"},
+    {"id": "sources-load-projector", "from": "sources", "to": "projector", "label": "loads sources", "fromSide": "right", "toSide": "left"},
+    {"id": "projector-projects-surfaces", "from": "projector", "to": "surfaces", "label": "projects capabilities", "fromSide": "right", "toSide": "left", "variant": "emphasis"},
+    {"id": "sources-supply-runtime", "from": "sources", "to": "operation-runtime", "label": "supplies capability bodies", "fromSide": "bottom", "toSide": "top"},
+    {"id": "runtime-compiles-langgraph", "from": "operation-runtime", "to": "langgraph", "label": "compiles graph lazily", "fromSide": "bottom", "toSide": "top"},
+    {"id": "runtime-requests-policy", "from": "operation-runtime", "to": "policy-compiler", "label": "requests per-leaf policy", "fromSide": "right", "toSide": "left"},
+    {"id": "understanding-resolves-roles", "from": "understanding", "to": "policy-compiler", "label": "resolves Protocol 13 roles", "fromSide": "top", "toSide": "bottom"},
+    {"id": "policy-configures-agent", "from": "policy-compiler", "to": "coding-agent", "label": "configures launch", "fromSide": "right", "toSide": "left", "variant": "emphasis"}
+  ]
+}

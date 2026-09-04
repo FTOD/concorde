@@ -22,6 +22,11 @@ The Initialization Proposal 3 must select Architecture Source Profile 7 and crea
 architecture seed defines the root responsibility/boundary, immediate module and feature inventories,
 typed entity vocabulary, directed relationship vocabulary, representative interactions, and any
 external/conceptual locators. Do not invent product modules from Concorde's own implementation roles.
+When the maintainer asks for child modules, partition them by business capability, use case, or axis
+of change (constitution A.VI): each child owns everything one capability needs, its responsibility is
+one sentence a consumer could ask for, and its features are use cases. Never propose a module that
+collects one artifact type (all scripts, all skills, all models, all controllers) or a residual bucket
+such as `misc`, `common`, or `shared`; a repository directory name is not a module boundary.
 
 The system overview is a required Archify `architecture` source that shows the principal entities and
 directed relationships from the root architecture. It belongs to the module's `diagrams/`, has a

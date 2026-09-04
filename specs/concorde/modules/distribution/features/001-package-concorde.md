@@ -3,15 +3,15 @@ id: feature.distribution.package-concorde
 kind: feature
 module: module.concorde.distribution
 related_features:
-  - feature.concorde.install
-  - feature.skills.project-workflow
-  - feature.operations.standard-development-loop
+  - feature.distribution.install-concorde
+  - feature.capabilities.provide-capability-surfaces
+  - feature.lifecycle.standard-development-loop
 interfaces:
   provided:
     - contract.distribution.standalone-package
     - contract.distribution.native-installation
   required:
-    - contract.skills.agent-surface
+    - contract.capabilities.agent-surface
 evidence_status: partial
 ---
 
@@ -54,7 +54,7 @@ inventory.
 - **Example**: A checkout contains `concorde.json`, 17 leaf directories (including two internal
   planner leaves), both files for each of three Operations, the pinned runtime requirement and
   bootstrap, and the `docsite/` template.
-- **Implementing entities**: `entity.distribution.manifest` and `entity.distribution.installer`.
+- **Implementing entities**: `entity.concorde.package-manifest` and `entity.distribution.installer`.
 
 ### `contract.distribution.native-installation` — Preview/apply ownership lifecycle
 
@@ -77,29 +77,30 @@ inventory.
   obsolete outputs may be removed during the one-way 2.1.0 update, while modified outputs conflict.
 - **Example**: A modified prior projected Skill is a conflict; an unchanged owned Skill updates safely.
 - **Implementing entities**: `entity.distribution.installer`,
-  `entity.distribution.runtime-provisioner`, `entity.distribution.operation-launcher`,
-  `entity.distribution.managed-runtime`, `entity.distribution.framework-projection`,
-  `entity.distribution.receipt`, and `entity.distribution.capability-projector`.
+  `entity.distribution.runtime-provisioner`, `entity.distribution.managed-runtime`,
+  `entity.distribution.framework-projection`, `entity.distribution.receipt`, and
+  `module.concorde.capabilities`.
 
 ## Architecture Zoom
 
 | Entity ID | Role in this feature | Interaction |
 |---|---|---|
-| `entity.distribution.manifest` | Single Package Manifest 2 identity. | Drives source validation and desired inventory. |
+| `entity.concorde.package-manifest` | Single Package Manifest 2 identity. | Drives source validation and desired inventory. |
 | `entity.distribution.installer` | Ownership transaction. | Compares desired/prior/observed state and applies safely. |
 | `entity.distribution.runtime-lock` | Pinned Operation dependency. | Supplies the reuse/rebuild digest and install input. |
 | `entity.distribution.runtime-provisioner` | Isolated environment lifecycle. | Creates, health-checks, safely rebuilds, and verifies the managed venv. |
-| `entity.distribution.operation-launcher` | Deterministic interpreter handoff. | Selects the source or installed managed interpreter without activation. |
+| `module.concorde.capabilities` | Agent projection and Operation launch. | Renders public leaf/Operation surfaces and verifies every installed Operation through the managed launcher. |
 | `entity.distribution.managed-runtime` | Installed Operation environment. | Retains dependencies required for offline startup separately from user environments. |
-| `entity.distribution.capability-projector` | Agent integration renderer. | Filters internal leaves and preserves public Skill/Operation role transitions. |
 | `entity.distribution.framework-projection` | Installed canonical package copy. | Retains Scripts, all 17 leaves, three pairs, Runtime, templates, the docsite template, and support assets. |
 
 ## Related Features
 
-- `feature.skills.project-workflow` supplies canonical leaf Skill behavior and projection rules.
-- `feature.operations.standard-development-loop` supplies a paired Operation installed through the
-  same Skill namespace.
-- `feature.concorde.install` exposes package ownership behavior at the root workflow.
+- `feature.distribution.install-concorde` depends on this feature for validated Package Manifest 2
+  bytes and packaged inventory; installation previews and applies them but does not redefine them.
+- `feature.capabilities.provide-capability-surfaces` supplies the capability projector and Operation
+  launcher that render this package's public leaves/Operations into an agent surface during install.
+- `feature.lifecycle.standard-development-loop` supplies the paired Operation whose Python/Markdown
+  files this feature packages and installs through the same capability namespace.
 
 ## Usage Scenarios
 

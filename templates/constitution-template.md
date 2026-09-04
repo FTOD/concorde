@@ -19,9 +19,9 @@
 <!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
 
 ### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
+<!-- Example: IV. Modules Follow Capabilities -->
 [PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+<!-- Example: Modules are partitioned by business capability, use case, or axis of change, never by artifact type (all controllers, all scripts) or residual bucket (misc, common); each module owns everything its capability needs and its features are use cases -->
 
 ### [PRINCIPLE_5_NAME]
 <!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->

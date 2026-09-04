@@ -16,6 +16,9 @@ evidence_status: unknown
 <!--
   This file owns durable feature behavior and human-readable interface promises. Source code owns
   implementation detail; executable tests/checks provide evidence. Do not copy either into prose.
+  Place the feature in the module whose capability it is a use case of, never in a module that only
+  collects the same kind of artifact; a project-wide use case stays at the root only when no single
+  capability module owns it.
 -->
 
 ## Outcome and Scope

@@ -15,20 +15,20 @@ from typing import Any, Mapping, NamedTuple, Sequence
 SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPT_ROOT / "src"))
 
-from concorde.agent_assets import (  # noqa: E402
+from concorde.reflections.agent_assets import (  # noqa: E402
     CONFIG_PATH as REFLECTIONS_CONFIG_PATH,
     LEGACY_CONFIG as LEGACY_REFLECTIONS_CONFIG,
     AgentAssetError,
     render_projection,
 )
-from concorde.docsite_template import DocsiteTemplateError, template_files  # noqa: E402
-from concorde.managed_runtime import (  # noqa: E402
+from concorde.autodocs.docsite_template import DocsiteTemplateError, template_files  # noqa: E402
+from concorde.distribution.managed_runtime import (  # noqa: E402
     ManagedRuntimeError,
     load_runtime_spec,
     plan_runtime,
     provision_runtime,
 )
-from concorde.skill_assets import SkillAssetError, render_capabilities  # noqa: E402
+from concorde.capabilities.skill_assets import SkillAssetError, render_capabilities  # noqa: E402
 
 
 FRAMEWORK_ROOT = ".concorde/framework"

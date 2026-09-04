@@ -1,21 +1,24 @@
 <!--
 Sync Impact Report
-- Version change: 7.0.0 -> 7.1.0 (MINOR: the canonical hierarchy gains public/internal Skill
-  exposure, leaf-owned effects, acyclic nested Operations, and permission-bounded per-leaf launches)
+- Version change: 7.1.0 -> 7.2.0 (MINOR: adds mandatory principle A.VI, which requires module
+  decomposition to follow business capability, use case, or axis of change rather than artifact type)
+- Added principles:
+  - A.VI Modules Follow Capabilities, Not Artifact Types: a module is defined by the capability it
+    serves; artifact-type layers (all Skills, all scripts, all Operations, all models) and residual
+    buckets (misc, common, shared) are invalid module boundaries; the root module holds only
+    project-wide features; physical distribution directories never determine ownership.
 - Modified principles:
-  - B.I Concorde Ships a Usable Workflow: one Concorde package owns deterministic Tools,
-    effect-declared public/internal leaf Skills, acyclic paired Operations, templates, installation,
-    permission enforcement, and public agent projection end to end.
-  - B.II Concorde Develops Itself with Concorde: the repository self-applies the same capability
-    structure it installs.
-- Modified constraints: every Operation declares ordered Skill/Operation capabilities and exact
-  occurrence policies; composition is acyclic; internal leaves remain packaged but unprojected.
-- Modified standards: Workspace Protocol 13 roles compile to immutable normalized/native policies;
-  prompts and LangGraph remain control intent, while supported native/outer sandboxes enforce access.
-- Compatibility impact: `concorde-plan` changes kind from a leaf Skill to a public paired Operation;
-  no alias, leaf-only reader, or legacy sandbox/profile mixing is retained.
-- Required migration: install Concorde 2.1.0, regenerate public surfaces, and launch every Operation
-  leaf through a policy/configuration/receipt boundary.
+  - B.II Concorde Develops Itself with Concorde: the repository re-partitions its own architecture
+    into capability modules (understanding, lifecycle, reflections, capabilities, distribution,
+    auto-docs) as the first application of A.VI.
+- Modified standards: initialization, specification, planning, and analysis guidance check A.VI
+  before creating or restructuring a module; deterministic validation reports artifact-type or
+  residual module names as advisory findings.
+- Compatibility impact: stable module IDs `module.concorde.skills`, `.operations`, `.runtime`, and
+  `.workspace` are retired; their features and entities move to the owning capability modules with
+  new stable IDs. No compatibility alias remains.
+- Required migration: none for installed projects; projects that already partition by artifact type
+  receive advisory validation findings and re-partition in a normal attempt.
 -->
 # Concorde Constitution
 
@@ -146,6 +149,29 @@ Ineligibility, ambiguity, unsafe paths, failed validation, or stale inputs prese
 Rationale: authority is trustworthy when scope and evidence are explicit. Removing completed working
 memory is a lifecycle transition, not a reason to create another version of implementation truth.
 
+### A.VI Modules Follow Capabilities, Not Artifact Types
+
+Module decomposition MUST follow business capability, use case, or axis of change, so that the
+things which change together are owned together. A module's responsibility MUST be one capability a
+consumer could ask for, and its features MUST be use cases of that capability rather than inventories
+of what the module happens to contain.
+
+A module MUST NOT be defined by the kind of artifact it collects, such as every Skill, every script,
+every Operation, every model, every controller, or every test, and MUST NOT be a residual bucket such
+as `misc`, `common`, `shared`, or `utilities`. When one use case needs a Skill, a Tool, an Operation,
+a template, and a schema, one module owns all of them. The root module holds only features that span
+the whole project; a use case that belongs to one capability descends to that module.
+
+Physical layout does not determine ownership. A distribution format may keep artifacts in flat
+directories such as `skills/` or `operations/`; each artifact still belongs, through its stable
+entity identity, to the capability module whose use case it realizes. Placing a new feature or
+entity MUST start by naming the capability it serves; a candidate module whose only honest
+responsibility sentence is "contains all X" is evidence that the partition is wrong.
+
+Rationale: a reader looking for how the system does something opens one module and finds the whole
+answer, and a change to one capability touches one module instead of every artifact-type layer. Type
+layers scatter each use case across the tree and push every real feature to the root.
+
 ## Part B: Project Principles
 
 ### B.I Concorde Ships a Usable Workflow
@@ -175,7 +201,9 @@ graph in the installed framework.
 Concorde MUST develop itself under Part A using its own tooling. When a capability cannot yet enforce
 the new profile, maintainers apply the rule manually, record the bootstrap compromise in the one
 project reflection log, and migrate the artifact in the same prototype milestone. Self-application
-is the acceptance test that the workflow is practical rather than aspirational.
+is the acceptance test that the workflow is practical rather than aspirational. Concorde's own
+architecture is therefore partitioned by capability under A.VI: understanding, lifecycle,
+reflections, capabilities, distribution, and auto-docs.
 
 ## Project Constraints
 
@@ -283,4 +311,4 @@ or materially expands a mandatory obligation, and PATCH clarifies wording. Every
 architecture review includes a constitution check. Reviewers reject unexplained violations,
 invisible boundary changes, duplicated canonical intent, and implementation claims without evidence.
 
-**Version**: 7.1.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-02
+**Version**: 7.2.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-04

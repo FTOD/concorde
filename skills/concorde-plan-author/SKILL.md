@@ -77,7 +77,11 @@ state. Planning must leave durable sources byte-identical.
 
    Require every affected module to retain one Archify `architecture` system overview that depicts
    its principal entities and directed relationships. Any entity, relationship, boundary, or module
-   inventory delta must state whether and how that overview changes.
+   inventory delta must state whether and how that overview changes. When the plan creates,
+   splits, merges, or renames a module, state the capability, use case, or axis of change that
+   bounds it (constitution A.VI); reject a plan that introduces an artifact-type layer or a residual
+   bucket, and place each new entity in the module whose use case it realizes rather than beside
+   artifacts of the same kind.
 
 4. Generate only useful Phase 1 artifacts: data model, research, and runnable quickstart. Readable
    interface promises remain embedded in feature files. Executed schemas/examples go under source

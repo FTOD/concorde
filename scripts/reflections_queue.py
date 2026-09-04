@@ -30,7 +30,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE_ROOT / "src"))
 
 from concorde.frontmatter import FrontMatterError, parse_document  # noqa: E402
-from concorde.reflections import (  # noqa: E402
+from concorde.reflections.reflections import (  # noqa: E402
     BUCKETS,
     PENDING_BUCKET,
     ParsedReflections,
@@ -44,7 +44,7 @@ from concorde.reflections import (  # noqa: E402
     reflections_path,
     strip_reference_suffix,
 )
-from concorde.validate import validate_project  # noqa: E402
+from concorde.understanding.validate import validate_project  # noqa: E402
 
 
 ROUTES = frozenset({"fast-loop", "specify", "dismiss", "blocked"})
