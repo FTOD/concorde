@@ -260,7 +260,7 @@ def propose_docsite(
             "error",
             ".concorde/config.json",
             "The project has no configured Profile 7 root architecture.",
-            "Run the init Tool and apply Initialization Proposal 3 first.",
+            "Run the init Tool and apply Initialization Proposal 4 first.",
         )
         return ToolResult("docsite", ".", "invalid", findings=(finding,))
 

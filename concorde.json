@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "name": "concorde",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Standalone module-centered architecture and feature workflow",
   "license": "MIT",
   "license_file": "LICENSE",

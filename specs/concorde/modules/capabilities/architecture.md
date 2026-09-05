@@ -32,7 +32,7 @@ directories and their metadata grammar (name, exposure, effects, `capabilities:`
 tokens); the skill loader/projector; the package capability validator; the shared Operation runtime
 (bindings, state, lazy LangGraph); the policy compiler (normalized task policy to Codex permission
 profile, Claude strict sandbox, or outer isolation); client-runtime bootstrap attestation; Capability
-Completion Envelope 1; the injectable process launcher and receipts; the managed
+Completion Envelope 2; the injectable process launcher and receipts; the managed
 Operation launcher (`scripts/run-operation.py`); and checkout/installed agent-surface rendering for
 Codex and Claude. It also owns the deterministic Git worktree boundary shared by mutating Tool
 adapters and actual Operation execution; that helper reads only Git identity/commit metadata and
@@ -47,21 +47,26 @@ admits its package directory as task context.
 ## Operation Contract Boundary
 
 The root's `entity.concorde.operation` defines the shared concept. This module owns its executable
-packaging/launch mechanism and the target `contract.capabilities.operation-data`: separate
+packaging/launch mechanism and `contract.capabilities.operation-data`: separate
 configuration and runtime-input JSON, stable type/version resolution, and result admission. It does
 not own planning or reflection payload semantics. The existing `entity.capabilities.operation-pair`
 is the concrete Manifest 2 specialization with one primary Python file and one associated Skill.
 
-`OperationState.request` and `CapabilityResult.output` are currently strings; prior leaf outputs are
-rendered into prompts and nested dispatch serializes child result lists. Capability Completion
-Envelope 1 validates execution identity/status/gates but does not type those domain fields. The
-target domain envelopes, initialized config snapshot, and typed dispatch remain explicitly pending.
+`operation_service.py` admits the JSON boundary, snapshots configuration, maps typed leaf/nested
+data, and verifies effects. `operation_data.py` owns strict structural validation and exports JSON
+Schemas; the providing features own field semantics. Completion Envelope 2 carries separate
+`domain_output` for model-authored investigation findings. Other domain results are assembled from
+host-verified workspace/artifact state. Summary strings remain audit text and do not feed consumers.
+The injectable low-level graph builder retains its existing in-process test/host interface; public
+Operation execution always uses the typed service and native evidence validation.
 
 ## Entities
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
-| `entity.capabilities.operation-data-contract` | schema | Target common JSON configuration/invocation/result grammar; declared in contract.capabilities.operation-data and not yet wired into the runtime. | `concept:Operation Data Contract 1` |
+| `entity.capabilities.operation-data-contract` | schema | common JSON configuration/invocation/result grammar and fixed domain/leaf schema admission. | `src/concorde/capabilities/operation_data.py` |
+| `entity.capabilities.operation-service` | program | Admits registered invocations, pins configuration, prepares typed leaf/nested contexts, checks completion and artifact evidence, and emits terminal results. | `src/concorde/capabilities/operation_service.py` |
+| `entity.capabilities.operation-configuration` | program | Loads explicit project settings and proposes/applies digest-bound configuration migration while preserving other project fields. | `src/concorde/capabilities/operation_config.py` |
 | `entity.capabilities.posix-launcher` | script | Invokes the colocated Python adapter on POSIX systems. | `scripts/concorde.sh` |
 | `entity.capabilities.powershell-launcher` | script | Invokes the same Python adapter on PowerShell systems. | `scripts/concorde.ps1` |
 | `entity.capabilities.python-adapter` | program | Adds the colocated package `src` directory to imports and enters the CLI. | `scripts/concorde.py` |
@@ -80,7 +85,7 @@ target domain envelopes, initialized config snapshot, and typed dispatch remain 
 | `entity.capabilities.operation-state` | type | Original request plus append-only successful capability output/completion/receipt triples. | `src/concorde/capabilities/operation_runtime.py#OperationState` |
 | `entity.capabilities.policy-compiler` | program | Compiles leaf effects and occurrence bindings into normalized task policies plus Codex profiles or Claude strict-sandbox settings while keeping integration bootstrap separate. | `src/concorde/capabilities/operation_permissions.py` |
 | `entity.capabilities.runtime-bootstrap` | type | SHA-256-attested real external client executable, owner/mode/size metadata, and digest-bound read grant used only to bootstrap native enforcement. | `src/concorde/capabilities/operation_permissions.py#RuntimeBootstrapFile` |
-| `entity.capabilities.completion-envelope` | type | Capability Completion Envelope 1: exact launch/workspace/bootstrap identity, semantic status, usable output, limitations, and gate evidence. | `src/concorde/capabilities/operation_permissions.py#CapabilityCompletion` |
+| `entity.capabilities.completion-envelope` | type | Capability Completion Envelope 2: exact launch/workspace/bootstrap identity, semantic status, audit output, limitations, gate evidence, and separate typed domain_output. | `src/concorde/capabilities/operation_permissions.py#CapabilityCompletion` |
 | `entity.capabilities.process-launcher` | program | Attests/finalizes runtime bootstrap, performs version/enforcement preflight, invokes native structured output, validates semantic completion, and returns a matching receipt or raises without permissive retry. | `src/concorde/capabilities/operation_executor.py#AgentProcessExecutor` |
 | `entity.capabilities.operation-launcher` | program | Standard-library bootstrap that selects the source root `.venv` or installed `.concorde/.venv` and executes one exact paired Operation path. | `scripts/run-operation.py` |
 | `entity.capabilities.surface-renderer` | program | Renders one integration's complete public leaf/Operation capability surface for install-time projection. | `scripts/render-capability-surfaces.py` |
@@ -94,8 +99,11 @@ target domain envelopes, initialized config snapshot, and typed dispatch remain 
 
 | Source | Predicate | Target | Description |
 |---|---|---|---|
+| `entity.capabilities.operation-service` | `reads_from` | `entity.capabilities.operation-data-contract` | Validates fixed type/version and field mappings before effects and handoff. |
+| `entity.capabilities.operation-service` | `calls` | `entity.capabilities.operation-configuration` | Pins one initialized configuration snapshot and passes it unchanged to nested Operations. |
+| `entity.capabilities.operation-service` | `calls` | `entity.capabilities.operation-runtime` | Executes registered topology while retaining structured domain data and separate enforcement evidence. |
 | `entity.capabilities.operation-data-contract` | `defines` | `entity.concorde.runtime-input` | Defines the common type/version wrapper; domain fields remain with the providing feature. |
-| `entity.capabilities.operation-data-contract` | `defines` | `entity.concorde.operation-result` | Defines target domain-result admission separately from current execution/completion evidence. |
+| `entity.capabilities.operation-data-contract` | `defines` | `entity.concorde.operation-result` | Defines domain-result admission separately from current execution/completion evidence. |
 | `entity.concorde.package-manifest` | `declares` | `entity.capabilities.python-adapter` | Binds the Tool dispatcher entry point that every projected Skill invokes. |
 | `entity.concorde.package-manifest` | `declares` | `entity.capabilities.operation-launcher` | Binds the managed Operation launcher, Python floor, lock, and venv path in `operation_runtime`. |
 | `entity.concorde.package-manifest` | `declares` | `entity.capabilities.skill-sources` | Inventories every leaf Skill exactly once across public and internal exposure. |
@@ -200,7 +208,7 @@ None.
 - A host-resolved canonical Protocol 13 receipt satisfies an Operation leaf's workspace gate. The
   leaf receives its exact declared script but never reruns the global resolver from a narrower
   policy; direct Skill invocation still runs the Tool itself.
-- Every real agent process returns Capability Completion Envelope 1. Exit zero is transport evidence,
+- Every real agent process returns Capability Completion Envelope 2. Exit zero is transport evidence,
   not semantic success; only identity-bound success with passed gates and no limitations enters
   Operation state. Native lifecycle failure, explicit failure, or invalid completion raises first.
 - Codex uses JSONL plus `--output-schema`; Claude uses JSON plus `--json-schema`. Tests inject both

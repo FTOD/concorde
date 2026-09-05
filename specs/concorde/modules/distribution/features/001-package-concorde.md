@@ -21,7 +21,7 @@ interfaces:
 
 ## Outcome and Scope
 
-Maintainers receive one inspectable Concorde 2.1.0 package that installs from a checkout, packages
+Maintainers receive one inspectable Concorde 3.0.0 package that installs from a checkout, packages
 17 leaves/three pairs, projects 15 public leaves plus three Operations, retains every Operation
 Python/Markdown pair, provisions their pinned dependency into an isolated `.concorde/.venv`, and
 ships a lifecycle-script-disabled npm lock for the official Understand Anything Viewer v2.9.0, and
@@ -44,7 +44,7 @@ inventory.
   `skills/`, `src/`, `templates/`, and `viewer/`; `operations/requirements.lock`;
   `viewer/package.json`; `viewer/package-lock.json`; `scripts/run-operation.py`; and
   `scripts/run-viewer.py`.
-- **Inputs**: Version 2.1.0, Profile 7, Protocol 13, exact 17-Skill/three-Operation inventories,
+- **Inputs**: Version 3.0.0, Profile 7, Protocol 13, exact 17-Skill/three-Operation inventories,
   managed-runtime declaration and Operation dependency pin, official Viewer identity/release
   metadata and npm integrity lock, templates, supported integrations, and allowlisted regular files.
 - **Outputs**: One validated source package root with a desired file inventory and one deterministic
@@ -82,7 +82,7 @@ inventory.
 - **Failures**: Package, ownership, collision, pairing, symlink, parent, dependency provisioning,
   runtime verification, or filesystem errors produce failure/conflict without false ownership.
 - **Compatibility**: Receipt schema 1 keys ownership by path/role/SHA-256; unchanged receipt-owned
-  obsolete outputs may be removed during the one-way 2.1.0 update, while modified outputs conflict.
+  obsolete outputs may be removed during the one-way 3.0.0 update, while modified outputs conflict.
 - **Example**: A modified prior projected Skill is a conflict; an unchanged owned Skill updates safely.
 - **Implementing entities**: `entity.distribution.installer`,
   `entity.distribution.runtime-provisioner`, `entity.distribution.managed-runtime`,

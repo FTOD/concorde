@@ -205,7 +205,14 @@ def _source_digest(
     denied: tuple[str, ...],
 ) -> str:
     files: dict[str, str] = {}
-    for relative in sorted({path for values in roles.values() for path in values}):
+    # Task declarations are authored inside the attempt. Their authority is
+    # rebound in each launch receipt, not treated as immutable planning source.
+    durable_roles = {name: values for name, values in roles.items()
+                     if name not in {"attempt", "checklists", "reflections", "task-authorized"}}
+    temporal = (*roles.get("attempt", ()), *roles.get("checklists", ()), *roles.get("reflections", ()))
+    for relative in sorted({path for values in durable_roles.values() for path in values}):
+        if any(_under(relative, path) for path in temporal):
+            continue
         path = project / relative
         if path.is_file():
             files[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -217,11 +224,13 @@ def _source_digest(
                     )
                 if child.is_file():
                     child_relative = child.relative_to(project).as_posix()
+                    if any(_under(child_relative, path) for path in temporal):
+                        continue
                     files[child_relative] = hashlib.sha256(child.read_bytes()).hexdigest()
         else:
             files[relative] = "authorized-creation"
     payload = {
-        "roles": {name: list(values) for name, values in sorted(roles.items())},
+        "roles": {name: list(values) for name, values in sorted(durable_roles.items())},
         "required": [
             {
                 "feature_id": item.feature_id,
@@ -263,6 +272,10 @@ def resolve_planning_context(
     provider_private = _provider_private_paths(
         project, package, required, workspace.providing_module
     )
+    # A foreign provider may also locate the project's shared constitution.
+    # Its ownership does not make explicitly admitted global governance private.
+    shared_governance = set(roles["constitution"])
+    provider_private = tuple(path for path in provider_private if path not in shared_governance)
     private_set = set(provider_private)
     owned = tuple(
         path for path in raw_owned if path not in private_set

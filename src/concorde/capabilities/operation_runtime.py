@@ -50,6 +50,17 @@ class CapabilityResult:
     output: str
     receipt: Any | None = None
     completion: Any | None = None
+    domain_output: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class NestedOperationResult:
+    """A trusted dispatcher's validated child domain value and execution evidence."""
+
+    operation: str
+    domain_output: dict[str, Any] | None
+    evidence: tuple[CapabilityResult, ...]
+    described: bool = False
 
 
 @dataclass(frozen=True)
@@ -64,6 +75,9 @@ class OperationExecution:
     binding: OperationBinding
     prior_results: tuple[CapabilityResult, ...]
     launch_specification: Any | None = None
+    runtime_input: dict[str, Any] | None = None
+    configuration: dict[str, Any] | None = None
+    invocation_id: str | None = None
 
 
 class OperationExecutor(Protocol):
@@ -221,8 +235,13 @@ def permission_launch_factory(
             prompt=invocation.capability.body,
             prior_results=tuple(
                 f"{item.capability}:{item.output}" for item in invocation.prior_results
-            ),
+            ) if invocation.runtime_input is None else (),
+            runtime_input_json=(json.dumps(invocation.runtime_input, sort_keys=True, separators=(",", ":"))
+                                if invocation.runtime_input is not None else None),
+            operation_configuration_json=(json.dumps(invocation.configuration, sort_keys=True, separators=(",", ":"))
+                                          if invocation.configuration is not None else None),
             workspace_receipt_json=receipt_json,
+            invocation_id=invocation.invocation_id,
             workspace_digest=context.source_digest,
             policy=policy,
             native_configuration=native,
@@ -364,6 +383,7 @@ def build_operation_graph(
     *,
     launch_factory: LaunchFactory | None = None,
     nested_dispatcher: NestedOperationDispatcher | None = None,
+    prepare_invocation: Callable[[OperationExecution], OperationExecution] | None = None,
 ) -> Any:
     """Compile resolved stages into a fail-fast graph with one handoff per occurrence."""
 
@@ -421,6 +441,8 @@ def build_operation_graph(
                     binding=binding,
                     prior_results=(*prior, *completed),
                 )
+                if prepare_invocation is not None:
+                    invocation = prepare_invocation(invocation)
                 if capability.kind == "skill":
                     if capability.effects is None:
                         raise ValueError(
@@ -444,7 +466,20 @@ def build_operation_graph(
                     value = executor(invocation)
                 else:
                     value = nested_dispatcher(invocation)  # type: ignore[misc]
-                output, receipt, completion = _execution_output(value, capability.name)
+                domain_output = getattr(value, "domain_output", None)
+                if isinstance(value, NestedOperationResult):
+                    from .operation_data import OPERATION_CONTRACTS, validate_typed
+
+                    if capability.kind != "operation" or value.operation != capability.name:
+                        raise RuntimeError("nested result does not match its registered Operation")
+                    if not value.described:
+                        validate_typed(domain_output, OPERATION_CONTRACTS[capability.name][1])
+                        if not value.evidence or any(item.receipt is None or item.completion is None
+                                                     for item in value.evidence):
+                            raise RuntimeError("nested Operation has no complete execution evidence")
+                    output, receipt, completion = "", None, None
+                else:
+                    output, receipt, completion = _execution_output(value, capability.name)
                 completed.append(
                     CapabilityResult(
                         operation=operation,
@@ -454,6 +489,7 @@ def build_operation_graph(
                         output=output,
                         receipt=receipt,
                         completion=completion,
+                        domain_output=domain_output,
                     )
                 )
             return {"capability_results": completed}
@@ -477,6 +513,7 @@ def build_operation(
     framework_prefix: str = "",
     launch_factory: LaunchFactory | None = None,
     nested_dispatcher: NestedOperationDispatcher | None = None,
+    prepare_invocation: Callable[[OperationExecution], OperationExecution] | None = None,
 ) -> Any:
     """Resolve canonical direct capabilities and compile one Operation."""
 
@@ -493,4 +530,5 @@ def build_operation(
         executor,
         launch_factory=launch_factory,
         nested_dispatcher=nested_dispatcher,
+        prepare_invocation=prepare_invocation,
     )

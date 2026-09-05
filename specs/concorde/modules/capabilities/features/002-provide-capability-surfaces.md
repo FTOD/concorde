@@ -94,7 +94,7 @@ the managed runtime launcher; no shell activation is required.
   retaining their paired path; reject extras, symlinks, collisions, or unpaired Operations.
 - **Failures**: Invalid exposure/effects, manifest drift, internal projection, unsafe source/target,
   unknown/cyclic capability, unresolved token, or output/role collision blocks projection.
-- **Compatibility**: Package Manifest 2 and Concorde 2.1.0 contain 17 packaged leaves and three
+- **Compatibility**: Package Manifest 2 and Concorde 3.0.0 contain 17 packaged leaves and three
   Operations but expose exactly 15 public leaves plus three Operations, with no legacy reader/alias.
 - **Implementing entities**: `entity.concorde.package-manifest`, `entity.capabilities.skill-sources`,
   `entity.capabilities.operation-sources`, `entity.capabilities.projector`, and
@@ -117,7 +117,7 @@ the managed runtime launcher; no shell activation is required.
   digest-bound Protocol 13 receipt, which satisfies that same gate without reopening global resolver
   inputs inside the narrower leaf sandbox.
 - **Outputs**: Direct invocation returns its conversational result, explicit Tool results, evidence,
-  and only phase-authorized changes. Operation invocation returns Capability Completion Envelope 1:
+  and only phase-authorized changes. Operation invocation returns Capability Completion Envelope 2:
   bound identity/digests, semantic `success | failed`, usable output, limitations, and non-empty gate
   evidence.
 - **Obligations**: Preserve complete prompt/phase boundaries; keep public leaves independently
@@ -128,7 +128,7 @@ the managed runtime launcher; no shell activation is required.
   surface failures/evidence limits; contain no multi-Skill graph.
 - **Failures**: Workspace/tool failure, missing authority, invalid project state, denied permission,
   or unmet phase gate stops that Skill without fallback to another source.
-- **Compatibility**: Protocol 13, Delivery Proposal 9, and Capability Completion Envelope 1 use Tool
+- **Compatibility**: Protocol 13, Delivery Proposal 9, and Capability Completion Envelope 2 use Tool
   terminology. Stable public names are `concorde-*`; retired dotted prompt identities are not
   aliases. Direct conversational invocation remains unchanged; the envelope is required only when a
   real agent process is composed by an Operation.
@@ -139,14 +139,14 @@ the managed runtime launcher; no shell activation is required.
   with distinct effect-derived policies.
 
 
-### Target Operation Data Contract
+### Operation Data Contract
 
 ### `contract.capabilities.operation-data` — Separate configuration and typed runtime data
 
 - **Consumer**: Operation authors, agent Skill adapters, nested Operation dispatchers, and project init.
 - **Direction**: Initialized configuration plus typed caller input to one typed domain result.
-- **Entry points**: Target Python boundary `run(configuration, runtime_input, *, host_context)`;
-  a target process adapter reads one UTF-8 JSON invocation from stdin and writes one JSON result to
+- **Entry points**: Python boundary `run(configuration, runtime_input, *, host_context)`;
+  the process adapter reads one UTF-8 JSON invocation from stdin and writes one JSON result to
   stdout. Logs use stderr. Domain fields are not positional arguments or individual CLI flags.
 - **Inputs**: One `concorde-operation-invocation@1` containing separate `configuration` and `input`
   values as defined below. The installed Skill loads project configuration; callers supply runtime
@@ -158,17 +158,18 @@ the managed runtime launcher; no shell activation is required.
 - **Failures**: Unknown type/version/field, invalid field or configuration, selection mismatch,
   incompatible handoff, stale reference, or invalid semantic completion blocks downstream work.
   Failure after execution may leave partial authorized artifacts; no automatic rollback is implied.
-- **Compatibility**: **Target design, not the current executable ABI.** Package Manifest 2 currently
-  invokes paired graph parsers with CLI arguments. Runtime adoption requires one explicit executable
-  cutover of parsers, schemas, dispatch, init/config, projected Operation Skills, and tests. It must
-  not silently reinterpret old arguments or fall back from malformed JSON to prose.
+- **Compatibility**: Package 3.0.0 is an executable cutover. Old domain argv/positional requests
+  are rejected; malformed JSON never falls back to prose. Source and installed entry points share
+  the same adapter. Initialization Proposal 4 establishes configuration; existing projects use a
+  Configuration Proposal 1. Profile 7, Workspace 13, and Delivery 9 are unchanged.
 - **Example**: The complete planning invocation below carries integration configuration separately
   from `feature_path` and task intent.
 - **Implementing entities**: `entity.capabilities.operation-pair`,
   `entity.capabilities.operation-launcher`, `entity.capabilities.operation-runtime`,
-  `entity.capabilities.operation-data-contract`, and `module.concorde.understanding`.
+  `entity.capabilities.operation-data-contract`, `entity.capabilities.operation-service`,
+  `entity.capabilities.operation-configuration`, and `module.concorde.understanding`.
 
-- **Field definitions**: The following sections define the target serialized contract.
+- **Field definitions**: The following sections define the serialized contract.
 
 #### Type identity and field rules
 
@@ -197,24 +198,35 @@ own resolver/receipt before use. Domain data never substitutes for a permission 
 
 #### Project configuration lifecycle
 
-The target location is `.concorde/config.json` under a new `operation_configuration` key containing
+The location is `.concorde/config.json` under the `operation_configuration` key containing
 the configuration TypedValue. Existing `profile_version`, `root_module_id`, and
 `specification_root` keep their meanings. The initializer proposes the selected integration and
 enforcement setting together with the project config; apply establishes them once. Existing
 projects need an explicit configuration proposal instead of implicit defaults or silent overwrite.
-Until that implementation exists, current init creates only the existing source-profile settings.
+Initialization Proposal 4 requires explicit settings and also seeds the shared reflection config.
+For existing projects, `scripts/concorde.py configure --propose --configuration <file|->` emits
+Configuration Proposal 1 (`proposal_version`, fixed `path`, current `source_digest`, and
+`configuration`). Apply with `configure --apply --proposal <path>` verifies the accepted digest,
+preserves all other config fields, and atomically replaces only that file. Existing matching settings
+return `unchanged`; conflicts require a fresh proposal. Proposal paths must be safe project-relative
+paths. Configuration itself is supplied as JSON, not separate integration/enforcement flags. Init may
+retain preinstalled valid reflection settings when their exact proposal bytes still match; it
+creates only the remaining files and never overwrites changed project defaults.
 
 Every invocation loads one complete project configuration; version 1 has no per-call or per-Operation
 override merge. The host snapshots and binds it with the work context, and all nested calls inherit
 that snapshot. A later project edit applies only to new runs. No runtime input may supply integration,
 framework location, credentials, sandbox grants, or an authorization override. Install-time
-integration selection and reflection-triage settings are separate existing authorities until the
-runtime migration explicitly reconciles them.
+integration selects which CLI surfaces to project; runtime integration is the initialized project
+choice. Reflection-triage settings remain in their existing shared config and are seeded by init;
+they do not become caller input or silently override the Operation configuration.
 
-#### Complete target example
+#### Complete invocation example
 
-The following is the JSON a future Skill/host adapter would send on the Python entry point's stdin.
-It is not a command supported by the current launcher.
+Send the following JSON on the Python entry point's stdin after replacing the feature/task and
+copying the project's stored configuration. The adapter accepts at most 1 MiB of UTF-8 input and
+rejects duplicate keys, non-JSON constants, trailing documents, and domain argv. Execute-mode writes
+require the host's isolated-worktree gate; describe-policy does not launch a model.
 
 ```json
 {
@@ -239,7 +251,7 @@ It is not a command supported by the current launcher.
 }
 ```
 
-#### Target result example
+#### Result example
 
 This illustrative result shows the wrapper/domain distinction; its fixture digests are not live
 execution evidence. Real hosts must additionally validate completion and workspace receipts.
@@ -304,30 +316,55 @@ binding. The host emits the following blocked result before launching either pla
 
 | Operation / boundary | Input type @1 | Output type @1 | Field-definition authority |
 |---|---|---|---|
-| `concorde-plan` | `concorde-plan-context` | `concorde-plan-result` | [Planning](../../lifecycle/features/002-plan-attempt.md#target-planning-data-types) |
-| Planning context provider | `concorde-plan-context` | `concorde-planning-context` | [Bounded context](../../understanding/features/007-bound-planning-context.md#target-planning-context-payload) |
-| Internal plan author | `concorde-plan-author-context` | `concorde-plan-result` | [Planning](../../lifecycle/features/002-plan-attempt.md#target-planning-data-types) |
-| `concorde-standard-dev-loop` | `concorde-standard-dev-loop-context` | `concorde-standard-dev-loop-result` | [Standard loop](../../lifecycle/features/006-standard-development-loop.md#target-standard-loop-data-types) |
-| `concorde-reflections-triage` | `concorde-reflections-triage-context` | `concorde-reflections-triage-result` | [Reflection triage](../../reflections/features/001-record-and-triage-reflections.md#target-triage-data-types) |
+| `concorde-plan` | `concorde-plan-context` | `concorde-plan-result` | [Planning](../../lifecycle/features/002-plan-attempt.md#planning-data-types) |
+| Planning context provider | `concorde-plan-context` | `concorde-planning-context` | [Bounded context](../../understanding/features/007-bound-planning-context.md#planning-context-payload) |
+| Internal plan author | `concorde-plan-author-context` | `concorde-plan-result` | [Planning](../../lifecycle/features/002-plan-attempt.md#planning-data-types) |
+| `concorde-standard-dev-loop` | `concorde-standard-dev-loop-context` | `concorde-standard-dev-loop-result` | [Standard loop](../../lifecycle/features/006-standard-development-loop.md#standard-loop-data-types) |
+| `concorde-reflections-triage` | `concorde-reflections-triage-context` | `concorde-reflections-triage-result` | [Reflection triage](../../reflections/features/001-record-and-triage-reflections.md#triage-data-types) |
 
 This table specifies types; `concorde.json` remains the current executable capability inventory.
 Before a consumer runs, its host resolves the declared output-to-input mapping, checks both versions,
 validates all required fields and references, and verifies feature/worktree identity. It forwards
 only the mapped data. The parent receives a nested Operation's domain result, never a JSON string
-of the child's internal `CapabilityResult` list. Existing `CapabilityResult.output: str`, prompt
-`prior_results`, and native completion checks are the current implementation baseline, not evidence
-of target-domain conformance.
+of the child's internal `CapabilityResult` list. `CapabilityResult.domain_output` carries the typed
+value; summary `output` is audit text. Structured launches reject prose `prior_results`. The host
+checks native completion/receipt identity before constructing or admitting a domain result.
 
-Runtime migration evidence must cover configuration load/snapshot inheritance, wrong-operation
+Runtime evidence must cover configuration load/snapshot inheritance, wrong-operation
 types, missing fields, old versions, unknown fields, stale/cross-feature refs, child failures, and a
 complete standard-loop/triage → plan → context/author → parent round trip. Schema-valid data alone
 must never advance a failed or unreceipted execution.
+
+#### Leaf adapter types and evidence
+
+All leaf values use the same TypedValue wrapper and strict version-1 validation. These adapters do
+not create additional registered Operations. Lifecycle owns phase field semantics; Reflections owns
+the investigation payload. A `Selection` contains exactly `feature_id`, `feature_path`,
+`attempt_dir`, `source_digest`, and `artifacts` with the types/identity rules of the plan result;
+its digest is the current host workspace digest, while the plan result uses admitted durable
+planning sources. `artifacts` snapshots current attempt files and may be empty.
+
+| Leaf adapter type ID @1 | Required `data` fields | Optional fields / producer |
+|---|---|---|
+| `concorde-specify-context` | `task` (original standard-loop TypedValue), `feature_path` (canonical path that may be planned) | Host before specification; authored feature ID is resolved afterward. |
+| `concorde-tasks-context`, `concorde-implement-context`, `concorde-validate-context`, `concorde-deliver-context`, `concorde-fast-loop-context` | `task` (original Operation input TypedValue), all Selection fields | `source_artifacts` (ArtifactRef array) carries selected triage documents/plans when applicable; host supplies freshly checked refs. |
+| `concorde-specify-result`, `concorde-tasks-result`, `concorde-implement-result`, `concorde-validate-result`, `concorde-deliver-result`, `concorde-fast-loop-result`, `concorde-analyze-result` | All Selection fields | Host derives them after semantic completion and native evidence checks; delivered attempt refs are empty. |
+| `concorde-analyze-context` | Original triage `task`, all Selection fields, captured `head` (full Git object ID), `verified_on` (YYYY-MM-DD), `reflections` (selected-ref array) | Selected-ref has exact `reflection_id`, `document` ArtifactRef, and optional `plan` ArtifactRef. |
+| `concorde-reflection-investigation-result` | `findings` (exact selected-ID ordered findings array) | [Reflections owns every finding field](../../reflections/features/001-record-and-triage-reflections.md#investigation-data-and-persistence). |
+
+Completion Envelope 2 has all version-1 identity/status/gate fields, a host-issued `invocation_id`
+bound into the launch digest, and required `domain_output`:
+the typed investigation result for successful triage analyze, otherwise null. Failed completions
+must have null domain output. This record is separate from the public Operation result and from
+host-derived leaf results. The executor's structural schema and host's semantic validation both
+apply. Envelope 1 remains only for the low-level unstructured injected host/test API; no public JSON
+invocation is downgraded to it.
 
 ## Architecture Zoom
 
 | Entity ID | Role |
 |---|---|
-| `entity.capabilities.operation-data-contract` | Defines target JSON envelopes and type/version admission separately from domain field ownership. |
+| `entity.capabilities.operation-data-contract` | Defines JSON envelopes and type/version admission separately from domain field ownership. |
 | `entity.capabilities.skill-sources` | Owns one canonical directory per leaf Skill. |
 | `entity.capabilities.operation-sources` | Owns one canonical Python/Markdown pair per Operation. |
 | `entity.capabilities.skill-prompt` | Supplies a complete public/internal leaf contract with exposure/effects. |
@@ -378,7 +415,7 @@ must never advance a failed or unreceipted execution.
 - **FR-007**: An Operation-composed path-sensitive leaf MUST accept the host's canonical Protocol 13
   receipt as its completed workspace gate, MUST NOT rerun the broader workspace resolver inside its
   narrowed sandbox, and MUST receive the exact declared script entry point as framework authority.
-- **FR-008**: Every real agent-process leaf MUST return Capability Completion Envelope 1 with exact
+- **FR-008**: Every real agent-process leaf MUST return Capability Completion Envelope 2 with exact
   launch/workspace/bootstrap identity, semantic status, output, limitations, and non-empty unique
   gate evidence; process exit or free-form prose alone MUST NOT establish completion.
 - **FR-009**: A failed mandatory gate MUST produce a failed envelope. A successful envelope MUST

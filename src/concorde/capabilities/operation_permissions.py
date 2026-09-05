@@ -119,6 +119,9 @@ class LaunchSpecification:
     policy: NormalizedPolicy
     native_configuration: NativeLaunchConfiguration
     digest: str
+    runtime_input_json: str | None = None
+    operation_configuration_json: str | None = None
+    invocation_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -159,6 +162,8 @@ class CapabilityCompletion:
     output: str
     limitations: str
     gates: tuple[CompletionGate, ...]
+    domain_output: dict[str, Any] | None = None
+    invocation_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -166,6 +171,7 @@ class OperationExecutionResult:
     output: str
     receipt: EnforcementReceipt
     completion: CapabilityCompletion
+    domain_output: dict[str, Any] | None = None
 
 
 _CREDENTIAL_DENIES = (
@@ -652,6 +658,9 @@ def build_launch_specification(
     workspace_digest: str,
     policy: NormalizedPolicy,
     native_configuration: NativeLaunchConfiguration,
+    runtime_input_json: str | None = None,
+    operation_configuration_json: str | None = None,
+    invocation_id: str | None = None,
 ) -> LaunchSpecification:
     if native_configuration.integration != integration:
         raise PermissionPolicyError("native configuration integration differs from launch integration")
@@ -690,6 +699,22 @@ def build_launch_specification(
         "policy_digest": policy.digest,
         "config_digest": native_configuration.digest,
     }
+    if (runtime_input_json is None) != (operation_configuration_json is None):
+        raise PermissionPolicyError("structured launch requires both configuration and input")
+    if runtime_input_json is not None:
+        from .operation_data import canonical, decode, validate_typed
+
+        runtime_input = validate_typed(decode(runtime_input_json))
+        configuration = validate_typed(decode(operation_configuration_json), "concorde-operation-configuration")
+        if runtime_input_json != canonical(runtime_input) or operation_configuration_json != canonical(configuration):
+            raise PermissionPolicyError("structured launch data must use canonical serialization")
+        if prior_results:
+            raise PermissionPolicyError("structured launches cannot carry narrative prior results")
+        if not isinstance(invocation_id, str) or not invocation_id:
+            raise PermissionPolicyError("structured launch requires a host-issued invocation identity")
+        payload["runtime_input"] = runtime_input
+        payload["operation_configuration"] = configuration
+        payload["invocation_id"] = invocation_id
     return LaunchSpecification(
         operation=operation,
         stage=stage,
@@ -706,6 +731,9 @@ def build_launch_specification(
         policy=policy,
         native_configuration=native_configuration,
         digest=_digest(payload),
+        runtime_input_json=runtime_input_json,
+        operation_configuration_json=operation_configuration_json,
+        invocation_id=invocation_id,
     )
 
 
@@ -737,4 +765,7 @@ def finalize_launch_specification(
         workspace_digest=specification.workspace_digest,
         policy=specification.policy,
         native_configuration=native,
+        runtime_input_json=specification.runtime_input_json,
+        operation_configuration_json=specification.operation_configuration_json,
+        invocation_id=specification.invocation_id,
     )

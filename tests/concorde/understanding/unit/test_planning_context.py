@@ -23,6 +23,32 @@ SELECTED = "specs/example/modules/consumer/features/001-change.md"
 
 
 class PlanningContextTests(unittest.TestCase):
+    def test_shared_constitution_locator_does_not_admit_provider_private_code(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            shutil.copytree(FIXTURE, project)
+            (project / ".concorde/constitution.md").write_text("# Shared project governance\n")
+            provider = project / "specs/example/modules/provider/architecture.md"
+            provider.write_text(provider.read_text().replace("## Relationships", "| `entity.example.governance` | document | Shared governance. | `.concorde/constitution.md` |\n\n## Relationships"))
+            context = resolve_planning_context(project, SELECTED)
+            self.assertEqual(context.constitution_path, ".concorde/constitution.md")
+            self.assertNotIn(".concorde/constitution.md", context.denied_paths)
+            self.assertIn("src/provider/private.py", context.denied_paths)
+
+    def test_attempt_changes_preserve_durable_digest_but_source_edits_invalidate_it(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            shutil.copytree(FIXTURE, project)
+            context = resolve_planning_context(project, SELECTED)
+            attempt = project / context.attempt_paths[0]
+            attempt.mkdir(parents=True, exist_ok=True)
+            (attempt / "plan.md").write_text("# A newly authored plan\n")
+            (attempt / "tasks.md").write_text("# A temporal task scaffold\n")
+            self.assertEqual(resolve_planning_context(project, SELECTED).source_digest, context.source_digest)
+            with (project / "src/consumer/service.py").open("a") as stream:
+                stream.write("\n# Durable implementation changed.\n")
+            self.assertNotEqual(resolve_planning_context(project, SELECTED).source_digest, context.source_digest)
+
     def test_required_interface_owner_is_included_with_reason_and_incidental_relation_is_not(self):
         context = resolve_planning_context(FIXTURE, SELECTED)
         self.assertEqual(context.feature_path, SELECTED)

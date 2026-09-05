@@ -140,27 +140,26 @@ class WorktreeBoundaryTests(unittest.TestCase):
     def test_actual_operation_execution_rejects_primary_before_agent_launch(self):
         with tempfile.TemporaryDirectory() as directory:
             primary = self.create_repository(Path(directory))
-            operations = (
-                ("concorde-plan", "plan this"),
-                ("concorde-standard-dev-loop", "change this"),
-                ("concorde-reflections-triage", "investigate"),
-            )
-            for name, request in operations:
+            from tests.concorde.support.operation_json import configure, invocation
+            (primary / ".concorde").mkdir()
+            (primary / ".concorde/config.json").write_text("{}")
+            configure(primary)
+            for name in ("concorde-plan", "concorde-standard-dev-loop", "concorde-reflections-triage"):
                 with self.subTest(operation=name):
+                    data = {"feature_path": "specs/example/features/001-deliver.md", "request": "Apply the bounded change"}
+                    if name == "concorde-reflections-triage":
+                        data.update(action="investigate", reflection_ids=["R-001"])
                     result = subprocess.run(
-                        (
-                            sys.executable,
-                            str(REPOSITORY_ROOT / "operations" / name / "operation.py"),
-                            request,
-                            "--execute",
-                        ),
-                        cwd=primary,
-                        capture_output=True,
-                        text=True,
+                        [sys.executable, str(REPOSITORY_ROOT / "operations" / name / "operation.py")],
+                        cwd=primary, capture_output=True, text=True,
+                        input=json.dumps(invocation(name, data, mode="execute")),
                     )
-                    self.assertEqual(result.returncode, 2)
-                    self.assertIn("primary Git worktree", result.stderr)
+                    self.assertEqual(result.returncode, 3)
+                    payload = json.loads(result.stdout)
+                    self.assertIsNone(payload["output"])
+                    self.assertIn("primary Git worktree", payload["errors"][0]["message"])
                     self.assertNotIn("codex exec", result.stderr)
+
 
 
 if __name__ == "__main__":

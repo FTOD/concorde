@@ -134,21 +134,32 @@ into ordered [LangGraph](https://github.com/langchain-ai/langgraph) stages witho
 prompts. LangGraph is control plane only: trusted code resolves concrete paths, narrows leaf effects,
 renders a Codex permission profile or Claude restricted strict sandbox, and requires a receipt.
 
-The tested standard graph is:
-
-```text
-START → specify → plan → tasks → deliver → END
-```
-
-Its direct bundles preserve the full lifecycle: `specify`; public nested `plan`; `tasks` + `implement`; then
-`validate` + cleanup-only `deliver`. Run the deterministic, credential-free example from a source
-checkout:
+The four stages are specify, plan, tasks, and deliver. Their direct bundles preserve the full
+lifecycle: specify; public nested plan; tasks then implement; validate then cleanup-only deliver.
+Run this deterministic, credential-free policy inspection from Concorde's source checkout:
 
 ```bash
 uv sync
-python3 scripts/run-operation.py operations/concorde-standard-dev-loop/operation.py \
-  "Add audit logging" --framework-prefix . --describe-policy
+python3 - <<'PY' | python3 scripts/run-operation.py operations/concorde-standard-dev-loop/operation.py
+import json
+from pathlib import Path
+configuration = json.loads(Path(".concorde/config.json").read_text())["operation_configuration"]
+print(json.dumps({
+    "type_id": "concorde-operation-invocation", "schema_version": 1,
+    "operation_id": "concorde-standard-dev-loop", "mode": "describe-policy",
+    "configuration": configuration,
+    "input": {"type_id": "concorde-standard-dev-loop-context", "schema_version": 1,
+              "data": {"feature_path": "specs/concorde/modules/lifecycle/features/006-standard-development-loop.md",
+                       "request": "Inspect the configured development policies", "constraints": []}}
+}))
+PY
 ```
+
+For actual work, set `mode` to `execute` and provide the selected feature/task in an authorized
+isolated worktree with the configured Codex or Claude CLI available. The Python process reads one
+JSON invocation on stdin and emits one typed result on stdout; policy descriptions use stderr.
+Old positional task requests and domain flags are rejected. The agent CLI's public Operation Skill
+constructs this same JSON boundary and the Python graph owns all subsequent dispatch.
 
 The checkout launcher selects its root `.venv`. Native installation instead creates and verifies a
 private `.concorde/.venv`, never touches the target project's `.venv`, and may contact the configured
@@ -208,7 +219,7 @@ Use `--integration claude` for Claude. The installer validates [`concorde.json`]
 copies one package beneath `.concorde/framework/`, renders the selected integration, seeds only
 missing reflection defaults, and writes `.concorde/install.json` last. It updates/removes only files
 whose observed bytes still match the prior receipt; unowned or user-modified collisions fail closed.
-Concorde 2.1.0 installs 17 leaves and three complete Operation pairs in the framework while projecting
+Concorde 3.0.0 installs 17 leaves and three complete Operation pairs in the framework while projecting
 only 15 public leaves plus the three Operations. During explicit apply it also runs
 `npm ci --ignore-scripts` from the shipped lock to install the official Understand Anything Viewer
 v2.9.0 beneath `.concorde/.venv/share/concorde/understand-anything-viewer`. The target project's
@@ -271,14 +282,45 @@ later work. See [Evolve the Concorde Protocol](specs/concorde/features/003-evolv
 Start with the [project concept model](specs/concorde/architecture.md#project-concept-model): an
 Operation definition, its agent Skill and executable Python, a particular invocation, project
 configuration, typed runtime input/result, and artifact handoffs are distinct entities.
-The architecture includes cardinalities, ownership/lifetimes, producer-to-consumer field mappings,
-and a current-to-target review. Its entity view and Archify dataflow complement the module map.
+The architecture includes a [concrete Operation registry](specs/concorde/architecture.md#operation-registry),
+cardinalities, ownership/lifetimes, producer-to-consumer field mappings, and a runtime realization
+review. Its entity view and Archify dataflow complement the module map.
 
-The [target JSON boundary](specs/concorde/modules/capabilities/features/002-provide-capability-surfaces.md#target-operation-data-contract)
-separates initialized configuration from per-call input such as `concorde-plan-context@1`.
-It is a design contract awaiting runtime migration; the executable commands documented above still
-use the existing CLI. This revision strengthens authoring/review guidance and reports the gaps
-without changing the shipped Operation ABI.
+The [JSON boundary](specs/concorde/modules/capabilities/features/002-provide-capability-surfaces.md#operation-data-contract)
+separates project configuration from per-call input such as `concorde-plan-context@1`. The host
+validates type/version/fields, copies the configuration snapshot into nested calls, and checks
+feature identity, artifact digests, and native completion evidence before handing data on.
+Triage investigation returns typed findings; its parent preserves maintainer fields and saves and
+relocates validated records. Standard-loop success requires real validation and delivery cleanup.
+
+### Initialize or migrate project configuration
+
+Concorde 3.0.0 changes the Operation ABI; existing source-profile settings remain version 7.
+Create `operation-settings.json` with explicit settings (choose the integration actually in use):
+
+```json
+{"type_id":"concorde-operation-configuration","schema_version":1,"data":{"integration":"codex","enforcement":"native"}}
+```
+
+For a new project, `python3 scripts/concorde.py init --propose --configuration operation-settings.json`
+produces Initialization Proposal 4 with five files: project config, root architecture, system
+overview, reflection allocation index, and reflection defaults. Review and apply the accepted
+proposal with `init --apply --proposal <path>`.
+
+For an existing initialized project, preserve the authored hierarchy and other config fields:
+
+```bash
+python3 scripts/concorde.py configure --propose --configuration operation-settings.json > configuration-proposal.json
+# Review the exact proposal before applying it.
+python3 scripts/concorde.py configure --apply --proposal configuration-proposal.json
+```
+
+In installed projects use `.concorde/framework/scripts/concorde.py`. Missing configuration blocks
+Operations; stale proposals require a fresh proposal. Later runs load the new settings, while an
+active run and its nested Operations keep their original snapshot. `outer` enforcement additionally
+requires a verified embedding host. Source/installed managed runtime checks include all three
+registered JSON contracts. Integration tests run real graphs, artifact IO, queue, and delivery tools
+with an explicit model-process double; they do not claim live model work.
 
 ## Develop and validate
 

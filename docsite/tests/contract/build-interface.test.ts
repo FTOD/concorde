@@ -13,8 +13,8 @@ describe('build interface', () => {
     expect(Object.keys(packageJson.scripts)).toEqual(expect.arrayContaining([
       'inspect', 'validate', 'render-diagrams', 'start', 'test', 'build', 'typecheck', 'check',
     ]));
-    expect(packageJson.scripts.start).toBe('tsx scripts/start.ts');
-    expect(packageJson.scripts['render-diagrams']).toBe('tsx scripts/render-diagrams.ts');
+    expect(packageJson.scripts.start).toBe('node --import tsx scripts/start.ts');
+    expect(packageJson.scripts['render-diagrams']).toBe('node --import tsx scripts/render-diagrams.ts');
     expect(await readFile(resolve(siteDir, 'scripts/start.ts'), 'utf8')).toContain('preparePublication(projectRoot)');
     expect(await readFile(resolve(siteDir, 'scripts/build.ts'), 'utf8')).toContain('preparePublication(projectRoot)');
     expect(await readFile(resolve(siteDir, 'scripts/build.ts'), 'utf8'))
@@ -26,7 +26,7 @@ describe('build interface', () => {
 
   it('returns non-zero actionable diagnostics for invalid content', () => {
     const result = spawnSync(process.execPath, [
-      resolve(siteDir, 'node_modules/tsx/dist/cli.mjs'), 'scripts/validate.ts', '--project-root',
+      '--import', 'tsx', 'scripts/validate.ts', '--project-root',
       resolve(siteDir, 'tests/fixtures/invalid-projects/missing-title'),
     ], {cwd: siteDir, encoding: 'utf8'});
     expect(result.status).not.toBe(0);
@@ -36,7 +36,7 @@ describe('build interface', () => {
 
   it('returns a non-zero migration diagnostic for a parallel root docs tree', () => {
     const result = spawnSync(process.execPath, [
-      resolve(siteDir, 'node_modules/tsx/dist/cli.mjs'), 'scripts/validate.ts', '--project-root',
+      '--import', 'tsx', 'scripts/validate.ts', '--project-root',
       resolve(siteDir, 'tests/fixtures/invalid-projects/parallel-docs'),
     ], {cwd: siteDir, encoding: 'utf8'});
     expect(result.status).not.toBe(0);

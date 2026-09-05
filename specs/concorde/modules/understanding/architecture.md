@@ -40,15 +40,16 @@ launcher, reflection semantics, installation, or publication.
 ## Operation Contract Boundary
 
 Understanding provides initialization and host-resolved context to `entity.concorde.operation`.
-`entity.understanding.config` currently stores source-profile/root selection only. The target
-Operation configuration is separately typed under `operation_configuration` in that file and must
-be established by a future reviewed init/config proposal; it is not yet written by Proposal 3.
+`entity.understanding.config` stores source-profile/root selection plus separately typed
+`operation_configuration`. Initialization Proposal 4 establishes explicit integration/enforcement and
+shared reflection defaults. Existing architectures use Capabilities' digest-bound configure Tool.
 
 This module owns `concorde-planning-context@1` field semantics in its bounded-planning-context
 feature. It derives feature identity, admitted file references/reasons, attempt path, and source
 digest; a caller's `feature_path` selects input but cannot dictate those derived facts. The internal
 Skill named `concorde-plan-context` is distinct from the caller data type of that spelling owned by
-Lifecycle. Current resolution returns a Python record; its target serialization remains pending.
+Lifecycle. The resolver returns a Python record; the trusted Operation service serializes its
+verified artifacts and identities as `concorde-planning-context@1`.
 
 The generic initializer emits a minimal root scaffold. Structural validation proves Profile 7
 shape/reference conformance, not that all product concepts, cardinalities, or data handoffs have
@@ -58,7 +59,7 @@ been adequately defined. The ontology's authoring/review contract supplies that 
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
-| `entity.understanding.planning-context-data` | type | Target concorde-planning-context@1: host-resolved feature/module identity, bounded artifact references/reasons, attempt path, exclusions, and source digest. | `concept:concorde-planning-context@1` |
+| `entity.understanding.planning-context-data` | type | concorde-planning-context@1: host-resolved feature/module identity, bounded artifact references/reasons, attempt path, exclusions, and source digest. | `concept:concorde-planning-context@1` |
 | `entity.understanding.model` | package | Immutable Tool result, module, entity, relation, interface, context, and finding records. | `src/concorde/model.py` |
 | `entity.understanding.repository-loader` | program | Discovers Profile 7 module architectures, direct features, diagrams, and control authorities. | `src/concorde/understanding/repository.py#ProjectRepository.load` |
 | `entity.understanding.context-builder` | program | Projects one bounded module or feature altitude. | `src/concorde/understanding/context.py#bounded_context` |
@@ -67,10 +68,10 @@ been adequately defined. The ontology's authoring/review contract supplies that 
 | `entity.understanding.planning-context` | program | Resolves selected/providing-module paths and exact project-owned required-interface feature specifications, skips explicitly external required providers, and denies provider internals, symlinks, escapes, and other attempts. | `src/concorde/understanding/planning_context.py#resolve_planning_context` |
 | `entity.understanding.validator` | program | Runs layout/parallel-authority, hierarchy, entity, feature, diagram, and freshness rules. | `src/concorde/understanding/validate.py#validate_project` |
 | `entity.understanding.model-rules` | package | Layout, hierarchy, entity, feature, diagram, and freshness rule sets that give the validator its deterministic checks. | `src/concorde/understanding/validation` |
-| `entity.understanding.initializer` | program | Proposes and atomically applies Initialization Proposal 3 with a root Archify system overview. | `src/concorde/understanding/initialize.py` |
+| `entity.understanding.initializer` | program | Proposes and atomically applies Initialization Proposal 4 with a root Archify system overview. | `src/concorde/understanding/initialize.py` |
 | `entity.understanding.alignment-explorer` | program | Validates optional pinned UA graph/sidecar inputs and projects bounded evidence-qualified alignment without mutation. | `src/concorde/understanding/alignment.py#explore_alignment` |
 | `entity.understanding.protocol13` | schema | Structured phase context for one direct feature and stable-ID attempt whose returned paths can be validated into concrete non-symlink permission roles. | `concept:Feature Workspace Protocol 13` |
-| `entity.understanding.config` | configuration | Selects Profile 7, specification root, and root module identity. | `.concorde/config.json` |
+| `entity.understanding.config` | configuration | Selects Profile 7, specification root, root module identity, and explicit typed Operation configuration. | `.concorde/config.json` |
 | `entity.understanding.selection` | configuration | Native pointer containing exactly one canonical direct `feature_path`. | `.concorde/feature.json` |
 | `entity.understanding.constitution` | document | Optional project governance authority consulted by lifecycle and capability Skills and Operations. | `.concorde/constitution.md` |
 | `entity.understanding.module-architecture` | document | One module's structural authority and maintained architecture documentation: responsibility, boundary, entities, relations, interactions, children, features, and decisions. | `concept:<module>/architecture.md` |
@@ -91,7 +92,7 @@ been adequately defined. The ontology's authoring/review contract supplies that 
 
 | Source | Predicate | Target | Description |
 |---|---|---|---|
-| `entity.understanding.planning-context` | `generates` | `entity.understanding.planning-context-data` | Target: serializes the resolved context for Lifecycle; the consumer must bind it to its host receipt. |
+| `entity.understanding.planning-context` | `generates` | `entity.understanding.planning-context-data` | serializes the resolved context for Lifecycle; the consumer must bind it to its host receipt. |
 | `entity.understanding.repository-loader` | `reads_from` | `entity.concorde.specification` | Loads canonical module architectures, direct features, and declared diagrams. |
 | `entity.understanding.repository-loader` | `reads_from` | `entity.concorde.control-state` | Loads configuration, selection, attempt, and reflection state alongside specification sources. |
 | `entity.understanding.validator` | `reads_from` | `entity.understanding.repository-loader` | Validates the same loaded package model used by every Tool. |
@@ -133,7 +134,7 @@ been adequately defined. The ontology's authoring/review contract supplies that 
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.understanding.initialize` | A maintainer requests initialization for an unconfigured or partially configured project. | Locate the project root; propose Profile 7 configuration, one root architecture, its system overview, and the reflection allocation index; let the maintainer review the digest-bound proposal; on explicit apply atomically promote exactly those four files. | A minimal reviewed root scaffold exists, or an already configured project returns unchanged. | `interface.concorde.initialize` |
+| `interaction.understanding.initialize` | A maintainer requests initialization for an unconfigured or partially configured project. | Locate the project root; propose Profile 7 configuration, one root architecture, its system overview, reflection defaults, and the reflection allocation index; let the maintainer review the digest-bound proposal; on explicit apply atomically promote exactly those five files. | A minimal reviewed root scaffold exists, or an already configured project returns unchanged. | `interface.concorde.initialize` |
 | `interaction.understanding.retrieve-context` | A maintainer or agent requests one stable module or feature ID. | Validate Profile 7; load only the canonical sources for that ID; project responsibility/boundary/entities/relations/interactions or feature design/interfaces/zoom; stop at immediate children and related-feature summaries. | Exactly one bounded altitude returns without descendant or unrelated bodies. | `interface.concorde.context` |
 | `interaction.understanding.resolve-workspace` | A path-sensitive Skill, Operation stage, or delivery Tool starts a phase for a selected feature. | For a mutating phase or selection persistence, first require the committed-base linked-worktree boundary; resolve explicit path, environment selection, or `.concorde/feature.json`; load the direct feature/module; derive stable-ID attempt/reflection/executable context; validate concrete task/role paths and reject symlinks/escapes; return Protocol 13. | Exactly one canonical direct feature plus bounded safe role inputs is routed, or primary/non-Git mutation fails before write-target resolution. | `interface.concorde.workspace` |
 | `interaction.understanding.bound-planning-context` | A planning Operation or its plan-author leaf resolves context for one selected feature. | Resolve the selected feature, its providing module's owned architecture/implementation/test locators, and its attempt paths; walk `interfaces.required` to the exact feature file that owns each interface with a reason trace; deny dependency module internals, descendant modules, unrelated features, and other attempts; return one context receipt. | A plan author reads exactly the selected feature's context plus the published dependency promises it needs, never a dependency module's private internals. | `contract.understanding.planning-context` |
@@ -163,7 +164,7 @@ None.
 - Python standard-library behavior is canonical for every Understanding Tool; loading, validation,
   context projection, workspace resolution, and exploration require no external dependency.
 - Native selection lives at `.concorde/feature.json`; no compatibility reader exists for host state.
-- Feature Workspace Protocol 13 and Initialization Proposal 3 use `tool` discriminators; Operation
+- Feature Workspace Protocol 13 and Initialization Proposal 4 use `tool` discriminators; Operation
   metadata is reserved for paired LangGraph execution owned elsewhere.
 - Exploration never normalizes or rewrites input graphs and never treats adapter vocabulary or text
   similarity as identity/evidence.

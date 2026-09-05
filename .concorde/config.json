@@ -1,4 +1,12 @@
 {
+  "operation_configuration": {
+    "data": {
+      "enforcement": "native",
+      "integration": "codex"
+    },
+    "schema_version": 1,
+    "type_id": "concorde-operation-configuration"
+  },
   "profile_version": 7,
   "root_module_id": "module.concorde",
   "specification_root": "specs/concorde"

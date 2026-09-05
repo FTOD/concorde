@@ -148,7 +148,7 @@ Planning, task, checklist, research, quickstart, and validation files live only 
 - **Failures**: Missing/unsupported worktree authorization or integration assets, invalid capability
   metadata or pairing,
   unavailable Tools/dependencies, or denied permissions stop execution without hidden fallback behavior.
-- **Compatibility**: Concorde 2.1.0 Package Manifest 2 packages 17 leaves/three pairs and exposes the
+- **Compatibility**: Concorde 3.0.0 Package Manifest 2 packages 17 leaves/three pairs and exposes the
   same 15 public leaves plus three Operations in Codex and Claude.
 - **Implementing entities**: `entity.concorde.coding-agent`, `module.concorde.capabilities`, and
   `module.concorde.reflections`.

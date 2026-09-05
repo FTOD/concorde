@@ -40,7 +40,7 @@ capabilities to downstream state.
   relationships before an agent starts.
 - A separately attested, read-only integration runtime bootstrap that lets the selected native
   client execute itself without making host paths part of task authority.
-- One canonical host workspace receipt per leaf and Capability Completion Envelope 1 across Codex
+- One canonical host workspace receipt per leaf and Capability Completion Envelope 2 across Codex
   JSONL/output-schema and Claude JSON-schema output.
 - Migration of existing standard-development and reflection-triage Operations to the same policy
   contract, including their installed Codex and Claude projections.
@@ -55,11 +55,12 @@ The same host can invoke the standard development or reflection-triage Operation
 mutation, it requires a linked worktree created from the primary worktree's exact committed `HEAD`;
 staged, unstaged, untracked, and ignored primary state is neither read nor copied. Before each direct
 leaf Skill invocation, the runtime supplies one immutable launch request containing the chosen
-integration, prompt/prior results, normalized task policy, native configuration, canonical Protocol
+integration, canonical prompt, typed task/configuration, invocation identity, normalized task policy,
+native configuration, canonical Protocol
 13 receipt, and digests. The process executor resolves and attests the exact selected Codex native
 binary when native enforcement needs it, finalizes a new immutable launch, version-checks
 `codex exec` or restricted `claude -p`, scrubs ambient secrets, and requires Capability Completion
-Envelope 1. A zero process exit is transport evidence only. Tests inject client processes and
+Envelope 2. A zero process exit is transport evidence only. Tests inject client processes and
 runtime attestations; live model calls remain optional acceptance evidence.
 
 ## Interfaces
@@ -79,7 +80,7 @@ runtime attestations; live model calls remain optional acceptance evidence.
   posture; and optional outer-sandbox requirement.
 - **Outputs**: Validated worktree boundary; canonical task read/write/deny sets; attested read-only
   runtime-bootstrap files separate from those sets; Codex named profile or Claude strict sandbox;
-  finalized launch/config/bootstrap digests; Capability Completion Envelope 1; enforcement receipt;
+  finalized launch/config/bootstrap digests; Capability Completion Envelope 2; enforcement receipt;
   and only validated successful capability state.
 - **Obligations**: Resolve real project-relative non-symlink paths; apply deny-before-allow semantics;
   keep writes a subset of the Skill's declared mutation authority; disable network unless explicitly
@@ -100,7 +101,7 @@ runtime attestations; live model calls remain optional acceptance evidence.
   real executable as runtime-bootstrap read authority; this is digest-bound integration runtime, not
   project/task context. Claude uses permission rules with `failIfUnavailable` and no unsandboxed
   retry. Codex JSONL/output-schema and Claude JSON-schema output both realize Capability Completion
-  Envelope 1. Native syntax may evolve while normalized task authority and fail-closed semantics stay
+  Envelope 2. Native syntax may evolve while normalized task authority and fail-closed semantics stay
   stable.
 - **Example**: A `concorde-standard-dev-loop` leaf stage receives read access to its selected feature
   and owned module locators; it receives write access only to
@@ -196,7 +197,7 @@ first and recovered cases to enter Operation state.
 **Acceptance Scenario**:
 
 1. **Given** a client exits zero but returns `status: failed` with a failed workspace gate, **When**
-   the host validates Capability Completion Envelope 1, **Then** it emits a failed receipt, raises,
+   the host validates Capability Completion Envelope 2, **Then** it emits a failed receipt, raises,
    and invokes no downstream capability.
 
 ## Requirements
@@ -249,9 +250,12 @@ first and recovered cases to enter Operation state.
   workspace receipt. That receipt satisfies the leaf's workspace gate; the leaf MUST NOT rerun the
   broader resolver from its narrower policy. The exact script declared by that leaf MUST remain
   readable as framework authority for any later phase Tool invocation.
-- **FR-015**: Every real agent process MUST return Capability Completion Envelope 1 with exact
+- **FR-015**: Every real agent process MUST return Capability Completion Envelope 2 with exact
   operation/stage/occurrence/capability, finalized launch, workspace, and runtime-bootstrap identity;
-  semantic `success | failed`; usable output; limitations; and non-empty unique gate evidence.
+  semantic `success | failed`; audit output; limitations; non-empty unique gate evidence; and
+  `domain_output` (the contracted investigation TypedValue on triage-analysis success, otherwise
+  null). The low-level injected unstructured host API retains Envelope 1; JSON Operations never
+  downgrade. A domain value does not replace native completion or enforcement evidence.
 - **FR-016**: Process exit zero MUST be necessary but insufficient for success. Nonzero exit, native
   lifecycle error, malformed/missing/stale/contradictory envelope, explicit failure, failed gate, or
   success with limitations MUST create a failed receipt and raise before `CapabilityResult` state.

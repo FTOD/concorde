@@ -88,7 +88,8 @@ class ReflectionsTriageOperationIntegrationTests(unittest.TestCase):
             ["concorde-analyze", "concorde-fast-loop", "concorde-validate"],
         )
         fast_loop = calls[1].launch_specification.policy
-        self.assertTrue(any(".concorde/reflections/worktrees" in path for path in fast_loop.write_paths))
+        self.assertTrue(any(path.startswith("specs/") for path in fast_loop.write_paths))
+        self.assertFalse(any(".concorde/reflections/worktrees" in path for path in fast_loop.write_paths))
         self.assertFalse(any(path == "." for path in fast_loop.write_paths))
 
     def test_invalid_action_or_route_fails_before_executor(self):
@@ -109,17 +110,21 @@ class ReflectionsTriageOperationIntegrationTests(unittest.TestCase):
         self.assertEqual(calls, [])
 
     def test_operation_cli_and_markdown_pair_report_v5_conditionally(self):
+        from tests.concorde.support.operation_json import invocation
+        configuration = json.loads((REPOSITORY_ROOT / ".concorde/config.json").read_text())["operation_configuration"]
         result = subprocess.run(
-            [sys.executable, str(OPERATION_PATH), "status", "--describe-policy"],
+            [sys.executable, str(OPERATION_PATH)],
+            input=json.dumps(invocation("concorde-reflections-triage", {"action": "status", "reflection_ids": []}, configuration=configuration)),
             cwd=REPOSITORY_ROOT,
             text=True,
             capture_output=True,
         )
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
         payload = json.loads(result.stdout)
-        self.assertEqual(payload["operation"], "concorde-reflections-triage")
-        self.assertEqual(payload["action"], "status")
-        self.assertEqual(payload["capabilities"], [])
+        self.assertEqual(payload["operation_id"], "concorde-reflections-triage")
+        self.assertEqual(payload["status"], "described")
+        self.assertIsNone(payload["output"])
+        self.assertEqual(result.stderr, "")
         skill = OPERATION_PATH.with_name("SKILL.md").read_text(encoding="utf-8")
         self.assertIn("reflection-triage/v5", skill)
         self.assertIn("operation: operation.py", skill)

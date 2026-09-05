@@ -92,60 +92,6 @@ class StandardDevLoopOperationIntegrationTests(unittest.TestCase):
         self.assertNotIn("concorde-plan-context", flattened)
         self.assertNotIn("concorde-plan-author", flattened)
 
-    def test_trusted_nested_dispatch_runs_inner_enforced_leaves_independently(self):
-        outer_calls = []
-        inner_calls = []
-
-        def outer_execute(invocation: OperationExecution) -> str:
-            outer_calls.append(invocation.capability.name)
-            return "outer-ok"
-
-        def inner_execute(invocation: OperationExecution) -> str:
-            inner_calls.append(invocation)
-            self.assertIsNotNone(invocation.launch_specification)
-            return "inner-ok"
-
-        def dispatch(invocation: OperationExecution) -> str:
-            self.assertEqual(invocation.capability.name, "concorde-plan")
-            return standard_dev_loop._dispatch_plan(
-                invocation,
-                inner_execute,
-                project_root=PLANNING_PROJECT,
-                feature_path=PLANNING_FEATURE,
-                integration="codex",
-                native_enforcement=True,
-                outer_sandbox=None,
-                framework_prefix="",
-            )
-
-        graph = standard_dev_loop.build_standard_dev_loop(
-            outer_execute,
-            project_root=PLANNING_PROJECT,
-            feature_path=PLANNING_FEATURE,
-            integration="codex",
-            framework_prefix="",
-            nested_dispatcher=dispatch,
-        )
-        result = graph.invoke({"request": "nested enforcement", "capability_results": []})
-        self.assertEqual(
-            outer_calls,
-            [
-                "concorde-specify",
-                "concorde-tasks",
-                "concorde-implement",
-                "concorde-validate",
-                "concorde-deliver",
-            ],
-        )
-        self.assertEqual(
-            [invocation.capability.name for invocation in inner_calls],
-            ["concorde-plan-context", "concorde-plan-author"],
-        )
-        self.assertEqual(
-            [item.capability for item in result["capability_results"]],
-            list(standard_dev_loop.OPERATION_CAPABILITIES),
-        )
-
     def test_each_leaf_receives_its_own_non_union_launch_policy(self):
         calls: list[OperationExecution] = []
 
@@ -192,27 +138,26 @@ class StandardDevLoopOperationIntegrationTests(unittest.TestCase):
         )
 
     def test_runnable_operation_describes_direct_capabilities_without_model_launch(self):
+        from tests.concorde.support.operation_json import invocation
+        configuration = json.loads((REPOSITORY_ROOT / ".concorde/config.json").read_text())["operation_configuration"]
         result = subprocess.run(
-            [
-                sys.executable,
-                str(OPERATION_PATH),
-                "Add audit logging",
-                "--integration",
-                "codex",
-                "--describe-policy",
-            ],
-            cwd=REPOSITORY_ROOT,
-            text=True,
-            capture_output=True,
+            [sys.executable, str(OPERATION_PATH)], cwd=REPOSITORY_ROOT, text=True, capture_output=True,
+            input=json.dumps(invocation("concorde-standard-dev-loop", {
+                "feature_path": "specs/concorde/modules/lifecycle/features/006-standard-development-loop.md",
+                "request": "Inspect configured policies",
+            }, configuration=configuration)),
         )
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
         payload = json.loads(result.stdout)
-        self.assertEqual(payload["operation"], "concorde-standard-dev-loop")
-        self.assertEqual(
-            [item["capability"] for item in payload["capabilities"]],
-            list(standard_dev_loop.OPERATION_CAPABILITIES),
-        )
-        self.assertTrue(all("policy" in item for item in payload["capabilities"] if item["kind"] == "skill"))
+        self.assertEqual(payload["operation_id"], "concorde-standard-dev-loop")
+        self.assertEqual(payload["status"], "described")
+        self.assertIsNone(payload["output"])
+        policies = json.loads(result.stderr)["policies"]
+        self.assertEqual([item["capability"] for item in policies], [
+            "concorde-specify", "concorde-plan-context", "concorde-plan-author", "concorde-tasks",
+            "concorde-implement", "concorde-validate", "concorde-deliver",
+        ])
+        self.assertTrue(all("policy" in item for item in policies))
 
     def test_plan_failure_is_observable_and_prevents_downstream_capabilities(self):
         calls: list[str] = []

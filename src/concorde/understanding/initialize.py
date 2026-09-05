@@ -62,6 +62,7 @@ def _configured_architecture(project_root: Path) -> ToolResult | None:
             for path in (
                 ".concorde/config.json",
                 ".concorde/reflections/index.json",
+                ".concorde/reflections/config.json",
                 module.path,
                 *package.module_diagrams(module),
             )
@@ -82,7 +83,11 @@ def _configured_architecture(project_root: Path) -> ToolResult | None:
     )
 
 
-def _create_proposal(project_root: Path, module_id: str | None, name: str | None) -> InitializationProposal:
+def _create_proposal(project_root: Path, module_id: str | None, name: str | None,
+                     operation_configuration: dict | None) -> InitializationProposal:
+    from ..capabilities.operation_data import validate_typed
+
+    configuration = validate_typed(operation_configuration, "concorde-operation-configuration", "/configuration")
     project_name = name or project_root.resolve().name
     derived = _slug(module_id.split(".", 1)[1] if module_id and module_id.startswith("module.") else project_name)
     identifier = module_id or f"module.{derived}"
@@ -90,7 +95,8 @@ def _create_proposal(project_root: Path, module_id: str | None, name: str | None
         raise ValueError("module ID must be a lowercase qualified module.<namespace> identity")
     module_slug = identifier.split(".", 1)[1].replace(".", "-")
     specification_root = f"specs/{module_slug}"
-    config = json.dumps({"profile_version": PROFILE_VERSION, "root_module_id": identifier, "specification_root": specification_root}, indent=2, sort_keys=True)
+    config = json.dumps({"profile_version": PROFILE_VERSION, "root_module_id": identifier,
+                         "specification_root": specification_root, "operation_configuration": configuration}, indent=2, sort_keys=True)
     diagram_output = f"generated/architecture/{module_slug}-system-overview.html"
     architecture = f"""---
 id: {identifier}
@@ -209,15 +215,24 @@ None.
     reflection_index = json.dumps(
         {"schema_version": 1, "high_water": "R-000"}, indent=2, sort_keys=True
     )
+    from ..capabilities.operation_data import checked_path, decode
+    from ..reflections.configuration import validate_configuration
+
+    settings_path = checked_path(project_root, ".concorde/reflections/config.json")
+    reflection_settings = (settings_path.read_text(encoding="utf-8") if settings_path.is_file() else
+                           (Path(__file__).resolve().parents[3] / "agent-assets/reflections/config.default.json").read_text(encoding="utf-8"))
+    validate_configuration(decode(reflection_settings))
     files = (
         _proposal_file(".concorde/config.json", config),
         _proposal_file(".concorde/reflections/index.json", reflection_index),
+        _proposal_file(".concorde/reflections/config.json", reflection_settings),
         _proposal_file(f"{specification_root}/architecture.md", architecture),
         _proposal_file(f"{specification_root}/diagrams/system-overview.json", diagram),
     )
-    conflicts = tuple({"path": item.path, "reason": "target already exists"} for item in files if (project_root / item.path).exists())
+    conflicts = tuple({"path": item.path, "reason": "target already exists"} for item in files
+                      if (project_root / item.path).exists() and item.path != ".concorde/reflections/config.json")
     return InitializationProposal(
-        proposal_version=3,
+        proposal_version=4,
         project_root_id=identifier,
         responsibility=f"Describe and govern the project-level outcome provided by {project_name}.",
         boundary="Keep product responsibilities explicit and module-centered.",
@@ -227,15 +242,25 @@ None.
     )
 
 
-def propose_initialization(project_root: str | Path, module_id: str | None = None, name: str | None = None) -> ToolResult:
+def propose_initialization(project_root: str | Path, module_id: str | None = None, name: str | None = None,
+                           operation_configuration: dict | None = None) -> ToolResult:
     root = Path(project_root).resolve()
     configured = _configured_architecture(root)
     if configured is not None:
+        if configured.status == "unchanged":
+            from ..capabilities.operation_config import load_configuration
+
+            try:
+                load_configuration(root)
+            except ValueError as error:
+                return ToolResult("init", ".", "invalid", findings=(Finding(
+                    "CONCORDE-INIT-007", "error", ".concorde/config.json", str(error),
+                    "Preserve the existing architecture and apply an explicit configure proposal."),))
         return configured
     try:
-        proposal = _create_proposal(root, module_id, name)
+        proposal = _create_proposal(root, module_id, name, operation_configuration)
     except ValueError as error:
-        finding = Finding("CONCORDE-INIT-002", "error", ".concorde/config.json", str(error), "Use a lowercase stable module.<namespace> ID.")
+        finding = Finding("CONCORDE-INIT-002", "error", ".concorde/config.json", str(error), "Provide a lowercase stable module.<namespace> ID and explicit concorde-operation-configuration@1 JSON.")
         return ToolResult("init", ".", "invalid", findings=(finding,), result={"interaction_model": _interaction_model()})
     exact = [(root / item.path).is_file() and (root / item.path).read_text(encoding="utf-8") == item.content for item in proposal.files]
     if all(exact):
@@ -247,7 +272,7 @@ def _load_accepted(root: Path, proposal_path: str) -> InitializationProposal:
     path = ProjectRepository(root).resolve(safe_relative_path(proposal_path))
     value = json.loads(path.read_text(encoding="utf-8"))
     value = value.get("result", {}).get("proposal", value.get("proposal", value))
-    if value.get("proposal_version") != 3:
+    if type(value.get("proposal_version")) is not int or value["proposal_version"] != 4:
         raise ValueError("unsupported or missing proposal_version")
     files: list[ProposalFile] = []
     for item in value.get("files", []):
@@ -261,15 +286,24 @@ def _load_accepted(root: Path, proposal_path: str) -> InitializationProposal:
     if (
         ".concorde/config.json" not in paths
         or ".concorde/reflections/index.json" not in paths
+        or ".concorde/reflections/config.json" not in paths
         or not any(path.endswith("/architecture.md") for path in paths)
         or not any(path.endswith("/diagrams/system-overview.json") for path in paths)
-        or len(paths) != 4
+        or len(paths) != 5
+        or len(files) != 5
     ):
         raise ValueError(
-            "proposal must contain exactly configuration, reflection index, one root architecture.md, and its system overview diagram"
+            "proposal must contain exactly project configuration, reflection index and settings, one root architecture.md, and its system overview diagram"
         )
+    from ..capabilities.operation_data import decode, validate_typed
+
+    config = decode(next(item.content for item in files if item.path == ".concorde/config.json"))
+    validate_typed(config.get("operation_configuration"), "concorde-operation-configuration", "/configuration")
+    from ..reflections.configuration import validate_configuration
+
+    validate_configuration(decode(next(item.content for item in files if item.path == ".concorde/reflections/config.json")))
     return InitializationProposal(
-        proposal_version=3,
+        proposal_version=4,
         project_root_id=value["project_root_id"],
         responsibility=value.get("responsibility", ""),
         boundary=value.get("boundary", ""),
@@ -287,17 +321,28 @@ def apply_proposal(project_root: str | Path, proposal_path: str) -> ToolResult:
         finding = Finding("CONCORDE-INIT-003", "error", ".concorde/config.json", f"Accepted proposal is invalid: {error}", "Save the exact proposal JSON at a safe project-relative path and retry.")
         return ToolResult("init", ".", "invalid", findings=(finding,))
     expected = {item.path: item.content for item in proposal.files}
+    try:
+        resolved = {relative: ProjectRepository(root).resolve(relative) for relative in expected}
+    except RepositoryError as error:
+        return ToolResult("init", ".", "invalid", findings=(Finding(
+            "CONCORDE-INIT-003", "error", ".concorde/config.json", str(error),
+            "Use only real project-relative initialization paths."),))
     states = {
-        relative: "missing" if not (path := root / relative).exists() else "exact" if path.is_file() and path.read_text(encoding="utf-8") == content else "changed"
+        relative: "missing" if not (path := resolved[relative]).exists() else "exact" if path.is_file() and path.read_text(encoding="utf-8") == content else "changed"
         for relative, content in expected.items()
     }
     if all(state == "exact" for state in states.values()):
         return ToolResult("init", ".", "unchanged", tuple(sorted(expected)), result={"proposal": _payload(proposal)})
-    if any(state != "missing" for state in states.values()):
-        findings = tuple(Finding("CONCORDE-INIT-004", "error", path, f"Target is {state}; exact accepted content cannot be promoted.", "Move or reconcile the existing source, then accept a fresh proposal.") for path, state in sorted(states.items()) if state != "missing")
-        return ToolResult("init", ".", "conflict", findings=findings, result={"conflicts": [path for path, state in sorted(states.items()) if state != "missing"]})
+    # Installation may have seeded project reflection settings before init. The
+    # reviewed exact bytes are retained; every architecture/control target remains
+    # create-only, and a changed settings file still rejects the whole apply.
+    conflicts = [path for path, state in states.items() if state != "missing"
+                 and not (path == ".concorde/reflections/config.json" and state == "exact")]
+    if conflicts:
+        findings = tuple(Finding("CONCORDE-INIT-004", "error", path, f"Target is {states[path]}; exact accepted content cannot be promoted.", "Move or reconcile the existing source, then accept a fresh proposal.") for path in sorted(conflicts))
+        return ToolResult("init", ".", "conflict", findings=findings, result={"conflicts": sorted(conflicts)})
     try:
-        created = ProjectRepository(root).stage_and_promote(expected)
+        created = ProjectRepository(root).stage_and_promote({path: content for path, content in expected.items() if states[path] == "missing"})
     except (OSError, RepositoryError) as error:
         finding = Finding("CONCORDE-INIT-005", "error", ".concorde/config.json", f"Staged promotion failed: {error}", "Resolve the filesystem failure and retry the accepted proposal.")
         return ToolResult("init", ".", "failed", findings=(finding,))

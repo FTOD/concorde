@@ -70,7 +70,7 @@
         220,
         78
       ],
-      "tag": "目标 JSON 契约"
+      "tag": "JSON 契约 @1"
     },
     {
       "id": "invocation",
@@ -99,7 +99,7 @@
         220,
         78
       ],
-      "tag": "目标 JSON 契约"
+      "tag": "JSON 契约 @1"
     },
     {
       "id": "artifacts",
@@ -129,7 +129,7 @@
         220,
         78
       ],
-      "tag": "目标 JSON 契约"
+      "tag": "JSON 契约 @1"
     },
     {
       "id": "contract",

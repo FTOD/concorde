@@ -55,7 +55,7 @@ from concorde.reflections.reflections import (  # noqa: E402
 from concorde.understanding.validate import validate_project  # noqa: E402
 
 
-ROUTES = frozenset({"fast-loop", "specify", "dismiss", "blocked"})
+ROUTES = frozenset({"fast-loop", "plan", "specify", "dismiss", "blocked"})
 PLAN_STATUSES = frozenset(
     {"proposed", "approved", "hold", "stale", "rejected", "implemented", "ineligible", "failed", "merged"}
 )
@@ -167,21 +167,12 @@ def load_config(root: Path) -> dict[str, Any]:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise QueueError(f"invalid reflection-triage config: {error}") from error
-    if not isinstance(value, dict) or value.get("schema_version") != 1:
-        raise QueueError("reflection-triage config must use schema_version 1")
-    if value.get("order") not in {"newest-first", "oldest-first"}:
-        raise QueueError("config order must be newest-first or oldest-first")
-    for key in ("investigators", "implementers"):
-        if not isinstance(value.get(key), int) or value[key] < 1:
-            raise QueueError(f"config {key} must be a positive integer")
-    if not isinstance(value.get("require_approval"), bool):
-        raise QueueError("config require_approval must be boolean")
-    skip = value.get("skip")
-    if not isinstance(skip, list) or any(not isinstance(item, str) for item in skip) or len(skip) != len(set(skip)):
-        raise QueueError("config skip must be a unique string list")
-    for key in ("plans_dir", "worktrees_dir"):
-        value[key] = _safe_relative(str(value.get(key, "")), key)
-    return value
+    from concorde.reflections.configuration import validate_configuration
+
+    try:
+        return validate_configuration(value)
+    except ValueError as error:
+        raise QueueError(str(error)) from error
 
 
 def _specification_root(root: Path) -> tuple[str, Path]:

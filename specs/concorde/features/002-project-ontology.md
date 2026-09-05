@@ -152,8 +152,8 @@ semantic questions require review. Initialization's minimal seed is only a bound
 must be expanded from project evidence before being described as a complete product model.
 
 For Concorde, the [root concept model](../architecture.md) owns shared abstractions;
-[Operation data contracts](../modules/capabilities/features/002-provide-capability-surfaces.md#target-operation-data-contract)
-own the common target transport; domain payload fields stay with the feature that provides them.
+[Operation data contracts](../modules/capabilities/features/002-provide-capability-surfaces.md#operation-data-contract)
+own the common JSON transport; domain payload fields stay with the feature that provides them.
 
 ## Current Capability Source Model (Package Manifest 2)
 
@@ -292,7 +292,7 @@ The feature is cross-cutting because these entities share one source profile. Th
   Operation cycle, or ambiguous ownership; delivery failures preserve the complete attempt.
 
 - **Compatibility**: Profile 7 / Protocol 13 are an intentional breaking control-state path revision
-  with no dual-layout mode. Initialization Proposal 3 adds the reflection allocation index and
+  with no dual-layout mode. Initialization Proposal 4 adds the reflection allocation index and
   required root system overview. Reflection Document v2 replaces the single-file log. Stable
   module/feature/interface IDs, Delivery Proposal 9 semantics, and Build Manifest 13 semantics remain unchanged.
 - **Implementing entities**: `module.concorde.understanding`, `module.concorde.capabilities`, `module.concorde.lifecycle`, `entity.concorde.specification`, `entity.concorde.control-state`.
@@ -485,8 +485,8 @@ features.
 - **FR-017**: Initialization MUST propose a minimal root `architecture.md` with a valid typed
   entity/relationship scaffold, its Archify system overview, and initialize `.concorde/reflections/index.json`; when explicitly requested,
   it MAY add one direct feature file and its stable-ID attempt mapping, but MUST NOT create module-local
-  attempts or feature wrapper directories. The four-file initialization transaction MUST use
-  Initialization Proposal 3.
+  attempts or feature wrapper directories. The five-file initialization transaction MUST use
+  Initialization Proposal 4.
 - **FR-018**: Validation MUST deterministically check canonical direct-file layout, module cycles,
   unique/path-safe stable IDs, entity types and locators, relationship endpoints, stable-ID attempt
   mapping, related-feature references, embedded interface completeness, architecture zoom references,

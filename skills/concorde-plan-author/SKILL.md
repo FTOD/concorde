@@ -51,10 +51,11 @@ architecture, current source code, and executable evidence. All planning outputs
 
 ## Bounded context gate
 
-Require the immediately prior `concorde-plan-context` result. It must identify the selected feature,
+Consume `concorde-plan-author-context@1`: `data.task` is the original `concorde-plan-context@1`
+and `data.planning_context` is the host-validated `concorde-planning-context@1`. It identifies the selected feature,
 providing architecture, exact required-interface provider feature bodies, owned implementation/test
 locators, attempt/control paths, deny categories, and workspace digest. Use only the paths in that
-receipt and the immutable launch policy; do not rerun workspace resolution, infer another root,
+typed context, verified `task.data.source_artifacts`, and the immutable launch policy; do not rerun workspace resolution, infer another root,
 open another attempt, or broaden a related-feature summary into body access.
 
 If the returned attempt is absent, create exactly that authorized directory and seed its plan by
@@ -122,7 +123,8 @@ cardinality, lifetime, and producer/consumer changes. Separate project configura
 runtime input/output and host-derived context. For every changed handoff record its type ID/version,
 field mapping, and missing/incompatible/stale-data behavior. Map current-to-target gaps to concrete
 source, schema, example, projection, and behavioral-evidence tasks within the admitted context.
-Do not claim target JSON transport is implemented or redefine durable entities in the temporal plan.
+Use the implemented JSON data contract and record any remaining evidence gaps accurately; do not
+redefine durable entities in the temporal plan or parse an audit summary as an input record.
 
 ## Reflection recording
 

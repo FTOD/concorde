@@ -8,7 +8,7 @@ import {afterAll, beforeAll, describe, expect, it} from 'vitest';
 
 /**
  * Concorde-repository evidence for feature.concorde.publish-project-docsite FR-009: a project holding
- * only Initialization Proposal 3 outputs receives the packaged docsite through the native `docsite`
+ * only Initialization Proposal 4 outputs receives the packaged docsite through the native `docsite`
  * Tool and passes the adapter's validate and build steps. It reuses this checkout's installed
  * dependencies and pinned Archify skill, so it stays outside the packaged template.
  */
@@ -35,7 +35,12 @@ let docsiteProposal: Envelope;
 beforeAll(async () => {
   root = await mkdtemp(resolve(tmpdir(), 'concorde-fresh-project-'));
   await mkdir(resolve(root, '.concorde'), {recursive: true});
-  const initProposal = tool(root, 'init', '--propose', '--name', 'Atlas', '--allow-primary-worktree');
+  await writeFile(resolve(root, '.concorde/operation-settings.json'), JSON.stringify({
+    type_id: 'concorde-operation-configuration', schema_version: 1,
+    data: {integration: 'codex', enforcement: 'native'},
+  }));
+  const initProposal = tool(root, 'init', '--propose', '--name', 'Atlas',
+    '--configuration', '.concorde/operation-settings.json', '--allow-primary-worktree');
   expect(initProposal.status).toBe('proposal');
   await writeFile(resolve(root, '.concorde/init-proposal.json'), JSON.stringify(initProposal), 'utf8');
   expect(tool(root, 'init', '--apply', '--proposal', '.concorde/init-proposal.json', '--allow-primary-worktree').status).toBe('success');
@@ -55,7 +60,7 @@ afterAll(async () => {
   if (root) await rm(root, {recursive: true, force: true});
 });
 
-describe('a project holding only Initialization Proposal 3 outputs', () => {
+describe('a project holding only Initialization Proposal 4 outputs', () => {
   it('receives the packaged adapter and identity without synthetic prose or repository evidence', async () => {
     const files = (docsiteProposal.result.proposal as {files: Array<{path: string}>}).files.map((file) => file.path);
     expect(files).toContain('docsite/docusaurus.config.ts');

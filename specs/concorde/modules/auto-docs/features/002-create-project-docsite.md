@@ -82,7 +82,7 @@ projects.
   missing or disagrees with Package Manifest 2 returns a non-success result and writes nothing.
 - **Compatibility**: Docsite Scaffold Proposal 1 and site identity schema 1 accompany Package
   Manifest 2; the scaffolded adapter emits Build Manifest 13 and needs Node.js 20+ with locked
-  dependencies. Initialization Proposal 3 is unchanged: the scaffold is a separate propose/apply cycle.
+  dependencies. Initialization Proposal 4 is unchanged: the scaffold is a separate propose/apply cycle.
 - **Example**: `concorde.py --project-root . docsite --propose --title Atlas --repository
   https://github.com/org/atlas` writes nothing and prints the proposal; after review,
   `concorde.py --project-root . docsite --apply --proposal .concorde/docsite-proposal.json` creates
@@ -119,7 +119,7 @@ projects.
 - `feature.auto-docs.publish-project-docsite` is the module-level design of the adapter this feature
   packages as the template and runs after scaffolding; this feature depends on it.
 - `feature.understanding.initialize-architecture` composes with this feature: the same `concorde-init`
-  Skill offers the docsite scaffold as a distinct step after Initialization Proposal 3 is applied, and
+  Skill offers the docsite scaffold as a distinct step after Initialization Proposal 4 is applied, and
   neither proposal changes the other.
 - `feature.distribution.install-concorde` supplies the installed package whose `.concorde/framework/`
   copy carries the template; this feature depends on it.
@@ -149,7 +149,7 @@ projects.
 - **FR-006**: The Concorde package MUST ship the docsite adapter as a template inventoried by Package Manifest 2 so checkout and installed layouts scaffold identical bytes.
 - **FR-007**: The scaffold Tool MUST preview by default, bind the proposal to template and input digests, apply exactly that proposal atomically, and never overwrite an existing `docsite/`, unowned collision, or symlink.
 - **FR-008**: The adapter MUST NOT hardcode project identity; title, site URL, base path, organization/project names, and repository link MUST come from the project-owned site identity file, and Concorde's own `docsite/` MUST use the same mechanism.
-- **FR-009**: A docsite scaffolded into a project that holds only Initialization Proposal 3 outputs MUST pass `npm run check` and publish the root architecture page once Node.js 20+, npm, and the pinned Archify skill are present.
+- **FR-009**: A docsite scaffolded into a project that holds only Initialization Proposal 4 outputs MUST pass `npm run check` and publish the root architecture page once Node.js 20+, npm, and the pinned Archify skill are present.
 - **FR-010**: The scaffold MUST report missing prerequisites with remediation and MUST complete without network access.
 - **FR-011**: Maintained module architectures and direct feature designs MUST be the only prose
   documentation authorities; publication validation MUST reject a root `docs/` tree instead of
@@ -169,7 +169,7 @@ projects.
   an architecture change in `module.concorde.distribution` and in the manifest entity's inventory;
   it is surfaced here for architecture work rather than defined by this feature.
 - `concorde-init` exposes the scaffold as a distinct second propose/apply step; the initialization
-  feature and Initialization Proposal 3 stay unchanged.
+  feature and Initialization Proposal 4 stay unchanged.
 - Evidence tests that assert Concorde's own content (page counts, diagram names, Concorde routes)
   remain repository evidence outside the packaged template; the template ships only portable
   fixture-based tests.

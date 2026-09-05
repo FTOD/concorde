@@ -43,6 +43,11 @@ class InstalledCapabilitySurfaceContractTests(unittest.TestCase):
         (root / ".concorde/feature.json").write_text(
             '{"feature_path":"specs/example/features/001-deliver.md"}\n'
         )
+        config_path = root / ".concorde/config.json"
+        config = json.loads(config_path.read_text())
+        config["operation_configuration"] = {"type_id": "concorde-operation-configuration", "schema_version": 1,
+                                             "data": {"integration": integration, "enforcement": "native"}}
+        config_path.write_text(json.dumps(config))
         return root
 
     def test_both_integrations_receive_all_leaf_and_operation_skills(self):
@@ -140,20 +145,23 @@ class InstalledCapabilitySurfaceContractTests(unittest.TestCase):
                     "python3",
                     ".concorde/framework/scripts/run-operation.py",
                     relative,
-                    "Add audit logging",
-                    "--framework-prefix",
-                    ".concorde/framework",
                 ],
+                input=json.dumps({"type_id": "concorde-operation-invocation", "schema_version": 1,
+                    "operation_id": "concorde-standard-dev-loop", "mode": "describe-policy",
+                    "configuration": json.loads((root / ".concorde/config.json").read_text())["operation_configuration"],
+                    "input": {"type_id": "concorde-standard-dev-loop-context", "schema_version": 1,
+                              "data": {"feature_path": "specs/example/features/001-deliver.md", "request": "Inspect policies"}}}),
                 cwd=root,
                 text=True,
                 capture_output=True,
             )
             self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
             payload = json.loads(result.stdout)
-            self.assertEqual(payload["operation"], "concorde-standard-dev-loop")
+            self.assertEqual(payload["operation_id"], "concorde-standard-dev-loop")
             self.assertEqual(
-                [item["stage"] for item in payload["capabilities"]],
-                ["specify", "plan", "tasks", "tasks", "deliver", "deliver"],
+                [item["capability"] for item in json.loads(result.stderr)["policies"]],
+                ["concorde-specify", "concorde-plan-context", "concorde-plan-author", "concorde-tasks",
+                 "concorde-implement", "concorde-validate", "concorde-deliver"],
             )
 
     def test_every_installed_operation_passes_managed_runtime_check(self):
@@ -191,7 +199,7 @@ class InstalledCapabilitySurfaceContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = self.install(temporary, "codex")
             receipt = json.loads((root / ".concorde/install.json").read_text())
-            self.assertEqual(receipt["concorde_version"], "2.1.0")
+            self.assertEqual(receipt["concorde_version"], "3.0.0")
             self.assertEqual(receipt["integration"], "codex")
             self.assertEqual(receipt["runtime"]["path"], ".concorde/.venv")
             self.assertEqual(

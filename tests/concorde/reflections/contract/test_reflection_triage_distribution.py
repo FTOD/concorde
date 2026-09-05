@@ -73,7 +73,7 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
         for text in (claude_skill, codex_skill):
             normalized = " ".join(text.split())
             for action in ("status", "investigate", "implement", "merge", "close"):
-                self.assertIn(f"- `{action}", text)
+                self.assertIn(f"| `{action}`", text)
             self.assertIn("reflection-triage/v5", text)
             self.assertIn(".concorde/reflections/<bucket>/R-NNN.md", text)
             for bucket in ("`pending/`", "`planned/`", "`needs-comments/`"):
@@ -98,7 +98,7 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
             self.assertTrue({"name", "description", "developer_instructions"} <= set(role))
             self.assertNotIn("model", role)
             self.assertNotIn("model_reasoning_effort", role)
-            for route in ("fast-loop", "specify", "dismiss", "blocked"):
+            for route in ("fast-loop", "plan", "dismiss", "blocked"):
                 self.assertIn(route, role["developer_instructions"])
             self.assertIn("reflection-triage/v5", role["developer_instructions"])
             self.assertIn("verified_commit", role["developer_instructions"])
@@ -113,10 +113,11 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
         claude_implementer = claude[".claude/agents/reflection-implementer.md"]
         self.assertNotIn("model:", claude_investigator)
         self.assertNotIn("model:", claude_implementer)
-        self.assertIn("Return the triage-owned reflection replacement, the complete plan", claude_investigator)
+        self.assertIn("concorde-reflection-investigation-result@1", claude_investigator)
         self.assertIn("assigned worktree", claude_implementer)
         self.assertIn("Never bootstrap from a stash", claude_implementer)
-        self.assertIn("`verified_commit` (the full HEAD commit ID", claude_investigator)
+        self.assertIn("`verified_commit`", claude_investigator)
+        self.assertIn("captured HEAD", claude_investigator)
         self.assertIn("`Verification` section", claude_implementer)
         self.assertIn("Never change reflection `status`, `resolution_note`", claude_implementer)
         self.assertIn("stable-ID validation rules", claude_implementer)

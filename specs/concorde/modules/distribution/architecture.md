@@ -16,7 +16,7 @@ diagrams:
 
 ## Responsibility
 
-Package, validate, install, and update Concorde 2.1.0 while preserving identity, capability pairing,
+Package, validate, install, and update Concorde 3.0.0 while preserving identity, capability pairing,
 integrity, path safety, explicit ownership, and user-authored files.
 
 ## Boundary
@@ -39,11 +39,11 @@ it does not create invocation state or own domain input types. Package Manifest 
 three exact pairs, their launcher, and managed-runtime verification. The root concept's one-or-more
 Python realization rule is presently satisfied by one primary `operation.py` per pair.
 
-The target JSON invocation contract requires coordinated launcher/Skill projection and installation
-tests when runtime support lands. Project Operation settings belong to the target init/config
-contract, not package defaults silently repeated by installed scripts. Installation must preserve
-project-authored configuration and expose any required migration explicitly. This specification
-revision does not change installed payloads to an unsupported JSON ABI.
+The JSON contract ships with coordinated launcher/Skill projection and installed invocation tests.
+Managed runtime verification imports the shared schema/service and checks every registered Python
+`run` entry point. Project settings belong to init/config; installation preserves project-authored
+configuration. Existing initialized projects must apply an explicit configure proposal before
+executing the new boundary; the installed init Skill documents that migration.
 
 ## Entities
 
@@ -76,7 +76,7 @@ revision does not change installed payloads to an unsupported JSON ABI.
 
 | Interaction ID | Trigger | Steps | Result | Interfaces |
 |---|---|---|---|---|
-| `interaction.distribution.install` | Maintainer selects target, Package Manifest 2 checkout, and integration. | Validate exact 17/3/runtime/Viewer identity; calculate file plus `.concorde/.venv` actions; preview without network; on apply install framework/projections, create or rebuild only an owned runtime, install the pinned Operation dependency and digest-verified official Viewer, verify all three Operation entry points plus the Viewer entry point offline, then update the receipt last and roll back owned files/remove partial runtime on failure. | Idempotent owned Concorde 2.1.0 installation with offline-capable Operations and official Viewer, or exact conflict/failure diagnostics. | `contract.distribution.native-installation`, `contract.capabilities.agent-surface` |
+| `interaction.distribution.install` | Maintainer selects target, Package Manifest 2 checkout, and integration. | Validate exact 17/3/runtime/Viewer identity; calculate file plus `.concorde/.venv` actions; preview without network; on apply install framework/projections, create or rebuild only an owned runtime, install the pinned Operation dependency and digest-verified official Viewer, verify all three Operation entry points plus the Viewer entry point offline, then update the receipt last and roll back owned files/remove partial runtime on failure. | Idempotent owned Concorde 3.0.0 installation with offline-capable Operations and official Viewer, or exact conflict/failure diagnostics. | `contract.distribution.native-installation`, `contract.capabilities.agent-surface` |
 
 ## Modules
 
@@ -93,7 +93,7 @@ None.
 
 - [System overview](diagrams/system-overview.json) is the required Archify projection of the principal
   entities and directed relationships in this architecture.
-- Package Manifest 2 and version 2.1.0 define one no-shim capability layout.
+- Package Manifest 2 and version 3.0.0 define one no-shim capability layout.
 - Package roots are exactly `agent-assets`, `docsite`, `operations`, `scripts`, `skills`, `src`,
   `templates`, and `viewer`; the `viewer` root carries only the official release npm package/lock
   and provenance, while `docsite` ships the adapter template without disposable output, `site.json`,

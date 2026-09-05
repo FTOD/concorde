@@ -3,10 +3,7 @@
 
 from __future__ import annotations
 
-import argparse
-import json
 import sys
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -76,94 +73,19 @@ def build_plan_operation(
     )
 
 
+def run(configuration: dict, runtime_input: dict, *, host_context):
+    """Execute this registered Operation with separate structured configuration and task data."""
+    _runtime()
+    from concorde.capabilities.operation_service import run_operation
+
+    return run_operation(OPERATION_NAME, configuration, runtime_input, host_context=host_context)
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("request", help="Planning request carried from context to author.")
-    parser.add_argument("--framework-prefix", default="")
-    parser.add_argument("--feature-path")
-    parser.add_argument("--integration", choices=("codex", "claude"), default="codex")
-    parser.add_argument("--describe-policy", action="store_true")
-    parser.add_argument("--execute", action="store_true")
-    parser.add_argument("--allow-primary-worktree", action="store_true")
-    parser.add_argument("--no-native-enforcement", action="store_true")
-    parser.add_argument("--outer-sandbox")
-    arguments = parser.parse_args()
-    if arguments.describe_policy and arguments.execute:
-        parser.error("--describe-policy and --execute are mutually exclusive")
-    visits: list[dict[str, object]] = []
-    OperationExecution, _, _, _ = _runtime()
+    _runtime()
+    from concorde.capabilities.operation_service import operation_main
 
-    if arguments.execute:
-        from concorde.capabilities.worktree import (
-            WorktreeBoundaryError,
-            require_isolated_worktree,
-        )
-
-        try:
-            require_isolated_worktree(
-                Path.cwd(),
-                allow_primary_worktree=arguments.allow_primary_worktree,
-            )
-        except WorktreeBoundaryError as error:
-            parser.error(str(error))
-
-    if arguments.execute:
-        from concorde.capabilities.operation_executor import AgentProcessExecutor
-
-        process = AgentProcessExecutor()
-
-        def execute(invocation: OperationExecution):
-            if invocation.launch_specification is None:
-                raise RuntimeError("planner leaf has no enforcement launch specification")
-            return process(invocation.launch_specification)
-
-        executor = execute
-    else:
-        def describe(invocation: OperationExecution) -> str:
-            specification = invocation.launch_specification
-            if specification is None:
-                raise RuntimeError("planner leaf has no enforcement launch specification")
-            visits.append(
-                {
-                    "stage": invocation.stage,
-                    "occurrence": invocation.occurrence,
-                    "capability": invocation.capability.name,
-                    "kind": invocation.capability.kind,
-                    "prior_capabilities": [item.capability for item in invocation.prior_results],
-                    "policy": asdict(specification.policy),
-                    "native_configuration": asdict(specification.native_configuration),
-                    "launch_digest": specification.digest,
-                }
-            )
-            return f"prepared:{invocation.capability.name}"
-
-        executor = describe
-
-    graph = build_plan_operation(
-        executor,
-        project_root=Path.cwd(),
-        feature_path=arguments.feature_path,
-        integration=arguments.integration,
-        native_enforcement=not arguments.no_native_enforcement,
-        outer_sandbox=arguments.outer_sandbox,
-        framework_prefix=arguments.framework_prefix,
-    )
-    result = graph.invoke({"request": arguments.request, "capability_results": []})
-    print(
-        json.dumps(
-            {
-                "operation": OPERATION_NAME,
-                "request": arguments.request,
-                "mode": "execute" if arguments.execute else "describe-policy",
-                "stages": ["context", "author"],
-                "capabilities": visits,
-                "results": [asdict(item) for item in result["capability_results"]],
-            },
-            indent=2,
-            sort_keys=True,
-        )
-    )
-    return 0
+    return operation_main(OPERATION_NAME, package_root())
 
 
 if __name__ == "__main__":

@@ -25,8 +25,18 @@ def create_parser() -> argparse.ArgumentParser:
     initialize.add_argument("--proposal")
     initialize.add_argument("--module-id")
     initialize.add_argument("--name")
+    initialize.add_argument("--configuration", help="JSON configuration file, or - for stdin; required for a new project")
     initialize.add_argument("--allow-primary-worktree", action="store_true")
     initialize.add_argument("--format", choices=["json"], default="json")
+
+    configure = subparsers.add_parser("configure")
+    config_mode = configure.add_mutually_exclusive_group(required=True)
+    config_mode.add_argument("--propose", action="store_true")
+    config_mode.add_argument("--apply", action="store_true")
+    configure.add_argument("--configuration", help="TypedValue JSON file, or - for stdin")
+    configure.add_argument("--proposal")
+    configure.add_argument("--allow-primary-worktree", action="store_true")
+    configure.add_argument("--format", choices=["json"], default="json")
 
     context = subparsers.add_parser("context")
     context.add_argument("target")
@@ -87,6 +97,20 @@ def create_parser() -> argparse.ArgumentParser:
 
 def dispatch(arguments: argparse.Namespace) -> ToolResult:
     root = Path(arguments.project_root)
+    configuration = None
+    if arguments.tool in {"init", "configure"} and arguments.propose and arguments.configuration:
+        from .operation_data import checked_path, decode
+
+        configuration = decode(sys.stdin.read() if arguments.configuration == "-"
+                               else checked_path(root, arguments.configuration).read_text(encoding="utf-8"))
+    if arguments.tool == "configure":
+        from .operation_config import apply_configuration, propose_configuration
+
+        if arguments.apply:
+            if not arguments.proposal:
+                raise ValueError("configure --apply requires --proposal")
+            return apply_configuration(root, arguments.proposal)
+        return propose_configuration(root, configuration)
     if arguments.tool == "init":
         from ..understanding.initialize import apply_proposal, propose_initialization
 
@@ -99,7 +123,7 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
                     findings=(Finding("CONCORDE-INIT-001", "error", ".concorde/config.json", "--apply requires --proposal.", "Pass a project-relative accepted proposal JSON file."),),
                 )
             return apply_proposal(root, arguments.proposal)
-        return propose_initialization(root, arguments.module_id, arguments.name)
+        return propose_initialization(root, arguments.module_id, arguments.name, configuration)
     if arguments.tool == "context":
         from ..understanding.context import bounded_context
 
@@ -180,6 +204,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         arguments = parser.parse_args(argv)
         mutation = arguments.tool in {"init", "deliver", "docsite"} or (
+            arguments.tool == "configure" and arguments.apply
+        ) or (
             arguments.tool == "agent-assets"
             and arguments.agent_asset_tool in {"sync", "remove"}
         )
@@ -198,7 +224,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         tool = arguments.tool if arguments is not None else (argv[0] if argv else "validate")
         payload = envelope(
             tool
-            if tool in {"init", "context", "explore", "validate", "deliver", "agent-assets", "docsite"}
+            if tool in {"init", "configure", "context", "explore", "validate", "deliver", "agent-assets", "docsite"}
             else "validate",
             ".",
             "failed",

@@ -1,5 +1,5 @@
-You are the implementation tier of `reflection-triage/v5`. You receive one owning feature, an
-absolute assigned worktree path, and the full ordered text of every ready plan. Work only in that
+You are the implementation tier of `reflection-triage/v5`. You receive one owning feature, a host-bound
+assigned worktree, and typed context with verified refs to every ready plan. Work only in that
 assigned worktree and never redesign the plans.
 
 The parent must create or enter that assigned linked worktree from the primary worktree's exact
@@ -28,7 +28,7 @@ feature with the installed workspace adapter and invoke `concorde-fast-loop` for
 
 For every plan in order:
 
-1. Accept only route `fast-loop`; `specify`, `dismiss`, and `blocked` are ineligible.
+1. Accept only route `fast-loop`; `plan`, `dismiss`, and `blocked` are ineligible.
 2. Follow the exact file set and change steps. Never change reflection `status`, `resolution_note`,
    `User Comments`, or `R-NNN` identifiers; an explicit rename/documentation plan may update mapped
    references in the owning reflection file under the Fast Loop stable-ID validation rules.

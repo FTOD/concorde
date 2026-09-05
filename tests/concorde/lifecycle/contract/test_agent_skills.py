@@ -65,9 +65,6 @@ class AgentSkillContractTests(unittest.TestCase):
             "scripts/workspace.py",
             "scripts/reflections_queue.py",
             "src/concorde/capabilities/cli.py",
-            "operations/concorde-plan/operation.py",
-            "operations/concorde-standard-dev-loop/operation.py",
-            "operations/concorde-reflections-triage/operation.py",
         )
         for relative in sources:
             with self.subTest(source=relative):
@@ -75,12 +72,18 @@ class AgentSkillContractTests(unittest.TestCase):
                 self.assertIn("allow-primary-worktree", body)
                 self.assertIn("require_isolated_worktree", body)
 
+        service = (REPOSITORY_ROOT / "src/concorde/capabilities/operation_service.py").read_text()
+        self.assertIn("require_isolated_worktree", service)
+        self.assertIn("allow_primary_worktree=host.allow_primary_worktree", service)
+
         for operation in (
             "concorde-plan",
             "concorde-standard-dev-loop",
             "concorde-reflections-triage",
         ):
             with self.subTest(operation=operation):
+                entry = (REPOSITORY_ROOT / "operations" / operation / "operation.py").read_text()
+                self.assertIn("operation_main(OPERATION_NAME", entry)
                 body = (
                     REPOSITORY_ROOT / "operations" / operation / "SKILL.md"
                 ).read_text(encoding="utf-8")
@@ -238,7 +241,7 @@ class AgentSkillContractTests(unittest.TestCase):
         deliver = " ".join(read(SKILL_ROOT, "concorde-deliver").split())
         ask = " ".join(read(SKILL_ROOT, "concorde-ask").split())
         self.assertIn("Architecture Source Profile 7", init)
-        self.assertIn("Initialization Proposal 3", init)
+        self.assertIn("Initialization Proposal 4", init)
         self.assertIn("diagrams/system-overview.json", init)
         self.assertIn("Archify showcase", init)
         self.assertIn(".concorde/reflections/index.json", init)

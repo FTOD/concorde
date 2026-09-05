@@ -408,6 +408,13 @@ class ProjectRepository:
         value["specification_root"] = safe_relative_path(specification_root)
         if not isinstance(value.get("root_module_id"), str) or not value["root_module_id"]:
             raise RepositoryError("root_module_id is required")
+        if "operation_configuration" in value:
+            from ..capabilities.operation_data import OperationDataError, validate_typed
+
+            try:
+                value["operation_configuration"] = validate_typed(value["operation_configuration"], "concorde-operation-configuration")
+            except OperationDataError as error:
+                raise RepositoryError(f"invalid Operation configuration: {error}") from error
         return value
 
     def _checked_source_path(self, path: Path, root: Path) -> str:

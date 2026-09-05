@@ -253,7 +253,7 @@ byte; introduce a `composes` cycle in a fixture and verify publication fails nam
   findings.
 - **SC-003**: A fixture with one directional cycle and a fixture with an unknown relation each fail
   publication with a sourced finding.
-- **SC-004**: A project holding only Initialization Proposal 3 output passes `npm run check` with an
+- **SC-004**: A project holding only Initialization Proposal 4 output passes `npm run check` with an
   empty graph.
 - **SC-005**: Unit, contract, repository, and production-build docsite tests cover derivation,
   schema, counts, page emission, and determinism.

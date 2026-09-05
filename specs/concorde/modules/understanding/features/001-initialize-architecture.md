@@ -31,7 +31,7 @@ inventing product structure or overwriting an existing configured hierarchy.
 | `entity.understanding.initializer` | Generates, validates, and atomically promotes the root `architecture.md` proposal. |
 | `module.concorde.capabilities` | Dispatches the initialize Tool through the shared CLI and Tool envelope. |
 | `entity.concorde.specification` | Receives the root architecture scaffold only. |
-| `entity.concorde.control-state` | Receives Profile 7 configuration and `.concorde/reflections/index.json`. |
+| `entity.concorde.control-state` | Receives Profile 7 configuration with typed Operation settings, reflection defaults, and allocation index. |
 
 ## Interfaces
 
@@ -41,11 +41,11 @@ inventing product structure or overwriting an existing configured hierarchy.
 - **Direction**: Skill/Tool request to reviewed proposal or apply result.
 - **Entry points**: Leaf Skill `concorde-init` and native `scripts/concorde.py init` Tool in
   source/installed package layouts.
-- **Inputs**: Project root, proposed root module ID, responsibility, boundary, and optional initial modules/features.
+- **Inputs**: Host project root, optional root module ID/name, and explicit `concorde-operation-configuration@1` JSON through `--configuration <file|->`. Product structure is authored later, not invented by the initializer.
 - **Outputs**: Digest-bearing proposal or an applied/unchanged structured result with exact artifacts and findings.
 - **Obligations**: Preview and apply use the same proposal; existing targets are never silently overwritten.
 - **Failures**: Unsafe paths, conflicts, invalid entities/relations, stale proposals, or filesystem failure preserve the project.
-- **Compatibility**: Initialization Proposal 3 contains exactly Profile 7 configuration, one root architecture, its Archify system overview, and `.concorde/reflections/index.json`; older/mixed initialization is rejected.
+- **Compatibility**: Initialization Proposal 4 contains exactly Profile 7 configuration, one root architecture, its Archify system overview, `.concorde/reflections/index.json`, and `.concorde/reflections/config.json`; the project config includes `operation_configuration`. Older/mixed initialization is rejected.
 - **Implementing entities**: `entity.understanding.init-skill`, `entity.understanding.initializer`, `module.concorde.capabilities`.
 
 ## Usage Scenarios
@@ -56,17 +56,17 @@ inventing product structure or overwriting an existing configured hierarchy.
 
 ## Related Features
 
-- The target configuration extension depends on `feature.capabilities.provide-capability-surfaces`
-  for the common Operation data contract; current Proposal 3 remains unchanged.
+- Configuration depends on `feature.capabilities.provide-capability-surfaces`
+  for the common Operation data contract and the explicit migration Tool for existing initialized projects.
 
 - `feature.concorde.workflow` composes this feature as the entry point that establishes a project's
   root architecture before any other lifecycle phase can select a feature.
 
 ## Requirements
 
-- **FR-001**: Initialization MUST propose Profile 7 configuration, one valid root `architecture.md` with entity/relation/interaction scaffold, one linked Archify `architecture` system overview of those entities and relationships, and a metadata-only reflection allocation index at `.concorde/reflections/index.json`.
+- **FR-001**: Initialization MUST propose Profile 7 configuration, one valid root `architecture.md` with entity/relation/interaction scaffold, one linked Archify `architecture` system overview of those entities and relationships, a metadata-only reflection allocation index at `.concorde/reflections/index.json`, and shared reflection defaults. The project config MUST contain explicit typed Operation configuration.
 - **FR-002**: It MUST NOT invent child modules/features/interfaces or create any feature artifact.
-- **FR-003**: Apply MUST accept only a current safe Initialization Proposal 3 and atomically promote exactly its four declared files.
+- **FR-003**: Apply MUST accept only a current safe Initialization Proposal 4 and atomically promote exactly its five declared files.
 - **FR-004**: Existing configured/partial/conflicting state MUST be diagnosed and never overwritten implicitly.
 
 ## Edge Cases
@@ -74,11 +74,14 @@ inventing product structure or overwriting an existing configured hierarchy.
 - Configuration exists but the root architecture is missing or malformed.
 - The root ID is valid but the target path is a symlink or already owned by unrelated content.
 
-## Concept Completeness and Target Operation Configuration
+## Concept Completeness and Operation Configuration
 
-Initialization Proposal 3 produces a minimal root boundary scaffold, not a complete domain model.
+Initialization Proposal 4 produces a minimal root boundary scaffold, not a complete domain model.
 The initialized project must apply the ontology's concept/relationship review using its own product
-evidence before describing the architecture as complete. The target Operation configuration under
-`operation_configuration` in `.concorde/config.json` is specified by
-`contract.capabilities.operation-data`; adding it to init/config proposals is pending runtime work.
-The current four-file proposal and source-profile keys remain the supported implementation.
+evidence before describing the architecture as complete. `operation_configuration` in
+`.concorde/config.json` follows `contract.capabilities.operation-data`; missing settings block new
+proposal generation. Existing valid roots with these settings return `unchanged`. A valid legacy
+root missing only Operation settings is directed to `configure --propose/--apply`; initialization
+does not rewrite its architecture. All five proposal files retain exact digest/path checks and
+atomic promotion; exact preinstalled reflection settings are retained while missing files are
+created, and changed settings reject the whole apply. Source-profile version 7 is unchanged.

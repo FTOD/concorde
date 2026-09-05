@@ -157,7 +157,7 @@ Concorde `explore` envelope before spawning Node.
   unrelated collision, unmigrated legacy reflection-triage config, incompatible Python, Node.js, or
   npm, dependency or Viewer download/integrity/install failure, runtime path collision, Operation or
   Viewer smoke-test failure, or filesystem failure returns diagnostics without claiming success.
-- **Compatibility**: Concorde 2.1.0 Package Manifest 2, Profile 7, and Protocol 13 must match Runtime;
+- **Compatibility**: Concorde 3.0.0 Package Manifest 2, Profile 7, and Protocol 13 must match Runtime;
   17 packaged leaves and three pairs use one global namespace while only 15 leaves project publicly;
   official Viewer `Egonex-AI/Understand-Anything` v2.9.0, its manifest-pinned release asset SHA-256,
   and Node.js 18+ form the Viewer compatibility boundary.
@@ -183,7 +183,7 @@ Concorde `explore` envelope before spawning Node.
 - **Failures**: Invalid source, target, integration, inventory, ownership, symlink, runtime
   provisioning, Operation verification, or write failure produces non-zero status and actionable
   diagnostics.
-- **Compatibility**: Concorde 2.1.0; Package Manifest 2; Profile 7; Protocol 13; Delivery Proposal 9;
+- **Compatibility**: Concorde 3.0.0; Package Manifest 2; Profile 7; Protocol 13; Delivery Proposal 9;
   Codex/Claude integrations; Python 3.11+; Node.js 18+; locked LangGraph runtime; pinned official UA
   Viewer v2.9.0; POSIX and Windows virtual-environment interpreter layouts.
 - **Example**: `python3 scripts/install-concorde.py --target ../my-project --integration codex --apply`.
@@ -212,7 +212,7 @@ Concorde `explore` envelope before spawning Node.
 - **Failures**: Missing/unhealthy installed Viewer, missing/incompatible Node.js, unsafe project or
   graph path, missing/malformed graph, Concorde envelope input, invalid port, or official process
   failure exits non-zero with an actionable stderr diagnostic.
-- **Compatibility**: Concorde 2.1.0 installed layout; official Viewer v2.9.0; Node.js 18+; modern
+- **Compatibility**: Concorde 3.0.0 installed layout; official Viewer v2.9.0; Node.js 18+; modern
   `.ua` and official legacy `.understand-anything` directory rules. Later official Viewer versions
   require an explicit manifest pin, digest, test, and compatibility update.
 - **Example**: `python3 .concorde/framework/scripts/run-viewer.py --project-root . --port 0 --no-open`.
@@ -318,7 +318,7 @@ Concorde `explore` envelope before spawning Node.
 
 ## Requirements
 
-- **FR-001**: Package Manifest 2/version 2.1.0 MUST inventory every leaf Skill, paired Operation,
+- **FR-001**: Package Manifest 2/version 3.0.0 MUST inventory every leaf Skill, paired Operation,
   template, package root, supported integration, and locked Operation runtime artifact.
 - **FR-002**: Preview MUST be non-mutating and MUST report exact action/path/role/digest state.
 - **FR-003**: Apply MUST reject all conflicts and unsafe parents before writing owned outputs.

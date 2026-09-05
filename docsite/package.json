@@ -7,12 +7,12 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "inspect": "tsx scripts/inspect.ts",
-    "validate": "tsx scripts/validate.ts",
-    "render-diagrams": "tsx scripts/render-diagrams.ts",
-    "prepare-content": "tsx scripts/materialize-content.ts",
-    "start": "tsx scripts/start.ts",
-    "build": "tsx scripts/build.ts",
+    "inspect": "node --import tsx scripts/inspect.ts",
+    "validate": "node --import tsx scripts/validate.ts",
+    "render-diagrams": "node --import tsx scripts/render-diagrams.ts",
+    "prepare-content": "node --import tsx scripts/materialize-content.ts",
+    "start": "node --import tsx scripts/start.ts",
+    "build": "node --import tsx scripts/build.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "npm run typecheck && npm test && npm run validate && npm run build"

@@ -59,7 +59,18 @@ _SAFE_ENVIRONMENT = frozenset(
     }
 )
 _VERSION = re.compile(r"(?<!\d)(\d+)\.(\d+)(?:\.(\d+))?")
-_COMPLETION_SCHEMA_VERSION = 1
+
+
+def _completion_version(specification: LaunchSpecification) -> int:
+    return 2 if specification.runtime_input_json is not None else 1
+
+
+def _domain_type(specification: LaunchSpecification) -> str | None:
+    if (specification.runtime_input_json is not None
+            and specification.operation == "concorde-reflections-triage"
+            and specification.capability == "concorde-analyze"):
+        return "concorde-reflection-investigation-result"
+    return None
 
 
 def _file_sha256(path: Path) -> str:
@@ -173,7 +184,7 @@ def verify_runtime_bootstrap(files: tuple[RuntimeBootstrapFile, ...]) -> None:
 
 def _completion_schema(specification: LaunchSpecification) -> dict[str, Any]:
     properties: dict[str, Any] = {
-        "schema_version": {"type": "integer", "const": _COMPLETION_SCHEMA_VERSION},
+        "schema_version": {"type": "integer", "const": _completion_version(specification)},
         "operation": {"type": "string", "const": specification.operation},
         "stage": {"type": "string", "const": specification.stage},
         "occurrence": {"type": "integer", "const": specification.occurrence},
@@ -202,12 +213,26 @@ def _completion_schema(specification: LaunchSpecification) -> dict[str, Any]:
             },
         },
     }
+    definitions = {}
+    if _completion_version(specification) == 2:
+        properties["invocation_id"] = {"const": specification.invocation_id}
+        domain_type = _domain_type(specification)
+        if domain_type is not None:
+            from .operation_data import json_schema
+
+            domain = json_schema(domain_type)
+            definitions = domain.pop("$defs")
+            domain.pop("$schema")
+            properties["domain_output"] = {"anyOf": [domain, {"type": "null"}]}
+        else:
+            properties["domain_output"] = {"type": "null"}
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": properties,
         "required": list(properties),
         "additionalProperties": False,
+        **({"$defs": definitions} if definitions else {}),
     }
 
 
@@ -309,10 +334,14 @@ def _validate_completion(payload: dict[str, Any], specification: LaunchSpecifica
         "workspace_digest", "runtime_bootstrap_digest",
         "status", "output", "limitations", "gates",
     }
+    version = _completion_version(specification)
+    if version == 2:
+        expected_keys.add("domain_output")
+        expected_keys.add("invocation_id")
     if set(payload) != expected_keys:
-        raise ValueError("completion envelope fields do not match schema 1")
+        raise ValueError(f"completion envelope fields do not match schema {version}")
     expected_identity = {
-        "schema_version": _COMPLETION_SCHEMA_VERSION,
+        "schema_version": version,
         "operation": specification.operation,
         "stage": specification.stage,
         "occurrence": specification.occurrence,
@@ -321,8 +350,10 @@ def _validate_completion(payload: dict[str, Any], specification: LaunchSpecifica
         "workspace_digest": specification.workspace_digest,
         "runtime_bootstrap_digest": specification.native_configuration.runtime_bootstrap_digest,
     }
+    if version == 2:
+        expected_identity["invocation_id"] = specification.invocation_id
     for key, expected in expected_identity.items():
-        if payload.get(key) != expected:
+        if payload.get(key) != expected or type(payload.get(key)) is not type(expected):
             raise ValueError(f"completion envelope {key} does not match launch")
     status_value = payload.get("status")
     if status_value not in {"success", "failed"}:
@@ -355,8 +386,16 @@ def _validate_completion(payload: dict[str, Any], specification: LaunchSpecifica
             raise ValueError("successful completion must have no limitations or failed gates")
     elif not limitations.strip() or limitations == "none" or not failed_gates:
         raise ValueError("failed completion requires limitations and a failed gate")
+    domain_output = payload.get("domain_output")
+    expected_domain = _domain_type(specification)
+    if status_value == "success" and expected_domain:
+        from .operation_data import validate_typed
+
+        domain_output = validate_typed(domain_output, expected_domain, "/domain_output")
+    elif domain_output is not None:
+        raise ValueError("this completion must have null domain_output")
     return CapabilityCompletion(
-        schema_version=_COMPLETION_SCHEMA_VERSION,
+        schema_version=version,
         operation=specification.operation,
         stage=specification.stage,
         occurrence=specification.occurrence,
@@ -368,6 +407,8 @@ def _validate_completion(payload: dict[str, Any], specification: LaunchSpecifica
         output=output,
         limitations=limitations,
         gates=tuple(gates),
+        domain_output=domain_output,
+        invocation_id=payload.get("invocation_id"),
     )
 
 
@@ -380,15 +421,39 @@ def _prompt(specification: LaunchSpecification) -> str:
     prior = "\n".join(
         f"{index + 1}. {result}" for index, result in enumerate(specification.prior_results)
     ) or "(none)"
+    data_input = (
+        "Operation configuration (project snapshot):\n"
+        f"{specification.operation_configuration_json}\n\n"
+        "Typed runtime input (consume only these contracted fields):\n"
+        f"{specification.runtime_input_json}\n\n"
+        "Your completion output is an audit summary, not a downstream data channel. "
+        "Return domain_output matching the supplied schema when it requests a typed value; "
+        "otherwise return null and the host derives domain results from verified workspace state.\n\n"
+        if specification.runtime_input_json is not None
+        else f"Request:\n{specification.request}\n\nPrior results:\n{prior}\n\n"
+    )
+    investigation = (
+        "Reflection investigation contract:\n"
+        "Read each selected reflection and its existing plan from the supplied ArtifactRefs. "
+        "Reproduce its Observed behavior against the exact supplied HEAD before proposing changes. "
+        "Return one concorde-reflection-investigation-result@1 finding per selected ID in input order. "
+        "Include verified_commit, the concrete verification method/outcome, root-cause analysis, resolution, "
+        "implementation steps, validation, risks, scope files, effort, route, human intervention and its rationale. "
+        "Set protocol_change when the proposal changes normative Concorde Protocol semantics. "
+        "If the problem does not reproduce, choose dismiss and require a maintainer decision. "
+        "Use plain paragraphs/lists inside section fields, without level-one or level-two headings. "
+        "Do not write files: the parent validates and persists the typed result, preserving user comments and disposition.\n\n"
+        if _domain_type(specification) is not None else ""
+    )
     return (
         f"Operation: {specification.operation}\n"
         f"Stage: {specification.stage}\n"
         f"Capability: {specification.capability}\n"
-        f"Request:\n{specification.request}\n\n"
-        f"Prior results:\n{prior}\n\n"
+        f"{data_input}"
         "Operation workspace receipt (trusted host result):\n"
         f"{specification.workspace_receipt_json}\n\n"
         f"Canonical capability prompt:\n{specification.prompt}\n\n"
+        f"{investigation}"
         "Operation gate override:\n"
         "This Operation-composed invocation has already satisfied the canonical Protocol 13 workspace "
         "gate through the trusted receipt above. Use only its bounded paths and do not rerun the "
@@ -397,7 +462,7 @@ def _prompt(specification: LaunchSpecification) -> str:
         "validated no-attempt state, not missing evidence; evaluate only attempt artifacts that the "
         "receipt reports as present.\n\n"
         "Completion contract:\n"
-        f"Return only Capability Completion Envelope {_COMPLETION_SCHEMA_VERSION} matching the supplied schema. "
+        f"Return only Capability Completion Envelope {_completion_version(specification)} matching the supplied schema. "
         "Report every mandatory prerequisite or phase gate you relied on. Set status=failed when any "
         "mandatory gate, required tool, authority check, or requested outcome did not complete; include "
         "a non-empty limitation and at least one failed gate. Set status=success only when every reported "
@@ -546,7 +611,7 @@ class AgentProcessExecutor:
                 exit_code=completed.returncode,
                 status=status,
                 runtime_bootstrap_digest=bootstrap_digest,
-                completion_schema_version=_COMPLETION_SCHEMA_VERSION,
+                completion_schema_version=_completion_version(finalized),
                 completion_status=status,
                 limitations=limitations,
             )

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "dataflow",
   "meta": {
-    "title": "Concorde：Operation 数据流（目标契约）",
+    "title": "Concorde：Operation 数据流",
     "locale": "zh-CN",
     "output": "../../../generated/architecture/concorde-operation-dataflow.html",
     "quality_profile": "showcase",
@@ -138,7 +138,7 @@
       "id": "triage-task",
       "from": "triage",
       "to": "plan-input",
-      "label": "任务字段"
+      "label": "任务与反思引用"
     },
     {
       "id": "typed-plan-input",
@@ -188,7 +188,7 @@
       "dot": "cyan",
       "title": "明确传递什么",
       "items": [
-        "PlanContext = concorde-plan-context@1：本次任务参数。",
+        "PlanContext = concorde-plan-context@1：任务字段及 source_artifacts。",
         "PlanningContext = concorde-planning-context@1：解析后的范围与引用。"
       ]
     },

@@ -64,8 +64,8 @@ Profile validation; no Tool writes an explorer index or repairs input.
 - **Failures**: Primary/non-Git mutation without explicit override, invalid config/source/target/path/proposal, unavailable input, or filesystem failure
   returns failure and preserves unrelated/current authority.
 - **Compatibility**: Architecture-service envelope 2 exposes Profile 7, Protocol 13, Initialization
-  Proposal 3, Docsite Scaffold Proposal 1, Delivery Proposal 9, and Alignment Schema 1 terminology.
-  Concorde 2.1.0 reserves Operation for paired LangGraphs.
+  Proposal 4, Docsite Scaffold Proposal 1, Delivery Proposal 9, and Alignment Schema 1 terminology.
+  Concorde 3.0.0 reserves Operation for paired LangGraphs.
 - **Implementing entities**: `entity.capabilities.cli`, `entity.capabilities.tool-result`,
   `entity.capabilities.tool-envelope`, `entity.capabilities.python-adapter`, `entity.capabilities.worktree-gate`,
   `module.concorde.understanding`, `module.concorde.lifecycle`, and `module.concorde.auto-docs`.

@@ -45,7 +45,7 @@ sources stay byte-identical. Both the Operation's own launch and every leaf it c
 permission-bounded through `module.concorde.capabilities` via
 `contract.capabilities.permission-bounded-execution`.
 
-## Target Contract Examples
+## Contract Examples
 
 ### Author input and public planning output
 
@@ -125,9 +125,9 @@ Illustrative fixture IDs/digests describe the wire shape; they are not live exec
 
 | Entity ID | Role |
 |---|---|
-| `entity.lifecycle.plan-input` | Defines the target caller task fields independently of project configuration. |
+| `entity.lifecycle.plan-input` | Defines the caller task fields independently of project configuration. |
 | `entity.lifecycle.plan-author-input` | Defines the explicit task plus resolved-context handoff. |
-| `entity.lifecycle.plan-result` | Defines the target public result parents may consume without planner internals. |
+| `entity.lifecycle.plan-result` | Defines the public result parents may consume without planner internals. |
 | `entity.lifecycle.plan-operation` | Owns the public context → author graph and keeps the internal context leaf and plan author behind one stable identity. |
 | `entity.lifecycle.plan-operation-skill` | Documents and installs the public planning invocation, policy, and failure contract. |
 | `entity.lifecycle.plan-author-skill` | Authors the temporal plan, research, data model, quickstart, and initial tasks from the resolved context. |
@@ -186,18 +186,19 @@ Illustrative fixture IDs/digests describe the wire shape; they are not live exec
   `entity.lifecycle.plan-author-skill`, `module.concorde.understanding`, `module.concorde.capabilities`,
   `entity.concorde.coding-agent`.
 
-## Target Planning Data Types
+## Planning Data Types
 
-These field definitions extend `contract.lifecycle.plan` for the target
-`contract.capabilities.operation-data` transport. Current `operation.py` still parses a positional
-request and `--feature-path`; this section does not claim a working JSON entry point. Each value
-uses the common TypedValue wrapper. Fields below are required except the stated default.
+These field definitions extend `contract.lifecycle.plan` for the implemented
+`contract.capabilities.operation-data` transport. The paired Python entry point delegates to the
+shared host service. Each value uses the common TypedValue wrapper; fields below are required
+except the stated defaults.
 
 | Type ID @1 | `data` field | JSON type | Meaning / constraints |
 |---|---|---|---|
 | `concorde-plan-context` | `feature_path` | string | Existing canonical project-relative direct feature file. Required explicitly at the typed boundary; an adapter may resolve selection before constructing it. Never a stable ID inferred from the filename. |
 | `concorde-plan-context` | `request` | nonempty string | Planning objective; it carries intent, not hidden key/value configuration. |
 | `concorde-plan-context` | `constraints` | array of nonempty strings | Optional, defaults to `[]`; task restrictions may narrow but never grant authority. |
+| `concorde-plan-context` | `source_artifacts` | array of ArtifactRef | Optional, defaults to `[]`; explicit supporting source refs within the admitted owned/provider context or selected-feature reflection document/plan. Exact ID, owner, path, digest, and existing read policy are checked. |
 | `concorde-plan-author-context` | `task` | TypedValue `concorde-plan-context@1` | Original caller input, preserved as structured data. |
 | `concorde-plan-author-context` | `planning_context` | TypedValue `concorde-planning-context@1` | Exact validated context from Understanding, with field semantics in its providing feature. |
 | `concorde-plan-result` | `feature_id` | string | Stable authored `feature.*` identity from the host workspace. |
@@ -226,8 +227,8 @@ The mapping is explicit: the context provider receives `task.data.feature_path`;
 complete task while resolving context. The author receives `{task, planning_context}` after feature
 identity, source digest, references, and policy are checked. The plan Operation exposes only the
 validated `concorde-plan-result` to its parent, not the internal context/author result list. Standard
-loop and triage callers copy `feature_path`, `request`, and `constraints` into the plan input and
-inherit the host configuration/worktree unchanged. They consume result identity, source digest,
+loop and triage callers copy `feature_path`, `request`, and `constraints` into the plan input.
+Triage also includes its selected reflection document/plan refs as `source_artifacts`. They inherit the host configuration/worktree unchanged. They consume result identity, source digest,
 attempt path, and artifact refs to prepare tasks/implementation; they do not infer those from prose.
 
 Missing input, wrong type/version, unknown fields, a non-feature path, ambiguous provider, stale
@@ -237,7 +238,7 @@ because a plan file exists; it must inspect the failed result and current attemp
 
 ## Related Features
 
-- The target typed boundary depends on `feature.capabilities.provide-capability-surfaces` for
+- The typed boundary depends on `feature.capabilities.provide-capability-surfaces` for
   `contract.capabilities.operation-data`; executable adoption is a separately identified runtime gap.
 
 

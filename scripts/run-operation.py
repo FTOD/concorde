@@ -75,6 +75,10 @@ def _runtime_check(operation: Path, venv: Path, python: Path) -> int:
     if not callable(runtime):
         raise LauncherError(f"paired Operation has no runtime loader: {operation}")
     runtime()
+    data_api = importlib.import_module("concorde.capabilities.operation_data")
+    importlib.import_module("concorde.capabilities.operation_service")
+    if getattr(module, "OPERATION_NAME", None) not in data_api.OPERATION_CONTRACTS or not callable(getattr(module, "run", None)):
+        raise LauncherError(f"paired Operation has no registered JSON data boundary: {operation}")
     graph_api = importlib.import_module("langgraph.graph")
     for name in ("END", "START", "StateGraph"):
         if not hasattr(graph_api, name):
@@ -103,7 +107,7 @@ def main(argv: list[str] | None = None) -> int:
     os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
     arguments = list(sys.argv[1:] if argv is None else argv)
     if not arguments:
-        raise LauncherError("usage: run-operation.py <operations/name/operation.py> [arguments]")
+        raise LauncherError("usage: run-operation.py <operations/name/operation.py> [--runtime-check] < invocation.json")
     root = framework_root()
     operation = checked_operation(root, arguments.pop(0))
     venv = managed_venv(root).absolute()

@@ -21,11 +21,14 @@ from concorde.autodocs.docsite_template import TEMPLATE_ROOT, adapter_files, wor
 from concorde.understanding.initialize import apply_proposal, propose_initialization  # noqa: E402
 
 
+from tests.concorde.support.operation_json import CONFIGURATION
+
+
 IGNORED_PACKAGE_DIRS = {"node_modules", "build", ".generated", ".docusaurus", "coverage"}
 
 
 def _init_project(root: Path, module_id: str = "module.atlas", name: str = "Atlas") -> None:
-    proposed = propose_initialization(root, module_id, name)
+    proposed = propose_initialization(root, module_id, name, operation_configuration=CONFIGURATION)
     (root / ".concorde").mkdir(parents=True, exist_ok=True)
     (root / ".concorde/init-proposal.json").write_text(json.dumps(proposed.result["proposal"]), encoding="utf-8")
     applied = apply_proposal(root, ".concorde/init-proposal.json")

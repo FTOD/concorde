@@ -24,19 +24,19 @@ linked worktree at that exact commit, and continue the complete request there. I
 isolated worktree, stay there and do not create a nested worktree. Treat every staged, unstaged,
 untracked, or ignored primary-worktree path as another programmer's state: never use it as input,
 stash it, copy it, commit it, reset it, clean it, or otherwise import or alter it. If required input
-is absent from committed `HEAD`, stop and report the missing input. `--allow-primary-worktree` is
-valid only after an explicit instruction to modify the primary worktree; a generic task request is
+is absent from committed `HEAD`, stop and report the missing input. The Tools' `--allow-primary-worktree` switch (or an embedding host's
+`allow_primary_worktree` authority) is valid only after an explicit instruction to modify the primary worktree; a generic task request is
 not that authorization. A non-Git checkout likewise requires explicit current-directory mutation
 authorization.
 
-Protocol: `reflection-triage/v5`.
+Protocol: `reflection-triage/v5`; JSON Operation data version 1.
 
 Use the paired graph at `{OPERATION}` as the stage topology authority. The graph composes direct leaf
-Skills and the public nested planner; specialized investigator and implementer agents remain internal
-execution support.
+Skills and the public nested planner; investigation executes as the read-only analyze leaf, and the trusted parent alone persists
+its validated structured findings.
 
-Shared configuration is `.concorde/reflections/config.json`; plans are under
-`.concorde/reflections/plans/`; worktrees are under `.concorde/reflections/worktrees/`. Use the
+Shared configuration is `.concorde/reflections/config.json`; its configured `plans_dir` defaults to
+`.concorde/reflections/plans/`. All stages stay in the action's existing isolated worktree. Use the
 installed deterministic Tool at `.concorde/framework/scripts/reflections_queue.py`; in a source
 checkout use `scripts/reflections_queue.py`. The tracked allocation high-water is
 `.concorde/reflections/index.json`; each `.concorde/reflections/<bucket>/R-NNN.md` is the sole
@@ -45,7 +45,7 @@ or `User Comments` while triaging.
 
 ## Concorde Protocol evolution guard
 
-Status and investigation may remain read-only, but before any `implement`, nested lifecycle, merge,
+Status is read-only and the investigation leaf is read-only, but its parent persists triage results; but before any `implement`, nested lifecycle, merge,
 or close action whose resolution changes normative Concorde Protocol semantics in this repository,
 stop without creating an attempt or implementation worktree. Report
 `feature.concorde.evolve-protocol`; the maintainer resolves the reflection through one explicitly
@@ -91,47 +91,95 @@ problem that no longer reproduces is never implemented: the investigator routes 
 with the verification as evidence, and the parent marks any stale plan `stale` and re-investigates
 before any further attempt.
 
+## JSON invocation
+
+Normalize the user's request into the runtime input type below. Load the complete
+`operation_configuration` TypedValue from `.concorde/config.json`; do not choose integration or
+enforcement separately for each call. If it is absent, use the `configure --propose/--apply` Tool
+with explicit configuration JSON before running an Operation. In an installed project that Tool is
+`python3 {FRAMEWORK}/scripts/concorde.py configure`.
+
+Write one invocation JSON document at a safe project-relative path in the authorized worktree:
+
+```json
+{
+  "type_id": "concorde-operation-invocation",
+  "schema_version": 1,
+  "operation_id": "concorde-reflections-triage",
+  "mode": "execute",
+  "configuration": {
+    "type_id": "concorde-operation-configuration",
+    "schema_version": 1,
+    "data": {"integration": "codex", "enforcement": "native"}
+  },
+  "input": {
+  "type_id": "concorde-reflections-triage-context",
+  "schema_version": 1,
+  "data": {
+    "action": "status",
+    "reflection_ids": []
+  }
+}
+}
+```
+
+The example configuration must be replaced by the project's stored value. Use
+`mode: "describe-policy"` to inspect the reachable launch policies without running a model or
+changing project state; use `mode: "execute"` for actual work. Invoke the paired Python graph:
+
+```bash
+{OPERATION} < invocation.json
+```
+
+The script accepts one JSON document on stdin and writes one `concorde-operation-result@1`
+envelope to stdout. Policy descriptions go to stderr. Check the exit code, `status`, `errors`, and
+typed `output`; `described` is not execution success. Old positional requests, `--feature-path`,
+`--integration`, and `--execute` are rejected. The managed launcher's `--runtime-check` is only a
+transport diagnostic. Project root, worktree authority, framework root, executor, and policy remain
+host-derived; a JSON field cannot authorize primary-worktree mutation or widen permissions.
+
+The runtime owns graph dispatch, structured handoffs, validation, and evidence checks. Do not
+manually rerun leaves after the graph or infer domain data from a completion summary. All nested
+Operations inherit the same configuration snapshot. Stop on any failed or blocked result and
+report its actual effects; a failure does not imply that earlier authorized writes were rolled back.
+
 ## Actions
 
-- `status`: run the helper with `--json`, report open, pending-triage, plan, closed, and per-bucket
-  counts plus any orphan plans, and stop.
-- `investigate [N | R-NNN ...]`: use the Operation's investigate stage and one investigator per
-  reflection; the investigator re-verifies the problem at HEAD first. For each result, the parent
-  checks the returned `verified_commit` against that HEAD, validates and writes the returned triage
-  completion to that reflection document in place, writes its route plan, and then runs
-  `--relocate R-NNN` so the document leaves `pending/` for `planned/` or `needs-comments/`, then
-  runs `--validate-entry R-NNN`.
-  The step is complete only when the relocation result reports the document under its new bucket and
-  `--validate-entry R-NNN` reports `valid`. When a `needs-comments/` document has gained maintainer
-  input, `investigate R-NNN` may run again; if the new decision is `not-required`, the same relocation
-  moves it to `planned/`.
-- `implement`: follow the route and implement stages. The investigate stage re-verifies the problem
-  at the current HEAD before anything else; a `not-reproduced` outcome marks the plan `stale`
-  (`--set R-NNN status=stale`) and stops every downstream node. Only validated `fast-loop` plans
-  whose `verification` is `current` are eligible.
-- `merge`: require clean tracked state, merge one branch at a time, validate, and remove only a
-  matching merged small fast-loop entry, document and plan together, through the helper.
-- `close [R-NNN ...]`: no model capability. Run `--remove-closed` (named IDs, or every closed
-  document when none are given); it deletes each document together with its plan when one exists.
-  Then commit the removal with each resolution_note in the commit message so the reason survives
-  in history. Never remove an open document this way.
+Choose exact IDs before dispatch; only `status` accepts an empty selection (the visible queue).
+Do not parse action or route from a prose request inside the runtime.
 
-Before work, run `{OPERATION} "$ARGUMENTS" --framework-prefix {FRAMEWORK} --describe-policy` and
-require only the capabilities reachable for the explicit action/route:
+| Action | Runtime fields beyond `action` and `reflection_ids` | Reachable capabilities and effects |
+|---|---|---|
+| `status` | None; task fields and route forbidden. | No model; returns per-record dispositions. Use the queue Tool's `--json` for counts and orphan-plan details. |
+| `investigate` | Existing `feature_path`, `request`, optional `constraints`. | Analyze only, read-only. Parent validates and persists each finding, plan, and relocation. |
+| `implement`, route `fast-loop` | Same task fields plus `route: "fast-loop"`. | Analyze, fast-loop, validate, then mark the verified plans implemented. |
+| `implement`, route `plan` | Same task fields plus `route: "plan"`. | Analyze, public nested plan, tasks, implement, validate, then mark plans implemented. |
+| `merge` | Existing `feature_path`, `request`, optional `constraints`. | Validate the integrated checkout, then remove only matching merged small fast-loop records through `--remove-merged`. Git integration and recorded canonical commit are prerequisites; the JSON invocation does not choose or merge branches. |
+| `close` | None; task fields and route forbidden. | No model; remove exactly the named maintainer-closed records and plans through `--remove-closed`. |
 
-- `status`: no model capability; run/report the queue Tool and stop;
-- `investigate`: `concorde-analyze` only, under a zero-write policy;
-- `implement --route fast-loop`: analyze, fast-loop, then validate in the action's existing isolated worktree;
-- `implement --route plan`: analyze, public nested `concorde-plan`, tasks, implementation in that same isolated worktree,
-  then validate;
-- `merge`: validate the parent state before the deterministic merge/removal Tool actions; and
-- `close`: no model capability; run/report the removal Tool and stop.
+Investigate/implement/merge selections must all belong to the selected feature. A zero-length
+selection for a mutating action is rejected. `close` never changes maintainer disposition.
 
-Never invoke both route alternatives. Never reference the planner's private leaves from this outer
-graph. Execute each direct leaf/internal role within its own immutable authority; investigators are
-read-only, the parent alone persists their validated triage result, and implementers can write only
-beneath the declared reflection worktree plus the owning reflection document. A failed or blocked
-capability prevents every downstream node.
+The analyze leaf receives `concorde-analyze-context@1`: the typed task, workspace identity,
+captured HEAD, verification date, and selected reflection document/plan refs. Return exactly one
+`concorde-reflection-investigation-result@1` finding per selected ID in Completion Envelope 2's
+`domain_output`. Include verification, analysis, resolution, intervention rationale, route, effort,
+files, steps, validation, risks, and `protocol_change`. The host rejects wrong IDs/HEAD, stale refs,
+invalid sections, or protected Protocol changes before persistence. Original problem sections,
+Occurrences, maintainer disposition, and User Comments are preserved. It alone writes the plan,
+updates triage fields, calls `--relocate R-NNN`, and checks `--validate-entry R-NNN`.
+
+A non-reproduced problem produces a stale dismissal plan requiring maintainer input and blocks
+implementation. Required comments, a changed route, or an unapproved plan when the project sets
+`require_approval` also stop all downstream nodes. Both routes must pass this gate; fast-loop
+additionally requires small effort. Implementation runs under current selected-feature/task
+permissions in the same isolated worktree, with no nested worktree or permission union.
+
+For the plan route the parent copies task fields into `concorde-plan-context@1` and includes the
+selected reflection documents and saved plans as `source_artifacts`. Later leaves receive freshly
+verified refs too. The final `concorde-reflections-triage-result@1` covers exactly the selected IDs;
+optional `plan_result` is included only while its attempt exists and admitted durable sources remain
+current. The result never serializes private planner traces into a text field.
 
 ## Triage completion boundary
 

@@ -29,7 +29,7 @@ async function diagramHashes(): Promise<Record<string, string>> {
 }
 
 function build(): void {
-  const result = spawnSync(process.execPath, [resolve(siteDir, 'node_modules/tsx/dist/cli.mjs'), 'scripts/build.ts'], {
+  const result = spawnSync(process.execPath, ['--import', 'tsx', 'scripts/build.ts'], {
     cwd: siteDir, encoding: 'utf8', timeout: 120_000,
   });
   if (result.status !== 0) throw new Error(`${result.stdout}\n${result.stderr}`);
@@ -73,14 +73,23 @@ describe('Profile 7 production build', () => {
     expect(autoDocsFeature).toMatchObject({moduleRoute: '/architecture/module.concorde.auto-docs'});
 
     const diagrams = manifest.pages.flatMap((page) => page.architectureDiagrams ?? []);
-    expect(diagrams).toHaveLength(7);
-    expect(diagrams.every((diagram) =>
-      diagram.kind === 'architecture' && diagram.source.endsWith('/diagrams/system-overview.json'))).toBe(true);
+    expect(diagrams).toHaveLength(9);
+    expect(diagrams.filter((diagram) => diagram.kind === 'architecture')).toHaveLength(8);
+    expect(diagrams.filter((diagram) => diagram.kind === 'dataflow')).toEqual([
+      expect.objectContaining({source: 'specs/concorde/diagrams/operation-dataflow.json'}),
+    ]);
+    expect(rootModule?.architectureDiagrams?.map((diagram) => diagram.source).sort()).toEqual([
+      'specs/concorde/diagrams/module-collaboration.json',
+      'specs/concorde/diagrams/operation-dataflow.json',
+      'specs/concorde/diagrams/system-overview.json',
+    ]);
     expect(Object.keys(firstDiagramHashes).sort()).toEqual([
       'concorde-auto-docs-system-overview.html',
       'concorde-capabilities-system-overview.html',
       'concorde-distribution-system-overview.html',
       'concorde-lifecycle-system-overview.html',
+      'concorde-module-collaboration.html',
+      'concorde-operation-dataflow.html',
       'concorde-reflections-system-overview.html',
       'concorde-system-overview.html',
       'concorde-understanding-system-overview.html',

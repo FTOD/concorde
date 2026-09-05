@@ -72,11 +72,11 @@ lifecycle or reflection-worktree mutation. The maintainer uses
 `feature.concorde.evolve-protocol`; its one cutover commit records and closes the disposition in Git
 history without a reflection-owned attempt.
 
-## Target Triage Data Types
+## Triage Data Types
 
-These field definitions extend the reflection interface for target
-`contract.capabilities.operation-data`. Current graph dispatch still parses action/route from a
-request string. The target uses the common TypedValue wrapper with these exact fields.
+These field definitions extend the reflection interface for the implemented
+`contract.capabilities.operation-data`. Graph dispatch validates explicit action/route JSON, using
+the common TypedValue wrapper with these exact fields.
 
 | Type ID @1 | `data` field / JSON type | Meaning and conditional requirements |
 |---|---|---|
@@ -90,13 +90,12 @@ request string. The target uses the common TypedValue wrapper with these exact f
 | `concorde-reflections-triage-result` | optional `plan_result`: TypedValue `concorde-plan-result@1` | Present only for successful implement/plan, when the plan attempt remains live; omitted after cleanup. |
 | `Disposition` | `reflection_id`: string; `outcome`: enum string | Exactly one per resolved ID; outcome is `inspected`, `planned`, `implemented`, `merged`, `closed`, or `needs-comments`, based on verified state. |
 
-For implement/plan, the parent constructs `concorde-plan-context@1` by copying `feature_path`,
-`request`, and `constraints`, while retaining `reflection_ids` and route state itself. Configuration
-and host workspace are inherited without re-resolution from ambient defaults. The child returns
-only `concorde-plan-result@1`; the parent checks feature identity and refs before tasks/implementation
-or reflection-state advancement. Fast-loop follows its published feature contract and does not
-manufacture a PlanResult. Invalid IDs/routes, mixed features, stale refs, failed child execution, or
-the existing Protocol-evolution guard stop the relevant route before downstream effects.
+For implement/plan, the parent copies `feature_path`, `request`, and `constraints` into
+`concorde-plan-context@1` and supplies selected reflection document/plan ArtifactRefs under
+`source_artifacts`. Disposition ownership stays in the parent. The child returns only
+`concorde-plan-result@1`; the parent verifies identity and source/ref freshness before continuing.
+Later leaf contexts carry freshly verified reflection/plan refs too. Inheritance never passes raw
+child traces or broadens permission from a reference.
 
 ```json
 {
@@ -109,7 +108,42 @@ the existing Protocol-evolution guard stop the relevant route before downstream 
 This is design evidence only. In particular, the typed selection rules require adapter/runtime
 changes; they do not silently change today's reflection-triage/v5 selection behavior.
 
-## Target Contract Examples
+## Investigation Data and Persistence
+
+`concorde-analyze-context@1` carries the typed triage task, host Selection, captured full Git `head`,
+`verified_on` date, and exact selected reflection document/optional plan ArtifactRefs. The read-only
+analyze leaf returns `concorde-reflection-investigation-result@1` in Completion Envelope 2's
+`domain_output`. Its `data.findings` array must match the selected IDs exactly in order.
+
+| Finding field | JSON type / constraint | Meaning |
+|---|---|---|
+| `reflection_id` | Canonical `R-NNN` string | One selected record. |
+| `verified_commit` | Full canonical Git object ID string | Must equal admitted HEAD and still-current HEAD before persistence. |
+| `observed_state` | `reproduced` or `not-reproduced` | Fresh behavioral verification, with concrete method/results in `verification`. |
+| `verification`, `analysis`, `resolution`, `intervention_rationale` | Nonempty strings; no document-level headings | Evidence plus the three triage-owned section bodies. |
+| `human_intervention` | `required` or `not-required` | Maintainer input decision; never changes maintainer disposition. |
+| `route` | `fast-loop`, `plan`, `dismiss`, or `blocked` | One resolution route. Non-reproduction requires dismiss and human intervention. |
+| `effort` | `small`, `medium`, or `large` | Fast-loop requires small effort. |
+| `files` | Unique canonical project-relative path strings | Proposed scope; these paths do not grant implementation authority. |
+| `steps`, `validation`, `risks` | Nonempty strings; no document-level headings | Saved plan sections and approval scope. |
+| `protocol_change` | Boolean | A normative Concorde Protocol change blocks this repository's triage mutation route. |
+
+The trusted parent verifies native completion, exact IDs/HEAD, and artifact freshness before
+writing. It preserves original problem/Occurrence/User Comments and maintainer status/note fields,
+writes triage sections and a verified plan under configured `plans_dir`, then calls the queue's
+relocate and per-entry validation. Non-reproduced findings save a stale plan requiring comments;
+other human-intervention findings save a hold plan. Implementation stops for non-reproduction,
+required comments, route mismatch, or missing explicit plan approval when configured. Approved
+plan reuse requires unchanged route, files, feature, steps, and validation. A successful route is
+marked implemented only after validation. The current isolated worktree holds all stages.
+
+`merge` requires clean tracked state and validates an already integrated checkout and invokes deterministic merged-small removal;
+its plan must already carry `status: merged` and a canonical commit reachable from HEAD. Git branch
+selection/integration and recording those plan fields remain explicit Git/queue actions outside
+the JSON Operation's input contract. `close` similarly consumes maintainer disposition rather than
+inventing it. Neither action silently merges a branch, changes maintainer fields, or commits records.
+
+## Contract Examples
 
 ### Empty collection status
 
@@ -134,8 +168,9 @@ Illustrative fixture IDs/digests describe the wire shape; they are not live exec
 | Entity ID | Role |
 |---|---|
 | `entity.reflections.triage-input` | Defines explicit target action/selection/route and task fields. |
-| `entity.reflections.triage-result` | Defines target verified dispositions and any still-live planning result. |
+| `entity.reflections.triage-result` | Defines verified dispositions and any still-live planning result. |
 | `entity.reflections.template` | Defines the Reflection Document v2 grammar every recorded and triaged document must satisfy. |
+| `entity.reflections.investigation` | Persists validated typed findings on the trusted parent side and gates downstream execution. |
 | `entity.reflections.collection` | Holds one open `R-NNN.md` document per problem, filed by triage state into `pending/`, `planned/`, or `needs-comments/`. |
 | `entity.reflections.index` | Tracks only the monotonic allocation high-water mark that the queue Tool advances. |
 | `entity.reflections.worktrees` | Isolates a complete mutating triage action from the primary checkout, beginning before investigation/plan persistence and continuing through implementation/validation. |
@@ -213,7 +248,7 @@ Illustrative fixture IDs/digests describe the wire shape; they are not live exec
 
 ## Related Features
 
-- The target typed boundary depends on `feature.capabilities.provide-capability-surfaces` for
+- The typed boundary depends on `feature.capabilities.provide-capability-surfaces` for
   `contract.capabilities.operation-data`; executable adoption is a separately identified runtime gap.
 
 

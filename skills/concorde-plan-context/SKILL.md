@@ -31,7 +31,8 @@ $ARGUMENTS
 
 This is the read-only first leaf of the paired `concorde-plan` Operation. The trusted host has
 already resolved Workspace Protocol 13, required-interface ownership, concrete non-symlink paths,
-and a deny-by-default native launch policy. Use only those launch paths and the original request.
+and a deny-by-default native launch policy. Consume the original `concorde-plan-context@1` task and its verified `source_artifacts` using only
+those launch paths. Supporting refs do not grant authority.
 
 ## Context receipt
 
@@ -40,7 +41,9 @@ Constitution, selected attempt artifacts, providing-module implementation/test l
 dependency feature specification admitted by an exact `interfaces.required` owner reason. Do not
 open another feature body merely because it appears in `related_features`.
 
-Return one compact context receipt containing:
+Verify the following host-resolved context and report missing evidence in the completion gates.
+The host serializes the domain `concorde-planning-context@1` from source evidence; your narrative
+summary is not the author's data handoff. Check:
 
 - selected feature ID/path and providing architecture;
 - ancestry architecture paths and canonical related-feature summaries supplied by the host;

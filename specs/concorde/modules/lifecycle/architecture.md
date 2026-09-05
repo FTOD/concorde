@@ -48,21 +48,21 @@ It owns the domain meanings of `concorde-plan-context@1`, `concorde-plan-author-
 `concorde-plan-result@1`, and the standard-loop input/result, defined in the providing features.
 Understanding owns resolved planning context; Capabilities owns common transport and enforcement.
 
-Target data flow is standard-loop input → explicit plan input → typed context/author handoff →
+Data flow is standard-loop input → explicit plan input → typed context/author handoff →
 typed plan result → tasks/implementation → validation/delivery evidence. An Operation invocation is
 one run; an attempt is feature-owned temporal state that can span several runs. Delivery invalidates
-attempt artifact refs. Current CLI parsers and string prior-result transport are still the actual
-ABI; the feature-level target field mappings identify the required runtime migration.
+attempt artifact refs. The shared service implements JSON admission and typed mappings; each
+Operation keeps its literal topology and one primary Python boundary.
 
 ## Entities
 
 | Entity ID | Type | Definition | Locator |
 |---|---|---|---|
-| `entity.lifecycle.plan-input` | type | Target concorde-plan-context@1 caller fields: feature_path, request, and constraints; distinct from Understanding's internal Skill. | `concept:concorde-plan-context@1` |
-| `entity.lifecycle.plan-author-input` | type | Target concorde-plan-author-context@1: original task plus the typed resolved planning context. | `concept:concorde-plan-author-context@1` |
-| `entity.lifecycle.plan-result` | type | Target concorde-plan-result@1: selected feature identity, source digest, attempt path, and authored artifact references. | `concept:concorde-plan-result@1` |
-| `entity.lifecycle.standard-loop-input` | type | Target concorde-standard-dev-loop-context@1: selected feature path and development intent/constraints. | `concept:concorde-standard-dev-loop-context@1` |
-| `entity.lifecycle.standard-loop-result` | type | Target concorde-standard-dev-loop-result@1: selected feature identity, completed direct capabilities, and cleanup outcome. | `concept:concorde-standard-dev-loop-result@1` |
+| `entity.lifecycle.plan-input` | type | concorde-plan-context@1 caller fields: feature_path, request, constraints, and optional supporting source_artifacts; distinct from Understanding's internal Skill. | `concept:concorde-plan-context@1` |
+| `entity.lifecycle.plan-author-input` | type | concorde-plan-author-context@1: original task plus the typed resolved planning context. | `concept:concorde-plan-author-context@1` |
+| `entity.lifecycle.plan-result` | type | concorde-plan-result@1: selected feature identity, source digest, attempt path, and authored artifact references. | `concept:concorde-plan-result@1` |
+| `entity.lifecycle.standard-loop-input` | type | concorde-standard-dev-loop-context@1: selected feature path and development intent/constraints. | `concept:concorde-standard-dev-loop-context@1` |
+| `entity.lifecycle.standard-loop-result` | type | concorde-standard-dev-loop-result@1: selected feature identity, completed direct capabilities, and cleanup outcome. | `concept:concorde-standard-dev-loop-result@1` |
 | `entity.lifecycle.specify-skill` | document | Public leaf prompt that authors or revises one direct feature's outcome, interfaces, usage, requirements, and architecture zoom; invokes Tools but never orchestrates Skills. | `skills/concorde-specify/SKILL.md` |
 | `entity.lifecycle.clarify-skill` | document | Public leaf prompt that resolves material ambiguity in one direct feature file before planning proceeds. | `skills/concorde-clarify/SKILL.md` |
 | `entity.lifecycle.checklist-skill` | document | Public leaf prompt that generates and revises one feature's temporal requirements-quality checklist. | `skills/concorde-checklist/SKILL.md` |
@@ -90,12 +90,12 @@ ABI; the feature-level target field mappings identify the required runtime migra
 
 | Source | Predicate | Target | Description |
 |---|---|---|---|
-| `entity.lifecycle.plan-operation` | `reads_from` | `entity.lifecycle.plan-input` | Target: validates one plan input object; inherited project configuration remains separate. |
-| `entity.lifecycle.plan-author-skill` | `reads_from` | `entity.lifecycle.plan-author-input` | Target: receives original task plus validated context, with no opaque prior-result string. |
-| `entity.lifecycle.plan-operation` | `generates` | `entity.lifecycle.plan-result` | Target: exposes one domain result to its parent after context and author succeed. |
-| `entity.lifecycle.standard-dev-loop` | `reads_from` | `entity.lifecycle.standard-loop-input` | Target: maps explicit task fields into the nested plan input after specification. |
-| `entity.lifecycle.standard-dev-loop` | `reads_from` | `entity.lifecycle.plan-result` | Target: verifies identity, source digest, and attempt refs before tasks/implementation. |
-| `entity.lifecycle.standard-dev-loop` | `generates` | `entity.lifecycle.standard-loop-result` | Target: returns the terminal domain result only after validated delivery. |
+| `entity.lifecycle.plan-operation` | `reads_from` | `entity.lifecycle.plan-input` | validates one plan input object; inherited project configuration remains separate. |
+| `entity.lifecycle.plan-author-skill` | `reads_from` | `entity.lifecycle.plan-author-input` | receives original task plus validated context, with no opaque prior-result string. |
+| `entity.lifecycle.plan-operation` | `generates` | `entity.lifecycle.plan-result` | exposes one domain result to its parent after context and author succeed. |
+| `entity.lifecycle.standard-dev-loop` | `reads_from` | `entity.lifecycle.standard-loop-input` | maps explicit task fields into the nested plan input after specification. |
+| `entity.lifecycle.standard-dev-loop` | `reads_from` | `entity.lifecycle.plan-result` | verifies identity, source digest, and attempt refs before tasks/implementation. |
+| `entity.lifecycle.standard-dev-loop` | `generates` | `entity.lifecycle.standard-loop-result` | returns the terminal domain result only after validated delivery. |
 | `entity.lifecycle.plan-operation` | `composes` | `module.concorde.understanding` | Dispatches understanding's internal bounded-context leaf as its read-only first stage. |
 | `entity.lifecycle.plan-operation` | `composes` | `entity.lifecycle.plan-author-skill` | Sequences the internal plan-authoring leaf as its second stage with the context result as prior input. |
 | `entity.lifecycle.plan-operation-skill` | `documents` | `entity.lifecycle.plan-operation` | Supplies the installed public planning invocation, policy, and failure contract. |

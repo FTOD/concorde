@@ -29,10 +29,9 @@ required interfaces, each with a reason trace, plus an explicit deny list for ev
 maintainer can therefore invoke planning without granting ambient access to every module's private
 architecture and implementation.
 
-## Target Planning Context Payload
+## Planning Context Payload
 
-The current `resolve_planning_context` returns an in-process `PlanningContext` record. The target
-serialized `concorde-planning-context@1` extends `contract.understanding.planning-context` using the
+`resolve_planning_context` returns an in-process `PlanningContext` record. The host-serialized `concorde-planning-context@1` extends `contract.understanding.planning-context` using the
 common TypedValue/ArtifactRef forms from `contract.capabilities.operation-data`. It is host-resolved
 data, not a caller-supplied replacement for workspace or permission receipts.
 
@@ -61,10 +60,15 @@ bounded artifact set, and emits this typed payload. The plan author receives it 
 the host workspace and current inputs before authorship. Missing refs, changed bytes or membership,
 wrong feature identity, or unsupported type/version block the author; they never broaden reads.
 
-The serialization adapter and typed dispatch are pending runtime work. Existing structured Python
-fields and receipts provide source evidence for this design, but do not yet expose this wire type.
+The shared Operation service implements serialization and typed dispatch. The planning source
+digest covers admitted durable spec/governance/code/test membership and bytes; mutable attempt,
+checklist, and reflection state have their own artifact digests and do not invalidate the durable
+source digest merely by being authored. Mutable task declarations are excluded from this durable digest and
+rebound through each leaf's current Workspace 13 permission receipt; they do not widen the planning
+context's owned source set. Shared project constitution paths remain admitted even
+when another module locates that global authority; foreign private implementation remains denied.
 
-## Target Contract Examples
+## Contract Examples
 
 ### Resolved planning context
 
@@ -104,7 +108,7 @@ Illustrative fixture IDs/digests describe the wire shape; they are not live exec
 
 | Entity ID | Role |
 |---|---|
-| `entity.understanding.planning-context-data` | Defines target serialized context fields separately from caller input and host authority. |
+| `entity.understanding.planning-context-data` | Defines serialized context fields separately from caller input and host authority. |
 | `entity.understanding.workspace-resolver` | Supplies the Protocol 13 feature/module/ancestry result that planning-context narrows. |
 | `entity.understanding.planning-context` | Resolves owned and required-interface paths, reason traces, and denies from Protocol 13 and `interfaces.required`. |
 | `entity.understanding.plan-context-skill` | Reports the resolved context receipt for one selected planning attempt. |
@@ -173,7 +177,7 @@ denied.
 
 ## Related Features
 
-- The target typed boundary depends on `feature.capabilities.provide-capability-surfaces` for
+- The typed boundary depends on `feature.capabilities.provide-capability-surfaces` for
   `contract.capabilities.operation-data`; executable adoption is a separately identified runtime gap.
 
 

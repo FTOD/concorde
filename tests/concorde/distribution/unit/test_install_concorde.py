@@ -51,7 +51,7 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertEqual(arguments.checkout, str(REPOSITORY_ROOT))
 
     def test_manifest_is_single_profile_and_inventory_authority(self):
-        self.assertEqual(self.package.version, "2.1.0")
+        self.assertEqual(self.package.version, "3.0.0")
         self.assertEqual(self.package.manifest["architecture_profile"], 7)
         self.assertEqual(self.package.manifest["workspace_protocol"], 13)
         self.assertEqual(len(self.package.manifest["skills"]), 17)

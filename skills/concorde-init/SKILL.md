@@ -22,11 +22,22 @@ valid only after an explicit instruction to modify the primary worktree; a gener
 not that authorization. A non-Git checkout likewise requires explicit current-directory mutation
 authorization.
 
-Treat `$ARGUMENTS` as optional `--module-id` and `--name` values. From the target project run
-`{SCRIPT} --propose $ARGUMENTS`.
+Resolve optional project `--module-id`/`--name` and explicit Operation configuration. Use the
+active supported integration (`codex` or `claude`) and its native enforcement when consistent with
+the user's setup; `outer` requires an embedding host with verified equivalent enforcement.
+Write the settings as JSON, for example `operation-settings.json`:
 
-The Initialization Proposal 3 must select Architecture Source Profile 7 and create exactly
-`.concorde/config.json`, `.concorde/reflections/index.json`, one root `architecture.md`, and its
+```json
+{"type_id":"concorde-operation-configuration","schema_version":1,"data":{"integration":"codex","enforcement":"native"}}
+```
+
+Run `{SCRIPT} --propose --configuration operation-settings.json` with any requested module/name
+options. Configuration can also be read from stdin with `--configuration -`. Include the complete
+settings in the reviewed proposal. Missing or unknown settings block proposal generation.
+
+The Initialization Proposal 4 must select Architecture Source Profile 7 and create exactly
+`.concorde/config.json` (including `operation_configuration`), `.concorde/reflections/index.json`,
+`.concorde/reflections/config.json`, one root `architecture.md`, and its
 `diagrams/system-overview.json`. The
 architecture seed defines the root responsibility/boundary, immediate module and feature inventories,
 typed entity vocabulary, directed relationship vocabulary, representative interactions, and any
@@ -63,7 +74,12 @@ field mappings, and failures in text; use a dataflow view when it clarifies thos
 
 Classify reusable configuration separately from runtime input and host-derived context. Specify
 which settings initialization establishes, where they live, and how later calls consume them.
-Do not invent supported configuration keys or write a future schema into the current proposal.
+The stored `concorde-operation-configuration@1` fields are `integration` and `enforcement`.
+For an existing initialized project that lacks them, preserve its architecture and other settings:
+run `python3 {FRAMEWORK}/scripts/concorde.py configure --propose --configuration operation-settings.json`,
+then apply the accepted digest-bound proposal with `configure --apply --proposal <path>`.
+A changed configuration file requires a fresh proposal. Later invocations load the resulting
+snapshot; nested Operations inherit it. Do not add unsupported keys or silently infer runtime defaults.
 Report the seed's remaining semantic gaps and use the authorized architecture-editing boundary to
 resolve them; structural proposal validation alone does not prove a complete project model.
 

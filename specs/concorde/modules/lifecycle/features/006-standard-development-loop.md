@@ -34,7 +34,7 @@ A user can invoke one installed Operation skill to run a permission-bounded four
 specify → nested plan → tasks → deliver. Its six direct capability occurrences are specify; public
 `concorde-plan`; tasks then implement; validate then deliver. The outer graph never names planner
 internals. Every direct leaf receives its own immutable policy/configuration and host Protocol 13
-receipt, returns Capability Completion Envelope 1, receives only validated prior successes, and
+receipt, returns Capability Completion Envelope 2, receives only validated prior successes, and
 prevents all downstream work on transport or semantic failure.
 
 The installed Skill enters the paired graph through `scripts/run-operation.py`, which selects the
@@ -53,10 +53,10 @@ worktree's exact committed `HEAD` and runs all four stages there. Policy descrip
 read-only in the primary checkout. The execution entry point rejects the primary worktree unless the
 maintainer supplied the explicit primary-mutation override.
 
-## Target Standard Loop Data Types
+## Standard Loop Data Types
 
-These are target domain types for `contract.lifecycle.standard-development-loop` under
-`contract.capabilities.operation-data`; the executable graph still uses the CLI/string request ABI.
+These are the domain types for `contract.lifecycle.standard-development-loop` under
+`contract.capabilities.operation-data`; the executable graph admits them through the shared JSON service.
 Every value uses the common TypedValue wrapper, with required fields unless stated otherwise.
 
 | Type ID @1 | `data` fields / JSON types | Meaning and constraints |
@@ -76,8 +76,8 @@ Every value uses the common TypedValue wrapper, with required fields unless stat
 | Deliver → Parent | Return DeliveryOutcome and the six completed public/direct capability identities; never return removed attempt files as live refs. |
 
 The table specifies data obligations for existing leaf interfaces; it does not invent new public
-Operations for tasks, implementation, validation, or delivery. Their concrete typed adapters must
-be reconciled with those owning interfaces during runtime migration. Any missing, incompatible,
+Operations for tasks, implementation, validation, or delivery. Their concrete typed adapter fields are defined in the common Operation data contract and
+implemented by the shared service. Any missing, incompatible,
 cross-feature, stale, or failed producer result prevents its consumer. A JSON list of all prior
 capability output strings is not a conforming handoff.
 
@@ -93,7 +93,7 @@ capability output strings is not a conforming handoff.
 }
 ```
 
-## Target Contract Examples
+## Contract Examples
 
 ### Completed loop
 
@@ -129,7 +129,7 @@ Illustrative fixture IDs/digests describe the wire shape; they are not live exec
 
 | Entity ID | Role |
 |---|---|
-| `entity.lifecycle.standard-loop-input` | Defines target task fields mapped into the nested plan input. |
+| `entity.lifecycle.standard-loop-input` | Defines task fields mapped into the nested plan input. |
 | `entity.lifecycle.standard-loop-result` | Defines the final domain result after validated cleanup. |
 | `entity.lifecycle.plan-result` | Supplies typed feature/attempt refs for downstream tasks and implementation. |
 | `entity.lifecycle.standard-dev-loop` | Declares four stages, six direct capabilities, and exact occurrence bindings. |
@@ -173,7 +173,7 @@ Illustrative fixture IDs/digests describe the wire shape; they are not live exec
   capability/effect, binding mismatch, unsafe path, unavailable enforcement, invalid
   input/result/completion/receipt, unavailable/mismatched LangGraph, or executor exception stops
   construction/invocation without fabricated completion.
-- **Compatibility**: Concorde 2.1.0, Package Manifest 2, installed LangGraph `1.2.11` (runtime API
+- **Compatibility**: Concorde 3.0.0, Package Manifest 2, installed LangGraph `1.2.11` (runtime API
   range `>=1.2,<2`), and source-root/installed-managed venv layouts; the public four-stage contract
   remains stable while `concorde-plan` is one nested Operation.
 - **Implementing entities**: `entity.lifecycle.standard-dev-loop`,
@@ -186,7 +186,7 @@ Illustrative fixture IDs/digests describe the wire shape; they are not live exec
 
 ## Related Features
 
-- The target typed boundary depends on `feature.capabilities.provide-capability-surfaces` for
+- The typed boundary depends on `feature.capabilities.provide-capability-surfaces` for
   `contract.capabilities.operation-data`; executable adoption is a separately identified runtime gap.
 
 
@@ -252,7 +252,7 @@ or invoke this graph and do not select a feature or create an attempt. Name
   plan/attempt creation, tasks/implementation, validation, and delivery in one linked worktree from
   committed primary `HEAD`; only an explicit maintainer-authorized override may permit primary mutation.
 - **FR-012**: Every real direct leaf MUST receive a host Protocol 13 receipt and MUST return a valid
-  Capability Completion Envelope 1; only `status: success`, passed gates, no limitations, and matching
+  Capability Completion Envelope 2; only `status: success`, passed gates, no limitations, and matching
   launch/workspace/bootstrap identities may append a `CapabilityResult`.
 - **FR-013**: Exit-zero semantic failure, malformed/stale completion, native lifecycle failure, or a
   missing completion MUST prevent the current occurrence and every later direct or nested occurrence

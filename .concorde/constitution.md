@@ -1,17 +1,15 @@
 <!--
 Sync Impact Report
-- Version change: 8.2.0 -> 8.3.0 (MINOR: makes project concepts, relationship constraints,
-  configuration/input separation, and explicit data handoffs architecture-review obligations).
-- Modified principles: A.III requires a project concept model before physical inventory; A.IV
-  requires named data contracts and field-level handoffs; review separates design from realization.
-- Compatibility impact: Architecture Source Profile 7, Workspace Protocol 13, Package Manifest 2,
-  current Operation entry points, and runtime behavior are unchanged. This revision changes
-  authoring/review guidance, not the executable Operation ABI.
-- Required migration: reconcile Constitution, ontology, feature/plan templates, canonical guidance,
-  Codex/Claude projections, and Concorde's own architectures in this commit.
-- Named implementation gaps: the target JSON Operation boundary, project operation configuration,
-  and typed domain-result dispatch are specified under contract.capabilities.operation-data;
-  existing CLI/string transport remains explicitly documented until an executable cutover.
+- Version change: 8.3.0 -> 8.3.1 (PATCH: reconciles realization notes for the approved
+  concept/relationship and typed Operation data principles; those principles are unchanged).
+- Executable compatibility: Concorde package 3.0.0 replaces domain CLI arguments with JSON
+  invocation/result version 1, initialized Operation configuration, and typed nested/leaf handoffs.
+- Initialization Proposal 4 adds explicit operation_configuration and shared reflection defaults;
+  existing projects use digest-bound Configuration Proposal 1 without rewriting architecture.
+- Completion Envelope 2 separates typed investigation output from audit summaries and receipts.
+- Profile 7, Workspace Protocol 13, Package Manifest 2, and Delivery Proposal 9 are unchanged.
+- Migration reconciles code, specs, canonical Skills, projections, installation, and behavioral
+  evidence together. Live model behavior remains distinct from process-double integration evidence.
 -->
 # Concorde Constitution
 
@@ -406,4 +404,4 @@ or materially expands a mandatory obligation, and PATCH clarifies wording. Every
 architecture review includes a constitution check. Reviewers reject unexplained violations,
 invisible boundary changes, duplicated canonical intent, and implementation claims without evidence.
 
-**Version**: 8.3.0 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-04
+**Version**: 8.3.1 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-05
