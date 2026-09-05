@@ -48,6 +48,10 @@ def _configured_root_architecture(project_root: Path) -> str | None:
     if not config.exists():
         return None
     try:
+        if json.loads(config.read_text()).get("profile_version")==8:
+            from ..specification.repository import SpecRepository
+            repo=SpecRepository(project_root)
+            return repo.targets[repo.entry_target].documents[0]
         package = ProjectRepository(project_root).load()
     except RepositoryError:
         return None
@@ -259,8 +263,8 @@ def propose_docsite(
             "CONCORDE-DOCSITE-001",
             "error",
             ".concorde/config.json",
-            "The project has no configured Profile 7 root architecture.",
-            "Run the init Tool and apply Initialization Proposal 4 first.",
+            "The project has no configured Spec entry target.",
+            "Propose and apply project initialization first.",
         )
         return ToolResult("docsite", ".", "invalid", findings=(finding,))
 

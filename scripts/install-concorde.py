@@ -38,36 +38,16 @@ PACKAGE_ROOTS = [
     "agent-assets",
     "docsite",
     "operations",
+    "protocol",
     "scripts",
     "skills",
     "src",
     "templates",
     "viewer",
 ]
-SKILLS = [
-    "concorde-analyze",
-    "concorde-checklist",
-    "concorde-clarify",
-    "concorde-ask",
-    "concorde-context",
-    "concorde-deliver",
-    "concorde-init",
-    "concorde-validate",
-    "concorde-constitution",
-    "concorde-converge",
-    "concorde-fast-loop",
-    "concorde-implement",
-    "concorde-plan-context",
-    "concorde-plan-author",
-    "concorde-specify",
-    "concorde-tasks",
-    "concorde-taskstoissues",
-]
-OPERATIONS = [
-    "concorde-standard-dev-loop",
-    "concorde-reflections-triage",
-    "concorde-plan",
-]
+from concorde.capabilities.protocol_contracts import INTERNAL_SKILLS, OPERATIONS as PUBLIC_OPERATIONS
+SKILLS = list(INTERNAL_SKILLS)
+OPERATIONS = list(PUBLIC_OPERATIONS)
 OPERATION_RUNTIME = {
     "launcher": "scripts/run-operation.py",
     "python": ">=3.11",
@@ -150,12 +130,12 @@ def load_package(root: Path) -> Package:
     }
     if required - set(manifest):
         raise InstallError(f"Concorde manifest is missing fields: {sorted(required - set(manifest))}")
-    if manifest.get("schema_version") != 2 or manifest.get("name") != "concorde":
-        raise InstallError("Concorde manifest must declare schema_version 2 and name 'concorde'")
-    if manifest.get("architecture_profile") != 7 or manifest.get("workspace_protocol") != 13:
-        raise InstallError("Concorde package must declare Architecture Profile 7 and Workspace Protocol 13")
-    if manifest.get("delivery_proposal") != 9 or manifest.get("skill_namespace") != "concorde":
-        raise InstallError("Concorde package must declare Delivery Proposal 9 and the concorde Skill namespace")
+    if manifest.get("schema_version") != 3 or manifest.get("name") != "concorde":
+        raise InstallError("Concorde manifest must declare schema_version 3 and name 'concorde'")
+    if manifest.get("architecture_profile") != 8 or manifest.get("workspace_protocol") != 14:
+        raise InstallError("Concorde package must declare Architecture Profile 8 and Workspace Protocol 14")
+    if manifest.get("delivery_proposal") != 10 or manifest.get("skill_namespace") != "concorde":
+        raise InstallError("Concorde package must declare Delivery Proposal 10 and the concorde Skill namespace")
     install = manifest.get("install")
     if not isinstance(install, dict) or install.get("framework_root") != FRAMEWORK_ROOT or install.get("receipt") != RECEIPT_PATH:
         raise InstallError("Concorde manifest declares an unsupported installation layout")
@@ -168,7 +148,7 @@ def load_package(root: Path) -> Package:
     if not isinstance(skills, list) or any(not isinstance(item, str) for item in skills):
         raise InstallError("Concorde manifest Skills must be a string list")
     if skills != SKILLS or len(skills) != len(set(skills)):
-        raise InstallError(f"Concorde manifest must declare exactly these 17 leaf Skills: {SKILLS}")
+        raise InstallError(f"Concorde manifest must declare exactly these 6 internal Skills: {SKILLS}")
     operations = manifest.get("operations")
     if operations != OPERATIONS:
         raise InstallError(f"Concorde manifest must declare exactly these Operations: {OPERATIONS}")
@@ -221,6 +201,10 @@ def load_package(root: Path) -> Package:
         load_runtime_spec(root, manifest)
     except ManagedRuntimeError as error:
         raise InstallError(str(error)) from error
+    from concorde.capabilities.profile8_validation import validate_package
+    findings = validate_package(root)
+    if findings:
+        raise InstallError("; ".join(f.message for f in findings))
     return Package(root, manifest)
 
 
@@ -229,7 +213,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
     desired[f"{FRAMEWORK_ROOT}/concorde.json"] = (package.root / "concorde.json").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/LICENSE"] = (package.root / "LICENSE").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/README.md"] = (package.root / "README.md").read_bytes()
-    for directory in ("agent-assets", "operations", "skills", "src", "templates", "viewer"):
+    for directory in ("agent-assets", "operations", "protocol", "skills", "src", "templates", "viewer"):
         source_root = package.root / directory
         for path in sorted(source_root.rglob("*")):
             if path.is_symlink():

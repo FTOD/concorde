@@ -51,43 +51,7 @@ class ImplementationDeliveryIntegrationTests(unittest.TestCase):
         parsed = create_parser().parse_args(["--project-root", str(root), "deliver", *arguments])
         return dispatch(parsed)
 
-    def test_cli_propose_materializes_exact_proposal_and_is_idempotent(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = self.project_copy(temporary)
-            result = self.cli_delivery(root, "--propose")
-            self.assertEqual(result.status, "eligible", result.findings)
-            proposal = root / result.result["proposal_path"]
-            expected = {
-                "proposal_version": 9,
-                "tool": "deliver",
-                "target": result.target,
-                "source_digest": result.result["source_digest"],
-                "remove": [ATTEMPT],
-            }
-            self.assertEqual(json.loads(proposal.read_text(encoding="utf-8")), expected)
-            self.assertEqual(set(expected), {"proposal_version", "tool", "target", "source_digest", "remove"})
-            before = tree_hashes(root)
-            pure = propose_delivery(root)
-            self.assertEqual(pure.status, "eligible", pure.findings)
-            self.assertEqual(pure.result["source_digest"], result.result["source_digest"])
-            with patch.object(Path, "replace", side_effect=AssertionError("idempotent propose replaced the proposal")):
-                repeated = self.cli_delivery(root, "--propose")
-            self.assertEqual(repeated.status, "eligible", repeated.findings)
-            self.assertEqual(repeated.result["source_digest"], result.result["source_digest"])
-            self.assertEqual(tree_hashes(root), before)
 
-    def test_cli_propose_replaces_an_existing_regular_proposal(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = self.project_copy(temporary)
-            eligibility = propose_delivery(root)
-            proposal = root / eligibility.result["proposal_path"]
-            proposal.write_text('{"stale":true}\n', encoding="utf-8")
-            result = self.cli_delivery(root, "--propose")
-            self.assertEqual(result.status, "eligible", result.findings)
-            payload = json.loads(proposal.read_text(encoding="utf-8"))
-            self.assertEqual(set(payload), {"proposal_version", "tool", "target", "source_digest", "remove"})
-            self.assertEqual(payload["source_digest"], eligibility.result["source_digest"])
-            self.assertTrue((root / ATTEMPT).is_dir())
 
     def test_invalid_cli_propose_does_not_mutate_an_existing_proposal(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -95,82 +59,15 @@ class ImplementationDeliveryIntegrationTests(unittest.TestCase):
             proposal = root / ATTEMPT / "deliver-proposal.json"
             proposal.write_bytes(b"preserve invalid proposal bytes\n")
             before = tree_hashes(root)
-            result = self.cli_delivery(root, "--propose")
-            self.assertEqual(result.status, "invalid")
+            with self.assertRaises(SystemExit) as rejected:
+                self.cli_delivery(root, "--propose")
+            self.assertEqual(rejected.exception.code, 2)
             self.assertEqual(tree_hashes(root), before)
             self.assertEqual(proposal.read_bytes(), b"preserve invalid proposal bytes\n")
 
-    def test_cli_propose_rejects_symlink_and_directory_targets_without_mutation(self):
-        for target_kind in ("symlink", "directory"):
-            with self.subTest(target_kind=target_kind), tempfile.TemporaryDirectory() as temporary:
-                root = self.project_copy(temporary)
-                eligibility = propose_delivery(root)
-                proposal = root / eligibility.result["proposal_path"]
-                if target_kind == "symlink":
-                    external = root / "external-proposal.json"
-                    external.write_bytes(b"external bytes\n")
-                    proposal.symlink_to(external)
-                else:
-                    proposal.mkdir()
-                before = tree_hashes(root)
-                result = self.cli_delivery(root, "--propose")
-                self.assertEqual(result.status, "invalid")
-                self.assertEqual(tree_hashes(root), before)
-                self.assertEqual(proposal.is_symlink(), target_kind == "symlink")
-                self.assertTrue(proposal.exists())
 
-    def test_cli_propose_rejects_a_symlinked_attempt_parent_without_mutation(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = self.project_copy(temporary)
-            attempt = root / ATTEMPT
-            external = root / "external-attempt"
-            attempt.replace(external)
-            attempt.symlink_to(external, target_is_directory=True)
-            before = tree_hashes(root)
-            result = self.cli_delivery(root, "--propose")
-            self.assertEqual(result.status, "invalid")
-            self.assertEqual(tree_hashes(root), before)
-            self.assertTrue(attempt.is_symlink())
-            self.assertFalse((external / "deliver-proposal.json").exists())
 
-    def test_cli_propose_replace_failure_preserves_attempt_and_cleans_stage(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = self.project_copy(temporary)
-            eligibility = propose_delivery(root)
-            proposal = (root / eligibility.result["proposal_path"]).resolve()
-            proposal.write_bytes(b"preserve previous proposal bytes\n")
-            before = tree_hashes(root)
-            original = Path.replace
 
-            def fail_proposal_replace(path: Path, target: Path):
-                if Path(target).resolve() == proposal:
-                    raise OSError("injected proposal replace failure")
-                return original(path, target)
-
-            with patch.object(Path, "replace", new=fail_proposal_replace):
-                result = self.cli_delivery(root, "--propose")
-            self.assertEqual(result.status, "failed")
-            self.assertEqual(tree_hashes(root), before)
-            self.assertTrue((root / ATTEMPT).is_dir())
-            self.assertEqual(proposal.read_bytes(), b"preserve previous proposal bytes\n")
-            self.assertEqual(list((root / ATTEMPT).glob(".deliver-proposal.json.*.concorde-stage")), [])
-
-    def test_cli_apply_revalidates_a_materialized_proposal(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = self.project_copy(temporary)
-            source = root / "src/runtime.py"
-            source.parent.mkdir()
-            source.write_text("before\n", encoding="utf-8")
-            eligibility = self.cli_delivery(root, "--propose")
-            self.assertEqual(eligibility.status, "eligible", eligibility.findings)
-            proposal_path = eligibility.result["proposal_path"]
-            source.write_text("after\n", encoding="utf-8")
-            before = tree_hashes(root)
-            result = self.cli_delivery(root, "--apply", "--proposal", proposal_path)
-            self.assertEqual(result.status, "conflict")
-            self.assertEqual(tree_hashes(root), before)
-            self.assertTrue((root / ATTEMPT).is_dir())
-            self.assertTrue((root / proposal_path).is_file())
 
     def test_eligible_proposal_is_cleanup_only_and_non_mutating(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -18,56 +18,9 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--project-root", default=".")
     subparsers = parser.add_subparsers(dest="tool", required=True)
 
-    initialize = subparsers.add_parser("init")
-    mode = initialize.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--propose", action="store_true")
-    mode.add_argument("--apply", action="store_true")
-    initialize.add_argument("--proposal")
-    initialize.add_argument("--module-id")
-    initialize.add_argument("--name")
-    initialize.add_argument("--configuration", help="JSON configuration file, or - for stdin; required for a new project")
-    initialize.add_argument("--allow-primary-worktree", action="store_true")
-    initialize.add_argument("--format", choices=["json"], default="json")
-
-    configure = subparsers.add_parser("configure")
-    config_mode = configure.add_mutually_exclusive_group(required=True)
-    config_mode.add_argument("--propose", action="store_true")
-    config_mode.add_argument("--apply", action="store_true")
-    configure.add_argument("--configuration", help="TypedValue JSON file, or - for stdin")
-    configure.add_argument("--proposal")
-    configure.add_argument("--allow-primary-worktree", action="store_true")
-    configure.add_argument("--format", choices=["json"], default="json")
-
-    context = subparsers.add_parser("context")
-    context.add_argument("target")
-    context.add_argument("--format", choices=["json"], default="json")
-
-    explore = subparsers.add_parser("explore")
-    explore.add_argument("target", nargs="?")
-    explore.add_argument("--graph")
-    explore.add_argument("--alignment")
-    explore.add_argument("--revision")
-    explore.add_argument("--query")
-    explore.add_argument(
-        "--status",
-        action="append",
-        choices=["unknown", "partial", "verified", "disagrees"],
-        default=[],
-    )
-    explore.add_argument("--format", choices=["json"], default="json")
-
     validate = subparsers.add_parser("validate")
     validate.add_argument("target", nargs="?")
     validate.add_argument("--format", choices=["json"], default="json")
-
-    deliver = subparsers.add_parser("deliver")
-    deliver.add_argument("target", nargs="?")
-    deliver_mode = deliver.add_mutually_exclusive_group(required=True)
-    deliver_mode.add_argument("--propose", action="store_true")
-    deliver_mode.add_argument("--apply", action="store_true")
-    deliver.add_argument("--proposal")
-    deliver.add_argument("--allow-primary-worktree", action="store_true")
-    deliver.add_argument("--format", choices=["json"], default="json")
 
     docsite = subparsers.add_parser("docsite")
     docsite_mode = docsite.add_mutually_exclusive_group(required=True)
@@ -97,62 +50,6 @@ def create_parser() -> argparse.ArgumentParser:
 
 def dispatch(arguments: argparse.Namespace) -> ToolResult:
     root = Path(arguments.project_root)
-    configuration = None
-    if arguments.tool in {"init", "configure"} and arguments.propose and arguments.configuration:
-        from .operation_data import checked_path, decode
-
-        configuration = decode(sys.stdin.read() if arguments.configuration == "-"
-                               else checked_path(root, arguments.configuration).read_text(encoding="utf-8"))
-    if arguments.tool == "configure":
-        from .operation_config import apply_configuration, propose_configuration
-
-        if arguments.apply:
-            if not arguments.proposal:
-                raise ValueError("configure --apply requires --proposal")
-            return apply_configuration(root, arguments.proposal)
-        return propose_configuration(root, configuration)
-    if arguments.tool == "init":
-        from ..understanding.initialize import apply_proposal, propose_initialization
-
-        if arguments.apply:
-            if not arguments.proposal:
-                return ToolResult(
-                    "init",
-                    ".",
-                    "invalid",
-                    findings=(Finding("CONCORDE-INIT-001", "error", ".concorde/config.json", "--apply requires --proposal.", "Pass a project-relative accepted proposal JSON file."),),
-                )
-            return apply_proposal(root, arguments.proposal)
-        return propose_initialization(root, arguments.module_id, arguments.name, configuration)
-    if arguments.tool == "context":
-        from ..understanding.context import bounded_context
-
-        return bounded_context(root, arguments.target)
-    if arguments.tool == "explore":
-        from ..understanding.alignment import explore_alignment
-
-        return explore_alignment(
-            root,
-            arguments.target,
-            graph_path=arguments.graph,
-            alignment_path=arguments.alignment,
-            expected_revision=arguments.revision,
-            query=arguments.query,
-            statuses=arguments.status,
-        )
-    if arguments.tool == "deliver":
-        from ..lifecycle.delivery import apply_delivery, materialize_delivery_proposal, propose_delivery
-
-        if arguments.apply:
-            if not arguments.proposal:
-                return ToolResult(
-                    "deliver",
-                    arguments.target or ".",
-                    "invalid",
-                    findings=(Finding("CONCORDE-DELIVER-008", "error", ".concorde/feature.json", "--apply requires --proposal.", "Pass the project-relative generated delivery proposal."),),
-                )
-            return apply_delivery(root, arguments.proposal)
-        return materialize_delivery_proposal(root, propose_delivery(root, arguments.target))
     if arguments.tool == "docsite":
         from ..autodocs.docsite_scaffold import apply_docsite, propose_docsite
 
@@ -199,6 +96,9 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    if not (list(argv) if argv is not None else sys.argv[1:]):
+        from .scoped_operations import json_main
+        return json_main(PACKAGE_ROOT)
     parser = create_parser()
     arguments: argparse.Namespace | None = None
     try:

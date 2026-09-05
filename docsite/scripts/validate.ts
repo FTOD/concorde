@@ -1,3 +1,4 @@
+import {isScoped,loadScopedRegistry,rewriteLinks} from '../plugins/scoped-content/model';
 import {resolve} from 'node:path';
 
 import {buildRegistry} from '../plugins/concorde-content/registry';
@@ -11,6 +12,12 @@ function projectRoot(): string {
 
 async function main() {
   const root = projectRoot();
+  if (isScoped(root)) {
+    const registry=loadScopedRegistry(root);registry.pages.forEach(p=>rewriteLinks(registry,p));
+    await discoverDiagramDeclarations(root);
+    process.stdout.write(`Validated Profile 8: ${registry.targets.length} targets, ${registry.pages.length} document memberships.\n`);
+    return;
+  }
   await discoverDiagramDeclarations(root);
   const registry = await buildRegistry(root);
   const findings = validateRegistry(registry);

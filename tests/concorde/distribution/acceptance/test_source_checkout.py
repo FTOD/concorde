@@ -18,9 +18,9 @@ class SourceCheckoutDistributionAcceptance(unittest.TestCase):
         value = json.loads(result.stdout)
         self.assertEqual(value["status"], "current")
         self.assertEqual((value["schema_version"], value["tool"]), (2, "status"))
-        self.assertEqual(value["outputs"], 40)
-        self.assertEqual(len(list((REPOSITORY_ROOT / ".agents/skills").glob("concorde-*/SKILL.md"))), 18)
-        self.assertEqual(len(list((REPOSITORY_ROOT / ".claude/skills").glob("concorde-*/SKILL.md"))), 18)
+        self.assertEqual(value["outputs"], 48)
+        self.assertEqual(len(list((REPOSITORY_ROOT / ".agents/skills").glob("concorde-*/SKILL.md"))), 22)
+        self.assertEqual(len(list((REPOSITORY_ROOT / ".claude/skills").glob("concorde-*/SKILL.md"))), 22)
         self.assertFalse((REPOSITORY_ROOT / ".concorde/framework").exists())
         self.assertFalse((REPOSITORY_ROOT / ".specify").exists())
 

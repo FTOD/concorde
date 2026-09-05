@@ -1,407 +1,184 @@
-<!--
-Sync Impact Report
-- Version change: 8.3.0 -> 8.3.1 (PATCH: reconciles realization notes for the approved
-  concept/relationship and typed Operation data principles; those principles are unchanged).
-- Executable compatibility: Concorde package 3.0.0 replaces domain CLI arguments with JSON
-  invocation/result version 1, initialized Operation configuration, and typed nested/leaf handoffs.
-- Initialization Proposal 4 adds explicit operation_configuration and shared reflection defaults;
-  existing projects use digest-bound Configuration Proposal 1 without rewriting architecture.
-- Completion Envelope 2 separates typed investigation output from audit summaries and receipts.
-- Profile 7, Workspace Protocol 13, Package Manifest 2, and Delivery Proposal 9 are unchanged.
-- Migration reconciles code, specs, canonical Skills, projections, installation, and behavioral
-  evidence together. Live model behavior remains distinct from process-double integration evidence.
--->
 # Concorde Constitution
 
-Concorde exists because AI now writes most code. The programmer's problem has shifted from typing the
-implementation to staying oriented: understanding what a project does, how it is structured, and how
-its parts collaborate, without reading every line. Part A states the workflow principles every
-Concorde project follows. Part B states the principles of the Concorde project that makes that
-workflow practical.
-
-## Part A: Workflow Principles
-
-### A.I Fast Human Comprehension at Every Module
-
-The specification MUST be a recursive module hierarchy with a useful stopping point at every module.
-A reader MUST be able to open that module's single `architecture.md`, understand its responsibility,
-boundary, significant entities, immediate child modules, level-local features, and important
-interactions, and stop without opening descendants or source code.
-
-Each feature at that module MUST be understandable from its single durable
-`features/<NNN-name>.md`: what the
-module provides, how a consumer uses it, what can fail, and which architecture entities collaborate.
-Diagrams and generated pages MAY improve orientation, but they never replace the textual entity,
-relationship, interface, and usage definitions. Depth is reached by descending modules or following
-stable entity/feature references, not by reconciling parallel summaries.
-
-Rationale: one architectural entry point and one feature entry point at each level minimize both
-reading time and disagreement. The reader should choose an altitude, not a document role.
-
-### A.II Complete Architecture, Real Implementation
-
-The maintained specification MUST completely describe the abstractions needed to understand,
-extend, and safely change the system: module boundaries; architecturally significant entities;
-stable identities and locators; structural, dependency, control, and data relationships; feature
-interfaces; requirements; failures; and representative usage. A fact has one owning module or
-feature and MUST be reachable by stable ID.
-
-The specification MUST NOT duplicate the implementation. Source code at the checked-out revision is
-the authority for actual algorithms, private helpers, and implementation detail. Tests and
-deterministic checks are the evidence for bounded claims about that code. A module architecture
-inventories modules plus exported, boundary-visible, entry-point, orchestration, schema, shared-state,
-or otherwise architecture-significant entities; it need not list every private symbol or call.
-
-Generated diagrams, sites, indexes, knowledge graphs, reports, and delivery results are disposable
-projections. Temporal plans, tasks, checklists, research, and validation logs live only in the active
-feature attempt. When specification, code, tests, or projections disagree, tooling exposes the
-disagreement instead of manufacturing another narrative authority.
-
-Rationale: completeness means the architecture's concepts and promises are explicit, while the code
-remains the most precise account of implementation. Rewriting code in prose creates stale truth.
-
-### A.III Architecture Is a Typed Entity and Relationship Model
-
-The project MUST be modeled as an acyclic tree of modules rooted at the configured project module.
-Every module has exactly one parent except the root, one clear responsibility, one explicit boundary,
-one `architecture.md`, zero or more immediate child modules, and zero or more level-local features.
-Modules are the only hierarchical specification unit.
-
-Each module architecture MUST define its architecturally significant entities and state what each
-entity is. Preferred types include module, directory, file, script, program, function or method,
-class, interface or type, configuration, schema, endpoint or command, service, pipeline, resource,
-data store, test surface, document, external system, and explicitly defined project-specific types.
-Each entity has a stable identity distinct from its mutable code locator, one owning module, a
-non-circular definition, and important typed relationships.
-
-Relationships MUST be directed and semantically named. The vocabulary SHOULD reuse clear code and
-system relationships such as contains, declares, imports, exports, calls, inherits, implements,
-depends on, provides, requires, routes to, reads from, writes to, transforms, validates, triggers,
-configures, documents, tested by, generates, and realizes. Project-specific predicates MUST define
-their direction and meaning. Interactions explain ordered or conditional collaborations over those
-entities and relationships.
-
-A parent architecture exposes each immediate child module as one bounded entity and MUST NOT copy
-the child's internal inventory. Supporting views show only what is useful at the current level;
-grandchildren and child internals remain owned below.
-
-Rationale: architecture is not a folder list or a feature catalog. Its core is the identity and type
-of the parts plus the relationships that make those parts a system.
-
-The root architecture MUST lead with the project's domain concepts and their relationships before
-its implementation inventory. Define what each concept means, its stable identity, owning module,
-cardinality, lifetime, and source of truth. Distinguish a definition from an instance or execution;
-directories and technology choices alone do not define a concept. A parent owns shared concept
-definitions and exposes child capabilities through their contracts without copying child internals.
-
-For each significant data relationship, architecture MUST identify producer, consumer, named payload
-type/version, carried fields or artifact references, transformation, and failure behavior. Structural
-ownership, execution order, and data transfer are different relationships. A data-flow diagram MAY
-explain transfers, but entity/relationship tables remain necessary for ownership and cardinality.
-Review MUST distinguish implemented behavior, target design, and unverified claims; a structurally
-valid diagram or table does not prove semantic completeness or runtime conformance.
-
-### A.IV Feature Interfaces Are Human-Readable Promises
-
-A feature is one module-level functionality or interface specified exactly once in
-`features/<NNN-name>.md`. Features MUST NOT contain features. Composition, refinement, or
-dependency among features is expressed through stable related-feature references that name their
-relation (`composes`, `refines`, `depends_on`, an inverse form, or symmetric `relates_to`; a plain
-ID means `relates_to`) and MUST remain acyclic where directional.
-
-Every externally meaningful entry point or promise MUST be defined inside the feature design that
-exposes it. The interface definition states the consumer and provider, direction, entry point,
-inputs and the information they encode, outputs, obligations, failure behavior, compatibility, and
-implementing architecture entity references. A commonly adopted machine format MAY be linked by
-name and version; custom serialized behavior MUST still have readable field semantics and at least
-one conforming example in the design. Opaque payloads are prohibited.
-
-Each feature design MUST include an architecture zoom: the visible entities it uses and how they
-collaborate for representative usage. The feature may add behavioral detail but MUST NOT redefine an
-entity's identity, type, ownership, or architecture-level relationship. If a needed entity does not
-exist, its owning module architecture changes in the same reviewed lifecycle.
-
-Rationale: an interface belongs beside the functionality a consumer chooses. Separating promises
-into architecture contract inventories obscures how the module is actually used.
-
-Interface design MUST separate reusable project configuration, per-invocation runtime input, and
-host-derived execution context. Configuration has an initialization/change owner and explicit
-defaults; runtime input has a stable type ID, version, field semantics, required/optional rules, and
-an example. Derived identities, resolved paths, and execution receipts are not caller configuration.
-For structured boundaries, specify how producer output fields become consumer input fields and how
-missing, incompatible, or stale data prevents advancement. A field called `context`, `request`, or
-`result` is insufficient unless its contents and authority are defined.
-
-### A.V Deterministic Validation, Risk-Proportional Review
-
-Validation, rendering, documentation builds, freshness checks, cross-reference checks, workspace
-resolution, and delivery eligibility MUST be deterministic and MUST NOT require an LLM. AI-authored
-architecture or feature changes require explicit maintainer direction and applicable validation.
-An explicitly invoked fast loop or completed normal delivery may apply within its bounded authority
-without a redundant second approval.
-
-The fast-loop exception applies only when deterministic preflight establishes all of the following:
-
-- every affected feature has durable required behavior and no active attempt;
-- the change creates or restructures no module or feature, changes no responsibility, entity
-  ownership, dependency direction, public interface, or project-level compatibility policy;
-- affected architecture, feature designs, code, tests, and generated projections are bounded and
-  reconciled; and
-- proportionate behavioral, hierarchy, entity-reference, interface, freshness, and documentation
-  checks pass.
-
-The delivery exception applies only when one selected feature has a real active attempt with at
-least one recognizable task, every task and existing checklist item is complete and well formed,
-applicable validation has passed, and the maintainer explicitly invokes delivery. Delivery verifies
-a current digest and safe canonical paths, removes exactly that selected stable-ID control attempt,
-and leaves module architecture, feature files, `.concorde/reflections/`, source code, tests,
-and other feature attempts
-byte-identical. It MUST NOT create an implementation narrative or amend architectural intent.
-Ineligibility, ambiguity, unsafe paths, failed validation, or stale inputs preserves the full attempt.
-
-Rationale: authority is trustworthy when scope and evidence are explicit. Removing completed working
-memory is a lifecycle transition, not a reason to create another version of implementation truth.
-
-### A.VI Modules Follow Capabilities, Not Artifact Types
-
-Module decomposition MUST follow business capability, use case, or axis of change, so that the
-things which change together are owned together. A module's responsibility MUST be one capability a
-consumer could ask for, and its features MUST be use cases of that capability rather than inventories
-of what the module happens to contain.
-
-A module MUST NOT be defined by the kind of artifact it collects, such as every Skill, every script,
-every Operation, every model, every controller, or every test, and MUST NOT be a residual bucket such
-as `misc`, `common`, `shared`, or `utilities`. When one use case needs a Skill, a Tool, an Operation,
-a template, and a schema, one module owns all of them. The root module holds only features that span
-the whole project; a use case that belongs to one capability descends to that module.
-
-Physical layout does not determine ownership. A distribution format may keep artifacts in flat
-directories such as `skills/` or `operations/`; each artifact still belongs, through its stable
-entity identity, to the capability module whose use case it realizes. Placing a new feature or
-entity MUST start by naming the capability it serves; a candidate module whose only honest
-responsibility sentence is "contains all X" is evidence that the partition is wrong.
-
-Rationale: a reader looking for how the system does something opens one module and finds the whole
-answer, and a change to one capability touches one module instead of every artifact-type layer. Type
-layers scatter each use case across the tree and push every real feature to the root.
-
-### A.VII Agent Mutations Start in Isolated Worktrees
-
-Read-only inspection MAY run in a repository's primary Git worktree. Any coding-agent request that
-may mutate project or external state MUST establish its Git boundary before planning, persisting a
-feature selection, creating an attempt/checklist/reflection, or performing any other write. Unless
-the maintainer explicitly authorizes mutation of the primary worktree for that exact request, the
-agent MUST resolve the primary worktree's committed `HEAD`, create a unique branch and linked
-worktree at that exact commit, and continue the complete request there. An agent already assigned an
-isolated worktree MUST remain there and MUST NOT create a nested worktree merely to enter another
-phase. Independently mutating agents MUST NOT write concurrently to one worktree.
-
-Every staged, unstaged, untracked, or ignored path in the primary worktree is outside the default
-request authority and MUST be treated as another programmer's state. An agent MUST NOT use those
-bytes as planning or implementation input, stash/apply them, copy them into its worktree, commit
-them, reset them, clean them, or otherwise import or alter them. If required input is absent from the
-committed base, the agent stops and reports the missing input. A generic request to plan, implement,
-or fix something is not authorization to mutate the primary worktree; the exception must name that
-boundary explicitly. A non-Git checkout likewise requires explicit current-directory mutation
-authorization because no committed linked-worktree base exists.
-
-The worktree remains bound to its captured base until integration. If the integration branch
-advances, reconciliation occurs in isolation and all applicable validation reruns before merge.
-Merge, worktree removal, and branch deletion remain explicit integration/cleanup actions and MUST
-preserve unrelated primary-worktree state.
-
-Rationale: a dirty primary worktree commonly belongs to another programmer. Treating its transient
-bytes as authoritative input creates hidden coupling, lost files, and unsafe cleanup; an immutable
-committed base plus one isolated worktree makes ownership and review explicit.
-
-## Part B: Project Principles
-
-### B.I Concorde Ships a Usable Workflow
-
-Concorde's product MUST be a repeatable, installable, end-to-end workflow that lets a project live by
-Part A: initialize a root architecture, find a feature's module, retrieve bounded context, specify a
-feature and its interface, plan and execute against code reality, validate the entity model, deliver
-the attempt, and publish comprehensible views. Its core callable concept is an Operation: one stable definition exposed by one associated Skill
-and realized by at least one executable Python script with one primary entry point. A particular
-invocation and its configuration/input/result are distinct entities. The current Package Manifest 2
-realization MUST preserve three explicit levels: Scripts expose bounded deterministic Tools; canonical leaf Skills invoke Tools and declare
-exposure plus integration-neutral effects; and paired LangGraph Operations compose two or more
-ordered direct Skills or public Operations with state, ordering, branching, retries, gates, or other
-controls. Operation composition MUST be acyclic and nested Operations MUST remain opaque to parents.
-Every distributable part MUST declare responsibility, version, dependencies,
-compatibility, deterministic inputs, outputs, and failure behavior.
-
-Each leaf Skill MUST have exactly one canonical `skills/<name>/SKILL.md` authority, MUST embed no
-multi-Skill loop, and MUST declare public/internal exposure plus exact read/write/network/credential
-effects whenever an Operation composes it. Public leaves remain independently invocable; internal
-leaves are package/runtime implementation capabilities and MUST NOT project to users. Each Operation MUST have exactly one
-`operations/<name>/operation.py` execution authority and one associated `SKILL.md` invocation and
-behavioral contract and MUST be public. Installation MUST project public leaf Skills and Operation
-skills into the user's agent Skill namespace while retaining every packaged leaf and paired Python
-graph in the installed framework.
-
-An Operation-composed path-sensitive leaf MUST consume the host's canonical digest-bound Protocol 13
-receipt as its already-completed workspace gate rather than reopening global resolver inputs from a
-narrower sandbox. Native integration bootstrap MUST be attested, read-only, separately digested, and
-excluded from task authority. A real agent process MUST return a versioned typed completion whose
-identity, semantic status, limitations, and gate evidence are validated before its result enters
-Operation state; process exit zero or free-form prose alone MUST NOT establish success.
-
-### B.II Concorde Self-Applies and Explicitly Evolves Its Protocol
-
-Concorde MUST develop every normal change under Part A using its own tooling. Self-application is the
-acceptance test that the workflow is practical rather than aspirational. Concorde's own architecture
-is therefore partitioned by capability under A.VI: understanding, lifecycle, reflections,
-capabilities, distribution, and auto-docs.
-
-Concorde is also the only project that defines, implements, and consumes the complete normative
-Concorde Protocol. Every change to that Protocol's semantics MUST use the root Protocol-evolution
-feature rather than an attempt, fast loop, standard development loop, or delivery. The maintainer
-MUST explicitly authorize the cutover from an exact committed checkpoint; the change MUST be authored
-directly in an isolated Git worktree, reconcile every affected maintained and executable authority,
-pass complete target-state validation, and merge as one reviewable cutover commit. No active
-Protocol-evolution attempt may exist. A failed cutover leaves the base checkout unchanged and is
-abandoned or reverted through Git. A code or test fix that restores already specified Protocol
-semantics remains normal lifecycle work. Staged, unstaged, untracked, or ignored state in the
-primary worktree is neither cutover input nor a preflight blocker; it remains untouched and absent
-from the isolated target.
-
-## Project Constraints
-
-- Concorde owns its complete lifecycle: constitution, specification, clarification, planning, tasks,
-  implementation, convergence, bounded context, validation, delivery, installation, and publication.
-  No external specification framework is an authority or runtime dependency. Canonical public
-  capability names use the `concorde-*` Skill namespace and MUST NOT imply external ownership.
-- Canonical distributable sources are root `scripts/`, `skills/`, `operations/`, `templates/`,
-  `src/concorde/`, and `agent-assets/` plus Package Manifest 2 in `concorde.json`. Generated
-  Codex/Claude surfaces are projections.
-- In the current Package Manifest 2 realization, a registered Operation is a LangGraph that
-  composes at least two ordered direct capabilities, each
-  a canonical leaf Skill or another public paired Operation. Composition cycles are invalid. Initialization,
-  context retrieval, exploration, validation, delivery, and other bounded deterministic runtime
-  actions are Tools, even when invoked through a CLI subcommand or Skill.
-- A maintained Operation Python file without its associated Markdown skill, a leaf Skill that embeds
-  multi-Skill graph topology, or a canonical capability retained in a legacy flat/example layout is
-  invalid. Concorde MUST NOT ship a compatibility reader, alias source, or implementation shim for the
-  retired layout.
-- Rendering and publication tools (currently Archify and Docusaurus) are generated read models.
-  Replacing a tool is permitted; making a generated output a source is not.
-- Understand Anything may supply adapter types and relationships for exploration, but Concorde's
-  recursive modules, stable entity identities, feature ownership, and authority boundaries remain
-  normative. A UA layer or path-derived node ID is not a Concorde module or durable entity identity.
-
-## Workflow Standards
-
-- Every module, architecture entity, feature, interface, scenario, and reflection MUST have a stable
-  identity in its owning scope, and every reference MUST resolve. Module containment and directional
-  feature relationships MUST be acyclic.
-- Canonical module paths are `<module>/architecture.md` and `<module>/modules/<child>/`; canonical
-  feature paths are `<module>/features/<NNN-name>.md`. A module contains no workflow-control child.
-  Temporal work lives at `.concorde/attempts/<stable-feature-id>/` and is absent when that feature has
-  no active attempt; tracked process memory lives in `.concorde/reflections/<bucket>/R-NNN.md` with a
-  metadata-only allocation index.
-- Every agent-authored mutation uses A.VII's committed-base isolated-worktree boundary before
-  planning or control-state creation. Primary-worktree dirty bytes never extend a feature's input
-  authority, and only an explicit maintainer instruction may enable the primary-worktree override.
-- Stable feature IDs, not filenames or module paths, key attempts and MUST use a safe lowercase
-  qualified grammar. A planned feature with no authored ID exposes no attempt path; specification
-  reruns workspace resolution after front matter before creating its checklist.
-- A module architecture MUST declare its immediate module and feature inventory, directly owned
-  entity inventory, typed directed relationships, and representative interactions. Entity locators
-  resolve to real project paths/symbols or state why the entity is external or conceptual.
-- A feature design MUST state outcome, scope, related features, representative usage, requirements,
-  edge/failure behavior, embedded interfaces, and its architecture zoom.
-- Architecture-owned diagrams are optional maintained explanations, MUST be referenced by the owning
-  `architecture.md`, and MUST carry textual counterparts and reproducible output provenance. A
-  diagram never defines an entity, relationship, feature requirement, or interface independently.
-- Interface format, semantics, examples, affected feature references, implementing entity links, and
-  evidence change together.
-- A `related_features` entry is `{id, relation}` with `relation` from `composes`, `refines`,
-  `depends_on`, `composed_by`, `refined_by`, `depended_on_by`, or `relates_to`; a plain ID is
-  `relates_to`. After inverse forms normalize, each directional family MUST be acyclic, validation
-  MUST report unknown relations and cycles, and publication MUST derive one typed feature graph from
-  these entries and interface ownership as a projection with a textual counterpart.
-- Generated pages and diagrams carry source provenance and generator version, provide a textual
-  representation, and are reproducible from maintained sources.
-- Package Manifest 2 MUST inventory leaf Skills and paired Operations separately, require globally
-  unique safe names across both sets, and bind each Operation's Markdown `capabilities` declaration
-  to its Python entry point, literal ordered topology, and exact per-occurrence policies without
-  importing arbitrary graph code during validation. Internal leaves remain in the leaf inventory but
-  are absent from public projections.
-- Workspace Protocol 13, Delivery Proposal 9, Tool result envelopes, capability-surface status schema
-  2, and reflection-triage/v4 MUST use `tool` for bounded deterministic actions. Operation metadata is
-  reserved for paired LangGraph execution.
-- Concorde Protocol is the complete normative process by which a selected feature is resolved,
-  permission-bounded, specified, planned, executed, validated, reflected on, and delivered, together
-  with the Source Profile and control-state rules that make those phases authoritative. Feature
-  Workspace Protocol is one serialized component of Concorde Protocol, not its synonym. Every
-  Concorde project consumes the Protocol; only the Concorde repository defines, implements, and
-  self-applies it.
-- Structural conformance is not implementation proof. Completion claims name the executable tests
-  or checks and the exact scope each result establishes.
-- No stored status substitutes for verification. A feature design carries no evidence-status field;
-  every attempt to resolve a reflection re-verifies the recorded problem against the current
-  checkout before acting, and a problem that no longer reproduces is dismissed, never implemented.
-
-## Development Workflow and Quality Gates
-
-Every material change except normative Concorde Protocol evolution proceeds through the Concorde
-lifecycle inside the A.VII worktree boundary. Before specification, planning, attempt creation, or
-any other mutation, the acting agent creates or enters its committed-base isolated worktree unless
-the maintainer explicitly authorized primary-worktree mutation. Specification first
-identifies the feature's module, related features, affected architecture entities, interface changes,
-representative usage, and expected source/test evidence. Architecture changes are written in the
-owning module; feature behavior and interfaces are written in the owning feature design.
-
-Normative Concorde Protocol evolution follows B.II instead: it creates no attempt or checklist,
-invokes no lifecycle or delivery capability, and changes the complete specification/code/test/control
-boundary directly in one isolated worktree created from the exact committed base. Uncommitted primary
-state is excluded and preserved. The target checkout MUST pass all applicable deterministic
-validation before its single cutover commit is eligible to merge.
-
-Planning and review use the selected feature design, bounded module architecture and ancestry,
-bounded related-feature summaries, current code/tests, and the selected temporal attempt. They MUST
-NOT depend on feature abstracts, accepted-realization prose, module summary/design pairs, nested
-subfeature workspaces, or specification-owned contract directories.
-
-Leaf Skills and Operations MUST resolve only the context their contracts authorize. An Operation
-MUST load canonical direct capability bodies rather than duplicate or flatten them, preserve declared
-stage/capability order and nested boundaries, make state/control transitions inspectable, and stop or
-route failures as its paired skill documents. Before every direct leaf launch, trusted code MUST
-resolve concrete non-symlink paths, prove the Operation binding narrows the leaf's effects, render a
-supported native or equivalently narrow outer sandbox configuration, attest any exact external
-client executable needed only for runtime bootstrap, and require matching workspace, completion,
-launch, configuration, bootstrap, and enforcement receipts.
-Multi-leaf stages MUST NOT share the union of their effects. Missing, widened, unsafe, or unenforceable
-policy, runtime bootstrap, semantic completion, and Tool failures remain explicit and MUST NOT enter
-prior-result state or silently fall through to another source.
-
-Tasks explicitly reconcile every affected architecture, feature interface, code path, test, and
-generated projection. Implementation records compact evidence in the attempt before completing each
-task. Deliberate compromises or difficult choices are recorded as one
-`.concorde/reflections/<bucket>/R-NNN.md` document with their scope, observed limitation, current
-action, and improvement path; they do not block a prototype when a safe bounded assumption permits
-progress.
-
-Before delivery, all applicable deterministic hierarchy, layout, entity/reference, interface,
-behavioral, package, documentation, and freshness checks pass. Delivery removes the complete attempt
-and changes nothing else. A milestone is incomplete while maintained specifications, executable
-reality, tests, and generated projections contain an unreported disagreement.
-
-## Governance
-
-This constitution is Concorde's highest-authority governance document. Feature designs, plans, tasks,
-implementation choices, review conventions, and generated guidance MUST comply with it; where
-another project document conflicts, this constitution prevails until reconciled.
-
-An amendment MUST describe motivation, affected principles, compatibility impact, required migration,
-and the semantic version bump. Explicit maintainer direction for the change constitutes review; all
-affected templates and artifacts are reconciled in the same milestone or named in the reflection log
-with a concrete improvement path.
-
-Versions follow semantic versioning. MAJOR removes or incompatibly redefines a principle, MINOR adds
-or materially expands a mandatory obligation, and PATCH clarifies wording. Every feature and
-architecture review includes a constitution check. Reviewers reject unexplained violations,
-invisible boundary changes, duplicated canonical intent, and implementation claims without evidence.
-
-**Version**: 8.3.1 | **Ratified**: 2026-08-19 | **Last Amended**: 2026-09-05
+Version: 9.0.0. Architecture Profile 8; Workspace Protocol 14; Delivery Proposal 10.
+
+## Part A: universal Concorde principles
+
+# Concorde Workflow Principles
+
+Protocol 1.0.0. These principles apply to every Concorde project.
+
+### P1. Business scope and implementation structure are separate dimensions
+
+A project MUST distinguish Domain scopes from its Service/Module component structure.
+
+| Concept | Meaning | Primary specification obligations |
+|---|---|---|
+| Domain | A scope within which a business or problem-space vocabulary, rules, and system behavior are explained. | Define significant entities, their relationships and responsibilities, interaction triggers, invariants, state transitions, completion, failure, and retry semantics where applicable. Explain how the system operates within this scope, including relevant features. |
+| Service | A self-contained capability with a clearly specified interaction boundary. | Describe consumer-facing features and their usage, then define complete boundary contracts: entry points, configuration, runtime inputs, results, effects, errors, compatibility, and applicable retry/idempotency behavior. |
+| Module | A cohesive implementation responsibility exposed through an explicit API. | Define provided and required APIs, including signatures, types, preconditions, results, state/effect obligations, and failure behavior. Function calls are valid interactions. |
+
+A Service's boundary can use an executable, a file exchange, HTTP, or another explicitly defined
+or versioned standard format. Deployment topology is a separate declared property. A Module's
+Spec MUST describe its interface rather than its algorithms or private implementation.
+
+Domain MUST NOT be treated as a third component kind in one universal Domain/Service/Module
+containment tree. The model MUST distinguish at least:
+
+- Domain scope nesting: one Domain narrows a broader Domain's problem space.
+- Component composition: a Service or Module is composed using other Services or Modules.
+- Scope participation: a Service or Module participates in a Domain with a stated role.
+- Behavioral relationships: entities call, produce, consume, constrain, or otherwise interact
+  using named relationships with explicit direction and meaning.
+
+Scope nesting and structural containment MUST be acyclic. They MUST NOT determine each other's
+parent relationships. Scope participation MAY overlap: a shared Service or Module can participate
+in multiple Domains without acquiring duplicate component identities or implementations. Each
+Domain explains the role relevant to its own scope. Participation does not automatically grant
+context access or mutation authority.
+
+Business entities such as Account, Transfer, and Daily Limit MUST have meaningful definitions
+and responsibility assignments where they matter. They do not each require a separate Domain,
+Service, or Module Spec. A Domain is responsible for explaining, for example, who checks a Daily
+Limit, when a Transfer is allowed, what completion means, and which failures permit retry.
+
+### P2. Features and APIs describe the appropriate consumer view
+
+A Service Spec MUST explain its consumer-facing features: what a consumer can accomplish, how
+the Service is used, and the associated promises and failures. Its boundary schemas MUST make
+those promises executable and unambiguous.
+
+A Module Spec MUST describe its APIs directly. Concorde MUST NOT require authors to wrap each
+Module API in an artificial Feature document. Interface signatures and usage examples in a Spec
+are permitted contract content; they do not authorize reading implementation source.
+
+A Domain Spec MUST emphasize operating principles and collaborations. It MAY describe features
+observable within its scope, including behavior that spans multiple Services or Modules.
+
+Features and APIs used for selection, traceability, or lifecycle work MUST have stable identities
+independent of document paths. A Feature or API belongs to its providing Spec target. Neither its
+identity nor its filename creates an independent permission boundary. Concorde MUST NOT require a
+separate Feature file or one Feature per Markdown file.
+
+### P3. Every Spec is a self-contained document collection
+
+Every Domain, Service, and Module MUST have a stable Spec target identity and an explicitly
+registered, nonempty collection of Markdown documents. Their filenames and division into
+documents are unconstrained by the Protocol. Membership MUST be explicit; directory traversal,
+links, and scope or component relationships MUST NOT implicitly add documents.
+
+The complete collection MUST explain that target without requiring its parent, ancestors,
+children, collaborating components, or other Domains' Specs. This obligation applies to each
+target's stated responsibilities and supported uses. A Domain's completeness is about the system
+within its scope; it does not require enumerating every participating component's private details.
+
+Necessary overlap between Specs is permitted and expected. If A uses B:
+
+- A explains when and why it uses B, the contract it requires, the data it sends, and how it
+  handles B's results and failures.
+- B explains how callers may use it and the obligations and behavior it provides.
+
+Each side MUST contain the information needed from its own perspective. A link to the other side
+cannot substitute for that information. Shared contract identities and versions support
+compatibility checks on common facts and obligations; the two descriptions need not use identical
+wording. Structured checks establish the compatibility they actually cover, while semantic review
+must report its evidence and limitations.
+
+A parent's explanation of organization and a child's explanation of its own behavior MAY repeat
+facts. Relationship references support navigation and consistency checking without becoming
+context inheritance. A named external standard does not grant permission to fetch its contents;
+task-relevant usage rules must be available in the admitted Spec context.
+
+### P4. Global principles and kind definitions are versioned context
+
+Concorde MUST distribute the global workflow principles and the definitions of Domain, Service,
+and Module as versioned Protocol assets. Every installed project MUST bind to an explicit
+compatible Protocol version. Initialization, updates, validation, and execution MUST agree on
+that binding.
+
+For a Spec target, Concorde MUST automatically include the global principles and the corresponding
+kind definition in its context. These additions MUST be visible in the resolved context manifest.
+Project-specific rules MAY supplement the global principles but MUST NOT weaken them. Business
+facts needed to understand a target must remain available in that target's own document collection;
+an ancestor's Spec cannot become an implicit global supplement.
+
+Concorde's own business decomposition is an application of these rules. It MUST NOT become a
+required Installation/Documentation/Workflow decomposition for other projects.
+
+### P5. Each agent invocation has one explicit, reproducible context
+
+Every agent task MUST bind to one explicit Spec target and a concrete context snapshot before
+execution. A Feature or API identifier MAY focus the task within that target, but MUST NOT silently
+replace its complete document collection with partial retrieval results.
+
+The context manifest MUST identify the target and kind, document membership and content digests,
+Protocol and kind-definition versions, Operation instructions, task input, phase, and any admitted
+stage artifacts or structured tool results. A context identity MUST cover membership as well as
+content. A change to admitted inputs produces a new snapshot rather than silently changing the
+meaning of an existing identity.
+
+Task intent, immutable Spec inputs, and explicit execution evidence have distinct roles. Prior
+conversation transcripts, free-form predecessor summaries, unrelated Spec excerpts, and arbitrary
+tool output MUST NOT become undeclared input channels. Inputs and outputs generated during a stage
+MUST follow declared artifact contracts and read/write boundaries.
+
+The trusted host may use the project registry to resolve targets and permissions. That authority
+does not grant an agent general access to the registry's other Spec bodies. Cross-target work
+MUST use separately bound invocations and explicit data contracts between them. Scope membership,
+composition, hyperlinks, and a caller-supplied file path are not permission grants.
+
+### P6. Insufficient information is a Spec gap, not permission to search
+
+When the admitted context lacks information required to carry out a task, the agent MUST report
+Spec incomplete for that task. It MUST identify the unresolved question or missing contract,
+the step it blocks, the selected Spec target, and the context snapshot used for the judgment.
+It MUST NOT infer missing obligations from another Spec or from implementation code.
+
+Concorde MUST distinguish missing information from an outcome already determined by an explicit
+rule, conflicting requirements, and a failed execution. A known prohibition does not establish a
+Spec gap. An execution or model failure alone does not prove missing information.
+A missing runtime value whose requirement and missing-value behavior are already specified is
+an input/admission failure, rather than evidence that the Spec's semantics are incomplete.
+
+A context-solving Operation MUST assess the task using its admitted collection. It MUST NOT
+expand that collection to make the task appear answerable. A gap is resolved by supplying and
+reconciling the missing information through an explicit Spec-authoring task, producing a new Spec
+revision, and resolving a new context before the blocked task resumes. Cross-target contract
+changes require the affected local views to be reconciled.
+
+Structural validation MUST remain deterministic. A task-specific agent assessment can reveal a
+semantic gap, but MUST NOT claim to prove completeness for all possible future tasks.
+
+### P7. Execution enforces the agent's cognitive boundary
+
+All Concorde agent entry points MUST execute through an Operation host that establishes and
+enforces their context. This includes exploration, initialization, specification, planning,
+implementation, validation, fast loops, and reflection work. A public Skill can initiate an
+Operation; it MUST NOT bypass the host to perform the bounded task in an ambient conversation.
+
+Only the implementation phase may expose authorized implementation source to an agent. Code
+inspection, debugging, and code review therefore require an implementation invocation. Other
+phases consume the declared Spec context and contracted task/evidence inputs. Reflection
+investigation or initialization does not create an additional code-reading exception.
+
+The host MUST enforce reads, writes, searches, commands, network access, and tool outputs against
+the same task boundary. A context manifest is data; the execution grant is host-issued authority
+bound to that data, the phase, and the invocation. Caller configuration and artifact references
+MUST NOT supply replacement authority. Unsupported enforcement MUST prevent execution.
+
+Deterministic tools MAY read separately authorized code to compile, test, or otherwise validate
+it. Non-implementation agents may receive only the tool's declared validation result, bound to the
+relevant checks and revisions. Raw logs, source snippets, and stack traces MUST NOT be injected
+automatically. A tool with broader execution access MUST NOT expose an arbitrary read or command
+proxy to the agent. When interpreting a failure requires code inspection, Concorde dispatches an
+implementation task.
+
+Agent executions MUST start in fresh, controlled contexts. Changing a target or leaving an
+implementation phase MUST NOT reuse a conversation that has already seen now-excluded material.
+Removing file permissions cannot remove prior cognitive inputs. The guarantee covers admitted
+project information and tool access; it does not claim to erase a model's general prior knowledge.
+
+
+## Part B: Concorde project application
+
+The explicit registry is .concorde/specs.json. domain.concorde is the project entry scope. Every consumer project must follow Part A and receive the pinned global principles and its target kind definition. The current refactor adopts two independent architectural dimensions, exact local context collections, host-enforced fresh sessions, typed Operation handoffs and explicit Spec gaps. Runtime, distribution, self Specs and human publication must change together. Legacy Profile 7 utilities may inspect old fixtures deterministically but must never supply cognitive inputs to a Profile 8 agent.

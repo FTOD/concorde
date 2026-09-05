@@ -19,6 +19,8 @@ CredentialPosture = Literal["none", "declared"]
 
 PATH_ROLES = frozenset(
     {
+        "spec-context",
+        "implementation",
         "selected-feature",
         "module-architecture",
         "module-ancestry",
@@ -254,10 +256,10 @@ def resolve_skill_prompt(
         if operation_value != "operation.py":
             raise SkillAssetError(f"Operation {name} must declare operation: operation.py")
         capabilities_value = metadata.get("capabilities")
-        if not isinstance(capabilities_value, list) or len(capabilities_value) < 2 or not all(
+        if not isinstance(capabilities_value, list) or not all(
             isinstance(item, str) and SKILL_NAME.fullmatch(item) for item in capabilities_value
         ):
-            raise SkillAssetError(f"Operation {name} must declare at least two valid capabilities")
+            raise SkillAssetError(f"Operation {name} must declare its exact capability list")
         composed = tuple(capabilities_value)
         launcher = _framework_path(framework_prefix, "scripts/run-operation.py")
         operation = _framework_path(framework_prefix, f"operations/{name}/operation.py")

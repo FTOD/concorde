@@ -93,72 +93,7 @@ class WorktreeBoundaryTests(unittest.TestCase):
             self.assertFalse(explicit.isolated)
             self.assertEqual(explicit.head, "")
 
-    def test_workspace_adapter_rejects_primary_and_accepts_linked_worktree(self):
-        with tempfile.TemporaryDirectory() as directory:
-            parent = Path(directory)
-            primary = parent / "primary"
-            shutil.copytree(CONTEXT_PROJECT, primary)
-            git(primary, "init", "-q")
-            git(primary, "add", "-f", ".")
-            git(
-                primary,
-                "-c",
-                "user.name=Concorde Test",
-                "-c",
-                "user.email=concorde@example.invalid",
-                "commit",
-                "-qm",
-                "fixture",
-            )
-            adapter = REPOSITORY_ROOT / "scripts/workspace.py"
-            command = (
-                sys.executable,
-                str(adapter),
-                "--project-root",
-                str(primary),
-                "--phase",
-                "plan",
-                "--feature-path",
-                "specs/example/features/001-deliver.md",
-            )
 
-            rejected = subprocess.run(command, capture_output=True, text=True)
-
-            self.assertEqual(rejected.returncode, 1)
-            self.assertIn("primary Git worktree", json.loads(rejected.stdout)["error"])
-
-            linked = parent / "isolated"
-            git(primary, "worktree", "add", "-qb", "agent/adapter", str(linked), "HEAD")
-            accepted = subprocess.run(
-                (*command[:3], str(linked), *command[4:]),
-                capture_output=True,
-                text=True,
-            )
-            self.assertEqual(accepted.returncode, 0, accepted.stderr or accepted.stdout)
-            self.assertEqual(json.loads(accepted.stdout)["status"], "resolved")
-
-    def test_actual_operation_execution_rejects_primary_before_agent_launch(self):
-        with tempfile.TemporaryDirectory() as directory:
-            primary = self.create_repository(Path(directory))
-            from tests.concorde.support.operation_json import configure, invocation
-            (primary / ".concorde").mkdir()
-            (primary / ".concorde/config.json").write_text("{}")
-            configure(primary)
-            for name in ("concorde-plan", "concorde-standard-dev-loop", "concorde-reflections-triage"):
-                with self.subTest(operation=name):
-                    data = {"feature_path": "specs/example/features/001-deliver.md", "request": "Apply the bounded change"}
-                    if name == "concorde-reflections-triage":
-                        data.update(action="investigate", reflection_ids=["R-001"])
-                    result = subprocess.run(
-                        [sys.executable, str(REPOSITORY_ROOT / "operations" / name / "operation.py")],
-                        cwd=primary, capture_output=True, text=True,
-                        input=json.dumps(invocation(name, data, mode="execute")),
-                    )
-                    self.assertEqual(result.returncode, 3)
-                    payload = json.loads(result.stdout)
-                    self.assertIsNone(payload["output"])
-                    self.assertIn("primary Git worktree", payload["errors"][0]["message"])
-                    self.assertNotIn("codex exec", result.stderr)
 
 
 

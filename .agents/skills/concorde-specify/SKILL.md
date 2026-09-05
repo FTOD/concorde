@@ -1,169 +1,92 @@
 ---
 name: concorde-specify
-description: "Create or update one direct module-level feature file."
+description: "Run specify through Concorde's enforced Spec context and JSON boundary."
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "skills/concorde-specify/SKILL.md"
-  kind: "skill"
+  source: "operations/concorde-specify/SKILL.md"
+  kind: "operation"
   exposure: "public"
+  entrypoint: "operations/concorde-specify/operation.py"
 ---
-## User Input
+# concorde-specify
 
-```text
-$ARGUMENTS
+Invoke this Operation to specify. The host owns context
+resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
+input; do not perform it directly in this ambient conversation or inspect additional project files.
+
+Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-operation.py operations/concorde-specify/operation.py`. Its exact fields
+are type_id, schema_version:2, operation_id:"concorde-specify", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-specify-request@1).
+Task requests select target_id and task, with optional focus_id, constraints, and change_id.
+Initialization/migration use their typed propose/apply requests; use the published request schema.
+No domain flags or positional task arguments are accepted. Configuration is never a context grant.
+
+Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of
+searching other Specs. The host captures a committed-base worktree for mutations when necessary.
+Its result names that workspace. Report Spec gaps or blocked execution as returned; do not work
+around the boundary. Non-implementation agents never receive implementation code or raw test logs.
+
+## Input TypedValue schema
+
+This complete schema is the invocation's input field. It does not grant project reads.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "type_id": {
+      "const": "concorde-specify-request"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "data": {
+      "$ref": "#/$defs/concorde-specify-request"
+    }
+  },
+  "required": [
+    "type_id",
+    "schema_version",
+    "data"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "concorde-specify-request": {
+      "type": "object",
+      "properties": {
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task": {
+          "type": "string",
+          "minLength": 1
+        },
+        "focus_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "change_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "target_id",
+        "task"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
 ```
-
-# Specify a Concorde Feature
-
-## Isolated worktree gate
-
-After applying any Protocol-evolution guard, read-only inspection may remain in the primary
-worktree. Before planning, selection persistence, attempt/checklist/reflection creation, an external
-mutation, or any other write, unless the maintainer explicitly authorizes primary-worktree mutation
-for this request, resolve only the primary worktree's committed `HEAD`, create a unique branch and
-linked worktree at that exact commit, and continue the complete request there. If already in an
-isolated worktree, stay there and do not create a nested worktree. Treat every staged, unstaged,
-untracked, or ignored primary-worktree path as another programmer's state: never use it as input,
-stash it, copy it, commit it, reset it, clean it, or otherwise import or alter it. If required input
-is absent from committed `HEAD`, stop and report the missing input. `--allow-primary-worktree` is
-valid only after an explicit instruction to modify the primary worktree; a generic task request is
-not that authorization. A non-Git checkout likewise requires explicit current-directory mutation
-authorization.
-
-Create or revise exactly one complete durable feature file. A feature is a level-local
-capability of one module, never a hierarchy container. Its purpose, usage, requirements, embedded
-interfaces, failures, and Architecture Zoom all belong in that one document.
-
-## Concorde Protocol evolution guard
-
-Before workspace resolution or any write, detect the Concorde repository by package name
-`concorde` and root module `module.concorde`. If the request changes normative Concorde Protocol
-semantics as defined by `feature.concorde.define-project-ontology`, stop: do not persist selection,
-create/revise a feature through this Skill, or create an attempt/checklist. Report the direct,
-isolated-worktree route `feature.concorde.evolve-protocol`. A code/specification correction that only
-restores already specified Protocol semantics remains normal work.
-
-## Workspace gate
-
-Before resolving templates, reading feature artifacts, or writing anything, run `python3 scripts/workspace.py --phase specify` from the
-project root. Require a successful Protocol 13 result (`schema_version: 13`) whose status is
-`resolved` or `selected`. Treat returned paths as the sole authority:
-
-- identity: `feature_id`, `feature_path`, and `providing_module`;
-- durable context: `feature_path`, `module_architecture`, bounded `module_ancestry`, and bounded
-  `related_features` summaries;
-- temporal context for an existing feature: stable-ID-derived `attempt_dir`, `attempt_state`,
-  `checklists_dir`, and returned attempt paths;
-- process context: `reflections` and its open count; and
-- executable context: deterministic source/test roots or inventory hints.
-
-For a missing feature, require `feature_id: null`, `attempt_state: unresolved`, and null temporal
-paths. `phase_root` remains `feature_path`. Those nulls are a safety boundary, not paths to derive or
-replace locally.
-
-Do not derive alternate roots. Related-feature summaries and module ancestry are navigation only;
-do not load another feature body or attempt unless the user's requested relationship makes that body
-an explicit dependency. Reject a selected path outside the providing module's direct
-`features/<NNN-name>.md` file.
-
-## Authoring workflow
-
-1. Consider `$ARGUMENTS` as the complete feature description. If it is empty, stop and ask for the
-   intended capability.
-2. Read the providing module's `architecture.md` as bounded structural authority. Confirm the
-   module responsibility and boundary, immediate feature inventory, and all entities/interfaces the
-   proposed feature will reference. Confirm placement by capability (constitution A.VI): the
-   providing module must be the one whose capability this feature is a use case of, not the module
-   that happens to hold the same kind of artifact, and a project-wide use case belongs at the root
-   only when no single capability module owns it. If the honest providing module would be an
-   artifact-type layer or a residual bucket, route the partition to architecture work before
-   specifying the feature. Require its declared Archify `architecture` system overview to
-   show the principal entities and directed relationships. If the overview is absent, invalid, or
-   inconsistent with the architecture text, route that module to architecture work before declaring
-   the feature ready. Do not descend into child modules merely because they exist.
-3. Read `./templates/feature-template.md` as the format reference. Use the returned `feature_path`;
-   create its `features/` parent only when Protocol 13 identifies a new canonical feature selection.
-   A missing feature has no trustworthy attempt key until its front-matter stable ID exists: do not
-   derive an ID from its filename or module, and do not create a provisional attempt.
-4. Write one self-contained design with:
-
-   - front matter containing stable `id`, `kind: feature`, `module`, `related_features`, and provided
-     and required interface IDs;
-   - observable Outcome and Scope;
-   - representative success, edge, and failure Usage;
-   - User Scenarios & Testing, testable Requirements, assumptions, and measurable Success Criteria;
-   - one `## Interfaces` section defining every meaningful entry point's consumer/direction, inputs,
-     outputs, obligations, failures, compatibility, example, and implementing architecture entities;
-   - one `## Architecture Zoom` that references visible entity IDs and explains their collaboration
-     without redefining entity identity, type, locator, or ownership; and
-   - typed `related_features` entries, each `{id, relation}` with `relation` from `composes`,
-     `refines`, `depends_on`, their inverse forms `composed_by`/`refined_by`/`depended_on_by`, or
-     symmetric `relates_to`, explained in `## Related Features`; a feature that requires another
-     feature's interface declares at least `depends_on`; directional relations stay acyclic.
-
-5. Existing `contract.*` identifiers may remain as interface identities, but their semantics live in
-   this design. Do not create a separate interface document or directory. Executed schemas/examples
-   belong with source or tests, not beside the direct feature file.
-6. The feature owns no diagram source. It may link the providing module's required system overview or
-   another architecture-owned explanatory view. Verify that the system overview exists and that each
-   referenced declaration has a
-   normalized project-relative `.html` output below `generated/`, its source-relative `meta.output`
-   resolves to that same unique target, and `meta.legend.mode` is `hidden`. Route an invalid module
-   declaration to architecture work; do not repair it silently during feature specification.
-7. For a newly created feature, reconcile only the providing architecture's immediate feature
-   inventory entry after the design is ready. Any needed entity, relationship, interaction, or
-   diagram change is an architecture change: surface it explicitly for review rather than inventing
-   structural facts in the feature.
-8. After writing a new feature and reconciling its module inventory, run `python3 scripts/workspace.py --phase specify` again. Require
-   Protocol 13 to resolve the exact non-null stable feature ID and return
-   `.concorde/attempts/<stable-feature-id>/`; reject any basename-derived, module-local, or mismatched
-   attempt path.
-9. Create or re-evaluate the built-in requirements-quality checklist only at the second response's
-   returned `checklists_dir/requirements.md`. Checklist marks judge the quality of requirements, not
-   product completion. Never create a compatibility copy beside the direct feature file.
-10. Persist Concorde selection in `.concorde/feature.json`; it is control state, not design
-   authority.
-
-## Entity and handoff completeness
-
-Start from the project's core concepts rather than directory names. Check stable identity, owner,
-definition-versus-instance, lifetime/source of truth, and structural relationship cardinality in
-the owning architecture. For each data-bearing interface separate initialized configuration,
-runtime input, and host-derived context. Define stable payload type IDs/versions, fields/types,
-required/default/null rules, and JSON examples. Record producer → consumer field mappings and
-missing/incompatible/stale-input behavior; `context` or `prior results` without field semantics is
-an unresolved contract. Use entity tables for structure and a DFD for transfers when useful.
-Distinguish target design from supported invocation and name the current implementation gap.
-
-## Quality gate
-
-Before reporting readiness, verify:
-
-- one canonical direct feature file exists and there is no feature wrapper directory;
-- the feature ID and providing module resolve uniquely;
-- every interface named in front matter is defined or explicitly external-required;
-- each interface covers consumer/direction, entry points, inputs, outputs, obligations, failures,
-  compatibility, examples where needed, and implementing entities;
-- every Architecture Zoom entity resolves in the providing module or permitted ancestry;
-- no architecture entity is redefined by the feature;
-- related feature IDs resolve, every entry carries a vocabulary relation, and no directional cycle
-  is introduced;
-- requirements are testable and scenarios cover success plus material failures;
-- the providing module's Archify architecture system overview represents its principal entities and
-  directed relationships and passes showcase validation;
-- any referenced architecture diagram passes output-boundary, source resolution, target uniqueness,
-  and hidden-legend checks; and
-- every requirements checklist item is truthfully evaluated.
-
-Resolve at most three high-impact ambiguities by asking concise questions. Record unresolved matters
-inside the design's Assumptions without inventing product facts. Specification does not modify code,
-tests, generated projections, or another feature.
-
-Concorde has no extension-hook phase. After the quality gate, the selected feature, module inventory,
-requirements checklist, and deterministic validation are the complete readiness boundary.
-
-## Completion report
-
-Report the stable feature ID, providing module, `feature_path`, checklist status, architecture inventory
-change if any, assumptions, and validation result.

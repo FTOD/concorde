@@ -218,6 +218,9 @@ def validate_capabilities(package: Any) -> list[Finding]:
     manifest = _manifest(root)
     if manifest is None or manifest.get("name") != "concorde":
         return []
+    if manifest.get("schema_version") == 3:
+        from .profile8_validation import validate_package
+        return validate_package(root)
     findings: list[Finding] = []
     if manifest.get("schema_version") != 2:
         findings.append(_finding(

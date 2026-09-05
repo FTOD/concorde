@@ -7,6 +7,7 @@ import Layout from '@theme/Layout';
 
 import type {EdgeKind, FeatureGraph as FeatureGraphDocument} from '../../plugins/concorde-content/types';
 import FeatureGraph from '../components/FeatureGraph';
+import ScopedGraph from '../components/ScopedGraph';
 
 interface GlobalData {featureGraph: FeatureGraphDocument}
 
@@ -35,7 +36,7 @@ const NORMALIZE_HTML_URL_SCRIPT = `(function () {
   }
 })();`;
 
-export default function FeatureGraphPage() {
+function FeatureGraphPage() {
   const data = usePluginData('concorde-content') as unknown as GlobalData;
   const graph = data.featureGraph;
 
@@ -212,4 +213,9 @@ export default function FeatureGraphPage() {
       </main>
     </Layout>
   );
+}
+
+export default function ArchitectureGraphPage() {
+  const data = usePluginData('concorde-content') as unknown as {schema_version?:number};
+  return data.schema_version===14 ? <ScopedGraph/> : <FeatureGraphPage/>;
 }

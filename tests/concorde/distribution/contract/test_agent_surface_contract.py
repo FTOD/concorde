@@ -40,8 +40,8 @@ class SourceCheckoutDistributionContractTests(unittest.TestCase):
 
     def test_contract_covers_both_integration_capabilities_and_reflection_agents(self):
         paths = {item["path"] for item in self.status()["actions"]}
-        self.assertEqual(len([path for path in paths if path.startswith(".agents/skills/concorde-")]), 18)
-        self.assertEqual(len([path for path in paths if path.startswith(".claude/skills/concorde-")]), 18)
+        self.assertEqual(len([path for path in paths if path.startswith(".agents/skills/concorde-")]), 22)
+        self.assertEqual(len([path for path in paths if path.startswith(".claude/skills/concorde-")]), 22)
         for required in (
             ".agents/skills/concorde-standard-dev-loop/SKILL.md",
             ".agents/skills/concorde-reflections-triage/SKILL.md",
@@ -88,7 +88,7 @@ class SourceCheckoutDistributionContractTests(unittest.TestCase):
             "--project-root",
             str(REPOSITORY_ROOT),
             "--loaded-skill-path",
-            str(REPOSITORY_ROOT / ".agents/skills/concorde-ask/SKILL.md"),
+            str(REPOSITORY_ROOT / ".agents/skills/concorde-context/SKILL.md"),
         ]
         accepted = subprocess.run(command, text=True, capture_output=True)
         self.assertEqual(accepted.returncode, 0, accepted.stderr or accepted.stdout)

@@ -1,3 +1,5 @@
+> Adopted in the Profile 8 refactor. The shipped Protocol, explicit registry and runtime are the active implementation of this approved proposal.
+
 # Domain scopes, component contracts, and explicit Spec contexts
 
 Status: proposed global Concorde Protocol amendment. This document records the design for

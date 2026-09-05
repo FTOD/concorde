@@ -19,13 +19,10 @@ class CapabilityLayoutRuleTests(unittest.TestCase):
     def test_manifest_owns_one_global_skill_namespace(self):
         skills = self.manifest["skills"]
         operations = self.manifest["operations"]
-        self.assertEqual(self.manifest["schema_version"], 2)
+        self.assertEqual(self.manifest["schema_version"], 3)
         self.assertEqual(self.manifest["skill_namespace"], "concorde")
-        self.assertEqual(len(skills), 17)
-        self.assertEqual(
-            operations,
-            ["concorde-standard-dev-loop", "concorde-reflections-triage", "concorde-plan"],
-        )
+        self.assertEqual(len(skills), 6)
+        self.assertEqual(len(operations), 22)
         self.assertFalse(set(skills) & set(operations))
 
     def test_each_leaf_is_one_markdown_capability_without_python(self):
@@ -61,12 +58,12 @@ class CapabilityLayoutRuleTests(unittest.TestCase):
                 )
                 skill = (directory / "SKILL.md").read_text()
                 self.assertIn("operation: operation.py", skill)
-                self.assertIn("capabilities:\n", skill)
+                self.assertIn("capabilities:", skill)
                 self.assertNotIn("skills:\n", skill)
                 self.assertIn("{OPERATION}", skill)
                 python = (directory / "operation.py").read_text()
                 self.assertIn("OPERATION_CAPABILITIES", python)
-                self.assertIn("OPERATION_BINDINGS", python)
+                self.assertIn("operation_service", python)
                 self.assertNotIn("OPERATION_SKILLS", python)
 
     def test_permission_capability_vocabulary_is_closed_and_role_based(self):

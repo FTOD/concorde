@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "version": "1.0.0",
+  "source_profile": 8,
+  "workspace_protocol": 14,
+  "assets": [
+    {
+      "path": "protocol/kinds/domain.md",
+      "digest": "sha256:e341ca29b44816417e2afa3d53e451d57ab7fe4296928db82ff063063e9d0f1c"
+    },
+    {
+      "path": "protocol/kinds/module.md",
+      "digest": "sha256:aa02fdb0d89bc203efab980b85589145ca867fcd10af5228bdb7fa1811f8ae29"
+    },
+    {
+      "path": "protocol/kinds/service.md",
+      "digest": "sha256:18a4921e3e24b02f32cfa3e98b564cfcf274403dd18a9210fb4117426d97519c"
+    },
+    {
+      "path": "protocol/principles.md",
+      "digest": "sha256:0dd2ebeafc56919cba81cc56c5a007745828025270b31e1391c884eab50596ed"
+    },
+    {
+      "path": "protocol/schemas.json",
+      "digest": "sha256:975b1e0842dc130edde790e3a21091cde9c3d2923ce7d2ca67cb0c407cca2669"
+    }
+  ]
+}

@@ -5,13 +5,13 @@ import {usePluginData} from '@docusaurus/useGlobalData';
 
 import type {ContentPage} from '../../plugins/concorde-content/types';
 
-interface GlobalData {pages: ContentPage[]}
+interface GlobalData {pages: (ContentPage & {targetId?:string})[]; entryTarget?:string}
 
 /** Root is a route-only projection of the root module architecture, never a third content source. */
 export default function RootArchitectureRedirect() {
   const data = usePluginData('concorde-content') as unknown as GlobalData;
-  const root = data.pages.find((page) => page.kind === 'module-architecture' && !page.parentId);
-  if (!root) throw new Error('The docsite requires exactly one root module architecture.');
+  const root = data.pages.find((page) => data.entryTarget ? page.targetId === data.entryTarget : page.kind === 'module-architecture' && !page.parentId);
+  if (!root) throw new Error('The docsite requires a registered entry target.');
   const target = useBaseUrl(root.route);
   return <>
     <Head>
@@ -20,7 +20,7 @@ export default function RootArchitectureRedirect() {
     </Head>
     <main className="container margin-vert--xl">
       <h1>{root.title}</h1>
-      <p>Opening the root architecture. <Link to={root.route}>Continue to {root.title}</Link>.</p>
+      <p>Opening the project Spec. <Link to={root.route}>Continue to {root.title}</Link>.</p>
     </main>
   </>;
 }

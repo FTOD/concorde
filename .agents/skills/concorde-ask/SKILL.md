@@ -1,55 +1,92 @@
 ---
 name: concorde-ask
-description: "Answer a grounded, read-only question about Concorde"
+description: "Run ask through Concorde's enforced Spec context and JSON boundary."
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "skills/concorde-ask/SKILL.md"
-  kind: "skill"
+  source: "operations/concorde-ask/SKILL.md"
+  kind: "operation"
   exposure: "public"
+  entrypoint: "operations/concorde-ask/operation.py"
 ---
-## User question
+# concorde-ask
 
-```text
-$ARGUMENTS
+Invoke this Operation to ask. The host owns context
+resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
+input; do not perform it directly in this ambient conversation or inspect additional project files.
+
+Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-operation.py operations/concorde-ask/operation.py`. Its exact fields
+are type_id, schema_version:2, operation_id:"concorde-ask", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-ask-request@1).
+Task requests select target_id and task, with optional focus_id, constraints, and change_id.
+Initialization/migration use their typed propose/apply requests; use the published request schema.
+No domain flags or positional task arguments are accepted. Configuration is never a context grant.
+
+Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of
+searching other Specs. The host captures a committed-base worktree for mutations when necessary.
+Its result names that workspace. Report Spec gaps or blocked execution as returned; do not work
+around the boundary. Non-implementation agents never receive implementation code or raw test logs.
+
+## Input TypedValue schema
+
+This complete schema is the invocation's input field. It does not grant project reads.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "type_id": {
+      "const": "concorde-ask-request"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "data": {
+      "$ref": "#/$defs/concorde-ask-request"
+    }
+  },
+  "required": [
+    "type_id",
+    "schema_version",
+    "data"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "concorde-ask-request": {
+      "type": "object",
+      "properties": {
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task": {
+          "type": "string",
+          "minLength": 1
+        },
+        "focus_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "change_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "target_id",
+        "task"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
 ```
-
-# Ask Concorde
-
-Answer from installed guidance and the smallest bounded project context. This surface is strictly
-read-only: it does not invoke another lifecycle phase, change selection, write reflections, generate
-projections, or edit any file.
-
-## Source order
-
-1. Read `./concorde.json`, the relevant file under `./skills/`, and any
-   directly referenced format file under `./templates/`.
-2. For a project-specific question, use `.concorde/config.json` and `.concorde/feature.json` only to
-   locate sources. Start with exactly one module's `architecture.md` or one direct `features/*.md` file:
-
-   - module architecture owns responsibility, boundary, immediate module/feature inventory, typed
-     entities, directed relationships, representative interactions, and diagram declarations;
-   - the direct feature file owns outcome, scope, usage, requirements, embedded interfaces, failures,
-     related-feature semantics, and Architecture Zoom; and
-   - code/tests own implementation and executable evidence.
-
-3. Follow bounded module ancestry or a related feature file only when the question requires that
-   exact interface/relationship. Never read an unrelated feature body, descendant internals, or
-   another feature's attempt merely because it exists.
-4. Open only the relevant `.concorde/reflections/<bucket>/R-NNN.md` documents for questions about problems
-   met during work. They record tracked process memory, not required behavior; `index.json` contains
-   allocation state only.
-5. Use generated pages, diagrams, indexes, and delivery results only as reproducible evidence or to
-   locate their canonical sources.
-
-## Answer format
-
-Return a direct answer plus:
-
-- `Basis`: distinguish framework rule, project observation, agent inference, and uncertainty; and
-- `Sources`: project-relative paths for every installed-guidance or maintained-source fact used.
-
-Name source kinds accurately: module architecture, direct feature file, source code, executable test,
-temporal attempt, reflection document, or generated projection. When sources disagree, cite both and
-describe the conflict. If the bounded sources do not support an answer, say so instead of relying on
-model memory.

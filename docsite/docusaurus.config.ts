@@ -5,6 +5,8 @@ import type {Config, PluginModule} from '@docusaurus/types';
 import type {Options as ClassicOptions} from '@docusaurus/preset-classic';
 
 import concordeContent from './plugins/concorde-content';
+import scopedContent from './plugins/scoped-content';
+import {isScoped} from './plugins/scoped-content/model';
 import {remarkConcordeLinks} from './plugins/concorde-content/links';
 import {buildRegistry} from './plugins/concorde-content/registry';
 import {loadSiteIdentity} from './plugins/concorde-content/site-identity';
@@ -20,9 +22,10 @@ function hasStagedContent(generatedContentDirectory: string): boolean {
 
 const projectRoot = resolve(__dirname, '..');
 const identity = loadSiteIdentity(__dirname);
+const scoped = isScoped(projectRoot);
 // Docusaurus refuses to load a content-docs plugin instance with zero staged documents; a project
 // scaffolded from Initialization Proposal 3 output alone has a root module but no features yet.
-const hasFeatures = hasStagedContent('.generated/content/features');
+const hasFeatures = !scoped && hasStagedContent('.generated/content/features');
 const repositoryHost = identity.repository ? new URL(identity.repository).hostname : undefined;
 const canonicalLinks = {projectRoot, getRegistry: () => buildRegistry(projectRoot)};
 const architectureLinkPlugin = [remarkConcordeLinks, {
@@ -41,13 +44,16 @@ const config: Config = {
   projectName: identity.projectName,
   onBrokenLinks: 'throw',
   onBrokenAnchors: 'throw',
-  markdown: {hooks: {onBrokenMarkdownLinks: 'throw'}},
+  markdown: {format: scoped ? 'md' : 'mdx', hooks: {onBrokenMarkdownLinks: 'throw'}},
   trailingSlash: false,
-  staticDirectories: ['static', '.generated/static', '../generated'],
+  staticDirectories: ['static', ...(!scoped || hasStagedContent('.generated/static/diagrams') ? ['.generated/static'] : []), ...(!scoped ? ['../generated'] : [])],
   presets: [[
     'classic',
     {
-      docs: {
+      docs: scoped ? {
+        path: '.generated/content/specs', routeBasePath: 'specs', sidebarPath: './sidebars.specs.ts',
+        include: ['**/*.md'], numberPrefixParser: false, showLastUpdateAuthor: false, showLastUpdateTime: false,
+      } : {
         path: '.generated/content/architecture', routeBasePath: 'architecture', sidebarPath: './sidebars.architecture.ts',
         include: ['**/*.md'], showLastUpdateAuthor: false, showLastUpdateTime: false,
         numberPrefixParser: false, beforeDefaultRemarkPlugins: [architectureLinkPlugin],
@@ -58,7 +64,7 @@ const config: Config = {
     } satisfies ClassicOptions,
   ]],
   plugins: [
-    [concordeContent as unknown as PluginModule, {projectRoot}],
+    [(scoped ? scopedContent : concordeContent) as unknown as PluginModule, {projectRoot}],
     ...(hasFeatures ? [
       ['@docusaurus/plugin-content-docs', {
         id: 'features', path: '.generated/content/features', routeBasePath: 'features', sidebarPath: './sidebars.features.ts',
@@ -68,9 +74,9 @@ const config: Config = {
     ] : []),
     ['@easyops-cn/docusaurus-search-local', {
       hashed: true, indexDocs: true, indexBlog: false,
-      docsRouteBasePath: ['/architecture', ...(hasFeatures ? ['/features'] : [])],
+      docsRouteBasePath: [scoped ? '/specs' : '/architecture', ...(hasFeatures ? ['/features'] : [])],
       docsDir: [
-        '.generated/content/architecture',
+        scoped ? '.generated/content/specs' : '.generated/content/architecture',
         ...(hasFeatures ? ['.generated/content/features'] : []),
       ],
     }],
@@ -79,7 +85,7 @@ const config: Config = {
     navbar: {
       title: identity.title,
       items: [
-        {type: 'docSidebar', sidebarId: 'architectureSidebar', label: 'Architecture', position: 'left'},
+        {type: 'docSidebar', sidebarId: scoped ? 'specsSidebar' : 'architectureSidebar', label: scoped ? 'Specs' : 'Architecture', position: 'left'},
         ...(hasFeatures ? [
           {type: 'docSidebar', sidebarId: 'featuresSidebar', docsPluginId: 'features', label: 'Features', position: 'left'},
         ] : []),

@@ -41,3 +41,9 @@ Thumbs.db
 .claude/reflection-plans/
 .concorde/reflections/plans/
 .concorde/reflections/worktrees/
+
+.venv
+.concorde/attempts/
+.concorde/runs/
+
+node_modules

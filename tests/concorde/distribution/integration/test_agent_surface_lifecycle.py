@@ -60,7 +60,7 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
         self.assertEqual(check_value["status"], "drift")
         _, applied = self.run_sync("apply")
         self.assertEqual(applied["status"], "current")
-        self.assertEqual(applied["outputs"], 40)
+        self.assertEqual(applied["outputs"], 48)
         checked, check_value = self.run_sync("check")
         self.assertEqual(checked.returncode, 0)
         self.assertEqual(check_value["status"], "current")
@@ -80,7 +80,7 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
         self.assertEqual(checked.returncode, 1)
         self.assertEqual(value["status"], "drift")
         self.run_sync("apply")
-        self.assertIn("Protocol 13", skill.read_text())
+        self.assertIn("invocation", skill.read_text())
 
     def test_legacy_symlink_is_replaced_with_regular_native_surface(self):
         target = self.root / "legacy.md"
@@ -122,7 +122,7 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
 
     def test_canonical_skill_change_updates_only_its_generated_integrations(self):
         self.run_sync("apply")
-        skill = self.root / "skills/concorde-checklist/SKILL.md"
+        skill = self.root / "operations/concorde-checklist/SKILL.md"
         skill.write_text(skill.read_text() + "\nLifecycle marker.\n")
         _, status = self.run_sync("status")
         changed = {item["path"] for item in status["actions"] if item["action"] == "update"}
@@ -161,7 +161,7 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
             cwd=self.root,
             check=True,
         )
-        loaded = self.root / ".agents/skills/concorde-ask/SKILL.md"
+        loaded = self.root / ".agents/skills/concorde-context/SKILL.md"
 
         rejected, _value = self.run_sync(
             "verify-worktree",
@@ -174,7 +174,7 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
         self.assertIn("open a new agent", rejected.stderr)
         self.assertIn("worktree identity still differs", rejected.stderr)
 
-        changed = linked / "skills/concorde-checklist/SKILL.md"
+        changed = linked / "operations/concorde-checklist/SKILL.md"
         changed.write_text(changed.read_text() + "\nLinked marker.\n")
         primary_before = loaded.read_bytes()
         wrong_script = subprocess.run(
@@ -205,7 +205,7 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
             root=linked,
             extra=(
                 "--loaded-skill-path",
-                str(linked / ".agents/skills/concorde-ask/SKILL.md"),
+                str(linked / ".agents/skills/concorde-context/SKILL.md"),
             ),
         )
         self.assertEqual(accepted.returncode, 0)

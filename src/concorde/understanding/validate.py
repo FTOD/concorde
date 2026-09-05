@@ -55,6 +55,14 @@ def _target_artifacts(package, target: str | None) -> tuple[str, ...]:
 
 
 def validate_project(project_root: str | Path, target: str | None = None) -> ToolResult:
+    import json
+    config=Path(project_root)/".concorde/config.json"
+    if config.is_file() and not config.is_symlink():
+        try:
+            if json.loads(config.read_text()).get("profile_version")==8:
+                from ..specification.validation import validate_repository
+                return validate_repository(project_root,target)
+        except (OSError,ValueError):pass
     tool_target = target or "."
     try:
         package = ProjectRepository(project_root).load()

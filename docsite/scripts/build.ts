@@ -1,3 +1,5 @@
+import {isScoped} from '../plugins/scoped-content/model';
+import {validateScopedBuild} from '../plugins/scoped-content';
 import {spawn} from 'node:child_process';
 import {readFile, rename, rm, stat} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -74,8 +76,8 @@ export async function buildSite(): Promise<void> {
   try {
     await preparePublication(projectRoot);
     await runDocusaurus(candidate);
-    await validateGeneratedManifest(candidate);
-    await validateGeneratedFeatureGraph(candidate);
+    if (isScoped(projectRoot)) await validateScopedBuild(projectRoot,candidate);
+    else {await validateGeneratedManifest(candidate);await validateGeneratedFeatureGraph(candidate);}
     await promoteCandidate(candidate, destination, backup);
     process.stdout.write(`Verified site promoted to ${destination}\n`);
   } catch (error) {

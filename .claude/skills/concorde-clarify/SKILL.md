@@ -1,88 +1,95 @@
 ---
 name: concorde-clarify
-description: "Clarify underspecified behavior in one direct feature file."
+description: "Run clarify through Concorde's enforced Spec context and JSON boundary."
 argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "skills/concorde-clarify/SKILL.md"
-  kind: "skill"
+  source: "operations/concorde-clarify/SKILL.md"
+  kind: "operation"
   exposure: "public"
+  entrypoint: "operations/concorde-clarify/operation.py"
 user-invocable: true
 disable-model-invocation: false
 ---
-## User Input
+# concorde-clarify
 
-```text
-$ARGUMENTS
+Invoke this Operation to clarify. The host owns context
+resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
+input; do not perform it directly in this ambient conversation or inspect additional project files.
+
+Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-operation.py operations/concorde-clarify/operation.py`. Its exact fields
+are type_id, schema_version:2, operation_id:"concorde-clarify", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-clarify-request@1).
+Task requests select target_id and task, with optional focus_id, constraints, and change_id.
+Initialization/migration use their typed propose/apply requests; use the published request schema.
+No domain flags or positional task arguments are accepted. Configuration is never a context grant.
+
+Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of
+searching other Specs. The host captures a committed-base worktree for mutations when necessary.
+Its result names that workspace. Report Spec gaps or blocked execution as returned; do not work
+around the boundary. Non-implementation agents never receive implementation code or raw test logs.
+
+## Input TypedValue schema
+
+This complete schema is the invocation's input field. It does not grant project reads.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "type_id": {
+      "const": "concorde-clarify-request"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "data": {
+      "$ref": "#/$defs/concorde-clarify-request"
+    }
+  },
+  "required": [
+    "type_id",
+    "schema_version",
+    "data"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "concorde-clarify-request": {
+      "type": "object",
+      "properties": {
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task": {
+          "type": "string",
+          "minLength": 1
+        },
+        "focus_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "change_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "target_id",
+        "task"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
 ```
-
-# Clarify a Concorde Feature
-
-## Isolated worktree gate
-
-After applying any Protocol-evolution guard, read-only inspection may remain in the primary
-worktree. Before planning, selection persistence, attempt/checklist/reflection creation, an external
-mutation, or any other write, unless the maintainer explicitly authorizes primary-worktree mutation
-for this request, resolve only the primary worktree's committed `HEAD`, create a unique branch and
-linked worktree at that exact commit, and continue the complete request there. If already in an
-isolated worktree, stay there and do not create a nested worktree. Treat every staged, unstaged,
-untracked, or ignored primary-worktree path as another programmer's state: never use it as input,
-stash it, copy it, commit it, reset it, clean it, or otherwise import or alter it. If required input
-is absent from committed `HEAD`, stop and report the missing input. `--allow-primary-worktree` is
-valid only after an explicit instruction to modify the primary worktree; a generic task request is
-not that authorization. A non-Git checkout likewise requires explicit current-directory mutation
-authorization.
-
-Clarification resolves material ambiguity in the selected feature's direct Markdown file. It does not
-invent architecture, inspect unrelated attempts, or write code.
-
-## Concorde Protocol evolution guard
-
-Before workspace resolution or any write, if this is the Concorde repository and the requested
-clarification changes normative Concorde Protocol semantics, stop without changing selection,
-feature text, or checklist state. Report `feature.concorde.evolve-protocol` and its direct isolated-
-worktree cutover. A clarification that only makes already specified semantics explicit remains
-eligible here.
-
-## Workspace gate
-
-Run `python3 scripts/workspace.py --phase clarify` first. Require Protocol 13 and `resolved`/`selected` status. Use only the returned
-`feature_path`, `module_architecture`, `feature_id`, `providing_module`, bounded
-`module_ancestry`, bounded `related_features`, `checklists_dir`, and process paths. Treat ancestry and
-related-feature summaries as navigation; open a related design only when the ambiguity directly
-concerns that feature's declared interface.
-
-## Clarification workflow
-
-1. Read the complete selected feature file and the providing module architecture sections that define
-   referenced entities, relationships, interactions, and feature inventory.
-2. Build an internal coverage map for outcome/scope, consumers, successful usage, edge/failure
-   behavior, interface shapes and obligations, compatibility, architecture entity references,
-   related-feature semantics (each entry's typed relation and its explanation), requirements,
-   assumptions, and measurable evidence.
-3. Rank gaps by implementation or validation risk. Ask at most five concise questions, one at a
-   time, each with a recommended answer or a short constrained choice. Do not ask stylistic or
-   already-resolved questions.
-4. After each answer, update the owning section of the file at `feature_path` immediately. Preserve stable IDs and
-   unrelated text. If an answer changes an interface, reconcile front matter, the full embedded
-   interface definition, usage/failures, requirements, and Architecture Zoom together.
-5. If an answer reveals that an entity's identity/type/ownership or a module relationship must
-   change, do not redefine it in the feature. Report the exact module architecture reconciliation
-   required and keep the feature reference consistent with current architecture until that change is
-   reviewed.
-6. Re-evaluate the existing built-in requirements checklist at the returned path when present. Do
-   not alter reviewer-owned custom checklist judgments.
-
-## Completion gate
-
-Verify all edited interface IDs and architecture references resolve, no placeholder or clarification
-marker remains for the answered areas, the representative usage still follows the interface, and
-only the selected feature file plus permitted built-in checklist state changed. Run deterministic Concorde
-validation for the selected feature when available.
-
-Concorde has no extension-hook phase. Complete only the selected feature clarification and its
-requirements checklist, then report the changed authorities.
-
-Report questions answered, sections changed, remaining deferred ambiguities, architecture follow-up,
-checklist state, and validation result.

@@ -1,54 +1,98 @@
 ---
 name: concorde-validate
-description: "Deterministically validate module-centered Concorde sources"
+description: "Run validate through Concorde's enforced Spec context and JSON boundary."
 argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "skills/concorde-validate/SKILL.md"
-  kind: "skill"
+  source: "operations/concorde-validate/SKILL.md"
+  kind: "operation"
   exposure: "public"
+  entrypoint: "operations/concorde-validate/operation.py"
 user-invocable: true
 disable-model-invocation: false
 ---
-# Validate Concorde
+# concorde-validate
 
-Run `python3 scripts/concorde.py validate $ARGUMENTS --format json` from the project root.
+Invoke this Operation to validate. The host owns context
+resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
+input; do not perform it directly in this ambient conversation or inspect additional project files.
 
-Present the canonical status, complete sorted findings, source digest, and summary. Preserve exit
-codes: success 0, invalid 1, conflict 2, and failed 3. Do not hide errors, modify sources, or
-reinterpret `unknown` evidence as agreement.
+Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-operation.py operations/concorde-validate/operation.py`. Its exact fields
+are type_id, schema_version:2, operation_id:"concorde-validate", mode:"execute" or "describe-policy",
+configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-validate-request@1).
+Task requests select target_id and task, with optional focus_id, constraints, and change_id.
+Initialization/migration use their typed propose/apply requests; use the published request schema.
+No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
-Validation covers Architecture Source Profile 7:
+Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of
+searching other Specs. The host captures a committed-base worktree for mutations when necessary.
+Its result names that workspace. Report Spec gaps or blocked execution as returned; do not work
+around the boundary. Non-implementation agents never receive implementation code or raw test logs.
 
-- a recursive acyclic module tree with one `architecture.md` per module and canonical immediate
-  `modules/`, level-local `features/`, and architecture-owned `diagrams/` placement;
-- unique stable module, feature, entity, relationship, interaction, and interface identities;
-- required module responsibility/boundary/inventories plus entity type, definition, locator, and
-  visible relationship endpoints;
-- parent architectures exposing child modules as bounded entities without copying child internals;
-- one direct `features/<NNN-name>.md` file per feature, no wrapper directory, and no feature containment;
-- complete embedded interface semantics and implementing-entity resolution;
-- Architecture Zoom references resolving through the providing module's permitted ancestry without
-  redefining entity identity or ownership;
-- one Archify `architecture` system overview per module showing principal entities and directed
-  relationships, plus architecture-owned diagram textual linkage, showcase profile, hidden legends,
-  safe unique outputs, provenance, and freshness; and
-- stable-ID `.concorde/attempts/<feature-id>/` isolation, per-file `.concorde/reflections/<bucket>/R-NNN.md` grammar and allocation index,
-  project-control path safety, generated-source boundaries, and complete
-  rejection of obsolete durable layout residue.
+## Input TypedValue schema
 
-For every finding, show stable code, severity, source path/field, message, and remediation. This
-Tool never repairs or migrates a project.
+This complete schema is the invocation's input field. It does not grant project reads.
 
-After structural validation succeeds, run Archify showcase validation for every declared system
-overview. Require the nine artifact checks, zero composition errors, and zero warnings; a basic
-four-check receipt is not acceptance. Report structural and Archify results separately.
-
-## Semantic review boundary
-
-Report structural validation separately from semantic architecture review. A successful check does
-not prove that core concepts, cardinality/lifetime rules, or producer-to-consumer payload mappings
-are complete. It also does not prove live Codex/Claude execution quality merely because the JSON
-Operation schemas and fixture integrations pass. Name those limits in the report and preserve the
-validation Tool's actual result.
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "type_id": {
+      "const": "concorde-validate-request"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "data": {
+      "$ref": "#/$defs/concorde-validate-request"
+    }
+  },
+  "required": [
+    "type_id",
+    "schema_version",
+    "data"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "concorde-validate-request": {
+      "type": "object",
+      "properties": {
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "task": {
+          "type": "string",
+          "minLength": 1
+        },
+        "focus_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "change_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "run_checks": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "target_id",
+        "task"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
+```
