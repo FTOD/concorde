@@ -55,10 +55,9 @@ point is designated. The Skill describes invocation and behavior, while Python e
 particular invocation is separate from that reusable definition. A composite Operation additionally
 declares its ordered/conditional children and the data each child consumes and produces.
 
-The installed specialization today consists of three paired LangGraphs: `concorde-plan` and
-`concorde-standard-dev-loop` in Lifecycle, and `concorde-reflections-triage` in Reflections. Each has
-one `operation.py` and one associated `SKILL.md`. Public leaf Skills remain leaf capabilities in
-Package Manifest 2; an installed Skill name alone does not make a registered Operation.
+The [Operation registry](#operation-registry) enumerates the three installed paired LangGraphs and
+their concrete owners, entry points, and data contracts. Public leaf Skills remain leaf capabilities
+in Package Manifest 2; an installed Skill name alone does not make a registered Operation.
 
 The shared model below is project-owned; concrete Operations and their domain payloads stay owned
 by the capability modules. Configuration expresses reusable project choices such as integration.
@@ -70,6 +69,34 @@ Modules partition responsibility; directories locate implementations of this mod
 separate JSON configuration/input envelopes, project-wide Operation defaults, and typed domain
 handoffs below are target contracts for runtime migration. They are not supported CLI examples.
 The current/target review and owner map below identify that work explicitly.
+
+## Operation Registry
+
+This project-level registry contains exactly the Operation IDs in `concorde.json.operations`.
+The manifest owns executable registration; the linked module architectures own the concrete
+entities. Skill and Python paths below are canonical repository-relative sources; installed
+Codex/Claude projections expose the same identities.
+
+The registrations, source pairs, and nested calls exist today. **Configuration, input, and output
+types are target JSON contracts**, with `@1` meaning `schema_version: 1`; each type links to its
+field-definition authority. All three currently execute through the CLI/string request ABI.
+
+| Operation ID | Owning module / concrete entity | Canonical Skill / primary Python script | Target configuration type | Target runtime input type | Target domain output type | Nested Operations |
+|---|---|---|---|---|---|---|
+| `concorde-plan` | [Lifecycle](modules/lifecycle/architecture.md): `module.concorde.lifecycle`; `entity.lifecycle.plan-operation` | `operations/concorde-plan/SKILL.md`; `operations/concorde-plan/operation.py` | [concorde-operation-configuration@1](modules/capabilities/features/002-provide-capability-surfaces.md#project-configuration-lifecycle) | [concorde-plan-context@1](modules/lifecycle/features/002-plan-attempt.md#target-planning-data-types) | [concorde-plan-result@1](modules/lifecycle/features/002-plan-attempt.md#target-planning-data-types) | None; its direct children are the internal leaf Skills `concorde-plan-context` then `concorde-plan-author`. |
+| `concorde-standard-dev-loop` | [Lifecycle](modules/lifecycle/architecture.md): `module.concorde.lifecycle`; `entity.lifecycle.standard-dev-loop` | `operations/concorde-standard-dev-loop/SKILL.md`; `operations/concorde-standard-dev-loop/operation.py` | [concorde-operation-configuration@1](modules/capabilities/features/002-provide-capability-surfaces.md#project-configuration-lifecycle) | [concorde-standard-dev-loop-context@1](modules/lifecycle/features/006-standard-development-loop.md#target-standard-loop-data-types) | [concorde-standard-dev-loop-result@1](modules/lifecycle/features/006-standard-development-loop.md#target-standard-loop-data-types) | `concorde-plan`, after `concorde-specify` and before `concorde-tasks`; followed by `concorde-implement`, `concorde-validate`, and `concorde-deliver`. |
+| `concorde-reflections-triage` | [Reflections](modules/reflections/architecture.md): `module.concorde.reflections`; `entity.reflections.triage-operation` | `operations/concorde-reflections-triage/SKILL.md`; `operations/concorde-reflections-triage/operation.py` | [concorde-operation-configuration@1](modules/capabilities/features/002-provide-capability-surfaces.md#project-configuration-lifecycle) | [concorde-reflections-triage-context@1](modules/reflections/features/001-record-and-triage-reflections.md#target-triage-data-types) | [concorde-reflections-triage-result@1](modules/reflections/features/001-record-and-triage-reflections.md#target-triage-data-types) | `concorde-plan` only for `action: implement`, `route: plan`, between analyze and tasks/implement/validate. The `fast-loop` route and other actions do not call a nested Operation. |
+
+Each source pair has exactly one primary Python entry point. The shared managed launcher is
+`scripts/run-operation.py`, declared by `concorde.json.operation_runtime.launcher`. Nested Operations
+inherit the run's configuration snapshot; their exact input/result field mappings are in
+[Operation Data Flow](#operation-data-flow). The internal Skill named `concorde-plan-context` and
+the runtime input type with that spelling are separate identities.
+
+Adding, removing, or renaming an Operation, changing its source pair or owner, or changing a data
+contract or nested call requires updating this registry with the manifest and owning specifications.
+An architecture review checks that every manifest Operation has exactly one row and every listed
+source pair resolves to its registered ID.
 
 ## Entities
 
