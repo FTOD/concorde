@@ -1,76 +1,15 @@
-import {readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
-
-import {describe, expect, it} from 'vitest';
-
-import {createManifest} from '../../plugins/concorde-content/manifest';
-import {buildRegistry} from '../../plugins/concorde-content/registry';
-import type {ModuleArchitecture} from '../../plugins/concorde-content/types';
-import {validateRegistry} from '../../plugins/concorde-content/validation';
-
-const projectRoot = resolve(__dirname, '../../..');
-
-describe('maintained Concorde specification documentation', () => {
-  it('keeps README as repository orientation but outside publication', async () => {
-    const [readme, registry] = await Promise.all([
-      readFile(resolve(projectRoot, 'README.md'), 'utf8'),
-      buildRegistry(projectRoot),
-    ]);
-    expect(readme).toContain('## The model');
-    expect(readme).toContain('## Leaf Skills and Operations');
-    expect(registry.documents.some((document) => document.sourcePath === 'README.md')).toBe(false);
-    expect(createManifest(registry).pages.some((page) => page.sourcePath === 'README.md')).toBe(false);
-  });
-
-  it('publishes exactly the maintained architecture and direct feature specifications', async () => {
-    const registry = await buildRegistry(projectRoot);
-    expect(validateRegistry(registry)).toEqual([]);
-    expect(registry.collections.map((collection) => collection.id)).toEqual(['architecture', 'features']);
-    expect(registry.documents).toHaveLength(33);
-    expect(registry.documents.filter((document) => document.contentKind === 'module-architecture')).toHaveLength(7);
-    expect(registry.documents.filter((document) => document.contentKind === 'feature-design')).toHaveLength(26);
-    expect(registry.documents.every((document) => document.sourcePath.startsWith('specs/'))).toBe(true);
-  });
-
-  it('carries migrated workflow, capability, ontology, and publication guidance in owning specs', async () => {
-    const registry = await buildRegistry(projectRoot);
-    const source = (path: string) => registry.documents.find((document) => document.sourcePath === path)?.content ?? '';
-    const workflow = source('specs/concorde/features/001-concorde-workflow.md');
-    expect(workflow).toContain('concorde-standard-dev-loop');
-    expect(workflow).toContain('committed `HEAD`');
-    const skills = source('specs/concorde/modules/capabilities/features/002-provide-capability-surfaces.md').toLowerCase();
-    expect(skills).toContain('concorde-ask');
-    expect(skills).toContain('read-only');
-    expect(skills).toContain('protocol 13');
-    expect(skills).toContain('--allow-primary-worktree');
-    const ontology = source('specs/concorde/features/002-project-ontology.md');
-    expect(ontology).toContain('## Target Specification Model');
-    expect(ontology).toContain('Agent mutation worktree');
-    const publication = source('specs/concorde/modules/auto-docs/features/001-publish-project-docsite.md');
-    expect(publication).toContain('docsite/site.json');
-    expect(publication).toContain('parallel prose authority');
-  });
-
-  it('does not present temporal or framework control state as permanent publication authority', async () => {
-    const manifest = createManifest(await buildRegistry(projectRoot));
-    expect(manifest.pages.some((page) => page.sourcePath.startsWith('.concorde/'))).toBe(false);
-    expect(manifest.excludedSources.some((source) => source.sourcePath.startsWith('.concorde/'))).toBe(false);
-  });
-
-  it('publishes one Archify system overview on every module architecture', async () => {
-    const registry = await buildRegistry(projectRoot);
-    const architecturePages = registry.documents.filter(
-      (document): document is ModuleArchitecture => document.contentKind === 'module-architecture',
-    );
-    expect(architecturePages).toHaveLength(7);
-    expect(architecturePages.every((document) => document.architectureDiagrams.filter(
-      (diagram) => diagram.kind === 'architecture' && diagram.source.endsWith('/diagrams/system-overview.json'),
-    ).length === 1)).toBe(true);
-    const root = architecturePages.find((document) => document.sourcePath === 'specs/concorde/architecture.md');
-    expect(root?.architectureDiagrams.some(
-      (diagram) => diagram.kind === 'dataflow' && diagram.source.endsWith('/diagrams/operation-dataflow.json'),
-    )).toBe(true);
-    expect(registry.documents.filter((document) => document.contentKind !== 'module-architecture')
-      .every((document) => !('architectureDiagrams' in document))).toBe(true);
-  });
+import {describe,it,expect} from 'vitest';
+import {loadScopedRegistry} from '../../plugins/scoped-content/model';
+const root=resolve(__dirname,'../../..');
+describe('Explicit Concorde self specification',()=>{
+ it('publishes every registered member and no ambient control/README source',()=>{
+  const r=loadScopedRegistry(root);expect(r.pages.map(p=>p.sourcePath)).toEqual(r.targets.flatMap(t=>t.documents));
+  expect(r.pages.some(p=>p.sourcePath==='README.md'||p.sourcePath.startsWith('.concorde/'))).toBe(false);
+ });
+ it('contains independently complete public Operation and business scope descriptions',()=>{
+  const r=loadScopedRegistry(root);const host=r.pages.filter(p=>p.targetId==='service.workflow-host').map(p=>p.content).join('\n');
+  expect(host).toContain('concorde-context-solve-request');expect(host).toContain('concorde-operation-invocation');
+  const domain=r.pages.find(p=>p.targetId==='domain.workflow')!;expect(domain.content).toContain('Spec incomplete');
+ });
 });

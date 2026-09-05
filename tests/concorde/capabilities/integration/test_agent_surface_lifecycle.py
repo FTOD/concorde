@@ -48,7 +48,7 @@ class AgentSurfaceLifecycleIntegrationTests(unittest.TestCase):
         self.assertEqual({item["action"] for item in before["actions"]}, {"create"})
         _, applied = self.run_sync("apply")
         self.assertEqual(applied["status"], "current")
-        self.assertEqual(applied["outputs"], 40)
+        self.assertEqual(applied["outputs"], 48)
         self.assertTrue((self.root / ".agents/skills/concorde-plan/SKILL.md").is_file())
         self.assertTrue((self.root / ".claude/skills/concorde-plan/SKILL.md").is_file())
 
@@ -62,7 +62,7 @@ class AgentSurfaceLifecycleIntegrationTests(unittest.TestCase):
         drift = [item for item in status["actions"] if item["action"] != "current"]
         self.assertEqual([(item["path"], item["action"]) for item in drift], [(".agents/skills/concorde-plan/SKILL.md", "update")])
         self.run_sync("apply")
-        self.assertIn("Protocol 13", skill.read_text())
+        self.assertIn("invocation", skill.read_text())
 
     def test_legacy_symlink_is_replaced_with_regular_native_surface(self):
         target = self.root / "legacy.md"
@@ -88,7 +88,7 @@ class AgentSurfaceLifecycleIntegrationTests(unittest.TestCase):
 
     def test_canonical_skill_change_updates_only_its_generated_integrations(self):
         self.run_sync("apply")
-        skill = self.root / "skills/concorde-checklist/SKILL.md"
+        skill = self.root / "operations/concorde-checklist/SKILL.md"
         skill.write_text(skill.read_text() + "\nLifecycle marker.\n")
         _, status = self.run_sync("status")
         changed = {item["path"] for item in status["actions"] if item["action"] == "update"}

@@ -18,14 +18,13 @@ class ManifestContractTests(unittest.TestCase):
 
     def test_one_manifest_declares_native_identity_profile_and_install_layout(self):
         manifest = self.manifest
-        self.assertEqual(manifest["schema_version"], 2)
-        self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "3.0.0"))
-        self.assertEqual((manifest["architecture_profile"], manifest["workspace_protocol"]), (7, 13))
+        self.assertEqual(manifest["schema_version"], 3)
+        self.assertEqual((manifest["name"], manifest["version"]), ("concorde", "4.0.0"))
+        self.assertEqual((manifest["architecture_profile"], manifest["workspace_protocol"]), (8, 14))
         self.assertEqual(manifest["integrations"], ["claude", "codex"])
         self.assertEqual(manifest["install"], {
             "framework_root": ".concorde/framework",
             "receipt": ".concorde/install.json",
-            "selection": ".concorde/feature.json",
         })
         self.assertEqual(
             manifest["operation_runtime"],
@@ -61,7 +60,7 @@ class ManifestContractTests(unittest.TestCase):
         self.assertEqual(sorted(self.manifest["skills"]), skills)
         self.assertEqual(sorted(self.manifest["operations"]), operations)
         self.assertEqual(sorted(self.manifest["templates"]), templates)
-        self.assertEqual((len(skills), len(operations), len(templates)), (17, 3, 6))
+        self.assertEqual((len(skills), len(operations), len(templates)), (6, 22, 9))
         self.assertEqual(
             (REPOSITORY_ROOT / "operations/requirements.lock").read_text(),
             "langgraph==1.2.11\n",
@@ -73,25 +72,7 @@ class ManifestContractTests(unittest.TestCase):
         self.assertEqual(viewer["version"], "2.9.0")
         self.assertTrue(viewer["integrity"].startswith("sha512-"))
 
-    def test_complete_feature_template_contains_profile_and_product_sections(self):
-        body = (REPOSITORY_ROOT / "templates/feature-template.md").read_text()
-        for marker in (
-            "kind: feature", "related_features", "## Outcome and Scope", "## Usage",
-            "## User Scenarios & Testing", "## Interfaces", "## Architecture Zoom",
-            "## Requirements", "## Success Criteria",
-        ):
-            self.assertIn(marker, body)
-        self.assertNotIn("[FEATURE BRANCH]", body)
 
-    def test_plan_tasks_and_checklist_are_complete_root_references(self):
-        plan = (REPOSITORY_ROOT / "templates/plan-template.md").read_text()
-        tasks = (REPOSITORY_ROOT / "templates/tasks-template.md").read_text()
-        checklist = (REPOSITORY_ROOT / "templates/checklist-template.md").read_text()
-        for marker in ("Concorde Architecture Gate", "Source Structure", "Attempt Artifacts", "Risk Controls"):
-            self.assertIn(marker, plan)
-        for marker in ("Concorde Task Coverage", "Required Checklist Format", "Evidence Before Completion"):
-            self.assertIn(marker, tasks)
-        self.assertIn("requirements-quality", checklist)
 
     def test_reflection_template_separates_recording_from_triage(self):
         body = (REPOSITORY_ROOT / "templates/reflections-template.md").read_text()

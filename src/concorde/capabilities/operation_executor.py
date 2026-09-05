@@ -66,6 +66,8 @@ def _completion_version(specification: LaunchSpecification) -> int:
 
 
 def _domain_type(specification: LaunchSpecification) -> str | None:
+    if specification.runtime_input_json is not None and json.loads(specification.runtime_input_json).get("type_id") == "concorde-agent-stage-context":
+        return "concorde-agent-stage-result"
     if (specification.runtime_input_json is not None
             and specification.operation == "concorde-reflections-triage"
             and specification.capability == "concorde-analyze"):
@@ -418,6 +420,28 @@ def _completion(stdout: str, specification: LaunchSpecification) -> CapabilityCo
 
 
 def _prompt(specification: LaunchSpecification) -> str:
+    if _domain_type(specification) == "concorde-agent-stage-result":
+        return (
+            "Execute one Concorde Profile 8 agent stage in a fresh context.\n"
+            f"Operation: {specification.operation}\nStage: {specification.stage}\n"
+            f"Host workspace grant:\n{specification.workspace_receipt_json}\n"
+            f"Configuration snapshot:\n{specification.operation_configuration_json}\n"
+            f"Complete admitted context and task:\n{specification.runtime_input_json}\n\n"
+            "Use only the supplied snapshot and enforced paths. Do not load repository guidance, "
+            "other Skills, ancestor/provider Specs, prior conversations, or remote sources. "
+            "Only the implementation stage may inspect granted implementation code. "
+            "Report missing information as structured Spec gaps; do not broaden retrieval. "
+            "Do not run framework resolvers or validation commands; the trusted host performs these.\n"
+            "Return Capability Completion Envelope 2 matching the supplied schema, binding every identity "
+            "and launch/context digest. Its status describes completion of this bounded role, including "
+            "a valid gap assessment. Workflow progress is controlled by domain_output.data.outcome. "
+            "Put the typed concorde-agent-stage-result in domain_output. Include context_id, outcome, "
+            "answer, gaps, documents, plan, and tasks. Use empty arrays/strings for unused fields. "
+            "A spec_incomplete outcome requires concrete question/blocked_step/needed_contract gaps; "
+            "other outcomes have no gaps. Only specification stages return document replacements. "
+            "Do not transmit raw code or implementation logs in a result for a later Spec-only stage.\n"
+            f"Invocation: {specification.invocation_id}\nLaunch digest: {specification.digest}\n"
+        )
     prior = "\n".join(
         f"{index + 1}. {result}" for index, result in enumerate(specification.prior_results)
     ) or "(none)"

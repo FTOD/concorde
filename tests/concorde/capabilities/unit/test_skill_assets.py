@@ -105,17 +105,17 @@ class SkillAssetTests(unittest.TestCase):
             self.assertNotIn(".agents/skills/concorde-private/SKILL.md", rendered)
 
     def test_loads_immutable_leaf_and_operation_prompts(self):
-        leaf = load_skill_prompt(REPOSITORY_ROOT, "concorde-plan-author", "")
-        self.assertEqual((leaf.name, leaf.kind), ("concorde-plan-author", "skill"))
-        self.assertEqual(leaf.source_path, "skills/concorde-plan-author/SKILL.md")
+        leaf = load_skill_prompt(REPOSITORY_ROOT, "concorde-planner", "")
+        self.assertEqual((leaf.name, leaf.kind), ("concorde-planner", "skill"))
+        self.assertEqual(leaf.source_path, "skills/concorde-planner/SKILL.md")
         self.assertEqual(leaf.exposure, "internal")
-        self.assertIn("Planning workflow", leaf.body)
+        self.assertIn("Spec only", leaf.body)
         self.assertEqual((leaf.operation, leaf.capabilities), (None, ()))
         planner = load_skill_prompt(REPOSITORY_ROOT, "concorde-plan", "")
         self.assertEqual((planner.kind, planner.exposure), ("operation", "public"))
         self.assertEqual(
             planner.capabilities,
-            ("concorde-plan-context", "concorde-plan-author"),
+            ("concorde-context-assessor", "concorde-planner"),
         )
         operation = load_skill_prompt(REPOSITORY_ROOT, "concorde-standard-dev-loop", "")
         self.assertEqual(operation.kind, "operation")
@@ -172,10 +172,10 @@ class SkillAssetTests(unittest.TestCase):
         installed_analyze = load_skill_prompt(
             REPOSITORY_ROOT, "concorde-analyze", ".concorde/framework"
         )
-        self.assertEqual(source_analyze.script_paths, ("scripts/workspace.py",))
+        self.assertEqual(source_analyze.script_paths, ())
         self.assertEqual(
             installed_analyze.script_paths,
-            (".concorde/framework/scripts/workspace.py",),
+            (),
         )
 
     def test_projection_preserves_complete_body_and_adds_capability_provenance(self):
@@ -203,11 +203,8 @@ class SkillAssetTests(unittest.TestCase):
         manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
         for integration, prefix in (("codex", ".agents"), ("claude", ".claude")):
             rendered = render_capabilities(REPOSITORY_ROOT, integration, "")
-            self.assertEqual(len(rendered), 18)
-            expected_public = set(manifest["skills"]) - {
-                "concorde-plan-context",
-                "concorde-plan-author",
-            }
+            self.assertEqual(len(rendered), 22)
+            expected_public = set()
             self.assertEqual(
                 set(rendered),
                 {f"{prefix}/skills/{name}/SKILL.md" for name in (*expected_public, *manifest["operations"])},
@@ -234,15 +231,15 @@ class SkillAssetTests(unittest.TestCase):
             shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills")
             (root / "operations").mkdir()
             (root / "concorde.json").write_text(
-                json.dumps({"skills": ["concorde-specify"], "operations": []})
+                json.dumps({"skills": ["concorde-spec-author"], "operations": []})
             )
             target = root / "plan-target.md"
-            source = root / "skills/concorde-specify/SKILL.md"
+            source = root / "skills/concorde-spec-author/SKILL.md"
             shutil.copy2(source, target)
             source.unlink()
             source.symlink_to(target)
             with self.assertRaisesRegex(SkillAssetError, "exactly|unsafe"):
-                load_skill_prompt(root, "concorde-specify", "")
+                load_skill_prompt(root, "concorde-spec-author", "")
 
     def test_rejects_bad_leaf_metadata_tokens_and_script_paths(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -288,7 +285,7 @@ class SkillAssetTests(unittest.TestCase):
             operation = root / "operations/concorde-standard-dev-loop/SKILL.md"
             operation.write_text(
                 operation.read_text().replace(
-                    "  - concorde-specify\n", "  - concorde-unknown\n"
+                    '"concorde-specify"', '"concorde-unknown"'
                 )
             )
             with self.assertRaisesRegex(SkillAssetError, "unknown capabilities"):

@@ -1,3 +1,5 @@
+import {isScoped,loadScopedRegistry,type ScopedRegistry} from '../plugins/scoped-content/model';
+import {materializeScoped} from '../plugins/scoped-content/materialize';
 import {rm} from 'node:fs/promises';
 import {resolve} from 'node:path';
 
@@ -12,8 +14,15 @@ export interface PreparedPublication {
   diagrams: DiagramDeliverySet;
 }
 
-export async function preparePublication(projectRoot: string): Promise<PreparedPublication> {
+export async function preparePublication(projectRoot: string): Promise<PreparedPublication | {registry: ScopedRegistry}> {
   const root = resolve(projectRoot);
+  if (isScoped(root)) {
+    const registry=loadScopedRegistry(root);
+    if (registry.targets.some(t=>t.diagrams.length)) await renderDeclaredDiagrams(root);
+    await materializeScoped(registry);
+    await rm(resolve(root,'docsite/.docusaurus'),{recursive:true,force:true});
+    return {registry};
+  }
   const diagrams = await renderDeclaredDiagrams(root);
   const registry = assertValidRegistry(await buildRegistry(root));
   await materializeContent(registry);

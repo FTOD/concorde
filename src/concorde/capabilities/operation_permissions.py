@@ -382,6 +382,7 @@ def _codex_argv(
         "never",
         "exec",
         "--ephemeral",
+        "--skip-git-repo-check",
         "--ignore-user-config",
         "--strict-config",
         "-c",

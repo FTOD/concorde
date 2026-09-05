@@ -8,7 +8,7 @@ import {afterAll, beforeAll, describe, expect, it} from 'vitest';
 
 /**
  * Concorde-repository evidence for feature.concorde.publish-project-docsite FR-009: a project holding
- * only Initialization Proposal 4 outputs receives the packaged docsite through the native `docsite`
+ * only Profile 8 initialization outputs receives the packaged docsite through the native `docsite`
  * Tool and passes the adapter's validate and build steps. It reuses this checkout's installed
  * dependencies and pinned Archify skill, so it stays outside the packaged template.
  */
@@ -35,18 +35,14 @@ let docsiteProposal: Envelope;
 beforeAll(async () => {
   root = await mkdtemp(resolve(tmpdir(), 'concorde-fresh-project-'));
   await mkdir(resolve(root, '.concorde'), {recursive: true});
-  await writeFile(resolve(root, '.concorde/operation-settings.json'), JSON.stringify({
-    type_id: 'concorde-operation-configuration', schema_version: 1,
-    data: {integration: 'codex', enforcement: 'native'},
-  }));
-  const initProposal = tool(root, 'init', '--propose', '--name', 'Atlas',
-    '--configuration', '.concorde/operation-settings.json', '--allow-primary-worktree');
-  expect(initProposal.status).toBe('proposal');
-  await writeFile(resolve(root, '.concorde/init-proposal.json'), JSON.stringify(initProposal), 'utf8');
-  expect(tool(root, 'init', '--apply', '--proposal', '.concorde/init-proposal.json', '--allow-primary-worktree').status).toBe('success');
-  // Reuse this checkout's pinned Archify skill; publishing needs it, scaffolding does not.
-  await symlink(resolve(repositoryRoot, '.agents'), resolve(root, '.agents'), 'dir');
-  await symlink(resolve(repositoryRoot, 'skills-lock.json'), resolve(root, 'skills-lock.json'));
+  const initialized=run('python3',['-c', `import sys;from pathlib import Path
+sys.path.insert(0,sys.argv[1]+'/src')
+from concorde.specification.initialize import project_proposal,apply_project_proposal
+from concorde.capabilities.operation_data import typed
+root=Path(sys.argv[2]);package=Path(sys.argv[1])
+config=typed('concorde-operation-configuration',{'integration':'codex','enforcement':'native'})
+apply_project_proposal(root,package,project_proposal(root,package,'Atlas',config,'domain.atlas'))`,repositoryRoot,root],root);
+  expect(initialized.status,initialized.stderr).toBe(0);
 
   docsiteProposal = tool(root, 'docsite', '--propose', '--allow-primary-worktree');
   expect(docsiteProposal.status).toBe('proposal');
@@ -60,7 +56,7 @@ afterAll(async () => {
   if (root) await rm(root, {recursive: true, force: true});
 });
 
-describe('a project holding only Initialization Proposal 4 outputs', () => {
+describe('a project holding only Profile 8 initialization outputs', () => {
   it('receives the packaged adapter and identity without synthetic prose or repository evidence', async () => {
     const files = (docsiteProposal.result.proposal as {files: Array<{path: string}>}).files.map((file) => file.path);
     expect(files).toContain('docsite/docusaurus.config.ts');
@@ -84,20 +80,14 @@ describe('a project holding only Initialization Proposal 4 outputs', () => {
   });
 
   it('validates and builds with the adapter it received', async () => {
-    const validate = run('npm', ['run', 'validate'], resolve(root, 'docsite'));
+    const validate = run(process.execPath, ['--import','tsx','scripts/validate.ts'], resolve(root, 'docsite'));
     expect(validate.status, `${validate.stdout}\n${validate.stderr}`).toBe(0);
-    const build = run('npm', ['run', 'build'], resolve(root, 'docsite'));
+    const build = run(process.execPath, ['--import','tsx','scripts/build.ts'], resolve(root, 'docsite'));
     expect(build.status, `${build.stdout}\n${build.stderr}`).toBe(0);
-    const manifest = JSON.parse(await readFile(resolve(root, 'docsite/build/build-manifest.json'), 'utf8')) as {
-      pages: Array<{route: string; kind: string}>;
-      collections: Array<{id: string}>;
-      routeInventory: string[];
-    };
-    expect(manifest.collections.map((collection) => collection.id)).toEqual(['architecture', 'features']);
-    expect(manifest.pages.map((page) => page.route)).toEqual(['/architecture/module.atlas']);
-    expect(manifest.routeInventory).toContain('/');
-    const homepage = await readFile(resolve(root, 'docsite/index.html').replace('docsite/index.html', 'docsite/build/index.html'), 'utf8');
-    expect(homepage).toContain('/architecture/module.atlas');
-    expect(existsSync(resolve(root, 'docsite/build/architecture/module.atlas.html'))).toBe(true);
+    const manifest = JSON.parse(await readFile(resolve(root,'docsite/build/build-manifest.json'),'utf8'));
+    expect(manifest.schema_version).toBe(14);expect(manifest.pages).toHaveLength(1);
+    expect(manifest.pages[0].route).toMatch(/^\/specs\/domain.atlas\//);
+    const homepage=await readFile(resolve(root,'docsite/build/index.html'),'utf8');expect(homepage).toContain(manifest.pages[0].route);
+    expect(existsSync(resolve(root,'docsite/build',manifest.pages[0].route.slice(1)+'.html'))).toBe(true);
   }, 240_000);
 });

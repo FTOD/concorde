@@ -148,9 +148,17 @@ def _pointer(field: str, key: Any) -> str:
 
 
 def check_schema(value: Any, schema: dict, field: str = "") -> None:
+    if "anyOf" in schema:
+        for option in schema["anyOf"]:
+            try:
+                check_schema(value, option, field)
+                return
+            except OperationDataError:
+                pass
+        raise OperationDataError("invalid_field", field, "value does not match an admitted alternative")
     if "$ref" in schema:
         return check_schema(value, DATA_SCHEMAS[schema["$ref"]], field)
-    types = {"object": dict, "array": list, "string": str, "integer": int, "boolean": bool}
+    types = {"object": dict, "array": list, "string": str, "integer": int, "boolean": bool, "null": type(None)}
     expected = schema.get("type")
     if expected and type(value) is not types[expected]:
         raise OperationDataError("invalid_field", field, f"expected {expected}")
@@ -307,3 +315,10 @@ def json_schema(type_id: str) -> dict:
             pending.extend(references(definitions[name]))
     return {"$schema": "https://json-schema.org/draft/2020-12/schema",
             **expand(typed_schema(type_id)), "$defs": definitions}
+
+# Public Operation admission now uses Spec targets. Retained low-level data helpers are not
+# registered Operation entry points and cannot re-enable the retired feature-path workflow.
+from .protocol_contracts import contracts as _profile8_contracts, schemas as _profile8_schemas
+DATA_SCHEMAS.update(_profile8_schemas())
+OPERATION_CONTRACTS.clear()
+OPERATION_CONTRACTS.update(_profile8_contracts())

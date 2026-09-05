@@ -22,15 +22,15 @@ class AgentSurfaceSyncTests(unittest.TestCase):
     def test_repository_surfaces_are_current(self):
         desired = sync.expected_outputs(REPOSITORY_ROOT)
         actions = sync.inspect(REPOSITORY_ROOT, desired)
-        self.assertEqual(len(desired), 40)
+        self.assertEqual(len(desired), 48)
         self.assertEqual({item["action"] for item in actions}, {"current"})
 
     def test_inventory_contains_all_capabilities_for_both_integrations(self):
         desired = sync.expected_outputs(REPOSITORY_ROOT)
         codex = {path for path in desired if path.startswith(".agents/skills/concorde-")}
         claude = {path for path in desired if path.startswith(".claude/skills/concorde-")}
-        self.assertEqual(len(codex), 18)
-        self.assertEqual(len(claude), 18)
+        self.assertEqual(len(codex), 22)
+        self.assertEqual(len(claude), 22)
         self.assertIn(
             ".agents/skills/concorde-standard-dev-loop/SKILL.md", codex
         )

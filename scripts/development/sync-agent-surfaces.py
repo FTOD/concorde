@@ -31,9 +31,9 @@ def expected_outputs(root: Path) -> dict[str, bytes]:
     for integration in ("codex", "claude"):
         rendered = render_capabilities(root, integration, "")
         capability_roles = capability_projection_roles(root, integration, "")
-        if set(rendered) != set(capability_roles) or len(rendered) != 18:
+        if set(rendered) != set(capability_roles) or len(rendered) != 22:
             raise ValueError(
-                f"{integration} must expose exactly 18 public capabilities with owned roles"
+                f"{integration} must expose exactly 22 public capabilities with owned roles"
             )
         specialist = render_projection(root / "agent-assets/reflections", integration)
         specialist_roles = projection_roles(root / "agent-assets/reflections", integration)

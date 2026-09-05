@@ -13,7 +13,7 @@ describe('accessible presentation contract', () => {
       readFile(resolve(siteDir, 'src/components/ContentProvenance.tsx'), 'utf8'),
       readFile(resolve(siteDir, 'src/components/ArchitectureView.tsx'), 'utf8'),
     ]);
-    expect(config).toContain("label: 'Architecture'");
+    expect(config).toContain("label: scoped ? 'Specs' : 'Architecture'");
     expect(config).toContain("label: 'Features'");
     expect(rootPage).toContain('httpEquiv="refresh"');
     expect(rootPage).toContain('<Link to={root.route}>');

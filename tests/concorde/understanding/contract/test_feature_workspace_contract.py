@@ -73,12 +73,6 @@ class FeatureWorkspaceContractTests(unittest.TestCase):
         proposal["operation"] = proposal.pop("tool")
         self.assertNotEqual(list(self.validator.iter_errors(proposal)), [])
 
-    def test_workspace_adapter_emits_protocol13_and_two_pass_feature_id_preflight(self):
-        adapter = (REPOSITORY_ROOT / "scripts/workspace.py").read_text(encoding="utf-8")
-        self.assertIn('"schema_version": 13', adapter)
-        self.assertIn('parser.add_argument("--feature-id")', adapter)
-        self.assertIn("allow_missing_feature=arguments.phase == \"specify\"", adapter)
-        self.assertIn("phase_target(paths, arguments.phase)", adapter)
 
     def test_architecture_service_examples_use_profile7_paths(self):
         schema = json.loads((FIXTURES / "architecture-service.schema.json").read_text(encoding="utf-8"))

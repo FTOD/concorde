@@ -40,8 +40,8 @@ class AgentSurfaceContractTests(unittest.TestCase):
 
     def test_contract_covers_both_integration_capabilities_and_reflection_agents(self):
         paths = {item["path"] for item in self.status()["actions"]}
-        self.assertEqual(len([path for path in paths if path.startswith(".agents/skills/concorde-")]), 18)
-        self.assertEqual(len([path for path in paths if path.startswith(".claude/skills/concorde-")]), 18)
+        self.assertEqual(len([path for path in paths if path.startswith(".agents/skills/concorde-")]), 22)
+        self.assertEqual(len([path for path in paths if path.startswith(".claude/skills/concorde-")]), 22)
         for required in (
             ".agents/skills/concorde-standard-dev-loop/SKILL.md",
             ".agents/skills/concorde-reflections-triage/SKILL.md",

@@ -1,0 +1,529 @@
+{
+  "schema_version": 1,
+  "project_id": "project.concorde",
+  "entry_target": "domain.concorde",
+  "targets": [
+    {
+      "id": "domain.concorde",
+      "kind": "domain",
+      "title": "Concorde",
+      "documents": [
+        "specs/concorde/system.md"
+      ],
+      "scope_parent": null,
+      "component_parent": null,
+      "participates_in": [],
+      "implementation": [],
+      "features": [
+        {
+          "id": "feature.concorde.evolve-protocol",
+          "title": "Concorde",
+          "document": "specs/concorde/system.md"
+        }
+      ],
+      "apis": [],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "domain.workflow",
+      "kind": "domain",
+      "title": "Workflow",
+      "documents": [
+        "specs/concorde/workflow/how-work-progresses.md",
+        "specs/concorde/workflow/operation-registry.md"
+      ],
+      "scope_parent": "domain.concorde",
+      "component_parent": null,
+      "participates_in": [],
+      "implementation": [],
+      "features": [],
+      "apis": [],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "domain.installation",
+      "kind": "domain",
+      "title": "Installation",
+      "documents": [
+        "specs/concorde/installation/how-projects-adopt-concorde.md"
+      ],
+      "scope_parent": "domain.concorde",
+      "component_parent": null,
+      "participates_in": [],
+      "implementation": [],
+      "features": [],
+      "apis": [],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "domain.docsite",
+      "kind": "domain",
+      "title": "Publication",
+      "documents": [
+        "specs/concorde/publication/how-specs-are-read.md"
+      ],
+      "scope_parent": "domain.concorde",
+      "component_parent": null,
+      "participates_in": [],
+      "implementation": [],
+      "features": [],
+      "apis": [],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "service.spec-context",
+      "kind": "service",
+      "title": "Spec contexts",
+      "documents": [
+        "specs/concorde/services/context-boundary.md"
+      ],
+      "scope_parent": null,
+      "component_parent": null,
+      "participates_in": [
+        "domain.workflow",
+        "domain.installation"
+      ],
+      "implementation": [
+        "src/concorde/specification/context.py",
+        "src/concorde/specification/initialize.py",
+        "src/concorde/specification/validation.py"
+      ],
+      "features": [
+        {
+          "id": "feature.concorde.define-project-ontology",
+          "title": "Spec contexts",
+          "document": "specs/concorde/services/context-boundary.md"
+        },
+        {
+          "id": "feature.context.resolve",
+          "title": "Spec contexts",
+          "document": "specs/concorde/services/context-boundary.md"
+        },
+        {
+          "id": "feature.context.initialize",
+          "title": "Spec contexts",
+          "document": "specs/concorde/services/context-boundary.md"
+        }
+      ],
+      "apis": [],
+      "checks": [
+        "check.context-runtime"
+      ],
+      "diagrams": []
+    },
+    {
+      "id": "service.workflow-host",
+      "kind": "service",
+      "title": "Operation host",
+      "documents": [
+        "specs/concorde/services/operation-boundary.md",
+        "specs/concorde/services/operation-registry.md",
+        "specs/concorde/services/operation-wire.md"
+      ],
+      "scope_parent": null,
+      "component_parent": null,
+      "participates_in": [
+        "domain.workflow"
+      ],
+      "implementation": [
+        "src/concorde/capabilities/scoped_operations.py",
+        "src/concorde/capabilities/operation_service.py"
+      ],
+      "features": [
+        {
+          "id": "feature.workflow.execute",
+          "title": "Operation host",
+          "document": "specs/concorde/services/operation-boundary.md"
+        }
+      ],
+      "apis": [],
+      "checks": [
+        "check.workflow-runtime"
+      ],
+      "diagrams": []
+    },
+    {
+      "id": "service.reflections",
+      "kind": "service",
+      "title": "Reflections",
+      "documents": [
+        "specs/concorde/services/reflection-boundary.md"
+      ],
+      "scope_parent": null,
+      "component_parent": null,
+      "participates_in": [
+        "domain.workflow"
+      ],
+      "implementation": [
+        "src/concorde/reflections/reflections.py",
+        "src/concorde/reflections/configuration.py",
+        "src/concorde/reflections/investigation.py",
+        "src/concorde/reflections/scoped_triage.py",
+        "src/concorde/reflections/validation.py",
+        "scripts/reflections_queue.py"
+      ],
+      "features": [
+        {
+          "id": "feature.reflections.triage",
+          "title": "Reflections",
+          "document": "specs/concorde/services/reflection-boundary.md"
+        }
+      ],
+      "apis": [],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "service.installation",
+      "kind": "service",
+      "title": "Installation service",
+      "documents": [
+        "specs/concorde/services/install-boundary.md"
+      ],
+      "scope_parent": null,
+      "component_parent": null,
+      "participates_in": [
+        "domain.installation"
+      ],
+      "implementation": [
+        "scripts/install-concorde.py",
+        "scripts/install-concorde.sh",
+        "scripts/run-operation.py",
+        "scripts/run-viewer.py",
+        "scripts/concorde.py",
+        "scripts/workspace.py",
+        "src/concorde/capabilities/cli.py"
+      ],
+      "features": [
+        {
+          "id": "feature.installation.install",
+          "title": "Installation service",
+          "document": "specs/concorde/services/install-boundary.md"
+        }
+      ],
+      "apis": [],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "service.publication",
+      "kind": "service",
+      "title": "Publication service",
+      "documents": [
+        "specs/concorde/services/publication-boundary.md"
+      ],
+      "scope_parent": null,
+      "component_parent": null,
+      "participates_in": [
+        "domain.docsite"
+      ],
+      "implementation": [
+        "src/concorde/autodocs/__init__.py",
+        "src/concorde/autodocs/docsite_scaffold.py",
+        "src/concorde/autodocs/docsite_template.py"
+      ],
+      "features": [
+        {
+          "id": "feature.publication.publish",
+          "title": "Publication service",
+          "document": "specs/concorde/services/publication-boundary.md"
+        }
+      ],
+      "apis": [],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "module.registry",
+      "kind": "module",
+      "title": "Registry",
+      "documents": [
+        "specs/concorde/modules/registry.md"
+      ],
+      "scope_parent": null,
+      "component_parent": "service.spec-context",
+      "participates_in": [
+        "domain.workflow",
+        "domain.installation"
+      ],
+      "implementation": [
+        "src/concorde/specification/repository.py"
+      ],
+      "features": [],
+      "apis": [
+        {
+          "id": "api.registry.select",
+          "title": "Registry",
+          "document": "specs/concorde/modules/registry.md"
+        }
+      ],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "module.wire-contracts",
+      "kind": "module",
+      "title": "Wire contracts",
+      "documents": [
+        "specs/concorde/modules/wire-contracts.md"
+      ],
+      "scope_parent": null,
+      "component_parent": "service.workflow-host",
+      "participates_in": [
+        "domain.workflow",
+        "domain.installation"
+      ],
+      "implementation": [
+        "src/concorde/capabilities/operation_data.py",
+        "src/concorde/capabilities/protocol_contracts.py",
+        "src/concorde/capabilities/wire_shapes.py",
+        "src/concorde/specification/schema.py"
+      ],
+      "features": [],
+      "apis": [
+        {
+          "id": "api.wire.validate",
+          "title": "Wire contracts",
+          "document": "specs/concorde/modules/wire-contracts.md"
+        }
+      ],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "module.file-transactions",
+      "kind": "module",
+      "title": "File transactions",
+      "documents": [
+        "specs/concorde/modules/file-transactions.md"
+      ],
+      "scope_parent": null,
+      "component_parent": "service.spec-context",
+      "participates_in": [
+        "domain.workflow",
+        "domain.installation"
+      ],
+      "implementation": [
+        "src/concorde/specification/changes.py"
+      ],
+      "features": [],
+      "apis": [
+        {
+          "id": "api.files.apply",
+          "title": "File transactions",
+          "document": "specs/concorde/modules/file-transactions.md"
+        }
+      ],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "module.agent-execution",
+      "kind": "module",
+      "title": "Agent execution",
+      "documents": [
+        "specs/concorde/modules/agent-execution.md"
+      ],
+      "scope_parent": null,
+      "component_parent": "service.workflow-host",
+      "participates_in": [
+        "domain.workflow"
+      ],
+      "implementation": [
+        "src/concorde/capabilities/operation_executor.py"
+      ],
+      "features": [],
+      "apis": [
+        {
+          "id": "api.execution.execute",
+          "title": "Agent execution",
+          "document": "specs/concorde/modules/agent-execution.md"
+        }
+      ],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "module.permissions",
+      "kind": "module",
+      "title": "Execution permissions",
+      "documents": [
+        "specs/concorde/modules/permissions.md"
+      ],
+      "scope_parent": null,
+      "component_parent": "service.workflow-host",
+      "participates_in": [
+        "domain.workflow"
+      ],
+      "implementation": [
+        "src/concorde/capabilities/operation_permissions.py",
+        "src/concorde/capabilities/worktree.py"
+      ],
+      "features": [],
+      "apis": [
+        {
+          "id": "api.permissions.compile",
+          "title": "Execution permissions",
+          "document": "specs/concorde/modules/permissions.md"
+        }
+      ],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "module.package-assets",
+      "kind": "module",
+      "title": "Package assets",
+      "documents": [
+        "specs/concorde/modules/package-assets.md"
+      ],
+      "scope_parent": null,
+      "component_parent": "service.installation",
+      "participates_in": [
+        "domain.workflow",
+        "domain.installation"
+      ],
+      "implementation": [
+        "src/concorde/capabilities/skill_assets.py",
+        "src/concorde/capabilities/profile8_validation.py",
+        "src/concorde/capabilities/validation.py",
+        "src/concorde/reflections/agent_assets.py",
+        "scripts/render-capability-surfaces.py",
+        "scripts/sync-protocol-assets.py",
+        "skills",
+        "operations",
+        "agent-assets"
+      ],
+      "features": [],
+      "apis": [
+        {
+          "id": "api.assets.render",
+          "title": "Package assets",
+          "document": "specs/concorde/modules/package-assets.md"
+        }
+      ],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "module.managed-runtime",
+      "kind": "module",
+      "title": "Managed runtime",
+      "documents": [
+        "specs/concorde/modules/managed-runtime.md"
+      ],
+      "scope_parent": null,
+      "component_parent": "service.installation",
+      "participates_in": [
+        "domain.installation"
+      ],
+      "implementation": [
+        "src/concorde/distribution/managed_runtime.py"
+      ],
+      "features": [],
+      "apis": [
+        {
+          "id": "api.runtime.provision",
+          "title": "Managed runtime",
+          "document": "specs/concorde/modules/managed-runtime.md"
+        }
+      ],
+      "checks": [],
+      "diagrams": []
+    },
+    {
+      "id": "module.spec-publication",
+      "kind": "module",
+      "title": "Spec publication",
+      "documents": [
+        "specs/concorde/modules/spec-publication.md"
+      ],
+      "scope_parent": null,
+      "component_parent": "service.publication",
+      "participates_in": [
+        "domain.docsite",
+        "domain.workflow"
+      ],
+      "implementation": [
+        "docsite/plugins",
+        "docsite/scripts",
+        "docsite/src",
+        "docsite/tests",
+        "docsite/docusaurus.config.ts",
+        "docsite/package.json",
+        "docsite/package-lock.json",
+        "docsite/tsconfig.json",
+        "docsite/sidebars.specs.ts",
+        "docsite/sidebars.architecture.ts",
+        "docsite/sidebars.features.ts"
+      ],
+      "features": [],
+      "apis": [
+        {
+          "id": "api.publication.build",
+          "title": "Spec publication",
+          "document": "specs/concorde/modules/spec-publication.md"
+        }
+      ],
+      "checks": [
+        "check.publication-types"
+      ],
+      "diagrams": []
+    }
+  ],
+  "checks": [
+    {
+      "id": "check.context-runtime",
+      "target_id": "service.spec-context",
+      "argv": [
+        "{python}",
+        "-m",
+        "unittest",
+        "tests.concorde.specification.test_scoped_protocol"
+      ],
+      "timeout_seconds": 120,
+      "inputs": [
+        "src",
+        "protocol",
+        "tests/concorde/specification"
+      ]
+    },
+    {
+      "id": "check.workflow-runtime",
+      "target_id": "service.workflow-host",
+      "argv": [
+        "{python}",
+        "-m",
+        "unittest",
+        "tests.concorde.specification.test_scoped_protocol"
+      ],
+      "timeout_seconds": 120,
+      "inputs": [
+        "src",
+        "protocol",
+        "tests/concorde/specification"
+      ]
+    },
+    {
+      "id": "check.publication-types",
+      "target_id": "module.spec-publication",
+      "argv": [
+        "node",
+        "docsite/node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "--project",
+        "docsite/tsconfig.json"
+      ],
+      "timeout_seconds": 120,
+      "inputs": [
+        "docsite/tsconfig.json",
+        "docsite/plugins/scoped-content",
+        "docsite/src"
+      ]
+    }
+  ]
+}

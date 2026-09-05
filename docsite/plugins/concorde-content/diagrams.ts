@@ -1,3 +1,4 @@
+import {isScoped,loadScopedRegistry} from '../scoped-content/model';
 import {lstat, readFile, realpath} from 'node:fs/promises';
 import {dirname, extname, posix, relative, resolve, sep} from 'node:path';
 
@@ -41,14 +42,19 @@ export async function listModuleDiagramSources(projectRoot: string, moduleSource
 
 export async function discoverDiagramDeclarations(projectRoot: string): Promise<DiagramDeclaration[]> {
   const root = resolve(projectRoot);
-  const architectureFiles = await fg(['**/architecture.md'], {
-    cwd: resolve(root, 'specs'), onlyFiles: true, unique: true, followSymbolicLinks: false,
-    ignore: ['**/attempts/**'],
-  });
   const pending: Array<{ownerPath: string; sourcePath: string}> = [];
-  for (const relativeArchitecture of architectureFiles.sort()) {
-    const ownerPath = posix.join('specs', posixPath(relativeArchitecture));
-    for (const sourcePath of await listModuleDiagramSources(root, ownerPath)) pending.push({ownerPath, sourcePath});
+  if (isScoped(root)) {
+    for (const target of loadScopedRegistry(root).targets)
+      for (const diagram of target.diagrams) pending.push({ownerPath:target.documents[0],sourcePath:diagram.source});
+  } else {
+    const architectureFiles = await fg(['**/architecture.md'], {
+      cwd: resolve(root, 'specs'), onlyFiles: true, unique: true, followSymbolicLinks: false,
+      ignore: ['**/attempts/**'],
+    });
+    for (const relativeArchitecture of architectureFiles.sort()) {
+      const ownerPath = posix.join('specs', posixPath(relativeArchitecture));
+      for (const sourcePath of await listModuleDiagramSources(root, ownerPath)) pending.push({ownerPath, sourcePath});
+    }
   }
 
   const declarations: DiagramDeclaration[] = [];

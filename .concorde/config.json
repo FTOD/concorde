@@ -1,4 +1,10 @@
 {
+  "profile_version": 8,
+  "registry": ".concorde/specs.json",
+  "protocol": {
+    "version": "1.0.0",
+    "digest": "sha256:c19e97275fe42d535cc7473252e2b15ee79a17e3c48ad4a670a552e833c41110"
+  },
   "operation_configuration": {
     "data": {
       "enforcement": "native",
@@ -6,8 +12,5 @@
     },
     "schema_version": 1,
     "type_id": "concorde-operation-configuration"
-  },
-  "profile_version": 7,
-  "root_module_id": "module.concorde",
-  "specification_root": "specs/concorde"
+  }
 }

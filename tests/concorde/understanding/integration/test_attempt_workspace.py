@@ -28,44 +28,7 @@ class AttemptWorkspaceIntegration(unittest.TestCase):
         )
         return json.loads(completed.stdout)
 
-    def test_adapter_emits_workspace_protocol_twelve_without_removed_authorities(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary) / "project"
-            shutil.copytree(CONTEXT_PROJECT, root)
-            feature = "specs/example/modules/api/features/001-invoke.md"
-            payload = self.run_adapter(root, "plan", feature)
-            workspace = payload["workspace"]
-            self.assertEqual(payload["schema_version"], 13)
-            self.assertEqual(payload["phase_root"], ".concorde/attempts/feature.example.api.invoke")
-            self.assertEqual(workspace["feature_path"], feature)
-            self.assertEqual(workspace["module_architecture"], "specs/example/modules/api/architecture.md")
-            self.assertEqual([item["module_id"] for item in workspace["module_ancestry"]], ["module.example"])
-            self.assertTrue(REMOVED.isdisjoint(workspace))
 
-    def test_specify_routes_an_absent_flat_feature_to_its_module(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary) / "project"
-            shutil.copytree(CONTEXT_PROJECT, root)
-            feature = "specs/example/modules/api/features/002-observe-health.md"
-            payload = self.run_adapter(root, "specify", feature, persist=True)
-            self.assertEqual(payload["phase_root"], feature)
-            self.assertEqual(payload["workspace"]["providing_module"], "module.example.api")
-            self.assertEqual(payload["workspace"]["attempt_state"], "unresolved")
-            self.assertIsNone(payload["workspace"]["attempt_dir"])
-            self.assertFalse((root / feature).exists())
-            self.assertEqual(json.loads((root / ".concorde/feature.json").read_text(encoding="utf-8")), {"feature_path": feature})
-
-            preflight = self.run_adapter(
-                root,
-                "specify",
-                feature,
-                feature_id="feature.example.api.observe-health",
-            )
-            self.assertEqual(preflight["workspace"]["attempt_state"], "absent")
-            self.assertEqual(
-                preflight["workspace"]["attempt_dir"],
-                ".concorde/attempts/feature.example.api.observe-health",
-            )
 
 
 if __name__ == "__main__":

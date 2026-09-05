@@ -183,23 +183,6 @@ class AlignmentUnitTests(unittest.TestCase):
         })
         self.assertEqual(findings, ())
 
-    def test_profile_projection_preserves_identity_and_separates_adapter_type(self):
-        package = ProjectRepository(REPOSITORY_ROOT).load()
-        projection = project_specification(package, "feature.understanding.explore-alignment")
-        subjects = {item["id"]: item for item in projection["subjects"]}
-        feature = subjects["feature.understanding.explore-alignment"]
-        explorer = subjects["entity.understanding.alignment-explorer"]
-        self.assertEqual(feature["kind"], "feature")
-        self.assertEqual(feature["adapter_type"], "concept")
-        self.assertEqual(feature["source_path"], "specs/concorde/modules/understanding/features/006-explore-alignment.md")
-        self.assertEqual(explorer["profile_kind"], "program")
-        self.assertEqual(explorer["adapter_type"], "concept")
-        self.assertEqual(explorer["id"], "entity.understanding.alignment-explorer")
-        subject_ids = set(subjects)
-        self.assertTrue(all(
-            relation["source_id"] in subject_ids and relation["target_id"] in subject_ids
-            for relation in projection["relationships"]
-        ))
 
     def test_graph_input_path_must_be_project_relative_real_and_non_symlinked(self):
         with tempfile.TemporaryDirectory() as temporary:
