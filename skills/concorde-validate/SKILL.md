@@ -61,5 +61,6 @@ four-check receipt is not acceptance. Report structural and Archify results sepa
 
 Report structural validation separately from semantic architecture review. A successful check does
 not prove that core concepts, cardinality/lifetime rules, or producer-to-consumer payload mappings
-are complete, nor that target JSON Operation contracts are implemented. Name those limits in the
-report and preserve the validation Tool's actual result.
+are complete. It also does not prove live Codex/Claude execution quality merely because the JSON
+Operation schemas and fixture integrations pass. Name those limits in the report and preserve the
+validation Tool's actual result.

@@ -119,6 +119,26 @@ class OperationJSONIntegrationTests(unittest.TestCase):
         self.assertEqual(result["errors"][0]["code"], "stale_reference", result)
         self.assertEqual(len(agent.calls), 1)
 
+    def test_standard_loop_requires_an_existing_feature_before_launch(self):
+        agent = ScriptedAgent()
+        task = typed("concorde-standard-dev-loop-context", {
+            "feature_path": "specs/example/features/002-planned.md",
+            "request": "Create a new feature",
+            "constraints": [],
+        })
+
+        result = run_operation(
+            "concorde-standard-dev-loop",
+            CONFIGURATION,
+            task,
+            host_context=self.host(agent, mode="describe-policy"),
+        )
+
+        self.assertEqual(result["status"], "blocked", result)
+        self.assertEqual(result["errors"][0]["code"], "workspace_mismatch")
+        self.assertEqual(result["errors"][0]["field"], "/input/data/feature_path")
+        self.assertEqual(agent.calls, [])
+
     def test_standard_loop_runs_real_nested_graph_and_delivery_tools(self):
         def perform(capability, value, root):
             self.author(capability, value, root)

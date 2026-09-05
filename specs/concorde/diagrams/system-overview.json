@@ -213,7 +213,7 @@
       "title": "定义、执行与存储",
       "items": [
         "Operation 定义跨多次执行复用；一次执行不同于 feature attempt。",
-        "Skill 和 Python 配对已经存在；JSON 领域契约尚待运行时迁移。"
+        "Skill、Python 与 JSON 领域契约均已进入运行时；真实 agent 质量需要独立执行证据。"
       ]
     },
     {

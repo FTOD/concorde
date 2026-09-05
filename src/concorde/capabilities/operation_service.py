@@ -80,10 +80,17 @@ class OperationHost:
 
 
 def _selection(project: Path, feature_path: str) -> Any:
-    from ..understanding.feature_workspace import resolve_selected_workspace
+    from ..understanding.feature_workspace import WorkspaceError, resolve_selected_workspace
 
     checked_path(project, feature_path, "/input/data/feature_path")
-    workspace = resolve_selected_workspace(project, feature_path)
+    try:
+        workspace = resolve_selected_workspace(project, feature_path)
+    except WorkspaceError as error:
+        raise OperationDataError(
+            "workspace_mismatch",
+            "/input/data/feature_path",
+            str(error),
+        ) from error
     if not workspace.feature_id:
         raise OperationDataError("workspace_mismatch", "/input/data/feature_path", "an authored direct feature is required")
     return workspace
@@ -408,6 +415,13 @@ def _run(operation: str, configuration: dict, runtime_input: dict, host: Operati
         from .worktree import require_isolated_worktree
 
         require_isolated_worktree(host.project_root, allow_primary_worktree=host.allow_primary_worktree)
+    if operation in {"concorde-plan", "concorde-standard-dev-loop"}:
+        # Both registered lifecycle Operations start from an authored direct
+        # feature. After the execute-mode worktree authority gate, admit that
+        # identity before graph construction, permission resolution, or any
+        # leaf launch so a missing path is a typed caller/workspace rejection
+        # rather than an execution failure partway through orchestration.
+        _selection(host.project_root, task["feature_path"])
     run = _Invocation(operation, configuration, runtime_input, host)
     if operation == "concorde-reflections-triage":
         return _run_triage(run)

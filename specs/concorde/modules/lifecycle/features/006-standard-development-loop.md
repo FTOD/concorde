@@ -61,13 +61,14 @@ Every value uses the common TypedValue wrapper, with required fields unless stat
 
 | Type ID @1 | `data` fields / JSON types | Meaning and constraints |
 |---|---|---|
-| `concorde-standard-dev-loop-context` | `feature_path` (string), `request` (nonempty string), optional `constraints` (array of nonempty strings, default `[]`) | One canonical direct feature path and task intent. Specification may author a planned path; the host must resolve its authored stable ID before plan. Configuration is inherited separately. |
+| `concorde-standard-dev-loop-context` | `feature_path` (string), `request` (nonempty string), optional `constraints` (array of nonempty strings, default `[]`) | One existing canonical direct feature path with an authored stable ID, plus task intent. New features first use standalone `concorde-specify` and enter this Operation only after post-front-matter workspace resolution. Configuration is inherited separately. |
 | `concorde-standard-dev-loop-result` | `feature_id` (string), `feature_path` (string), `completed_capabilities` (array of strings), `delivery` (DeliveryOutcome) | Only produced after all six direct capabilities succeed. Order is exactly specify, plan, tasks, implement, validate, deliver using their `concorde-*` names. Child planner internals are not included. |
 | `DeliveryOutcome` | `status` (constant `delivered`), `attempt_dir` (string), `retained_source_digest` (SHA-256 string) | Historical path of the removed selected attempt and current retained-source evidence. The path is not a live ArtifactRef. |
 
 | Producer → consumer | Field mapping and gate |
 |---|---|
-| Specify → parent host | Re-resolve the authored `feature_path` into a stable feature ID and current workspace; never carry a guessed ID from the planned filename. |
+| Caller admission → Specify | Resolve the existing `feature_path` and its authored stable ID before launching the first leaf; a missing path is a `workspace_mismatch` and launches nothing. |
+| Specify → parent host | Re-resolve the revised `feature_path` and require the same stable feature identity and current workspace before planning. |
 | Parent → Plan | Construct `concorde-plan-context@1` by copying `feature_path`, `request`, `constraints` from the original input. Pass the already bound worktree and configuration through the host. |
 | Plan → Tasks | Validate `concorde-plan-result@1`; map `feature_id`, `feature_path`, `attempt_dir`, `source_digest`, and the `plan.md`/`tasks.md` ArtifactRefs into the task-generation context. |
 | Tasks → Implement | Rehash the updated `tasks.md` and other consumed attempt files; retain selected feature identity and only mapped task/plan refs. Old plan-stage task digests are no longer current. |

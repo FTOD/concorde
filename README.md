@@ -161,6 +161,10 @@ JSON invocation on stdin and emits one typed result on stdout; policy descriptio
 Old positional task requests and domain flags are rejected. The agent CLI's public Operation Skill
 constructs this same JSON boundary and the Python graph owns all subsequent dispatch.
 
+The standard loop requires an existing direct feature with a resolved stable ID. Create a new feature
+with `$concorde-specify` first, complete its post-front-matter workspace resolution, and then pass the
+resulting `feature_path` to `$concorde-standard-dev-loop`.
+
 The checkout launcher selects its root `.venv`. Native installation instead creates and verifies a
 private `.concorde/.venv`, never touches the target project's `.venv`, and may contact the configured
 package index while applying. After installation, all paired Operations start from the private

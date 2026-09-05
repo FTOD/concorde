@@ -30,10 +30,11 @@ validator semantics, Archify rendering, Docusaurus internals, or user-authored s
 
 ## Operation Contract Boundary
 
-Auto-Docs publishes the root concept inventory, constrained relationships, target/current review,
-and architecture-owned diagrams. It must preserve the distinction between Operation definition,
-invocation, and data type, plus the labels identifying unimplemented target contracts. Publication
-does not implement or validate the JSON Operation ABI.
+Auto-Docs publishes the root concept inventory, constrained relationships, runtime-realization
+review, and architecture-owned diagrams. It must preserve the distinction between Operation
+definition, invocation, data type, implemented contract, and the evidence limits around live agent
+execution. Publication renders those maintained claims; it does not execute or independently prove
+the JSON Operation ABI.
 
 The root entity/component view explains structure; its dataflow explains typed producer/consumer
 transfers, while the module collaboration view explains capability ownership. All are projections

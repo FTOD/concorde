@@ -346,7 +346,7 @@ planning sources. `artifacts` snapshots current attempt files and may be empty.
 
 | Leaf adapter type ID @1 | Required `data` fields | Optional fields / producer |
 |---|---|---|
-| `concorde-specify-context` | `task` (original standard-loop TypedValue), `feature_path` (canonical path that may be planned) | Host before specification; authored feature ID is resolved afterward. |
+| `concorde-specify-context` | `task` (original standard-loop TypedValue), `feature_path` (existing canonical direct feature path) | The standard-loop host resolves the authored feature ID before specification and requires the same identity afterward. Standalone `concorde-specify` owns missing-path creation. |
 | `concorde-tasks-context`, `concorde-implement-context`, `concorde-validate-context`, `concorde-deliver-context`, `concorde-fast-loop-context` | `task` (original Operation input TypedValue), all Selection fields | `source_artifacts` (ArtifactRef array) carries selected triage documents/plans when applicable; host supplies freshly checked refs. |
 | `concorde-specify-result`, `concorde-tasks-result`, `concorde-implement-result`, `concorde-validate-result`, `concorde-deliver-result`, `concorde-fast-loop-result`, `concorde-analyze-result` | All Selection fields | Host derives them after semantic completion and native evidence checks; delivered attempt refs are empty. |
 | `concorde-analyze-context` | Original triage `task`, all Selection fields, captured `head` (full Git object ID), `verified_on` (YYYY-MM-DD), `reflections` (selected-ref array) | Selected-ref has exact `reflection_id`, `document` ArtifactRef, and optional `plan` ArtifactRef. |

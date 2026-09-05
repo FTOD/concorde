@@ -96,8 +96,11 @@ The fixed stages and direct capabilities are:
 3. `tasks`: `concorde-tasks`, then `concorde-implement`.
 4. `deliver`: `concorde-validate`, then `concorde-deliver`.
 
-`feature_path` may identify a planned direct feature during specify; it must exist before planning.
-The host copies `feature_path`, `request`, and `constraints` into the nested plan context, verifies
+`feature_path` must identify an existing canonical direct feature before the first stage. To create a
+new feature, invoke `concorde-specify` independently, complete its post-front-matter workspace
+resolution, and then invoke this Operation with the resulting path. The Operation's specify stage
+reviews or revises that selected feature; it never treats a missing path as an implicit creation
+request. The host copies `feature_path`, `request`, and `constraints` into the nested plan context, verifies
 the returned feature identity/source digest/artifacts, and supplies each following leaf with a
 fixed typed context and current artifact digests. Every leaf has a separate immutable launch policy.
 The outer graph sees one plan result, while the inner Operation alone owns its context/author leaves.
