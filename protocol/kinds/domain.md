@@ -16,3 +16,27 @@ A main coordinator may admit this complete Domain Spec while routing a task. The
 Domain, participating Service, or downstream Module that may receive work is named here by stable
 target ID together with its Domain-local responsibility and the condition for selecting it. This is
 a routing view, not inherited access to the downstream Spec.
+
+Every component whose registry record directly names this Domain in `participates_in` has exactly one
+entry in a fenced `concorde-participants` JSON array somewhere in this Domain's registered collection:
+
+```concorde-participants
+[
+  {
+    "target_id": "service.transfer",
+    "kind": "service",
+    "responsibility": "Decide transfer admission and execute accepted transfers in this Domain.",
+    "selection_condition": "Select for a task about transfer rules, execution, completion, or failure.",
+    "relied_upon_promises": [
+      "Accepted transfers debit the sender and credit the receiver exactly once."
+    ]
+  }
+]
+```
+
+The array may contain several participants and a collection may contain several blocks, but target
+IDs are unique across the complete collection. Each entry describes this Domain's perspective, not
+the participant's private interface. A broader Domain may repeat a component participating in a
+nested Domain when the broader scope genuinely routes work to it. Missing or inconsistent entries
+are rejected by deterministic validation. Context solving reports a missing direct entry as a Spec
+gap and an inconsistent entry as conflicting.

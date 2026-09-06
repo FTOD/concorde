@@ -6,7 +6,7 @@
   "assets": [
     {
       "path": "protocol/kinds/domain.md",
-      "digest": "sha256:2bcfb02756780ec452da8e56cc729600c61128e04fc999a0550db99e044081f4"
+      "digest": "sha256:f4482072ae4ef35bf676eca0f6905ad321da5c6dd09e35ee6ae04c727fb60e95"
     },
     {
       "path": "protocol/kinds/module.md",
@@ -18,7 +18,7 @@
     },
     {
       "path": "protocol/principles.md",
-      "digest": "sha256:13cc7c35b4e09aa4546e623fb5e347cc7f6f875106907090f9aebe651ee5411d"
+      "digest": "sha256:a5d1aa8ea6983cb1731152eb982ce4de776fec7ab5c2da9d1c100251e42cfe7b"
     },
     {
       "path": "protocol/schemas.json",

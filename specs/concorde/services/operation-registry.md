@@ -11,7 +11,7 @@ Every public Skill below has a paired executable. Configuration and runtime inpu
 | concorde-configure | concorde-configure-request | concorde-configure-response | Deterministic host | Apply initialized operation configuration |
 | concorde-constitution | concorde-constitution-request | concorde-constitution-response | concorde-coordinator, concorde-spec-author | Route then author selected target principles |
 | concorde-context | concorde-context-request | concorde-context-response | Deterministic host | Report exact context membership and digests without bodies |
-| concorde-context-solve | concorde-context-solve-request | concorde-context-solve-response | concorde-coordinator, concorde-context-assessor | Route then assess information sufficiency without expanding worker context |
+| concorde-context-solve | concorde-context-solve-request | concorde-context-solve-response | concorde-coordinator, concorde-context-assessor | Validate Domain participant routing, then assess information sufficiency without expanding worker context |
 | concorde-converge | concorde-converge-request | concorde-converge-response | concorde-implementation-worker | Reconcile implementation with accepted tasks |
 | concorde-deliver | concorde-deliver-request | concorde-deliver-response | Deterministic host | Verify current completion evidence and remove the attempt |
 | concorde-fast-loop | concorde-fast-loop-request | concorde-fast-loop-response | concorde-coordinator, concorde-plan, concorde-tasks, concorde-implement, concorde-validate, concorde-deliver | Route, plan, tasks, implement, validate, deliver |

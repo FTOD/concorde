@@ -31,7 +31,7 @@ from ..specification.context import (DiscoveryContext, resolve_context,
     recheck_discovery_context, resolve_topology_author_context,
     recheck_topology_author_context)
 from ..specification.changes import file_change, apply_files
-from ..specification.validation import validate_repository
+from ..specification.validation import validate_repository, domain_participant_findings
 
 
 @dataclass(frozen=True)
@@ -539,6 +539,28 @@ def _inspect_topology_design(repository: SpecRepository, design_value: dict,
     changed = {target_id for target_id, target in candidate_targets.items()
                if current_targets.get(target_id) != target}
     changed.update(set(current_targets) - set(candidate_targets))
+    current_edges = {(target_id, domain_id)
+        for target_id, target in current_targets.items() if target["kind"] != "domain"
+        for domain_id in target["participates_in"]}
+    candidate_edges = {(target_id, domain_id)
+        for target_id, target in candidate_targets.items() if target["kind"] != "domain"
+        for domain_id in target["participates_in"]}
+    affected_domains = {domain_id for _, domain_id in current_edges ^ candidate_edges}
+    for target_id in set(current_targets) & set(candidate_targets):
+        if current_targets[target_id]["kind"] != candidate_targets[target_id]["kind"]:
+            affected_domains.update(current_targets[target_id]["participates_in"])
+            affected_domains.update(candidate_targets[target_id]["participates_in"])
+    affected_domains.update(
+        finding.subject_id for finding in domain_participant_findings(repository)
+        if finding.subject_id is not None
+    )
+    missing_domain_tasks = sorted(domain_id for domain_id in affected_domains
+        if domain_id in candidate_targets and domain_id not in tasks)
+    if missing_domain_tasks:
+        raise SpecError(
+            f"changed or incomplete participation requires Domain Spec tasks: {missing_domain_tasks}",
+            "invalid_proposal",
+        )
     discovered = set(discovered_targets)
     unread_existing = sorted(target_id for target_id in (changed | tasks.keys())
         if target_id in current_targets and current_targets[target_id]["kind"] in {"domain", "service"}
@@ -830,6 +852,28 @@ class Invocation:
         implementation = phase == "implementation"
         if implementation and not self.target.implementation:
             raise SpecError("implementation requires an explicitly owned Service/Module code scope", "unsupported_target")
+        if (self.host.mode != "describe-policy" and phase == "context-solve"
+                and self.target.kind == "domain"):
+            participant_findings = domain_participant_findings(self.repository, self.target.id)
+            if participant_findings:
+                self.completed.append(operation)
+                conflicts = [finding for finding in participant_findings
+                             if finding.rule_id != "CONCORDE-PARTICIPANT-004"]
+                if conflicts:
+                    return {"context_id": snapshot.id, "outcome": "conflicting",
+                            "answer": "Domain participant routing conflicts with its registered topology: "
+                                + "; ".join(finding.message for finding in conflicts),
+                            "gaps": [], "documents": [], "plan": "", "tasks": []}
+                gaps = [{
+                    "question": "How should the Domain participant routing be completed? " + finding.message,
+                    "blocked_step": "Assess context sufficiency before Domain planning",
+                    "needed_contract": f"{finding.rule_id}: {finding.remediation}",
+                    "target_id": self.target.id,
+                    "context_id": snapshot.id,
+                } for finding in participant_findings]
+                return {"context_id": snapshot.id, "outcome": "spec_incomplete",
+                        "answer": "Domain participant routing is incomplete or inconsistent.",
+                        "gaps": gaps, "documents": [], "plan": "", "tasks": []}
         before_registry = self.repository.registry_bytes
         with tempfile.TemporaryDirectory(prefix="concorde-context-") as directory:
             capsule = Path(directory)
@@ -916,6 +960,13 @@ class Invocation:
                 current = SpecRepository(self.repository.root, self.host.package_root)
                 current.documents(current.select(self.target.id))
                 current.contracts(current.select(self.target.id))
+                participant_findings = domain_participant_findings(current, self.target.id)
+                if participant_findings:
+                    raise SpecError(
+                        "authored Domain participant routing is invalid: "
+                        + "; ".join(finding.message for finding in participant_findings),
+                        "invalid_spec",
+                    )
             apply_files(self.repository.root, changes, set(self.target.documents), verify=verify)
             self.repository = SpecRepository(self.host.project_root, self.host.package_root)
         return self.response(answer=result["answer"])

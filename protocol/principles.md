@@ -37,6 +37,16 @@ not substitute for the downstream target's complete Spec. It lets a main coordin
 work belongs without reading a Module Spec or relying on registry metadata as hidden business
 authority.
 
+For every direct component `participates_in` relationship in the registry, the corresponding Domain
+collection MUST contain exactly one machine-readable `concorde-participants` entry with the
+component's stable target ID and kind, its Domain-local responsibility, the condition for selecting
+it, and the nonempty promises that Domain relies on. A broader Domain MAY repeat a participant from
+a nested Domain when it needs that participant locally, but the repeated declaration does not grant
+the participant's Spec or code. Deterministic validation MUST reject missing, duplicate, unknown,
+kind-mismatched or unrelated declarations. Before Domain planning or task generation, context
+solving MUST report a missing direct declaration as a concrete Domain Spec gap and an inconsistent
+declaration as conflicting.
+
 Business entities such as Account, Transfer, and Daily Limit MUST have meaningful definitions
 and responsibility assignments where they matter. They do not each require a separate Domain,
 Service, or Module Spec. A Domain is responsible for explaining, for example, who checks a Daily

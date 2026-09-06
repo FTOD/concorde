@@ -16,11 +16,11 @@ class ScopeReflectionTests(unittest.TestCase):
         self.double=ModelProcessDouble(callback);self.host=OperationHost(self.root,PACKAGE,executor=self.double.executor,allow_primary_worktree=True)
         return run_operation(op,CONFIGURATION,typed(op+'-request',data),host_context=self.host)
     def test_domain_coordinates_separate_component_contexts(self):
-        def cb(stage,snapshot,data,cwd):
-            if stage=='tasks' and snapshot['kind']=='domain':
-                data['tasks'][0]['target_id']='service.transfer'
-        result=self.run_op('concorde-standard-dev-loop',{'target_id':'scope.bank','task':'Implement the banking transfer promise'},cb)
+        result=self.run_op('concorde-standard-dev-loop',{'target_id':'scope.bank','task':'Implement the banking transfer promise'})
         self.assertEqual('succeeded',result['status'],result)
+        task_call=next(call for call in self.double.calls if call['stage']=='tasks')
+        self.assertIn('"target_id": "service.transfer"',
+                      '\n'.join(item['content'] for item in task_call['snapshot']['documents']))
         domain=[c for c in self.double.calls if c['capability']!='concorde-coordinator' and c['snapshot']['kind']=='domain']
         self.assertTrue(domain);self.assertTrue(any(c['capability']!='concorde-coordinator' and
             c['snapshot']['target_id']=='service.transfer' for c in self.double.calls))

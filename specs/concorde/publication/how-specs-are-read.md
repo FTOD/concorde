@@ -30,3 +30,28 @@ The main coordinator selects `service.publication` for consumer-facing docsite p
 publication outcomes. It selects `module.spec-publication` for the in-process registry-to-pages,
 sidebar, graph, diagram and build-manifest API. The Module ID is visible here so work can be routed;
 its Module Spec remains private to the fresh target worker.
+
+## Participating components
+
+```concorde-participants
+[
+  {
+    "target_id": "service.publication",
+    "kind": "service",
+    "responsibility": "Produce and promote the consumer-facing documentation site from registered sources.",
+    "selection_condition": "Select for docsite proposals, content inspection, builds, publication outcomes, or failures.",
+    "relied_upon_promises": [
+      "Only a complete candidate bound to current registered source bytes is promoted."
+    ]
+  },
+  {
+    "target_id": "module.spec-publication",
+    "kind": "module",
+    "responsibility": "Transform registry targets into pages, navigation, relationship data, diagrams, and build manifests.",
+    "selection_condition": "Select for in-process publication parsing, routing, graph construction, or candidate verification.",
+    "relied_upon_promises": [
+      "Unregistered Markdown and undeclared diagrams never become published authority."
+    ]
+  }
+]
+```

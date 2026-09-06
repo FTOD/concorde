@@ -38,6 +38,103 @@ replacement, `module.agent-execution` for native model-process execution,
 `module.spec-publication` for workflow-facing publication integration. Module IDs are selectable
 from this routing view but their Specs remain unavailable to the main coordinator.
 
+## Participating components
+
+```concorde-participants
+[
+  {
+    "target_id": "service.spec-context",
+    "kind": "service",
+    "responsibility": "Resolve registered target context and validate Spec structure for workflow stages.",
+    "selection_condition": "Select when a workflow needs target selection, context resolution, Protocol binding, or Spec validation.",
+    "relied_upon_promises": [
+      "Each non-implementation worker receives exactly one complete registered target collection plus its pinned global rules."
+    ]
+  },
+  {
+    "target_id": "service.workflow-host",
+    "kind": "service",
+    "responsibility": "Admit public Operations and coordinate their bounded lifecycle transitions.",
+    "selection_condition": "Select for Operation routing, agent-stage orchestration, attempts, checks, or delivery behavior.",
+    "relied_upon_promises": [
+      "Every agent stage is a fresh invocation bound to typed input, context identity, policy, and completion evidence."
+    ]
+  },
+  {
+    "target_id": "service.reflections",
+    "kind": "service",
+    "responsibility": "Retain, investigate, implement, and dispose project Reflections under explicit ownership and approval.",
+    "selection_condition": "Select when work concerns Reflection status, evidence, investigation, implementation, or disposition.",
+    "relied_upon_promises": [
+      "Reflection investigation is read-only implementation cognition and human disposition remains independent."
+    ]
+  },
+  {
+    "target_id": "module.registry",
+    "kind": "module",
+    "responsibility": "Admit registry metadata and select targets, focuses, documents, contracts, and implementation ownership.",
+    "selection_condition": "Select for in-process registry parsing, identity lookup, membership, or ownership validation.",
+    "relied_upon_promises": [
+      "Registry lookup never adds ancestor, peer, participant, or implementation bodies to a target context."
+    ]
+  },
+  {
+    "target_id": "module.wire-contracts",
+    "kind": "module",
+    "responsibility": "Validate versioned TypedValues and JSON boundary schemas.",
+    "selection_condition": "Select when an Operation or internal handoff needs deterministic data admission.",
+    "relied_upon_promises": [
+      "Unknown fields, incompatible type identities, unsupported versions, and unsafe project paths are rejected."
+    ]
+  },
+  {
+    "target_id": "module.file-transactions",
+    "kind": "module",
+    "responsibility": "Apply exact authorized file replacements with current before-digests and rollback.",
+    "selection_condition": "Select when a workflow stage persists documents, attempts, proposals, or other approved files.",
+    "relied_upon_promises": [
+      "A stale or invalid multi-file change leaves or restores the complete pre-change state."
+    ]
+  },
+  {
+    "target_id": "module.agent-execution",
+    "kind": "module",
+    "responsibility": "Launch native model processes and attest their completion envelopes.",
+    "selection_condition": "Select when a bounded workflow stage requires model cognition.",
+    "relied_upon_promises": [
+      "Launch, policy, workspace, invocation, and context identities are checked before domain output is admitted."
+    ]
+  },
+  {
+    "target_id": "module.permissions",
+    "kind": "module",
+    "responsibility": "Compile stage effects into native or outer sandbox grants.",
+    "selection_condition": "Select when an agent launch needs exact read, write, network, or credential authority.",
+    "relied_upon_promises": [
+      "Runtime configuration cannot widen the host-issued semantic role paths."
+    ]
+  },
+  {
+    "target_id": "module.package-assets",
+    "kind": "module",
+    "responsibility": "Render and validate canonical public Operation surfaces used by the workflow.",
+    "selection_condition": "Select for capability inventory, dependencies, projected wrappers, or exported schemas.",
+    "relied_upon_promises": [
+      "Projected public surfaces preserve the canonical executable and typed Operation boundary."
+    ]
+  },
+  {
+    "target_id": "module.spec-publication",
+    "kind": "module",
+    "responsibility": "Provide workflow-facing publication of registered Specs and declared diagrams.",
+    "selection_condition": "Select when workflow behavior invokes or validates the documentation projection.",
+    "relied_upon_promises": [
+      "Published views are derived from explicit registry membership and never become agent context authority."
+    ]
+  }
+]
+```
+
 ## Conditions, states and recovery
 
 ```mermaid
@@ -77,10 +174,14 @@ the unresolved question, blocked step and needed contract; target and snapshot i
 Context solving diagnoses from the exact existing collection and never expands permissions.
 
 A Domain task may coordinate multiple components participating in that scope or its nested scopes.
-The Domain planner sees only the Domain collection. Each component receives its own explicit task,
-local authoring invocation and fast loop. All affected consumer/provider contract views must agree
-before any component implementation begins. Component ancestry and scope membership never grant
-extra reads. Successful component revisions are checked again before Domain delivery.
+The Domain planner sees only the Domain collection and derives exact component IDs from its local
+`concorde-participants` declarations. Before planning, deterministic context solving rejects any
+missing direct registry relationship as a Domain-owned Spec gap and reports inconsistent entries as
+conflicting. Each component
+receives its own explicit task, local authoring invocation and fast loop. All affected
+consumer/provider contract views must agree before any component implementation begins. Component
+ancestry and scope membership never grant extra reads. Successful component revisions are checked
+again before Domain delivery.
 
 Checks are trusted deterministic argv declared by project configuration, not commands invented by
 an agent. Raw logs stay out of later Spec-only sessions. A stale Spec, changed task intent, modified

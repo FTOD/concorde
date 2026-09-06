@@ -45,6 +45,12 @@ is never returned through this Operation; it stays in the ignored host applicati
 Spec gaps or blocked execution as returned and do not work around the boundary. Non-implementation
 agents never receive implementation code or raw test logs.
 
+A topology proposal that adds, removes or changes a component's `participates_in` relationship must
+also task every retained affected Domain to reconcile its local `concorde-participants` declaration.
+The Domain task carries the exact ID, kind, local responsibility, selection condition and relied-upon
+promises. Candidate overlay validation rejects a registry edge without that self-contained Domain
+routing view.
+
 ## Input TypedValue schema
 
 This complete schema is the invocation's input field. It does not grant project reads.

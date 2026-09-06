@@ -55,6 +55,13 @@ local responsibility, relationship and selection condition in its own Spec. The 
 complete Spec remains private to its worker; routing information cannot be left only in registry
 metadata or inferred from a Module Spec.
 
+Every direct component `participates_in` edge has exactly one matching `concorde-participants` entry
+in that Domain collection. The entry contains stable target ID, kind, Domain-local responsibility,
+selection condition and nonempty relied-upon promises. A broader Domain may repeat a nested-scope
+participant when locally relevant. Deterministic validation rejects missing, duplicate, unknown,
+kind-mismatched or unrelated entries. Before planning, context solving returns a concrete Domain
+Spec gap for a missing direct entry and a conflicting outcome for an inconsistent entry.
+
 Business entities such as Account, Transfer, and Daily Limit MUST have meaningful definitions
 and responsibility assignments where they matter. They do not each require a separate Domain,
 Service, or Module Spec. A Domain is responsible for explaining, for example, who checks a Daily

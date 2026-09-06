@@ -87,6 +87,14 @@ class BoundaryTests(unittest.TestCase):
             if stage=='specify':data['documents']=[{'path':'specs/ledger-api.md','content':'Changed'}]
         old=(self.root/'specs/ledger-api.md').read_bytes();result=self.run_op('concorde-specify',callback=cb)
         self.assertEqual('blocked',result['status']);self.assertEqual(old,(self.root/'specs/ledger-api.md').read_bytes())
+    def test_domain_author_cannot_persist_missing_participant_routing(self):
+        path=self.root/'specs/how-money-moves.md';old=path.read_bytes()
+        def cb(stage,snap,data,cwd):
+            if stage=='specify':data['documents']=[{'path':'specs/how-money-moves.md',
+                'content':'# Banking\nThe participant declarations were accidentally omitted.\n'}]
+        result=self.run_op('concorde-specify',{'target_id':'scope.bank','task':'Edit banking rules'},cb)
+        self.assertEqual('blocked',result['status'],result);self.assertEqual(old,path.read_bytes())
+        self.assertIn('participant routing',result['errors'][0]['message'])
     def test_planner_cannot_emit_spec_replacements(self):
         def cb(stage,snap,data,cwd):
             if stage=='plan':data['documents']=[{'path':'specs/send-money.md','content':'Changed'}]

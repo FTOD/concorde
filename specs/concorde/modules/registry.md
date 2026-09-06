@@ -2,7 +2,7 @@
 
 ## api.registry.select
 
-SpecRepository(project_root, package_root=None) admits Profile 8 config, verifies pinned Protocol assets and parses the registry. select(target_id,focus_id=None) returns one immutable Target or raises SpecError for missing/foreign identity. documents(target) reads exactly ordered Markdown members; contracts(target) parses only local concorde-contract blocks. implementation_files(target) enumerates explicit owned files with symlink rejection. IDs, both parent graphs, participation and disjoint code grants are validated using metadata. This Module may inspect global metadata but never supplies peer bodies as target context.
+SpecRepository(project_root, package_root=None) admits Profile 8 config, verifies pinned Protocol assets and parses the registry. select(target_id,focus_id=None) returns one immutable Target or raises SpecError for missing/foreign identity. documents(target) reads exactly ordered Markdown members; contracts(target) parses only local concorde-contract blocks; participants(domain) parses the Domain-local concorde-participants routing view. implementation_files(target) enumerates explicit owned files with symlink rejection. IDs, both parent graphs, participation and disjoint code grants are validated using metadata. Deterministic validation compares every direct participates_in edge with exactly one local participant declaration and checks declared ID, kind and direct/nested scope relationship. This Module may inspect global metadata but never supplies peer bodies as target context.
 
 ## Interface signatures
 

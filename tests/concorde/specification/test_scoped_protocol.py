@@ -32,6 +32,42 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertNotIn('specs/audit-scope.md',text)
         self.assertNotIn('specs/ledger-api.md',text)
         self.assertEqual('success',validate_repository(self.root).status)
+        participants=repo.participants(repo.select('scope.bank'))
+        self.assertEqual(['service.transfer','module.ledger'],[item['target_id'] for item in participants])
+        self.assertEqual(['service','module'],[item['kind'] for item in participants])
+    def test_missing_domain_participant_is_validated_and_stops_context_solving(self):
+        path=self.root/'specs/how-money-moves.md';path.write_text(path.read_text().split('```concorde-participants',1)[0])
+        report=validate_repository(self.root)
+        self.assertEqual('invalid',report.status)
+        self.assertEqual({'service.transfer','module.ledger'},
+            {finding.message.rsplit(' ',1)[-1] for finding in report.findings
+             if finding.rule_id=='CONCORDE-PARTICIPANT-004'})
+        double=ModelProcessDouble()
+        result=self.run_op('concorde-plan',{'target_id':'scope.bank','task':'Plan a banking change'},double)
+        self.assertEqual('blocked',result['status'],result)
+        self.assertEqual('spec_incomplete',result['output']['data']['outcome'])
+        self.assertEqual(['route'],[call['stage'] for call in double.calls])
+        self.assertTrue(all(gap['target_id']=='scope.bank' and gap['context_id']==result['output']['data']['context_id']
+                            for gap in result['output']['data']['gaps']))
+        self.assertFalse((self.root/'.concorde/attempts').exists())
+    def test_duplicate_and_kind_mismatched_participant_declarations_are_rejected(self):
+        path=self.root/'specs/how-money-moves.md';original=path.read_text()
+        prefix,rest=original.split('```concorde-participants\n',1);payload,suffix=rest.split('\n```',1)
+        participants=json.loads(payload)
+        cases=[(participants+[copy.deepcopy(participants[0])],'CONCORDE-PARTICIPANT-002'),
+               ([{**participants[0],'kind':'module'},participants[1]],'CONCORDE-PARTICIPANT-003')]
+        for value,rule in cases:
+            with self.subTest(rule=rule):
+                path.write_text(prefix+'```concorde-participants\n'+json.dumps(value,indent=2)+'\n```'+suffix)
+                report=validate_repository(self.root)
+                self.assertEqual('invalid',report.status)
+                self.assertIn(rule,{finding.rule_id for finding in report.findings})
+        double=ModelProcessDouble()
+        result=self.run_op('concorde-plan',{'target_id':'scope.bank','task':'Plan a banking change'},double)
+        self.assertEqual('conflicting',result['output']['data']['outcome'])
+        self.assertEqual([],result['output']['data']['gaps'])
+        self.assertEqual(['route'],[call['stage'] for call in double.calls])
+        path.write_text(original)
     def test_module_api_focus_is_local(self):
         repo=SpecRepository(self.root)
         self.assertEqual('module.ledger',repo.select('module.ledger','api.ledger').id)
@@ -79,15 +115,24 @@ class ScopedProtocolTests(unittest.TestCase):
                         'checks':[],'diagrams':[]})
                     design=typed('concorde-topology-design',{'summary':'Add an audit reporting Service.',
                         'registry':registry,'spec_tasks':[
-                          {'target_id':'scope.audit','task':'Route audit reporting to service.audit-report.'},
+                          {'target_id':'scope.audit','task':'Add service.audit-report (kind service): responsibility Publish the audit reporting view; selection condition audit report generation or retrieval; relied-upon promise Audit reports expose the accepted audit records.'},
                           {'target_id':'module.ledger','task':'Keep the Ledger API complete under its clarified title.'},
                           {'target_id':'service.audit-report','task':'Define the self-contained audit reporting boundary.'}],
                         'migration_constraints':[],'acceptance':['The new Service is registered and routable.']})
                     data.update(outcome='topology_proposed',answer='Audit reporting topology designed.',
                         expand_targets=[],routes=[],gaps=[],topology_design=design)
             if stage=='topology-author' and snapshot['target']['id']=='scope.audit':
+                participants=[
+                    {'target_id':'service.transfer','kind':'service',
+                     'responsibility':'Supply successful transfer outcomes to the audit Domain.',
+                     'selection_condition':'Select when audit behavior depends on a completed transfer.',
+                     'relied_upon_promises':['A successful transfer reports the accepted balance change.']},
+                    {'target_id':'service.audit-report','kind':'service',
+                     'responsibility':'Publish the audit reporting view.',
+                     'selection_condition':'Select for audit report generation or retrieval.',
+                     'relied_upon_promises':['Audit reports expose the accepted audit records.']}]
                 data['documents']=[{'path':'specs/audit-scope.md',
-                    'content':'# Audit\nRoute audit reporting to service.audit-report.\n'}]
+                    'content':'# Audit\nRoute audit reporting to service.audit-report.\n\n```concorde-participants\n'+json.dumps(participants,indent=2)+'\n```\n'}]
         double=ModelProcessDouble(callback)
         design=self.run_op('concorde-main',{'action':'design-topology','task':'Add audit reports'},double)
         self.assertEqual('topology_proposed',design['output']['data']['outcome']);proposal=design['output']['data']['topology_proposal']
@@ -178,6 +223,22 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('blocked',result['status'],result);self.assertEqual('invalid_proposal',result['errors'][0]['code'])
         self.assertFalse(any(call['stage']=='topology-author' for call in double.calls))
         self.assertEqual([],list((self.root/'.concorde/topology-proposals').glob('*.json')))
+    def test_topology_participation_change_requires_corresponding_domain_task(self):
+        def callback(stage,snapshot,data,cwd):
+            if stage=='route' and snapshot['action']=='design-topology':
+                registry=copy.deepcopy(snapshot['topology'])
+                registry['targets'].append({'id':'service.audit-report','kind':'service','title':'Audit reports',
+                    'documents':['specs/audit-report.md'],'scope_parent':None,'component_parent':None,
+                    'participates_in':['scope.audit'],'implementation':[],'features':[],'apis':[],
+                    'checks':[],'diagrams':[]})
+                design=typed('concorde-topology-design',{'summary':'Add audit reports without its Domain view.',
+                    'registry':registry,'spec_tasks':[{'target_id':'service.audit-report','task':'Define audit reports.'}],
+                    'migration_constraints':[],'acceptance':['The Service is registered.']})
+                data.update(outcome='topology_proposed',answer='Designed.',expand_targets=[],routes=[],gaps=[],topology_design=design)
+        result=self.run_op('concorde-main',{'action':'design-topology','task':'Add audit reports'},ModelProcessDouble(callback))
+        self.assertEqual('blocked',result['status'],result)
+        self.assertEqual('invalid_proposal',result['errors'][0]['code'])
+        self.assertIn('Domain Spec tasks',result['errors'][0]['message'])
     def test_main_can_route_module_worker_but_cannot_expand_module_spec(self):
         def route(stage,snapshot,data,cwd):
             if stage=='route':

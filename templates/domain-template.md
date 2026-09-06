@@ -25,6 +25,26 @@ a routing view, not inherited access to the downstream Spec.
 
 [Define all target-relevant entities, ownership, inputs, outputs, conditions, failure, completion and retry semantics here. Name routable downstream targets by stable ID, responsibility and selection condition. Include every required collaborator contract locally. Do not rely on parent, provider or sibling documents outside the registered collection.]
 
+## Participating components
+
+[Include exactly one entry for every Service or Module whose registry `participates_in` list directly
+names this Domain. You may also repeat a participant from a nested Domain when this broader Domain
+actually needs to route work to it. Omit the block only when the Domain has no relevant participants.]
+
+```concorde-participants
+[
+  {
+    "target_id": "[service-or-module-id]",
+    "kind": "[service-or-module]",
+    "responsibility": "[Responsibility inside this Domain]",
+    "selection_condition": "[When a Domain task selects this target]",
+    "relied_upon_promises": [
+      "[A complete promise this Domain relies on]"
+    ]
+  }
+]
+```
+
 ## Missing information
 
 [State unresolved obligations honestly. A task blocked by missing facts returns Spec incomplete.]

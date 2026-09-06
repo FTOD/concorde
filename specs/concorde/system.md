@@ -19,6 +19,7 @@ that target without reducing its complete context.
 | Context snapshot | Immutable exact input to one agent invocation | Binds documents, Protocol, task, phase, instructions and typed stage artifacts |
 | Discovery context | Ordered append-only Domain/Service collections for the main coordinator | Expands on demand and changes identity on every admitted target |
 | Main coordinator | Global routing agent that never reads Module Specs or code | Selects fresh target workers and later synthesizes only typed results |
+| Participant declaration | A Domain-local routing description of one Service or Module | Binds a registry participation edge to stable ID, kind, local responsibility, selection condition and relied-upon promises |
 | Topology design | Complete candidate registry, local Spec tasks and acceptance conditions | Is authored by the coordinator without writing and requires maintainer acceptance |
 | Topology application | Exact host-private registry/document replacements with before-digests | Is applied atomically only after a second maintainer acceptance |
 | Change attempt | Plan, tasks and revision-bound completion evidence | Lives from successful planning until verified delivery |
@@ -32,6 +33,9 @@ These three scopes narrow Concorde's problem space. They are not three implement
 The context Service participates in Workflow and Installation. Package assets participates in both
 because the same executable/prompt pair must run in a source checkout and an installed project.
 Publication reads registry metadata deterministically; it never grants an agent cross-target access.
+Every direct component participation edge is repeated as one machine-readable declaration in that
+Domain's own collection. This intentional redundancy lets Domain workers select exact component IDs
+without reading the registry or component Specs; deterministic validation keeps both views aligned.
 
 ## Main routing view
 

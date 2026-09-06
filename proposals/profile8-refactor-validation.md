@@ -9,6 +9,10 @@ The branch starts from main `e48f8aaaf201ab42a7058f5e5373529b6591e5f4`, through 
 - Domain scope nesting and Service/Module composition are independent. Components may participate
   in several Domains. Concorde registers 4 Domains, 5 Services and 8 Modules in 20 explicit Markdown
   memberships; each target's complete collection is the context authority, regardless of filename.
+- Every direct `participates_in` edge has one machine-readable Domain-local declaration with stable
+  target ID, kind, responsibility, selection condition and relied-upon promises. Concorde's three
+  directly participating Domains contain all 19 views. Deterministic validation aligns them with the
+  registry; missing entries stop context solving with Spec gaps and inconsistent entries conflict.
 - Versioned universal principles and kind definitions are distributed to every project and pinned
   by initialization. Service Features and Module APIs have explicit local identities.
 - All 22 public entry points are paired Operations. Their public Skills include complete request
@@ -45,7 +49,7 @@ The branch starts from main `e48f8aaaf201ab42a7058f5e5373529b6591e5f4`, through 
 
 | Gate | Result |
 | --- | --- |
-| Complete Python suite | 402 tests passed |
+| Complete Python suite | 406 tests passed |
 | Complete docsite suite | 116 tests passed across 26 files |
 | TypeScript typecheck | Passed |
 | Production build and candidate promotion | Passed for Concorde and a freshly initialized project |
@@ -62,7 +66,8 @@ The CI-equivalent tests include actual installer provisioning/ownership/rollback
 fresh subprocess importing only installed framework code for complete standard loops and main
 discovery/reader/synthesis through both Codex and Claude completion adapters. They also exercise
 topology design, both acceptance gates, private Module authoring, stale/tampered proposal rejection,
-read-only policy description, overlay validation and atomic application. Their native model process
+read-only policy description, participant-aware topology tasks, participant alignment, pre-planning
+gaps, Domain author rollback, overlay validation and atomic application. Their native model process
 is an explicit test double. LangGraph, typed admission, host policies, file changes, behavioral
 subprocess checks and delivery are real. Native permission and completion-attestation/replay unit
 coverage is retained.

@@ -8,6 +8,10 @@ hold business entities/rules; Service targets expose Features and precise exchan
 expose APIs directly. Features/APIs have local stable IDs and an explicit member document. File names
 have no semantic role. The same Markdown may be explicitly registered in more than one collection.
 The registry rejects cycles, foreign focus IDs, overlapping code ownership and unsafe paths.
+Each direct component participation edge must also have one machine-readable Domain-local
+`concorde-participants` entry containing target ID, kind, responsibility, selection condition and
+relied-upon promises. Registry metadata proves the relationship; the Domain entry supplies the
+self-contained meaning and routing facts.
 
 ## feature.context.resolve
 
@@ -52,6 +56,11 @@ Context solving is a separate fresh context-assessor stage, invoked by concorde-
 before planning. It returns sufficient, spec_incomplete, unsupported, conflicting or failed. A gap
 must name question, blocked_step and needed_contract. It cannot fetch missing context. Known missing
 runtime fields fail admission; semantic incompleteness is task-specific, never universally proven.
+Before launching that assessor for a Domain, the host deterministically compares the selected
+Domain's participant entries with its registry relationships. A missing direct entry returns a
+Domain-owned structured Spec gap; malformed, duplicate, unknown, kind-mismatched or unrelated
+entries return a conflicting outcome. Both stop planning, and no relationship inventory is injected
+into the worker snapshot.
 
 ## feature.context.initialize
 
@@ -106,6 +115,8 @@ The registry object is {schema_version:1,project_id,entry_target,targets,checks}
 id,kind,title,documents,nullable scope_parent/component_parent, participates_in,implementation,
 features,apis,checks,diagrams. Every array is explicit. Focus records contain id,title,document.
 The entry target is a Domain or Service so main discovery never begins by reading a Module Spec.
+Domain Markdown carries `concorde-participants` JSON arrays; each entry has target_id, kind,
+responsibility, selection_condition and a nonempty unique relied_upon_promises array.
 Diagram records contain source,kind,title. Check records contain id,target_id,argv,timeout_seconds
 and optional inputs (exact project-relative files/directories). The host hashes check declarations,
 owned implementation and declared check inputs. A changed check driver or acceptance input invalidates

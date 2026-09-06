@@ -8,6 +8,9 @@ Domain is a business/problem scope. Service and Module are component kinds: a Se
 through precise exchanges; a Module offers APIs. Domain scope nesting, component composition and
 multi-scope participation are independent relationships. Every target registers its complete ordered
 Markdown collection; filenames are unrestricted and no ancestor/collaborator context is inherited.
+Each direct `participates_in` edge is also described inside that Domain's Markdown through a
+machine-readable participant entry containing stable ID, kind, local responsibility, selection
+condition and relied-upon promises.
 
 The shipped Protocol principles apply to every consumer project. `concorde-main` is the single
 public entry for global questions and topology design. Its internal coordinator starts at the entry
@@ -41,7 +44,8 @@ Review the returned proposal, then send action apply and that complete proposal.
 an honest Domain stub; supply business rules and register Services/Modules before implementation.
 `.concorde/config.json` pins the Protocol and references `.concorde/specs.json`; that registry explicitly
 records document members, independent relationships, local Feature/API IDs, implementation ownership
-and deterministic checks. Arbitrary nearby Markdown is not context.
+and deterministic checks. Domain participant declarations make component routing locally meaningful;
+validation keeps them aligned with registry participation. Arbitrary nearby Markdown is not context.
 
 ## Run a change
 
@@ -65,6 +69,8 @@ callable with its own named request/response type. `concorde-context` reports th
 and digests without returning raw Spec bodies;
 `concorde-context-solve` diagnoses missing information. `describe-policy` previews stage grants without
 launching an agent. Delivery removes a verified attempt; it does not merge or push Git changes.
+For a Domain, context solving first reports missing or inconsistent participant declarations as
+structured Spec gaps, before planning or task generation.
 
 A blocked change preserves evidence and names missing contracts or failed admission. Author missing
 facts through an explicit local Spec task, reconcile affected consumer/provider views and resolve a

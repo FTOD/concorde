@@ -1,5 +1,6 @@
 """Consumer fixture and explicit model-process double for the Profile 8 boundary."""
 import json
+import re
 import sys
 import tempfile
 import hashlib
@@ -34,6 +35,23 @@ def project(root):
       'app/ledger.py':'def read(account_id):\n    raise KeyError(account_id)\n',
       'checks/transfer_check.py':'import sys\nfrom pathlib import Path\nsys.path.insert(0,str(Path.cwd()))\nfrom app.transfer import transfer\nassert transfer(100,20)==80\nfor balance,amount in [(10,20),(10,0),(10,-1)]:\n    try: transfer(balance,amount)\n    except ValueError: pass\n    else: raise AssertionError("invalid transfer accepted")\n',
       'secret.py':'PRIVATE_CODE_MUST_NOT_ENTER_SPEC_CONTEXT = True\n'}
+    participant_blocks={
+      'specs/how-money-moves.md':[
+        {'target_id':'service.transfer','kind':'service',
+         'responsibility':'Decide and execute transfers in the banking Domain.',
+         'selection_condition':'Select for transfer admission, execution, completion, or failure.',
+         'relied_upon_promises':['Valid transfers subtract the accepted amount and invalid transfers fail.']},
+        {'target_id':'module.ledger','kind':'module',
+         'responsibility':'Provide stored-balance reads used by banking behavior.',
+         'selection_condition':'Select for a task about the ledger read API.',
+         'relied_upon_promises':['A known account returns its integer balance and an unknown account raises KeyError.']}],
+      'specs/audit-scope.md':[
+        {'target_id':'service.transfer','kind':'service',
+         'responsibility':'Supply successful transfer outcomes to the audit Domain.',
+         'selection_condition':'Select when audit behavior depends on a completed transfer.',
+         'relied_upon_promises':['A successful transfer reports the accepted balance change.']}]}
+    for path,participants in participant_blocks.items():
+        files[path]+='\n```concorde-participants\n'+json.dumps(participants,indent=2)+'\n```\n'
     for path,content in files.items():
         file=root/path; file.parent.mkdir(parents=True,exist_ok=True); file.write_text(content)
     return registry
@@ -101,7 +119,14 @@ class ModelProcessDouble:
               'gaps':[],'documents':[],'plan':'','tasks':[]}
         if stage=='context-solve': data['outcome']='sufficient'
         if stage=='plan': data['plan']='Implement the pure transfer contract, then check valid and rejected amounts.'
-        if stage=='tasks': data['tasks']=[{'id':'task.transfer','target_id':snapshot['target_id'],
+        if stage=='tasks':
+            task_target=snapshot['target_id']
+            if snapshot['kind']=='domain':
+                body='\n'.join(item['content'] for item in snapshot['documents'])
+                block=re.search(r'```concorde-participants\s*\n(.*?)^```',body,re.M|re.S)
+                if block is None:raise AssertionError('Domain task fixture requires local participant declarations')
+                task_target=json.loads(block.group(1))[0]['target_id']
+            data['tasks']=[{'id':'task.transfer','target_id':task_target,
             'description':'Implement the transfer promise.','acceptance':'Valid transfer subtracts; invalid amount or insufficient funds raises ValueError.','complete':False}]
         if stage=='implementation' and snapshot['stage_inputs'][0]['type_id']=='concorde-implementation-task':
             (Path(cwd)/'app/transfer.py').write_text('def transfer(balance, amount):\n    if amount <= 0 or amount > balance:\n        raise ValueError("invalid transfer")\n    return balance - amount\n')

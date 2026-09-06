@@ -50,3 +50,73 @@ configuration binding and context-registry validation. Within those Service resp
 provisioning, `module.registry` owns registry admission, `module.wire-contracts` owns typed data
 validation and `module.file-transactions` owns rollback-safe file replacement. The Module IDs are
 routing facts; their Specs are supplied only to separately launched workers.
+
+## Participating components
+
+```concorde-participants
+[
+  {
+    "target_id": "service.spec-context",
+    "kind": "service",
+    "responsibility": "Initialize, migrate, configure, bind, and validate the project's target-context authority.",
+    "selection_condition": "Select for project initialization, Profile migration, Protocol binding, or context-registry validation.",
+    "relied_upon_promises": [
+      "Initialization and migration produce explicit registries and self-contained document memberships without inferring business facts from code."
+    ]
+  },
+  {
+    "target_id": "service.installation",
+    "kind": "service",
+    "responsibility": "Install and update the packaged runtime, public Operations, integrations, and project defaults.",
+    "selection_condition": "Select for installation previews, application, receipts, upgrades, or managed runtime verification.",
+    "relied_upon_promises": [
+      "Receipt-owned outputs are updated transactionally while project-owned defaults and unrelated user files are preserved."
+    ]
+  },
+  {
+    "target_id": "module.registry",
+    "kind": "module",
+    "responsibility": "Admit initialized or migrated registry identity, topology, membership, and ownership metadata.",
+    "selection_condition": "Select when installation-related work must parse or validate Profile 8 registry state.",
+    "relied_upon_promises": [
+      "Invalid identifiers, relationships, memberships, checks, and overlapping ownership are rejected."
+    ]
+  },
+  {
+    "target_id": "module.wire-contracts",
+    "kind": "module",
+    "responsibility": "Validate installer, initialization, migration, configuration, and Operation TypedValues.",
+    "selection_condition": "Select when installation data crosses a versioned JSON boundary.",
+    "relied_upon_promises": [
+      "Only the exact declared fields and compatible schema versions are admitted."
+    ]
+  },
+  {
+    "target_id": "module.file-transactions",
+    "kind": "module",
+    "responsibility": "Apply reviewed installation and migration file sets atomically.",
+    "selection_condition": "Select when approved package or project proposal bytes must be persisted.",
+    "relied_upon_promises": [
+      "Before-digest conflicts and failed final validation prevent partial installation state."
+    ]
+  },
+  {
+    "target_id": "module.package-assets",
+    "kind": "module",
+    "responsibility": "Package canonical roles, Operations, Protocol assets, templates, scripts, and integration projections.",
+    "selection_condition": "Select for package inventory, rendering, validation, or installed asset ownership.",
+    "relied_upon_promises": [
+      "The installed Codex and Claude surfaces preserve one canonical public Operation inventory."
+    ]
+  },
+  {
+    "target_id": "module.managed-runtime",
+    "kind": "module",
+    "responsibility": "Provision and verify the locked Python Operation runtime and optional official viewer.",
+    "selection_condition": "Select for runtime creation, dependency identity, rebuild, or viewer provisioning.",
+    "relied_upon_promises": [
+      "A managed runtime is accepted only after its locked dependencies and registered Operation entry points verify."
+    ]
+  }
+]
+```

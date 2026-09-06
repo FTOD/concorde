@@ -9,6 +9,87 @@ from ..model import Finding, ToolResult
 from .repository import SpecError, SpecRepository, digest, read_file
 
 
+def domain_participant_findings(repository: SpecRepository,
+                                domain_id: str | None = None) -> tuple[Finding, ...]:
+    """Compare machine-readable Domain routing declarations with registry scope participation."""
+
+    findings = []
+    domains = [target for target in repository.targets.values()
+               if target.kind == "domain" and (domain_id is None or target.id == domain_id)]
+
+    def finding(rule_id: str, domain, source: str, message: str, remediation: str):
+        findings.append(Finding(rule_id, "error", source, message, remediation,
+                                subject_id=domain.id))
+
+    def participates_at_or_below(component, domain) -> bool:
+        for scope_id in component.participates_in:
+            current = repository.targets[scope_id]
+            while True:
+                if current.id == domain.id:
+                    return True
+                if current.scope_parent is None:
+                    break
+                current = repository.targets[current.scope_parent]
+        return False
+
+    for domain in domains:
+        try:
+            declarations = repository.participants(domain)
+        except (ValueError, OSError, KeyError, TypeError) as problem:
+            finding(
+                "CONCORDE-PARTICIPANT-001",
+                domain,
+                domain.documents[0],
+                f"invalid Domain participant declaration: {problem}",
+                "Repair the concorde-participants JSON block using the exact declared fields.",
+            )
+            continue
+        by_target: dict[str, list[dict]] = {}
+        for declaration in declarations:
+            by_target.setdefault(declaration["target_id"], []).append(declaration)
+        for target_id, items in by_target.items():
+            if len(items) > 1:
+                finding(
+                    "CONCORDE-PARTICIPANT-002",
+                    domain,
+                    items[1]["source"],
+                    f"Domain {domain.id} declares participant {target_id} more than once",
+                    "Keep exactly one local declaration for this participant in the Domain collection.",
+                )
+            component = repository.targets.get(target_id)
+            if component is None:
+                finding(
+                    "CONCORDE-PARTICIPANT-003",
+                    domain,
+                    items[0]["source"],
+                    f"Domain {domain.id} declares unknown participant {target_id}",
+                    "Register the component through an accepted topology change or remove the declaration.",
+                )
+                continue
+            if (component.kind != items[0]["kind"] or component.kind == "domain"
+                    or not participates_at_or_below(component, domain)):
+                finding(
+                    "CONCORDE-PARTICIPANT-003",
+                    domain,
+                    items[0]["source"],
+                    f"Domain {domain.id} participant {target_id} has the wrong kind or no scope participation",
+                    "Match the registered component kind and a direct or nested participates_in relation.",
+                )
+        required = sorted(component.id for component in repository.targets.values()
+                          if domain.id in component.participates_in)
+        for target_id in required:
+            if target_id not in by_target:
+                finding(
+                    "CONCORDE-PARTICIPANT-004",
+                    domain,
+                    domain.documents[0],
+                    f"Domain {domain.id} is missing its direct participant {target_id}",
+                    "Declare its stable target ID, kind, Domain-local responsibility, selection condition, "
+                    "and relied-upon promises in a concorde-participants block.",
+                )
+    return tuple(findings)
+
+
 def validate_repository(root: str | Path, target_id: str | None = None,
                         package_root: Path | None = None, *, registry_bytes: bytes | None = None,
                         document_overrides: dict[str, bytes] | None = None) -> ToolResult:
@@ -61,6 +142,7 @@ def validate_repository(root: str | Path, target_id: str | None = None,
             elif provider["schema"] != contract["schema"]:
                 # The first version admits exact shared wire schemas, with independent perspective prose.
                 error("CONCORDE-CONTRACT-003", contract["source"], f"incompatible shared wire schema for {contract['id']}")
+        findings.extend(domain_participant_findings(repository))
         if (repository.root/".concorde/reflections").exists():
             from ..reflections.scoped_triage import queue_module
             queue=queue_module(repository.package_root)
@@ -87,5 +169,6 @@ def validate_repository(root: str | Path, target_id: str | None = None,
     return ToolResult("validate", target_id or ".", "invalid" if findings else "success",
         tuple(sorted(set(artifacts))), tuple(findings), {"summary": {
             "errors": counts["error"], "warnings": 0, "infos": 0}, "source_digest": digest(sorted(inputs)),
-            "claims": ["registry structure", "local focus definitions", "contract examples", "shared wire schema equality"],
+            "claims": ["registry structure", "local focus definitions", "contract examples",
+                       "shared wire schema equality", "Domain participant routing declarations"],
             "semantic_completeness": "not_proven"})

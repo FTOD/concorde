@@ -1,16 +1,16 @@
 <!--
 Sync Impact Report
-- Version: 10.0.0 -> 11.0.0
-- Bump rationale: MAJOR; concorde-main replaces ask and gains explicitly accepted topology design/application.
-- Modified principles: P5 main routing, P7 public context exposure, P8 topology evolution, and Part B Protocol cutover.
-- Added sections: Main-designed topology with two maintainer acceptance gates.
+- Version: 11.0.0 -> 12.0.0
+- Bump rationale: MAJOR; every direct scope participant now requires a machine-valid Domain-local routing declaration.
+- Modified principles: P1 participation/routing completeness and Part B Protocol cutover.
+- Added sections: Deterministic participant alignment and pre-planning Domain Spec gaps.
 - Removed sections: none.
 - Deferred placeholders: none.
 -->
 
 # Concorde Constitution
 
-Version: 11.0.0. Architecture Profile 8; Workspace Protocol 14; Delivery Proposal 10.
+Version: 12.0.0. Architecture Profile 8; Workspace Protocol 14; Delivery Proposal 10.
 
 ## Part A: universal Concorde principles
 
@@ -52,6 +52,16 @@ local responsibility, relationship and selection condition in its own Spec. This
 not substitute for the downstream target's complete Spec. It lets a main coordinator decide where
 work belongs without reading a Module Spec or relying on registry metadata as hidden business
 authority.
+
+For every direct component `participates_in` relationship in the registry, the corresponding Domain
+collection MUST contain exactly one machine-readable `concorde-participants` entry with the
+component's stable target ID and kind, its Domain-local responsibility, the condition for selecting
+it, and the nonempty promises that Domain relies on. A broader Domain MAY repeat a participant from
+a nested Domain when it needs that participant locally, but the repeated declaration does not grant
+the participant's Spec or code. Deterministic validation MUST reject missing, duplicate, unknown,
+kind-mismatched or unrelated declarations. Before Domain planning or task generation, context
+solving MUST report a missing direct declaration as a concrete Domain Spec gap and an inconsistent
+declaration as conflicting.
 
 Business entities such as Account, Transfer, and Daily Limit MUST have meaningful definitions
 and responsibility assignments where they matter. They do not each require a separate Domain,

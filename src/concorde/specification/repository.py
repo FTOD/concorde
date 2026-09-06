@@ -19,6 +19,7 @@ PROTOCOL_VERSION = "1.0.0"
 KINDS = frozenset({"domain", "service", "module"})
 IDENTITY = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$")
 CONTRACT_BLOCK = re.compile(r"^```concorde-contract\s*\n(.*?)^```\s*$", re.M | re.S)
+PARTICIPANTS_BLOCK = re.compile(r"^```concorde-participants\s*\n(.*?)^```\s*$", re.M | re.S)
 
 
 class SpecError(ValueError):
@@ -256,6 +257,54 @@ class SpecRepository:
                 validate(value["example"], value["schema"])
                 contracts.append({**value, "source": document.path, "owner": target.id})
         return tuple(contracts)
+
+    def participants(self, target: SpecTarget) -> tuple[dict, ...]:
+        """Parse the Domain-local routing view; registry participation never replaces this Spec."""
+
+        participants = []
+        fields = {"target_id", "kind", "responsibility", "selection_condition",
+                  "relied_upon_promises"}
+        for document in self.documents(target):
+            matches = tuple(PARTICIPANTS_BLOCK.finditer(document.body))
+            if matches and target.kind != "domain":
+                raise SpecError(
+                    f"only a Domain Spec may declare concorde-participants: {document.path}"
+                )
+            for match in matches:
+                values = decode(match.group(1))
+                if not isinstance(values, list) or not values:
+                    raise SpecError(
+                        f"concorde-participants must be a nonempty JSON array: {document.path}"
+                    )
+                for value in values:
+                    if not isinstance(value, dict) or set(value) != fields:
+                        raise SpecError(
+                            "participant requires target_id/kind/responsibility/selection_condition/"
+                            f"relied_upon_promises: {document.path}"
+                        )
+                    target_id = identifier(value["target_id"])
+                    if value["kind"] not in {"service", "module"}:
+                        raise SpecError(
+                            f"participant kind must be service or module: {document.path}"
+                        )
+                    for key in ("responsibility", "selection_condition"):
+                        if not isinstance(value[key], str) or not value[key].strip():
+                            raise SpecError(
+                                f"participant {key} must be nonempty: {document.path}"
+                            )
+                    promises = strings(
+                        value["relied_upon_promises"],
+                        "relied_upon_promises",
+                        nonempty=True,
+                    )
+                    participants.append({
+                        **value,
+                        "target_id": target_id,
+                        "relied_upon_promises": promises,
+                        "source": document.path,
+                        "owner": target.id,
+                    })
+        return tuple(participants)
 
     def implementation_files(self, target: SpecTarget) -> tuple[str, ...]:
         result = []

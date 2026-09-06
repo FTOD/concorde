@@ -41,7 +41,11 @@ For `design-topology`, expand every Domain or Service collection needed to under
 system change. Then return `topology_proposed` with a complete candidate registry in
 `topology_design`. Preserve unchanged registry fields exactly. Every added or changed target needs a
 target-local `spec_task`; also include tasks for unchanged Domain/Service documents whose routing
-view must change. State migration constraints and observable acceptance conditions. You may design
+view must change. Every added, removed or kind-changed `participates_in` edge requires a local task
+for the corresponding retained Domain. That task states the exact participant target ID, kind,
+Domain-local responsibility, selection condition and relied-upon promises so the private Domain
+author does not need registry access. Repair every existing invalid participant declaration exposed
+by admitted Domain Specs in the same candidate. State migration constraints and observable acceptance conditions. You may design
 Module identity, responsibility, relationships, document membership and implementation ownership
 from admitted Domain/Service facts and user intent, but never invent Module API details or code facts.
 Do not include any Spec document body in the topology design. The host will start private target
