@@ -8,7 +8,13 @@ The branch starts from main `e48f8aaaf201ab42a7058f5e5373529b6591e5f4`, through 
 
 - Domain scope nesting and Service/Module composition are independent. Components may participate
   in several Domains. Concorde registers 4 Domains, 5 Services and 8 Modules in 20 explicit Markdown
-  memberships; each target's complete collection is the context authority, regardless of filename.
+  memberships over 19 physical truths; the Operation registry is genuinely shared by a Domain and
+  Service rather than copied.
+- Every Markdown declares a globally unique document ID, exact references and main visibility.
+  Resolved contexts separate one-target Target Spec from collective Shared Specs and never expand a
+  co-referencing entity's remaining collection. Main receives only main-visible Domain/Service
+  documents. Single-target authors cannot change shared truth; topology changes require all candidate
+  references and identical proposed bytes.
 - Every direct `participates_in` edge has one machine-readable Domain-local declaration with stable
   target ID, kind, responsibility, selection condition and relied-upon promises. Concorde's three
   directly participating Domains contain all 19 views. Deterministic validation aligns them with the
@@ -19,14 +25,15 @@ The branch starts from main `e48f8aaaf201ab42a7058f5e5373529b6591e5f4`, through 
   schemas; seven internal roles are invoked only by the host. Configuration and runtime input are
   separate TypedValues in invocation schema 2; null configuration is resolved by the trusted host.
 - New agent-backed tasks first use a separate main coordinator. It starts at the entry Domain or
-  Service and may append only referenced Domain/Service Specs; Module Specs and code are rejected.
+  Service and may append only referenced, main-visible Domain/Service documents; direct Module
+  expansion and code are rejected.
   Each selected target worker starts fresh with one digest-bound snapshot. The public
   `concorde-main` Operation replaces standalone ask: its default `ask` action may route several
   readers and synthesize typed results; other Operations route one owner, using a Domain for
   cross-target mutation. Public context inspection returns membership/digests without bodies.
 - `concorde-main` also owns steady-state topology evolution. Its coordinator designs a complete
-  registry from exact topology metadata, all kind definitions and admitted Domain/Service bodies,
-  but no Module body or code. Explicit maintainer acceptance precedes private target-local Spec
+  registry from exact topology metadata, all kind definitions and admitted main-visible bodies,
+  but no direct Module expansion or code. Explicit maintainer acceptance precedes private target-local Spec
   authoring; an in-memory overlay must validate before the host stores exact proposed bytes. A
   second acceptance applies that digest/before-digest-bound artifact atomically.
 - Only implementation receives owned code. Spec-only agents use private capsules; no ancestor,
@@ -49,8 +56,8 @@ The branch starts from main `e48f8aaaf201ab42a7058f5e5373529b6591e5f4`, through 
 
 | Gate | Result |
 | --- | --- |
-| Complete Python suite | 406 tests passed |
-| Complete docsite suite | 116 tests passed across 26 files |
+| Complete Python suite | 413 tests passed |
+| Complete docsite suite | 117 tests passed across 26 files |
 | TypeScript typecheck | Passed |
 | Production build and candidate promotion | Passed for Concorde and a freshly initialized project |
 | Final public schema/projection regeneration | Package validation and complete Python suite passed afterward |
@@ -67,7 +74,8 @@ fresh subprocess importing only installed framework code for complete standard l
 discovery/reader/synthesis through both Codex and Claude completion adapters. They also exercise
 topology design, both acceptance gates, private Module authoring, stale/tampered proposal rejection,
 read-only policy description, participant-aware topology tasks, participant alignment, pre-planning
-gaps, Domain author rollback, overlay validation and atomic application. Their native model process
+gaps, Domain author rollback, shared-document visibility/one-hop resolution, single-target write
+rejection, multi-author byte consensus, overlay validation and atomic application. Their native model process
 is an explicit test double. LangGraph, typed admission, host policies, file changes, behavioral
 subprocess checks and delivery are real. Native permission and completion-attestation/replay unit
 coverage is retained.

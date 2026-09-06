@@ -39,7 +39,10 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
         "targets": [empty_target(target_id, "domain", name, [path])], "checks": []}
     config = {"profile_version": 8, "registry": ".concorde/specs.json",
         "protocol": protocol_binding(package), "operation_configuration": configuration}
-    text = (f"# {name}\n\nThis Domain scopes the initialized project. Its current supported use is to\n"
+    declaration = {"id": "document." + target_id, "targets": [target_id],
+                   "main_visible": True}
+    text = ("```concorde-document\n" + json.dumps(declaration, indent=2) + "\n```\n\n"
+        f"# {name}\n\nThis Domain scopes the initialized project. Its current supported use is to\n"
         "identify the project and author its intended behavior. Business entities, rules, participating\n"
         "components, and product features have not yet been supplied. A task requiring those facts\n"
         "must report Spec incomplete and name the missing information. Initialization does not infer\n"

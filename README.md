@@ -1,21 +1,23 @@
 # Concorde
 
-Concorde runs agent work from explicit, self-contained Specs. A global main coordinator may inspect
-Domain and Service Specs on demand to route a request; every routed worker then has one selected
+Concorde runs agent work from explicit, self-contained resolved contexts. A global main coordinator may inspect
+main-visible Domain and Service documents on demand to route a request; every routed worker then has one selected
 target, one reproducible context and a host-enforced permission boundary.
 
 Domain is a business/problem scope. Service and Module are component kinds: a Service offers Features
 through precise exchanges; a Module offers APIs. Domain scope nesting, component composition and
 multi-scope participation are independent relationships. Every target registers its complete ordered
-Markdown collection; filenames are unrestricted and no ancestor/collaborator context is inherited.
+Markdown collection; filenames are unrestricted. Each Markdown declares a stable document ID, exact
+referencing targets and main visibility. A target's context separates singly referenced Target Spec
+from one-hop collective Shared Specs; it never expands a co-referencing entity's remaining files.
 Each direct `participates_in` edge is also described inside that Domain's Markdown through a
 machine-readable participant entry containing stable ID, kind, local responsibility, selection
 condition and relied-upon promises.
 
 The shipped Protocol principles apply to every consumer project. `concorde-main` is the single
 public entry for global questions and topology design. Its internal coordinator starts at the entry
-Domain or Service and appends only explicitly requested Domain/Service collections. It cannot read a
-Module Spec or code. Once it returns typed routes, the host starts different fresh workers and injects
+Domain or Service and appends only explicitly requested Domain/Service main-visible documents. It
+cannot directly expand a Module target or read code. Once it returns typed routes, the host starts different fresh workers and injects
 the pinned global principles plus each selected kind definition. Missing task-relevant facts yield
 Spec incomplete, not a search for arbitrary files. See [the principles](protocol/principles.md) and
 [Concorde's own system Spec](specs/concorde/system.md).
@@ -46,6 +48,7 @@ an honest Domain stub; supply business rules and register Services/Modules befor
 records document members, independent relationships, local Feature/API IDs, implementation ownership
 and deterministic checks. Domain participant declarations make component routing locally meaningful;
 validation keeps them aligned with registry participation. Arbitrary nearby Markdown is not context.
+Document declarations are likewise checked against reverse registry membership.
 
 ## Run a change
 
@@ -85,6 +88,9 @@ stores exact registry/document bytes in an ignored application artifact, returni
 digest. Review that artifact outside agent cognition, then send its ArtifactRef with
 `action:apply-topology`. Stale inputs or invalid target state prevent writes; successful application
 updates the registry and documents atomically. The former standalone ask Operation does not exist.
+Shared truth has no unique owner and cannot be changed by an ordinary single-target author. A
+topology change tasks every affected reference and proceeds only when all candidate referencing
+authors return identical shared bytes.
 
 [Operation inventory](specs/concorde/services/operation-registry.md) ·
 [Complete wire contracts](specs/concorde/services/operation-wire.md)

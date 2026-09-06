@@ -1,3 +1,11 @@
+```concorde-document
+{
+  "id": "document.module.package-assets",
+  "targets": ["module.package-assets"],
+  "main_visible": false
+}
+```
+
 # Package assets
 
 ## api.assets.render

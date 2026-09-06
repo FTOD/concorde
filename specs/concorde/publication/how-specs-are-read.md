@@ -1,3 +1,11 @@
+```concorde-document
+{
+  "id": "document.publication.behavior",
+  "targets": ["domain.docsite"],
+  "main_visible": true
+}
+```
+
 # How Specs become a documentation site
 
 This Domain scopes a human publication of explicitly registered architecture knowledge. Source
@@ -6,13 +14,17 @@ JSON are derived views. A Page represents one target's membership of one Markdow
 is stable under title edits and contains target identity plus a digest of its source path. A Build
 manifest binds route inventory to exact source bytes. A Relationship view separates Domain nesting,
 component composition, scope participation and required/provided contract edges.
+Every source displays its `concorde-document` identity, exact referencing targets and main visibility.
+A shared physical truth produces one target-specific Page/Route for each declared membership without
+copying or reinterpreting its content.
 
 The Publication Service scaffolds a project-local Docusaurus site using a reviewed proposal. Its
 Spec publication Module reads only explicitly registered documents, validates membership, rewrites
 local navigation and materializes pages. Arbitrary filenames and optional Markdown frontmatter are
 accepted. The two independent sidebar trees must not reinterpret Domain as a component kind. A
 component shared by several scopes retains one identity. All documents belonging to a target remain
-visible as its complete collection.
+visible under Target Spec or Shared Specs as its complete resolved collection. Publication validates
+that document declarations and reverse registry memberships agree.
 
 The publisher may read the registry and many collections because it is a deterministic human-view
 Tool. Navigation does not define an agent's cognitive permissions. Graph selection links to the target's
@@ -29,7 +41,7 @@ expected routes is atomically promoted. Failed builds preserve the previous succ
 The main coordinator selects `service.publication` for consumer-facing docsite proposal, build and
 publication outcomes. It selects `module.spec-publication` for the in-process registry-to-pages,
 sidebar, graph, diagram and build-manifest API. The Module ID is visible here so work can be routed;
-its Module Spec remains private to the fresh target worker.
+its remaining target collection stays private to the fresh target worker.
 
 ## Participating components
 

@@ -1,3 +1,11 @@
+```concorde-document
+{
+  "id": "document.workflow.lifecycle",
+  "targets": ["domain.workflow"],
+  "main_visible": true
+}
+```
+
 # How a specified change progresses
 
 This Domain concerns turning intended behavior into a completed, evidenced change. It includes
@@ -9,7 +17,7 @@ The Operation inventory in this collection is the complete public command vocabu
 A Task is user intent for exactly one target, optionally focused on a local Feature or API. Its
 constraints travel unchanged through the change attempt. A Configuration selects a supported agent
 integration and enforcement mode; it is project setup, not per-stage agent authority. A Spec snapshot
-freezes the selected collection plus global principles and the target kind definition. A Stage is
+freezes the selected target's Target Spec plus one-hop Shared Specs, global principles and kind definition. A Stage is
 one fresh cognition session with a declared role. A Change attempt binds its plan and tasks to the
 intent and Spec revision. A Check measures implementation and returns status plus byte identities.
 A Gap is a concrete missing obligation or fact required by a stage. A Reflection is a reported
@@ -18,9 +26,11 @@ A Topology design is a coordinator-authored candidate registry plus target-local
 Topology application is the host-private exact registry/document byte set produced only after that
 design is accepted.
 
-The context Service selects only registered local documents. The host gives that snapshot to the
+The context Service selects only registered target-local and shared documents, never the remaining
+collections of co-referencing entities. The host gives that snapshot to the
 agent execution Module under a permission policy compiled for the stage. Authoring returns proposed
-replacement documents; the host applies only members of the selected collection. Planning first
+replacement documents. A normal target author may change only documents referenced by that target
+alone; collective shared truth requires the accepted multi-author topology path. Planning first
 assesses whether the task is answerable. An insufficient context stops before an attempt is created.
 Tasks turn the accepted plan into explicit acceptance conditions. The implementation worker receives
 that plan/tasks TypedValue plus explicitly owned code. It cannot edit Specs, registry or other code.
@@ -164,7 +174,8 @@ stateDiagram-v2
   Applied --> [*]
 ```
 
-No target author writes project files. A gap leaves the pre-design project unchanged. Prepared
+No target author writes project files. A gap or disagreement over exact shared bytes leaves the
+pre-design project unchanged. Prepared
 artifacts contain full proposed bytes, but only their path/digest enters coordinator cognition.
 Application is one host transaction with current before-digests and final repository validation.
 

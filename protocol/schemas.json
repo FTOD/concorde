@@ -1410,11 +1410,23 @@
               "additionalProperties": false
             }
           },
-          "documents": {
+          "document_order": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "target_spec": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "path": {
                   "type": "string",
                   "minLength": 1
@@ -1423,11 +1435,67 @@
                   "type": "string",
                   "minLength": 1,
                   "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
                 }
               },
               "required": [
+                "document_id",
                 "path",
-                "digest"
+                "digest",
+                "targets",
+                "main_visible"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "shared_specs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "digest": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "document_id",
+                "path",
+                "digest",
+                "targets",
+                "main_visible"
               ],
               "additionalProperties": false
             }
@@ -1442,7 +1510,9 @@
           "phase",
           "protocol_binding",
           "protocol",
-          "documents"
+          "document_order",
+          "target_spec",
+          "shared_specs"
         ],
         "additionalProperties": false
       }
@@ -5486,11 +5556,23 @@
               "additionalProperties": false
             }
           },
-          "documents": {
+          "document_order": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "target_spec": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "path": {
                   "type": "string",
                   "minLength": 1
@@ -5499,11 +5581,67 @@
                   "type": "string",
                   "minLength": 1,
                   "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
                 }
               },
               "required": [
+                "document_id",
                 "path",
-                "digest"
+                "digest",
+                "targets",
+                "main_visible"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "shared_specs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "digest": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "document_id",
+                "path",
+                "digest",
+                "targets",
+                "main_visible"
               ],
               "additionalProperties": false
             }
@@ -5518,7 +5656,9 @@
           "phase",
           "protocol_binding",
           "protocol",
-          "documents"
+          "document_order",
+          "target_spec",
+          "shared_specs"
         ],
         "additionalProperties": false
       }
@@ -7015,11 +7155,23 @@
               "additionalProperties": false
             }
           },
-          "documents": {
+          "document_order": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "target_spec": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "path": {
                   "type": "string",
                   "minLength": 1
@@ -7029,13 +7181,73 @@
                   "minLength": 1,
                   "pattern": "^sha256:[0-9a-f]{64}$"
                 },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
+                },
                 "content": {
                   "type": "string"
                 }
               },
               "required": [
+                "document_id",
                 "path",
                 "digest",
+                "targets",
+                "main_visible",
+                "content"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "shared_specs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "digest": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
+                },
+                "content": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "document_id",
+                "path",
+                "digest",
+                "targets",
+                "main_visible",
                 "content"
               ],
               "additionalProperties": false
@@ -7153,7 +7365,9 @@
           "constraints",
           "protocol_binding",
           "protocol",
-          "documents",
+          "document_order",
+          "target_spec",
+          "shared_specs",
           "instructions",
           "stage_inputs",
           "implementation_artifacts"
@@ -7620,11 +7834,23 @@
               "additionalProperties": false
             }
           },
-          "documents": {
+          "document_order": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "target_spec": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "path": {
                   "type": "string",
                   "minLength": 1
@@ -7633,11 +7859,67 @@
                   "type": "string",
                   "minLength": 1,
                   "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
                 }
               },
               "required": [
+                "document_id",
                 "path",
-                "digest"
+                "digest",
+                "targets",
+                "main_visible"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "shared_specs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "digest": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "document_id",
+                "path",
+                "digest",
+                "targets",
+                "main_visible"
               ],
               "additionalProperties": false
             }
@@ -7652,7 +7934,9 @@
           "phase",
           "protocol_binding",
           "protocol",
-          "documents"
+          "document_order",
+          "target_spec",
+          "shared_specs"
         ],
         "additionalProperties": false
       }
@@ -7773,11 +8057,23 @@
               "additionalProperties": false
             }
           },
-          "documents": {
+          "document_order": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "target_spec": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "path": {
                   "type": "string",
                   "minLength": 1
@@ -7787,13 +8083,73 @@
                   "minLength": 1,
                   "pattern": "^sha256:[0-9a-f]{64}$"
                 },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
+                },
                 "content": {
                   "type": "string"
                 }
               },
               "required": [
+                "document_id",
                 "path",
                 "digest",
+                "targets",
+                "main_visible",
+                "content"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "shared_specs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "digest": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
+                },
+                "content": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "document_id",
+                "path",
+                "digest",
+                "targets",
+                "main_visible",
                 "content"
               ],
               "additionalProperties": false
@@ -7911,7 +8267,9 @@
           "constraints",
           "protocol_binding",
           "protocol",
-          "documents",
+          "document_order",
+          "target_spec",
+          "shared_specs",
           "instructions",
           "stage_inputs",
           "implementation_artifacts"
@@ -8428,11 +8786,23 @@
                     "service"
                   ]
                 },
-                "documents": {
+                "document_order": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                },
+                "target_spec": {
                   "type": "array",
                   "items": {
                     "type": "object",
                     "properties": {
+                      "document_id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
                       "path": {
                         "type": "string",
                         "minLength": 1
@@ -8442,13 +8812,73 @@
                         "minLength": 1,
                         "pattern": "^sha256:[0-9a-f]{64}$"
                       },
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "uniqueItems": true,
+                        "minItems": 1
+                      },
+                      "main_visible": {
+                        "type": "boolean"
+                      },
                       "content": {
                         "type": "string"
                       }
                     },
                     "required": [
+                      "document_id",
                       "path",
                       "digest",
+                      "targets",
+                      "main_visible",
+                      "content"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "shared_specs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "document_id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "digest": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^sha256:[0-9a-f]{64}$"
+                      },
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "uniqueItems": true,
+                        "minItems": 1
+                      },
+                      "main_visible": {
+                        "type": "boolean"
+                      },
+                      "content": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "document_id",
+                      "path",
+                      "digest",
+                      "targets",
+                      "main_visible",
                       "content"
                     ],
                     "additionalProperties": false
@@ -8458,7 +8888,9 @@
               "required": [
                 "target_id",
                 "kind",
-                "documents"
+                "document_order",
+                "target_spec",
+                "shared_specs"
               ],
               "additionalProperties": false
             }
@@ -9023,11 +9455,23 @@
                     "service"
                   ]
                 },
-                "documents": {
+                "document_order": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                },
+                "target_spec": {
                   "type": "array",
                   "items": {
                     "type": "object",
                     "properties": {
+                      "document_id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
                       "path": {
                         "type": "string",
                         "minLength": 1
@@ -9037,13 +9481,73 @@
                         "minLength": 1,
                         "pattern": "^sha256:[0-9a-f]{64}$"
                       },
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "uniqueItems": true,
+                        "minItems": 1
+                      },
+                      "main_visible": {
+                        "type": "boolean"
+                      },
                       "content": {
                         "type": "string"
                       }
                     },
                     "required": [
+                      "document_id",
                       "path",
                       "digest",
+                      "targets",
+                      "main_visible",
+                      "content"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "shared_specs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "document_id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "digest": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^sha256:[0-9a-f]{64}$"
+                      },
+                      "targets": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "uniqueItems": true,
+                        "minItems": 1
+                      },
+                      "main_visible": {
+                        "type": "boolean"
+                      },
+                      "content": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "document_id",
+                      "path",
+                      "digest",
+                      "targets",
+                      "main_visible",
                       "content"
                     ],
                     "additionalProperties": false
@@ -9053,7 +9557,9 @@
               "required": [
                 "target_id",
                 "kind",
-                "documents"
+                "document_order",
+                "target_spec",
+                "shared_specs"
               ],
               "additionalProperties": false
             }
@@ -10013,11 +10519,49 @@
               "additionalProperties": false
             }
           },
-          "current_documents": {
+          "candidate_document_references": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                }
+              },
+              "required": [
+                "path",
+                "targets"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "current_document_order": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "target_spec": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "path": {
                   "type": "string",
                   "minLength": 1
@@ -10027,13 +10571,73 @@
                   "minLength": 1,
                   "pattern": "^sha256:[0-9a-f]{64}$"
                 },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
+                },
                 "content": {
                   "type": "string"
                 }
               },
               "required": [
+                "document_id",
                 "path",
                 "digest",
+                "targets",
+                "main_visible",
+                "content"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "shared_specs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "digest": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
+                },
+                "content": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "document_id",
+                "path",
+                "digest",
+                "targets",
+                "main_visible",
                 "content"
               ],
               "additionalProperties": false
@@ -10050,7 +10654,10 @@
           "task",
           "protocol_binding",
           "protocol",
-          "current_documents",
+          "candidate_document_references",
+          "current_document_order",
+          "target_spec",
+          "shared_specs",
           "instructions"
         ],
         "additionalProperties": false

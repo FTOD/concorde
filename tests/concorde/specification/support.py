@@ -13,6 +13,14 @@ from concorde.specification.initialize import project_proposal, apply_project_pr
 PACKAGE = Path(__file__).resolve().parents[3]
 CONFIGURATION = typed('concorde-operation-configuration', {'integration':'claude','enforcement':'native'})
 
+def update_document_declaration(root, path, **updates):
+    document=root/path;text=document.read_text()
+    match=re.search(r'```concorde-document\s*\n(.*?)^```',text,re.M|re.S)
+    if match is None:raise AssertionError(f'missing concorde-document block: {path}')
+    value=json.loads(match.group(1));value.update(updates)
+    document.write_text(text[:match.start()]+'```concorde-document\n'+json.dumps(value,indent=2)+
+                        '\n```'+text[match.end():])
+
 def project(root):
     apply_project_proposal(root, PACKAGE, project_proposal(root, PACKAGE, 'Bank', CONFIGURATION, 'scope.bank'))
     targets=[empty_target('scope.bank','domain','Bank',['specs/how-money-moves.md']),
@@ -35,6 +43,14 @@ def project(root):
       'app/ledger.py':'def read(account_id):\n    raise KeyError(account_id)\n',
       'checks/transfer_check.py':'import sys\nfrom pathlib import Path\nsys.path.insert(0,str(Path.cwd()))\nfrom app.transfer import transfer\nassert transfer(100,20)==80\nfor balance,amount in [(10,20),(10,0),(10,-1)]:\n    try: transfer(balance,amount)\n    except ValueError: pass\n    else: raise AssertionError("invalid transfer accepted")\n',
       'secret.py':'PRIVATE_CODE_MUST_NOT_ENTER_SPEC_CONTEXT = True\n'}
+    document_declarations={
+      'specs/how-money-moves.md':{'id':'document.bank','targets':['scope.bank'],'main_visible':True},
+      'specs/audit-scope.md':{'id':'document.audit','targets':['scope.audit'],'main_visible':True},
+      'specs/send-money.md':{'id':'document.transfer.feature','targets':['service.transfer'],'main_visible':True},
+      'specs/transfer-promises.md':{'id':'document.transfer.promises','targets':['service.transfer'],'main_visible':True},
+      'specs/ledger-api.md':{'id':'document.ledger.api','targets':['module.ledger'],'main_visible':False}}
+    for path,declaration in document_declarations.items():
+        files[path]='```concorde-document\n'+json.dumps(declaration,indent=2)+'\n```\n\n'+files[path]
     participant_blocks={
       'specs/how-money-moves.md':[
         {'target_id':'service.transfer','kind':'service',
@@ -80,11 +96,18 @@ class ModelProcessDouble:
         capability=properties['capability']['const']
         self.calls.append({'stage':stage,'capability':capability,'snapshot':snapshot,'cwd':Path(cwd),'prompt':input_text,'argv':argv})
         if value['type_id']=='concorde-topology-author-context':
-            current={item['path']:item['content'] for item in snapshot['current_documents']}
+            current={item['path']:item['content']
+                     for section in ('target_spec','shared_specs') for item in snapshot[section]}
             target=snapshot['target']
-            documents=[{'path':path,'content':current.get(path,
-                f"# {target['title']}\n\nStable target ID: {target['id']}.\n\n{snapshot['task']}\n")}
-                for path in target['documents']]
+            candidate={item['path']:item['targets'] for item in snapshot['candidate_document_references']}
+            def initial(path):
+                document_id='document.'+re.sub(r'[^a-z0-9.-]+','-',path.lower().removesuffix('.md').replace('/','.'))
+                declaration={'id':document_id,'targets':candidate[path],
+                             'main_visible':target['kind']!='module'}
+                return ('```concorde-document\n'+json.dumps(declaration,indent=2)+'\n```\n\n'
+                    f"# {target['title']}\n\nStable target ID: {target['id']}.\n\n{snapshot['task']}\n")
+            documents=[{'path':path,'content':current.get(path,initial(path))}
+                       for path in target['documents']]
             data={'context_id':snapshot['context_id'],'target_id':target['id'],'outcome':'completed',
                   'answer':'Target-local Spec authored.','gaps':[],'documents':documents}
             if self.callback:self.callback(stage,snapshot,data,Path(cwd))
@@ -122,7 +145,8 @@ class ModelProcessDouble:
         if stage=='tasks':
             task_target=snapshot['target_id']
             if snapshot['kind']=='domain':
-                body='\n'.join(item['content'] for item in snapshot['documents'])
+                body='\n'.join(item['content']
+                    for section in ('target_spec','shared_specs') for item in snapshot[section])
                 block=re.search(r'```concorde-participants\s*\n(.*?)^```',body,re.M|re.S)
                 if block is None:raise AssertionError('Domain task fixture requires local participant declarations')
                 task_target=json.loads(block.group(1))[0]['target_id']

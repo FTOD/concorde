@@ -20,6 +20,7 @@ KINDS = frozenset({"domain", "service", "module"})
 IDENTITY = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$")
 CONTRACT_BLOCK = re.compile(r"^```concorde-contract\s*\n(.*?)^```\s*$", re.M | re.S)
 PARTICIPANTS_BLOCK = re.compile(r"^```concorde-participants\s*\n(.*?)^```\s*$", re.M | re.S)
+DOCUMENT_BLOCK = re.compile(r"^```concorde-document\s*\n(.*?)^```\s*$", re.M | re.S)
 
 
 class SpecError(ValueError):
@@ -77,6 +78,9 @@ class SpecDocument:
     path: str
     content: str
     digest: str
+    document_id: str
+    targets: tuple[str, ...]
+    main_visible: bool
     metadata: dict
     body: str
 
@@ -107,6 +111,8 @@ class SpecRepository:
         self.targets: dict[str, SpecTarget] = {}
         self.focus: dict[str, tuple[str, str, dict]] = {}
         self.checks: dict[str, dict] = {}
+        self.document_targets: dict[str, list[str]] = {}
+        self._document_cache: dict[str, SpecDocument] = {}
         self._load_registry()
         self.entry_target = self.registry["entry_target"]
         if self.entry_target not in self.targets:
@@ -135,7 +141,7 @@ class SpecRepository:
     def _load_registry(self) -> None:
         if not isinstance(self.registry["targets"], list) or not self.registry["targets"]:
             raise SpecError("registry requires targets")
-        paths: dict[str, str] = {}
+        paths: set[str] = set()
         fields = {"id", "kind", "title", "documents", "scope_parent", "component_parent",
                   "participates_in", "implementation", "features", "apis", "checks", "diagrams"}
         for raw in self.registry["targets"]:
@@ -151,7 +157,8 @@ class SpecRepository:
                 safe_path(path)
                 if not path.endswith(".md") or path.startswith((".concorde/", ".git/")):
                     raise SpecError(f"Spec documents must be durable Markdown: {path}")
-                paths[path] = target_id
+                paths.add(path)
+                self.document_targets.setdefault(path, []).append(target_id)
             implementation = strings(raw["implementation"], "implementation")
             for path in implementation:
                 safe_path(path)
@@ -227,17 +234,41 @@ class SpecRepository:
         return self.targets[target_id]
 
     def documents(self, target: SpecTarget) -> tuple[SpecDocument, ...]:
-        result = []
-        for path in target.documents:
-            raw = self.document_overrides.get(path)
-            if raw is None:
-                raw = read_file(self.root, path)
-            text = raw.decode("utf-8")
-            metadata, body = parse_document(text, path) if text.startswith("---\n") else ({}, text)
-            if not body.strip():
-                raise SpecError(f"empty Spec document: {path}")
-            result.append(SpecDocument(path, text, digest(raw), metadata, body))
-        return tuple(result)
+        return tuple(self.document(path) for path in target.documents)
+
+    def document(self, path: str) -> SpecDocument:
+        """Read one declared Spec truth and verify its registry reference set."""
+
+        if path not in self.document_targets:
+            raise SpecError(f"unregistered Spec document: {path}")
+        if path in self._document_cache:
+            return self._document_cache[path]
+        raw = self.document_overrides.get(path)
+        if raw is None:
+            raw = read_file(self.root, path)
+        text = raw.decode("utf-8")
+        metadata, body = parse_document(text, path) if text.startswith("---\n") else ({}, text)
+        if not body.strip():
+            raise SpecError(f"empty Spec document: {path}")
+        blocks = tuple(DOCUMENT_BLOCK.finditer(body))
+        if len(blocks) != 1:
+            raise SpecError(f"Spec document requires exactly one concorde-document block: {path}")
+        value = decode(blocks[0].group(1))
+        if not isinstance(value, dict) or set(value) != {"id", "targets", "main_visible"}:
+            raise SpecError(f"concorde-document requires id/targets/main_visible: {path}")
+        document_id = identifier(value["id"])
+        targets = strings(value["targets"], "document targets", nonempty=True)
+        if type(value["main_visible"]) is not bool:
+            raise SpecError(f"document main_visible must be boolean: {path}")
+        expected = tuple(self.document_targets[path])
+        if set(targets) != set(expected) or len(targets) != len(expected):
+            raise SpecError(
+                f"document target declaration differs from registry membership: {path}"
+            )
+        document = SpecDocument(path, text, digest(raw), document_id, targets,
+                                value["main_visible"], metadata, body)
+        self._document_cache[path] = document
+        return document
 
     def contracts(self, target: SpecTarget) -> tuple[dict, ...]:
         contracts = []
@@ -261,15 +292,13 @@ class SpecRepository:
     def participants(self, target: SpecTarget) -> tuple[dict, ...]:
         """Parse the Domain-local routing view; registry participation never replaces this Spec."""
 
+        if target.kind != "domain":
+            return ()
         participants = []
         fields = {"target_id", "kind", "responsibility", "selection_condition",
                   "relied_upon_promises"}
         for document in self.documents(target):
             matches = tuple(PARTICIPANTS_BLOCK.finditer(document.body))
-            if matches and target.kind != "domain":
-                raise SpecError(
-                    f"only a Domain Spec may declare concorde-participants: {document.path}"
-                )
             for match in matches:
                 values = decode(match.group(1))
                 if not isinstance(values, list) or not values:

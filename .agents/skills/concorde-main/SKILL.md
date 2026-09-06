@@ -13,7 +13,8 @@ metadata:
 
 This is Concorde's public main entry. It replaces the former ask Operation. The internal coordinator
 starts from the project's entry Domain or Service and may expand only registered Domain and Service
-Specs. It understands every global kind definition but cannot read Module document bodies or
+main-visible Target Spec and Shared Specs. Shared membership never expands another entity's remaining
+documents. It understands every global kind definition but cannot directly expand a Module target or read
 implementation code.
 
 Action `ask` (the default when action is omitted) routes one or more fresh target readers and then
@@ -34,10 +35,10 @@ and task, with optional focus_id, constraints, and change_id.
 Initialization/migration use their typed propose/apply requests; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
-The coordinator expands Domain/Service context only as needed and records the exact ordered
-membership and digests in every discovery identity. A Module may be selected from responsibilities
-stated in an admitted Domain or Service, but its Spec is visible only to the fresh target reader.
-Topology design receives exact registry metadata but no Module body. Target authors' complete output
+The coordinator expands main-visible Domain/Service documents only as needed and records the exact
+Target Spec/Shared Specs membership and digests in every discovery identity. A Module may be selected
+from visible responsibilities, but its remaining Spec is visible only to the fresh target reader.
+Topology design receives exact registry metadata but does not expand Module targets. Target authors' complete output
 is never returned through this Operation; it stays in the ignored host application artifact. Report
 Spec gaps or blocked execution as returned and do not work around the boundary. Non-implementation
 agents never receive implementation code or raw test logs.
@@ -47,6 +48,11 @@ also task every retained affected Domain to reconcile its local `concorde-partic
 The Domain task carries the exact ID, kind, local responsibility, selection condition and relied-upon
 promises. Candidate overlay validation rejects a registry edge without that self-contained Domain
 routing view.
+
+Every physical Spec document declares stable ID, exact target references and main visibility.
+Changing document references tasks every retained current/candidate target. Shared truth has no
+unique owner: ordinary single-target authoring cannot change it, and topology preparation accepts a
+replacement only when every candidate referencing target author returns identical exact bytes.
 
 ## Input TypedValue schema
 

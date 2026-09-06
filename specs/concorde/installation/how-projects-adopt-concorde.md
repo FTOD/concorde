@@ -1,3 +1,11 @@
+```concorde-document
+{
+  "id": "document.installation.adoption",
+  "targets": ["domain.installation"],
+  "main_visible": true
+}
+```
+
 # How projects adopt Concorde
 
 This Domain scopes the relationship among a Package, an Installation, an Integration, a Project
@@ -17,6 +25,7 @@ settings/scratch exclusions and the local ignore rule for exact topology applica
 Initialization configures the integration and enforcement mode, pins the distributed Protocol and
 creates an honest Domain stub with an explicit one-document registry. A stub states that business
 facts have not yet been supplied. It does not claim completeness or infer behavior from source code.
+Its Markdown declares a stable document ID, the initial Domain reference and `main_visible:true`.
 Direct initialization or migration also creates the topology-artifact ignore rule when installation
 has not already supplied it.
 The context Service subsequently injects the pinned principles and matching kind definition for every
@@ -24,7 +33,7 @@ consumer project. The consumer chooses its own scopes and components; Concorde's
 is not a mandatory template.
 
 A Profile 7 project requires an explicit migration proposal with authored target classifications,
-complete document membership and replacement local contracts. Migration preserves code and reflection
+complete document membership/declarations and replacement target/shared contracts. Migration preserves code and reflection
 history, rejects active attempts and binds to the original configuration digest. It applies only the
 proposal's approved paths and rolls back if the target registry is invalid. Running Profile 7 through
 Profile 8 is rejected rather than guessing scope boundaries from old filenames or ancestry.
@@ -49,7 +58,7 @@ configuration binding and context-registry validation. Within those Service resp
 `module.package-assets` owns packaged/projection assets, `module.managed-runtime` owns Python/viewer
 provisioning, `module.registry` owns registry admission, `module.wire-contracts` owns typed data
 validation and `module.file-transactions` owns rollback-safe file replacement. The Module IDs are
-routing facts; their Specs are supplied only to separately launched workers.
+routing facts; their remaining target collections are supplied only to separately launched workers.
 
 ## Participating components
 
@@ -61,7 +70,7 @@ routing facts; their Specs are supplied only to separately launched workers.
     "responsibility": "Initialize, migrate, configure, bind, and validate the project's target-context authority.",
     "selection_condition": "Select for project initialization, Profile migration, Protocol binding, or context-registry validation.",
     "relied_upon_promises": [
-      "Initialization and migration produce explicit registries and self-contained document memberships without inferring business facts from code."
+      "Initialization and migration produce explicit registries and self-contained target/shared document closures without inferring business facts from code."
     ]
   },
   {

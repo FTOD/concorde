@@ -60,6 +60,33 @@ class TopologyAuthorContext:
         return self.value["context_id"]
 
 
+def _document_value(document, *, content: bool = True) -> dict:
+    value = {
+        "document_id": document.document_id,
+        "path": document.path,
+        "digest": document.digest,
+        "targets": list(document.targets),
+        "main_visible": document.main_visible,
+    }
+    if content:
+        value["content"] = document.content
+    return value
+
+
+def _spec_sections(documents, *, references: dict[str, tuple[str, ...]] | None = None,
+                   main_only: bool = False) -> tuple[list[str], list[dict], list[dict]]:
+    selected = [document for document in documents
+                if not main_only or document.main_visible]
+    order = [document.path for document in selected]
+    target_spec = []
+    shared_specs = []
+    for document in selected:
+        targets = references.get(document.path, document.targets) if references else document.targets
+        section = shared_specs if len(targets) > 1 else target_spec
+        section.append(_document_value(document))
+    return order, target_spec, shared_specs
+
+
 def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "ask",
                     task: str = "Understand this Spec", focus_id: str | None = None,
                     constraints: tuple[str, ...] = (), instructions: str = "",
@@ -74,17 +101,18 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
         if item.get("type_id") not in {"concorde-plan-artifact","concorde-implementation-task","concorde-reflection-selection"}:
             raise SpecError("unknown stage input type", "incompatible_handoff")
         validate_typed(item, item["type_id"])
-    documents = [{"path": doc.path, "digest": doc.digest, "content": doc.content}
-                 for doc in repository.documents(target)]
+    document_order, target_spec, shared_specs = _spec_sections(repository.documents(target))
     protocol = []
     for path in ("protocol/principles.md", f"protocol/kinds/{target.kind}.md"):
         raw = repository.protocol_assets[path]
         protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
-    # No scope ancestry, component ancestry, participating targets, code locators, or provider bodies.
+    # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
     manifest = {"schema_version": 1, "target_id": target.id, "kind": target.kind,
         "focus_id": focus_id, "phase": phase, "task": task, "constraints": list(constraints),
         "protocol_binding": repository.config["protocol"], "protocol": protocol,
-        "documents": documents, "instructions": instructions, "stage_inputs": list(stage_inputs),
+        "document_order": document_order, "target_spec": target_spec,
+        "shared_specs": shared_specs, "instructions": instructions,
+        "stage_inputs": list(stage_inputs),
         "implementation_artifacts": [{"id": path, "path": path,
             "digest": digest(read_file(repository.root, path))} for path in repository.implementation_files(target)]
             if phase == "implementation" else []}
@@ -105,8 +133,13 @@ def public_context_manifest(snapshot: ContextSnapshot) -> dict:
         "protocol_binding": value["protocol_binding"],
         "protocol": [{"path": item["path"], "digest": item["digest"]}
                      for item in value["protocol"]],
-        "documents": [{"path": item["path"], "digest": item["digest"]}
-                      for item in value["documents"]],
+        "document_order": value["document_order"],
+        "target_spec": [{key: item[key] for key in
+                         ("document_id", "path", "digest", "targets", "main_visible")}
+                        for item in value["target_spec"]],
+        "shared_specs": [{key: item[key] for key in
+                          ("document_id", "path", "digest", "targets", "main_visible")}
+                         for item in value["shared_specs"]],
     }
 
 
@@ -136,8 +169,6 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
     for item in worker_results:
         admitted_results.append(validate_typed(item, "concorde-main-worker-result"))
     targets = []
-    module_documents = {path for candidate in repository.targets.values()
-                        if candidate.kind == "module" for path in candidate.documents}
     for target_id in target_ids:
         target = repository.select(target_id)
         if target.kind not in DISCOVERY_KINDS:
@@ -146,18 +177,14 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
                 "permission_denied",
                 target.id,
             )
-        shared_with_module = sorted(set(target.documents) & module_documents)
-        if shared_with_module:
-            raise SpecError(
-                f"main discovery target shares Module Spec members: {shared_with_module}",
-                "permission_denied",
-                target.id,
-            )
+        document_order, target_spec, shared_specs = _spec_sections(
+            repository.documents(target), main_only=True)
         targets.append({
             "target_id": target.id,
             "kind": target.kind,
-            "documents": [{"path": doc.path, "digest": doc.digest, "content": doc.content}
-                          for doc in repository.documents(target)],
+            "document_order": document_order,
+            "target_spec": target_spec,
+            "shared_specs": shared_specs,
         })
     # Main understands every global kind contract while remaining unable to read Module instances.
     protocol_paths = ["protocol/principles.md", *(f"protocol/kinds/{kind}.md"
@@ -188,18 +215,26 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
 
 
 def resolve_topology_author_context(repository: SpecRepository, target: dict, *, task: str,
-                                    instructions: str) -> TopologyAuthorContext:
+                                    instructions: str,
+                                    candidate_document_references: tuple[dict, ...] = ()) -> TopologyAuthorContext:
     """Build a private authoring context without exposing the target body to main."""
 
     if target.get("kind") not in {"domain", "service", "module"}:
         raise SpecError("topology target has an unsupported kind", "invalid_spec")
     if not isinstance(task, str) or not task.strip():
         raise SpecError("topology Spec task is required", "invalid_input")
-    current_documents = []
+    references = {item["path"]: tuple(item["targets"])
+                  for item in candidate_document_references}
+    current_paths = []
     if target["id"] in repository.targets:
         current = repository.targets[target["id"]]
-        current_documents = [{"path": doc.path, "digest": doc.digest, "content": doc.content}
-                             for doc in repository.documents(current)]
+        current_paths.extend(current.documents)
+    for path in target["documents"]:
+        if path in repository.document_targets and path not in current_paths:
+            current_paths.append(path)
+    current_documents = [repository.document(path) for path in current_paths]
+    current_document_order, target_spec, shared_specs = _spec_sections(
+        current_documents, references=references)
     protocol = []
     for path in ("protocol/principles.md", f"protocol/kinds/{target['kind']}.md"):
         raw = repository.protocol_assets[path]
@@ -210,7 +245,10 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
         "task": task,
         "protocol_binding": repository.config["protocol"],
         "protocol": protocol,
-        "current_documents": current_documents,
+        "candidate_document_references": list(candidate_document_references),
+        "current_document_order": current_document_order,
+        "target_spec": target_spec,
+        "shared_specs": shared_specs,
         "instructions": instructions,
     }
     return TopologyAuthorContext(canonical({**manifest, "context_id": digest(manifest)}))
@@ -223,13 +261,12 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, ch
         raise SpecError("context snapshot identity has changed", "stale_context")
     current = SpecRepository(repository.root, repository.package_root)
     target = current.select(value["target_id"], value["focus_id"])
-    if list(target.documents) != [item["path"] for item in value["documents"]]:
-        raise SpecError("context document membership has changed", "stale_context")
     if current.config["protocol"] != value["protocol_binding"]:
         raise SpecError("context Protocol binding has changed", "stale_context")
-    for item in value["documents"]:
-        if digest(read_file(current.root, item["path"])) != item["digest"]:
-            raise SpecError(f"context document has changed: {item['path']}", "stale_context")
+    document_order, target_spec, shared_specs = _spec_sections(current.documents(target))
+    if (document_order != value["document_order"] or target_spec != value["target_spec"]
+            or shared_specs != value["shared_specs"]):
+        raise SpecError("context document membership, classification, or bytes changed", "stale_context")
     if check_implementation and value["phase"] == "implementation":
         current_artifacts = [{"id": path, "path": path, "digest": digest(read_file(current.root, path))}
                              for path in current.implementation_files(target)]
@@ -267,6 +304,7 @@ def recheck_topology_author_context(repository: SpecRepository, snapshot: Topolo
         value["target"],
         task=value["task"],
         instructions=value["instructions"],
+        candidate_document_references=tuple(value["candidate_document_references"]),
     )
     if resolved.serialized != snapshot.serialized:
         raise SpecError("topology author context changed", "stale_context")

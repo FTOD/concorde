@@ -1,3 +1,11 @@
+```concorde-document
+{
+  "id": "document.operation.boundary",
+  "targets": ["service.workflow-host"],
+  "main_visible": true
+}
+```
+
 # Operation host service
 
 ## feature.workflow.execute
@@ -23,7 +31,7 @@ A mutating request in the primary worktree creates an isolated branch from commi
 reports that workspace. It does not copy uncommitted primary changes. Host administrators may
 explicitly allow a primary worktree; runtime task input cannot set that permission.
 
-The host resolves the complete selected collection and Protocol/kind definition for every stage.
+The host resolves the complete selected Target Spec plus one-hop Shared Specs and Protocol/kind definition for every stage.
 Non-implementation agents start in a private capsule containing only the frozen context. Implementation
 agents get the same context plus explicitly owned code paths. Sessions are fresh, network and credential
 access disabled, writes restricted by phase. A native integration unable to enforce the grant blocks;
@@ -32,7 +40,7 @@ launch and context identities. No ambient conversation or predecessor transcript
 
 Every new agent-backed task first launches `concorde-coordinator` with the entry Domain or Service.
 Main discovery can
-append complete registered Domain/Service Specs on demand; each append starts a fresh process with a
+append only registered main-visible Domain/Service Target Spec and Shared Specs on demand; each append starts a fresh process with a
 new context identity. The host rejects Module expansion and code access. For Operations other than
 the `ask` action of `concorde-main`, main must return one owning target; cross-target mutation is
 routed through a Domain. The host
@@ -41,7 +49,7 @@ or more fresh `concorde-reader` workers, after which a final fresh main invocati
 worker results for synthesis. An optional caller target/focus is a routing hint, not a context grant.
 
 `concorde-main` also owns topology evolution. `design-topology` admits exact registry metadata and
-all three global kind definitions while still withholding Module bodies and code. It returns a
+all three global kind definitions while still withholding direct Module expansion and code. It returns a
 digest-bound candidate registry, local Spec tasks, migration constraints and acceptance conditions;
 no project file changes. `accept-topology` is the first maintainer gate. It rechecks the complete
 discovery context, starts fresh target-local Spec authors and validates their combined output against
@@ -50,11 +58,14 @@ before-digest-bound application artifact. The public response exposes its Artifa
 contents. `apply-topology` is the second maintainer gate and atomically applies the exact reviewed
 artifact or leaves/restores the project. A stale registry, Protocol, Spec input, application digest
 or invalid final target state blocks mutation.
+Document membership changes require tasks for all retained current/candidate references. A shared
+replacement is admitted only when every candidate referencing target author returns identical bytes.
 
 Public `concorde-context` and `concorde-resolve-context` return only a redacted membership/digest
 manifest. Complete cognitive snapshots never cross the public Operation result boundary.
 
-Authoring returns local document replacements; the host alone applies them. Planning runs a separate
+Authoring returns local document replacements; the host alone applies them. A single-target author
+cannot change a multiply referenced document. Planning runs a separate
 context assessment first and creates an attempt only for a sufficient context and nonempty plan.
 Task authoring receives a concorde-plan-artifact. Implementation receives concorde-implementation-task
 and returns identical tasks marked complete only when acceptance is met. Registry, context and
@@ -95,7 +106,7 @@ creates acceptance criteria; taskstoissues produces local issue drafts without s
     ],
     "additionalProperties": false
   },
-  "semantics": "Select the entire explicitly registered collection for target_id and assess exactly task. No relationship or link adds context.",
+  "semantics": "Select target_id's exact Target Spec plus Shared Specs and assess exactly task. Shared membership adds only that document; no relationship or link expands another entity context.",
   "example": {
     "target_id": "service.transfer",
     "task": "Explain transfer admission"
@@ -114,4 +125,4 @@ Select `module.wire-contracts` for request/result schema construction and valida
 `module.agent-execution` for native process launch and completion attestation. Select
 `service.spec-context` when the behavior being changed is target/document resolution rather than
 Operation orchestration. Public capability projection belongs to `module.package-assets`. The main
-coordinator may use these stable IDs to route a worker but may not open their Module Specs.
+coordinator may use these stable IDs to route a worker but may not expand their Module targets.

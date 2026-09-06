@@ -1,3 +1,13 @@
+```concorde-document
+{
+  "id": "document.operation.wire",
+  "targets": [
+    "service.workflow-host"
+  ],
+  "main_visible": true
+}
+```
+
 # Complete local Operation data contracts
 
 The following schemas define data inside TypedValue {type_id,schema_version:1,data}. A named $ref refers to a data definition in this same collection. All objects reject additionalProperties unless explicitly stated; optional properties are those absent from required. No task arguments are inferred from filenames.
@@ -1368,11 +1378,24 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "additionalProperties": false
       }
     },
-    "documents": {
+    "document_order": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "format": "project-path"
+      },
+      "uniqueItems": true
+    },
+    "target_spec": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
+          "document_id": {
+            "type": "string",
+            "minLength": 1
+          },
           "path": {
             "type": "string",
             "minLength": 1,
@@ -1382,11 +1405,68 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
             "type": "string",
             "minLength": 1,
             "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "main_visible": {
+            "type": "boolean"
           }
         },
         "required": [
+          "document_id",
           "path",
-          "digest"
+          "digest",
+          "targets",
+          "main_visible"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "shared_specs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "main_visible": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "document_id",
+          "path",
+          "digest",
+          "targets",
+          "main_visible"
         ],
         "additionalProperties": false
       }
@@ -1401,7 +1481,9 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "phase",
     "protocol_binding",
     "protocol",
-    "documents"
+    "document_order",
+    "target_spec",
+    "shared_specs"
   ],
   "additionalProperties": false
 }
@@ -1592,11 +1674,24 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "additionalProperties": false
       }
     },
-    "documents": {
+    "document_order": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "format": "project-path"
+      },
+      "uniqueItems": true
+    },
+    "target_spec": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
+          "document_id": {
+            "type": "string",
+            "minLength": 1
+          },
           "path": {
             "type": "string",
             "minLength": 1,
@@ -1607,13 +1702,74 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
             "minLength": 1,
             "pattern": "^sha256:[0-9a-f]{64}$"
           },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "main_visible": {
+            "type": "boolean"
+          },
           "content": {
             "type": "string"
           }
         },
         "required": [
+          "document_id",
           "path",
           "digest",
+          "targets",
+          "main_visible",
+          "content"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "shared_specs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "main_visible": {
+            "type": "boolean"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "path",
+          "digest",
+          "targets",
+          "main_visible",
           "content"
         ],
         "additionalProperties": false
@@ -1732,7 +1888,9 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "constraints",
     "protocol_binding",
     "protocol",
-    "documents",
+    "document_order",
+    "target_spec",
+    "shared_specs",
     "instructions",
     "stage_inputs",
     "implementation_artifacts"
@@ -2819,11 +2977,24 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
               "service"
             ]
           },
-          "documents": {
+          "document_order": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "format": "project-path"
+            },
+            "uniqueItems": true
+          },
+          "target_spec": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "path": {
                   "type": "string",
                   "minLength": 1,
@@ -2834,13 +3005,74 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
                   "minLength": 1,
                   "pattern": "^sha256:[0-9a-f]{64}$"
                 },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
+                },
                 "content": {
                   "type": "string"
                 }
               },
               "required": [
+                "document_id",
                 "path",
                 "digest",
+                "targets",
+                "main_visible",
+                "content"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "shared_specs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "document_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "format": "project-path"
+                },
+                "digest": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "main_visible": {
+                  "type": "boolean"
+                },
+                "content": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "document_id",
+                "path",
+                "digest",
+                "targets",
+                "main_visible",
                 "content"
               ],
               "additionalProperties": false
@@ -2850,7 +3082,9 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "required": [
           "target_id",
           "kind",
-          "documents"
+          "document_order",
+          "target_spec",
+          "shared_specs"
         ],
         "additionalProperties": false
       }
@@ -6368,11 +6602,51 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "additionalProperties": false
       }
     },
-    "current_documents": {
+    "candidate_document_references": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          }
+        },
+        "required": [
+          "path",
+          "targets"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "current_document_order": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "format": "project-path"
+      },
+      "uniqueItems": true
+    },
+    "target_spec": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "minLength": 1
+          },
           "path": {
             "type": "string",
             "minLength": 1,
@@ -6383,13 +6657,74 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
             "minLength": 1,
             "pattern": "^sha256:[0-9a-f]{64}$"
           },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "main_visible": {
+            "type": "boolean"
+          },
           "content": {
             "type": "string"
           }
         },
         "required": [
+          "document_id",
           "path",
           "digest",
+          "targets",
+          "main_visible",
+          "content"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "shared_specs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "main_visible": {
+            "type": "boolean"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "path",
+          "digest",
+          "targets",
+          "main_visible",
           "content"
         ],
         "additionalProperties": false
@@ -6406,7 +6741,10 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "task",
     "protocol_binding",
     "protocol",
-    "current_documents",
+    "candidate_document_references",
+    "current_document_order",
+    "target_spec",
+    "shared_specs",
     "instructions"
   ],
   "additionalProperties": false

@@ -1,8 +1,16 @@
+```concorde-document
+{
+  "id": "document.concorde.system",
+  "targets": ["domain.concorde"],
+  "main_visible": true
+}
+```
+
 # Concorde: business scopes and operating principles
 
 Concorde turns an explicitly specified change into bounded agent work and verifiable delivery.
 The user owns intended behavior. The Protocol owns universal architectural and cognitive rules.
-The project registry identifies the complete Spec of each target and grants implementation ownership.
+The project registry indexes the complete resolved Spec of each target and grants implementation ownership.
 A target is a Domain scope, Service boundary or Module interface; a Feature or API focuses use of
 that target without reducing its complete context.
 
@@ -13,12 +21,13 @@ that target without reducing its complete context.
 | Domain | A problem scope describing entities, ownership and rules | Explains collaborations; coordinates component changes through separately selected targets |
 | Service | A capability with a self-contained consumer contract | Accepts and produces explicitly typed boundary data |
 | Module | An implementation responsibility defined by its public API | Calls other interfaces under its local required contract |
-| Spec collection | Ordered, explicit Markdown members for one target | Supplies all local facts needed by every non-implementation task |
+| Spec document | One stable physical Markdown truth with explicit target references and main visibility | Appears as Target Spec when local or Shared Specs when collectively referenced |
+| Resolved Spec context | Ordered Target Spec plus one-hop Shared Specs for one target | Must be self-contained without expanding any related entity's remaining collection |
 | Protocol | Versioned global principles and kind definitions | Is pinned by initialization and injected by the context service |
 | Operation | A public Skill paired with an executable host entry | Receives configuration and runtime input as distinct typed JSON values |
 | Context snapshot | Immutable exact input to one agent invocation | Binds documents, Protocol, task, phase, instructions and typed stage artifacts |
-| Discovery context | Ordered append-only Domain/Service collections for the main coordinator | Expands on demand and changes identity on every admitted target |
-| Main coordinator | Global routing agent that never reads Module Specs or code | Selects fresh target workers and later synthesizes only typed results |
+| Discovery context | Ordered append-only main-visible Domain/Service documents for the main coordinator | Expands on demand and changes identity on every admitted target |
+| Main coordinator | Global routing agent that never directly expands Module targets or reads code | Selects fresh target workers and later synthesizes only typed results |
 | Participant declaration | A Domain-local routing description of one Service or Module | Binds a registry participation edge to stable ID, kind, local responsibility, selection condition and relied-upon promises |
 | Topology design | Complete candidate registry, local Spec tasks and acceptance conditions | Is authored by the coordinator without writing and requires maintainer acceptance |
 | Topology application | Exact host-private registry/document replacements with before-digests | Is applied atomically only after a second maintainer acceptance |
@@ -55,16 +64,21 @@ not be reconstructed from code. The host runs separately configured checks and r
 only bounded check status and revision identities can cross back to Spec-only work.
 
 The main coordinator is a distinct agent role. It may expand its append-only discovery context with
-registered Domain and Service Specs, but never Module Specs or code. After it returns typed routes,
+only main-visible Domain and Service Target Spec/Shared Specs, but never directly expands a Module or reads code. After it returns typed routes,
 the host privately resolves each target and starts a different worker. Typed worker results may
 return for synthesis; raw target snapshots do not.
 
 The public `concorde-main` replaces the former standalone ask Operation. Its topology design action
-may additionally inspect exact registry metadata and all global kind definitions, but no Module body
-or code. The coordinator produces structure; fresh target-local authors produce complete Spec bytes
+may additionally inspect exact registry metadata and all global kind definitions, but no Module
+target expansion or code. The coordinator produces structure; fresh target-local authors produce complete Spec bytes
 privately; the host validates an overlay and exposes only an application ArtifactRef. Maintainer
 acceptance is required once before target authoring and again before the exact registry/document
 transaction.
+
+Shared truth has no unique owner. A normal single-target author can read but not change it. A
+topology change tasks every affected reference and accepts a shared replacement only when all
+candidate referencing authors return identical bytes; the resulting transaction intentionally
+invalidates every referencing context.
 
 Delivery means all selected tasks are complete, required checks pass, local/shared contracts are
 valid and evidence still matches current Spec and implementation bytes. It removes the completed
@@ -77,7 +91,7 @@ A Protocol change affects all consumers, not just Concorde's self-description. A
 principles and corresponding schemas, runtime admission, context grants, templates, installation
 and publication behavior together. The distributable Protocol is versioned and hashed. Existing
 projects do not silently acquire a new meaning: they must explicitly accept compatible bindings
-or migrate their authored registry and self-contained documents. Source Profile 8 rejects Profile 7
+or migrate their authored registry and self-contained resolved document closures. Source Profile 8 rejects Profile 7
 for agent work. Legacy deterministic readers remain diagnostic utilities only.
 
 Changing the Protocol is an explicitly authorized version cutover, not ordinary work performed

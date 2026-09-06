@@ -1,3 +1,11 @@
+```concorde-document
+{
+  "id": "document.module.agent-execution",
+  "targets": ["module.agent-execution"],
+  "main_visible": false
+}
+```
+
 # Agent execution
 
 ## api.execution.execute

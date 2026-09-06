@@ -157,8 +157,11 @@ def schemas() -> dict:
     result["concorde-reflections-triage-request"] = obj({**TASK_FIELDS,
         "action": {"enum": ["status", "investigate", "implement", "merge", "close"]},
         "reflection_ids": array(STRING, unique=True)}, (*TASK_OPTIONAL, "task"))
-    document_ref = obj({"path": PATH, "digest": DIGEST})
-    document = obj({"path": PATH, "digest": DIGEST, "content": {"type": "string"}})
+    document_ref = obj({"document_id": STRING, "path": PATH, "digest": DIGEST,
+        "targets": {**array(STRING, unique=True), "minItems": 1},
+        "main_visible": {"type": "boolean"}})
+    document = obj({**document_ref["properties"], "content": {"type": "string"}})
+    protocol_document = obj({"path": PATH, "digest": DIGEST, "content": {"type": "string"}})
     result["concorde-plan-artifact"] = obj({"plan": STRING})
     result["concorde-implementation-task"] = obj({"plan": STRING, "tasks": array(TASK_ITEM)})
     result["concorde-reflection-selection"] = obj({"head": STRING, "records": array(obj({"id":STRING,"path":PATH,"digest":DIGEST,"content":STRING}))})
@@ -168,13 +171,17 @@ def schemas() -> dict:
         "target_id": STRING, "kind": {"enum": ["domain", "service", "module"]}, "focus_id": NULLABLE_ID,
         "phase": STRING, "task": STRING, "constraints": array(STRING),
         "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-        "protocol": array(document), "documents": array(document), "instructions": {"type": "string"},
+        "protocol": array(protocol_document),
+        "document_order": array(PATH, unique=True), "target_spec": array(document),
+        "shared_specs": array(document), "instructions": {"type": "string"},
         "stage_inputs": array(stage_input), "implementation_artifacts": array(ARTIFACT)})
     result["concorde-context-manifest"] = obj({"schema_version": {"const": 1},
         "context_id": DIGEST, "target_id": STRING,
         "kind": {"enum": ["domain", "service", "module"]}, "focus_id": NULLABLE_ID,
         "phase": STRING, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-        "protocol": array(document_ref), "documents": array(document_ref)})
+        "protocol": array(obj({"path": PATH, "digest": DIGEST})),
+        "document_order": array(PATH, unique=True), "target_spec": array(document_ref),
+        "shared_specs": array(document_ref)})
     result["concorde-agent-stage-context"] = obj({"snapshot": typed_schema("concorde-context-snapshot"),
         "change_id": NULLABLE_ID, "expected_artifacts": array(PATH)})
     result["concorde-agent-stage-result"] = obj({"context_id": DIGEST,
@@ -202,13 +209,14 @@ def schemas() -> dict:
         "base_registry_digest": DIGEST, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
         "files": {**array(PROPOSAL_FILE), "minItems": 1}})
     discovery_target = obj({"target_id": STRING, "kind": {"enum": ["domain", "service"]},
-                            "documents": array(document)})
+                            "document_order": array(PATH, unique=True),
+                            "target_spec": array(document), "shared_specs": array(document)})
     result["concorde-discovery-context"] = obj({"context_id": DIGEST, "schema_version": {"const": 1},
         "operation": {"enum": sorted(MAIN_ROUTED_OPERATIONS)}, "phase": {"enum": ["route", "synthesize"]},
         "action": {"enum": ["route", "ask", "design-topology"]},
         "task": STRING, "constraints": array(STRING), "target_hint": NULLABLE_ID,
         "focus_hint": NULLABLE_ID, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-        "protocol": array(document), "topology": {"anyOf": [REGISTRY, {"type": "null"}]},
+        "protocol": array(protocol_document), "topology": {"anyOf": [REGISTRY, {"type": "null"}]},
         "targets": array(discovery_target),
         "instructions": {"type": "string"},
         "worker_results": array(typed_schema("concorde-main-worker-result"))})
@@ -221,7 +229,11 @@ def schemas() -> dict:
     result["concorde-topology-author-context"] = obj({"context_id": DIGEST,
         "base_registry_digest": DIGEST, "target": TARGET_DESCRIPTOR, "task": STRING,
         "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
-        "protocol": array(document), "current_documents": array(document),
+        "protocol": array(protocol_document),
+        "candidate_document_references": array(obj({"path": PATH,
+            "targets": {**array(STRING, unique=True), "minItems": 1}})),
+        "current_document_order": array(PATH, unique=True),
+        "target_spec": array(document), "shared_specs": array(document),
         "instructions": {"type": "string"}})
     result["concorde-topology-author-result"] = obj({"context_id": DIGEST, "target_id": STRING,
         "outcome": WORKER_OUTCOMES, "answer": {"type": "string"}, "gaps": array(GAP),

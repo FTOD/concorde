@@ -6,23 +6,23 @@
   "assets": [
     {
       "path": "protocol/kinds/domain.md",
-      "digest": "sha256:f4482072ae4ef35bf676eca0f6905ad321da5c6dd09e35ee6ae04c727fb60e95"
+      "digest": "sha256:c7c7f8a0c3bb4a77defefb988e77f18514da6858cbcfbd7d90b3e79fe995f051"
     },
     {
       "path": "protocol/kinds/module.md",
-      "digest": "sha256:5d59045096c7ee3f3e73c2341dd48332f051d4ac7f581a45c73f50560e8b4c1e"
+      "digest": "sha256:6e46066282062651c485aed458792e7fd24eb2e2f58c347ed5e418d1069f4851"
     },
     {
       "path": "protocol/kinds/service.md",
-      "digest": "sha256:9959213f64bad2761fcb063cf596a317a8cc2692bc0e373f8f4123f51480b34b"
+      "digest": "sha256:f6619b1db6c725876ffd9cd2d698074b3cd0e63d5b41a026a2e5e8b78c9b5a88"
     },
     {
       "path": "protocol/principles.md",
-      "digest": "sha256:a5d1aa8ea6983cb1731152eb982ce4de776fec7ab5c2da9d1c100251e42cfe7b"
+      "digest": "sha256:6018c8f8fa8ee251f24dabc6905e7067ed78f8a4fa40fdc8480b4afb8aacc090"
     },
     {
       "path": "protocol/schemas.json",
-      "digest": "sha256:80b13dea2185a6f32e955fa5f8164a2427f4904edd307fc740032c81baea0831"
+      "digest": "sha256:c7db582363f8154eccbe9216c6b25eba202b69c91abf666dec52ba72b8be1492"
     }
   ]
 }

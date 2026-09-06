@@ -1,3 +1,11 @@
+```concorde-document
+{
+  "id": "document.module.managed-runtime",
+  "targets": ["module.managed-runtime"],
+  "main_visible": false
+}
+```
+
 # Managed runtime
 
 ## api.runtime.provision

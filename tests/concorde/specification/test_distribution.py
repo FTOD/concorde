@@ -38,7 +38,8 @@ class DistributionTests(unittest.TestCase):
             result=subprocess.run(command,input=json.dumps(value),capture_output=True,text=True,cwd=root)
             self.assertEqual(0,result.returncode,result.stdout+result.stderr)
             output=json.loads(result.stdout);manifest=output['output']['data']['manifest']['data']
-            self.assertEqual(2,len(manifest['documents']))
+            self.assertEqual(2,len(manifest['document_order']))
+            self.assertEqual(2,len(manifest['target_spec'])+len(manifest['shared_specs']))
             self.assertNotIn('content',json.dumps(manifest));self.assertNotIn('Transfer money',result.stdout)
             result=subprocess.run(command+['--feature-path','specs/send-money.md'],input=json.dumps(value),capture_output=True,text=True,cwd=root)
             self.assertEqual(3,result.returncode);self.assertEqual('blocked',json.loads(result.stdout)['status'])

@@ -31,7 +31,8 @@ from ..specification.context import (DiscoveryContext, resolve_context,
     recheck_discovery_context, resolve_topology_author_context,
     recheck_topology_author_context)
 from ..specification.changes import file_change, apply_files
-from ..specification.validation import validate_repository, domain_participant_findings
+from ..specification.validation import (validate_repository, document_context_findings,
+    domain_participant_findings)
 
 
 @dataclass(frozen=True)
@@ -380,7 +381,9 @@ class MainInvocation:
             decision = self.stage("route", occurrence)
             if decision["outcome"] == "expand":
                 admitted_text = "\n".join(document["content"]
-                    for target in self.stage_context_targets(decision) for document in target["documents"])
+                    for target in self.stage_context_targets(decision)
+                    for section in ("target_spec", "shared_specs")
+                    for document in target[section])
                 for target_id in decision["expand_targets"]:
                     if target_id in self.discovered:
                         raise SpecError("main discovery requested an already admitted target", "invalid_completion")
@@ -396,7 +399,9 @@ class MainInvocation:
                 routes = decision["routes"]
                 original_constraints = self.task.get("constraints", [])
                 routing_text = "\n".join(document["content"]
-                    for target in self.stage_context_targets(decision) for document in target["documents"])
+                    for target in self.stage_context_targets(decision)
+                    for section in ("target_spec", "shared_specs")
+                    for document in target[section])
                 for route in routes:
                     self.repository.select(route["target_id"], route["focus_id"])
                     if route["target_id"] not in self.discovered and route["target_id"] not in routing_text:
@@ -539,6 +544,28 @@ def _inspect_topology_design(repository: SpecRepository, design_value: dict,
     changed = {target_id for target_id, target in candidate_targets.items()
                if current_targets.get(target_id) != target}
     changed.update(set(current_targets) - set(candidate_targets))
+    current_document_references: dict[str, set[str]] = {}
+    candidate_document_references: dict[str, set[str]] = {}
+    for target_id, target in current_targets.items():
+        for path in target["documents"]:
+            current_document_references.setdefault(path, set()).add(target_id)
+    for target_id, target in candidate_targets.items():
+        for path in target["documents"]:
+            candidate_document_references.setdefault(path, set()).add(target_id)
+    changed_memberships = {path for path in
+        set(current_document_references) | set(candidate_document_references)
+        if current_document_references.get(path, set()) != candidate_document_references.get(path, set())}
+    affected_document_targets = set()
+    for path in changed_memberships:
+        affected_document_targets.update(current_document_references.get(path, set()))
+        affected_document_targets.update(candidate_document_references.get(path, set()))
+    missing_document_tasks = sorted(target_id for target_id in affected_document_targets
+        if target_id in candidate_targets and target_id not in tasks)
+    if missing_document_tasks:
+        raise SpecError(
+            f"changed document sharing requires every retained referencing target task: {missing_document_tasks}",
+            "invalid_proposal",
+        )
     current_edges = {(target_id, domain_id)
         for target_id, target in current_targets.items() if target["kind"] != "domain"
         for domain_id in target["participates_in"]}
@@ -608,10 +635,12 @@ def _validate_topology_proposal(host: OperationHost, proposal: dict) -> tuple[Sp
 
 
 def _topology_author(repository: SpecRepository, configuration: dict, host: OperationHost,
-                     target: dict, task: str, occurrence: int) -> dict:
+                     target: dict, task: str, occurrence: int,
+                     candidate_document_references: tuple[dict, ...]) -> dict:
     role = "concorde-spec-author"
     prompt = resolve_skill_prompt(host.package_root / "skills" / role / "SKILL.md", "skill", "")
-    snapshot = resolve_topology_author_context(repository, target, task=task, instructions=prompt.body)
+    snapshot = resolve_topology_author_context(repository, target, task=task, instructions=prompt.body,
+        candidate_document_references=candidate_document_references)
     before_registry = repository.registry_bytes
     with tempfile.TemporaryDirectory(prefix="concorde-topology-author-") as directory:
         capsule = Path(directory)
@@ -711,35 +740,52 @@ def _prepare_topology(configuration: dict, proposal: dict, host: OperationHost) 
             tuple(proposal["data"]["discovered_targets"]),
         )
     )
-    authored: dict[str, str] = {}
+    proposals: dict[str, list[tuple[str, str]]] = {}
     completed = ["concorde-coordinator-topology-design"]
-    current_owners = {path: target["id"] for target in repository.registry["targets"]
-                      for path in target["documents"]}
+    candidate_references: dict[str, list[str]] = {}
+    for candidate_target in candidate["targets"]:
+        for path in candidate_target["documents"]:
+            candidate_references.setdefault(path, []).append(candidate_target["id"])
     for occurrence, (target_id, task) in enumerate(tasks.items()):
         target = candidate_targets[target_id]
-        result = _topology_author(repository, configuration, host, target, task, occurrence)
+        references = tuple({"path": path, "targets": candidate_references[path]}
+                           for path in target["documents"])
+        result = _topology_author(repository, configuration, host, target, task, occurrence,
+                                  references)
         if result["outcome"] != "completed":
             return _main_topology_response("accept-topology", repository, proposal,
                 outcome=result["outcome"], answer=result["answer"], gaps=result["gaps"],
                 completed=completed)
         for item in result["documents"]:
             path = item["path"]
-            if path in authored:
-                raise SpecError("topology authors returned the same physical document",
-                                "invalid_proposal", path)
-            owner = current_owners.get(path)
-            if owner is not None and owner != target_id:
-                raise SpecError("topology author cannot replace another target's document",
-                                "permission_denied", path)
-            if owner is None and checked_path(repository.root, path).exists():
+            if path not in repository.document_targets and checked_path(repository.root, path).exists():
                 raise SpecError("topology author cannot replace an unregistered existing file",
                                 "permission_denied", path)
-            authored[path] = item["content"]
+            proposals.setdefault(path, []).append((target_id, item["content"]))
         completed.append("concorde-spec-author")
     if host.mode == "describe-policy":
         return _main_topology_response("accept-topology", repository, proposal,
             outcome="described", answer="Topology author policies described.",
             completed=completed)
+    authored: dict[str, str] = {}
+    for path, items in proposals.items():
+        contents = {content for _, content in items}
+        if len(contents) != 1:
+            return _main_topology_response("accept-topology", repository, proposal,
+                outcome="conflicting",
+                answer=f"Referencing target authors returned conflicting shared truth: {path}",
+                completed=completed)
+        content = next(iter(contents))
+        references = set(candidate_references[path])
+        current = read_file(repository.root, path).decode() if path in repository.document_targets else None
+        if len(references) > 1 and content != current:
+            represented = {target_id for target_id, _ in items}
+            if represented != references:
+                return _main_topology_response("accept-topology", repository, proposal,
+                    outcome="conflicting",
+                    answer=f"Changing shared truth requires every referencing target author: {path}",
+                    completed=completed)
+        authored[path] = content
     overrides = {path: content.encode() for path, content in authored.items()}
     report = validate_repository(repository.root, package_root=host.package_root,
         registry_bytes=candidate_bytes, document_overrides=overrides)
@@ -780,8 +826,11 @@ def _apply_topology(application_ref: dict, host: OperationHost) -> dict:
         raise SpecError("topology application registry base changed", "stale_proposal")
     if data["protocol_binding"] != repository.config["protocol"]:
         raise SpecError("topology application Protocol binding changed", "stale_proposal")
-    design = proposal["data"]["design"]["data"]
-    candidate_bytes = (json.dumps(design["registry"], indent=2, sort_keys=True) + "\n").encode()
+    design, _, candidate_bytes, _, _, _ = _inspect_topology_design(
+        repository,
+        proposal["data"]["design"],
+        tuple(proposal["data"]["discovered_targets"]),
+    )
     files = data["files"]
     registry_files = [item for item in files if item["path"] == repository.registry_path]
     if len(registry_files) != 1 or registry_files[0]["content"].encode() != candidate_bytes:
@@ -794,6 +843,19 @@ def _apply_topology(application_ref: dict, host: OperationHost) -> dict:
     if actual_documents != expected_documents or len({item["path"] for item in files}) != len(files):
         raise SpecError("topology application document set differs from accepted design",
                         "invalid_proposal")
+    candidate_references: dict[str, set[str]] = {}
+    for target in design["registry"]["targets"]:
+        for path in target["documents"]:
+            candidate_references.setdefault(path, set()).add(target["id"])
+    for item in files:
+        if item["path"] == repository.registry_path:
+            continue
+        current = (read_file(repository.root, item["path"]).decode()
+                   if item["path"] in repository.document_targets else None)
+        references = candidate_references[item["path"]]
+        if len(references) > 1 and item["content"] != current and not references.issubset(task_ids):
+            raise SpecError("shared truth application omitted a referencing target task",
+                            "invalid_proposal", item["path"])
     if host.mode == "describe-policy":
         return _main_topology_response("apply-topology", repository, proposal,
             outcome="described", answer="Topology application is deterministic and launches no agent.")
@@ -955,11 +1017,48 @@ class Invocation:
         if self.host.mode == "describe-policy":
             return self.response("described")
         if result["documents"]:
-            changes = [file_change(self.repository.root, item["path"], item["content"]) for item in result["documents"]]
+            changes = []
+            for item in result["documents"]:
+                if item["path"] not in self.target.documents:
+                    raise SpecError("Spec author returned a document outside its target", "permission_denied")
+                before = read_file(self.repository.root, item["path"]).decode()
+                if (len(self.repository.document_targets[item["path"]]) > 1
+                        and item["content"] != before):
+                    raise SpecError(
+                        "shared Spec truth requires a topology change with every referencing target",
+                        "permission_denied",
+                        item["path"],
+                    )
+                if item["content"] != before:
+                    candidate_repository = SpecRepository(
+                        self.repository.root,
+                        self.host.package_root,
+                        document_overrides={item["path"]: item["content"].encode()},
+                    )
+                    current_document = self.repository.document(item["path"])
+                    candidate_document = candidate_repository.document(item["path"])
+                    current_declaration = (current_document.document_id, current_document.targets,
+                                           current_document.main_visible)
+                    candidate_declaration = (candidate_document.document_id, candidate_document.targets,
+                                             candidate_document.main_visible)
+                    if candidate_declaration != current_declaration:
+                        raise SpecError(
+                            "document identity, references, and main visibility require a topology change",
+                            "permission_denied",
+                            item["path"],
+                        )
+                    changes.append(file_change(self.repository.root, item["path"], item["content"]))
             def verify():
                 current = SpecRepository(self.repository.root, self.host.package_root)
                 current.documents(current.select(self.target.id))
                 current.contracts(current.select(self.target.id))
+                document_findings = document_context_findings(current)
+                if document_findings:
+                    raise SpecError(
+                        "authored Spec document context is invalid: "
+                        + "; ".join(finding.message for finding in document_findings),
+                        "invalid_spec",
+                    )
                 participant_findings = domain_participant_findings(current, self.target.id)
                 if participant_findings:
                     raise SpecError(
@@ -967,8 +1066,9 @@ class Invocation:
                         + "; ".join(finding.message for finding in participant_findings),
                         "invalid_spec",
                     )
-            apply_files(self.repository.root, changes, set(self.target.documents), verify=verify)
-            self.repository = SpecRepository(self.host.project_root, self.host.package_root)
+            if changes:
+                apply_files(self.repository.root, changes, set(self.target.documents), verify=verify)
+                self.repository = SpecRepository(self.host.project_root, self.host.package_root)
         return self.response(answer=result["answer"])
 
     def plan(self) -> dict:

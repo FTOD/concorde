@@ -1,3 +1,11 @@
+```concorde-document
+{
+  "id": "document.operation.registry",
+  "targets": ["domain.workflow", "service.workflow-host"],
+  "main_visible": true
+}
+```
+
 # Project Operation registry
 
 Every public Skill below has a paired executable. Configuration and runtime input are separate JSON TypedValues. Internal roles have no direct public invocation.
@@ -27,4 +35,4 @@ Every public Skill below has a paired executable. Configuration and runtime inpu
 | concorde-taskstoissues | concorde-taskstoissues-request | concorde-taskstoissues-response | Deterministic host | Prepare local issue drafts from authored tasks |
 | concorde-validate | concorde-validate-request | concorde-validate-response | Deterministic host | Run deterministic Spec and configured code checks |
 
-Target workers use concorde-agent-stage-context/result @1. Coordinator routing, topology design and synthesis use concorde-main-stage-context/result with an append-only concorde-discovery-context and typed concorde-main-worker-result handoffs. Accepted topology design uses topology-proposal, topology-author-context/result and a host-private topology-application artifact. Plan artifacts, implementation tasks and selected reflections have separate registered type identities. Fresh snapshots accompany every handoff. Deterministic outputs carry identities and digests, never raw Module Specs/code/logs into main or unrelated cognition.
+Target workers use concorde-agent-stage-context/result @1 with explicit document order, Target Spec and Shared Specs. Coordinator routing, topology design and synthesis use concorde-main-stage-context/result with an append-only main-visible discovery context and typed concorde-main-worker-result handoffs. Accepted topology design uses topology-proposal, topology-author-context/result and a host-private topology-application artifact; shared replacements require every reference and identical bytes. Plan artifacts, implementation tasks and selected reflections have separate registered type identities. Fresh snapshots accompany every handoff. Deterministic outputs carry identities and digests, never non-visible Module collections/code/logs into main or unrelated cognition.

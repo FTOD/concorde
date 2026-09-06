@@ -9,6 +9,42 @@ from ..model import Finding, ToolResult
 from .repository import SpecError, SpecRepository, digest, read_file
 
 
+def document_context_findings(repository: SpecRepository) -> tuple[Finding, ...]:
+    """Validate physical Spec truth identities, memberships, and main visibility."""
+
+    findings = []
+    identifiers: dict[str, str] = {}
+    reserved_ids = set(repository.targets) | set(repository.focus)
+    for path in repository.document_targets:
+        try:
+            document = repository.document(path)
+        except (ValueError, OSError, KeyError, TypeError) as problem:
+            findings.append(Finding(
+                "CONCORDE-DOCUMENT-001", "error", path,
+                f"invalid Spec document context declaration: {problem}",
+                "Add exactly one valid concorde-document block whose target set matches the registry.",
+            ))
+            continue
+        previous = identifiers.get(document.document_id)
+        if document.document_id in reserved_ids:
+            findings.append(Finding(
+                "CONCORDE-DOCUMENT-002", "error", path,
+                f"document identity {document.document_id} collides with a target, Feature, or API",
+                "Use one globally unique stable document ID.",
+                subject_id=document.document_id,
+            ))
+        elif previous is not None and previous != path:
+            findings.append(Finding(
+                "CONCORDE-DOCUMENT-002", "error", path,
+                f"document identity {document.document_id} is also declared by {previous}",
+                "Give every physical Spec truth one globally unique stable document ID.",
+                subject_id=document.document_id,
+            ))
+        else:
+            identifiers[document.document_id] = path
+    return tuple(findings)
+
+
 def domain_participant_findings(repository: SpecRepository,
                                 domain_id: str | None = None) -> tuple[Finding, ...]:
     """Compare machine-readable Domain routing declarations with registry scope participation."""
@@ -142,6 +178,7 @@ def validate_repository(root: str | Path, target_id: str | None = None,
             elif provider["schema"] != contract["schema"]:
                 # The first version admits exact shared wire schemas, with independent perspective prose.
                 error("CONCORDE-CONTRACT-003", contract["source"], f"incompatible shared wire schema for {contract['id']}")
+        findings.extend(document_context_findings(repository))
         findings.extend(domain_participant_findings(repository))
         if (repository.root/".concorde/reflections").exists():
             from ..reflections.scoped_triage import queue_module
@@ -169,6 +206,7 @@ def validate_repository(root: str | Path, target_id: str | None = None,
     return ToolResult("validate", target_id or ".", "invalid" if findings else "success",
         tuple(sorted(set(artifacts))), tuple(findings), {"summary": {
             "errors": counts["error"], "warnings": 0, "infos": 0}, "source_digest": digest(sorted(inputs)),
-            "claims": ["registry structure", "local focus definitions", "contract examples",
-                       "shared wire schema equality", "Domain participant routing declarations"],
+            "claims": ["registry structure", "Spec document identity/membership/main visibility",
+                       "local focus definitions", "contract examples", "shared wire schema equality",
+                       "Domain participant routing declarations"],
             "semantic_completeness": "not_proven"})

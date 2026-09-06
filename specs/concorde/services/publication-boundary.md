@@ -1,3 +1,11 @@
+```concorde-document
+{
+  "id": "document.publication.boundary",
+  "targets": ["service.publication"],
+  "main_visible": true
+}
+```
+
 # Publication service
 
 ## feature.publication.publish
@@ -11,7 +19,7 @@ The entry target's first registered document supplies the source entry without r
 The resulting project-local site runs `npm run validate` and `npm run build`. Profile 8 publication
 consumes .concorde/config.json and its explicit registry, not recursive filename discovery. It renders
 every registered target/document membership under /specs/<target-id>/<source-path-hash>, preserving
-all documents in a complete collection. Domain scope and component composition have independent
+all Target Spec and Shared Specs documents in a resolved collection. Domain scope and component composition have independent
 sidebar trees; a relationship graph also shows multi-scope participation and shared-contract edges.
 A shared physical document may have one page in each explicitly registered target collection.
 
@@ -31,4 +39,4 @@ snapshot. Legacy Profile 7 publication readers remain isolated diagnostics and d
 Consumer-visible scaffold and publication lifecycle behavior remains on `service.publication`.
 Select `module.spec-publication` for registry loading, page materialization, link rewriting, sidebars,
 graph construction, diagram staging or build-manifest validation. Its stable ID is exposed for
-routing; the main coordinator cannot read the Module Spec.
+routing; the main coordinator cannot directly expand the Module target.

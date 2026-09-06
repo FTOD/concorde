@@ -1,3 +1,11 @@
+```concorde-document
+{
+  "id": "document.module.wire-contracts",
+  "targets": ["module.wire-contracts"],
+  "main_visible": false
+}
+```
+
 # Wire contracts
 
 ## api.wire.validate

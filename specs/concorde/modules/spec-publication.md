@@ -1,8 +1,16 @@
+```concorde-document
+{
+  "id": "document.module.spec-publication",
+  "targets": ["module.spec-publication"],
+  "main_visible": false
+}
+```
+
 # Spec publication
 
 ## api.publication.build
 
-loadScopedRegistry(root) returns Workspace 14 target/page/edge data from explicit configuration and registry; it rejects malformed axes, focus ownership, document paths, unsupported local links and mismatched shared schemas. materializeScoped writes derived Markdown/sidebar assets preserving target/document identity. The publication plugin binds sourceDigest and emits build-manifest.json plus architecture-graph.json. validateScopedBuild compares fresh source identity and route inventory before the existing atomic output promotion. isScoped(root) dispatches the Profile 8 path; legacy deterministic publication utilities remain separate. The Module exposes no agent tool or read proxy.
+loadScopedRegistry(root) returns Workspace 14 target/page/edge data from explicit configuration and registry; it rejects malformed axes, focus ownership, document paths/declarations, unsupported local links and mismatched shared schemas. materializeScoped writes derived Markdown/sidebar assets preserving target/document identity and emits one target route per shared physical truth membership. The publication plugin binds sourceDigest and emits build-manifest.json plus architecture-graph.json. validateScopedBuild compares fresh source identity and route inventory before the existing atomic output promotion. isScoped(root) dispatches the Profile 8 path; legacy deterministic publication utilities remain separate. The Module exposes no agent tool or read proxy.
 
 ## Interface signatures
 

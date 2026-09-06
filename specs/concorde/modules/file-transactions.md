@@ -1,3 +1,11 @@
+```concorde-document
+{
+  "id": "document.module.file-transactions",
+  "targets": ["module.file-transactions"],
+  "main_visible": false
+}
+```
+
 # File transactions
 
 ## api.files.apply

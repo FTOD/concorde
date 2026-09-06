@@ -31,7 +31,7 @@
       "title": "Workflow",
       "documents": [
         "specs/concorde/workflow/how-work-progresses.md",
-        "specs/concorde/workflow/operation-registry.md"
+        "specs/concorde/services/operation-registry.md"
       ],
       "scope_parent": "domain.concorde",
       "component_parent": null,

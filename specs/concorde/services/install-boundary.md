@@ -1,3 +1,11 @@
+```concorde-document
+{
+  "id": "document.installation.boundary",
+  "targets": ["service.installation"],
+  "main_visible": true
+}
+```
+
 # Installation service
 
 ## feature.installation.install
@@ -26,9 +34,10 @@ Check verifies receipt hashes and required runtime identity without changing pro
 Initialization is a distinct typed concorde-init Operation: propose returns a complete file proposal;
 apply validates exact before-digests and target state. It pins the packaged global principles and kind
 definitions, configures integration/enforcement, and writes an explicit Domain stub with missing
-business requirements stated honestly. Configuration changes use concorde-configure with a typed
+business requirements stated honestly. The stub declares document identity, target membership and
+main visibility. Configuration changes use concorde-configure with a typed
 configuration. Profile 7 is not agent-compatible; concorde-migrate requires authored Profile 8 registry
-and Markdown replacements, rejects active attempts and rolls back invalid application.
+and Markdown replacements with concorde-document declarations, rejects active attempts and rolls back invalid application.
 
 Install/update cannot silently rewrite a consumer's Protocol binding. A package with changed Protocol
 assets requires the consumer's explicit migration/binding decision before execution. Templates and
@@ -102,4 +111,4 @@ Select `module.package-assets` for manifest inventory, canonical Skill/Operation
 surface ownership. Select `module.managed-runtime` for managed Python or viewer provisioning. Select
 `service.spec-context` when the requested behavior is project initialization, migration or Protocol
 binding rather than installation ownership. These IDs are sufficient to route Module work without
-opening the Module Specs.
+expanding the Module targets.

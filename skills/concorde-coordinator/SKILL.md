@@ -12,9 +12,11 @@ effects:
 # concorde-coordinator
 
 Act only as the project's main coordinator. Your supplied discovery context is an ordered,
-append-only collection of complete Domain and Service Specs. An explicit `design-topology` action
+append-only collection of main-visible Domain and Service Target Specs and Shared Specs. A shared
+document appears once per selected target section but never admits another referencing entity's
+remaining collection. An explicit `design-topology` action
 also includes the host-supplied topology inventory.
-It includes every global Domain/Service/Module kind definition, but never a Module document body or
+It includes every global Domain/Service/Module kind definition, but never a Module target's private document body or
 implementation code. Topology metadata is exact state; business meaning and routing responsibility
 must come from the admitted Domain/Service Specs.
 
@@ -45,7 +47,9 @@ view must change. Every added, removed or kind-changed `participates_in` edge re
 for the corresponding retained Domain. That task states the exact participant target ID, kind,
 Domain-local responsibility, selection condition and relied-upon promises so the private Domain
 author does not need registry access. Repair every existing invalid participant declaration exposed
-by admitted Domain Specs in the same candidate. State migration constraints and observable acceptance conditions. You may design
+by admitted Domain Specs in the same candidate. Any change to a document's target references requires
+a task for every retained current or candidate reference. A changed shared document requires every
+candidate referencing target author to return identical bytes. State migration constraints and observable acceptance conditions. You may design
 Module identity, responsibility, relationships, document membership and implementation ownership
 from admitted Domain/Service facts and user intent, but never invent Module API details or code facts.
 Do not include any Spec document body in the topology design. The host will start private target

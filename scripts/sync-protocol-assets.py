@@ -26,7 +26,9 @@ def main():
     documented=schemas()
     from concorde.capabilities.operation_data import DATA_SCHEMAS
     documented["concorde-operation-configuration"]=DATA_SCHEMAS["concorde-operation-configuration"]
-    wire="# Complete local Operation data contracts\n\nThe following schemas define data inside TypedValue {type_id,schema_version:1,data}. A named $ref refers to a data definition in this same collection. All objects reject additionalProperties unless explicitly stated; optional properties are those absent from required. No task arguments are inferred from filenames.\n"
+    wire=("```concorde-document\n" + json.dumps({"id":"document.operation.wire",
+        "targets":["service.workflow-host"],"main_visible":True},indent=2) +
+        "\n```\n\n# Complete local Operation data contracts\n\nThe following schemas define data inside TypedValue {type_id,schema_version:1,data}. A named $ref refers to a data definition in this same collection. All objects reject additionalProperties unless explicitly stated; optional properties are those absent from required. No task arguments are inferred from filenames.\n")
     for name in sorted(documented):
         wire += f"\n\n## {name}\n\n```json\n{json.dumps(documented[name],indent=2)}\n```\n"
     (ROOT/"specs/concorde/services/operation-wire.md").write_text(wire)

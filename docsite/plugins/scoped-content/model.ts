@@ -14,7 +14,8 @@ export interface Target {
 }
 export interface Page {
   targetId: string; kind: Kind; title: string; sourcePath: string; contentDigest: string;
-  route: string; stagedPath: string; content: string;
+  route: string; stagedPath: string; content: string; documentId: string;
+  documentTargets: string[]; mainVisible: boolean; contextSection: 'target_spec' | 'shared_specs';
   architectureDiagrams?: {kind: string; title: string; source: string; sourceSha256: string; route: string}[];
 }
 export interface Edge {source: string; target: string; kind: 'scope_contains' | 'composes' | 'participates_in' | 'requires'; contract?: string}
@@ -39,13 +40,28 @@ export function isScoped(root: string): boolean {
   try {return JSON.parse(safeRead(root, '.concorde/config.json')).profile_version === 8;}
   catch (error) {if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false; throw error;}
 }
-const ids = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
+const ids = /^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$/;
+interface DocumentContext {id:string; targets:string[]; main_visible:boolean}
+function documentContext(source:string,path:string,expected:string[]):DocumentContext {
+  const blocks=[...source.matchAll(/^```concorde-document\s*\n([\s\S]*?)^```\s*$/gm)];
+  requireThat(blocks.length===1,`Exactly one concorde-document block required: ${path}`);
+  const value=JSON.parse(blocks[0][1]) as Partial<DocumentContext>;
+  requireThat(Object.keys(value).sort().join(',')==='id,main_visible,targets',`Invalid concorde-document fields: ${path}`);
+  requireThat(typeof value.id==='string'&&ids.test(value.id),`Invalid document identity: ${path}`);
+  requireThat(Array.isArray(value.targets)&&value.targets.length&&new Set(value.targets).size===value.targets.length&&
+    value.targets.every(target=>typeof target==='string'&&ids.test(target)),`Invalid document targets: ${path}`);
+  requireThat(typeof value.main_visible==='boolean',`Invalid document main_visible: ${path}`);
+  requireThat(value.targets.length===expected.length&&value.targets.every(target=>expected.includes(target)),
+    `Document targets differ from registry membership: ${path}`);
+  return value as DocumentContext;
+}
 export function loadScopedRegistry(root: string): ScopedRegistry {
   const configText = safeRead(root, '.concorde/config.json'); const config = JSON.parse(configText);
   requireThat(config.profile_version === 8, 'Profile 8 configuration required');
   const registryText = safeRead(root, config.registry); const registry = JSON.parse(registryText);
   requireThat(registry.schema_version === 1 && Array.isArray(registry.targets), 'Spec registry schema 1 required');
   const targets = registry.targets as Target[]; const byId = new Map<string, Target>(); const allIds = new Set<string>();
+  const documentTargets=new Map<string,string[]>();
   const pages: Page[] = []; const edges: Edge[] = [];
   const inputs: [string, string][] = [['.concorde/config.json', hash(configText)], [config.registry, hash(registryText)]];
   for (const t of targets) {
@@ -57,9 +73,20 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     requireThat(t.component_parent === null || typeof t.component_parent === 'string', 'component_parent must be explicit');
     requireThat(t.kind === 'domain' ? t.component_parent === null && !t.implementation.length && !t.participates_in.length : t.scope_parent === null, `Independent architecture dimensions violated: ${t.id}`);
     requireThat(t.kind === 'module' ? !t.features.length : !t.apis.length, `Module APIs and Service/Domain Features are distinct: ${t.id}`);
+    for(const path of t.documents){
+      const references=documentTargets.get(path)??[];
+      references.push(t.id);documentTargets.set(path,references);
+    }
     byId.set(t.id,t);
   }
   requireThat(byId.has(registry.entry_target), 'Unknown entry target');
+  const documentContexts=new Map<string,DocumentContext>();const documentIds=new Map<string,string>();
+  for(const [path,references] of documentTargets){
+    const context=documentContext(safeRead(root,path),path,references);const previous=documentIds.get(context.id);
+    requireThat(!previous||previous===path,`Duplicate document identity ${context.id}: ${previous} and ${path}`);
+    requireThat(!allIds.has(context.id),`Document identity collides with target: ${context.id}`);
+    allIds.add(context.id);documentIds.set(context.id,path);documentContexts.set(path,context);
+  }
   for (const t of targets) {
     for (const [key, kind] of [['scope_parent','scope_contains'],['component_parent','composes']] as const) {
       const parent = t[key]; const seen = new Set([t.id]); let cursor = parent;
@@ -75,8 +102,11 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     for (const path of t.documents) {
       requireThat(path.endsWith('.md'), `Spec member must be Markdown: ${path}`);
       const raw = safeRead(root,path); const content = matter(raw).content; requireThat(content.trim(), `Empty Spec: ${path}`);
+      const context=documentContexts.get(path)!;
       const title = /^#\s+(.+)$/m.exec(content)?.[1] ?? t.title; const key = hash(path).slice(7,23);
-      pages.push({targetId:t.id,kind:t.kind,title,sourcePath:path,contentDigest:hash(raw),route:`/specs/${t.id}/${key}`,stagedPath:`${t.id}/${key}.md`,content});
+      pages.push({targetId:t.id,kind:t.kind,title,sourcePath:path,contentDigest:hash(raw),route:`/specs/${t.id}/${key}`,stagedPath:`${t.id}/${key}.md`,content,
+        documentId:context.id,documentTargets:context.targets,mainVisible:context.main_visible,
+        contextSection:context.targets.length>1?'shared_specs':'target_spec'});
       inputs.push([path,hash(raw)]);
     }
     for (const focus of [...t.features,...t.apis]) {

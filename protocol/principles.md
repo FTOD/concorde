@@ -70,34 +70,34 @@ independent of document paths. A Feature or API belongs to its providing Spec ta
 identity nor its filename creates an independent permission boundary. Concorde MUST NOT require a
 separate Feature file or one Feature per Markdown file.
 
-### P3. Every Spec is a self-contained document collection
+### P3. Every resolved Spec context is a self-contained document closure
 
 Every Domain, Service, and Module MUST have a stable Spec target identity and an explicitly
-registered, nonempty collection of Markdown documents. Their filenames and division into
-documents are unconstrained by the Protocol. Membership MUST be explicit; directory traversal,
-links, and scope or component relationships MUST NOT implicitly add documents.
+registered, nonempty collection of Markdown documents. A physical document MAY be referenced by
+one target or shared by several targets. Each document MUST declare one globally unique stable
+document ID, the exact nonempty set of referencing target IDs, and whether its content is
+`main_visible`. The registry remains the deterministic resolution index and MUST contain the same
+memberships. Directory traversal, links, scope/component relationships, and another referencing
+entity's remaining documents MUST NOT implicitly add context.
 
-The complete collection MUST explain that target without requiring its parent, ancestors,
-children, collaborating components, or other Domains' Specs. This obligation applies to each
-target's stated responsibilities and supported uses. A Domain's completeness is about the system
-within its scope; it does not require enumerating every participating component's private details.
+The resolved context for one target is the ordered union of its registered documents. Documents
+referenced only by that target appear under `Target Spec`; documents referenced by several targets
+appear once under `Shared Specs`. This one-hop document inclusion is not recursive entity-context
+expansion. The complete resolved context MUST explain the target without requiring an undisclosed
+parent, ancestor, child, collaborator, or related entity Spec.
 
-Necessary overlap between Specs is permitted and expected. If A uses B:
+Project knowledge SHOULD avoid unnecessary duplication. Exact shared truth—such as a vocabulary,
+schema, invariant, state transition or common completion rule—SHOULD have one canonical shared
+document when several targets rely on it. Target-local perspective remains local: a consumer still
+explains when and why it uses a capability and how it handles results and failures, while the
+provider explains what it offers. Natural-language similarity alone does not prove that two
+perspectives are duplicate.
 
-- A explains when and why it uses B, the contract it requires, the data it sends, and how it
-  handles B's results and failures.
-- B explains how callers may use it and the obligations and behavior it provides.
-
-Each side MUST contain the information needed from its own perspective. A link to the other side
-cannot substitute for that information. Shared contract identities and versions support
-compatibility checks on common facts and obligations; the two descriptions need not use identical
-wording. Structured checks establish the compatibility they actually cover, while semantic review
-must report its evidence and limitations.
-
-A parent's explanation of organization and a child's explanation of its own behavior MAY repeat
-facts. Relationship references support navigation and consistency checking without becoming
-context inheritance. A named external standard does not grant permission to fetch its contents;
-task-relevant usage rules must be available in the admitted Spec context.
+A shared document has collective authority and no implicit unique owner. A single-target author MAY
+read it but MUST NOT change it. Changing shared truth requires a coordinated topology application in
+which every candidate referencing target receives a separate context and returns identical proposed
+bytes. Document identity, membership and `main_visible` changes follow the same reviewed, atomic
+path. Any shared change intentionally changes the context identity of every referencing target.
 
 ### P4. Global principles and kind definitions are versioned context
 
@@ -109,8 +109,8 @@ that binding.
 For a Spec target, Concorde MUST automatically include the global principles and the corresponding
 kind definition in its context. These additions MUST be visible in the resolved context manifest.
 Project-specific rules MAY supplement the global principles but MUST NOT weaken them. Business
-facts needed to understand a target must remain available in that target's own document collection;
-an ancestor's Spec cannot become an implicit global supplement.
+facts needed to understand a target must remain available in its Target Spec plus Shared Specs;
+an ancestor's or co-referencing entity's remaining Spec cannot become an implicit supplement.
 
 Concorde's own business decomposition is an application of these rules. It MUST NOT become a
 required Installation/Documentation/Workflow decomposition for other projects.
@@ -124,9 +124,10 @@ silently replace its complete document collection with partial retrieval results
 A main coordinator is a separate agent role with a different context contract. It starts from the
 project entry Domain or Service and MAY request additional registered Domain or Service Specs as
 needed to understand intent and select work. Its discovery context is an ordered, append-only set of
-complete admitted collections. Each expansion produces a new context identity covering the full
-ordered membership and bytes. A Domain or Service collection sharing a physical member with a Module
-Spec is not admissible to main discovery. The coordinator MUST NOT read a Module Spec or implementation code.
+only the `main_visible` Target Spec and Shared Specs of admitted Domain/Service targets. Each expansion
+produces a new context identity covering the exact visible membership and bytes. Sharing a visible
+document with a Module does not admit the Module's remaining Spec. The coordinator MUST NOT directly
+expand a Module target or read implementation code.
 It MAY route work to a Module only when an admitted Domain or Service supplies the Module's stable
 ID, responsibility and selection condition. Missing routing facts are a Spec gap in the admitted
 Domain or Service that should supply them.
@@ -141,7 +142,8 @@ MUST be different fresh agent invocations. The trusted host resolves and transfe
 snapshot directly; raw target or Protocol bodies MUST NOT pass back through the coordinator or an
 ambient public Skill. Typed worker results MAY become declared coordinator inputs for synthesis.
 
-The context manifest MUST identify the target and kind, document membership and content digests,
+The context manifest MUST identify the target and kind, document order, Target Spec and Shared Specs,
+each document's stable identity/reference set/main visibility and content digest,
 Protocol and kind-definition versions, Operation instructions, task input, phase, and any admitted
 stage artifacts or structured tool results. A context identity MUST cover membership as well as
 content. A change to admitted inputs produces a new snapshot rather than silently changing the
@@ -153,7 +155,8 @@ tool output MUST NOT become undeclared input channels. Inputs and outputs genera
 MUST follow declared artifact contracts and read/write boundaries.
 
 The trusted host may use the project registry to resolve targets and permissions. That authority
-does not grant an agent general access to the registry's other Spec bodies. Cross-target work
+does not grant an agent general access to the registry's other Spec bodies. Explicit shared-document
+membership grants only that document, not another target's remaining collection. Cross-target work
 MUST use separately bound invocations and explicit data contracts between them. Scope membership,
 composition, hyperlinks, and a caller-supplied file path are not permission grants.
 
@@ -217,16 +220,23 @@ bound to that context.
 
 `concorde-main` is the single public entry for global questions and system-structure design; there
 is no separate ask Operation. For a topology change, its internal coordinator MAY receive the exact
-registry metadata and every global kind definition in addition to its append-only Domain/Service
-discovery collections. Registry metadata supplies current structure, not hidden business meaning.
-The coordinator still MUST NOT receive a Module document body or implementation source.
+registry metadata and every global kind definition in addition to its append-only, main-visible
+Domain/Service discovery collections. Registry metadata supplies current structure, not hidden
+business meaning. The coordinator still MUST NOT directly expand a Module or receive implementation
+source.
 
 The coordinator produces a complete candidate registry, target-local Spec tasks, migration
 constraints and observable acceptance conditions without writing project files. A maintainer MUST
 explicitly accept that digest-bound design before any target author runs. The host then starts a
 fresh target-local Spec author for every added or changed target and for every unchanged
-Domain/Service whose routing view must change. A Module body is visible only to its own worker.
+Domain/Service whose routing view must change. A Module target's remaining collection is visible only
+to its own worker; a main-visible shared truth is not such an expansion.
 Worker document output remains host-private and MUST NOT return through main cognition.
+
+Changing document reference membership requires a Spec task for every retained current or candidate
+reference. A shared truth change requires every candidate reference to receive its own authoring
+context; the host accepts the shared bytes only when all returned proposals are identical. No single
+target author gains unilateral shared-document write authority.
 
 The host validates the candidate registry and complete proposed document bytes against an overlay,
 then stores one exact digest-bound application with before-digests. The public result exposes only

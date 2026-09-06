@@ -1,3 +1,11 @@
+```concorde-document
+{
+  "id": "document.module.permissions",
+  "targets": ["module.permissions"],
+  "main_visible": false
+}
+```
+
 # Execution permissions
 
 ## api.permissions.compile
