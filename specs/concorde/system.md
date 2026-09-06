@@ -49,6 +49,16 @@ projects do not silently acquire a new meaning: they must explicitly accept comp
 or migrate their authored registry and self-contained documents. Source Profile 8 rejects Profile 7
 for agent work. Legacy deterministic readers remain diagnostic utilities only.
 
+Changing the Protocol is an explicitly authorized version cutover, not ordinary work performed
+under the version being replaced. The previous Protocol remains authoritative for its published
+version and for unrelated work, but it does not validate the incomplete intermediate state of its
+own replacement. The maintainer first reconciles every normative asset, runtime boundary, self Spec,
+consumer-facing migration and executable check. Only the completed candidate is validated under its
+own proposed rules. Until that validation succeeds, the candidate is unpublished, cannot be bound by
+consumer projects and cannot be described as the active Protocol. This bootstrap exception is limited
+to the coordinated Protocol cutover and does not authorize ordinary changes to bypass the active
+workflow.
+
 Concorde's own code is changed under the user's authorized refactor task. Product agent workflows
 must continue to obey these same rules. Structural checks cannot establish semantic completeness
 for every future task; a successful task-specific assessment is bounded by its recorded context.

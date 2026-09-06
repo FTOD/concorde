@@ -1,6 +1,16 @@
+<!--
+Sync Impact Report
+- Version: 9.0.0 -> 9.1.0
+- Bump rationale: MINOR; adds a normative Concorde-specific Protocol evolution bootstrap rule.
+- Modified principles: Part B, Concorde project application.
+- Added sections: Protocol version cutover and self-consistency.
+- Removed sections: none.
+- Deferred placeholders: none.
+-->
+
 # Concorde Constitution
 
-Version: 9.0.0. Architecture Profile 8; Workspace Protocol 14; Delivery Proposal 10.
+Version: 9.1.0. Architecture Profile 8; Workspace Protocol 14; Delivery Proposal 10.
 
 ## Part A: universal Concorde principles
 
@@ -182,3 +192,26 @@ project information and tool access; it does not claim to erase a model's genera
 ## Part B: Concorde project application
 
 The explicit registry is .concorde/specs.json. domain.concorde is the project entry scope. Every consumer project must follow Part A and receive the pinned global principles and its target kind definition. The current refactor adopts two independent architectural dimensions, exact local context collections, host-enforced fresh sessions, typed Operation handoffs and explicit Spec gaps. Runtime, distribution, self Specs and human publication must change together. Legacy Profile 7 utilities may inspect old fixtures deterministically but must never supply cognitive inputs to a Profile 8 agent.
+
+### Protocol version cutover and self-consistency
+
+Concorde evolves its own normative Protocol as an explicitly authorized version cutover. The
+currently published Protocol governs that published version and ordinary Concorde work, but it is
+not the admission or validation authority for the incomplete intermediate state that replaces its
+own rules. Requiring the previous Protocol to authorize every step of its replacement would make a
+breaking correction depend on the behavior being replaced and can create a self-referential
+deadlock.
+
+A Protocol cutover MAY therefore complete the coordinated changes to principles, kind definitions,
+schemas, runtime enforcement, Operations, installation assets, self Specs, publication, migration
+behavior and executable evidence before running the replacement Protocol's validation. Intermediate
+bytes MUST remain an unpublished development state: they MUST NOT be installed, bound by consumer
+projects or represented as an adopted Protocol version.
+
+The cutover is complete only when the proposed version is internally coherent, every distributed
+and executable authority agrees on its version and meaning, Concorde's own maintained Specs satisfy
+that version, and a separate consumer fixture validates the resulting behavior. Validation is then
+performed under the completed proposed Protocol, not by treating the previous Protocol as authority
+over the transition. This exception applies only to an explicitly authorized normative Concorde
+Protocol cutover; it does not waive the active Protocol for ordinary feature work, consumer-project
+changes or a partially scoped refactor.

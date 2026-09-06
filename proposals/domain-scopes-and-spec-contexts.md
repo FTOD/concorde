@@ -238,6 +238,14 @@ registry/model, initialization and migration, context Operations, lifecycle inpu
 policies, Skills and projections, documentation publication, and executable evidence. Until that
 change is complete, this proposal is not an active replacement for the existing Protocol.
 
+This adoption is an explicitly authorized Protocol version cutover. The previous Protocol remains
+the authority for its published version, but it is not used to admit or validate each incomplete
+intermediate state of the rules and runtime that replace it. All coordinated changes are completed
+first; the resulting candidate must then be internally coherent and validate under the proposed new
+Protocol before it is published, installed, bound by a consumer project, or described as adopted.
+This bootstrap rule does not exempt ordinary Concorde or consumer-project work from the active
+Protocol.
+
 Acceptance must include a separate consumer project as well as Concorde itself. Evidence must cover:
 
 - Nested scopes and component composition represented independently, including one component's
