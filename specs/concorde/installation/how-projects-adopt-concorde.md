@@ -36,3 +36,13 @@ surface belongs to one Git worktree. Checkout status reports drift, check enforc
 apply refreshes only that worktree's projections. Repository agent policy requires the loaded project
 Skill and active worktree to share that identity, even when two worktrees have identical generated
 bytes; crossing that boundary requires a newly opened agent in the target worktree.
+
+## Main routing view
+
+The main coordinator selects `service.installation` for install/update receipts, owned outputs and
+the public installer boundary. It selects `service.spec-context` for initialization, migration,
+configuration binding and context-registry validation. Within those Service responsibilities,
+`module.package-assets` owns packaged/projection assets, `module.managed-runtime` owns Python/viewer
+provisioning, `module.registry` owns registry admission, `module.wire-contracts` owns typed data
+validation and `module.file-transactions` owns rollback-safe file replacement. The Module IDs are
+routing facts; their Specs are supplied only to separately launched workers.

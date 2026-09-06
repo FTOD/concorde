@@ -115,7 +115,7 @@ class SkillAssetTests(unittest.TestCase):
         self.assertEqual((planner.kind, planner.exposure), ("operation", "public"))
         self.assertEqual(
             planner.capabilities,
-            ("concorde-context-assessor", "concorde-planner"),
+            ("concorde-main", "concorde-context-assessor", "concorde-planner"),
         )
         operation = load_skill_prompt(REPOSITORY_ROOT, "concorde-standard-dev-loop", "")
         self.assertEqual(operation.kind, "operation")
@@ -123,7 +123,7 @@ class SkillAssetTests(unittest.TestCase):
             operation.operation,
             "operations/concorde-standard-dev-loop/operation.py",
         )
-        self.assertEqual(operation.capabilities[:2], ("concorde-specify", "concorde-plan"))
+        self.assertEqual(operation.capabilities[:3], ("concorde-main", "concorde-specify", "concorde-plan"))
         self.assertIn(
             "python3 scripts/run-operation.py "
             "operations/concorde-standard-dev-loop/operation.py",

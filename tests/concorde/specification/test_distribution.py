@@ -18,7 +18,7 @@ from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
         self.assertEqual([],validate_package(PACKAGE))
-        self.assertEqual(22,len(OPERATIONS));self.assertEqual(6,len(INTERNAL_SKILLS))
+        self.assertEqual(22,len(OPERATIONS));self.assertEqual(7,len(INTERNAL_SKILLS))
         for role in INTERNAL_SKILLS:self.assertEqual('internal',load_skill_prompt(PACKAGE,role).exposure)
     def test_source_public_projections_match_canonical_pairs(self):
         for integration in ('claude','codex'):
@@ -34,7 +34,10 @@ class DistributionTests(unittest.TestCase):
             command=[sys.executable,str(PACKAGE/'operations/concorde-context/operation.py')]
             value={'type_id':'concorde-operation-invocation','schema_version':2,'operation_id':'concorde-context','mode':'execute','configuration':None,'input':typed('concorde-context-request',{'target_id':'service.transfer','task':'Explain transfer'})}
             result=subprocess.run(command,input=json.dumps(value),capture_output=True,text=True,cwd=root)
-            self.assertEqual(0,result.returncode,result.stdout+result.stderr);self.assertEqual(2,len(json.loads(result.stdout)['output']['data']['snapshot']['data']['documents']))
+            self.assertEqual(0,result.returncode,result.stdout+result.stderr)
+            output=json.loads(result.stdout);manifest=output['output']['data']['manifest']['data']
+            self.assertEqual(2,len(manifest['documents']))
+            self.assertNotIn('content',json.dumps(manifest));self.assertNotIn('Transfer money',result.stdout)
             result=subprocess.run(command+['--feature-path','specs/send-money.md'],input=json.dumps(value),capture_output=True,text=True,cwd=root)
             self.assertEqual(3,result.returncode);self.assertEqual('blocked',json.loads(result.stdout)['status'])
     def test_installed_framework_runs_complete_real_graph_and_checks_for_both_integrations(self):
@@ -57,20 +60,27 @@ from concorde.capabilities.operation_service import OperationHost,run_operation
 import concorde.capabilities.scoped_operations as actual_host
 model=helper.ModelProcessDouble();host=OperationHost(root,framework,executor=model.executor,allow_primary_worktree=True)
 result=run_operation('concorde-standard-dev-loop',None,typed('concorde-standard-dev-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
-print(json.dumps({'result':result,'module_source':actual_host.__file__,'stages':[c['stage'] for c in model.calls]}))
+before=len(model.calls)
+ask=run_operation('concorde-ask',None,typed('concorde-ask-request',{'task':'Explain transfer'}),host_context=host)
+print(json.dumps({'result':result,'ask':ask,'module_source':actual_host.__file__,
+  'stages':[c['stage'] for c in model.calls[:before]],'ask_stages':[c['stage'] for c in model.calls[before:]]}))
 ''')
                 completed=subprocess.run([sys.executable,str(driver),str(PACKAGE/'tests/concorde/specification/support.py'),integration],cwd=root,capture_output=True,text=True,env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1'})
                 self.assertEqual(0,completed.returncode,completed.stderr);value=json.loads(completed.stdout)
                 self.assertIn('.concorde/framework/src',value['module_source']);self.assertEqual('succeeded',value['result']['status'],value)
                 self.assertEqual('delivered',value['result']['output']['data']['outcome']);self.assertEqual('passed',value['result']['output']['data']['checks'][0]['status'])
+                self.assertEqual('succeeded',value['ask']['status'],value);self.assertEqual(['route','route','ask','synthesize'],value['ask_stages'])
     def test_completion_from_previous_invocation_cannot_be_replayed(self):
         from concorde.capabilities.operation_service import OperationHost,run_operation
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);project(root);model=ModelProcessDouble();saved=[]
+            root=Path(directory);project(root);model=ModelProcessDouble();saved=[];replay=[False]
             def executor(launch):
-                if saved:return saved[0]
-                result=model.executor(launch);saved.append(result);return result
+                if replay[0]:return saved[0]
+                result=model.executor(launch)
+                if not saved:saved.append(result)
+                return result
             host=OperationHost(root,PACKAGE,executor=executor,allow_primary_worktree=True)
             task=typed('concorde-ask-request',{'target_id':'service.transfer','task':'Explain transfer'})
-            first=run_operation('concorde-ask',CONFIGURATION,task,host_context=host);second=run_operation('concorde-ask',CONFIGURATION,task,host_context=host)
+            first=run_operation('concorde-ask',CONFIGURATION,task,host_context=host);replay[0]=True
+            second=run_operation('concorde-ask',CONFIGURATION,task,host_context=host)
             self.assertEqual('succeeded',first['status']);self.assertEqual('blocked',second['status']);self.assertEqual('invalid_completion',second['errors'][0]['code'])

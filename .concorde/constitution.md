@@ -1,16 +1,16 @@
 <!--
 Sync Impact Report
-- Version: 9.0.0 -> 9.1.0
-- Bump rationale: MINOR; adds a normative Concorde-specific Protocol evolution bootstrap rule.
-- Modified principles: Part B, Concorde project application.
-- Added sections: Protocol version cutover and self-consistency.
+- Version: 9.1.0 -> 10.0.0
+- Bump rationale: MAJOR; P5 now distinguishes multi-Spec main discovery from single-target workers.
+- Modified principles: P1 routing obligations, P5 context model, P7 public context exposure, and Part B Protocol cutover.
+- Added sections: Domain/Service discovery coordinator and Protocol version cutover self-consistency.
 - Removed sections: none.
 - Deferred placeholders: none.
 -->
 
 # Concorde Constitution
 
-Version: 9.1.0. Architecture Profile 8; Workspace Protocol 14; Delivery Proposal 10.
+Version: 10.0.0. Architecture Profile 8; Workspace Protocol 14; Delivery Proposal 10.
 
 ## Part A: universal Concorde principles
 
@@ -46,6 +46,12 @@ parent relationships. Scope participation MAY overlap: a shared Service or Modul
 in multiple Domains without acquiring duplicate component identities or implementations. Each
 Domain explains the role relevant to its own scope. Participation does not automatically grant
 context access or mutation authority.
+
+Every Domain and Service that routes work toward another target MUST state that target's stable ID,
+local responsibility, relationship and selection condition in its own Spec. This routing view does
+not substitute for the downstream target's complete Spec. It lets a main coordinator decide where
+work belongs without reading a Module Spec or relying on registry metadata as hidden business
+authority.
 
 Business entities such as Account, Transfer, and Daily Limit MUST have meaningful definitions
 and responsibility assignments where they matter. They do not each require a separate Domain,
@@ -117,9 +123,29 @@ required Installation/Documentation/Workflow decomposition for other projects.
 
 ### P5. Each agent invocation has one explicit, reproducible context
 
-Every agent task MUST bind to one explicit Spec target and a concrete context snapshot before
-execution. A Feature or API identifier MAY focus the task within that target, but MUST NOT silently
-replace its complete document collection with partial retrieval results.
+Every bounded worker task MUST bind to one explicit Spec target and a concrete context snapshot
+before execution. A Feature or API identifier MAY focus the task within that target, but MUST NOT
+silently replace its complete document collection with partial retrieval results.
+
+A main coordinator is a separate agent role with a different context contract. It starts from the
+project entry Domain or Service and MAY request additional registered Domain or Service Specs as
+needed to understand intent and select work. Its discovery context is an ordered, append-only set of
+complete admitted collections. Each expansion produces a new context identity covering the full
+ordered membership and bytes. A Domain or Service collection sharing a physical member with a Module
+Spec is not admissible to main discovery. The coordinator MUST NOT read a Module Spec or implementation code.
+It MAY route work to a Module only when an admitted Domain or Service supplies the Module's stable
+ID, responsibility and selection condition. Missing routing facts are a Spec gap in the admitted
+Domain or Service that should supply them.
+
+An Operation with one owning lifecycle or mutation result receives exactly one main route and keeps
+the user's task and constraints unchanged. Cross-target mutation is routed to a Domain that
+coordinates separately bound component work. A read-only ask may route several target readers and
+combine only their typed results.
+
+The coordinator that selects a target and the worker that consumes that target's complete context
+MUST be different fresh agent invocations. The trusted host resolves and transfers the worker
+snapshot directly; raw target or Protocol bodies MUST NOT pass back through the coordinator or an
+ambient public Skill. Typed worker results MAY become declared coordinator inputs for synthesis.
 
 The context manifest MUST identify the target and kind, document membership and content digests,
 Protocol and kind-definition versions, Operation instructions, task input, phase, and any admitted
@@ -187,6 +213,11 @@ Agent executions MUST start in fresh, controlled contexts. Changing a target or 
 implementation phase MUST NOT reuse a conversation that has already seen now-excluded material.
 Removing file permissions cannot remove prior cognitive inputs. The guarantee covers admitted
 project information and tool access; it does not claim to erase a model's general prior knowledge.
+
+Public context inspection MAY expose target identity, membership, versions and digests for audit,
+but MUST NOT return the raw cognitive snapshot or document bodies to the ambient caller. The host
+keeps complete snapshots private and supplies them only to the fresh invocation whose policy is
+bound to that context.
 
 
 ## Part B: Concorde project application

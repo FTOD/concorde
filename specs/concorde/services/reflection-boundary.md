@@ -40,3 +40,10 @@ reproduction, no outstanding human intervention and an approved route/plan. It r
 loop with intended behavior only; investigation text/code/logs are excluded from Spec-stage inputs.
 Success marks the plan implemented while leaving human disposition of the report independent.
 Protocol changes in Concorde require the explicit evolve-protocol workflow.
+
+## Main routing view
+
+Reflection record selection, status, investigation coordination, approval and disposition remain on
+`service.reflections`; this Service has no separately registered child Module. When an approved
+resolution becomes ordinary product work, its typed route selects the responsible target named by
+the Reflection rather than granting this Service access to that target's Spec.

@@ -1,6 +1,7 @@
 """Reflection coordination: code stays in a fresh implementation invocation."""
 import importlib.util
 import sys
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from ..capabilities.operation_data import typed, artifact
@@ -69,8 +70,9 @@ def triage(run):
         for f in findings:
             # Only intended behavior is a task input. Investigation prose, source, evidence and
             # logs must not contaminate specification/planning cognition.
+            child_host=replace(run.host,routed_target=run.target.id)
             child=run_operation("concorde-standard-dev-loop",run.configuration,
-                typed("concorde-standard-dev-loop-request",{"target_id":run.target.id,"task":f["resolution"]}),host_context=run.host)
+                typed("concorde-standard-dev-loop-request",{"target_id":run.target.id,"task":f["resolution"]}),host_context=child_host)
             if child["status"]!="succeeded":
                 if child["output"]:
                     data=child["output"]["data"]

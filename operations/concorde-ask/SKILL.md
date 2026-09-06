@@ -3,26 +3,33 @@ name: concorde-ask
 description: "Run ask through Concorde's enforced Spec context and JSON boundary."
 exposure: public
 operation: operation.py
-capabilities: ["concorde-reader"]
+capabilities: ["concorde-main", "concorde-reader"]
 ---
 
 # concorde-ask
 
-Invoke this Operation to ask. The host owns context
-resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
-input; do not perform it directly in this ambient conversation or inspect additional project files.
+Invoke this Operation to ask through a separate main coordinator and one or more fresh target
+readers. The main coordinator starts from the project's entry Domain or Service and may expand only
+registered Domain and Service Specs. It cannot read Module Specs or implementation code. After it
+returns typed routes, the host resolves each selected target privately and starts a different reader
+process. Supply the user's task as typed input; do not perform it directly in this ambient
+conversation or inspect project files.
 
 Send one concorde-operation-invocation@2 JSON object on stdin to `{OPERATION}`. Its exact fields
 are type_id, schema_version:2, operation_id:"concorde-ask", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-ask-request@1).
-Task requests select target_id and task, with optional focus_id, constraints, and change_id.
+Ask requests require task and accept optional target_id/focus_id routing hints and constraints.
+The hint never grants Spec access to the main coordinator. Other task Operations select target_id
+and task, with optional focus_id, constraints, and change_id.
 Initialization/migration use their typed propose/apply requests; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
-Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of
-searching other Specs. The host captures a committed-base worktree for mutations when necessary.
-Its result names that workspace. Report Spec gaps or blocked execution as returned; do not work
-around the boundary. Non-implementation agents never receive implementation code or raw test logs.
+The main coordinator expands Domain/Service context only as needed and records the exact ordered
+membership and digests in every discovery identity. A Module may be selected from responsibilities
+stated in an admitted Domain or Service, but its Spec is visible only to the fresh target reader.
+The public result contains routes, typed worker results and the synthesized answer; it never contains
+raw Spec bodies. Report Spec gaps or blocked execution as returned and do not work around the
+boundary. Non-implementation agents never receive implementation code or raw test logs.
 
 ## Input TypedValue schema
 
@@ -54,11 +61,11 @@ This complete schema is the invocation's input field. It does not grant project 
     "concorde-ask-request": {
       "type": "object",
       "properties": {
-        "target_id": {
+        "task": {
           "type": "string",
           "minLength": 1
         },
-        "task": {
+        "target_id": {
           "type": "string",
           "minLength": 1
         },
@@ -72,14 +79,9 @@ This complete schema is the invocation's input field. It does not grant project 
             "type": "string",
             "minLength": 1
           }
-        },
-        "change_id": {
-          "type": "string",
-          "minLength": 1
         }
       },
       "required": [
-        "target_id",
         "task"
       ],
       "additionalProperties": false

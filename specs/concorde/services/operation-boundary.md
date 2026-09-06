@@ -30,6 +30,17 @@ access disabled, writes restricted by phase. A native integration unable to enfo
 outer enforcement requires a host-issued sandbox. Executor completions must match invocation, policy,
 launch and context identities. No ambient conversation or predecessor transcript is admitted.
 
+Every new agent-backed task first launches `concorde-main` with the entry Domain or Service. Main discovery can
+append complete registered Domain/Service Specs on demand; each append starts a fresh process with a
+new context identity. The host rejects Module expansion and code access. For Operations other than
+ask, main must return one owning target; cross-target mutation is routed through a Domain. The host
+then starts the Operation's different bounded worker or composite flow. `concorde-ask` may route one
+or more fresh `concorde-reader` workers, after which a final fresh main invocation receives only typed
+worker results for synthesis. An optional caller target/focus is a routing hint, not a context grant.
+
+Public `concorde-context` and `concorde-resolve-context` return only a redacted membership/digest
+manifest. Complete cognitive snapshots never cross the public Operation result boundary.
+
 Authoring returns local document replacements; the host alone applies them. Planning runs a separate
 context assessment first and creates an attempt only for a sufficient context and nonempty plan.
 Task authoring receives a concorde-plan-artifact. Implementation receives concorde-implementation-task
@@ -82,3 +93,12 @@ creates acceptance criteria; taskstoissues produces local issue drafts without s
 Each reported Spec gap carries host-bound target_id and context_id provenance. A Domain coordinator
 retains that provenance when a component stage is blocked, so callers can author the correct local
 Spec before retrying. Agent-supplied mismatched gap provenance is rejected.
+
+## Main routing view
+
+Select `module.wire-contracts` for request/result schema construction and validation,
+`module.permissions` for path/network/credential policy compilation, and
+`module.agent-execution` for native process launch and completion attestation. Select
+`service.spec-context` when the behavior being changed is target/document resolution rather than
+Operation orchestration. Public capability projection belongs to `module.package-assets`. The main
+coordinator may use these stable IDs to route a worker but may not open their Module Specs.

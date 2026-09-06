@@ -1,21 +1,24 @@
 # Concorde
 
-Concorde runs agent work from explicit, self-contained Specs. Every task has one selected target,
-one reproducible context and a host-enforced permission boundary.
+Concorde runs agent work from explicit, self-contained Specs. A global main coordinator may inspect
+Domain and Service Specs on demand to route a request; every routed worker then has one selected
+target, one reproducible context and a host-enforced permission boundary.
 
 Domain is a business/problem scope. Service and Module are component kinds: a Service offers Features
 through precise exchanges; a Module offers APIs. Domain scope nesting, component composition and
 multi-scope participation are independent relationships. Every target registers its complete ordered
 Markdown collection; filenames are unrestricted and no ancestor/collaborator context is inherited.
 
-The shipped Protocol principles apply to every consumer project. The host injects the pinned global
-principles plus the selected kind definition, starts a fresh agent process per stage and exposes code
-only during implementation. Missing task-relevant facts yield Spec incomplete, not a search for more
-files. See [the principles](protocol/principles.md) and [Concorde's own system Spec](specs/concorde/system.md).
+The shipped Protocol principles apply to every consumer project. Main discovery starts at the entry
+Domain or Service and appends only explicitly requested Domain/Service collections. It cannot read a
+Module Spec or code. Once it returns typed routes, the host starts different fresh workers and injects
+the pinned global principles plus each selected kind definition. Missing task-relevant facts yield
+Spec incomplete, not a search for arbitrary files. See [the principles](protocol/principles.md) and
+[Concorde's own system Spec](specs/concorde/system.md).
 
 ## Install and initialize
 
-The installer distributes canonical runtime, 22 paired public Operations, 6 internal roles and 9
+The installer distributes canonical runtime, 22 paired public Operations, 7 internal roles and 9
 Markdown templates to Codex or Claude. Check `python scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit
@@ -52,9 +55,13 @@ Send this invocation on stdin to the matching installed paired executable:
 }
 ```
 
-Null configuration asks the trusted host to load initialized settings. The loop executes specification,
+Null configuration asks the trusted host to load initialized settings. `concorde-ask` may omit
+target_id: a separate main coordinator discovers Domain/Service Specs, routes one or more fresh
+target readers, then synthesizes only their typed results. A supplied target_id is a routing hint,
+not a context grant. The loop executes specification,
 context assessment, plan, tasks, implementation, checks and delivery. Each step is also independently
-callable with its own named request/response type. `concorde-context` resolves the exact context;
+callable with its own named request/response type. `concorde-context` reports the exact membership
+and digests without returning raw Spec bodies;
 `concorde-context-solve` diagnoses missing information. `describe-policy` previews stage grants without
 launching an agent. Delivery removes a verified attempt; it does not merge or push Git changes.
 

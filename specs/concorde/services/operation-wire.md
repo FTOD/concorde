@@ -59,6 +59,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-agent-stage-result
 
 ```json
@@ -292,6 +293,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-analyze-request
 
 ```json
@@ -323,12 +325,12 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     }
   },
   "required": [
-    "target_id",
     "task"
   ],
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-analyze-response
 
@@ -520,17 +522,18 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-ask-request
 
 ```json
 {
   "type": "object",
   "properties": {
-    "target_id": {
+    "task": {
       "type": "string",
       "minLength": 1
     },
-    "task": {
+    "target_id": {
       "type": "string",
       "minLength": 1
     },
@@ -544,19 +547,15 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "type": "string",
         "minLength": 1
       }
-    },
-    "change_id": {
-      "type": "string",
-      "minLength": 1
     }
   },
   "required": [
-    "target_id",
     "task"
   ],
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-ask-response
 
@@ -564,82 +563,99 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 {
   "type": "object",
   "properties": {
-    "target_id": {
+    "entry_target": {
       "type": "string",
       "minLength": 1
     },
-    "focus_id": {
-      "anyOf": [
-        {
-          "type": "string",
-          "minLength": 1
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "change_id": {
-      "anyOf": [
-        {
-          "type": "string",
-          "minLength": 1
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "context_id": {
-      "anyOf": [
-        {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^sha256:[0-9a-f]{64}$"
-        },
-        {
-          "type": "null"
-        }
-      ]
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
     },
     "outcome": {
       "enum": [
+        "expand",
+        "routed",
         "completed",
         "spec_incomplete",
         "unsupported",
         "conflicting",
         "failed",
-        "described",
-        "delivered"
+        "described"
       ]
     },
     "answer": {
       "type": "string"
     },
-    "artifacts": {
+    "discovered_targets": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "routes": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "id": {
+          "target_id": {
             "type": "string",
             "minLength": 1
           },
-          "path": {
-            "type": "string",
-            "minLength": 1,
-            "format": "project-path"
+          "focus_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "digest": {
+          "task": {
             "type": "string",
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$"
+            "minLength": 1
+          },
+          "constraints": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         },
         "required": [
-          "id",
-          "path",
-          "digest"
+          "target_id",
+          "focus_id",
+          "task",
+          "constraints"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "worker_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type_id": {
+            "const": "concorde-main-worker-result"
+          },
+          "schema_version": {
+            "type": "integer",
+            "const": 1
+          },
+          "data": {
+            "$ref": "concorde-main-worker-result"
+          }
+        },
+        "required": [
+          "type_id",
+          "schema_version",
+          "data"
         ],
         "additionalProperties": false
       }
@@ -679,51 +695,6 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "additionalProperties": false
       }
     },
-    "checks": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "check_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "target_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "status": {
-            "enum": [
-              "passed",
-              "failed",
-              "timeout"
-            ]
-          },
-          "exit_code": {
-            "type": "integer"
-          },
-          "source_digest": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          },
-          "log_digest": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          }
-        },
-        "required": [
-          "check_id",
-          "target_id",
-          "status",
-          "exit_code",
-          "source_digest",
-          "log_digest"
-        ],
-        "additionalProperties": false
-      }
-    },
     "completed_operations": {
       "type": "array",
       "items": {
@@ -733,20 +704,20 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     }
   },
   "required": [
-    "target_id",
-    "focus_id",
-    "change_id",
+    "entry_target",
     "context_id",
     "outcome",
     "answer",
-    "artifacts",
+    "discovered_targets",
+    "routes",
+    "worker_results",
     "gaps",
-    "checks",
     "completed_operations"
   ],
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-checklist-request
 
@@ -779,12 +750,12 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     }
   },
   "required": [
-    "target_id",
     "task"
   ],
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-checklist-response
 
@@ -976,6 +947,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-clarify-request
 
 ```json
@@ -1007,12 +979,12 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     }
   },
   "required": [
-    "target_id",
     "task"
   ],
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-clarify-response
 
@@ -1204,6 +1176,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-configure-request
 
 ```json
@@ -1238,6 +1211,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-configure-response
 
@@ -1278,6 +1252,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-constitution-request
 
 ```json
@@ -1309,12 +1284,12 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     }
   },
   "required": [
-    "target_id",
     "task"
   ],
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-constitution-response
 
@@ -1506,6 +1481,129 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
+## concorde-context-manifest
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "context_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "target_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "enum": [
+        "domain",
+        "service",
+        "module"
+      ]
+    },
+    "focus_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "phase": {
+      "type": "string",
+      "minLength": 1
+    },
+    "protocol_binding": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "version",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "protocol": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "path",
+          "digest"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "path",
+          "digest"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "context_id",
+    "target_id",
+    "kind",
+    "focus_id",
+    "phase",
+    "protocol_binding",
+    "protocol",
+    "documents"
+  ],
+  "additionalProperties": false
+}
+```
+
+
 ## concorde-context-request
 
 ```json
@@ -1556,24 +1654,25 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-context-response
 
 ```json
 {
   "type": "object",
   "properties": {
-    "snapshot": {
+    "manifest": {
       "type": "object",
       "properties": {
         "type_id": {
-          "const": "concorde-context-snapshot"
+          "const": "concorde-context-manifest"
         },
         "schema_version": {
           "type": "integer",
           "const": 1
         },
         "data": {
-          "$ref": "concorde-context-snapshot"
+          "$ref": "concorde-context-manifest"
         }
       },
       "required": [
@@ -1585,11 +1684,12 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     }
   },
   "required": [
-    "snapshot"
+    "manifest"
   ],
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-context-snapshot
 
@@ -1837,6 +1937,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-context-solve-request
 
 ```json
@@ -1868,12 +1969,12 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     }
   },
   "required": [
-    "target_id",
     "task"
   ],
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-context-solve-response
 
@@ -2065,6 +2166,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-converge-request
 
 ```json
@@ -2102,6 +2204,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-converge-response
 
@@ -2293,6 +2396,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-deliver-request
 
 ```json
@@ -2330,6 +2434,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-deliver-response
 
@@ -2521,6 +2626,219 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
+## concorde-discovery-context
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "context_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "operation": {
+      "enum": [
+        "concorde-analyze",
+        "concorde-ask",
+        "concorde-checklist",
+        "concorde-clarify",
+        "concorde-constitution",
+        "concorde-context-solve",
+        "concorde-fast-loop",
+        "concorde-plan",
+        "concorde-specify",
+        "concorde-standard-dev-loop"
+      ]
+    },
+    "phase": {
+      "enum": [
+        "route",
+        "synthesize"
+      ]
+    },
+    "task": {
+      "type": "string",
+      "minLength": 1
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "target_hint": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "focus_hint": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "protocol_binding": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "version",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "protocol": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "digest",
+          "content"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "domain",
+              "service"
+            ]
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "format": "project-path"
+                },
+                "digest": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                },
+                "content": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "digest",
+                "content"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "target_id",
+          "kind",
+          "documents"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "instructions": {
+      "type": "string"
+    },
+    "worker_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type_id": {
+            "const": "concorde-main-worker-result"
+          },
+          "schema_version": {
+            "type": "integer",
+            "const": 1
+          },
+          "data": {
+            "$ref": "concorde-main-worker-result"
+          }
+        },
+        "required": [
+          "type_id",
+          "schema_version",
+          "data"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "context_id",
+    "schema_version",
+    "operation",
+    "phase",
+    "task",
+    "constraints",
+    "target_hint",
+    "focus_hint",
+    "protocol_binding",
+    "protocol",
+    "targets",
+    "instructions",
+    "worker_results"
+  ],
+  "additionalProperties": false
+}
+```
+
+
 ## concorde-fast-loop-request
 
 ```json
@@ -2552,12 +2870,12 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     }
   },
   "required": [
-    "target_id",
     "task"
   ],
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-fast-loop-response
 
@@ -2749,6 +3067,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-implement-request
 
 ```json
@@ -2786,6 +3105,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-implement-response
 
@@ -2977,6 +3297,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-implementation-task
 
 ```json
@@ -3030,6 +3351,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-init-request
 
@@ -3101,6 +3423,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-init-response
 
 ```json
@@ -3158,6 +3481,254 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
   "additionalProperties": false
 }
 ```
+
+
+## concorde-main-stage-context
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "snapshot": {
+      "type": "object",
+      "properties": {
+        "type_id": {
+          "const": "concorde-discovery-context"
+        },
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "data": {
+          "$ref": "concorde-discovery-context"
+        }
+      },
+      "required": [
+        "type_id",
+        "schema_version",
+        "data"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "snapshot"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-main-stage-result
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "context_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "outcome": {
+      "enum": [
+        "expand",
+        "routed",
+        "completed",
+        "spec_incomplete",
+        "unsupported",
+        "conflicting",
+        "failed",
+        "described"
+      ]
+    },
+    "answer": {
+      "type": "string"
+    },
+    "expand_targets": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "focus_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "task": {
+            "type": "string",
+            "minLength": 1
+          },
+          "constraints": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "target_id",
+          "focus_id",
+          "task",
+          "constraints"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "blocked_step": {
+            "type": "string",
+            "minLength": 1
+          },
+          "needed_contract": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "context_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "question",
+          "blocked_step",
+          "needed_contract"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "context_id",
+    "outcome",
+    "answer",
+    "expand_targets",
+    "routes",
+    "gaps"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-main-worker-result
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "target_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "focus_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "context_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "spec_incomplete",
+        "unsupported",
+        "conflicting",
+        "failed"
+      ]
+    },
+    "answer": {
+      "type": "string"
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "blocked_step": {
+            "type": "string",
+            "minLength": 1
+          },
+          "needed_contract": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "context_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "question",
+          "blocked_step",
+          "needed_contract"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "target_id",
+    "focus_id",
+    "context_id",
+    "outcome",
+    "answer",
+    "gaps"
+  ],
+  "additionalProperties": false
+}
+```
+
 
 ## concorde-migrate-request
 
@@ -3246,6 +3817,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-migrate-response
 
 ```json
@@ -3304,6 +3876,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-operation-configuration
 
 ```json
@@ -3331,6 +3904,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-plan-artifact
 
 ```json
@@ -3348,6 +3922,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-plan-request
 
@@ -3380,12 +3955,12 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     }
   },
   "required": [
-    "target_id",
     "task"
   ],
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-plan-response
 
@@ -3577,6 +4152,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-project-proposal
 
 ```json
@@ -3645,6 +4221,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-reflection-selection
 
 ```json
@@ -3696,6 +4273,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-reflections-triage-request
 
@@ -3752,6 +4330,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-reflections-triage-response
 
@@ -4003,6 +4582,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-resolve-context-request
 
 ```json
@@ -4053,24 +4633,25 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-resolve-context-response
 
 ```json
 {
   "type": "object",
   "properties": {
-    "snapshot": {
+    "manifest": {
       "type": "object",
       "properties": {
         "type_id": {
-          "const": "concorde-context-snapshot"
+          "const": "concorde-context-manifest"
         },
         "schema_version": {
           "type": "integer",
           "const": 1
         },
         "data": {
-          "$ref": "concorde-context-snapshot"
+          "$ref": "concorde-context-manifest"
         }
       },
       "required": [
@@ -4082,11 +4663,12 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     }
   },
   "required": [
-    "snapshot"
+    "manifest"
   ],
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-specify-request
 
@@ -4119,12 +4701,12 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     }
   },
   "required": [
-    "target_id",
     "task"
   ],
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-specify-response
 
@@ -4316,6 +4898,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-standard-dev-loop-request
 
 ```json
@@ -4347,12 +4930,12 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     }
   },
   "required": [
-    "target_id",
     "task"
   ],
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-standard-dev-loop-response
 
@@ -4544,6 +5127,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-tasks-request
 
 ```json
@@ -4581,6 +5165,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-tasks-response
 
@@ -4772,6 +5357,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-taskstoissues-request
 
 ```json
@@ -4809,6 +5395,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-taskstoissues-response
 
@@ -5000,6 +5587,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 }
 ```
 
+
 ## concorde-validate-request
 
 ```json
@@ -5040,6 +5628,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
   "additionalProperties": false
 }
 ```
+
 
 ## concorde-validate-response
 

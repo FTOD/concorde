@@ -8,9 +8,10 @@ capabilities: []
 
 # concorde-context
 
-Invoke this Operation to context. The host owns context
-resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
-input; do not perform it directly in this ambient conversation or inspect additional project files.
+Invoke this deterministic Operation to inspect one context manifest. The host resolves the complete
+snapshot internally but returns only target, phase, membership, Protocol binding and content
+digests. Raw Spec or Protocol bodies never cross this public boundary. Supply the user's task as
+typed input; do not inspect project files directly.
 
 Send one concorde-operation-invocation@2 JSON object on stdin to `{OPERATION}`. Its exact fields
 are type_id, schema_version:2, operation_id:"concorde-context", mode:"execute" or "describe-policy",
@@ -19,10 +20,9 @@ Task requests select target_id and task, with optional focus_id, constraints, an
 Initialization/migration use their typed propose/apply requests; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
-Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of
-searching other Specs. The host captures a committed-base worktree for mutations when necessary.
-Its result names that workspace. Report Spec gaps or blocked execution as returned; do not work
-around the boundary. Non-implementation agents never receive implementation code or raw test logs.
+Use the supplied target identity. This diagnostic manifest is not a cognitive context and cannot be
+passed to a worker as a replacement for host resolution. Report blocked execution as returned; do
+not try to reconstruct document bodies from paths or digests.
 
 ## Input TypedValue schema
 

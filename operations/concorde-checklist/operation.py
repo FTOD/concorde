@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 OPERATION_NAME = 'concorde-checklist'
-OPERATION_CAPABILITIES = ('concorde-planner',)
+OPERATION_CAPABILITIES = ('concorde-main', 'concorde-planner')
 
 def package_root():
     return Path(__file__).resolve().parents[2]

@@ -16,9 +16,14 @@ occur, what information crosses them, and how success, failure, and retry affect
 Missing facts block the affected task as Spec incomplete. A Domain's Spec need not reproduce private
 component inventories, but it must contain the promises it uses to explain the system.
 
+A main coordinator may admit this complete Domain Spec while routing a task. Therefore every child
+Domain, participating Service, or downstream Module that may receive work is named here by stable
+target ID together with its Domain-local responsibility and the condition for selecting it. This is
+a routing view, not inherited access to the downstream Spec.
+
 ## Local promises and interactions
 
-[Define all target-relevant entities, ownership, inputs, outputs, conditions, failure, completion and retry semantics here. Include every required collaborator contract locally. Do not rely on parent, provider or sibling documents outside the registered collection.]
+[Define all target-relevant entities, ownership, inputs, outputs, conditions, failure, completion and retry semantics here. Name routable downstream targets by stable ID, responsibility and selection condition. Include every required collaborator contract locally. Do not rely on parent, provider or sibling documents outside the registered collection.]
 
 ## Missing information
 

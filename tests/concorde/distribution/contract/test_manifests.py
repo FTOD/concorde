@@ -60,7 +60,7 @@ class ManifestContractTests(unittest.TestCase):
         self.assertEqual(sorted(self.manifest["skills"]), skills)
         self.assertEqual(sorted(self.manifest["operations"]), operations)
         self.assertEqual(sorted(self.manifest["templates"]), templates)
-        self.assertEqual((len(skills), len(operations), len(templates)), (6, 22, 9))
+        self.assertEqual((len(skills), len(operations), len(templates)), (7, 22, 9))
         self.assertEqual(
             (REPOSITORY_ROOT / "operations/requirements.lock").read_text(),
             "langgraph==1.2.11\n",

@@ -12,11 +12,16 @@ The branch starts from main `e48f8aaaf201ab42a7058f5e5373529b6591e5f4`, through 
 - Versioned universal principles and kind definitions are distributed to every project and pinned
   by initialization. Service Features and Module APIs have explicit local identities.
 - All 22 public entry points are paired Operations. Their public Skills include complete request
-  schemas; six internal roles are invoked only by the host. Configuration and runtime input are
+  schemas; seven internal roles are invoked only by the host. Configuration and runtime input are
   separate TypedValues in invocation schema 2; null configuration is resolved by the trusted host.
-- Every stage receives one digest-bound snapshot in a fresh process. Only implementation receives
-  owned code. Spec-only agents use private capsules; no ancestor, peer Spec, raw log or transcript
-  is added implicitly. Structured Spec gaps retain target/context provenance across Domain coordination.
+- New agent-backed tasks first use a separate main coordinator. It starts at the entry Domain or
+  Service and may append only referenced Domain/Service Specs; Module Specs and code are rejected.
+  Each selected target worker starts fresh with one digest-bound snapshot. Ask may route several
+  readers and synthesize typed results; other Operations route one owner, using a Domain for
+  cross-target mutation. Public context inspection returns membership/digests without bodies.
+- Only implementation receives owned code. Spec-only agents use private capsules; no ancestor,
+  peer Spec, raw log or transcript is added implicitly. Structured Spec gaps retain target/context
+  provenance across main discovery and Domain coordination.
 - Standard/fast loops run the same typed Operations through real LangGraph. Completion evidence,
   intent, Spec revisions, code and declared check inputs are checked before delivery. Failed/stale
   attempts remain inspectable; delivery removes the attempt without merging a branch.
@@ -34,13 +39,13 @@ The branch starts from main `e48f8aaaf201ab42a7058f5e5373529b6591e5f4`, through 
 
 | Gate | Result |
 | --- | --- |
-| Complete Python suite | 388 tests; 387 passed, 1 skipped |
+| Complete Python suite | 397 tests passed |
 | Complete docsite suite | 116 tests passed across 26 files |
 | TypeScript typecheck | Passed |
 | Production build and candidate promotion | Passed for Concorde and a freshly initialized project |
-| Final public schema/projection regeneration | 20 affected Python tests passed afterward |
+| Final public schema/projection regeneration | Package validation and complete Python suite passed afterward |
 | Source package and self Spec validation | Passed |
-| Self-hosted concorde-context | Resolved the complete Operation-host collection |
+| Self-hosted concorde-context | Returned the exact Operation-host membership/digests without document bodies |
 | Self-hosted concorde-validate | Executed check.context-runtime successfully through the public host |
 | Whitespace/error check | git diff --check passed |
 
@@ -48,16 +53,17 @@ Python command: `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests/c
 Docsite commands: `node node_modules/typescript/bin/tsc --noEmit`,
 `node node_modules/vitest/vitest.mjs run`, and `node --import tsx scripts/build.ts`.
 The CI-equivalent tests include actual installer provisioning/ownership/rollback and a separate
-fresh subprocess importing only installed framework code for complete standard loops through both
-Codex and Claude completion adapters. Their native model process and client probe are explicit test
-doubles. LangGraph, typed admission, host policies, file changes, behavioral subprocess checks and
-delivery are real. Native permission and completion-attestation/replay unit coverage is retained.
+fresh subprocess importing only installed framework code for complete standard loops and main
+discovery/reader/synthesis through both Codex and Claude completion adapters. Their native model
+process is an explicit test double. LangGraph, typed admission, host policies, file changes,
+behavioral subprocess checks and delivery are real. Native permission and
+completion-attestation/replay unit coverage is retained.
 
 ## Limits and migration notes
 
-No Codex or Claude CLI is installed in this environment. The single skipped test is the existing
-native Codex configuration-load check; live model/CLI execution was not exercised. No provider
-sandbox enforcement is claimed on the basis of a process double.
+Codex CLI 0.153.4 and Claude Code 2.1.260 are present, but live model execution was not exercised.
+The tests use process doubles for model completions, so no provider sandbox-enforcement claim rests
+on those doubles; native configuration parsing and host-side policy/evidence checks remain covered.
 
 The generic skill-creator quick validator rejects the repository's pre-existing `compatibility`
 frontmatter extension. Concorde's canonical/projection validators accept and verify its actual

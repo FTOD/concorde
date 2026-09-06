@@ -3,7 +3,7 @@ name: concorde-plan
 description: "Run plan through Concorde's enforced Spec context and JSON boundary."
 exposure: public
 operation: operation.py
-capabilities: ["concorde-context-assessor", "concorde-planner"]
+capabilities: ["concorde-main", "concorde-context-assessor", "concorde-planner"]
 ---
 
 # concorde-plan
@@ -15,12 +15,13 @@ input; do not perform it directly in this ambient conversation or inspect additi
 Send one concorde-operation-invocation@2 JSON object on stdin to `{OPERATION}`. Its exact fields
 are type_id, schema_version:2, operation_id:"concorde-plan", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-plan-request@1).
-Task requests select target_id and task, with optional focus_id, constraints, and change_id.
+New task requests require task and may supply target_id/focus_id as routing hints; main discovery
+selects the owning target before bounded assessment and planning start. Existing changes retain their bound target.
 Initialization/migration use their typed propose/apply requests; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
-Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of
-searching other Specs. The host captures a committed-base worktree for mutations when necessary.
+Main may inspect Domain/Service Specs on demand but cannot read Module Specs or code. It returns one
+typed route for this Operation; the host then starts different target workers. The host captures a committed-base worktree for mutations when necessary.
 Its result names that workspace. Report Spec gaps or blocked execution as returned; do not work
 around the boundary. Non-implementation agents never receive implementation code or raw test logs.
 
@@ -79,7 +80,6 @@ This complete schema is the invocation's input field. It does not grant project 
         }
       },
       "required": [
-        "target_id",
         "task"
       ],
       "additionalProperties": false

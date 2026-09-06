@@ -25,3 +25,10 @@ Local links resolve only registered document membership; unknown or ambiguous li
 These generated views are human navigation, not Operation context grants. The publication Tool may
 read multiple registered collections deterministically; an agent still receives one host-bound target
 snapshot. Legacy Profile 7 publication readers remain isolated diagnostics and do not admit agent work.
+
+## Main routing view
+
+Consumer-visible scaffold and publication lifecycle behavior remains on `service.publication`.
+Select `module.spec-publication` for registry loading, page materialization, link rewriting, sidebars,
+graph construction, diagram staging or build-manifest validation. Its stable ID is exposed for
+routing; the main coordinator cannot read the Module Spec.

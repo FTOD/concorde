@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 OPERATION_NAME = 'concorde-ask'
-OPERATION_CAPABILITIES = ('concorde-reader',)
+OPERATION_CAPABILITIES = ('concorde-main', 'concorde-reader')
 
 def package_root():
     return Path(__file__).resolve().parents[2]

@@ -23,9 +23,11 @@ from .operation_config import load_configuration
 from .operation_permissions import (PolicyBinding, compile_policy, render_codex_configuration,
     render_claude_configuration, build_launch_specification, OperationExecutionResult)
 from .skill_assets import EffectDeclaration, resolve_skill_prompt
-from .protocol_contracts import AGENT_OPERATIONS
+from .protocol_contracts import AGENT_OPERATIONS, MAIN_ROUTED_OPERATIONS
 from ..specification.repository import SpecRepository, SpecError, digest, read_file, identifier
-from ..specification.context import ContextSnapshot, resolve_context, recheck_context
+from ..specification.context import (DiscoveryContext, resolve_context,
+    public_context_manifest, recheck_context, resolve_discovery_context,
+    recheck_discovery_context)
 from ..specification.changes import file_change, apply_files
 from ..specification.validation import validate_repository
 
@@ -38,6 +40,7 @@ class OperationHost:
     executor: Any = None
     allow_primary_worktree: bool = False
     outer_sandbox: str | None = None
+    routed_target: str | None = None
     configuration_snapshot: str = ""
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     descriptions: list[dict] = field(default_factory=list)
@@ -149,6 +152,313 @@ def _check(repository: SpecRepository, target, invocation_id: str) -> list[dict]
     if _check_revision(repository, target) != before:
         raise SpecError("configured validation changed the implementation it measured", "stale_evidence")
     return results
+
+
+class MainInvocation:
+    """Global Domain/Service discovery followed by fresh target workers."""
+
+    def __init__(self, operation: str, configuration: dict, task: dict, host: OperationHost):
+        self.operation, self.configuration, self.task, self.host = operation, configuration, task, host
+        if operation not in MAIN_ROUTED_OPERATIONS:
+            raise SpecError("Operation does not support main discovery", "unknown_operation")
+        self.repository = SpecRepository(host.project_root, host.package_root)
+        self.entry = self.repository.select(self.repository.entry_target)
+        if self.entry.kind not in {"domain", "service"}:
+            raise SpecError("the project entry target must be a Domain or Service for main discovery",
+                            "invalid_entry_target")
+        if task.get("focus_id") and not task.get("target_id"):
+            raise SpecError("a focus hint requires a target hint", "invalid_focus")
+        if task.get("target_id"):
+            self.repository.select(task["target_id"], task.get("focus_id"))
+        self.discovered = [self.entry.id]
+        self.last_context: str | None = None
+        self.last_snapshot: DiscoveryContext | None = None
+        self.completed: list[str] = []
+
+    def ask_response(self, outcome: str, answer: str = "", *, routes=(), worker_results=(), gaps=()) -> dict:
+        if self.last_context is None:
+            raise SpecError("main response has no discovery context", "invalid_completion")
+        return typed("concorde-ask-response", {
+            "entry_target": self.entry.id,
+            "context_id": self.last_context,
+            "outcome": outcome,
+            "answer": answer,
+            "discovered_targets": list(self.discovered),
+            "routes": list(routes),
+            "worker_results": list(worker_results),
+            "gaps": list(gaps),
+            "completed_operations": list(self.completed),
+        })
+
+    def operation_response(self, outcome: str, answer: str = "", *, gaps=()) -> dict:
+        if self.last_context is None:
+            raise SpecError("main response has no discovery context", "invalid_completion")
+        return typed(OPERATION_CONTRACTS[self.operation][1], {
+            "target_id": self.entry.id,
+            "focus_id": None,
+            "change_id": self.task.get("change_id"),
+            "context_id": self.last_context,
+            "outcome": outcome,
+            "answer": answer,
+            "artifacts": [],
+            "gaps": list(gaps),
+            "checks": [],
+            "completed_operations": list(self.completed),
+        })
+
+    def stage(self, phase: str, occurrence: int, *, worker_results: tuple[dict, ...] = ()) -> dict:
+        role = "concorde-main"
+        prompt = resolve_skill_prompt(self.host.package_root / "skills" / role / "SKILL.md", "skill", "")
+        snapshot = resolve_discovery_context(
+            self.repository,
+            tuple(self.discovered),
+            operation=self.operation,
+            phase=phase,
+            task=self.task["task"],
+            target_hint=self.task.get("target_id"),
+            focus_hint=self.task.get("focus_id"),
+            constraints=tuple(self.task.get("constraints", [])),
+            instructions=prompt.body,
+            worker_results=worker_results,
+        )
+        self.last_context = snapshot.id
+        self.last_snapshot = snapshot
+        before_registry = self.repository.registry_bytes
+        with tempfile.TemporaryDirectory(prefix="concorde-discovery-") as directory:
+            capsule = Path(directory)
+            context_file = capsule / "context.json"
+            if self.host.mode != "describe-policy":
+                context_file.write_text(snapshot.serialized + "\n")
+            roles = {"discovery-context": ("context.json",)}
+            policy = compile_policy(
+                EffectDeclaration(("discovery-context",), (), False, "none"),
+                PolicyBinding(self.operation, phase, occurrence, role, role),
+                roles,
+                outer_sandbox_required=self.configuration["data"]["enforcement"] == "outer",
+            )
+            integration = self.configuration["data"]["integration"]
+            renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
+            native = renderer(
+                policy,
+                native_enforcement=self.configuration["data"]["enforcement"] == "native",
+                outer_sandbox=self.host.outer_sandbox,
+            )
+            receipt = {
+                "schema_version": 14,
+                "entry_target": self.entry.id,
+                "phase": phase,
+                "context_id": snapshot.id,
+                "source_digest": snapshot.id,
+                "registry_digest": digest(before_registry),
+                "discovered_targets": list(self.discovered),
+                "role_paths": {key: list(value) for key, value in roles.items()},
+            }
+            value = typed("concorde-main-stage-context", {
+                "snapshot": typed("concorde-discovery-context", snapshot.value),
+            })
+            invocation_id = str(uuid.uuid4())
+            launch = build_launch_specification(
+                operation=self.operation,
+                stage=phase,
+                occurrence=occurrence,
+                capability=role,
+                integration=integration,
+                agent=role,
+                project_root=str(capsule),
+                request=self.task["task"],
+                prompt=prompt.body,
+                prior_results=(),
+                workspace_receipt_json=canonical(receipt),
+                workspace_digest=snapshot.id,
+                policy=policy,
+                native_configuration=native,
+                runtime_input_json=canonical(value),
+                operation_configuration_json=canonical(self.configuration),
+                invocation_id=invocation_id,
+            )
+            self.host.descriptions.append({
+                "operation": self.operation,
+                "phase": phase,
+                "context_id": snapshot.id,
+                "project_root": str(capsule),
+                "read_paths": list(policy.read_paths),
+                "write_paths": [],
+                "network": False,
+                "fresh_session": True,
+                "policy_digest": policy.digest,
+                "discovered_targets": list(self.discovered),
+            })
+            if self.host.mode == "describe-policy":
+                return {"context_id": snapshot.id, "outcome": "described", "answer": "",
+                        "expand_targets": [], "routes": [], "gaps": []}
+            from .operation_executor import AgentProcessExecutor
+            executor = self.host.executor or AgentProcessExecutor()
+            result = executor(launch)
+            if not isinstance(result, OperationExecutionResult):
+                raise SpecError("main executor omitted native completion evidence", "invalid_completion")
+            evidence = result.receipt
+            if (evidence.requested_launch_digest != launch.digest or evidence.policy_digest != policy.digest
+                    or evidence.status != "success" or result.completion.invocation_id != invocation_id
+                    or result.completion.workspace_digest != snapshot.id):
+                raise SpecError("main completion evidence is not bound to this invocation", "invalid_completion")
+            data = validate_typed(result.completion.domain_output, "concorde-main-stage-result")["data"]
+            self._validate_result(snapshot, phase, data)
+            if read_file(self.repository.root, self.repository.registry_path) != before_registry:
+                raise SpecError("registry changed during main discovery", "stale_context")
+            recheck_discovery_context(self.repository, snapshot)
+            if load_configuration(self.repository.root) != self.configuration:
+                raise SpecError("configuration changed during main discovery", "configuration_mismatch")
+            if context_file.read_text() != snapshot.serialized + "\n":
+                raise SpecError("frozen discovery capsule changed", "stale_context")
+            self.host.evidence.append(result)
+            return data
+
+    def _validate_result(self, snapshot: DiscoveryContext, phase: str, data: dict) -> None:
+        if data["context_id"] != snapshot.id:
+            raise SpecError("main returned a different discovery context identity", "incompatible_handoff")
+        outcome = data["outcome"]
+        expansions, routes, gaps = data["expand_targets"], data["routes"], data["gaps"]
+        if phase == "route":
+            if outcome == "expand":
+                if not expansions or routes or gaps:
+                    raise SpecError("expand requires only nonempty Domain/Service targets", "invalid_completion")
+            elif outcome == "routed":
+                if expansions or not routes or gaps:
+                    raise SpecError("routed requires only nonempty worker routes", "invalid_completion")
+            elif outcome in {"spec_incomplete", "unsupported", "conflicting", "failed"}:
+                if expansions or routes or ((outcome == "spec_incomplete") != bool(gaps)):
+                    raise SpecError("blocked main routing has inconsistent fields", "invalid_completion")
+            else:
+                raise SpecError("route phase returned an unsupported outcome", "invalid_completion")
+        elif outcome not in {"completed", "spec_incomplete", "unsupported", "conflicting", "failed"}:
+            raise SpecError("synthesis returned an unsupported outcome", "invalid_completion")
+        elif expansions or routes or ((outcome == "spec_incomplete") != bool(gaps)):
+            raise SpecError("synthesis result has inconsistent fields", "invalid_completion")
+        admitted = set(self.discovered)
+        worker_gaps = []
+        if phase == "synthesize":
+            admitted.update(item["data"]["target_id"] for item in snapshot.value["worker_results"])
+            worker_gaps = [gap for item in snapshot.value["worker_results"]
+                           for gap in item["data"]["gaps"]]
+            if any(gap not in gaps for gap in worker_gaps):
+                raise SpecError("main synthesis omitted a worker Spec gap", "invalid_completion")
+        for gap in gaps:
+            if gap.get("target_id") not in admitted:
+                raise SpecError("main gap must identify an admitted discovery or worker target", "incompatible_handoff")
+            if gap in worker_gaps:
+                continue
+            if gap.get("context_id", snapshot.id) != snapshot.id:
+                raise SpecError("main gap has a different context identity", "incompatible_handoff")
+            gap["context_id"] = snapshot.id
+
+    def discover_routes(self) -> tuple[list[dict], dict | None]:
+        if self.host.mode == "describe-policy":
+            decision = self.stage("route", 0)
+            if self.task.get("target_id"):
+                return [{"target_id": self.task["target_id"], "focus_id": self.task.get("focus_id"),
+                         "task": self.task["task"], "constraints": self.task.get("constraints", [])}], None
+            return [], decision
+
+        routable_targets = sum(target.kind in {"domain", "service"}
+                               for target in self.repository.targets.values())
+        for occurrence in range(routable_targets + 1):
+            decision = self.stage("route", occurrence)
+            if decision["outcome"] == "expand":
+                admitted_text = "\n".join(document["content"]
+                    for target in self.stage_context_targets(decision) for document in target["documents"])
+                for target_id in decision["expand_targets"]:
+                    if target_id in self.discovered:
+                        raise SpecError("main discovery requested an already admitted target", "invalid_completion")
+                    if target_id != self.task.get("target_id") and target_id not in admitted_text:
+                        raise SpecError("main discovery requested a target absent from admitted Specs",
+                                        "incompatible_handoff", target_id)
+                    target = self.repository.select(target_id)
+                    if target.kind not in {"domain", "service"}:
+                        raise SpecError("main discovery cannot expand a Module Spec", "permission_denied", target_id)
+                    self.discovered.append(target_id)
+                continue
+            if decision["outcome"] == "routed":
+                routes = decision["routes"]
+                original_constraints = self.task.get("constraints", [])
+                routing_text = "\n".join(document["content"]
+                    for target in self.stage_context_targets(decision) for document in target["documents"])
+                for route in routes:
+                    self.repository.select(route["target_id"], route["focus_id"])
+                    if route["target_id"] not in self.discovered and route["target_id"] not in routing_text:
+                        raise SpecError("main routed a target absent from admitted Domain/Service Specs",
+                                        "incompatible_handoff", route["target_id"])
+                    if any(item not in route["constraints"] for item in original_constraints):
+                        raise SpecError("main route dropped a user constraint", "incompatible_handoff")
+                    if self.operation != "concorde-ask" and (
+                            route["task"] != self.task["task"]
+                            or route["constraints"] != original_constraints):
+                        raise SpecError("main route changed single-target task intent", "incompatible_handoff")
+                return routes, None
+            self.completed.append("concorde-main-route")
+            return [], decision
+        raise SpecError("main discovery step limit exceeded", "context_limit")
+
+    def stage_context_targets(self, decision: dict) -> list[dict]:
+        """Return the exact collections bound to the decision's discovery identity."""
+
+        if decision["context_id"] != self.last_context or self.last_snapshot is None:
+            raise SpecError("main route no longer matches its discovery context", "stale_context")
+        return self.last_snapshot.value["targets"]
+
+    def select_one(self) -> tuple[dict | None, dict | None]:
+        routes, decision = self.discover_routes()
+        if decision is not None:
+            outcome = "described" if self.host.mode == "describe-policy" else decision["outcome"]
+            return None, self.operation_response(outcome, decision["answer"], gaps=decision["gaps"])
+        if len(routes) != 1:
+            raise SpecError(
+                f"{self.operation} requires one owning target; route cross-target work through a Domain",
+                "ambiguous_route",
+            )
+        self.completed.append("concorde-main-route")
+        return routes[0], None
+
+    def run_ask(self) -> dict:
+        routes, decision = self.discover_routes()
+        if decision is not None:
+            outcome = "described" if self.host.mode == "describe-policy" else decision["outcome"]
+            return self.ask_response(outcome, decision["answer"], gaps=decision["gaps"])
+
+        if self.host.mode == "describe-policy":
+            for route in routes:
+                worker_task = {"target_id": route["target_id"], "task": route["task"],
+                               "constraints": route["constraints"]}
+                if route["focus_id"] is not None:
+                    worker_task["focus_id"] = route["focus_id"]
+                Invocation("concorde-ask", self.configuration, worker_task, self.host).stage("concorde-ask")
+            self.completed.extend(["concorde-main-route", *("concorde-reader" for _ in routes)])
+            return self.ask_response("described", routes=routes)
+
+        worker_results = []
+        for route in routes:
+            self.repository.select(route["target_id"], route["focus_id"])
+            worker_task = {"target_id": route["target_id"], "task": route["task"],
+                           "constraints": route["constraints"]}
+            if route["focus_id"] is not None:
+                worker_task["focus_id"] = route["focus_id"]
+            worker = Invocation("concorde-ask", self.configuration, worker_task, self.host)
+            result = worker.stage("concorde-ask")
+            outcome = "completed" if result["outcome"] == "sufficient" else result["outcome"]
+            worker_results.append(typed("concorde-main-worker-result", {
+                "target_id": route["target_id"],
+                "focus_id": route["focus_id"],
+                "context_id": result["context_id"],
+                "outcome": outcome,
+                "answer": result["answer"],
+                "gaps": result["gaps"],
+            }))
+        self.completed.extend(["concorde-main-route", *("concorde-reader" for _ in routes)])
+        synthesis = self.stage("synthesize", len(self.discovered), worker_results=tuple(worker_results))
+        if any(item["data"]["outcome"] != "completed" for item in worker_results) and synthesis["outcome"] == "completed":
+            raise SpecError("main synthesis cannot hide a blocked worker outcome", "invalid_completion")
+        self.completed.append("concorde-main-synthesize")
+        return self.ask_response(synthesis["outcome"], synthesis["answer"], routes=routes,
+                                 worker_results=worker_results, gaps=synthesis["gaps"])
 
 
 class Invocation:
@@ -388,7 +698,9 @@ class Invocation:
         # Reconcile each local consumer/provider view before any component implementation starts.
         for task, component in components:
             payload = {"target_id": component.id, "task": task["description"] + "\nAcceptance: " + task["acceptance"]}
-            result = run_operation("concorde-specify", self.configuration, typed("concorde-specify-request", payload), host_context=self.host)
+            child_host = replace(self.host, routed_target=component.id)
+            result = run_operation("concorde-specify", self.configuration,
+                typed("concorde-specify-request", payload), host_context=child_host)
             if result["status"] != "succeeded":
                 if result["output"]:
                     child=result["output"]["data"]
@@ -398,7 +710,9 @@ class Invocation:
             raise SpecError("reconcile all consumer/provider contracts before implementation", "incompatible_contracts")
         for task, component in components:
             payload = {"target_id": component.id, "task": task["description"] + "\nAcceptance: " + task["acceptance"]}
-            result = run_operation("concorde-fast-loop", self.configuration, typed("concorde-fast-loop-request", payload), host_context=self.host)
+            child_host = replace(self.host, routed_target=component.id)
+            result = run_operation("concorde-fast-loop", self.configuration,
+                typed("concorde-fast-loop-request", payload), host_context=child_host)
             if result["status"] != "succeeded":
                 if result["output"]:
                     child=result["output"]["data"]
@@ -527,11 +841,31 @@ def _dispatch(operation, configuration, task, host):
         if host.mode == "describe-policy":
             raise SpecError("project proposals are the deterministic preview for this Operation", "use_proposal")
         return _project_operation(operation, configuration, task, host)
+    if operation == "concorde-ask":
+        return MainInvocation(operation, configuration, task, host).run_ask()
+    main_completed: tuple[str, ...] = ()
+    if (operation in MAIN_ROUTED_OPERATIONS and host.routed_target is not None
+            and task.get("target_id") != host.routed_target):
+        raise SpecError("child target differs from the host's main route", "incompatible_handoff")
+    if operation in MAIN_ROUTED_OPERATIONS and not task.get("change_id"):
+        if host.routed_target is None:
+            main = MainInvocation(operation, configuration, task, host)
+            route, blocked = main.select_one()
+            if blocked is not None:
+                return blocked
+            task = {"target_id": route["target_id"], "task": route["task"],
+                    "constraints": route["constraints"]}
+            if route["focus_id"] is not None:
+                task["focus_id"] = route["focus_id"]
+            host = replace(host, routed_target=route["target_id"])
+            main_completed = tuple(main.completed)
     run = Invocation(operation, configuration, task, host)
+    run.completed.extend(main_completed)
     if operation in {"concorde-context", "concorde-resolve-context"}:
         snapshot = resolve_context(run.repository, run.target.id, task=task["task"], phase=task.get("phase", "ask"),
             focus_id=task.get("focus_id"), constraints=tuple(task.get("constraints", [])))
-        return typed(OPERATION_CONTRACTS[operation][1], {"snapshot": typed("concorde-context-snapshot", snapshot.value)})
+        return typed(OPERATION_CONTRACTS[operation][1], {
+            "manifest": typed("concorde-context-manifest", public_context_manifest(snapshot))})
     if host.mode == "describe-policy":
         stages = [operation] if operation in AGENT_OPERATIONS else []
         if operation in {"concorde-standard-dev-loop", "concorde-fast-loop"}:

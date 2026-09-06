@@ -11,3 +11,8 @@ The Service can participate in several Domain scopes and compose Services or Mod
 contains necessary business rules and required collaborator contracts; scope and component parents
 and provider Specs are not implicit context. Features may have stable IDs anywhere in the registered
 Markdown collection. Selecting a Feature does not reduce that complete collection.
+
+A main coordinator may admit this complete Service Spec to refine routing. Every downstream Domain,
+Service, or Module that may receive work is named here by stable target ID, local responsibility and
+selection condition. The coordinator may route to a Module from this information but cannot read the
+Module Spec; a different target worker receives that collection.

@@ -148,7 +148,9 @@ def load_package(root: Path) -> Package:
     if not isinstance(skills, list) or any(not isinstance(item, str) for item in skills):
         raise InstallError("Concorde manifest Skills must be a string list")
     if skills != SKILLS or len(skills) != len(set(skills)):
-        raise InstallError(f"Concorde manifest must declare exactly these 6 internal Skills: {SKILLS}")
+        raise InstallError(
+            f"Concorde manifest must declare exactly these {len(SKILLS)} internal Skills: {SKILLS}"
+        )
     operations = manifest.get("operations")
     if operations != OPERATIONS:
         raise InstallError(f"Concorde manifest must declare exactly these Operations: {OPERATIONS}")

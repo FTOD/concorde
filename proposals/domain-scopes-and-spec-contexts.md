@@ -50,6 +50,11 @@ in multiple Domains without acquiring duplicate component identities or implemen
 Domain explains the role relevant to its own scope. Participation does not automatically grant
 context access or mutation authority.
 
+Every Domain and Service that routes work toward another target MUST state that target's stable ID,
+local responsibility, relationship and selection condition in its own Spec. The downstream target's
+complete Spec remains private to its worker; routing information cannot be left only in registry
+metadata or inferred from a Module Spec.
+
 Business entities such as Account, Transfer, and Daily Limit MUST have meaningful definitions
 and responsibility assignments where they matter. They do not each require a separate Domain,
 Service, or Module Spec. A Domain is responsible for explaining, for example, who checks a Daily
@@ -120,9 +125,22 @@ required Installation/Documentation/Workflow decomposition for other projects.
 
 ### P5. Each agent invocation has one explicit, reproducible context
 
-Every agent task MUST bind to one explicit Spec target and a concrete context snapshot before
-execution. A Feature or API identifier MAY focus the task within that target, but MUST NOT silently
-replace its complete document collection with partial retrieval results.
+Every bounded worker task MUST bind to one explicit Spec target and a concrete context snapshot
+before execution. A Feature or API identifier MAY focus the task within that target, but MUST NOT
+silently replace its complete document collection with partial retrieval results.
+
+A separate main coordinator starts from the entry Domain or Service and MAY expand an explicit,
+ordered discovery context with additional registered Domain or Service Specs as needed. Every
+append changes the digest-bound context identity. A Domain or Service sharing a physical member with
+a Module is not admissible to discovery. The coordinator MUST NOT read Module Specs or
+implementation code. It may select a Module only from routing facts contained in an admitted Domain
+or Service. The coordinator and each selected target worker are different fresh invocations; the
+host transfers the complete target snapshot directly to the worker. Only typed worker results return
+to the coordinator for declared synthesis.
+
+Operations with one lifecycle or mutation result receive one route and preserve task intent; a
+cross-target change is routed to a Domain coordinator. Read-only ask may route several readers and
+synthesize their typed results.
 
 The context manifest MUST identify the target and kind, document membership and content digests,
 Protocol and kind-definition versions, Operation instructions, task input, phase, and any admitted
@@ -191,6 +209,9 @@ implementation phase MUST NOT reuse a conversation that has already seen now-exc
 Removing file permissions cannot remove prior cognitive inputs. The guarantee covers admitted
 project information and tool access; it does not claim to erase a model's general prior knowledge.
 
+Public context inspection may return identity, membership, versions and digests, but it MUST NOT
+return raw Spec/Protocol bodies or a reusable cognitive snapshot to the ambient caller.
+
 ## Context Operations and lifecycle consequences
 
 The following Operation names and split are proposed implementation choices:
@@ -254,6 +275,10 @@ Acceptance must include a separate consumer project as well as Concorde itself. 
 - Each target remaining understandable without ancestors, collaborators, or implementation;
   repeated contract views checked for the compatibility they actually claim.
 - Exact context membership, version and digest handling, and rejection of undeclared retrieval.
+- Main discovery starting at the entry target, append-only Domain/Service expansion at arbitrary
+  nesting depth, rejection of Module/shared-Module collections, and a different fresh worker for
+  every routed target.
+- Body-free public context manifests and typed-only worker results returning to main synthesis.
 - A missing rule producing a specific Spec gap while a known prohibition remains distinguishable.
 - Spec-only planning and verification-agent inputs, with code visible only in implementation.
 - Deterministic checks executing against authorized code while exposing bounded results.

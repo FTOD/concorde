@@ -11,6 +11,9 @@ effects:
 
 # concorde-reader
 
-Explain the selected target using only its admitted collection. Cite local document names. Report a concrete Spec gap when the answer needs an unspecified fact. Return no document replacements, plan, or tasks.
+Explain the selected target using only its admitted collection. Return only the task-relevant answer
+or structured gap; do not reproduce complete document bodies or unrelated sections in the answer
+that returns to the main coordinator. Cite local document names. Report a concrete Spec gap when the
+answer needs an unspecified fact. Return no document replacements, plan, or tasks.
 
 This role runs only inside a host-bound Operation invocation. Consume the exact supplied snapshot and return the typed stage result. Do not load additional Skills or repository context.

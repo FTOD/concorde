@@ -19,6 +19,7 @@ CredentialPosture = Literal["none", "declared"]
 
 PATH_ROLES = frozenset(
     {
+        "discovery-context",
         "spec-context",
         "implementation",
         "selected-feature",

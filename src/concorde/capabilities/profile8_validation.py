@@ -3,7 +3,7 @@ import ast
 import json
 from pathlib import Path
 from ..model import Finding
-from .protocol_contracts import OPERATIONS, INTERNAL_SKILLS, dependencies
+from .protocol_contracts import OPERATIONS, INTERNAL_SKILLS, dependencies, exported_types, schemas
 from .skill_assets import resolve_skill_prompt, render_capabilities
 from .operation_data import json_schema
 
@@ -39,10 +39,18 @@ def validate_package(root: Path) -> list[Finding]:
         for integration in ("claude","codex"):
             if len(render_capabilities(root,integration)) != len(OPERATIONS):
                 fail("concorde.json",f"{integration} must expose every paired Operation exactly once")
-        names=[f"{op}-{suffix}" for op in OPERATIONS for suffix in ("request","response")]
-        names += ["concorde-agent-stage-context","concorde-agent-stage-result"]
+        names=list(exported_types())
         if json.loads((root/"protocol/schemas.json").read_text()) != {name:json_schema(name) for name in names}:
             fail("protocol/schemas.json","Exported contracts differ from executable schemas")
+        documented=schemas()
+        from .operation_data import DATA_SCHEMAS
+        documented["concorde-operation-configuration"]=DATA_SCHEMAS["concorde-operation-configuration"]
+        text=(root/"specs/concorde/services/operation-wire.md").read_text()
+        import re
+        blocks={name:json.loads(body) for name,body in re.findall(
+            r"^## (\S+)\n\n```json\n(.*?)\n```",text,re.M|re.S)}
+        if blocks != documented:
+            fail("specs/concorde/services/operation-wire.md","Documented wire contracts differ from executable schemas")
     except (ValueError,OSError,KeyError,TypeError) as exc:
         fail("concorde.json",str(exc))
     return findings

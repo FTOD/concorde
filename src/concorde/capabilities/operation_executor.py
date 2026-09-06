@@ -66,8 +66,12 @@ def _completion_version(specification: LaunchSpecification) -> int:
 
 
 def _domain_type(specification: LaunchSpecification) -> str | None:
-    if specification.runtime_input_json is not None and json.loads(specification.runtime_input_json).get("type_id") == "concorde-agent-stage-context":
+    runtime_type = (json.loads(specification.runtime_input_json).get("type_id")
+                    if specification.runtime_input_json is not None else None)
+    if runtime_type == "concorde-agent-stage-context":
         return "concorde-agent-stage-result"
+    if runtime_type == "concorde-main-stage-context":
+        return "concorde-main-stage-result"
     if (specification.runtime_input_json is not None
             and specification.operation == "concorde-reflections-triage"
             and specification.capability == "concorde-analyze"):
@@ -420,6 +424,25 @@ def _completion(stdout: str, specification: LaunchSpecification) -> CapabilityCo
 
 
 def _prompt(specification: LaunchSpecification) -> str:
+    if _domain_type(specification) == "concorde-main-stage-result":
+        return (
+            "Execute one Concorde Profile 8 main-coordinator stage in a fresh context.\n"
+            f"Operation: {specification.operation}\nStage: {specification.stage}\n"
+            f"Host discovery grant:\n{specification.workspace_receipt_json}\n"
+            f"Configuration snapshot:\n{specification.operation_configuration_json}\n"
+            f"Complete admitted discovery context and task:\n{specification.runtime_input_json}\n\n"
+            "Use only the supplied append-only Domain/Service collection. Never load a Module Spec, "
+            "implementation code, repository guidance, another Skill, a prior conversation, or a remote source. "
+            "In route phase, request only Domain/Service IDs identified by an admitted Spec, or the explicit target "
+            "hint, in expand_targets; otherwise return exact worker routes. Non-ask Operations require one route and "
+            "unchanged task intent. Do not perform the routed work. In synthesize phase, use only typed worker results and return the final "
+            "answer; do not expand context. Report missing routing information as a structured Spec gap owned by an "
+            "admitted Domain or Service.\n"
+            "Return Capability Completion Envelope 2 matching the supplied schema. Put a typed "
+            "concorde-main-stage-result in domain_output with context_id, outcome, answer, expand_targets, routes, "
+            "and gaps. Bind every launch, invocation, workspace, and context identity exactly.\n"
+            f"Invocation: {specification.invocation_id}\nLaunch digest: {specification.digest}\n"
+        )
     if _domain_type(specification) == "concorde-agent-stage-result":
         return (
             "Execute one Concorde Profile 8 agent stage in a fresh context.\n"

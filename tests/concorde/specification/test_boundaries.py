@@ -59,7 +59,8 @@ class BoundaryTests(unittest.TestCase):
         for value in [dict(typed('concorde-ask-request',self.task),schema_version=True),dict(typed('concorde-ask-request',self.task),schema_version=7),{'type_id':'concorde-ask-request','schema_version':1,'data':{**self.task,'read_paths':['secret.py']}}]:
             with self.subTest(value=value),self.assertRaises(OperationDataError):validate_typed(value,'concorde-ask-request')
     def test_unsupported_is_not_spec_incomplete(self):
-        def cb(stage,snapshot,data,cwd):data.update(outcome='unsupported',answer='The Spec prohibits this use.')
+        def cb(stage,snapshot,data,cwd):
+            if stage=='context-solve':data.update(outcome='unsupported',answer='The Spec prohibits this use.')
         result=self.run_op('concorde-plan',callback=cb)
         self.assertEqual('unsupported',result['output']['data']['outcome']);self.assertEqual([],result['output']['data']['gaps']);self.assertFalse((self.root/'.concorde/attempts').exists())
     def test_describe_policy_launches_no_model_and_lists_exact_capsule(self):
@@ -67,6 +68,14 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
         for policy in self.host.descriptions:
             if policy['phase']!='implementation':self.assertEqual(['context.json'],policy['read_paths']);self.assertEqual([],policy['write_paths'])
+    def test_ask_policy_describes_separate_main_and_hinted_worker_without_launching(self):
+        result=self.run_op('concorde-ask',{'task':'Explain transfer','target_id':'service.transfer'},mode='describe-policy')
+        self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
+        self.assertEqual(['route','ask'],[item['phase'] for item in self.host.descriptions])
+        self.assertEqual(['context.json'],self.host.descriptions[0]['read_paths'])
+        self.assertEqual(['context.json'],self.host.descriptions[1]['read_paths'])
+        self.assertEqual(['scope.bank'],self.host.descriptions[0]['discovered_targets'])
+        self.assertTrue(all(item['write_paths']==[] for item in self.host.descriptions))
     def test_changed_spec_requires_a_new_attempt(self):
         task=self.attempt();p=self.root/'specs/send-money.md';p.write_text(p.read_text()+'\nChanged obligations.\n')
         self.assertEqual('blocked',self.run_op('concorde-tasks',task)['status']);self.assertEqual([],self.double.calls)
@@ -74,7 +83,8 @@ class BoundaryTests(unittest.TestCase):
         task=self.attempt();task['task']='Different behavior'
         self.assertEqual('blocked',self.run_op('concorde-tasks',task)['status'])
     def test_spec_author_cannot_edit_provider_or_registry(self):
-        def cb(stage,snap,data,cwd):data['documents']=[{'path':'specs/ledger-api.md','content':'Changed'}]
+        def cb(stage,snap,data,cwd):
+            if stage=='specify':data['documents']=[{'path':'specs/ledger-api.md','content':'Changed'}]
         old=(self.root/'specs/ledger-api.md').read_bytes();result=self.run_op('concorde-specify',callback=cb)
         self.assertEqual('blocked',result['status']);self.assertEqual(old,(self.root/'specs/ledger-api.md').read_bytes())
     def test_planner_cannot_emit_spec_replacements(self):

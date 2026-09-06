@@ -20,8 +20,9 @@ class ScopeReflectionTests(unittest.TestCase):
                 data['tasks'][0]['target_id']='service.transfer'
         result=self.run_op('concorde-standard-dev-loop',{'target_id':'scope.bank','task':'Implement the banking transfer promise'},cb)
         self.assertEqual('succeeded',result['status'],result)
-        domain=[c for c in self.double.calls if c['snapshot']['kind']=='domain']
-        self.assertTrue(domain);self.assertTrue(any(c['snapshot']['target_id']=='service.transfer' for c in self.double.calls))
+        domain=[c for c in self.double.calls if c['capability']!='concorde-main' and c['snapshot']['kind']=='domain']
+        self.assertTrue(domain);self.assertTrue(any(c['capability']!='concorde-main' and
+            c['snapshot']['target_id']=='service.transfer' for c in self.double.calls))
         self.assertFalse(any(c['stage']=='implementation' for c in domain))
         self.assertTrue(all('specs/send-money.md' not in json.dumps(c['snapshot']) for c in domain))
     def test_domain_rejects_component_outside_its_scope(self):

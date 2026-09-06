@@ -25,9 +25,9 @@ def project(root):
     registry={'schema_version':1,'project_id':'project.bank','entry_target':'scope.bank','targets':targets,
       'checks':[{'id':'check.transfer','target_id':'service.transfer','argv':['{python}','checks/transfer_check.py'],'timeout_seconds':10}]}
     (root/'.concorde/specs.json').write_text(json.dumps(registry))
-    files={'specs/how-money-moves.md':'# Banking\nA Transfer moves money between Accounts. The transfer Service checks positive amount and sufficient funds. Ledger stores balances. A completed transfer debits the sender and credits the receiver. Duplicate requests require a new decision; unspecified retries are a Spec gap.\n',
-      'specs/audit-scope.md':'# Audit\nThe transfer Service participates here to explain successful balance changes. Audit does not own the implementation.\n',
-      'specs/send-money.md':'# Transfer money\n## feature.transfer\ntransfer(balance, amount) returns balance minus amount when amount is positive and balance is sufficient. It raises ValueError otherwise. Calls are pure and do not alter stored balances.\n',
+    files={'specs/how-money-moves.md':'# Banking\nA Transfer moves money between Accounts. The registered service.transfer Service handles transfer admission and execution; inspect its Service Spec when a task concerns that consumer capability. The module.ledger Module stores balances and is selected only after an admitted Domain or Service identifies a ledger API task. A completed transfer debits the sender and credits the receiver. The scope.audit Domain explains audit-specific outcomes. Duplicate requests require a new decision; unspecified retries are a Spec gap.\n',
+      'specs/audit-scope.md':'# Audit\nThe registered service.transfer Service participates here to explain successful balance changes. Audit does not own the implementation.\n',
+      'specs/send-money.md':'# Transfer money\n## feature.transfer\ntransfer(balance, amount) returns balance minus amount when amount is positive and balance is sufficient. It raises ValueError otherwise. Calls are pure and do not alter stored balances. The module.ledger target owns stored-balance reads; route ledger API questions to that Module without loading its Spec into main discovery.\n',
       'specs/transfer-promises.md':'# Local promises\nBalance and amount are integers. No network, persistence, retry, or collaborator is required. This complete two-document collection defines all facts required to implement and test transfer.\n',
       'specs/ledger-api.md':'# Ledger API\n## api.ledger\nread(account_id: str) returns an integer balance or raises KeyError. It has no side effects.\n',
       'app/transfer.py':'def transfer(balance, amount):\n    return balance\n',
@@ -54,9 +54,32 @@ class ModelProcessDouble:
     def run(self, argv, *, cwd, env, input_text):
         schema=json.loads(argv[argv.index('--json-schema')+1]) if '--json-schema' in argv else json.loads(Path(argv[argv.index('--output-schema')+1]).read_text()); properties=schema['properties']
         stage=properties['stage']['const']
-        value=json.JSONDecoder().raw_decode(input_text.split('Complete admitted context and task:\n',1)[1])[0]
+        marker='Complete admitted discovery context and task:\n' if 'Complete admitted discovery context and task:\n' in input_text else 'Complete admitted context and task:\n'
+        value=json.JSONDecoder().raw_decode(input_text.split(marker,1)[1])[0]
         snapshot=value['data']['snapshot']['data']
-        self.calls.append({'stage':stage,'snapshot':snapshot,'cwd':Path(cwd),'prompt':input_text,'argv':argv})
+        capability=properties['capability']['const']
+        self.calls.append({'stage':stage,'capability':capability,'snapshot':snapshot,'cwd':Path(cwd),'prompt':input_text,'argv':argv})
+        if value['type_id']=='concorde-main-stage-context':
+            data={'context_id':snapshot['context_id'],'outcome':'completed','answer':'Main synthesized bounded worker results.',
+                  'expand_targets':[],'routes':[],'gaps':[]}
+            if stage=='route':
+                hint=snapshot['target_hint']
+                discovered=[item['target_id'] for item in snapshot['targets']]
+                if hint:
+                    data.update(outcome='routed',routes=[{'target_id':hint,'focus_id':snapshot['focus_hint'],
+                        'task':snapshot['task'],'constraints':snapshot['constraints']}])
+                elif 'service.transfer' not in discovered:
+                    data.update(outcome='expand',expand_targets=['service.transfer'])
+                else:
+                    data.update(outcome='routed',routes=[{'target_id':'service.transfer','focus_id':None,
+                        'task':snapshot['task'],'constraints':snapshot['constraints']}])
+            if self.callback:self.callback(stage,snapshot,data,Path(cwd))
+            payload={key:item['const'] for key,item in properties.items() if 'const' in item}
+            payload.update(status='success',output='Explicit main-process double.',limitations='none',
+              gates=[{'name':'bounded-main-role','status':'passed','evidence':'Main process is substituted; discovery admission and host routing are real.'}],
+              domain_output=typed('concorde-main-stage-result',data))
+            stdout=json.dumps({'structured_output':payload}) if '--json-schema' in argv else '\n'.join(json.dumps(event) for event in [{'type':'item.completed','item':{'type':'agent_message','text':json.dumps(payload)}},{'type':'turn.completed'}])
+            return subprocess.CompletedProcess(argv,0,stdout,'')
         data={'context_id':snapshot['context_id'],'outcome':'completed','answer':'Bounded role completed.',
               'gaps':[],'documents':[],'plan':'','tasks':[]}
         if stage=='context-solve': data['outcome']='sufficient'

@@ -16,9 +16,14 @@ contains necessary business rules and required collaborator contracts; scope and
 and provider Specs are not implicit context. Features may have stable IDs anywhere in the registered
 Markdown collection. Selecting a Feature does not reduce that complete collection.
 
+A main coordinator may admit this complete Service Spec to refine routing. Every downstream Domain,
+Service, or Module that may receive work is named here by stable target ID, local responsibility and
+selection condition. The coordinator may route to a Module from this information but cannot read the
+Module Spec; a different target worker receives that collection.
+
 ## Local promises and interactions
 
-[Define all target-relevant entities, ownership, inputs, outputs, conditions, failure, completion and retry semantics here. Include every required collaborator contract locally. Do not rely on parent, provider or sibling documents outside the registered collection.]
+[Define all target-relevant entities, ownership, inputs, outputs, conditions, failure, completion and retry semantics here. Name routable downstream targets by stable ID, responsibility and selection condition. Include every required collaborator contract locally. Do not rely on parent, provider or sibling documents outside the registered collection.]
 
 ## Missing information
 

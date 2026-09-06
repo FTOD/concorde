@@ -21,7 +21,7 @@ class CapabilityLayoutRuleTests(unittest.TestCase):
         operations = self.manifest["operations"]
         self.assertEqual(self.manifest["schema_version"], 3)
         self.assertEqual(self.manifest["skill_namespace"], "concorde")
-        self.assertEqual(len(skills), 6)
+        self.assertEqual(len(skills), 7)
         self.assertEqual(len(operations), 22)
         self.assertFalse(set(skills) & set(operations))
 

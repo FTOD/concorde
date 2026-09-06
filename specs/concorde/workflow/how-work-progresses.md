@@ -22,6 +22,19 @@ assesses whether the task is answerable. An insufficient context stops before an
 Tasks turn the accepted plan into explicit acceptance conditions. The implementation worker receives
 that plan/tasks TypedValue plus explicitly owned code. It cannot edit Specs, registry or other code.
 
+## Main routing view
+
+The main coordinator may expand this Domain after `domain.concorde` identifies a workflow task. It
+selects `service.spec-context` for target registration, Protocol binding, context resolution and
+Spec structural validation; `service.workflow-host` for public Operation admission, routing,
+agent-stage execution and lifecycle state; and `service.reflections` for Reflection selection,
+investigation or disposition. It selects `module.registry` for the in-process registry API,
+`module.wire-contracts` for TypedValue/schema validation, `module.file-transactions` for atomic file
+replacement, `module.agent-execution` for native model-process execution,
+`module.permissions` for policy compilation, `module.package-assets` for capability projection, and
+`module.spec-publication` for workflow-facing publication integration. Module IDs are selectable
+from this routing view but their Specs remain unavailable to the main coordinator.
+
 ## Conditions, states and recovery
 
 ```mermaid

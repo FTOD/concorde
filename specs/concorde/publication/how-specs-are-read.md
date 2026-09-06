@@ -23,3 +23,10 @@ rendering failures stop publication. Unregistered nearby Markdown and diagram fi
 as authority. A local link to an unregistered document is a publication error. A source change during
 the build invalidates the candidate. Only a complete candidate with current source identity and all
 expected routes is atomically promoted. Failed builds preserve the previous successful output.
+
+## Main routing view
+
+The main coordinator selects `service.publication` for consumer-facing docsite proposal, build and
+publication outcomes. It selects `module.spec-publication` for the in-process registry-to-pages,
+sidebar, graph, diagram and build-manifest API. The Module ID is visible here so work can be routed;
+its Module Spec remains private to the fresh target worker.

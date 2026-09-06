@@ -105,6 +105,8 @@ class SpecRepository:
         self.entry_target = self.registry["entry_target"]
         if self.entry_target not in self.targets:
             raise SpecError("entry_target must name one registered target")
+        if self.targets[self.entry_target].kind == "module":
+            raise SpecError("entry_target must be a Domain or Service for main discovery")
         self.protocol_manifest, self.protocol_assets = self._protocol()
 
     def _protocol(self) -> tuple[dict, dict[str, bytes]]:
