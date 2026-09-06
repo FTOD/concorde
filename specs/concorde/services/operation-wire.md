@@ -523,202 +523,6 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 ```
 
 
-## concorde-ask-request
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "task": {
-      "type": "string",
-      "minLength": 1
-    },
-    "target_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "focus_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "constraints": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    }
-  },
-  "required": [
-    "task"
-  ],
-  "additionalProperties": false
-}
-```
-
-
-## concorde-ask-response
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "entry_target": {
-      "type": "string",
-      "minLength": 1
-    },
-    "context_id": {
-      "type": "string",
-      "minLength": 1,
-      "pattern": "^sha256:[0-9a-f]{64}$"
-    },
-    "outcome": {
-      "enum": [
-        "expand",
-        "routed",
-        "completed",
-        "spec_incomplete",
-        "unsupported",
-        "conflicting",
-        "failed",
-        "described"
-      ]
-    },
-    "answer": {
-      "type": "string"
-    },
-    "discovered_targets": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      },
-      "uniqueItems": true
-    },
-    "routes": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "target_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "focus_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "task": {
-            "type": "string",
-            "minLength": 1
-          },
-          "constraints": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
-        },
-        "required": [
-          "target_id",
-          "focus_id",
-          "task",
-          "constraints"
-        ],
-        "additionalProperties": false
-      }
-    },
-    "worker_results": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "type_id": {
-            "const": "concorde-main-worker-result"
-          },
-          "schema_version": {
-            "type": "integer",
-            "const": 1
-          },
-          "data": {
-            "$ref": "concorde-main-worker-result"
-          }
-        },
-        "required": [
-          "type_id",
-          "schema_version",
-          "data"
-        ],
-        "additionalProperties": false
-      }
-    },
-    "gaps": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "question": {
-            "type": "string",
-            "minLength": 1
-          },
-          "blocked_step": {
-            "type": "string",
-            "minLength": 1
-          },
-          "needed_contract": {
-            "type": "string",
-            "minLength": 1
-          },
-          "target_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "context_id": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          }
-        },
-        "required": [
-          "question",
-          "blocked_step",
-          "needed_contract"
-        ],
-        "additionalProperties": false
-      }
-    },
-    "completed_operations": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    }
-  },
-  "required": [
-    "entry_target",
-    "context_id",
-    "outcome",
-    "answer",
-    "discovered_targets",
-    "routes",
-    "worker_results",
-    "gaps",
-    "completed_operations"
-  ],
-  "additionalProperties": false
-}
-```
-
-
 ## concorde-checklist-request
 
 ```json
@@ -2644,12 +2448,12 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "operation": {
       "enum": [
         "concorde-analyze",
-        "concorde-ask",
         "concorde-checklist",
         "concorde-clarify",
         "concorde-constitution",
         "concorde-context-solve",
         "concorde-fast-loop",
+        "concorde-main",
         "concorde-plan",
         "concorde-specify",
         "concorde-standard-dev-loop"
@@ -2659,6 +2463,13 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
       "enum": [
         "route",
         "synthesize"
+      ]
+    },
+    "action": {
+      "enum": [
+        "route",
+        "ask",
+        "design-topology"
       ]
     },
     "task": {
@@ -2739,6 +2550,259 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         ],
         "additionalProperties": false
       }
+    },
+    "topology": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "project_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entry_target": {
+              "type": "string",
+              "minLength": 1
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "kind": {
+                    "enum": [
+                      "domain",
+                      "service",
+                      "module"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "documents": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "format": "project-path"
+                    },
+                    "uniqueItems": true,
+                    "minItems": 1
+                  },
+                  "scope_parent": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "component_parent": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "participates_in": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "uniqueItems": true
+                  },
+                  "implementation": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "format": "project-path"
+                    },
+                    "uniqueItems": true
+                  },
+                  "features": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "document": {
+                          "type": "string",
+                          "minLength": 1,
+                          "format": "project-path"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "document"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "apis": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "document": {
+                          "type": "string",
+                          "minLength": 1,
+                          "format": "project-path"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "document"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "checks": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "uniqueItems": true
+                  },
+                  "diagrams": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "source": {
+                          "type": "string",
+                          "minLength": 1,
+                          "format": "project-path"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "source",
+                        "kind",
+                        "title"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "kind",
+                  "title",
+                  "documents",
+                  "scope_parent",
+                  "component_parent",
+                  "participates_in",
+                  "implementation",
+                  "features",
+                  "apis",
+                  "checks",
+                  "diagrams"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "argv": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minItems": 1
+                  },
+                  "timeout_seconds": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3600
+                  },
+                  "inputs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "format": "project-path"
+                    },
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "id",
+                  "target_id",
+                  "argv",
+                  "timeout_seconds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "schema_version",
+            "project_id",
+            "entry_target",
+            "targets",
+            "checks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "targets": {
       "type": "array",
@@ -2824,12 +2888,14 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "schema_version",
     "operation",
     "phase",
+    "action",
     "task",
     "constraints",
     "target_hint",
     "focus_hint",
     "protocol_binding",
     "protocol",
+    "topology",
     "targets",
     "instructions",
     "worker_results"
@@ -3483,6 +3549,345 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 ```
 
 
+## concorde-main-request
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "action": {
+      "enum": [
+        "ask",
+        "design-topology",
+        "accept-topology",
+        "apply-topology"
+      ]
+    },
+    "task": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "focus_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "topology_proposal": {
+      "type": "object",
+      "properties": {
+        "type_id": {
+          "const": "concorde-topology-proposal"
+        },
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "data": {
+          "$ref": "concorde-topology-proposal"
+        }
+      },
+      "required": [
+        "type_id",
+        "schema_version",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "application": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "format": "project-path"
+        },
+        "digest": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "id",
+        "path",
+        "digest"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-main-response
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "action": {
+      "enum": [
+        "ask",
+        "design-topology",
+        "accept-topology",
+        "apply-topology"
+      ]
+    },
+    "entry_target": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "expand",
+        "routed",
+        "completed",
+        "spec_incomplete",
+        "unsupported",
+        "conflicting",
+        "failed",
+        "described",
+        "topology_proposed",
+        "topology_prepared",
+        "topology_applied"
+      ]
+    },
+    "answer": {
+      "type": "string"
+    },
+    "discovered_targets": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "focus_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "task": {
+            "type": "string",
+            "minLength": 1
+          },
+          "constraints": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "target_id",
+          "focus_id",
+          "task",
+          "constraints"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "worker_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type_id": {
+            "const": "concorde-main-worker-result"
+          },
+          "schema_version": {
+            "type": "integer",
+            "const": 1
+          },
+          "data": {
+            "$ref": "concorde-main-worker-result"
+          }
+        },
+        "required": [
+          "type_id",
+          "schema_version",
+          "data"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "topology_proposal": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type_id": {
+              "const": "concorde-topology-proposal"
+            },
+            "schema_version": {
+              "type": "integer",
+              "const": 1
+            },
+            "data": {
+              "$ref": "concorde-topology-proposal"
+            }
+          },
+          "required": [
+            "type_id",
+            "schema_version",
+            "data"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "application": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "format": "project-path"
+            },
+            "digest": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "id",
+            "path",
+            "digest"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "format": "project-path"
+      },
+      "uniqueItems": true
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "blocked_step": {
+            "type": "string",
+            "minLength": 1
+          },
+          "needed_contract": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "context_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "question",
+          "blocked_step",
+          "needed_contract"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "completed_operations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "required": [
+    "action",
+    "entry_target",
+    "context_id",
+    "outcome",
+    "answer",
+    "discovered_targets",
+    "routes",
+    "worker_results",
+    "topology_proposal",
+    "application",
+    "files",
+    "gaps",
+    "completed_operations"
+  ],
+  "additionalProperties": false
+}
+```
+
+
 ## concorde-main-stage-context
 
 ```json
@@ -3539,7 +3944,10 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "unsupported",
         "conflicting",
         "failed",
-        "described"
+        "described",
+        "topology_proposed",
+        "topology_prepared",
+        "topology_applied"
       ]
     },
     "answer": {
@@ -3628,6 +4036,34 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         ],
         "additionalProperties": false
       }
+    },
+    "topology_design": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type_id": {
+              "const": "concorde-topology-design"
+            },
+            "schema_version": {
+              "type": "integer",
+              "const": 1
+            },
+            "data": {
+              "$ref": "concorde-topology-design"
+            }
+          },
+          "required": [
+            "type_id",
+            "schema_version",
+            "data"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [
@@ -3636,7 +4072,8 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "answer",
     "expand_targets",
     "routes",
-    "gaps"
+    "gaps",
+    "topology_design"
   ],
   "additionalProperties": false
 }
@@ -5582,6 +6019,919 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "gaps",
     "checks",
     "completed_operations"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-topology-application
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "application_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "topology_proposal": {
+      "type": "object",
+      "properties": {
+        "type_id": {
+          "const": "concorde-topology-proposal"
+        },
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "data": {
+          "$ref": "concorde-topology-proposal"
+        }
+      },
+      "required": [
+        "type_id",
+        "schema_version",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "base_registry_digest": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "protocol_binding": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "version",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "before_digest": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "before_digest",
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "application_id",
+    "topology_proposal",
+    "base_registry_digest",
+    "protocol_binding",
+    "files"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-topology-author-context
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "context_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "base_registry_digest": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "target": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "domain",
+            "service",
+            "module"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "uniqueItems": true,
+          "minItems": 1
+        },
+        "scope_parent": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "component_parent": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "participates_in": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "implementation": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "uniqueItems": true
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "document": {
+                "type": "string",
+                "minLength": 1,
+                "format": "project-path"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "document"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "apis": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "document": {
+                "type": "string",
+                "minLength": 1,
+                "format": "project-path"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "document"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "diagrams": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "minLength": 1,
+                "format": "project-path"
+              },
+              "kind": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "source",
+              "kind",
+              "title"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "documents",
+        "scope_parent",
+        "component_parent",
+        "participates_in",
+        "implementation",
+        "features",
+        "apis",
+        "checks",
+        "diagrams"
+      ],
+      "additionalProperties": false
+    },
+    "task": {
+      "type": "string",
+      "minLength": 1
+    },
+    "protocol_binding": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "version",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "protocol": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "digest",
+          "content"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "current_documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "digest",
+          "content"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "instructions": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "context_id",
+    "base_registry_digest",
+    "target",
+    "task",
+    "protocol_binding",
+    "protocol",
+    "current_documents",
+    "instructions"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-topology-author-result
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "context_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "target_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "spec_incomplete",
+        "unsupported",
+        "conflicting",
+        "failed"
+      ]
+    },
+    "answer": {
+      "type": "string"
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "blocked_step": {
+            "type": "string",
+            "minLength": 1
+          },
+          "needed_contract": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "context_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "question",
+          "blocked_step",
+          "needed_contract"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "content"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "context_id",
+    "target_id",
+    "outcome",
+    "answer",
+    "gaps",
+    "documents"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-topology-design
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "registry": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entry_target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "domain",
+                  "service",
+                  "module"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "documents": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "format": "project-path"
+                },
+                "uniqueItems": true,
+                "minItems": 1
+              },
+              "scope_parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "component_parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "participates_in": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "implementation": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "format": "project-path"
+                },
+                "uniqueItems": true
+              },
+              "features": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "document": {
+                      "type": "string",
+                      "minLength": 1,
+                      "format": "project-path"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "document"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "apis": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "document": {
+                      "type": "string",
+                      "minLength": 1,
+                      "format": "project-path"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "document"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "checks": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true
+              },
+              "diagrams": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string",
+                      "minLength": 1,
+                      "format": "project-path"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "source",
+                    "kind",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "title",
+              "documents",
+              "scope_parent",
+              "component_parent",
+              "participates_in",
+              "implementation",
+              "features",
+              "apis",
+              "checks",
+              "diagrams"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "argv": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              },
+              "timeout_seconds": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3600
+              },
+              "inputs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "format": "project-path"
+                },
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "id",
+              "target_id",
+              "argv",
+              "timeout_seconds"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "project_id",
+        "entry_target",
+        "targets",
+        "checks"
+      ],
+      "additionalProperties": false
+    },
+    "spec_tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "task": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "target_id",
+          "task"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "migration_constraints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "acceptance": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "summary",
+    "registry",
+    "spec_tasks",
+    "migration_constraints",
+    "acceptance"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-topology-proposal
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "proposal_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "base_registry_digest": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "protocol_binding": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "version",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "context_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "discovered_targets": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "minItems": 1
+    },
+    "task": {
+      "type": "string",
+      "minLength": 1
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "target_hint": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "focus_hint": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "design": {
+      "type": "object",
+      "properties": {
+        "type_id": {
+          "const": "concorde-topology-design"
+        },
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "data": {
+          "$ref": "concorde-topology-design"
+        }
+      },
+      "required": [
+        "type_id",
+        "schema_version",
+        "data"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "proposal_id",
+    "base_registry_digest",
+    "protocol_binding",
+    "context_id",
+    "discovered_targets",
+    "task",
+    "constraints",
+    "target_hint",
+    "focus_hint",
+    "design"
   ],
   "additionalProperties": false
 }

@@ -18,16 +18,18 @@ from pathlib import Path
 from typing import Any
 
 from .operation_data import (OPERATION_CONTRACTS, OperationDataError, canonical, checked_path,
-    decode, typed, validate_typed, artifact)
+    decode, typed, validate_typed, artifact, verify_artifacts)
 from .operation_config import load_configuration
 from .operation_permissions import (PolicyBinding, compile_policy, render_codex_configuration,
     render_claude_configuration, build_launch_specification, OperationExecutionResult)
 from .skill_assets import EffectDeclaration, resolve_skill_prompt
-from .protocol_contracts import AGENT_OPERATIONS, MAIN_ROUTED_OPERATIONS
+from .protocol_contracts import (AGENT_OPERATIONS, TARGET_AGENT_STAGES,
+    MAIN_OPERATION, MAIN_ROUTED_OPERATIONS)
 from ..specification.repository import SpecRepository, SpecError, digest, read_file, identifier
 from ..specification.context import (DiscoveryContext, resolve_context,
     public_context_manifest, recheck_context, resolve_discovery_context,
-    recheck_discovery_context)
+    recheck_discovery_context, resolve_topology_author_context,
+    recheck_topology_author_context)
 from ..specification.changes import file_change, apply_files
 from ..specification.validation import validate_repository
 
@@ -161,6 +163,7 @@ class MainInvocation:
         self.operation, self.configuration, self.task, self.host = operation, configuration, task, host
         if operation not in MAIN_ROUTED_OPERATIONS:
             raise SpecError("Operation does not support main discovery", "unknown_operation")
+        self.action = task.get("action", "route") if operation == MAIN_OPERATION else "route"
         self.repository = SpecRepository(host.project_root, host.package_root)
         self.entry = self.repository.select(self.repository.entry_target)
         if self.entry.kind not in {"domain", "service"}:
@@ -175,10 +178,12 @@ class MainInvocation:
         self.last_snapshot: DiscoveryContext | None = None
         self.completed: list[str] = []
 
-    def ask_response(self, outcome: str, answer: str = "", *, routes=(), worker_results=(), gaps=()) -> dict:
+    def main_response(self, outcome: str, answer: str = "", *, routes=(), worker_results=(),
+                      topology_proposal=None, application=None, files=(), gaps=()) -> dict:
         if self.last_context is None:
             raise SpecError("main response has no discovery context", "invalid_completion")
-        return typed("concorde-ask-response", {
+        return typed("concorde-main-response", {
+            "action": self.action,
             "entry_target": self.entry.id,
             "context_id": self.last_context,
             "outcome": outcome,
@@ -186,6 +191,9 @@ class MainInvocation:
             "discovered_targets": list(self.discovered),
             "routes": list(routes),
             "worker_results": list(worker_results),
+            "topology_proposal": topology_proposal,
+            "application": application,
+            "files": list(files),
             "gaps": list(gaps),
             "completed_operations": list(self.completed),
         })
@@ -207,7 +215,7 @@ class MainInvocation:
         })
 
     def stage(self, phase: str, occurrence: int, *, worker_results: tuple[dict, ...] = ()) -> dict:
-        role = "concorde-main"
+        role = "concorde-coordinator"
         prompt = resolve_skill_prompt(self.host.package_root / "skills" / role / "SKILL.md", "skill", "")
         snapshot = resolve_discovery_context(
             self.repository,
@@ -215,6 +223,7 @@ class MainInvocation:
             operation=self.operation,
             phase=phase,
             task=self.task["task"],
+            action=self.action,
             target_hint=self.task.get("target_id"),
             focus_hint=self.task.get("focus_id"),
             constraints=tuple(self.task.get("constraints", [])),
@@ -318,21 +327,27 @@ class MainInvocation:
             raise SpecError("main returned a different discovery context identity", "incompatible_handoff")
         outcome = data["outcome"]
         expansions, routes, gaps = data["expand_targets"], data["routes"], data["gaps"]
+        topology = data["topology_design"]
         if phase == "route":
             if outcome == "expand":
-                if not expansions or routes or gaps:
+                if not expansions or routes or gaps or topology is not None:
                     raise SpecError("expand requires only nonempty Domain/Service targets", "invalid_completion")
             elif outcome == "routed":
-                if expansions or not routes or gaps:
+                if expansions or not routes or gaps or topology is not None:
                     raise SpecError("routed requires only nonempty worker routes", "invalid_completion")
+            elif outcome == "topology_proposed":
+                if (self.action != "design-topology" or expansions or routes or gaps
+                        or topology is None):
+                    raise SpecError("topology design has inconsistent fields", "invalid_completion")
             elif outcome in {"spec_incomplete", "unsupported", "conflicting", "failed"}:
-                if expansions or routes or ((outcome == "spec_incomplete") != bool(gaps)):
+                if (expansions or routes or topology is not None
+                        or ((outcome == "spec_incomplete") != bool(gaps))):
                     raise SpecError("blocked main routing has inconsistent fields", "invalid_completion")
             else:
                 raise SpecError("route phase returned an unsupported outcome", "invalid_completion")
         elif outcome not in {"completed", "spec_incomplete", "unsupported", "conflicting", "failed"}:
             raise SpecError("synthesis returned an unsupported outcome", "invalid_completion")
-        elif expansions or routes or ((outcome == "spec_incomplete") != bool(gaps)):
+        elif expansions or routes or topology is not None or ((outcome == "spec_incomplete") != bool(gaps)):
             raise SpecError("synthesis result has inconsistent fields", "invalid_completion")
         admitted = set(self.discovered)
         worker_gaps = []
@@ -389,12 +404,12 @@ class MainInvocation:
                                         "incompatible_handoff", route["target_id"])
                     if any(item not in route["constraints"] for item in original_constraints):
                         raise SpecError("main route dropped a user constraint", "incompatible_handoff")
-                    if self.operation != "concorde-ask" and (
+                    if self.operation != MAIN_OPERATION and (
                             route["task"] != self.task["task"]
                             or route["constraints"] != original_constraints):
                         raise SpecError("main route changed single-target task intent", "incompatible_handoff")
                 return routes, None
-            self.completed.append("concorde-main-route")
+            self.completed.append("concorde-coordinator-route")
             return [], decision
         raise SpecError("main discovery step limit exceeded", "context_limit")
 
@@ -415,14 +430,14 @@ class MainInvocation:
                 f"{self.operation} requires one owning target; route cross-target work through a Domain",
                 "ambiguous_route",
             )
-        self.completed.append("concorde-main-route")
+        self.completed.append("concorde-coordinator-route")
         return routes[0], None
 
-    def run_ask(self) -> dict:
+    def run_answer(self) -> dict:
         routes, decision = self.discover_routes()
         if decision is not None:
             outcome = "described" if self.host.mode == "describe-policy" else decision["outcome"]
-            return self.ask_response(outcome, decision["answer"], gaps=decision["gaps"])
+            return self.main_response(outcome, decision["answer"], gaps=decision["gaps"])
 
         if self.host.mode == "describe-policy":
             for route in routes:
@@ -430,9 +445,9 @@ class MainInvocation:
                                "constraints": route["constraints"]}
                 if route["focus_id"] is not None:
                     worker_task["focus_id"] = route["focus_id"]
-                Invocation("concorde-ask", self.configuration, worker_task, self.host).stage("concorde-ask")
-            self.completed.extend(["concorde-main-route", *("concorde-reader" for _ in routes)])
-            return self.ask_response("described", routes=routes)
+                Invocation(MAIN_OPERATION, self.configuration, worker_task, self.host).stage("concorde-read-target")
+            self.completed.extend(["concorde-coordinator-route", *("concorde-reader" for _ in routes)])
+            return self.main_response("described", routes=routes)
 
         worker_results = []
         for route in routes:
@@ -441,8 +456,8 @@ class MainInvocation:
                            "constraints": route["constraints"]}
             if route["focus_id"] is not None:
                 worker_task["focus_id"] = route["focus_id"]
-            worker = Invocation("concorde-ask", self.configuration, worker_task, self.host)
-            result = worker.stage("concorde-ask")
+            worker = Invocation(MAIN_OPERATION, self.configuration, worker_task, self.host)
+            result = worker.stage("concorde-read-target")
             outcome = "completed" if result["outcome"] == "sufficient" else result["outcome"]
             worker_results.append(typed("concorde-main-worker-result", {
                 "target_id": route["target_id"],
@@ -452,13 +467,340 @@ class MainInvocation:
                 "answer": result["answer"],
                 "gaps": result["gaps"],
             }))
-        self.completed.extend(["concorde-main-route", *("concorde-reader" for _ in routes)])
+        self.completed.extend(["concorde-coordinator-route", *("concorde-reader" for _ in routes)])
         synthesis = self.stage("synthesize", len(self.discovered), worker_results=tuple(worker_results))
         if any(item["data"]["outcome"] != "completed" for item in worker_results) and synthesis["outcome"] == "completed":
             raise SpecError("main synthesis cannot hide a blocked worker outcome", "invalid_completion")
-        self.completed.append("concorde-main-synthesize")
-        return self.ask_response(synthesis["outcome"], synthesis["answer"], routes=routes,
-                                 worker_results=worker_results, gaps=synthesis["gaps"])
+        self.completed.append("concorde-coordinator-synthesize")
+        return self.main_response(synthesis["outcome"], synthesis["answer"], routes=routes,
+                                  worker_results=worker_results, gaps=synthesis["gaps"])
+
+    def run_topology_design(self) -> dict:
+        routes, decision = self.discover_routes()
+        if self.host.mode == "describe-policy":
+            return self.main_response("described")
+        if decision is None or decision["outcome"] != "topology_proposed":
+            if decision is None:
+                raise SpecError("topology design returned worker routes", "invalid_completion")
+            return self.main_response(decision["outcome"], decision["answer"], gaps=decision["gaps"])
+        _inspect_topology_design(
+            self.repository,
+            decision["topology_design"],
+            tuple(self.discovered),
+        )
+        payload = {
+            "base_registry_digest": digest(self.repository.registry_bytes),
+            "protocol_binding": self.repository.config["protocol"],
+            "context_id": self.last_context,
+            "discovered_targets": list(self.discovered),
+            "task": self.task["task"],
+            "constraints": self.task.get("constraints", []),
+            "target_hint": self.task.get("target_id"),
+            "focus_hint": self.task.get("focus_id"),
+            "design": decision["topology_design"],
+        }
+        proposal = typed("concorde-topology-proposal", {
+            "proposal_id": digest(payload), **payload,
+        })
+        self.completed.append("concorde-coordinator-topology-design")
+        return self.main_response("topology_proposed", decision["answer"],
+                                  topology_proposal=proposal)
+
+
+def _inspect_topology_design(repository: SpecRepository, design_value: dict,
+                             discovered_targets: tuple[str, ...]) -> tuple[dict, dict, bytes,
+                                                                          dict[str, dict],
+                                                                          dict[str, dict],
+                                                                          dict[str, str]]:
+    """Validate everything knowable before target-local document authoring."""
+
+    design = validate_typed(design_value, "concorde-topology-design")["data"]
+    candidate = copy.deepcopy(design["registry"])
+    if candidate["project_id"] != repository.registry["project_id"]:
+        raise SpecError("topology design cannot replace project identity", "invalid_proposal")
+    candidate_bytes = (json.dumps(candidate, indent=2, sort_keys=True) + "\n").encode()
+    # This validates IDs, parentage, ownership, focus/check references and entry selection without
+    # opening the candidate document paths. Their existence/content is validated after authoring.
+    try:
+        SpecRepository(repository.root, repository.package_root, registry_bytes=candidate_bytes)
+    except SpecError as error:
+        raise SpecError(
+            "topology candidate registry is invalid: " + str(error),
+            "invalid_proposal",
+            error.field,
+        ) from error
+    current_targets = {item["id"]: item for item in repository.registry["targets"]}
+    candidate_targets = {item["id"]: item for item in candidate["targets"]}
+    tasks = {item["target_id"]: item["task"] for item in design["spec_tasks"]}
+    if len(tasks) != len(design["spec_tasks"]):
+        raise SpecError("topology design contains duplicate Spec tasks", "invalid_proposal")
+    if any(target_id not in candidate_targets for target_id in tasks):
+        raise SpecError("topology Spec task names a removed or unknown target", "invalid_proposal")
+    changed = {target_id for target_id, target in candidate_targets.items()
+               if current_targets.get(target_id) != target}
+    changed.update(set(current_targets) - set(candidate_targets))
+    discovered = set(discovered_targets)
+    unread_existing = sorted(target_id for target_id in (changed | tasks.keys())
+        if target_id in current_targets and current_targets[target_id]["kind"] in {"domain", "service"}
+        and target_id not in discovered)
+    if unread_existing:
+        raise SpecError(f"topology design did not admit affected Domain/Service Specs: {unread_existing}",
+                        "invalid_proposal")
+    missing_tasks = sorted((changed & candidate_targets.keys()) - tasks.keys())
+    if missing_tasks:
+        raise SpecError(f"changed topology targets require local Spec tasks: {missing_tasks}",
+                        "invalid_proposal")
+    if candidate == repository.registry and not tasks:
+        raise SpecError("topology proposal contains no change", "invalid_proposal")
+    return design, candidate, candidate_bytes, current_targets, candidate_targets, tasks
+
+
+def _validate_topology_proposal(host: OperationHost, proposal: dict) -> tuple[SpecRepository, dict]:
+    value = validate_typed(proposal, "concorde-topology-proposal")
+    data = value["data"]
+    identity = {key: item for key, item in data.items() if key != "proposal_id"}
+    if digest(identity) != data["proposal_id"]:
+        raise SpecError("topology proposal identity is invalid", "invalid_proposal")
+    repository = SpecRepository(host.project_root, host.package_root)
+    if digest(repository.registry_bytes) != data["base_registry_digest"]:
+        raise SpecError("topology proposal registry base changed", "stale_proposal")
+    if repository.config["protocol"] != data["protocol_binding"]:
+        raise SpecError("topology proposal Protocol binding changed", "stale_proposal")
+    prompt = resolve_skill_prompt(
+        host.package_root / "skills/concorde-coordinator/SKILL.md", "skill", "")
+    snapshot = resolve_discovery_context(
+        repository,
+        tuple(data["discovered_targets"]),
+        operation=MAIN_OPERATION,
+        phase="route",
+        action="design-topology",
+        task=data["task"],
+        target_hint=data["target_hint"],
+        focus_hint=data["focus_hint"],
+        constraints=tuple(data["constraints"]),
+        instructions=prompt.body,
+    )
+    if snapshot.id != data["context_id"]:
+        raise SpecError("topology proposal discovery context changed", "stale_proposal")
+    return repository, value
+
+
+def _topology_author(repository: SpecRepository, configuration: dict, host: OperationHost,
+                     target: dict, task: str, occurrence: int) -> dict:
+    role = "concorde-spec-author"
+    prompt = resolve_skill_prompt(host.package_root / "skills" / role / "SKILL.md", "skill", "")
+    snapshot = resolve_topology_author_context(repository, target, task=task, instructions=prompt.body)
+    before_registry = repository.registry_bytes
+    with tempfile.TemporaryDirectory(prefix="concorde-topology-author-") as directory:
+        capsule = Path(directory)
+        context_file = capsule / "context.json"
+        if host.mode != "describe-policy":
+            context_file.write_text(snapshot.serialized + "\n")
+        roles = {"spec-context": ("context.json",)}
+        policy = compile_policy(
+            EffectDeclaration(("spec-context",), (), False, "none"),
+            PolicyBinding(MAIN_OPERATION, "topology-author", occurrence, role, role),
+            roles,
+            outer_sandbox_required=configuration["data"]["enforcement"] == "outer",
+        )
+        integration = configuration["data"]["integration"]
+        renderer = render_codex_configuration if integration == "codex" else render_claude_configuration
+        native = renderer(policy,
+            native_enforcement=configuration["data"]["enforcement"] == "native",
+            outer_sandbox=host.outer_sandbox)
+        receipt = {"schema_version": 14, "target_id": target["id"], "phase": "topology-author",
+            "context_id": snapshot.id, "source_digest": snapshot.id,
+            "registry_digest": digest(before_registry), "role_paths": {"spec-context": ["context.json"]}}
+        runtime = typed("concorde-topology-author-context", snapshot.value)
+        invocation_id = str(uuid.uuid4())
+        launch = build_launch_specification(operation=MAIN_OPERATION, stage="topology-author",
+            occurrence=occurrence, capability=role, integration=integration, agent=role,
+            project_root=str(capsule), request=task, prompt=prompt.body, prior_results=(),
+            workspace_receipt_json=canonical(receipt), workspace_digest=snapshot.id, policy=policy,
+            native_configuration=native, runtime_input_json=canonical(runtime),
+            operation_configuration_json=canonical(configuration), invocation_id=invocation_id)
+        host.descriptions.append({"operation": MAIN_OPERATION, "phase": "topology-author",
+            "target_id": target["id"], "context_id": snapshot.id, "project_root": str(capsule),
+            "read_paths": list(policy.read_paths), "write_paths": [], "network": False,
+            "fresh_session": True, "policy_digest": policy.digest})
+        if host.mode == "describe-policy":
+            return {"context_id": snapshot.id, "target_id": target["id"], "outcome": "completed",
+                    "answer": "", "gaps": [], "documents": []}
+        from .operation_executor import AgentProcessExecutor
+        executor = host.executor or AgentProcessExecutor()
+        result = executor(launch)
+        if not isinstance(result, OperationExecutionResult):
+            raise SpecError("topology author omitted native completion evidence", "invalid_completion")
+        evidence = result.receipt
+        if (evidence.requested_launch_digest != launch.digest or evidence.policy_digest != policy.digest
+                or evidence.status != "success" or result.completion.invocation_id != invocation_id
+                or result.completion.workspace_digest != snapshot.id):
+            raise SpecError("topology author evidence is not bound to this invocation", "invalid_completion")
+        data = validate_typed(result.completion.domain_output, "concorde-topology-author-result")["data"]
+        if data["context_id"] != snapshot.id or data["target_id"] != target["id"]:
+            raise SpecError("topology author returned a different target/context", "incompatible_handoff")
+        if (data["outcome"] == "spec_incomplete") != bool(data["gaps"]):
+            raise SpecError("topology author gaps do not match its outcome", "invalid_completion")
+        for gap in data["gaps"]:
+            if gap.get("target_id", target["id"]) != target["id"]:
+                raise SpecError("topology author gap names another target", "incompatible_handoff")
+            if gap.get("context_id", snapshot.id) != snapshot.id:
+                raise SpecError("topology author gap names another context", "incompatible_handoff")
+            gap.update(target_id=target["id"], context_id=snapshot.id)
+        paths = [item["path"] for item in data["documents"]]
+        if data["outcome"] == "completed":
+            if paths != target["documents"]:
+                raise SpecError("topology author must return every target document in order",
+                                "invalid_completion")
+        elif data["documents"]:
+            raise SpecError("blocked topology author cannot return document replacements",
+                            "invalid_completion")
+        if read_file(repository.root, repository.registry_path) != before_registry:
+            raise SpecError("registry changed during topology authoring", "stale_context")
+        recheck_topology_author_context(repository, snapshot)
+        if load_configuration(repository.root) != configuration:
+            raise SpecError("configuration changed during topology authoring", "configuration_mismatch")
+        if context_file.read_text() != snapshot.serialized + "\n":
+            raise SpecError("topology author changed its frozen context", "stale_context")
+        host.evidence.append(result)
+        return data
+
+
+def _main_topology_response(action: str, repository: SpecRepository, proposal: dict, *,
+                            outcome: str, answer: str, application=None, files=(), gaps=(),
+                            completed=()) -> dict:
+    data = proposal["data"]
+    design = data["design"]["data"]
+    return typed("concorde-main-response", {"action": action,
+        "entry_target": design["registry"]["entry_target"], "context_id": data["context_id"],
+        "outcome": outcome, "answer": answer,
+        "discovered_targets": data["discovered_targets"], "routes": [], "worker_results": [],
+        "topology_proposal": proposal if action == "accept-topology" else None,
+        "application": application, "files": list(files), "gaps": list(gaps),
+        "completed_operations": list(completed)})
+
+
+def _prepare_topology(configuration: dict, proposal: dict, host: OperationHost) -> dict:
+    repository, proposal = _validate_topology_proposal(host, proposal)
+    design, candidate, candidate_bytes, current_targets, candidate_targets, tasks = (
+        _inspect_topology_design(
+            repository,
+            proposal["data"]["design"],
+            tuple(proposal["data"]["discovered_targets"]),
+        )
+    )
+    authored: dict[str, str] = {}
+    completed = ["concorde-coordinator-topology-design"]
+    current_owners = {path: target["id"] for target in repository.registry["targets"]
+                      for path in target["documents"]}
+    for occurrence, (target_id, task) in enumerate(tasks.items()):
+        target = candidate_targets[target_id]
+        result = _topology_author(repository, configuration, host, target, task, occurrence)
+        if result["outcome"] != "completed":
+            return _main_topology_response("accept-topology", repository, proposal,
+                outcome=result["outcome"], answer=result["answer"], gaps=result["gaps"],
+                completed=completed)
+        for item in result["documents"]:
+            path = item["path"]
+            if path in authored:
+                raise SpecError("topology authors returned the same physical document",
+                                "invalid_proposal", path)
+            owner = current_owners.get(path)
+            if owner is not None and owner != target_id:
+                raise SpecError("topology author cannot replace another target's document",
+                                "permission_denied", path)
+            if owner is None and checked_path(repository.root, path).exists():
+                raise SpecError("topology author cannot replace an unregistered existing file",
+                                "permission_denied", path)
+            authored[path] = item["content"]
+        completed.append("concorde-spec-author")
+    if host.mode == "describe-policy":
+        return _main_topology_response("accept-topology", repository, proposal,
+            outcome="described", answer="Topology author policies described.",
+            completed=completed)
+    overrides = {path: content.encode() for path, content in authored.items()}
+    report = validate_repository(repository.root, package_root=host.package_root,
+        registry_bytes=candidate_bytes, document_overrides=overrides)
+    if report.status != "success":
+        raise SpecError("topology candidate validation failed: " + "; ".join(
+            finding.message for finding in report.findings), "invalid_proposal")
+    changes = [file_change(repository.root, repository.registry_path, candidate_bytes.decode())]
+    changes.extend(file_change(repository.root, path, content) for path, content in authored.items())
+    application_payload = {"topology_proposal": proposal,
+        "base_registry_digest": digest(repository.registry_bytes),
+        "protocol_binding": repository.config["protocol"], "files": changes}
+    application = typed("concorde-topology-application", {
+        "application_id": digest(application_payload), **application_payload})
+    relative = ".concorde/topology-proposals/" + application["data"]["application_id"][7:] + ".json"
+    stored = file_change(repository.root, relative, canonical(application) + "\n")
+    apply_files(repository.root, [stored], {relative})
+    application_ref = artifact(repository.root, application["data"]["application_id"], relative)
+    completed.append("concorde-main-prepare-topology")
+    return _main_topology_response("accept-topology", repository, proposal,
+        outcome="topology_prepared", answer="Exact topology application prepared for maintainer review.",
+        application=application_ref, completed=completed)
+
+
+def _apply_topology(application_ref: dict, host: OperationHost) -> dict:
+    repository = SpecRepository(host.project_root, host.package_root)
+    verify_artifacts(repository.root, application_ref)
+    raw = read_file(repository.root, application_ref["path"])
+    application = validate_typed(decode(raw.decode()), "concorde-topology-application")
+    data = application["data"]
+    identity = {key: item for key, item in data.items() if key != "application_id"}
+    if digest(identity) != data["application_id"] or application_ref["id"] != data["application_id"]:
+        raise SpecError("topology application identity is invalid", "invalid_proposal")
+    expected_path = ".concorde/topology-proposals/" + data["application_id"][7:] + ".json"
+    if application_ref["path"] != expected_path:
+        raise SpecError("topology application is outside the host proposal area", "invalid_proposal")
+    _, proposal = _validate_topology_proposal(host, data["topology_proposal"])
+    if data["base_registry_digest"] != digest(repository.registry_bytes):
+        raise SpecError("topology application registry base changed", "stale_proposal")
+    if data["protocol_binding"] != repository.config["protocol"]:
+        raise SpecError("topology application Protocol binding changed", "stale_proposal")
+    design = proposal["data"]["design"]["data"]
+    candidate_bytes = (json.dumps(design["registry"], indent=2, sort_keys=True) + "\n").encode()
+    files = data["files"]
+    registry_files = [item for item in files if item["path"] == repository.registry_path]
+    if len(registry_files) != 1 or registry_files[0]["content"].encode() != candidate_bytes:
+        raise SpecError("topology application does not contain the exact candidate registry",
+                        "invalid_proposal")
+    task_ids = {item["target_id"] for item in design["spec_tasks"]}
+    targets = {item["id"]: item for item in design["registry"]["targets"]}
+    expected_documents = {path for target_id in task_ids for path in targets[target_id]["documents"]}
+    actual_documents = {item["path"] for item in files if item["path"] != repository.registry_path}
+    if actual_documents != expected_documents or len({item["path"] for item in files}) != len(files):
+        raise SpecError("topology application document set differs from accepted design",
+                        "invalid_proposal")
+    if host.mode == "describe-policy":
+        return _main_topology_response("apply-topology", repository, proposal,
+            outcome="described", answer="Topology application is deterministic and launches no agent.")
+    overrides = {item["path"]: item["content"].encode() for item in files
+                 if item["path"] != repository.registry_path}
+    report = validate_repository(repository.root, package_root=host.package_root,
+        registry_bytes=candidate_bytes, document_overrides=overrides)
+    if report.status != "success":
+        raise SpecError("topology application validation failed: " + "; ".join(
+            finding.message for finding in report.findings), "invalid_proposal")
+    allowed = {item["path"] for item in files}
+    def verify():
+        current = validate_repository(repository.root, package_root=host.package_root)
+        if current.status != "success":
+            raise SpecError("applied topology failed validation: " + "; ".join(
+                finding.message for finding in current.findings), "invalid_proposal")
+    changed = apply_files(repository.root, files, allowed, verify=verify)
+    try:
+        checked_path(repository.root, application_ref["path"]).unlink()
+        proposal_dir = checked_path(repository.root, ".concorde/topology-proposals")
+        if proposal_dir.is_dir() and not any(proposal_dir.iterdir()):
+            proposal_dir.rmdir()
+    except OSError:
+        # The application is already committed; stale host artifacts remain ignored and digest-bound.
+        pass
+    return _main_topology_response("apply-topology",
+        SpecRepository(repository.root, host.package_root), proposal,
+        outcome="topology_applied", answer="Accepted topology application applied atomically.",
+        files=changed, completed=("concorde-main-apply-topology",))
 
 
 class Invocation:
@@ -479,7 +821,7 @@ class Invocation:
             "completed_operations": list(self.completed)})
 
     def stage(self, operation: str, *, inputs: tuple[dict, ...] = (), readonly=False) -> dict:
-        phase, role = AGENT_OPERATIONS[operation]
+        phase, role = {**AGENT_OPERATIONS, **TARGET_AGENT_STAGES}[operation]
         prompt = resolve_skill_prompt(self.host.package_root / "skills" / role / "SKILL.md", "skill", "")
         snapshot = resolve_context(self.repository, self.target.id, phase=phase, task=self.task["task"],
             focus_id=self.task.get("focus_id"), constraints=tuple(self.task.get("constraints", [])),
@@ -841,8 +1183,14 @@ def _dispatch(operation, configuration, task, host):
         if host.mode == "describe-policy":
             raise SpecError("project proposals are the deterministic preview for this Operation", "use_proposal")
         return _project_operation(operation, configuration, task, host)
-    if operation == "concorde-ask":
-        return MainInvocation(operation, configuration, task, host).run_ask()
+    if operation == MAIN_OPERATION:
+        if task["action"] == "ask":
+            return MainInvocation(operation, configuration, task, host).run_answer()
+        if task["action"] == "design-topology":
+            return MainInvocation(operation, configuration, task, host).run_topology_design()
+        if task["action"] == "accept-topology":
+            return _prepare_topology(configuration, task["topology_proposal"], host)
+        return _apply_topology(task["application"], host)
     main_completed: tuple[str, ...] = ()
     if (operation in MAIN_ROUTED_OPERATIONS and host.routed_target is not None
             and task.get("target_id") != host.routed_target):
@@ -915,12 +1263,16 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
         configuration = validate_typed(configuration if configuration is not None else load_configuration(host.project_root), "concorde-operation-configuration")
         task = validate_typed(runtime_input, OPERATION_CONTRACTS[operation][0])["data"]
         task = copy.deepcopy(task)
-        task.setdefault("constraints", [])
-        task.setdefault("task", "Inspect the selected records")
-        mutation = operation not in {"concorde-ask", "concorde-analyze", "concorde-context-solve",
+        if not (operation == MAIN_OPERATION
+                and task.get("action") in {"accept-topology", "apply-topology"}):
+            task.setdefault("constraints", [])
+            task.setdefault("task", "Inspect the selected records")
+        mutation = operation not in {"concorde-main", "concorde-analyze", "concorde-context-solve",
             "concorde-context", "concorde-resolve-context"}
         if operation in {"concorde-init", "concorde-migrate"}:
             mutation = task["action"] == "apply"
+        if operation == MAIN_OPERATION:
+            mutation = task["action"] in {"accept-topology", "apply-topology"}
         if operation == "concorde-reflections-triage" and task["action"] == "status":
             mutation = False
         host, workspace = _worktree(host, mutation)
@@ -934,7 +1286,9 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
         output = _dispatch(operation, configuration, task, host)
         outcome = output["data"].get("outcome", "completed")
         result.update(output=output, status="described" if host.mode == "describe-policy" else
-            "succeeded" if outcome in {"completed", "delivered"} else "failed" if outcome == "failed" else "blocked")
+            "succeeded" if outcome in {"completed", "delivered", "topology_proposed",
+                                       "topology_prepared", "topology_applied"}
+            else "failed" if outcome == "failed" else "blocked")
     except (SpecError, OperationDataError) as error:
         result["errors"] = [{"code": error.code, "field": error.field, "message": str(error)}]
     except Exception as error:

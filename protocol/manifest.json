@@ -10,7 +10,7 @@
     },
     {
       "path": "protocol/kinds/module.md",
-      "digest": "sha256:aa02fdb0d89bc203efab980b85589145ca867fcd10af5228bdb7fa1811f8ae29"
+      "digest": "sha256:5d59045096c7ee3f3e73c2341dd48332f051d4ac7f581a45c73f50560e8b4c1e"
     },
     {
       "path": "protocol/kinds/service.md",
@@ -18,11 +18,11 @@
     },
     {
       "path": "protocol/principles.md",
-      "digest": "sha256:7d5d576018025d82a8053133a3e6cba058536a5588eb7c401d448ba05fdae870"
+      "digest": "sha256:13cc7c35b4e09aa4546e623fb5e347cc7f6f875106907090f9aebe651ee5411d"
     },
     {
       "path": "protocol/schemas.json",
-      "digest": "sha256:11e89054e9f208c84fb92d04a4d89f3c6aeabd98b0e2e4851218f28f27aeac26"
+      "digest": "sha256:80b13dea2185a6f32e955fa5f8164a2427f4904edd307fc740032c81baea0831"
     }
   ]
 }

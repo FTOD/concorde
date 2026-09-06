@@ -16,9 +16,15 @@ The branch starts from main `e48f8aaaf201ab42a7058f5e5373529b6591e5f4`, through 
   separate TypedValues in invocation schema 2; null configuration is resolved by the trusted host.
 - New agent-backed tasks first use a separate main coordinator. It starts at the entry Domain or
   Service and may append only referenced Domain/Service Specs; Module Specs and code are rejected.
-  Each selected target worker starts fresh with one digest-bound snapshot. Ask may route several
+  Each selected target worker starts fresh with one digest-bound snapshot. The public
+  `concorde-main` Operation replaces standalone ask: its default `ask` action may route several
   readers and synthesize typed results; other Operations route one owner, using a Domain for
   cross-target mutation. Public context inspection returns membership/digests without bodies.
+- `concorde-main` also owns steady-state topology evolution. Its coordinator designs a complete
+  registry from exact topology metadata, all kind definitions and admitted Domain/Service bodies,
+  but no Module body or code. Explicit maintainer acceptance precedes private target-local Spec
+  authoring; an in-memory overlay must validate before the host stores exact proposed bytes. A
+  second acceptance applies that digest/before-digest-bound artifact atomically.
 - Only implementation receives owned code. Spec-only agents use private capsules; no ancestor,
   peer Spec, raw log or transcript is added implicitly. Structured Spec gaps retain target/context
   provenance across main discovery and Domain coordination.
@@ -39,7 +45,7 @@ The branch starts from main `e48f8aaaf201ab42a7058f5e5373529b6591e5f4`, through 
 
 | Gate | Result |
 | --- | --- |
-| Complete Python suite | 397 tests passed |
+| Complete Python suite | 402 tests passed |
 | Complete docsite suite | 116 tests passed across 26 files |
 | TypeScript typecheck | Passed |
 | Production build and candidate promotion | Passed for Concorde and a freshly initialized project |
@@ -54,10 +60,12 @@ Docsite commands: `node node_modules/typescript/bin/tsc --noEmit`,
 `node node_modules/vitest/vitest.mjs run`, and `node --import tsx scripts/build.ts`.
 The CI-equivalent tests include actual installer provisioning/ownership/rollback and a separate
 fresh subprocess importing only installed framework code for complete standard loops and main
-discovery/reader/synthesis through both Codex and Claude completion adapters. Their native model
-process is an explicit test double. LangGraph, typed admission, host policies, file changes,
-behavioral subprocess checks and delivery are real. Native permission and
-completion-attestation/replay unit coverage is retained.
+discovery/reader/synthesis through both Codex and Claude completion adapters. They also exercise
+topology design, both acceptance gates, private Module authoring, stale/tampered proposal rejection,
+read-only policy description, overlay validation and atomic application. Their native model process
+is an explicit test double. LangGraph, typed admission, host policies, file changes, behavioral
+subprocess checks and delivery are real. Native permission and completion-attestation/replay unit
+coverage is retained.
 
 ## Limits and migration notes
 

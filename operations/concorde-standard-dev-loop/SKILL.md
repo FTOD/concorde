@@ -3,7 +3,7 @@ name: concorde-standard-dev-loop
 description: "Run standard-dev-loop through Concorde's enforced Spec context and JSON boundary."
 exposure: public
 operation: operation.py
-capabilities: ["concorde-main", "concorde-specify", "concorde-plan", "concorde-tasks", "concorde-implement", "concorde-validate", "concorde-deliver"]
+capabilities: ["concorde-coordinator", "concorde-specify", "concorde-plan", "concorde-tasks", "concorde-implement", "concorde-validate", "concorde-deliver"]
 ---
 
 # concorde-standard-dev-loop

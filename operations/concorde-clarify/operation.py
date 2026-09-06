@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 OPERATION_NAME = 'concorde-clarify'
-OPERATION_CAPABILITIES = ('concorde-main', 'concorde-spec-author')
+OPERATION_CAPABILITIES = ('concorde-coordinator', 'concorde-spec-author')
 
 def package_root():
     return Path(__file__).resolve().parents[2]

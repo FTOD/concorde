@@ -11,10 +11,14 @@ them. The package assets Module renders public wrappers; the managed runtime Mod
 locked Python Operation runtime and the optional official viewer. User changes to receipt-owned
 outputs cause a conflict rather than silent replacement. Failed provisioning or target validation
 restores previously owned output bytes. Updating an installation does not author business Specs.
+Project defaults are created only when absent and are not receipt-owned. They include Reflection
+settings/scratch exclusions and the local ignore rule for exact topology application artifacts.
 
 Initialization configures the integration and enforcement mode, pins the distributed Protocol and
 creates an honest Domain stub with an explicit one-document registry. A stub states that business
 facts have not yet been supplied. It does not claim completeness or infer behavior from source code.
+Direct initialization or migration also creates the topology-artifact ignore rule when installation
+has not already supplied it.
 The context Service subsequently injects the pinned principles and matching kind definition for every
 consumer project. The consumer chooses its own scopes and components; Concorde's own decomposition
 is not a mandatory template.

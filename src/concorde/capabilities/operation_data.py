@@ -258,6 +258,32 @@ def validate_typed(value: Any, expected: str | None = None, field: str = "") -> 
         ids = [item["reflection_id"] for item in data["dispositions"]]
         if ids != data["reflection_ids"]:
             raise OperationDataError("incompatible_handoff", field + "/data/dispositions", "dispositions must match the exact selected IDs in order")
+    if type_id == "concorde-main-request":
+        action = data.setdefault("action", "ask")
+        if action in {"ask", "design-topology"}:
+            if "task" not in data:
+                raise OperationDataError("invalid_field", field + "/data/task", "task is required")
+            if "topology_proposal" in data or "application" in data:
+                raise OperationDataError("invalid_field", field + "/data", "proposal fields are invalid for this action")
+            data.setdefault("constraints", [])
+        elif action == "accept-topology":
+            if "topology_proposal" not in data:
+                raise OperationDataError("invalid_field", field + "/data/topology_proposal", "accept-topology requires the design proposal")
+            if "application" in data:
+                raise OperationDataError("invalid_field", field + "/data/application", "application is only valid for apply-topology")
+            forbidden = {"task", "target_id", "focus_id", "constraints"} & data.keys()
+            if forbidden:
+                raise OperationDataError("invalid_field", field + "/data", f"accept-topology forbids {sorted(forbidden)}")
+        else:
+            if "application" not in data:
+                raise OperationDataError("invalid_field", field + "/data/application", "apply-topology requires the exact application")
+            if "topology_proposal" in data:
+                raise OperationDataError("invalid_field", field + "/data/topology_proposal", "use the proposal embedded in application")
+            forbidden = {"task", "target_id", "focus_id", "constraints"} & data.keys()
+            if forbidden:
+                raise OperationDataError("invalid_field", field + "/data", f"apply-topology forbids {sorted(forbidden)}")
+        if "focus_id" in data and "target_id" not in data:
+            raise OperationDataError("invalid_field", field + "/data/focus_id", "focus hint requires target hint")
     if "feature_id" in data and "attempt_dir" in data:
         if data["attempt_dir"] != f".concorde/attempts/{data['feature_id']}":
             raise OperationDataError("workspace_mismatch", field + "/data/attempt_dir", "attempt does not belong to selected feature")

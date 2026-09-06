@@ -3,7 +3,7 @@
   "registry": ".concorde/specs.json",
   "protocol": {
     "version": "1.0.0",
-    "digest": "sha256:e84e4d06babe125c953f40e68c8aa0b36d46477140254997c94388640dafeeb5"
+    "digest": "sha256:0ac9f3ce54ab0f34dd0ef58204b45f6d195f1c5722702f1f61348bffb6bd2eff"
   },
   "operation_configuration": {
     "data": {

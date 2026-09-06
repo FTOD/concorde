@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Paired entry point for concorde-ask."""
+"""Paired entry point for concorde-main."""
 from pathlib import Path
 import sys
 
-OPERATION_NAME = 'concorde-ask'
-OPERATION_CAPABILITIES = ('concorde-main', 'concorde-reader')
+OPERATION_NAME = 'concorde-main'
+OPERATION_CAPABILITIES = ('concorde-coordinator', 'concorde-reader', 'concorde-spec-author')
 
 def package_root():
     return Path(__file__).resolve().parents[2]

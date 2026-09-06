@@ -13,8 +13,8 @@
   "format_lineage": "Skill and Markdown template formatting was informed by GitHub Spec Kit; Concorde owns and executes every distributed asset.",
   "skills": [
     "concorde-context-assessor",
+    "concorde-coordinator",
     "concorde-implementation-worker",
-    "concorde-main",
     "concorde-planner",
     "concorde-reader",
     "concorde-spec-author",
@@ -22,7 +22,6 @@
   ],
   "operations": [
     "concorde-analyze",
-    "concorde-ask",
     "concorde-checklist",
     "concorde-clarify",
     "concorde-configure",
@@ -34,6 +33,7 @@
     "concorde-fast-loop",
     "concorde-implement",
     "concorde-init",
+    "concorde-main",
     "concorde-migrate",
     "concorde-plan",
     "concorde-reflections-triage",

@@ -1,3 +1,4 @@
+import copy
 import json
 import tempfile
 import unittest
@@ -40,13 +41,13 @@ class ScopedProtocolTests(unittest.TestCase):
         with self.assertRaisesRegex(SpecError,'Domain or Service'):SpecRepository(self.root)
     def test_main_discovers_domain_and_service_specs_then_starts_fresh_worker(self):
         double=ModelProcessDouble()
-        result=self.run_op('concorde-ask',{'task':'Explain transfer'},double)
+        result=self.run_op('concorde-main',{'task':'Explain transfer'},double)
         self.assertEqual('succeeded',result['status'],result)
         data=result['output']['data']
         self.assertEqual(['scope.bank','service.transfer'],data['discovered_targets'])
         self.assertEqual(['service.transfer'],[route['target_id'] for route in data['routes']])
         self.assertEqual(['route','route','ask','synthesize'],[call['stage'] for call in double.calls])
-        self.assertEqual(['concorde-main','concorde-main','concorde-reader','concorde-main'],
+        self.assertEqual(['concorde-coordinator','concorde-coordinator','concorde-reader','concorde-coordinator'],
                          [call['capability'] for call in double.calls])
         first,second,worker,final=double.calls
         self.assertEqual(['scope.bank'],[item['target_id'] for item in first['snapshot']['targets']])
@@ -54,19 +55,136 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('service.transfer',worker['snapshot']['target_id'])
         self.assertEqual(second['snapshot']['targets'],final['snapshot']['targets'])
         self.assertEqual(4,len({str(call['cwd']) for call in double.calls}))
+        self.assertEqual(['protocol/principles.md','protocol/kinds/domain.md',
+            'protocol/kinds/service.md','protocol/kinds/module.md'],
+            [item['path'] for item in first['snapshot']['protocol']])
         invocation_ids=[item.completion.invocation_id for item in self.host.evidence]
         self.assertEqual(4,len(invocation_ids));self.assertEqual(4,len(set(invocation_ids)))
         for call in (first,second,final):
             text=json.dumps(call['snapshot'])
             self.assertNotIn('# Ledger API',text)
             self.assertNotIn('PRIVATE_CODE',text)
+    def test_main_design_accept_and_exact_apply_create_topology_atomically(self):
+        def callback(stage,snapshot,data,cwd):
+            if stage=='route' and snapshot['action']=='design-topology':
+                discovered=[item['target_id'] for item in snapshot['targets']]
+                if 'scope.audit' not in discovered:
+                    data.update(outcome='expand',expand_targets=['scope.audit'],routes=[],gaps=[],topology_design=None)
+                else:
+                    registry=copy.deepcopy(snapshot['topology'])
+                    registry['targets'][3]={**registry['targets'][3],'title':'Account ledger'}
+                    registry['targets'].append({'id':'service.audit-report','kind':'service','title':'Audit reports',
+                        'documents':['specs/audit-report.md'],'scope_parent':None,'component_parent':None,
+                        'participates_in':['scope.audit'],'implementation':[],'features':[],'apis':[],
+                        'checks':[],'diagrams':[]})
+                    design=typed('concorde-topology-design',{'summary':'Add an audit reporting Service.',
+                        'registry':registry,'spec_tasks':[
+                          {'target_id':'scope.audit','task':'Route audit reporting to service.audit-report.'},
+                          {'target_id':'module.ledger','task':'Keep the Ledger API complete under its clarified title.'},
+                          {'target_id':'service.audit-report','task':'Define the self-contained audit reporting boundary.'}],
+                        'migration_constraints':[],'acceptance':['The new Service is registered and routable.']})
+                    data.update(outcome='topology_proposed',answer='Audit reporting topology designed.',
+                        expand_targets=[],routes=[],gaps=[],topology_design=design)
+            if stage=='topology-author' and snapshot['target']['id']=='scope.audit':
+                data['documents']=[{'path':'specs/audit-scope.md',
+                    'content':'# Audit\nRoute audit reporting to service.audit-report.\n'}]
+        double=ModelProcessDouble(callback)
+        design=self.run_op('concorde-main',{'action':'design-topology','task':'Add audit reports'},double)
+        self.assertEqual('topology_proposed',design['output']['data']['outcome']);proposal=design['output']['data']['topology_proposal']
+        self.assertFalse((self.root/'specs/audit-report.md').exists())
+        prepared=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},double)
+        self.assertEqual('topology_prepared',prepared['output']['data']['outcome']);application=prepared['output']['data']['application']
+        self.assertEqual({'id','path','digest'},set(application))
+        self.assertNotIn('# Audit reports',json.dumps(prepared));self.assertNotIn('# Ledger API',json.dumps(prepared))
+        self.assertTrue((self.root/application['path']).is_file());self.assertFalse((self.root/'specs/audit-report.md').exists())
+        tampered={**application,'digest':'sha256:'+'0'*64}
+        rejected=self.run_op('concorde-main',{'action':'apply-topology','application':tampered},double)
+        self.assertEqual('blocked',rejected['status']);self.assertTrue((self.root/application['path']).is_file())
+        applied=self.run_op('concorde-main',{'action':'apply-topology','application':application},double)
+        self.assertEqual('topology_applied',applied['output']['data']['outcome']);self.assertFalse((self.root/application['path']).exists())
+        repository=SpecRepository(self.root);self.assertIn('service.audit-report',repository.targets)
+        self.assertTrue((self.root/'specs/audit-report.md').is_file())
+        authors=[call for call in double.calls if call['stage']=='topology-author']
+        self.assertEqual(['scope.audit','module.ledger','service.audit-report'],
+                         [call['snapshot']['target']['id'] for call in authors])
+        module_author=next(call for call in authors if call['snapshot']['target']['id']=='module.ledger')
+        self.assertIn('# Ledger API',json.dumps(module_author['snapshot']))
+        main=[call for call in double.calls if call['capability']=='concorde-coordinator']
+        self.assertTrue(all('# Ledger API' not in json.dumps(call['snapshot']) for call in main))
+    def test_topology_acceptance_stops_before_writes_on_gap_or_stale_design(self):
+        def design_callback(stage,snapshot,data,cwd):
+            if stage=='route' and snapshot['action']=='design-topology':
+                if 'service.transfer' not in [item['target_id'] for item in snapshot['targets']]:
+                    data.update(outcome='expand',expand_targets=['service.transfer'],routes=[],gaps=[],topology_design=None)
+                    return
+                registry=copy.deepcopy(snapshot['topology'])
+                registry['targets'][2]={**registry['targets'][2],'title':'Transfer service'}
+                design=typed('concorde-topology-design',{'summary':'Rename the transfer Service.',
+                    'registry':registry,'spec_tasks':[{'target_id':'service.transfer','task':'Explain the renamed Service.'}],
+                    'migration_constraints':[],'acceptance':['The Service title and Spec agree.']})
+                data.update(outcome='topology_proposed',answer='Designed.',expand_targets=[],routes=[],gaps=[],topology_design=design)
+        design_double=ModelProcessDouble(design_callback)
+        designed=self.run_op('concorde-main',{'action':'design-topology','task':'Rename transfers'},design_double)
+        proposal=designed['output']['data']['topology_proposal'];before=(self.root/'.concorde/specs.json').read_bytes()
+        def gap(stage,snapshot,data,cwd):
+            design_callback(stage,snapshot,data,cwd)
+            if stage=='topology-author':data.update(outcome='spec_incomplete',answer='Naming promise missing.',documents=[],gaps=[{
+                'question':'What consumer name is promised?','blocked_step':'Author the Service Spec','needed_contract':'Service naming rule'}])
+        blocked=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},ModelProcessDouble(gap))
+        self.assertEqual('blocked',blocked['status']);self.assertEqual(before,(self.root/'.concorde/specs.json').read_bytes())
+        (self.root/'.concorde/specs.json').write_text((self.root/'.concorde/specs.json').read_text()+'\n')
+        stale=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},ModelProcessDouble())
+        self.assertEqual('blocked',stale['status']);self.assertEqual('stale_proposal',stale['errors'][0]['code'])
+    def test_topology_policy_description_is_read_only_at_both_acceptance_gates(self):
+        def callback(stage,snapshot,data,cwd):
+            if stage=='route' and snapshot['action']=='design-topology':
+                discovered=[item['target_id'] for item in snapshot['targets']]
+                if 'service.transfer' not in discovered:
+                    data.update(outcome='expand',expand_targets=['service.transfer'],routes=[],gaps=[],topology_design=None)
+                    return
+                registry=copy.deepcopy(snapshot['topology'])
+                registry['targets'][2]={**registry['targets'][2],'title':'Transfer boundary'}
+                design=typed('concorde-topology-design',{'summary':'Clarify the transfer Service title.',
+                    'registry':registry,'spec_tasks':[{'target_id':'service.transfer','task':'Keep the complete transfer Spec under the clarified title.'}],
+                    'migration_constraints':[],'acceptance':['The title changes without changing behavior.']})
+                data.update(outcome='topology_proposed',answer='Designed.',expand_targets=[],routes=[],gaps=[],topology_design=design)
+        double=ModelProcessDouble(callback)
+        designed=self.run_op('concorde-main',{'action':'design-topology','task':'Clarify transfer title'},double)
+        proposal=designed['output']['data']['topology_proposal']
+        before_registry=(self.root/'.concorde/specs.json').read_bytes()
+        before_specs={path.relative_to(self.root).as_posix():path.read_bytes() for path in (self.root/'specs').rglob('*.md')}
+        described=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},mode='describe-policy')
+        self.assertEqual('described',described['status'],described)
+        self.assertEqual(before_registry,(self.root/'.concorde/specs.json').read_bytes())
+        self.assertEqual(before_specs,{path.relative_to(self.root).as_posix():path.read_bytes() for path in (self.root/'specs').rglob('*.md')})
+        self.assertEqual([],list((self.root/'.concorde/topology-proposals').glob('*.json')))
+        self.assertTrue(self.host.descriptions);self.assertTrue(all(not item['write_paths'] for item in self.host.descriptions))
+        prepared=self.run_op('concorde-main',{'action':'accept-topology','topology_proposal':proposal},double)
+        application=prepared['output']['data']['application'];artifact_before=(self.root/application['path']).read_bytes()
+        described=self.run_op('concorde-main',{'action':'apply-topology','application':application},mode='describe-policy')
+        self.assertEqual('described',described['status'],described)
+        self.assertEqual(before_registry,(self.root/'.concorde/specs.json').read_bytes())
+        self.assertEqual(artifact_before,(self.root/application['path']).read_bytes())
+    def test_main_rejects_invalid_candidate_topology_before_acceptance(self):
+        def callback(stage,snapshot,data,cwd):
+            if stage=='route' and snapshot['action']=='design-topology':
+                registry=copy.deepcopy(snapshot['topology']);registry['entry_target']='module.ledger'
+                design=typed('concorde-topology-design',{'summary':'Invalid entry target.',
+                    'registry':registry,'spec_tasks':[{'target_id':'module.ledger','task':'Retain the Module Spec.'}],
+                    'migration_constraints':[],'acceptance':['The invalid entry would be selected.']})
+                data.update(outcome='topology_proposed',answer='Designed.',expand_targets=[],routes=[],gaps=[],topology_design=design)
+        double=ModelProcessDouble(callback)
+        result=self.run_op('concorde-main',{'action':'design-topology','task':'Select a Module entry'},double)
+        self.assertEqual('blocked',result['status'],result);self.assertEqual('invalid_proposal',result['errors'][0]['code'])
+        self.assertFalse(any(call['stage']=='topology-author' for call in double.calls))
+        self.assertEqual([],list((self.root/'.concorde/topology-proposals').glob('*.json')))
     def test_main_can_route_module_worker_but_cannot_expand_module_spec(self):
         def route(stage,snapshot,data,cwd):
             if stage=='route':
                 data.update(outcome='routed',expand_targets=[],gaps=[],routes=[{
                     'target_id':'module.ledger','focus_id':'api.ledger','task':'Explain ledger reads','constraints':[]}])
         double=ModelProcessDouble(route)
-        result=self.run_op('concorde-ask',{'task':'Explain ledger reads'},double)
+        result=self.run_op('concorde-main',{'task':'Explain ledger reads'},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual(['route','ask','synthesize'],[call['stage'] for call in double.calls])
         self.assertEqual('module.ledger',double.calls[1]['snapshot']['target_id'])
@@ -74,7 +192,7 @@ class ScopedProtocolTests(unittest.TestCase):
                             for item in call['snapshot']['targets']))
         def expand(stage,snapshot,data,cwd):
             if stage=='route':data.update(outcome='expand',expand_targets=['module.ledger'],routes=[],gaps=[])
-        blocked=self.run_op('concorde-ask',{'task':'Open the ledger Spec'},ModelProcessDouble(expand))
+        blocked=self.run_op('concorde-main',{'task':'Open the ledger Spec'},ModelProcessDouble(expand))
         self.assertEqual('blocked',blocked['status']);self.assertEqual('permission_denied',blocked['errors'][0]['code'])
     def test_main_can_split_one_request_into_separate_target_workers(self):
         def routes(stage,snapshot,data,cwd):
@@ -82,12 +200,12 @@ class ScopedProtocolTests(unittest.TestCase):
                 {'target_id':'service.transfer','focus_id':'feature.transfer','task':'Explain transfer','constraints':[]},
                 {'target_id':'module.ledger','focus_id':'api.ledger','task':'Explain ledger reads','constraints':[]}])
         double=ModelProcessDouble(routes)
-        result=self.run_op('concorde-ask',{'task':'Explain transfer and ledger'},double)
+        result=self.run_op('concorde-main',{'task':'Explain transfer and ledger'},double)
         self.assertEqual('succeeded',result['status'],result)
         workers=[call for call in double.calls if call['capability']=='concorde-reader']
         self.assertEqual(['service.transfer','module.ledger'],[call['snapshot']['target_id'] for call in workers])
         self.assertEqual(2,len(result['output']['data']['worker_results']))
-        main=[call for call in double.calls if call['capability']=='concorde-main']
+        main=[call for call in double.calls if call['capability']=='concorde-coordinator']
         self.assertTrue(all(item['kind']!='module' for call in main for item in call['snapshot']['targets']))
     def test_main_reports_routing_and_worker_spec_gaps_without_hidden_context(self):
         def routing_gap(stage,snapshot,data,cwd):
@@ -95,7 +213,7 @@ class ScopedProtocolTests(unittest.TestCase):
                 expand_targets=[],routes=[],gaps=[{'question':'Which target owns settlement?',
                 'blocked_step':'Select a worker','needed_contract':'Settlement routing responsibility',
                 'target_id':'scope.bank'}])
-        blocked=self.run_op('concorde-ask',{'task':'Explain settlement'},ModelProcessDouble(routing_gap))
+        blocked=self.run_op('concorde-main',{'task':'Explain settlement'},ModelProcessDouble(routing_gap))
         self.assertEqual('blocked',blocked['status']);gap=blocked['output']['data']['gaps'][0]
         self.assertEqual('scope.bank',gap['target_id']);self.assertEqual(blocked['output']['data']['context_id'],gap['context_id'])
         def worker_gap(stage,snapshot,data,cwd):
@@ -107,7 +225,7 @@ class ScopedProtocolTests(unittest.TestCase):
             if stage=='synthesize':
                 gap=snapshot['worker_results'][0]['data']['gaps'][0]
                 data.update(outcome='spec_incomplete',answer='The selected Module Spec is incomplete.',gaps=[gap])
-        result=self.run_op('concorde-ask',{'task':'Explain settlement ledger'},ModelProcessDouble(worker_gap))
+        result=self.run_op('concorde-main',{'task':'Explain settlement ledger'},ModelProcessDouble(worker_gap))
         self.assertEqual('blocked',result['status'],result);gap=result['output']['data']['gaps'][0]
         worker=result['output']['data']['worker_results'][0]['data']
         self.assertEqual('module.ledger',gap['target_id']);self.assertEqual(worker['context_id'],gap['context_id'])
@@ -116,9 +234,9 @@ class ScopedProtocolTests(unittest.TestCase):
         result=self.run_op('concorde-plan',{'task':'Plan the transfer promise'},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual('service.transfer',result['output']['data']['target_id'])
-        self.assertEqual('concorde-main-route',result['output']['data']['completed_operations'][0])
+        self.assertEqual('concorde-coordinator-route',result['output']['data']['completed_operations'][0])
         self.assertEqual(['route','route','context-solve','plan'],[call['stage'] for call in double.calls])
-        self.assertEqual(['concorde-main','concorde-main','concorde-context-assessor','concorde-planner'],
+        self.assertEqual(['concorde-coordinator','concorde-coordinator','concorde-context-assessor','concorde-planner'],
                          [call['capability'] for call in double.calls])
     def test_non_ask_main_route_cannot_split_or_rewrite_user_intent(self):
         def split(stage,snapshot,data,cwd):
@@ -136,28 +254,28 @@ class ScopedProtocolTests(unittest.TestCase):
         (self.root/'specs/how-money-moves.md').write_text('# Banking\nNo downstream target is identified.\n')
         def expand(stage,snapshot,data,cwd):
             if stage=='route':data.update(outcome='expand',expand_targets=['service.transfer'],routes=[],gaps=[])
-        result=self.run_op('concorde-ask',{'task':'Explain transfer'},ModelProcessDouble(expand))
+        result=self.run_op('concorde-main',{'task':'Explain transfer'},ModelProcessDouble(expand))
         self.assertEqual('blocked',result['status']);self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
         def route(stage,snapshot,data,cwd):
             if stage=='route':data.update(outcome='routed',expand_targets=[],gaps=[],routes=[{
                 'target_id':'module.ledger','focus_id':None,'task':snapshot['task'],'constraints':[]}])
-        result=self.run_op('concorde-ask',{'task':'Explain ledger'},ModelProcessDouble(route))
+        result=self.run_op('concorde-main',{'task':'Explain ledger'},ModelProcessDouble(route))
         self.assertEqual('blocked',result['status']);self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
     def test_discovery_context_is_append_only_digest_bound_and_domain_service_only(self):
         repo=SpecRepository(self.root)
-        first=resolve_discovery_context(repo,('scope.bank',),operation='concorde-ask',phase='route',task='Route transfer')
-        second=resolve_discovery_context(repo,('scope.bank','service.transfer'),operation='concorde-ask',phase='route',task='Route transfer')
+        first=resolve_discovery_context(repo,('scope.bank',),operation='concorde-main',phase='route',task='Route transfer')
+        second=resolve_discovery_context(repo,('scope.bank','service.transfer'),operation='concorde-main',phase='route',task='Route transfer')
         self.assertNotEqual(first.id,second.id)
         self.assertEqual(['scope.bank','service.transfer'],[item['target_id'] for item in second.value['targets']])
         with self.assertRaisesRegex(SpecError,'cannot read module'):
-            resolve_discovery_context(repo,('scope.bank','module.ledger'),operation='concorde-ask',phase='route',task='Route ledger')
+            resolve_discovery_context(repo,('scope.bank','module.ledger'),operation='concorde-main',phase='route',task='Route ledger')
         (self.root/'specs/send-money.md').write_text('# Changed service routing facts\n')
         with self.assertRaisesRegex(SpecError,'changed'):recheck_discovery_context(repo,second)
         self.registry['targets'][3]['documents'].append('specs/send-money.md')
         (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
         with self.assertRaisesRegex(SpecError,'shares Module Spec'):
             resolve_discovery_context(SpecRepository(self.root),('scope.bank','service.transfer'),
-                operation='concorde-ask',phase='route',task='Route transfer')
+                operation='concorde-main',phase='route',task='Route transfer')
     def test_membership_changes_invalidate_snapshot(self):
         repo=SpecRepository(self.root); snapshot=resolve_context(repo,'service.transfer')
         self.registry['targets'][2]['documents'].reverse()
@@ -206,7 +324,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertTrue(any((self.root/'.concorde/attempts').iterdir()))
     def test_wrong_context_result_rejected(self):
         def wrong(stage,snapshot,data,cwd): data['context_id']='sha256:'+'0'*64
-        result=self.run_op('concorde-ask',{'target_id':'service.transfer','task':'Explain transfer'},ModelProcessDouble(wrong))
+        result=self.run_op('concorde-main',{'target_id':'service.transfer','task':'Explain transfer'},ModelProcessDouble(wrong))
         self.assertEqual('blocked',result['status'],result)
         self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
 

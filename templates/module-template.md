@@ -15,6 +15,11 @@ all business facts and collaborator promises required to understand and use its 
 inherit a Service's, Domain's, parent's, or provider's Spec. Selecting one API retains the complete
 registered Markdown collection. Only an implementation invocation may expose authorized source code.
 
+The main coordinator may design or route this Module from identity, responsibility and selection
+facts contained in admitted Domain/Service Specs plus exact registry metadata. It never receives this
+Module document collection. During an accepted topology change, only a separate target-local Spec
+author receives the current Module documents and proposed descriptor.
+
 ## Local promises and interactions
 
 [Define all target-relevant entities, ownership, inputs, outputs, conditions, failure, completion and retry semantics here. Include every required collaborator contract locally. Do not rely on parent, provider or sibling documents outside the registered collection.]

@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 OPERATION_NAME = 'concorde-analyze'
-OPERATION_CAPABILITIES = ('concorde-main', 'concorde-context-assessor')
+OPERATION_CAPABILITIES = ('concorde-coordinator', 'concorde-context-assessor')
 
 def package_root():
     return Path(__file__).resolve().parents[2]

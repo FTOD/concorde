@@ -7,6 +7,9 @@ optional `--checkout PATH`. The default is a read-only preview; `--apply` applie
 installation/update. Repeating the preview reports current owned output integrity. It owns
 .concorde/framework, .concorde/install.json and receipt-recorded integration outputs; it preserves
 project Specs, configuration, reflection history and unrelated user files.
+It seeds project-owned Reflection defaults and
+`.concorde/topology-proposals/.gitignore` only when absent; project defaults are excluded from the
+installation receipt and never overwritten on update.
 
 The distributable manifest is concorde.json schema 3, Concorde 4.0.0, Architecture Profile 8,
 Workspace Protocol 14 and Delivery Proposal 10. It contains exactly 7 internal Skills and 22 paired

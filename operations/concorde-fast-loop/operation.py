@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 OPERATION_NAME = 'concorde-fast-loop'
-OPERATION_CAPABILITIES = ('concorde-main', 'concorde-plan', 'concorde-tasks', 'concorde-implement', 'concorde-validate', 'concorde-deliver')
+OPERATION_CAPABILITIES = ('concorde-coordinator', 'concorde-plan', 'concorde-tasks', 'concorde-implement', 'concorde-validate', 'concorde-deliver')
 
 def package_root():
     return Path(__file__).resolve().parents[2]

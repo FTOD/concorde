@@ -19,6 +19,8 @@ that target without reducing its complete context.
 | Context snapshot | Immutable exact input to one agent invocation | Binds documents, Protocol, task, phase, instructions and typed stage artifacts |
 | Discovery context | Ordered append-only Domain/Service collections for the main coordinator | Expands on demand and changes identity on every admitted target |
 | Main coordinator | Global routing agent that never reads Module Specs or code | Selects fresh target workers and later synthesizes only typed results |
+| Topology design | Complete candidate registry, local Spec tasks and acceptance conditions | Is authored by the coordinator without writing and requires maintainer acceptance |
+| Topology application | Exact host-private registry/document replacements with before-digests | Is applied atomically only after a second maintainer acceptance |
 | Change attempt | Plan, tasks and revision-bound completion evidence | Lives from successful planning until verified delivery |
 | Spec gap | A named missing fact blocking the admitted task | Stops the workflow until an explicit authoring task supplies that fact |
 | Reflection | A retained problem report with independent human disposition | Enters code investigation only through an implementation phase |
@@ -52,6 +54,13 @@ The main coordinator is a distinct agent role. It may expand its append-only dis
 registered Domain and Service Specs, but never Module Specs or code. After it returns typed routes,
 the host privately resolves each target and starts a different worker. Typed worker results may
 return for synthesis; raw target snapshots do not.
+
+The public `concorde-main` replaces the former standalone ask Operation. Its topology design action
+may additionally inspect exact registry metadata and all global kind definitions, but no Module body
+or code. The coordinator produces structure; fresh target-local authors produce complete Spec bytes
+privately; the host validates an overlay and exposes only an application ArtifactRef. Maintainer
+acceptance is required once before target authoring and again before the exact registry/document
+transaction.
 
 Delivery means all selected tasks are complete, required checks pass, local/shared contracts are
 valid and evidence still matches current Spec and implementation bytes. It removes the completed

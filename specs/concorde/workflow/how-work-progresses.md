@@ -14,6 +14,9 @@ one fresh cognition session with a declared role. A Change attempt binds its pla
 intent and Spec revision. A Check measures implementation and returns status plus byte identities.
 A Gap is a concrete missing obligation or fact required by a stage. A Reflection is a reported
 problem that may require investigation and, separately, human approval of a proposed resolution.
+A Topology design is a coordinator-authored candidate registry plus target-local Spec tasks. A
+Topology application is the host-private exact registry/document byte set produced only after that
+design is accepted.
 
 The context Service selects only registered local documents. The host gives that snapshot to the
 agent execution Module under a permission policy compiled for the stage. Authoring returns proposed
@@ -50,6 +53,23 @@ stateDiagram-v2
   Implemented --> Tasks: failure needs implementation work
   Delivered --> [*]
 ```
+
+Topology evolution follows a separate two-gate sequence:
+
+```mermaid
+stateDiagram-v2
+  [*] --> Designed: concorde-main design-topology
+  Designed --> Authoring: maintainer accepts design
+  Authoring --> Gap: target-local Spec incomplete
+  Authoring --> Prepared: overlay validation succeeds
+  Prepared --> Applied: maintainer accepts exact artifact
+  Prepared --> Stale: registry, Protocol or source bytes changed
+  Applied --> [*]
+```
+
+No target author writes project files. A gap leaves the pre-design project unchanged. Prepared
+artifacts contain full proposed bytes, but only their path/digest enters coordinator cognition.
+Application is one host transaction with current before-digests and final repository validation.
 
 A known prohibition is unsupported, a contradiction is conflicting, a missing runtime value is
 invalid input, and tool failure is failed. None automatically means Spec incomplete. A gap names

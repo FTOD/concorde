@@ -81,7 +81,9 @@ class SpecDocument:
 
 
 class SpecRepository:
-    def __init__(self, project_root: Path | str, package_root: Path | str | None = None):
+    def __init__(self, project_root: Path | str, package_root: Path | str | None = None, *,
+                 registry_bytes: bytes | None = None,
+                 document_overrides: dict[str, bytes] | None = None):
         root = Path(project_root)
         if root.is_symlink() or not root.is_dir():
             raise SpecError("project root must be a real directory")
@@ -93,7 +95,10 @@ class SpecRepository:
         if set(self.config) != {"profile_version", "registry", "protocol", "operation_configuration"}:
             raise SpecError("Profile 8 configuration fields must be profile_version, registry, protocol, operation_configuration")
         self.registry_path = safe_path(self.config["registry"])
-        self.registry_bytes = read_file(self.root, self.registry_path)
+        self.registry_bytes = (bytes(registry_bytes) if registry_bytes is not None
+                               else read_file(self.root, self.registry_path))
+        self.document_overrides = {safe_path(path): bytes(content)
+                                   for path, content in (document_overrides or {}).items()}
         self.registry = decode(self.registry_bytes.decode())
         if set(self.registry) != {"schema_version", "project_id", "entry_target", "targets", "checks"} or self.registry["schema_version"] != 1:
             raise SpecError("unsupported Spec registry schema")
@@ -223,7 +228,9 @@ class SpecRepository:
     def documents(self, target: SpecTarget) -> tuple[SpecDocument, ...]:
         result = []
         for path in target.documents:
-            raw = read_file(self.root, path)
+            raw = self.document_overrides.get(path)
+            if raw is None:
+                raw = read_file(self.root, path)
             text = raw.decode("utf-8")
             metadata, body = parse_document(text, path) if text.startswith("---\n") else ({}, text)
             if not body.strip():

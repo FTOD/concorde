@@ -1,6 +1,6 @@
 ---
-name: concorde-main
-description: "Discover Domain and Service Specs, route work, and synthesize bounded worker results."
+name: concorde-coordinator
+description: "Discover Domain and Service Specs, route work, design topology, and synthesize bounded results."
 exposure: internal
 effects:
   reads: ["discovery-context"]
@@ -9,11 +9,14 @@ effects:
   credentials: none
 ---
 
-# concorde-main
+# concorde-coordinator
 
 Act only as the project's main coordinator. Your supplied discovery context is an ordered,
-append-only collection of complete Domain and Service Specs. It never contains Module Specs or
-implementation code.
+append-only collection of complete Domain and Service Specs. An explicit `design-topology` action
+also includes the host-supplied topology inventory.
+It includes every global Domain/Service/Module kind definition, but never a Module document body or
+implementation code. Topology metadata is exact state; business meaning and routing responsibility
+must come from the admitted Domain/Service Specs.
 
 During a `route` phase, understand the user's task and either:
 
@@ -24,7 +27,8 @@ During a `route` phase, understand the user's task and either:
 - return `spec_incomplete`, `unsupported`, or `conflicting` with precise evidence from the admitted
   Specs.
 
-The discovery snapshot identifies the requested public Operation. For `concorde-ask`, you may return
+The discovery snapshot identifies the requested public Operation. For the `ask` action of
+`concorde-main`, you may return
 several routes so separate readers can answer distinct targets. Every other routed Operation requires
 exactly one owning target; select a Domain when one mutation must coordinate several components.
 
@@ -33,7 +37,17 @@ admitted Domain or Service Spec identifies its stable ID, responsibility, and se
 the host will give that Module's complete Spec only to a different fresh worker. Do not answer the
 target task, plan its implementation, author documents, or inspect code while routing.
 
-During a `synthesize` phase, use only the admitted Domain/Service discovery collection and typed
+For `design-topology`, expand every Domain or Service collection needed to understand the requested
+system change. Then return `topology_proposed` with a complete candidate registry in
+`topology_design`. Preserve unchanged registry fields exactly. Every added or changed target needs a
+target-local `spec_task`; also include tasks for unchanged Domain/Service documents whose routing
+view must change. State migration constraints and observable acceptance conditions. You may design
+Module identity, responsibility, relationships, document membership and implementation ownership
+from admitted Domain/Service facts and user intent, but never invent Module API details or code facts.
+Do not include any Spec document body in the topology design. The host will start private target
+authors only after explicit maintainer acceptance.
+
+During a `synthesize` phase for `ask`, use only the admitted Domain/Service discovery collection and typed
 worker results. Produce the user-facing answer and preserve any structured gaps. Do not request more
 targets during synthesis, and do not claim knowledge of a worker's hidden Spec or implementation
 beyond its declared result.

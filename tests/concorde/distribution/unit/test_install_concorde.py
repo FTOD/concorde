@@ -158,7 +158,8 @@ class NativeInstallerTests(unittest.TestCase):
             self.assertFalse((target / "node_modules").exists())
             self.assertFalse((target / "package.json").exists())
             self.assertFalse((target / "package-lock.json").exists())
-            self.assertEqual(len(receipt["outputs"]), len(desired) - 2)
+            project_defaults = sum(role == "project-default" for _, role in desired.values())
+            self.assertEqual(len(receipt["outputs"]), len(desired) - project_defaults)
             self.assertNotIn("project-default", {item["role"] for item in receipt["outputs"]})
 
     def test_existing_project_defaults_are_preserved_and_not_owned(self):
@@ -175,6 +176,7 @@ class NativeInstallerTests(unittest.TestCase):
             paths = {entry["path"] for entry in json.loads((target / ".concorde/install.json").read_text())["outputs"]}
             self.assertNotIn(".concorde/reflections/config.json", paths)
             self.assertNotIn(".concorde/reflections/.gitignore", paths)
+            self.assertNotIn(".concorde/topology-proposals/.gitignore", paths)
 
     def test_target_root_venv_is_ignored_and_managed_runtime_rebuild_removes_obsolete_files(self):
         with tempfile.TemporaryDirectory() as temporary:

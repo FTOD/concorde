@@ -123,8 +123,8 @@ Domain or Service that should supply them.
 
 An Operation with one owning lifecycle or mutation result receives exactly one main route and keeps
 the user's task and constraints unchanged. Cross-target mutation is routed to a Domain that
-coordinates separately bound component work. A read-only ask may route several target readers and
-combine only their typed results.
+coordinates separately bound component work. The read-only `ask` action of `concorde-main` may route
+several target readers and combine only their typed results.
 
 The coordinator that selects a target and the worker that consumes that target's complete context
 MUST be different fresh agent invocations. The trusted host resolves and transfers the worker
@@ -202,3 +202,26 @@ Public context inspection MAY expose target identity, membership, versions and d
 but MUST NOT return the raw cognitive snapshot or document bodies to the ambient caller. The host
 keeps complete snapshots private and supplies them only to the fresh invocation whose policy is
 bound to that context.
+
+### P8. System topology is main-designed and explicitly accepted
+
+`concorde-main` is the single public entry for global questions and system-structure design; there
+is no separate ask Operation. For a topology change, its internal coordinator MAY receive the exact
+registry metadata and every global kind definition in addition to its append-only Domain/Service
+discovery collections. Registry metadata supplies current structure, not hidden business meaning.
+The coordinator still MUST NOT receive a Module document body or implementation source.
+
+The coordinator produces a complete candidate registry, target-local Spec tasks, migration
+constraints and observable acceptance conditions without writing project files. A maintainer MUST
+explicitly accept that digest-bound design before any target author runs. The host then starts a
+fresh target-local Spec author for every added or changed target and for every unchanged
+Domain/Service whose routing view must change. A Module body is visible only to its own worker.
+Worker document output remains host-private and MUST NOT return through main cognition.
+
+The host validates the candidate registry and complete proposed document bytes against an overlay,
+then stores one exact digest-bound application with before-digests. The public result exposes only
+an artifact identity, path and digest. A maintainer MUST explicitly accept that exact application
+before mutation. Application is atomic: stale registry, Protocol, discovery context, source bytes,
+target gaps or invalid final structure prevent project writes; failed target authoring leaves the
+project unchanged. The trusted host applies the accepted registry and documents together or restores
+their previous bytes.

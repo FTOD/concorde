@@ -41,6 +41,13 @@ route may name a Module from facts already present in a Domain or Service; only 
 target worker receives that Module collection. Typed worker results, never raw target snapshots, are
 admitted for a separate synthesis invocation.
 
+During `design-topology`, the discovery snapshot additionally includes exact registry metadata and
+all global kind definitions. It still contains no Module document body or implementation source.
+After the design is accepted, each fresh target-local Spec author receives one proposed descriptor,
+task, matching kind definition and only that target's current documents. A new target begins with no
+documents. The host combines their complete proposed collections in a registry/document overlay for
+validation without exposing those bodies to the coordinator or changing project files.
+
 Context solving is a separate fresh context-assessor stage, invoked by concorde-context-solve or
 before planning. It returns sufficient, spec_incomplete, unsupported, conflicting or failed. A gap
 must name question, blocked_step and needed_contract. It cannot fetch missing context. Known missing
@@ -103,6 +110,11 @@ Diagram records contain source,kind,title. Check records contain id,target_id,ar
 and optional inputs (exact project-relative files/directories). The host hashes check declarations,
 owned implementation and declared check inputs. A changed check driver or acceptance input invalidates
 prior results; check authority never becomes an agent's code grant. Timeout is 1..3600 seconds.
+
+Topology preparation stores the exact validated registry/document replacements below the ignored
+`.concorde/topology-proposals/` host area. Its public ArtifactRef binds path and digest. Applying the
+artifact rechecks its embedded design identity, discovery context, Protocol, registry base and every
+file before-digest before one atomic transaction.
 
 ## Main routing view
 

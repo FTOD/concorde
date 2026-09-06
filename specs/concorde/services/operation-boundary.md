@@ -30,13 +30,26 @@ access disabled, writes restricted by phase. A native integration unable to enfo
 outer enforcement requires a host-issued sandbox. Executor completions must match invocation, policy,
 launch and context identities. No ambient conversation or predecessor transcript is admitted.
 
-Every new agent-backed task first launches `concorde-main` with the entry Domain or Service. Main discovery can
+Every new agent-backed task first launches `concorde-coordinator` with the entry Domain or Service.
+Main discovery can
 append complete registered Domain/Service Specs on demand; each append starts a fresh process with a
 new context identity. The host rejects Module expansion and code access. For Operations other than
-ask, main must return one owning target; cross-target mutation is routed through a Domain. The host
-then starts the Operation's different bounded worker or composite flow. `concorde-ask` may route one
+the `ask` action of `concorde-main`, main must return one owning target; cross-target mutation is
+routed through a Domain. The host
+then starts the Operation's different bounded worker or composite flow. `concorde-main` may route one
 or more fresh `concorde-reader` workers, after which a final fresh main invocation receives only typed
 worker results for synthesis. An optional caller target/focus is a routing hint, not a context grant.
+
+`concorde-main` also owns topology evolution. `design-topology` admits exact registry metadata and
+all three global kind definitions while still withholding Module bodies and code. It returns a
+digest-bound candidate registry, local Spec tasks, migration constraints and acceptance conditions;
+no project file changes. `accept-topology` is the first maintainer gate. It rechecks the complete
+discovery context, starts fresh target-local Spec authors and validates their combined output against
+an in-memory registry/document overlay. Full worker documents are stored only in an ignored,
+before-digest-bound application artifact. The public response exposes its ArtifactRef, not its
+contents. `apply-topology` is the second maintainer gate and atomically applies the exact reviewed
+artifact or leaves/restores the project. A stale registry, Protocol, Spec input, application digest
+or invalid final target state blocks mutation.
 
 Public `concorde-context` and `concorde-resolve-context` return only a redacted membership/digest
 manifest. Complete cognitive snapshots never cross the public Operation result boundary.

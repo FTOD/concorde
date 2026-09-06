@@ -10,14 +10,16 @@ from .repository import SpecError, SpecRepository, digest, read_file
 
 
 def validate_repository(root: str | Path, target_id: str | None = None,
-                        package_root: Path | None = None) -> ToolResult:
+                        package_root: Path | None = None, *, registry_bytes: bytes | None = None,
+                        document_overrides: dict[str, bytes] | None = None) -> ToolResult:
     findings = []
     artifacts = []
     inputs = []
     def error(code, path, message):
         findings.append(Finding(code, "error", path, message, "Reconcile the registered Spec and retry."))
     try:
-        repository = SpecRepository(root, package_root)
+        repository = SpecRepository(root, package_root, registry_bytes=registry_bytes,
+                                    document_overrides=document_overrides)
         if target_id and target_id != ".":
             repository.select(target_id)
         provided = {}
@@ -62,7 +64,12 @@ def validate_repository(root: str | Path, target_id: str | None = None,
         if (repository.root/".concorde/reflections").exists():
             from ..reflections.scoped_triage import queue_module
             queue=queue_module(repository.package_root)
-            _,index,parsed,ids,raw=queue._load_reflections(repository.root,required=True)
+            _,index,parsed,_,raw=queue._load_reflections(repository.root,required=True)
+            # Reflection parsing is independent of the candidate overlay, but attribution must be
+            # checked against the repository instance being validated rather than the on-disk
+            # registry that the compatibility queue helper happens to load.
+            ids = {target.id for target in repository.targets.values()}
+            ids.update(repository.focus)
             for entry in parsed.entries:
                 if entry.feature not in ids:
                     error("CONCORDE-REFLECT-004",entry.path,"Reflection attribution must be a registered target, Feature or API")

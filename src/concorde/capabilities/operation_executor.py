@@ -72,6 +72,8 @@ def _domain_type(specification: LaunchSpecification) -> str | None:
         return "concorde-agent-stage-result"
     if runtime_type == "concorde-main-stage-context":
         return "concorde-main-stage-result"
+    if runtime_type == "concorde-topology-author-context":
+        return "concorde-topology-author-result"
     if (specification.runtime_input_json is not None
             and specification.operation == "concorde-reflections-triage"
             and specification.capability == "concorde-analyze"):
@@ -424,6 +426,21 @@ def _completion(stdout: str, specification: LaunchSpecification) -> CapabilityCo
 
 
 def _prompt(specification: LaunchSpecification) -> str:
+    if _domain_type(specification) == "concorde-topology-author-result":
+        return (
+            "Execute one Concorde topology Spec-author stage in a fresh target-local context.\n"
+            f"Operation: {specification.operation}\nStage: {specification.stage}\n"
+            f"Host workspace grant:\n{specification.workspace_receipt_json}\n"
+            f"Configuration snapshot:\n{specification.operation_configuration_json}\n"
+            f"Complete provisional target context:\n{specification.runtime_input_json}\n\n"
+            "Use only the supplied target descriptor, matching kind definition, current local documents, and task. "
+            "Return the complete content for every path in target.documents and no other path. Do not load another "
+            "target, registry file, Module body outside this target, implementation code, prior conversation, or remote "
+            "source. Report missing target-local facts as structured gaps.\n"
+            "Return Capability Completion Envelope 2 matching the supplied schema, with a typed "
+            "concorde-topology-author-result in domain_output. Bind every identity exactly.\n"
+            f"Invocation: {specification.invocation_id}\nLaunch digest: {specification.digest}\n"
+        )
     if _domain_type(specification) == "concorde-main-stage-result":
         return (
             "Execute one Concorde Profile 8 main-coordinator stage in a fresh context.\n"
@@ -435,12 +452,14 @@ def _prompt(specification: LaunchSpecification) -> str:
             "implementation code, repository guidance, another Skill, a prior conversation, or a remote source. "
             "In route phase, request only Domain/Service IDs identified by an admitted Spec, or the explicit target "
             "hint, in expand_targets; otherwise return exact worker routes. Non-ask Operations require one route and "
-            "unchanged task intent. Do not perform the routed work. In synthesize phase, use only typed worker results and return the final "
+            "unchanged task intent. For design-topology, return topology_proposed with one complete candidate registry, "
+            "target-local Spec tasks, migration constraints, and acceptance conditions after sufficient discovery; do "
+            "not include document bodies or code facts. Do not perform routed work. In synthesize phase, use only typed worker results and return the final "
             "answer; do not expand context. Report missing routing information as a structured Spec gap owned by an "
             "admitted Domain or Service.\n"
             "Return Capability Completion Envelope 2 matching the supplied schema. Put a typed "
             "concorde-main-stage-result in domain_output with context_id, outcome, answer, expand_targets, routes, "
-            "and gaps. Bind every launch, invocation, workspace, and context identity exactly.\n"
+            "gaps, and nullable topology_design. Bind every launch, invocation, workspace, and context identity exactly.\n"
             f"Invocation: {specification.invocation_id}\nLaunch digest: {specification.digest}\n"
         )
     if _domain_type(specification) == "concorde-agent-stage-result":

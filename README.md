@@ -9,7 +9,8 @@ through precise exchanges; a Module offers APIs. Domain scope nesting, component
 multi-scope participation are independent relationships. Every target registers its complete ordered
 Markdown collection; filenames are unrestricted and no ancestor/collaborator context is inherited.
 
-The shipped Protocol principles apply to every consumer project. Main discovery starts at the entry
+The shipped Protocol principles apply to every consumer project. `concorde-main` is the single
+public entry for global questions and topology design. Its internal coordinator starts at the entry
 Domain or Service and appends only explicitly requested Domain/Service collections. It cannot read a
 Module Spec or code. Once it returns typed routes, the host starts different fresh workers and injects
 the pinned global principles plus each selected kind definition. Missing task-relevant facts yield
@@ -55,8 +56,8 @@ Send this invocation on stdin to the matching installed paired executable:
 }
 ```
 
-Null configuration asks the trusted host to load initialized settings. `concorde-ask` may omit
-target_id: a separate main coordinator discovers Domain/Service Specs, routes one or more fresh
+Null configuration asks the trusted host to load initialized settings. The `ask` action of
+`concorde-main` may omit target_id: a separate coordinator discovers Domain/Service Specs, routes one or more fresh
 target readers, then synthesizes only their typed results. A supplied target_id is a routing hint,
 not a context grant. The loop executes specification,
 context assessment, plan, tasks, implementation, checks and delivery. Each step is also independently
@@ -70,6 +71,14 @@ facts through an explicit local Spec task, reconcile affected consumer/provider 
 new context. Changed Spec/intent invalidates an existing attempt; do not reuse stale evidence.
 `concorde-taskstoissues` produces local issue drafts only. Reflection investigation is a separate,
 read-only implementation invocation; human approval/disposition remains governed by project settings.
+
+For architecture changes, invoke `concorde-main` with `action:design-topology`. It returns a complete
+candidate registry and target-local Spec tasks without writing. Send the exact returned proposal with
+`action:accept-topology` only after maintainer review. The host then runs private target authors and
+stores exact registry/document bytes in an ignored application artifact, returning only its path and
+digest. Review that artifact outside agent cognition, then send its ArtifactRef with
+`action:apply-topology`. Stale inputs or invalid target state prevent writes; successful application
+updates the registry and documents atomically. The former standalone ask Operation does not exist.
 
 [Operation inventory](specs/concorde/services/operation-registry.md) ·
 [Complete wire contracts](specs/concorde/services/operation-wire.md)

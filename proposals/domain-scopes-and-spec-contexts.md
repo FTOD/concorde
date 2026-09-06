@@ -139,8 +139,8 @@ host transfers the complete target snapshot directly to the worker. Only typed w
 to the coordinator for declared synthesis.
 
 Operations with one lifecycle or mutation result receive one route and preserve task intent; a
-cross-target change is routed to a Domain coordinator. Read-only ask may route several readers and
-synthesize their typed results.
+cross-target change is routed to a Domain coordinator. The read-only ask action of `concorde-main`
+may route several readers and synthesize their typed results.
 
 The context manifest MUST identify the target and kind, document membership and content digests,
 Protocol and kind-definition versions, Operation instructions, task input, phase, and any admitted
@@ -211,6 +211,20 @@ project information and tool access; it does not claim to erase a model's genera
 
 Public context inspection may return identity, membership, versions and digests, but it MUST NOT
 return raw Spec/Protocol bodies or a reusable cognitive snapshot to the ambient caller.
+
+### P8. System topology is main-designed and explicitly accepted
+
+`concorde-main` replaces the separate ask Operation. Its ask action routes readers and synthesizes
+typed results. Its topology action admits exact registry metadata, all global kind definitions and
+only the Domain/Service bodies expanded during discovery. Main returns a complete candidate registry,
+target-local Spec tasks, migration constraints and acceptance conditions without reading Module
+bodies, reading code or writing files.
+
+The maintainer explicitly accepts that digest-bound design before the host starts fresh target-local
+Spec authors. Their full document output stays host-private. The host validates an overlay and stores
+an exact before-digest-bound application, exposing only its ArtifactRef. A second explicit maintainer
+acceptance applies the exact registry/document set atomically; stale inputs, gaps and invalid target
+state prevent writes or restore the previous bytes.
 
 ## Context Operations and lifecycle consequences
 

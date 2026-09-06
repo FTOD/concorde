@@ -53,11 +53,11 @@ class BoundaryTests(unittest.TestCase):
         with self.assertRaises(SpecError):SpecRepository(self.root,package)
     def test_configuration_cannot_replace_initialized_authority(self):
         other=typed('concorde-operation-configuration',{'integration':'codex','enforcement':'native'})
-        result=run_operation('concorde-ask',other,typed('concorde-ask-request',self.task),host_context=OperationHost(self.root,PACKAGE))
+        result=run_operation('concorde-main',other,typed('concorde-main-request',self.task),host_context=OperationHost(self.root,PACKAGE))
         self.assertEqual('configuration_mismatch',result['errors'][0]['code'])
     def test_wrong_version_and_extra_fields_are_rejected(self):
-        for value in [dict(typed('concorde-ask-request',self.task),schema_version=True),dict(typed('concorde-ask-request',self.task),schema_version=7),{'type_id':'concorde-ask-request','schema_version':1,'data':{**self.task,'read_paths':['secret.py']}}]:
-            with self.subTest(value=value),self.assertRaises(OperationDataError):validate_typed(value,'concorde-ask-request')
+        for value in [dict(typed('concorde-main-request',self.task),schema_version=True),dict(typed('concorde-main-request',self.task),schema_version=7),{'type_id':'concorde-main-request','schema_version':1,'data':{**self.task,'read_paths':['secret.py']}}]:
+            with self.subTest(value=value),self.assertRaises(OperationDataError):validate_typed(value,'concorde-main-request')
     def test_unsupported_is_not_spec_incomplete(self):
         def cb(stage,snapshot,data,cwd):
             if stage=='context-solve':data.update(outcome='unsupported',answer='The Spec prohibits this use.')
@@ -69,7 +69,7 @@ class BoundaryTests(unittest.TestCase):
         for policy in self.host.descriptions:
             if policy['phase']!='implementation':self.assertEqual(['context.json'],policy['read_paths']);self.assertEqual([],policy['write_paths'])
     def test_ask_policy_describes_separate_main_and_hinted_worker_without_launching(self):
-        result=self.run_op('concorde-ask',{'task':'Explain transfer','target_id':'service.transfer'},mode='describe-policy')
+        result=self.run_op('concorde-main',{'task':'Explain transfer','target_id':'service.transfer'},mode='describe-policy')
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
         self.assertEqual(['route','ask'],[item['phase'] for item in self.host.descriptions])
         self.assertEqual(['context.json'],self.host.descriptions[0]['read_paths'])
@@ -135,4 +135,4 @@ class BoundaryTests(unittest.TestCase):
         proposal=self.migrate();p=self.root/'.concorde/attempts/active';p.mkdir(parents=True)
         with self.assertRaises(SpecError):apply_project_proposal(self.root,PACKAGE,proposal)
     def test_profile7_cannot_be_silently_used_by_new_agent_runtime(self):
-        self.migrate();result=self.run_op('concorde-ask');self.assertEqual('blocked',result['status']);self.assertEqual([],self.double.calls)
+        self.migrate();result=self.run_op('concorde-main');self.assertEqual('blocked',result['status']);self.assertEqual([],self.double.calls)

@@ -6,6 +6,7 @@ from pathlib import Path
 from concorde.capabilities.operation_service import OperationHost,run_operation
 from concorde.capabilities.operation_data import typed
 from concorde.reflections.scoped_triage import queue_module
+from concorde.specification.validation import validate_repository
 from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
 
 class ScopeReflectionTests(unittest.TestCase):
@@ -20,8 +21,8 @@ class ScopeReflectionTests(unittest.TestCase):
                 data['tasks'][0]['target_id']='service.transfer'
         result=self.run_op('concorde-standard-dev-loop',{'target_id':'scope.bank','task':'Implement the banking transfer promise'},cb)
         self.assertEqual('succeeded',result['status'],result)
-        domain=[c for c in self.double.calls if c['capability']!='concorde-main' and c['snapshot']['kind']=='domain']
-        self.assertTrue(domain);self.assertTrue(any(c['capability']!='concorde-main' and
+        domain=[c for c in self.double.calls if c['capability']!='concorde-coordinator' and c['snapshot']['kind']=='domain']
+        self.assertTrue(domain);self.assertTrue(any(c['capability']!='concorde-coordinator' and
             c['snapshot']['target_id']=='service.transfer' for c in self.double.calls))
         self.assertFalse(any(c['stage']=='implementation' for c in domain))
         self.assertTrue(all('specs/send-money.md' not in json.dumps(c['snapshot']) for c in domain))
@@ -109,6 +110,12 @@ Keep this user comment intact.
         self.record();result=self.run_op('concorde-reflections-triage',self.task('status'))
         self.assertEqual('succeeded',result['status'],result);self.assertEqual([],self.double.calls)
         self.assertEqual('R-001',result['output']['data']['reflections'][0]['id']);self.assertNotIn('PRIVATE_REFLECTION',json.dumps(result))
+    def test_candidate_overlay_validates_reflections_against_candidate_ids(self):
+        self.record();registry=json.loads((self.root/'.concorde/specs.json').read_text())
+        registry['targets'][2]['features']=[]
+        report=validate_repository(self.root,package_root=PACKAGE,registry_bytes=json.dumps(registry).encode())
+        self.assertEqual('invalid',report.status)
+        self.assertIn('CONCORDE-REFLECT-004',{finding.rule_id for finding in report.findings})
     def test_investigation_is_readonly_and_preserves_user_report(self):
         self.record();before=(self.root/'app/transfer.py').read_bytes()
         result=self.run_op('concorde-reflections-triage',self.task('investigate'),self.finding)

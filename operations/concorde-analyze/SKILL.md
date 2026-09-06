@@ -3,7 +3,7 @@ name: concorde-analyze
 description: "Run analyze through Concorde's enforced Spec context and JSON boundary."
 exposure: public
 operation: operation.py
-capabilities: ["concorde-main", "concorde-context-assessor"]
+capabilities: ["concorde-coordinator", "concorde-context-assessor"]
 ---
 
 # concorde-analyze

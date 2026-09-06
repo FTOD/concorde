@@ -1,0 +1,3 @@
+# Exact topology applications are local, maintainer-reviewed host artifacts.
+*
+!.gitignore

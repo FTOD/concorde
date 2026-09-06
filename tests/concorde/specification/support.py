@@ -54,14 +54,31 @@ class ModelProcessDouble:
     def run(self, argv, *, cwd, env, input_text):
         schema=json.loads(argv[argv.index('--json-schema')+1]) if '--json-schema' in argv else json.loads(Path(argv[argv.index('--output-schema')+1]).read_text()); properties=schema['properties']
         stage=properties['stage']['const']
-        marker='Complete admitted discovery context and task:\n' if 'Complete admitted discovery context and task:\n' in input_text else 'Complete admitted context and task:\n'
+        markers=('Complete admitted discovery context and task:\n','Complete provisional target context:\n','Complete admitted context and task:\n')
+        marker=next(item for item in markers if item in input_text)
         value=json.JSONDecoder().raw_decode(input_text.split(marker,1)[1])[0]
-        snapshot=value['data']['snapshot']['data']
+        snapshot=(value['data']['snapshot']['data'] if value['type_id'] in {
+            'concorde-main-stage-context','concorde-agent-stage-context'} else value['data'])
         capability=properties['capability']['const']
         self.calls.append({'stage':stage,'capability':capability,'snapshot':snapshot,'cwd':Path(cwd),'prompt':input_text,'argv':argv})
+        if value['type_id']=='concorde-topology-author-context':
+            current={item['path']:item['content'] for item in snapshot['current_documents']}
+            target=snapshot['target']
+            documents=[{'path':path,'content':current.get(path,
+                f"# {target['title']}\n\nStable target ID: {target['id']}.\n\n{snapshot['task']}\n")}
+                for path in target['documents']]
+            data={'context_id':snapshot['context_id'],'target_id':target['id'],'outcome':'completed',
+                  'answer':'Target-local Spec authored.','gaps':[],'documents':documents}
+            if self.callback:self.callback(stage,snapshot,data,Path(cwd))
+            payload={key:item['const'] for key,item in properties.items() if 'const' in item}
+            payload.update(status='success',output='Explicit topology-author double.',limitations='none',
+              gates=[{'name':'bounded-topology-author','status':'passed','evidence':'Target-local author process is substituted; host validation is real.'}],
+              domain_output=typed('concorde-topology-author-result',data))
+            stdout=json.dumps({'structured_output':payload}) if '--json-schema' in argv else '\n'.join(json.dumps(event) for event in [{'type':'item.completed','item':{'type':'agent_message','text':json.dumps(payload)}},{'type':'turn.completed'}])
+            return subprocess.CompletedProcess(argv,0,stdout,'')
         if value['type_id']=='concorde-main-stage-context':
             data={'context_id':snapshot['context_id'],'outcome':'completed','answer':'Main synthesized bounded worker results.',
-                  'expand_targets':[],'routes':[],'gaps':[]}
+                  'expand_targets':[],'routes':[],'gaps':[],'topology_design':None}
             if stage=='route':
                 hint=snapshot['target_hint']
                 discovered=[item['target_id'] for item in snapshot['targets']]

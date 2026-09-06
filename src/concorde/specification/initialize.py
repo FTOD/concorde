@@ -11,6 +11,10 @@ from .repository import SpecError, SpecRepository, identifier, digest, read_file
 from .validation import validate_repository
 
 
+TOPOLOGY_IGNORE_PATH = ".concorde/topology-proposals/.gitignore"
+TOPOLOGY_IGNORE = "# Exact topology applications are local, maintainer-reviewed host artifacts.\n*\n!.gitignore\n"
+
+
 def protocol_binding(package: Path) -> dict:
     raw = read_file(package, "protocol/manifest.json")
     return {"version": decode(raw.decode())["version"], "digest": digest(raw)}
@@ -51,6 +55,8 @@ def project_proposal(root: Path, package: Path, name: str, configuration: dict,
     settings = ".concorde/reflections/config.json"
     if not checked_path(root, settings).exists():
         files.append(file_change(root, settings, read_file(package, "agent-assets/reflections/config.default.json").decode()))
+    if not checked_path(root, TOPOLOGY_IGNORE_PATH).exists():
+        files.append(file_change(root, TOPOLOGY_IGNORE_PATH, TOPOLOGY_IGNORE))
     return {"type_id": "concorde-project-proposal", "schema_version": 1,
             "action": "initialize", "base_digest": None, "files": files}
 
@@ -76,6 +82,8 @@ def migration_proposal(root: Path, package: Path, registry: dict, documents: lis
         if set(item) != {"path", "content"} or item["path"] not in allowed:
             raise SpecError("migration documents must belong to the proposed registry", "invalid_migration")
         files.append(file_change(root, item["path"], item["content"]))
+    if not checked_path(root, TOPOLOGY_IGNORE_PATH).exists():
+        files.append(file_change(root, TOPOLOGY_IGNORE_PATH, TOPOLOGY_IGNORE))
     return {"type_id": "concorde-project-proposal", "schema_version": 1,
             "action": "migrate", "base_digest": digest(old), "files": files}
 
@@ -93,7 +101,7 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
     registry = decode(proposed[".concorde/specs.json"]["content"])
     if config.get("registry") != ".concorde/specs.json" or config.get("protocol") != protocol_binding(package):
         raise SpecError("project proposal has a mismatched registry or Protocol binding", "invalid_proposal")
-    allowed = {".concorde/config.json", ".concorde/specs.json",
+    allowed = {".concorde/config.json", ".concorde/specs.json", TOPOLOGY_IGNORE_PATH,
                *(p for target in registry["targets"] for p in target["documents"])}
     if proposal["action"] == "initialize":
         allowed.update({".concorde/reflections/index.json", ".concorde/reflections/config.json"})

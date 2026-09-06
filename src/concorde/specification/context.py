@@ -44,6 +44,22 @@ class DiscoveryContext:
         return self.value["context_id"]
 
 
+@dataclass(frozen=True)
+class TopologyAuthorContext:
+    """One provisional or existing target, private to its fresh Spec author."""
+
+    serialized: str
+
+    @property
+    def value(self) -> dict:
+        from ..capabilities.operation_data import decode
+        return decode(self.serialized)
+
+    @property
+    def id(self) -> str:
+        return self.value["context_id"]
+
+
 def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "ask",
                     task: str = "Understand this Spec", focus_id: str | None = None,
                     constraints: tuple[str, ...] = (), instructions: str = "",
@@ -96,6 +112,7 @@ def public_context_manifest(snapshot: ContextSnapshot) -> dict:
 
 def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str, ...], *,
                               operation: str, phase: str, task: str,
+                              action: str = "route",
                               target_hint: str | None = None,
                               focus_hint: str | None = None,
                               constraints: tuple[str, ...] = (), instructions: str = "",
@@ -104,6 +121,8 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
 
     if phase not in DISCOVERY_PHASES:
         raise SpecError("unsupported discovery phase", "invalid_phase")
+    if action not in {"route", "ask", "design-topology"}:
+        raise SpecError("unsupported main action", "invalid_input")
     if not isinstance(task, str) or not task.strip():
         raise SpecError("task intent is required", "invalid_input")
     if not target_ids or len(set(target_ids)) != len(target_ids):
@@ -117,7 +136,6 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
     for item in worker_results:
         admitted_results.append(validate_typed(item, "concorde-main-worker-result"))
     targets = []
-    admitted_kinds = set()
     module_documents = {path for candidate in repository.targets.values()
                         if candidate.kind == "module" for path in candidate.documents}
     for target_id in target_ids:
@@ -135,16 +153,15 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
                 "permission_denied",
                 target.id,
             )
-        admitted_kinds.add(target.kind)
         targets.append({
             "target_id": target.id,
             "kind": target.kind,
             "documents": [{"path": doc.path, "digest": doc.digest, "content": doc.content}
                           for doc in repository.documents(target)],
         })
-    protocol_paths = ["protocol/principles.md"] + [
-        f"protocol/kinds/{kind}.md" for kind in ("domain", "service") if kind in admitted_kinds
-    ]
+    # Main understands every global kind contract while remaining unable to read Module instances.
+    protocol_paths = ["protocol/principles.md", *(f"protocol/kinds/{kind}.md"
+                      for kind in ("domain", "service", "module"))]
     protocol = []
     for path in protocol_paths:
         raw = repository.protocol_assets[path]
@@ -153,17 +170,50 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
         "schema_version": 1,
         "operation": operation,
         "phase": phase,
+        "action": action,
         "task": task,
         "constraints": list(constraints),
         "target_hint": target_hint,
         "focus_hint": focus_hint,
         "protocol_binding": repository.config["protocol"],
         "protocol": protocol,
+        # Exact topology metadata is admitted only for explicit architecture design. Ordinary
+        # routing learns business ownership from Domain/Service Specs and sees no code locators.
+        "topology": repository.registry if action == "design-topology" else None,
         "targets": targets,
         "instructions": instructions,
         "worker_results": admitted_results,
     }
     return DiscoveryContext(canonical({**manifest, "context_id": digest(manifest)}))
+
+
+def resolve_topology_author_context(repository: SpecRepository, target: dict, *, task: str,
+                                    instructions: str) -> TopologyAuthorContext:
+    """Build a private authoring context without exposing the target body to main."""
+
+    if target.get("kind") not in {"domain", "service", "module"}:
+        raise SpecError("topology target has an unsupported kind", "invalid_spec")
+    if not isinstance(task, str) or not task.strip():
+        raise SpecError("topology Spec task is required", "invalid_input")
+    current_documents = []
+    if target["id"] in repository.targets:
+        current = repository.targets[target["id"]]
+        current_documents = [{"path": doc.path, "digest": doc.digest, "content": doc.content}
+                             for doc in repository.documents(current)]
+    protocol = []
+    for path in ("protocol/principles.md", f"protocol/kinds/{target['kind']}.md"):
+        raw = repository.protocol_assets[path]
+        protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
+    manifest = {
+        "base_registry_digest": digest(repository.registry_bytes),
+        "target": target,
+        "task": task,
+        "protocol_binding": repository.config["protocol"],
+        "protocol": protocol,
+        "current_documents": current_documents,
+        "instructions": instructions,
+    }
+    return TopologyAuthorContext(canonical({**manifest, "context_id": digest(manifest)}))
 
 
 def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, check_implementation: bool = True) -> None:
@@ -198,6 +248,7 @@ def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryCon
         operation=value["operation"],
         phase=value["phase"],
         task=value["task"],
+        action=value["action"],
         target_hint=value["target_hint"],
         focus_hint=value["focus_hint"],
         constraints=tuple(value["constraints"]),
@@ -206,6 +257,19 @@ def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryCon
     )
     if resolved.serialized != snapshot.serialized:
         raise SpecError("Domain/Service discovery context changed", "stale_context")
+
+
+def recheck_topology_author_context(repository: SpecRepository, snapshot: TopologyAuthorContext) -> None:
+    value = snapshot.value
+    current = SpecRepository(repository.root, repository.package_root)
+    resolved = resolve_topology_author_context(
+        current,
+        value["target"],
+        task=value["task"],
+        instructions=value["instructions"],
+    )
+    if resolved.serialized != snapshot.serialized:
+        raise SpecError("topology author context changed", "stale_context")
 
 
 def assess_result(snapshot: ContextSnapshot, assessment: dict) -> dict:

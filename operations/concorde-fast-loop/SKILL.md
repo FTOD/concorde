@@ -3,7 +3,7 @@ name: concorde-fast-loop
 description: "Run fast-loop through Concorde's enforced Spec context and JSON boundary."
 exposure: public
 operation: operation.py
-capabilities: ["concorde-main", "concorde-plan", "concorde-tasks", "concorde-implement", "concorde-validate", "concorde-deliver"]
+capabilities: ["concorde-coordinator", "concorde-plan", "concorde-tasks", "concorde-implement", "concorde-validate", "concorde-deliver"]
 ---
 
 # concorde-fast-loop

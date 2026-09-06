@@ -3,7 +3,7 @@ name: concorde-specify
 description: "Run specify through Concorde's enforced Spec context and JSON boundary."
 exposure: public
 operation: operation.py
-capabilities: ["concorde-main", "concorde-spec-author"]
+capabilities: ["concorde-coordinator", "concorde-spec-author"]
 ---
 
 # concorde-specify

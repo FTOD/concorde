@@ -271,6 +271,10 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
             package.root / "agent-assets/reflections/config.default.json"
         ).read_bytes(),
         ".concorde/reflections/.gitignore": b"plans/\nworktrees/\nlegacy-*\n",
+        ".concorde/topology-proposals/.gitignore": (
+            b"# Exact topology applications are local, maintainer-reviewed host artifacts.\n"
+            b"*\n!.gitignore\n"
+        ),
     }
     for path, content in defaults.items():
         outputs[path] = (content, "project-default")

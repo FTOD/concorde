@@ -3,7 +3,7 @@ name: concorde-checklist
 description: "Run checklist through Concorde's enforced Spec context and JSON boundary."
 exposure: public
 operation: operation.py
-capabilities: ["concorde-main", "concorde-planner"]
+capabilities: ["concorde-coordinator", "concorde-planner"]
 ---
 
 # concorde-checklist
