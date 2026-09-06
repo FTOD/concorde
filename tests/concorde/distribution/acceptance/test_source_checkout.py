@@ -8,7 +8,7 @@ import unittest
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
-class SourceCheckoutAcceptance(unittest.TestCase):
+class SourceCheckoutDistributionAcceptance(unittest.TestCase):
     def test_checkout_projects_both_agent_surfaces_without_duplicate_framework(self):
         result = subprocess.run(
             [sys.executable, str(REPOSITORY_ROOT / "scripts/development/sync-agent-surfaces.py"), "status", "--project-root", str(REPOSITORY_ROOT), "--format", "json"],

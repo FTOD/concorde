@@ -7,8 +7,6 @@ related_features:
     relation: composed_by
   - id: feature.understanding.explore-alignment
     relation: depended_on_by
-  - id: feature.capabilities.maintain-agent-surfaces
-    relation: depended_on_by
   - id: feature.reflections.record-and-triage
     relation: depended_on_by
   - id: feature.lifecycle.standard-development-loop
@@ -91,8 +89,6 @@ Profile validation; no Tool writes an explorer index or repairs input.
   lifecycle.
 - `feature.understanding.explore-alignment` depends on this feature's `explore` Tool entry point to
   project bounded evidence-qualified alignment.
-- `feature.capabilities.maintain-agent-surfaces` reuses the same launcher and CLI entry points when a
-  maintainer checks or refreshes this repository's own agent surfaces.
 - `feature.reflections.record-and-triage` depends on the `agent-assets` Tool dispatched through the
   same CLI envelope.
 - `feature.lifecycle.standard-development-loop` invokes the cleanup-only delivery Tool through this

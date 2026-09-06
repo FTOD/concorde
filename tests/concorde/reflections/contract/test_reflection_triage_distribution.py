@@ -36,7 +36,7 @@ class ReflectionTriageDistributionContractTests(unittest.TestCase):
             "operations/concorde-reflections-triage/SKILL.md",
             "specs/concorde/modules/reflections/features/001-record-and-triage-reflections.md",
             "specs/concorde/features/002-project-ontology.md",
-            "specs/concorde/modules/capabilities/features/004-maintain-agent-surfaces.md",
+            "specs/concorde/modules/distribution/features/003-self-distribute-concorde.md",
         )
         combined = "\n".join((REPOSITORY_ROOT / path).read_text(encoding="utf-8") for path in paths)
         self.assertIn("reflection-triage/v5", combined)

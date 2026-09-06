@@ -25,7 +25,7 @@ class EcosystemExplanationContractTests(unittest.TestCase):
             REPOSITORY_ROOT / "specs/concorde/architecture.md",
             REPOSITORY_ROOT / "specs/concorde/modules/understanding/architecture.md",
             REPOSITORY_ROOT / "specs/concorde/modules/capabilities/architecture.md",
-            REPOSITORY_ROOT / "specs/concorde/modules/capabilities/features/004-maintain-agent-surfaces.md",
+            REPOSITORY_ROOT / "specs/concorde/modules/distribution/features/003-self-distribute-concorde.md",
         ]
         combined = "\n".join(path.read_text().lower() for path in sources)
         for term in (

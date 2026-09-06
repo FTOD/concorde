@@ -1,0 +1,32 @@
+name: Validate source checkout
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  agent-surfaces:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Require current checkout projections
+        run: python3 scripts/development/sync-agent-surfaces.py check --project-root . --format json
+
+      - name: Test checkout projection and worktree-affinity contracts
+        run: |
+          python3 -m unittest \
+            tests.concorde.distribution.unit.test_agent_surface_sync \
+            tests.concorde.distribution.contract.test_agent_surface_contract \
+            tests.concorde.distribution.integration.test_agent_surface_lifecycle \
+            tests.concorde.distribution.acceptance.test_source_checkout

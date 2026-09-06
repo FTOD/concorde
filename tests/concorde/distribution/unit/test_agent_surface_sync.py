@@ -18,10 +18,10 @@ sys.modules[SPEC.name] = sync
 SPEC.loader.exec_module(sync)
 
 
-class AgentSurfaceSyncTests(unittest.TestCase):
+class SourceCheckoutDistributionTests(unittest.TestCase):
     def test_repository_surfaces_are_current(self):
         desired = sync.expected_outputs(REPOSITORY_ROOT)
-        actions = sync.inspect(REPOSITORY_ROOT, desired)
+        actions = sync.inspect_checkout(REPOSITORY_ROOT, desired)
         self.assertEqual(len(desired), 40)
         self.assertEqual({item["action"] for item in actions}, {"current"})
 
@@ -40,6 +40,32 @@ class AgentSurfaceSyncTests(unittest.TestCase):
         for content in desired.values():
             self.assertNotIn(b".specify/", content)
             self.assertNotIn(b"github-spec-kit", content)
+
+    def test_loaded_skill_identity_resolves_the_owning_worktree_and_integration(self):
+        for integration, relative in (
+            ("codex", ".agents/skills/concorde-ask/SKILL.md"),
+            ("claude", ".claude/skills/concorde-ask/SKILL.md"),
+        ):
+            with self.subTest(integration=integration):
+                root, observed_integration, capability = sync._loaded_skill_identity(
+                    REPOSITORY_ROOT / relative
+                )
+                self.assertEqual(root, REPOSITORY_ROOT)
+                self.assertEqual(observed_integration, integration)
+                self.assertEqual(capability, "concorde-ask")
+
+    def test_worktree_affinity_accepts_a_current_skill_from_the_same_worktree(self):
+        verified = sync.verify_worktree_affinity(
+            REPOSITORY_ROOT,
+            REPOSITORY_ROOT / ".agents/skills/concorde-ask/SKILL.md",
+        )
+        self.assertEqual(verified["project_root"], str(REPOSITORY_ROOT))
+        self.assertEqual(verified["loaded_worktree"], str(REPOSITORY_ROOT))
+        self.assertTrue(verified["surface_match"])
+
+    def test_loaded_skill_path_must_be_an_absolute_checkout_capability(self):
+        with self.assertRaisesRegex(sync.WorktreeAffinityError, "absolute path"):
+            sync._loaded_skill_identity(".agents/skills/concorde-ask/SKILL.md")
 
     def test_inspect_classifies_create_update_symlink_and_conflict(self):
         with tempfile.TemporaryDirectory() as temporary:

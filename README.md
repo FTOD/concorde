@@ -268,10 +268,17 @@ not install a duplicate `.concorde/framework` into its own repository.
 
 ```bash
 python3 scripts/development/sync-agent-surfaces.py status --format json
+python3 scripts/development/sync-agent-surfaces.py check --format json
 python3 scripts/development/sync-agent-surfaces.py apply --format json
 ```
 
-See [Agent-surface maintenance](specs/concorde/modules/capabilities/features/004-maintain-agent-surfaces.md).
+Never edit `.agents/skills/concorde-*` or `.claude/skills/concorde-*` directly. Change canonical
+`skills/` or `operations/*/SKILL.md`, then run `apply` and `check` from that same primary or linked
+worktree. Root `AGENTS.md`/`CLAUDE.md` bind a source-checkout agent to the worktree that supplied its
+project Skills. If work targets another worktree, the agent stops and asks the user to open a new
+agent there; it never updates the primary checkout as a substitute.
+
+See [Concorde self-distribution](specs/concorde/modules/distribution/features/003-self-distribute-concorde.md).
 
 Normative Concorde Protocol evolution is the one checkout-maintenance exception. Do not invoke any
 `concorde-*` mutation Skill or Operation for it. After explicit maintainer authorization, require a

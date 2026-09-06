@@ -7,7 +7,6 @@ features:
   - feature.capabilities.run-deterministic-tools
   - feature.capabilities.provide-capability-surfaces
   - feature.capabilities.permission-bounded-execution
-  - feature.capabilities.maintain-agent-surfaces
 diagrams:
   - source: diagrams/system-overview.json
     kind: architecture
@@ -33,10 +32,11 @@ tokens); the skill loader/projector; the package capability validator; the share
 (bindings, state, lazy LangGraph); the policy compiler (normalized task policy to Codex permission
 profile, Claude strict sandbox, or outer isolation); client-runtime bootstrap attestation; Capability
 Completion Envelope 2; the injectable process launcher and receipts; the managed
-Operation launcher (`scripts/run-operation.py`); and checkout/installed agent-surface rendering for
-Codex and Claude. It also owns the deterministic Git worktree boundary shared by mutating Tool
-adapters and actual Operation execution; that helper reads only Git identity/commit metadata and
-rejects primary-worktree mutation unless an explicit override is present.
+Operation launcher (`scripts/run-operation.py`); and the integration-independent agent-surface
+renderer consumed by source-checkout and installation distribution. It also owns the deterministic
+Git worktree boundary shared by mutating Tool adapters and actual Operation execution; that helper
+reads only Git identity/commit metadata and rejects primary-worktree mutation unless an explicit
+override is present.
 
 It does not own the content of any individual Skill or Operation (those belong to Understanding,
 Lifecycle, and Reflections), Protocol 13 role resolution (`module.concorde.understanding`),
@@ -89,9 +89,6 @@ Operation execution always uses the typed service and native evidence validation
 | `entity.capabilities.process-launcher` | program | Attests/finalizes runtime bootstrap, performs version/enforcement preflight, invokes native structured output, validates semantic completion, and returns a matching receipt or raises without permissive retry. | `src/concorde/capabilities/operation_executor.py#AgentProcessExecutor` |
 | `entity.capabilities.operation-launcher` | program | Standard-library bootstrap that selects the source root `.venv` or installed `.concorde/.venv` and executes one exact paired Operation path. | `scripts/run-operation.py` |
 | `entity.capabilities.surface-renderer` | program | Renders one integration's complete public leaf/Operation capability surface for install-time projection. | `scripts/render-capability-surfaces.py` |
-| `entity.capabilities.checkout-sync` | program | Compares and refreshes this repository's own generated agent capability surfaces from canonical sources. | `scripts/development/sync-agent-surfaces.py` |
-| `entity.capabilities.codex-surface` | directory | Fifteen public leaf and three Operation skills projected for Codex; reflection agents project separately under `.codex/agents`. | `.agents/skills` |
-| `entity.capabilities.claude-surface` | directory | Fifteen public leaf and three Operation skills projected for Claude; reflection agents project separately under `.claude/agents`. | `.claude/skills` |
 | `entity.capabilities.langgraph` | external-system | Graph runtime imported lazily for topology and pinned into the isolated environment by every successful native installation. | `external:langchain-ai/langgraph@1.2.11` |
 | `entity.capabilities.tests` | test | Unit, contract, integration, and acceptance evidence for Tool, Skill-projection, and Operation-enforcement semantics. | `tests/concorde/capabilities` |
 
@@ -113,9 +110,6 @@ Operation execution always uses the typed service and native evidence validation
 | `entity.capabilities.projector` | `reads_from` | `entity.capabilities.skill-sources` | Loads leaf Skills without composing or rewriting their prompt semantics. |
 | `entity.capabilities.projector` | `reads_from` | `entity.capabilities.operation-sources` | Loads each Operation's paired Markdown contract and entry point. |
 | `entity.capabilities.projector` | `transforms` | `entity.capabilities.skill-prompt` | Produces one integration-native Codex or Claude Skill file from each public leaf prompt. |
-| `entity.capabilities.projector` | `generates` | `entity.capabilities.codex-surface` | Renders the transformed public leaf and Operation prompts as Codex Skills. |
-| `entity.capabilities.projector` | `generates` | `entity.capabilities.claude-surface` | Renders the same transformed prompts as Claude Skills. |
-| `entity.capabilities.checkout-sync` | `calls` | `entity.capabilities.projector` | Regenerates this repository's own checkout projections for both supported integrations. |
 | `entity.capabilities.surface-renderer` | `calls` | `entity.capabilities.projector` | Renders one integration's public capability surface for install-time projection. |
 | `entity.capabilities.capability-validator` | `validates` | `entity.capabilities.skill-sources` | Checks exposure, effects, and name/collision rules without importing Skill Python. |
 | `entity.capabilities.capability-validator` | `validates` | `entity.capabilities.operation-sources` | Checks mixed literal topology, occurrence bindings, and direct/indirect cycles without importing Operation Python. |
@@ -159,7 +153,7 @@ Operation execution always uses the typed service and native evidence validation
 |---|---|---|---|---|
 | `interaction.capabilities.tool` | A Skill, script, CI job, or maintainer invokes a Tool dispatcher entry point. | Locate the colocated package through a platform launcher or direct Python entry; dispatch the named Tool through the CLI; load the validated project package; validate inputs and safe project-relative paths; execute the bounded action; serialize one canonical Tool envelope. | Deterministic success or failure with stable diagnostics and no conversational side channel. | `contract.capabilities.tools` |
 | `interaction.capabilities.launch` | A workflow host launches an installed paired Operation. | Verify worktree authority; enter the managed runtime; resolve Protocol 13 once into a canonical receipt; validate topology/effects/bindings; compile one task policy; attest the exact client bootstrap; finalize the launch; invoke native schema/JSON lifecycle output; validate semantic completion; append only success and stop on every failure. | Ordered successful output/completion/receipt triples, or an explicit workspace/policy/bootstrap/transport/lifecycle/completion failure with no downstream invocation. | `contract.capabilities.permission-bounded-execution`, `contract.capabilities.skill-contract` |
-| `interaction.capabilities.project` | An installer or checkout sync projects capabilities to Codex or Claude. | Validate the exact leaf/Operation inventory, exposure, effects, topology, and bindings; omit internal leaves; resolve each Tool and managed-launcher token; render every public leaf and Operation Markdown as one integration-native Skill with source/kind/entry-point provenance; compare against observed output; write only the exact target paths. | Codex or Claude receives the same 15 public leaves plus three Operation skills with no ambient-interpreter dependence, or an explicit conflict/failure diagnostic. | `contract.capabilities.agent-surface`, `contract.capabilities.skill-contract` |
+| `interaction.capabilities.project` | A distribution consumer requests capability projections for Codex or Claude. | Validate the exact leaf/Operation inventory, exposure, effects, topology, and bindings; omit internal leaves; resolve each Tool and managed-launcher token; render every public leaf and Operation Markdown as one integration-native Skill with source/kind/entry-point provenance. | The consumer receives the same 15 public leaves plus three Operation Skills with no ambient-interpreter dependence, or an explicit validation failure. | `contract.capabilities.agent-surface`, `contract.capabilities.skill-contract` |
 
 ## Modules
 
@@ -172,7 +166,6 @@ None.
 | `feature.capabilities.run-deterministic-tools` | Skills, Operations, scripts, and automation invoke portable deterministic Concorde Tools through one structured, safe result envelope. |
 | `feature.capabilities.provide-capability-surfaces` | Expose every Concorde lifecycle choice as one complete, independently invocable public leaf Skill or Operation with consistent installed semantics. |
 | `feature.capabilities.permission-bounded-execution` | Enforce a least-privilege Codex/Claude launch for every direct leaf an Operation composes. |
-| `feature.capabilities.maintain-agent-surfaces` | Keep this repository's own checkout agent surfaces byte-current with canonical sources without installing a duplicate framework copy. |
 
 ## Decisions
 

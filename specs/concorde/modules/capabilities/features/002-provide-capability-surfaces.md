@@ -13,7 +13,7 @@ related_features:
     relation: depends_on
   - id: feature.understanding.resolve-feature-workspace
     relation: depends_on
-  - id: feature.capabilities.maintain-agent-surfaces
+  - id: feature.distribution.self-distribute-concorde
     relation: depended_on_by
   - id: feature.distribution.package-concorde
     relation: depended_on_by
@@ -384,8 +384,8 @@ invocation is downgraded to it.
   for deterministic actions.
 - `feature.understanding.resolve-feature-workspace` supplies the Protocol 13 context every
   path-sensitive Skill resolves before other reads.
-- `feature.capabilities.maintain-agent-surfaces` refreshes this repository's own checkout projection
-  using the same projector.
+- `feature.distribution.self-distribute-concorde` refreshes this repository's own worktree-local
+  checkout projection using the same projector.
 - `feature.distribution.package-concorde` installs the same projected inventory into a target
   project.
 
