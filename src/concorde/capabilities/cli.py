@@ -50,6 +50,11 @@ def create_parser() -> argparse.ArgumentParser:
     build.add_argument("--integration", choices=["claude", "codex", "all"], default="all")
     build.add_argument("--check", action="store_true")
     build.add_argument("--format", choices=["json"], default="json")
+
+    verify_worktree = subparsers.add_parser("verify-worktree")
+    verify_worktree.add_argument("--project-root", default=".")
+    verify_worktree.add_argument("--loaded-skill-path", required=True)
+    verify_worktree.add_argument("--format", choices=["text", "json"], default="text")
     return parser
 
 
@@ -141,6 +146,33 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
     return validate_project(root, arguments.target)
 
 
+def _verify_worktree(arguments: argparse.Namespace) -> int:
+    """Identical semantics and messages to the retired sync-agent-surfaces.py verify-worktree."""
+
+    import json as json_module
+
+    from .worktree_affinity import WorktreeAffinityError, verify_worktree_affinity
+
+    root = Path(arguments.project_root).resolve()
+    try:
+        verified = verify_worktree_affinity(root, arguments.loaded_skill_path)
+        result = {"schema_version": 1, "tool": "verify-worktree", "status": "current", **verified}
+        if arguments.format == "json":
+            print(json_module.dumps(result, indent=2, sort_keys=True))
+        else:
+            print(
+                "Concorde agent worktree: current "
+                f"({verified['integration']}, {verified['capability']}, {verified['project_root']})"
+            )
+        return 0
+    except WorktreeAffinityError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+    except (ValueError, OSError) as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     if not (list(argv) if argv is not None else sys.argv[1:]):
         from .scoped_operations import json_main
@@ -149,6 +181,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments: argparse.Namespace | None = None
     try:
         arguments = parser.parse_args(argv)
+        if arguments.tool == "verify-worktree":
+            return _verify_worktree(arguments)
         mutation = arguments.tool in {"init", "deliver", "docsite"} or (
             arguments.tool == "configure" and arguments.apply
         ) or (

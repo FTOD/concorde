@@ -9,7 +9,7 @@ capabilities: ["concorde-spec-author"]
 # concorde-specify
 
 This is an internal stage Operation. It receives an already routed `target_id` and one frozen
-context snapshot from its composing Operation (`concorde-standard-dev-loop`); it is never selected
+context snapshot from its composing Operation (`concorde-dev-loop`); it is never selected
 directly by a user or by main. It is not projected as a user-invocable Skill, and the executable
 boundary rejects a direct invocation of `operations/concorde-specify/operation.py` with error code
 `internal_operation`. Compose it only through `run_operation` from a public Operation or from another

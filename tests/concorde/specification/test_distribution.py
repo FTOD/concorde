@@ -18,13 +18,19 @@ from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
         self.assertEqual([],validate_package(PACKAGE))
-        self.assertEqual(14,len(OPERATIONS));self.assertEqual(9,len(INTERNAL_SKILLS))
+        self.assertEqual(13,len(OPERATIONS));self.assertEqual(9,len(INTERNAL_SKILLS))
         self.assertIn('concorde-main',OPERATIONS);self.assertNotIn('concorde-ask',OPERATIONS)
         self.assertIn('concorde-coordinator',INTERNAL_SKILLS);self.assertNotIn('concorde-main',INTERNAL_SKILLS)
         for role in INTERNAL_SKILLS:self.assertEqual('internal',load_skill_prompt(PACKAGE,role).exposure)
-    def test_source_public_projections_match_canonical_pairs(self):
+    def test_canonical_pairs_render_for_every_integration(self):
+        # The tracked .claude/skills/.agents/skills projections are now build output (untracked);
+        # this only proves the older roles/operations pairing still renders without error.
         for integration in ('claude','codex'):
-            for path,content in render_capabilities(PACKAGE,integration,"").items():self.assertEqual(content,(PACKAGE/path).read_text(),path)
+            rendered = render_capabilities(PACKAGE,integration,"")
+            self.assertTrue(rendered)
+            for path,content in rendered.items():
+                self.assertTrue(content.strip())
+                self.assertIn(('.claude/' if integration=='claude' else '.agents/')+'skills/',path)
     def test_self_architecture_uses_two_axes_and_local_operation_registry(self):
         repo=SpecRepository(PACKAGE);self.assertEqual('success',validate_repository(PACKAGE).status)
         self.assertEqual({'domain':4,'service':5,'module':8},{kind:sum(t.kind==kind for t in repo.targets.values()) for kind in ('domain','service','module')})
@@ -65,7 +71,7 @@ helper.project(root)
 from concorde.capabilities.operation_service import OperationHost,run_operation
 import concorde.capabilities.scoped_operations as actual_host
 model=helper.ModelProcessDouble();host=OperationHost(root,framework,executor=model.executor,allow_primary_worktree=True)
-result=run_operation('concorde-standard-dev-loop',None,typed('concorde-standard-dev-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
+result=run_operation('concorde-dev-loop',None,typed('concorde-dev-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
 before=len(model.calls)
 ask=run_operation('concorde-main',None,typed('concorde-main-request',{'task':'Explain transfer'}),host_context=host)
 print(json.dumps({'result':result,'ask':ask,'module_source':actual_host.__file__,

@@ -55,7 +55,7 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertEqual(self.package.manifest["architecture_profile"], 8)
         self.assertEqual(self.package.manifest["workspace_protocol"], 14)
         self.assertEqual(len(self.package.manifest["skills"]), 9)
-        self.assertEqual(len(self.package.manifest["operations"]), 14)
+        self.assertEqual(len(self.package.manifest["operations"]), 13)
         self.assertEqual(len(self.package.manifest["templates"]), 7)
         self.assertEqual(
             self.package.manifest["operation_runtime"]["venv"],
@@ -94,35 +94,36 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertTrue(all("node_modules" not in path and "/build/" not in path for path in outputs if path.startswith(".concorde/framework/docsite/")))
         self.assertTrue(all(not path.startswith(".concorde/framework/docsite/tests/repository/") for path in outputs))
         self.assertIn(".agents/skills/concorde-validate/SKILL.md", outputs)
-        self.assertIn(".agents/skills/concorde-standard-dev-loop/SKILL.md", outputs)
+        self.assertIn(".agents/skills/concorde-dev-loop/SKILL.md", outputs)
         self.assertIn(
-            ".concorde/framework/operations/concorde-standard-dev-loop/operation.py",
+            ".concorde/framework/operations/concorde-dev-loop/operation.py",
             outputs,
         )
         self.assertIn(".concorde/framework/operations/requirements.lock", outputs)
         self.assertIn(".concorde/framework/scripts/run-operation.py", outputs)
+        self.assertIn(".concorde/framework/scripts/run-capability.py", outputs)
         self.assertIn(".concorde/framework/scripts/run-viewer.py", outputs)
         self.assertIn(".concorde/framework/viewer/package-lock.json", outputs)
         self.assertIn(".codex/agents/reflection_implementer.toml", outputs)
+        # The build is the only instruction source for the consumer's own skill wrappers now;
+        # the framework still carries operations/*/operation.py for the B2-pending validator.
+        self.assertIn(".concorde/framework/generated/build-manifest.json", outputs)
         plan = outputs[".agents/skills/concorde-validate/SKILL.md"][0].decode()
-        self.assertIn(".concorde/framework/operations/concorde-validate/operation.py", plan)
-        self.assertIn('kind: "operation"', plan)
+        self.assertIn('capability: "validate"', plan)
+        self.assertIn('kind: "skill"', plan)
         self.assertNotIn("concorde-validate-context", outputs)
         self.assertNotIn("concorde-validate-author", outputs)
         self.assertNotIn(".specify", plan)
-        operation = outputs[".agents/skills/concorde-standard-dev-loop/SKILL.md"][0].decode()
+        operation = outputs[".agents/skills/concorde-dev-loop/SKILL.md"][0].decode()
+        self.assertIn('capability: "dev_loop"', operation)
         self.assertIn(
-            ".concorde/framework/operations/concorde-standard-dev-loop/operation.py",
+            "python3 .concorde/framework/scripts/run-capability.py concorde-dev-loop",
             operation,
         )
-        self.assertIn(
-            "python3 .concorde/framework/scripts/run-operation.py ",
-            operation,
-        )
-        self.assertEqual(outputs[".agents/skills/concorde-validate/SKILL.md"][1], "operation")
+        self.assertEqual(outputs[".agents/skills/concorde-validate/SKILL.md"][1], "skill")
         self.assertEqual(
-            outputs[".agents/skills/concorde-standard-dev-loop/SKILL.md"][1],
-            "operation",
+            outputs[".agents/skills/concorde-dev-loop/SKILL.md"][1],
+            "skill",
         )
         self.assertTrue(all(not path.startswith(("presets/", "extensions/", "bundles/")) for path in outputs))
 

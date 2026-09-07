@@ -51,7 +51,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         return run_operation(name, CONFIGURATION, typed(name + "-request", data), host_context=host)
 
     def ready(self, callback=None, task=None):
-        result = self.run_op(self.change, "concorde-standard-dev-loop", task or self.task, callback)
+        result = self.run_op(self.change, "concorde-dev-loop", task or self.task, callback)
         self.assertEqual("succeeded", result["status"], result)
         self.assertEqual("ready", result["output"]["data"]["outcome"], result)
         state = read_change(self.change, required=True)
@@ -128,7 +128,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
         self.assertFalse((self.change / STATE_PATH).exists())
 
     def test_primary_mutation_creates_handoff_without_running_an_agent(self):
-        result = self.run_op(self.primary, "concorde-standard-dev-loop", self.task)
+        result = self.run_op(self.primary, "concorde-dev-loop", self.task)
         self.assertEqual("blocked", result["status"], result)
         self.assertEqual("worktree_handoff_required", result["errors"][0]["code"])
         self.assertEqual([], self.last_double.calls)
@@ -150,7 +150,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             created.parent.rmdir()
 
     def test_handoff_remains_one_json_response_on_the_paired_cli(self):
-        operation = "concorde-fast-loop"
+        operation = "concorde-dev-loop"
         task = {**self.task, "constraints": ["保留用户原文；不合并、不 push"]}
         invocation = {"type_id": "concorde-operation-invocation", "schema_version": 2,
                       "operation_id": operation, "mode": "execute", "configuration": CONFIGURATION,
@@ -203,7 +203,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
             if stage == "specify" and snapshot["target_id"] == "module.ledger":
                 data.update(outcome="spec_incomplete", gaps=[{"question": "Which account is known?",
                     "blocked_step": "Author the ledger view", "needed_contract": "Known account identity"}])
-        result = self.run_op(self.change, "concorde-standard-dev-loop", task, partial)
+        result = self.run_op(self.change, "concorde-dev-loop", task, partial)
         self.assertEqual("blocked", result["status"], result)
         state = read_change(self.change, required=True)
         records = state["targets"]["scope.bank"]["coordination"]
@@ -220,7 +220,7 @@ class WorktreeLifecycleTests(unittest.TestCase):
                 document = snapshot["target_spec"][0]
                 replacement = document["content"].replace('"type": "integer"', '"type": "string"').replace('"example": 7', '"example": "new"')
                 data["documents"] = [{"path": document["path"], "content": replacement}]
-        result = self.run_op(self.change, "concorde-standard-dev-loop", task, finish_provider)
+        result = self.run_op(self.change, "concorde-dev-loop", task, finish_provider)
         self.assertEqual("succeeded", result["status"], result)
         authors = [c["snapshot"]["target_id"] for c in self.last_double.calls if c["stage"] == "specify"]
         self.assertEqual(["module.ledger"], authors)

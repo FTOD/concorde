@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  agent-surfaces:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -20,16 +20,22 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Require current checkout projections
-        run: python3 scripts/development/sync-agent-surfaces.py check --project-root . --format json
+      - name: Build
+        run: python3 scripts/concorde.py build
 
-      - name: Test checkout projection and worktree-affinity contracts
+      - name: Require the build is current
+        run: python3 scripts/concorde.py build --check
+
+      - name: Validate the Spec and package
+        run: python3 scripts/concorde.py validate
+
+      - name: Test build, resolver and worktree-affinity contracts
         run: |
           python3 -m unittest \
-            tests.concorde.distribution.unit.test_agent_surface_sync \
-            tests.concorde.distribution.contract.test_agent_surface_contract \
-            tests.concorde.distribution.integration.test_agent_surface_lifecycle \
-            tests.concorde.distribution.acceptance.test_source_checkout
+            tests.concorde.capabilities.unit.test_build \
+            tests.concorde.capabilities.unit.test_prompt_resolver \
+            tests.concorde.capabilities.unit.test_worktree_affinity \
+            tests.concorde.capabilities.unit.test_capability_modules
 
   studio:
     runs-on: ubuntu-latest
@@ -46,6 +52,9 @@ jobs:
         run: |
           python3 -m pip install uv
           uv sync --locked --group studio
+
+      - name: Build
+        run: python3 scripts/concorde.py build
 
       - name: Test Studio graphs, transport and real Agent Server
         env:

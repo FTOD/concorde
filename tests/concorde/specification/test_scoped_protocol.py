@@ -373,7 +373,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('module.ledger',gap['target_id']);self.assertEqual(worker['context_id'],gap['context_id'])
     def test_global_loop_routes_once_before_its_first_internal_stage(self):
         double=ModelProcessDouble()
-        result=self.run_op('concorde-fast-loop',{'task':'Plan the transfer promise'},double)
+        result=self.run_op('concorde-dev-loop',{'task':'Plan the transfer promise','specify':False,'run_reviews':False},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual('service.transfer',result['output']['data']['target_id'])
         self.assertEqual('concorde-coordinator-route',result['output']['data']['completed_operations'][0])
@@ -390,12 +390,12 @@ class ScopedProtocolTests(unittest.TestCase):
             if stage=='route':data.update(outcome='routed',expand_targets=[],gaps=[],routes=[
                 {'target_id':'service.transfer','focus_id':None,'task':snapshot['task'],'constraints':snapshot['constraints']},
                 {'target_id':'module.ledger','focus_id':None,'task':snapshot['task'],'constraints':snapshot['constraints']}])
-        result=self.run_op('concorde-fast-loop',{'task':'Plan transfer'},ModelProcessDouble(split))
+        result=self.run_op('concorde-dev-loop',{'task':'Plan transfer','specify':False,'run_reviews':False},ModelProcessDouble(split))
         self.assertEqual('blocked',result['status']);self.assertEqual('ambiguous_route',result['errors'][0]['code'])
         def rewrite(stage,snapshot,data,cwd):
             if stage=='route':data.update(outcome='routed',expand_targets=[],gaps=[],routes=[
                 {'target_id':'service.transfer','focus_id':None,'task':'Different intent','constraints':[]}])
-        result=self.run_op('concorde-fast-loop',{'task':'Plan transfer','constraints':['Keep API stable']},ModelProcessDouble(rewrite))
+        result=self.run_op('concorde-dev-loop',{'task':'Plan transfer','constraints':['Keep API stable'],'specify':False,'run_reviews':False},ModelProcessDouble(rewrite))
         self.assertEqual('blocked',result['status']);self.assertEqual('incompatible_handoff',result['errors'][0]['code'])
     def test_main_cannot_guess_an_unmentioned_discovery_or_route_target(self):
         path=self.root/'specs/how-money-moves.md';declaration=path.read_text().split('# Banking',1)[0]
@@ -476,7 +476,7 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('blocked',state['status']);self.assertEqual({},state['targets'])
     def test_standard_loop_real_checks_leave_a_ready_change(self):
         double=ModelProcessDouble()
-        result=self.run_op('concorde-standard-dev-loop',{'task':'Implement the transfer contract'},double)
+        result=self.run_op('concorde-dev-loop',{'task':'Implement the transfer contract'},double)
         self.assertEqual('succeeded',result['status'],result)
         self.assertEqual('ready',result['output']['data']['outcome'])
         self.assertEqual('passed',result['output']['data']['checks'][0]['status'])
@@ -493,7 +493,7 @@ class ScopedProtocolTests(unittest.TestCase):
     def test_failed_behavioral_check_prevents_delivery(self):
         def broken(stage,snapshot,data,cwd):
             if stage=='implementation': (cwd/'app/transfer.py').write_text('def transfer(balance,amount):\n    return 0\n')
-        result=self.run_op('concorde-standard-dev-loop',{'target_id':'service.transfer','task':'Implement transfer'},ModelProcessDouble(broken))
+        result=self.run_op('concorde-dev-loop',{'target_id':'service.transfer','task':'Implement transfer'},ModelProcessDouble(broken))
         self.assertEqual('failed',result['status'],result)
         self.assertEqual('failed',result['output']['data']['checks'][0]['status'])
         state=json.loads((self.root/'.concorde/worktree.json').read_text())

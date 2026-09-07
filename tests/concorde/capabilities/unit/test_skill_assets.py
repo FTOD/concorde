@@ -118,16 +118,16 @@ class SkillAssetTests(unittest.TestCase):
             planner.capabilities,
             ("concorde-context-assessor", "concorde-planner"),
         )
-        operation = load_skill_prompt(REPOSITORY_ROOT, "concorde-standard-dev-loop", "")
+        operation = load_skill_prompt(REPOSITORY_ROOT, "concorde-dev-loop", "")
         self.assertEqual(operation.kind, "operation")
         self.assertEqual(
             operation.operation,
-            "operations/concorde-standard-dev-loop/operation.py",
+            "operations/concorde-dev-loop/operation.py",
         )
         self.assertEqual(operation.capabilities[:4], ("concorde-coordinator", "concorde-specify", "concorde-review", "concorde-plan"))
         self.assertIn(
             "python3 scripts/run-operation.py "
-            "operations/concorde-standard-dev-loop/operation.py",
+            "operations/concorde-dev-loop/operation.py",
             operation.body,
         )
         for prompt in (leaf, planner, operation):
@@ -152,21 +152,21 @@ class SkillAssetTests(unittest.TestCase):
             installed.body,
         )
         source_operation = load_skill_prompt(
-            REPOSITORY_ROOT, "concorde-standard-dev-loop", ""
+            REPOSITORY_ROOT, "concorde-dev-loop", ""
         )
         installed_operation = load_skill_prompt(
             REPOSITORY_ROOT,
-            "concorde-standard-dev-loop",
+            "concorde-dev-loop",
             ".concorde/framework",
         )
         self.assertIn(
             "python3 scripts/run-operation.py "
-            "operations/concorde-standard-dev-loop/operation.py",
+            "operations/concorde-dev-loop/operation.py",
             source_operation.body,
         )
         self.assertIn(
             "python3 .concorde/framework/scripts/run-operation.py "
-            ".concorde/framework/operations/concorde-standard-dev-loop/operation.py",
+            ".concorde/framework/operations/concorde-dev-loop/operation.py",
             installed_operation.body,
         )
         source_validate = load_skill_prompt(REPOSITORY_ROOT, "concorde-validate", "")
@@ -188,14 +188,14 @@ class SkillAssetTests(unittest.TestCase):
         self.assertIn('kind: "operation"', rendered_plan)
 
         operation_path = (
-            REPOSITORY_ROOT / "operations/concorde-standard-dev-loop/SKILL.md"
+            REPOSITORY_ROOT / "operations/concorde-dev-loop/SKILL.md"
         )
         rendered_operation = render_skill(
             operation_path, "claude", "", kind="operation"
         )
         self.assertIn('kind: "operation"', rendered_operation)
         self.assertIn(
-            'entrypoint: "operations/concorde-standard-dev-loop/operation.py"',
+            'entrypoint: "operations/concorde-dev-loop/operation.py"',
             rendered_operation,
         )
         self.assertIn("user-invocable: true", rendered_operation)
@@ -281,33 +281,33 @@ class SkillAssetTests(unittest.TestCase):
             shutil.copytree(REPOSITORY_ROOT / "operations", root / "operations")
             manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
             (root / "concorde.json").write_text(json.dumps(manifest))
-            operation = root / "operations/concorde-standard-dev-loop/SKILL.md"
+            operation = root / "operations/concorde-dev-loop/SKILL.md"
             operation.write_text(
                 operation.read_text().replace(
                     '"concorde-specify"', '"concorde-unknown"'
                 )
             )
             with self.assertRaisesRegex(SkillAssetError, "unknown capabilities"):
-                load_skill_prompt(root, "concorde-standard-dev-loop")
+                load_skill_prompt(root, "concorde-dev-loop")
             operation.write_text(
                 operation.read_text().replace("operation: operation.py", "operation: graph.py")
             )
             with self.assertRaisesRegex(SkillAssetError, "operation: operation.py"):
-                load_skill_prompt(root, "concorde-standard-dev-loop")
+                load_skill_prompt(root, "concorde-dev-loop")
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             shutil.copytree(REPOSITORY_ROOT / "roles", root / "roles")
             shutil.copytree(REPOSITORY_ROOT / "operations", root / "operations")
             shutil.copy2(
-                root / "operations/concorde-standard-dev-loop/operation.py",
-                root / "operations/concorde-standard-dev-loop/extra.py",
+                root / "operations/concorde-dev-loop/operation.py",
+                root / "operations/concorde-dev-loop/extra.py",
             )
             (root / "concorde.json").write_text(
                 (REPOSITORY_ROOT / "concorde.json").read_text()
             )
             with self.assertRaisesRegex(SkillAssetError, "exactly"):
-                load_skill_prompt(root, "concorde-standard-dev-loop")
+                load_skill_prompt(root, "concorde-dev-loop")
 
 
 if __name__ == "__main__":

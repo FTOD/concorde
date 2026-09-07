@@ -43,9 +43,9 @@ class StudioTests(unittest.TestCase):
                                   executor=executor or self.double.executor)
 
     def test_inventory_and_all_entries_execute_the_shared_boundary(self):
-        manifest = json.loads((PACKAGE / "langgraph.json").read_text())
+        manifest = json.loads((PACKAGE / "generated/langgraph.json").read_text())
         self.assertEqual(set(PUBLIC_OPERATIONS), set(manifest["graphs"]))
-        self.assertEqual(8, len(manifest["graphs"]))
+        self.assertEqual(7, len(manifest["graphs"]))
         for operation in PUBLIC_OPERATIONS:
             with self.subTest(operation=operation):
                 value = invocation(operation, data={"unrecognized": True})
@@ -84,8 +84,8 @@ class StudioTests(unittest.TestCase):
         self.assertNotEqual(actual["result"]["invocation_id"], second["result"]["invocation_id"])
 
     def test_describe_policy_does_not_start_agents(self):
-        actual = self.graph("concorde-standard-dev-loop").invoke(
-            {"invocation": invocation("concorde-standard-dev-loop", "describe-policy")})
+        actual = self.graph("concorde-dev-loop").invoke(
+            {"invocation": invocation("concorde-dev-loop", "describe-policy")})
         self.assertEqual("described", actual["result"]["status"], actual)
         self.assertTrue(actual["policies"])
         self.assertEqual([], self.double.calls)
@@ -163,9 +163,9 @@ class StudioTests(unittest.TestCase):
         fixture = WorktreeLifecycleTests()
         fixture.setUp()
         self.addCleanup(fixture.doCleanups)
-        actual = build_studio_graph("concorde-fast-loop", fixture.change, PACKAGE,
+        actual = build_studio_graph("concorde-dev-loop", fixture.change, PACKAGE,
                                    executor=self.double.executor).invoke({"invocation": invocation(
-            "concorde-fast-loop", data=fixture.task)})
+            "concorde-dev-loop", data={**fixture.task, "specify": False, "run_reviews": False})})
         self.assertEqual("succeeded", actual["result"]["status"], actual)
         stages = [e["stage"] for e in actual["events"] if e["event"] == "stage_finished"]
         self.assertIn("validate", stages)

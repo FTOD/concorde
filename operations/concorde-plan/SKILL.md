@@ -9,7 +9,7 @@ capabilities: ["concorde-context-assessor", "concorde-planner"]
 # concorde-plan
 
 This is an internal stage Operation. It receives an already routed `target_id` and one frozen
-context snapshot from its composing Operation (`concorde-standard-dev-loop` or `concorde-fast-loop`);
+context snapshot from its composing Operation (`concorde-dev-loop`);
 it is never selected directly by a user or by main. It is not projected as a user-invocable Skill,
 and the executable boundary rejects a direct invocation of `operations/concorde-plan/operation.py`
 with error code `internal_operation`.

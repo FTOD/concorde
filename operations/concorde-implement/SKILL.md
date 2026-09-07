@@ -9,7 +9,7 @@ capabilities: ["concorde-implementation-worker"]
 # concorde-implement
 
 This is an internal stage Operation. It receives an already routed `target_id` and one frozen
-context snapshot from its composing Operation (`concorde-standard-dev-loop`, `concorde-fast-loop`,
+context snapshot from its composing Operation (`concorde-dev-loop`,
 or `concorde-reflections-triage` investigating owned reflections); it is never selected directly by
 a user or by main. It is not projected as a user-invocable Skill, and the executable boundary
 rejects a direct invocation of `operations/concorde-implement/operation.py` with error code

@@ -24,7 +24,7 @@ Spec incomplete, not a search for arbitrary files. See [the principles](protocol
 
 ## Install and initialize
 
-The installer distributes canonical runtime, 14 Operations (8 public wrappers plus 6 internal stage
+The installer distributes canonical runtime, 13 Operations (7 public wrappers plus 6 internal stage
 Operations reachable only through them), 9 internal roles and 7 Markdown templates to Codex or Claude.
 Check `python scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
@@ -60,8 +60,8 @@ Send this invocation on stdin to the matching installed paired executable:
 ```json
 {
   "type_id":"concorde-operation-invocation","schema_version":2,
-  "operation_id":"concorde-standard-dev-loop","mode":"execute","configuration":null,
-  "input":{"type_id":"concorde-standard-dev-loop-request","schema_version":1,
+  "operation_id":"concorde-dev-loop","mode":"execute","configuration":null,
+  "input":{"type_id":"concorde-dev-loop-request","schema_version":1,
     "data":{"target_id":"service.transfer","task":"Implement the specified transfer contract"}}
 }
 ```
@@ -73,8 +73,12 @@ not a context grant. The loop executes specification,
 context assessment, plan, tasks, implementation and checks, ending at a ready candidate.
 
 Operations fall into three classes, distinguished by who selects context. Global Operations
-(`concorde-main` and the two development loops) receive only intent, at most with routing hints, and
-let main select the target. Lifecycle Operations (`concorde-init`, `concorde-configure`,
+(`concorde-main`, the development loop `concorde-dev-loop`, and `concorde-reflections-triage`)
+receive only intent, at most with routing hints, and let main select the target. `concorde-dev-loop`
+takes optional `specify`/`run_reviews` flags: `specify=false` skips Spec authoring (the former fast
+loop) and `run_reviews=false` records an explicit skip for each review mode instead of running it; a
+review already required for a change cannot be disabled by a later `run_reviews=false`. Lifecycle
+Operations (`concorde-init`, `concorde-configure`,
 `concorde-validate`, `concorde-deliver`) are deterministic host behavior with no agent cognition.
 Every other Operation — `concorde-specify`, `concorde-review`, `concorde-context-solve`,
 `concorde-plan`, `concorde-tasks`, `concorde-implement` — is an internal stage: it receives an
@@ -207,18 +211,22 @@ CLI/Skill forwarding, live execution events, debugging and worktree isolation. S
 existing JSON stdin/stdout calls continue to work without a server.
 
 Run Python tests with `PYTHONPATH=src python -m unittest discover -s tests/concorde -v` and docsite checks
-with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`. Regenerate canonical public
-projections after prompt changes. `scripts/sync-protocol-assets.py` exports executable wire schemas;
-`--bind-project` is an explicit maintainer decision to accept that Protocol in this checkout.
+with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`. `scripts/sync-protocol-assets.py`
+exports executable wire schemas; `--bind-project` is an explicit maintainer decision to accept that
+Protocol in this checkout.
 
-Canonical `roles/`, `operations/`, and `agent-assets/` produce the tracked checkout agent surfaces.
-Never edit `.agents/skills/concorde-*`, `.claude/skills/concorde-*`, or generated reflection agents
-directly. After changing their sources, run both commands in the same primary or linked worktree:
+`prompts/`, `skills/`, and the top-level `capabilities/` package produce this checkout's agent
+surfaces. Never edit `generated/`, `.agents/skills/concorde-*`, `.claude/skills/concorde-*`, or
+generated reflection agents directly; they are untracked build output. After changing their
+sources, run the build in the same primary or linked worktree:
 
 ```bash
-python3 scripts/development/sync-agent-surfaces.py apply --project-root .
-python3 scripts/development/sync-agent-surfaces.py check --project-root .
+python3 scripts/concorde.py build --check
+python3 scripts/concorde.py build
 ```
+
+The host refuses to run any capability on a stale build; a freshly created worktree must be built
+once before an agent can load Concorde Skills.
 
 Root `AGENTS.md`/`CLAUDE.md` bind an agent to the worktree that supplied its project Skills. If work
 targets another worktree, open a new agent there. User-authorized delivery is the bounded exception:

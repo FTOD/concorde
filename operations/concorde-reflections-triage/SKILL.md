@@ -3,7 +3,7 @@ name: concorde-reflections-triage
 description: "Global reflection queue: report status, capture recorded gaps, and investigate, implement, merge or close owned reflections."
 exposure: public
 operation: operation.py
-capabilities: ["concorde-implementation-worker", "concorde-standard-dev-loop"]
+capabilities: ["concorde-implementation-worker", "concorde-dev-loop"]
 ---
 
 # concorde-reflections-triage

@@ -4,10 +4,9 @@ description: "Global entry: answer questions, route work, and design or apply sy
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "operations/concorde-main/SKILL.md"
-  kind: "operation"
-  exposure: "public"
-  entrypoint: "operations/concorde-main/operation.py"
+  source: "skills/concorde-main/SKILL.md"
+  kind: "skill"
+  capability: "main"
 ---
 # concorde-main
 
@@ -24,16 +23,16 @@ private target-local Spec authors and stores the resulting exact application as 
 only its path and digest return to ambient cognition. After the maintainer reviews that artifact,
 action `apply-topology` accepts it and atomically applies or rolls back the registry/document set.
 
-Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-operation.py operations/concorde-main/operation.py`. Its exact fields
+Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-capability.py concorde-main`. Its exact fields
 are type_id, schema_version:2, operation_id:"concorde-main", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-main-request@1).
 Ask and design-topology requests require task and accept optional target_id/focus_id routing hints
 and constraints. Accept-topology requires the exact topology_proposal returned by design. Apply-
 topology requires only the exact application ArtifactRef returned by accept.
-The hint never grants Spec access to the coordinator. The global development loops
-(`concorde-standard-dev-loop`, `concorde-fast-loop`) accept the same task, with optional target_id,
-focus_id, constraints, and change_id, and route through main exactly like this Operation's own ask
-action; their internal stages are bound to one target by the loop and are never invoked directly.
+The hint never grants Spec access to the coordinator. The global development loop
+(`concorde-dev-loop`) accepts the same task, with optional target_id, focus_id, constraints, and
+change_id, and routes through main exactly like this Operation's own ask action; its internal
+stages are bound to one target by the loop and are never invoked directly.
 Initialization uses its typed propose/apply request; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 

@@ -1,30 +1,20 @@
 """Profile 8 Operation registry and versioned JSON contracts.
 
 Public names are paired Operations. Internal Skills describe only one host-bound agent role.
+Per-capability request/response contracts are owned by the top-level ``capabilities/`` package
+(one module per capability); ``schemas()`` collects them lazily so this module never imports that
+package at module-load time. The internal (non-capability) data types below — topology
+design/proposal/application, discovery context, context snapshots, review internals — are not
+owned by any one capability and stay defined directly here.
 """
 from __future__ import annotations
 
-from .wire_shapes import obj, array, STRING, PATH, DIGEST, ARTIFACT, typed_schema
+from .contract_shapes import ARTIFACT, DIGEST, GAP, MAIN_OUTCOMES, NULLABLE_ID, PATH, ROUTE, STRING, WORKSPACE_CONTEXT, array, obj, typed_schema
 
-
-TASK_FIELDS = {"target_id": STRING, "task": STRING, "focus_id": STRING,
-               "constraints": array(STRING), "change_id": STRING}
-TASK_OPTIONAL = ("focus_id", "constraints", "change_id")
-NULLABLE_ID = {"anyOf": [STRING, {"type": "null"}]}
-GAP = obj({"question": STRING, "blocked_step": STRING, "needed_contract": STRING,
-           "target_id": STRING, "context_id": DIGEST}, ("target_id", "context_id"))
 DOCUMENT_CHANGE = obj({"path": PATH, "content": {"type": "string"}})
 TASK_ITEM = obj({"id": STRING, "target_id": STRING, "description": STRING,
                  "acceptance": STRING, "complete": {"type": "boolean"}})
-CHECK_RESULT = obj({"check_id": STRING, "target_id": STRING,
-    "status": {"enum": ["passed", "failed", "timeout"]}, "exit_code": {"type": "integer"},
-    "source_digest": DIGEST, "log_digest": DIGEST})
-ROUTE = obj({"target_id": STRING, "focus_id": NULLABLE_ID, "task": STRING,
-             "constraints": array(STRING)})
 WORKER_OUTCOMES = {"enum": ["completed", "spec_incomplete", "unsupported", "conflicting", "failed"]}
-MAIN_OUTCOMES = {"enum": ["expand", "routed", "completed", "spec_incomplete",
-                          "unsupported", "conflicting", "failed", "described",
-                          "topology_proposed", "topology_prepared", "topology_applied"]}
 FOCUS = obj({"id": STRING, "title": STRING, "document": PATH})
 DIAGRAM = obj({"source": PATH, "kind": STRING, "title": STRING})
 CHECK = obj({"id": STRING, "target_id": STRING, "argv": {**array(STRING), "minItems": 1},
@@ -42,18 +32,6 @@ REGISTRY = obj({"schema_version": {"const": 1}, "project_id": STRING,
 SPEC_TASK = obj({"target_id": STRING, "task": STRING})
 PROPOSAL_FILE = obj({"path": PATH, "before_digest": {"anyOf": [DIGEST, {"type": "null"}]},
                      "content": {"type": "string"}})
-WORKTREE_SUMMARY = obj({"path": STRING, "branch": NULLABLE_ID, "head": NULLABLE_ID,
-    "managed": {"type": "boolean"}, "locked": {"type": "boolean"},
-    "change_id": NULLABLE_ID, "target_id": NULLABLE_ID, "task": {"type": "string"},
-    "phase": NULLABLE_ID, "status": STRING, "outcome": NULLABLE_ID})
-COMPONENT_PROGRESS = obj({"target_id": STRING, "spec_status": STRING,
-    "implementation_status": STRING, "outcome": NULLABLE_ID})
-WORKSPACE_CONTEXT = obj({"kind": {"enum": ["primary", "change", "unversioned"]},
-    "current_worktree": STRING, "current_branch": NULLABLE_ID,
-    "primary_worktree": NULLABLE_ID, "primary_branch": NULLABLE_ID,
-    "change_id": NULLABLE_ID, "phase": NULLABLE_ID, "status": NULLABLE_ID,
-    "outcome": NULLABLE_ID, "gaps": array(GAP), "components": array(COMPONENT_PROGRESS),
-    "active_worktrees": array(WORKTREE_SUMMARY)})
 
 AGENT_OPERATIONS = {
     "concorde-specify": ("specify", "concorde-spec-author"),
@@ -66,8 +44,7 @@ TARGET_AGENT_STAGES = {"concorde-read-target": ("ask", "concorde-reader")}
 REVIEW_STAGES = {"spec": ("spec-review", "concorde-spec-reviewer"),
                  "code": ("code-review", "concorde-code-reviewer")}
 MAIN_OPERATION = "concorde-main"
-GLOBAL_OPERATIONS = (MAIN_OPERATION, "concorde-standard-dev-loop", "concorde-fast-loop",
-                     "concorde-reflections-triage")
+GLOBAL_OPERATIONS = (MAIN_OPERATION, "concorde-dev-loop", "concorde-reflections-triage")
 DETERMINISTIC_OPERATIONS = ("concorde-init", "concorde-configure", "concorde-validate", "concorde-deliver")
 LIFECYCLE_OPERATIONS = DETERMINISTIC_OPERATIONS
 INTERNAL_OPERATIONS = ("concorde-specify", "concorde-review", "concorde-context-solve",
@@ -77,7 +54,9 @@ OPERATIONS = tuple(sorted((*GLOBAL_OPERATIONS, *LIFECYCLE_OPERATIONS, *INTERNAL_
 assert set(PUBLIC_OPERATIONS) | set(INTERNAL_OPERATIONS) == set(OPERATIONS), "Operation classes must partition OPERATIONS"
 assert not (set(PUBLIC_OPERATIONS) & set(INTERNAL_OPERATIONS)), "Operation classes must be disjoint"
 assert len(OPERATIONS) == len(set(OPERATIONS)), "OPERATIONS must not contain duplicates"
-MAIN_ROUTED_OPERATIONS = frozenset({MAIN_OPERATION, "concorde-standard-dev-loop", "concorde-fast-loop"})
+MAIN_ROUTED_OPERATIONS = frozenset({MAIN_OPERATION, "concorde-dev-loop"})
+# Capabilities whose module declares a nonempty USES (it composes other capabilities in-process).
+COMPOSITE_OPERATIONS = ("concorde-dev-loop", "concorde-reflections-triage")
 INTERNAL_SKILLS = tuple(sorted({"concorde-coordinator", *(role for _, role in AGENT_OPERATIONS.values()),
                                 *(role for _, role in REVIEW_STAGES.values()),
                                 *(role for _, role in TARGET_AGENT_STAGES.values())}))
@@ -108,12 +87,10 @@ def dependencies(operation: str) -> tuple[str, ...]:
         result = ("concorde-context-assessor", "concorde-planner")
     elif operation == "concorde-review":
         result = tuple(role for _, role in REVIEW_STAGES.values())
-    elif operation == "concorde-standard-dev-loop":
+    elif operation == "concorde-dev-loop":
         result = tuple("concorde-"+x for x in ("specify","review","plan","tasks","implement","validate"))
-    elif operation == "concorde-fast-loop":
-        result = tuple("concorde-"+x for x in ("review","plan","tasks","implement","validate"))
     elif operation == "concorde-reflections-triage":
-        result = ("concorde-implementation-worker", "concorde-standard-dev-loop")
+        result = ("concorde-implementation-worker", "concorde-dev-loop")
     else:
         result = (AGENT_OPERATIONS[operation][1],) if operation in AGENT_OPERATIONS else ()
     return (("concorde-coordinator", *result)
@@ -129,73 +106,73 @@ def exported_types() -> tuple[str, ...]:
                  for suffix in ("request", "response")) + INTERNAL_DATA_TYPES
 
 
+_CAPABILITY_INVENTORY_MODULE_NAME = "_concorde_capabilities_inventory"
+
+
+def load_capability_inventory():
+    """Load the repository-root ``capabilities`` package by file path, under a private
+    internal module name distinct from the plain ``capabilities`` name.
+
+    A name lookup (``import capabilities``, relying on ``sys.path`` search order) is not safe
+    here: test discovery (``unittest discover -s tests/concorde``) treats that directory as a
+    search root and, walking it, imports ``tests/concorde/capabilities/__init__.py`` as a
+    top-level module named ``capabilities`` — an unrelated test package that happens to share
+    this name. Registering our own package under the plain name too would then break that
+    discovery walk's own later imports of ``capabilities.unit``/``capabilities.integration`` in
+    the same process. Resolving by file path under a private name avoids the collision in both
+    directions.
+    """
+
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    cached = sys.modules.get(_CAPABILITY_INVENTORY_MODULE_NAME)
+    if cached is not None:
+        return cached
+    package_root = Path(__file__).resolve().parents[3]
+    init_path = package_root / "capabilities" / "__init__.py"
+    spec = importlib.util.spec_from_file_location(
+        _CAPABILITY_INVENTORY_MODULE_NAME, init_path,
+        submodule_search_locations=[str(package_root / "capabilities")],
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[_CAPABILITY_INVENTORY_MODULE_NAME] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _capability_schemas() -> dict:
+    """Collect every capability module's own REQUEST/RESPONSE (proposal section 6.2).
+
+    Imported lazily, and only here, so this module never depends on the top-level
+    ``capabilities`` package at import time (avoiding any import-order cycle with it).
+    """
+
+    import importlib
+
+    capability_inventory = load_capability_inventory()
+    result = {}
+    for name in capability_inventory.CAPABILITIES:
+        module = importlib.import_module(f"{capability_inventory.__name__}.{name}")
+        result[f"{module.EXTERNAL_NAME}-request"] = module.REQUEST
+        result[f"{module.EXTERNAL_NAME}-response"] = module.RESPONSE
+    return result
+
+
 def schemas() -> dict:
     result = {}
-    for name in OPERATIONS:
-        result[f"{name}-request"] = obj(TASK_FIELDS, TASK_OPTIONAL)
-        result[f"{name}-response"] = obj({
-            "target_id": STRING, "focus_id": NULLABLE_ID, "change_id": NULLABLE_ID,
-            "context_id": {"anyOf": [DIGEST, {"type": "null"}]},
-            "outcome": {"enum": ["completed", "ready", "spec_incomplete", "unsupported", "conflicting", "failed", "described", "delivered"]},
-            "answer": {"type": "string"}, "artifacts": array(ARTIFACT), "gaps": array(GAP),
-            "checks": array(CHECK_RESULT), "completed_operations": array(STRING)})
-    for name in MAIN_ROUTED_OPERATIONS:
-        result[f"{name}-request"] = obj(TASK_FIELDS, ("target_id", *TASK_OPTIONAL))
-    result["concorde-review-request"] = obj({**TASK_FIELDS,
-        "review_mode": {"enum": ["spec", "code"]}}, ("target_id", *TASK_OPTIONAL))
-    result["concorde-fast-loop-request"] = obj({**TASK_FIELDS,
-        "run_reviews": {"type": "boolean"}}, ("target_id", *TASK_OPTIONAL, "run_reviews"))
-    result["concorde-review-response"]["properties"]["reviews"] = array(typed_schema("concorde-review-result"))
-    result["concorde-review-response"]["required"].append("reviews")
-    result["concorde-main-request"] = obj({"action": {"enum": ["ask", "design-topology", "accept-topology", "apply-topology"]},
-        "task": STRING, "target_id": STRING, "focus_id": STRING, "constraints": array(STRING),
-        "topology_proposal": typed_schema("concorde-topology-proposal"),
-        "application": ARTIFACT},
-        ("action", "task", "target_id", "focus_id", "constraints", "topology_proposal", "application"))
-    result["concorde-main-response"] = obj({
-        "action": {"enum": ["ask", "design-topology", "accept-topology", "apply-topology"]},
-        "entry_target": STRING, "context_id": {"anyOf": [DIGEST, {"type": "null"}]}, "outcome": MAIN_OUTCOMES,
-        "answer": {"type": "string"}, "discovered_targets": array(STRING, unique=True),
-        "routes": array(ROUTE), "worker_results": array(typed_schema("concorde-main-worker-result")),
-        "topology_proposal": {"anyOf": [typed_schema("concorde-topology-proposal"), {"type": "null"}]},
-        "application": {"anyOf": [ARTIFACT, {"type": "null"}]},
-        "files": array(PATH, unique=True), "gaps": array(GAP), "completed_operations": array(STRING),
-        "workspace": WORKSPACE_CONTEXT})
-    result["concorde-deliver-request"] = obj({"change_id": STRING,
-        "target_id": STRING, "task": STRING, "focus_id": STRING, "constraints": array(STRING),
-        "keep_worktree": {"type": "boolean"}},
-        ("target_id", "task", "focus_id", "constraints", "keep_worktree"))
-    config = typed_schema("concorde-operation-configuration")
-    proposal_file = obj({"path": PATH, "before_digest": {"anyOf": [DIGEST, {"type": "null"}]}, "content": {"type": "string"}})
-    result["concorde-project-proposal"] = obj({"action": {"enum": ["initialize"]},
-        "base_digest": {"anyOf": [DIGEST, {"type": "null"}]}, "files": array(proposal_file)})
-    # Proposed registry is transported as exact JSON text and decoded/validated by the registry service.
-    result["concorde-init-request"] = obj({"action": {"enum": ["propose", "apply"]},
-        "name": STRING, "target_id": STRING, "configuration": config,
-        "proposal": typed_schema("concorde-project-proposal")}, ("name", "target_id", "configuration", "proposal"))
-    result["concorde-configure-request"] = obj({"configuration": config})
-    for name in ("concorde-init",):
-        result[f"{name}-response"] = obj({"status": {"enum": ["proposed", "applied"]},
-            "proposal": {"anyOf": [typed_schema("concorde-project-proposal"), {"type": "null"}]}, "files": array(PATH)})
-    result["concorde-configure-response"] = obj({"configuration": config, "status": {"const": "applied"}})
-    result["concorde-validate-request"] = obj({**TASK_FIELDS, "run_checks": {"type": "boolean"}}, (*TASK_OPTIONAL, "run_checks"))
-    result["concorde-reflections-triage-request"] = obj({**TASK_FIELDS,
-        "action": {"enum": ["status", "record-gaps", "investigate", "implement", "merge", "close"]},
-        "reflection_ids": array(STRING, unique=True), "gap_ids": array(DIGEST, unique=True)},
-        (*TASK_OPTIONAL, "task", "gap_ids"))
     document_ref = obj({"document_id": STRING, "path": PATH, "digest": DIGEST,
         "targets": {**array(STRING, unique=True), "minItems": 1},
         "main_visible": {"type": "boolean"}})
     document = obj({**document_ref["properties"], "content": {"type": "string"}})
     protocol_document = obj({"path": PATH, "digest": DIGEST, "content": {"type": "string"}})
+    result["concorde-project-proposal"] = obj({"action": {"enum": ["initialize"]},
+        "base_digest": {"anyOf": [DIGEST, {"type": "null"}]}, "files": array(PROPOSAL_FILE)})
     result["concorde-plan-artifact"] = obj({"plan": STRING})
     result["concorde-implementation-task"] = obj({"plan": STRING, "tasks": array(TASK_ITEM)})
     result["concorde-reflection-selection"] = obj({"head": STRING, "records": array(obj({"id":STRING,"path":PATH,"digest":DIGEST,"content":STRING}))})
     stage_input = {"anyOf":[typed_schema(name) for name in ("concorde-plan-artifact","concorde-implementation-task","concorde-reflection-selection")]}
-    result["concorde-reflections-triage-response"]["properties"]["reflections"] = array(obj({"id":STRING,"target_id":STRING,"status":STRING,"triage":STRING,"bucket":STRING,"plan_status":NULLABLE_ID,"verification":NULLABLE_ID}))
-    result["concorde-reflections-triage-response"]["properties"]["gap_records"] = array(obj({
-        "id": DIGEST, "target_id": STRING, "task": STRING, "phase": STRING, "gap": GAP,
-        "status": {"enum": ["open", "resolved"]}, "reflection_id": NULLABLE_ID}))
     result["concorde-context-snapshot"] = obj({"context_id": DIGEST, "schema_version": {"const": 1},
         "target_id": STRING, "kind": {"enum": ["domain", "service", "module"]}, "focus_id": NULLABLE_ID,
         "phase": STRING, "task": STRING, "constraints": array(STRING),
@@ -287,4 +264,5 @@ def schemas() -> dict:
     result["concorde-topology-author-result"] = obj({"context_id": DIGEST, "target_id": STRING,
         "outcome": WORKER_OUTCOMES, "answer": {"type": "string"}, "gaps": array(GAP),
         "documents": array(DOCUMENT_CHANGE)})
+    result.update(_capability_schemas())
     return result

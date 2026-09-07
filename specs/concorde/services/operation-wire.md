@@ -1454,6 +1454,242 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 ```
 
 
+## concorde-dev-loop-request
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "target_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task": {
+      "type": "string",
+      "minLength": 1
+    },
+    "focus_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "change_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "specify": {
+      "type": "boolean"
+    },
+    "run_reviews": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "task"
+  ],
+  "additionalProperties": false
+}
+```
+
+
+## concorde-dev-loop-response
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "target_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "focus_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "change_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "context_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "completed",
+        "ready",
+        "spec_incomplete",
+        "unsupported",
+        "conflicting",
+        "failed",
+        "described",
+        "delivered"
+      ]
+    },
+    "answer": {
+      "type": "string"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "format": "project-path"
+          },
+          "digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "digest"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1
+          },
+          "blocked_step": {
+            "type": "string",
+            "minLength": 1
+          },
+          "needed_contract": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "context_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "question",
+          "blocked_step",
+          "needed_contract"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "check_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "timeout"
+            ]
+          },
+          "exit_code": {
+            "type": "integer"
+          },
+          "source_digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "log_digest": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "check_id",
+          "target_id",
+          "status",
+          "exit_code",
+          "source_digest",
+          "log_digest"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "completed_operations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "required": [
+    "target_id",
+    "focus_id",
+    "change_id",
+    "context_id",
+    "outcome",
+    "answer",
+    "artifacts",
+    "gaps",
+    "checks",
+    "completed_operations"
+  ],
+  "additionalProperties": false
+}
+```
+
+
 ## concorde-discovery-context
 
 ```json
@@ -1470,9 +1706,8 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     },
     "operation": {
       "enum": [
-        "concorde-fast-loop",
-        "concorde-main",
-        "concorde-standard-dev-loop"
+        "concorde-dev-loop",
+        "concorde-main"
       ]
     },
     "phase": {
@@ -2278,239 +2513,6 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "instructions",
     "worker_results",
     "workspace"
-  ],
-  "additionalProperties": false
-}
-```
-
-
-## concorde-fast-loop-request
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "target_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "task": {
-      "type": "string",
-      "minLength": 1
-    },
-    "focus_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "constraints": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
-    "change_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "run_reviews": {
-      "type": "boolean"
-    }
-  },
-  "required": [
-    "task"
-  ],
-  "additionalProperties": false
-}
-```
-
-
-## concorde-fast-loop-response
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "target_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "focus_id": {
-      "anyOf": [
-        {
-          "type": "string",
-          "minLength": 1
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "change_id": {
-      "anyOf": [
-        {
-          "type": "string",
-          "minLength": 1
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "context_id": {
-      "anyOf": [
-        {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^sha256:[0-9a-f]{64}$"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "outcome": {
-      "enum": [
-        "completed",
-        "ready",
-        "spec_incomplete",
-        "unsupported",
-        "conflicting",
-        "failed",
-        "described",
-        "delivered"
-      ]
-    },
-    "answer": {
-      "type": "string"
-    },
-    "artifacts": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "path": {
-            "type": "string",
-            "minLength": 1,
-            "format": "project-path"
-          },
-          "digest": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          }
-        },
-        "required": [
-          "id",
-          "path",
-          "digest"
-        ],
-        "additionalProperties": false
-      }
-    },
-    "gaps": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "question": {
-            "type": "string",
-            "minLength": 1
-          },
-          "blocked_step": {
-            "type": "string",
-            "minLength": 1
-          },
-          "needed_contract": {
-            "type": "string",
-            "minLength": 1
-          },
-          "target_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "context_id": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          }
-        },
-        "required": [
-          "question",
-          "blocked_step",
-          "needed_contract"
-        ],
-        "additionalProperties": false
-      }
-    },
-    "checks": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "check_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "target_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "status": {
-            "enum": [
-              "passed",
-              "failed",
-              "timeout"
-            ]
-          },
-          "exit_code": {
-            "type": "integer"
-          },
-          "source_digest": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          },
-          "log_digest": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          }
-        },
-        "required": [
-          "check_id",
-          "target_id",
-          "status",
-          "exit_code",
-          "source_digest",
-          "log_digest"
-        ],
-        "additionalProperties": false
-      }
-    },
-    "completed_operations": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    }
-  },
-  "required": [
-    "target_id",
-    "focus_id",
-    "change_id",
-    "context_id",
-    "outcome",
-    "answer",
-    "artifacts",
-    "gaps",
-    "checks",
-    "completed_operations"
   ],
   "additionalProperties": false
 }
@@ -5519,236 +5521,6 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 
 
 ## concorde-specify-response
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "target_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "focus_id": {
-      "anyOf": [
-        {
-          "type": "string",
-          "minLength": 1
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "change_id": {
-      "anyOf": [
-        {
-          "type": "string",
-          "minLength": 1
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "context_id": {
-      "anyOf": [
-        {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^sha256:[0-9a-f]{64}$"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "outcome": {
-      "enum": [
-        "completed",
-        "ready",
-        "spec_incomplete",
-        "unsupported",
-        "conflicting",
-        "failed",
-        "described",
-        "delivered"
-      ]
-    },
-    "answer": {
-      "type": "string"
-    },
-    "artifacts": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "path": {
-            "type": "string",
-            "minLength": 1,
-            "format": "project-path"
-          },
-          "digest": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          }
-        },
-        "required": [
-          "id",
-          "path",
-          "digest"
-        ],
-        "additionalProperties": false
-      }
-    },
-    "gaps": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "question": {
-            "type": "string",
-            "minLength": 1
-          },
-          "blocked_step": {
-            "type": "string",
-            "minLength": 1
-          },
-          "needed_contract": {
-            "type": "string",
-            "minLength": 1
-          },
-          "target_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "context_id": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          }
-        },
-        "required": [
-          "question",
-          "blocked_step",
-          "needed_contract"
-        ],
-        "additionalProperties": false
-      }
-    },
-    "checks": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "check_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "target_id": {
-            "type": "string",
-            "minLength": 1
-          },
-          "status": {
-            "enum": [
-              "passed",
-              "failed",
-              "timeout"
-            ]
-          },
-          "exit_code": {
-            "type": "integer"
-          },
-          "source_digest": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          },
-          "log_digest": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          }
-        },
-        "required": [
-          "check_id",
-          "target_id",
-          "status",
-          "exit_code",
-          "source_digest",
-          "log_digest"
-        ],
-        "additionalProperties": false
-      }
-    },
-    "completed_operations": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    }
-  },
-  "required": [
-    "target_id",
-    "focus_id",
-    "change_id",
-    "context_id",
-    "outcome",
-    "answer",
-    "artifacts",
-    "gaps",
-    "checks",
-    "completed_operations"
-  ],
-  "additionalProperties": false
-}
-```
-
-
-## concorde-standard-dev-loop-request
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "target_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "task": {
-      "type": "string",
-      "minLength": 1
-    },
-    "focus_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "constraints": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
-    "change_id": {
-      "type": "string",
-      "minLength": 1
-    }
-  },
-  "required": [
-    "task"
-  ],
-  "additionalProperties": false
-}
-```
-
-
-## concorde-standard-dev-loop-response
 
 ```json
 {

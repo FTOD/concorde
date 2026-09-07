@@ -98,7 +98,7 @@ class BoundaryTests(unittest.TestCase):
         result=self.run_op('concorde-plan',callback=cb)
         self.assertEqual('unsupported',result['output']['data']['outcome']);self.assertEqual([],result['output']['data']['gaps']);self.assertFalse((self.root/'.concorde/attempts').exists())
     def test_describe_policy_launches_no_model_and_lists_exact_capsule(self):
-        result=self.run_op('concorde-standard-dev-loop',mode='describe-policy')
+        result=self.run_op('concorde-dev-loop',mode='describe-policy')
         self.assertEqual('described',result['status']);self.assertEqual([],self.double.calls)
         for policy in self.host.descriptions:
             if policy['phase'] not in {'implementation','code-review'}:self.assertEqual(['context.json'],policy['read_paths']);self.assertEqual([],policy['write_paths'])

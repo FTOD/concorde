@@ -14,7 +14,7 @@ the agent runtime. Run the following command from the worktree that the task wou
 passing that exact advertised path rather than reconstructing it from the current directory:
 
 ```bash
-python3 scripts/development/sync-agent-surfaces.py verify-worktree \
+python3 scripts/concorde.py verify-worktree \
   --project-root . \
   --loaded-skill-path <absolute-runtime-advertised-SKILL.md-path>
 ```
@@ -51,22 +51,27 @@ unrelated development and Skill projection maintenance remain bound to the origi
 Preserve unrelated destination changes and retain the source worktree when the user requests it
 or when it owns the active session. No delivery request grants permission to discard local edits.
 
-## Maintaining this worktree's Skill projections
+## Building this worktree
 
-`scripts/development/sync-agent-surfaces.py` always operates on the worktree containing that script.
-After changing canonical `roles/`, Operations' `SKILL.md` files, capability projection code, or
-reflection agent assets, run `apply` in that same worktree and then require `check` to pass. This is
-required in primary and linked worktrees alike; never point one worktree's script at another
-worktree.
+Run `python3 scripts/concorde.py build` after changing `prompts/`, `skills/`, `capabilities/` or
+wire contracts (`src/concorde/capabilities/protocol_contracts.py`, `contract_shapes.py`, or a
+module under the top-level `capabilities/` package). This always operates on the worktree
+containing the sources; never point one worktree's build at another worktree's outputs. Run
+`python3 scripts/concorde.py build --check` to verify the outputs are current without writing.
 
-Never directly create, edit, delete, or rename `.agents/skills/concorde-*` or
-`.claude/skills/concorde-*`. They are generated projections, not authoring sources. Make the change
-in the owning canonical `roles/` or `operations/*/SKILL.md` file and let this worktree's `apply`
-write both integrations. The same generated-only rule applies to `.codex/agents/reflection_*` and
-`.claude/agents/reflection-*`; their sources live under `agent-assets/reflections/`.
+Outputs under `generated/`, `.claude/skills/concorde-*` and `.agents/skills/concorde-*` are
+untracked build output, not authoring sources: never directly create, edit, delete, or rename
+them. Make the change in `prompts/`, `skills/` or `capabilities/` and rebuild. The host refuses to
+run any capability on a stale build (error code `stale_build`), verified against
+`generated/build-manifest.json`. A freshly created worktree — including one this host creates for
+a candidate change — must be built once before an agent can load Concorde Skills; `verify-worktree`
+fails closed until it is. The same generated-only rule applies to `.codex/agents/reflection_*` and
+`.claude/agents/reflection-*`; their sources live under `agent-assets/reflections/` and are
+produced by the separate `python3 scripts/concorde.py agent-assets sync` mechanism, not the build.
 
-Do not invoke a project-local `concorde-*` Skill to govern a task that changes its own canonical or
-generated Skill surface. If such a Skill body is already loaded as instructions, stop before the
-first edit and ask the user to reopen a maintenance agent in this same worktree. Skill discovery
-metadata alone is not a loaded Skill body. A maintenance agent that has not invoked a project-local
-Skill may update canonical sources, run `apply`, run `check`, and test normally.
+Do not invoke a project-local `concorde-*` Skill to govern a task that changes its own `prompts/`,
+`skills/`, `capabilities/`, or generated Skill surface. If such a Skill body is already loaded as
+instructions, stop before the first edit and ask the user to reopen a maintenance agent in this
+same worktree. Skill discovery metadata alone is not a loaded Skill body. A maintenance agent that
+has not invoked a project-local Skill may update sources, run the build, run `build --check`, and
+test normally.

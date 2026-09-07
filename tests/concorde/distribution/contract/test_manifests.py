@@ -60,7 +60,7 @@ class ManifestContractTests(unittest.TestCase):
         self.assertEqual(sorted(self.manifest["skills"]), skills)
         self.assertEqual(sorted(self.manifest["operations"]), operations)
         self.assertEqual(sorted(self.manifest["templates"]), templates)
-        self.assertEqual((len(skills), len(operations), len(templates)), (9, 14, 7))
+        self.assertEqual((len(skills), len(operations), len(templates)), (9, 13, 7))
         self.assertEqual(
             (REPOSITORY_ROOT / "operations/requirements.lock").read_text(),
             "langgraph==1.2.11\n",
@@ -114,11 +114,23 @@ class ManifestContractTests(unittest.TestCase):
             self.assertEqual(json.loads(result.stdout)["status"], "installed")
             self.assertTrue((target / ".concorde/framework/concorde.json").is_file())
             self.assertTrue((target / ".concorde/framework/src/concorde/capabilities/operation_runtime.py").is_file())
-            self.assertTrue((target / ".concorde/framework/operations/concorde-standard-dev-loop/operation.py").is_file())
-            self.assertTrue((target / ".agents/skills/concorde-standard-dev-loop/SKILL.md").is_file())
+            self.assertTrue((target / ".concorde/framework/operations/concorde-dev-loop/operation.py").is_file())
+            self.assertTrue((target / ".concorde/framework/generated/build-manifest.json").is_file())
+            self.assertTrue((target / ".agents/skills/concorde-dev-loop/SKILL.md").is_file())
             self.assertTrue((target / ".agents/skills/concorde-main/SKILL.md").is_file())
             self.assertFalse((target / ".concorde/framework/docsite/sidebars.docs.ts").exists())
             self.assertFalse((target / ".specify").exists())
+
+            # The host in the consumer must pass the freshness check without ever building itself.
+            check = subprocess.run(
+                [sys.executable, "-c",
+                 "import sys; sys.path.insert(0, '.concorde/framework/src'); "
+                 "from concorde.capabilities.build import verify_fresh; "
+                 "verify_fresh('.concorde/framework'); print('fresh')"],
+                cwd=target, capture_output=True, text=True,
+            )
+            self.assertEqual(0, check.returncode, check.stdout + check.stderr)
+            self.assertEqual("fresh", check.stdout.strip())
 
 
 if __name__ == "__main__":

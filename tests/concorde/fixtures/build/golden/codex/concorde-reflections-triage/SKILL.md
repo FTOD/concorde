@@ -4,10 +4,9 @@ description: "Global reflection queue: report status, capture recorded gaps, and
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "operations/concorde-reflections-triage/SKILL.md"
-  kind: "operation"
-  exposure: "public"
-  entrypoint: "operations/concorde-reflections-triage/operation.py"
+  source: "skills/concorde-reflections-triage/SKILL.md"
+  kind: "skill"
+  capability: "reflections_triage"
 ---
 # concorde-reflections-triage
 
@@ -15,7 +14,7 @@ Invoke this Operation to reflections triage. The host owns context
 resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
 input; do not perform it directly in this ambient conversation or inspect additional project files.
 
-Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-operation.py operations/concorde-reflections-triage/operation.py`. Its exact fields
+Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-capability.py concorde-reflections-triage`. Its exact fields
 are type_id, schema_version:2, operation_id:"concorde-reflections-triage", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-reflections-triage-request@1).
 Task requests select target_id and task, with optional focus_id, constraints, and change_id.
@@ -23,10 +22,12 @@ Initialization uses its typed propose/apply request; use the published request s
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
 Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of
-searching other Specs. When a mutation starts in the primary worktree, the host prepares a committed-base linked
+searching other Specs.
+When a mutation starts in the primary worktree, the host prepares a committed-base linked
 worktree and returns a handoff. Open a new agent in the returned worktree before continuing;
-never carry this conversation or its worktree-owned Skills across that boundary. Report Spec gaps or blocked execution as returned; do not work
-around the boundary. Non-implementation agents never receive implementation code or raw test logs.
+never carry this conversation or its worktree-owned Skills across that boundary. Report Spec gaps
+or blocked execution as returned; do not work around the boundary. Non-implementation agents never
+receive implementation code or raw test logs.
 
 Use action=record-gaps with explicit gap_ids selected from the status response
 `gap_records[].id` and an empty

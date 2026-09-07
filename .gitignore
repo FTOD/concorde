@@ -43,6 +43,10 @@ Thumbs.db
 .concorde/reflections/plans/
 .concorde/reflections/worktrees/
 
+# Concorde: rendered Skill projections (build output; source is prompts/ and skills/)
+.claude/skills/concorde-*/
+.agents/skills/concorde-*/
+
 .venv
 .concorde/attempts/
 .concorde/runs/

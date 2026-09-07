@@ -44,11 +44,11 @@ class StudioServerTests(unittest.TestCase):
             "        raise RuntimeError('fixture executor failure')\n"
             "    return double.executor(launch)\n"
             "for op in PUBLIC_OPERATIONS:\n"
-            f"    root = Path({str(cls.change_fixture.change)!r}) if op == 'concorde-fast-loop' else Path({str(cls.root)!r})\n"
+            f"    root = Path({str(cls.change_fixture.change)!r}) if op == 'concorde-dev-loop' else Path({str(cls.root)!r})\n"
             "    globals()[op.replace('-', '_')] = build_studio_graph(op, root, "
             f"Path({str(PACKAGE)!r}), executor=executor)\n"
         )
-        manifest = json.loads((PACKAGE / "langgraph.json").read_text())
+        manifest = json.loads((PACKAGE / "generated/langgraph.json").read_text())
         manifest["graphs"] = {op: f"{source}:{op.replace('-', '_')}" for op in manifest["graphs"]}
         manifest["dependencies"] = [str(PACKAGE)]
         config = directory / "langgraph.json"
@@ -115,7 +115,7 @@ class StudioServerTests(unittest.TestCase):
 
     def test_all_public_registered_assistants_have_schemas_and_execute_validation(self):
         assistants = self.request("/assistants/search", {"limit": 100})
-        self.assertEqual(8, len(assistants))
+        self.assertEqual(7, len(assistants))
         for assistant in assistants:
             operation = assistant["graph_id"]
             with self.subTest(operation=operation):
@@ -181,7 +181,8 @@ class StudioServerTests(unittest.TestCase):
         self.assertEqual("workspace_mismatch", json.loads(result.stdout)["errors"][0]["code"])
 
     def test_loop_executes_mutations_and_checkpoints_only_inside_fixture_worktree(self):
-        thread, state = self.run_graph(invocation("concorde-fast-loop", data=self.change_fixture.task))
+        thread, state = self.run_graph(invocation("concorde-dev-loop",
+            data={**self.change_fixture.task, "specify": False, "run_reviews": False}))
         self.assertEqual("succeeded", state["result"]["status"], state)
         self.assertEqual("ready", state["result"]["output"]["data"]["outcome"])
         phases = [e["stage"] for e in state["events"] if e["event"] == "stage_finished"]

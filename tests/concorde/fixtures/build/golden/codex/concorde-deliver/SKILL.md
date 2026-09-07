@@ -4,10 +4,9 @@ description: "Lifecycle: from the primary worktree, verify, merge and clean up o
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
-  source: "operations/concorde-deliver/SKILL.md"
-  kind: "operation"
-  exposure: "public"
-  entrypoint: "operations/concorde-deliver/operation.py"
+  source: "skills/concorde-deliver/SKILL.md"
+  kind: "skill"
+  capability: "deliver"
 ---
 # concorde-deliver
 
@@ -18,7 +17,7 @@ nested Operation cannot initiate delivery for this pair. Keep the session and it
 bound to their original participant while the deterministic host operates on the integration.
 Do not redirect a third-worktree session or forward its invocation to bypass the participant check.
 
-Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-operation.py operations/concorde-deliver/operation.py`. Its exact fields
+Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-capability.py concorde-deliver`. Its exact fields
 are type_id, schema_version:2, operation_id:"concorde-deliver", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1),
 and input (concorde-deliver-request@1). Supply the selected change_id from the primary worktree's

@@ -20,7 +20,7 @@ from .operation_config import load_configuration
 from .operation_permissions import (EnforcementReceipt, OperationExecutionResult, PolicyBinding, build_launch_specification,
     compile_policy, render_claude_configuration, render_codex_configuration)
 from .protocol_contracts import REVIEW_STAGES
-from .skill_assets import resolve_skill_prompt
+from .build import load_role_prompt
 from ..specification.context import resolve_context, recheck_context
 from ..specification.repository import SpecError, SpecRepository, digest, read_file
 
@@ -77,7 +77,7 @@ def inputs(run, mode: str) -> tuple[dict, object]:
     if mode == "code" and (target.kind == "domain" or not target.implementation):
         raise SpecError("code review requires a target with registered implementation files", "unsupported_target")
     phase, role = REVIEW_STAGES[mode]
-    prompt = resolve_skill_prompt(run.host.package_root / "roles" / role / "SKILL.md", "skill", "")
+    prompt = load_role_prompt(run.host.package_root, role)
     change = read_change(repository.root)
     _, current = workspace_identity(repository.root)
     head = current["head"] if current else None

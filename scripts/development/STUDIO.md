@@ -12,23 +12,25 @@ Use Python 3.11 or newer and run these commands from the intended Concorde check
 
 ```bash
 uv sync --locked --group studio
-uv run --locked --group studio langgraph dev --host 127.0.0.1 --port 2024 --n-jobs-per-worker 1 --no-browser
+python3 scripts/concorde.py build
+uv run --locked --group studio langgraph dev --config generated/langgraph.json --host 127.0.0.1 --port 2024 --n-jobs-per-worker 1 --no-browser
 ```
 
 Open <https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024> and select an assistant.
-The root `langgraph.json` registers all 8 public operation IDs. The 6 internal Operations run
-through their composing public operation and remain visible in stage/process events; Studio does
-not bypass their `internal_operation` direct-call restriction or restore removed operation names. API health is available at
-<http://127.0.0.1:2024/ok> and API documentation at <http://127.0.0.1:2024/docs>.
+`generated/langgraph.json` (build output; run the build before starting Studio) registers all 7
+public skills, derived from `skills/`. The 6 internal stage capabilities run through their
+composing public capability and remain visible in stage/process events; Studio does not bypass
+their `internal_operation` direct-call restriction or restore removed operation names. API health
+is available at <http://127.0.0.1:2024/ok> and API documentation at <http://127.0.0.1:2024/docs>.
 The local dev API works without model credentials for deterministic operations and policy previews.
 The hosted Studio UI requires a LangSmith account; follow the official
 [Studio setup](https://docs.langchain.com/oss/python/langgraph/studio) for its authentication setup.
 Actual agent execution still requires the project's configured Codex or Claude runtime and credentials.
 
-`langgraph.json` disables LangSmith tracing by default. Local thread/checkpoint files are stored in
-ignored `.langgraph_api/`. The dev server is intended for local use. Keep it on loopback and use one
-job per worker for this filesystem workspace; do not submit concurrent mutations from additional
-servers or local CLIs against the same worktree.
+`generated/langgraph.json` disables LangSmith tracing by default. Local thread/checkpoint files are
+stored in ignored `.langgraph_api/`. The dev server is intended for local use. Keep it on loopback
+and use one job per worker for this filesystem workspace; do not submit concurrent mutations from
+additional servers or local CLIs against the same worktree.
 
 The entry module binds project and package roots to **the checkout containing that module**,
 independently of request input. Start a separate server on a different port for another worktree.
@@ -75,7 +77,7 @@ for each invocation, including repeated complete invocations on the same thread.
 For Python breakpoints, the CLI supports a debugger port:
 
 ```bash
-uv run --locked --group studio --with debugpy langgraph dev --host 127.0.0.1 --port 2024 --n-jobs-per-worker 1 --debug-port 5678 --wait-for-client --no-reload --no-browser
+uv run --locked --group studio --with debugpy langgraph dev --config generated/langgraph.json --host 127.0.0.1 --port 2024 --n-jobs-per-worker 1 --debug-port 5678 --wait-for-client --no-reload --no-browser
 ```
 
 Attach your Python debugger to localhost:5678. See the official
@@ -192,7 +194,7 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests/concorde -t . -p '
 ```
 
 The opt-in integration suite starts a real Agent Server on an available local port, exercises all
-8 public assistants, internal-stage admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
+7 public assistants, internal-stage admission, direct execution, SSE events, CLI/Skill-launcher forwarding, JSON/exit compatibility
 and rejection paths, then stops the server. It uses temporary consumer projects and deterministic
 model process responses through the real executor/admission pipeline; it does not require online
 model calls or mutate this checkout's primary-worktree registry.

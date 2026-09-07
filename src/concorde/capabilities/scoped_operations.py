@@ -21,9 +21,10 @@ from .operation_data import (OPERATION_CONTRACTS, OperationDataError, canonical,
 from .operation_config import load_configuration
 from .operation_permissions import (PolicyBinding, compile_policy, render_codex_configuration,
     render_claude_configuration, build_launch_specification, OperationExecutionResult)
-from .skill_assets import EffectDeclaration, resolve_skill_prompt
+from .build import BuildError, load_role_prompt, verify_fresh
+from .skill_assets import EffectDeclaration
 from .protocol_contracts import (AGENT_OPERATIONS, TARGET_AGENT_STAGES,
-    MAIN_OPERATION, MAIN_ROUTED_OPERATIONS, INTERNAL_OPERATIONS)
+    MAIN_OPERATION, MAIN_ROUTED_OPERATIONS, INTERNAL_OPERATIONS, LIFECYCLE_OPERATIONS)
 from .change_worktree import (STATE_PATH, WORK_PATH, bind_owner, create_worktree,
     ensure_change, progress, read_change, refresh_registry, save_change,
     save_target_state, snapshot_tree, target_state, work_path, workspace_context,
@@ -89,7 +90,7 @@ def _worktree(host: OperationHost, mutation: bool, task: dict) -> tuple[Operatio
             raise SpecError("mutations require a committed Git worktree", "workspace_mismatch")
         # Preparing a worktree is a handoff, never permission to continue the
         # originating agent conversation against a different checkout.
-        return host, {**create_worktree(host.project_root, task), "handoff": True}
+        return host, {**create_worktree(host.project_root, task, package_root=host.package_root), "handoff": True}
     if mutation:
         ensure_change(host.project_root, task=task, change_id=task.get("change_id"),
                       allow_primary=True)
@@ -213,7 +214,7 @@ class MainInvocation:
 
     def stage(self, phase: str, occurrence: int, *, worker_results: tuple[dict, ...] = ()) -> dict:
         role = "concorde-coordinator"
-        prompt = resolve_skill_prompt(self.host.package_root / "roles" / role / "SKILL.md", "skill", "")
+        prompt = load_role_prompt(self.host.package_root, role)
         snapshot = resolve_discovery_context(
             self.repository,
             tuple(self.discovered),
@@ -616,8 +617,7 @@ def _validate_topology_proposal(host: OperationHost, proposal: dict) -> tuple[Sp
         raise SpecError("topology proposal registry base changed", "stale_proposal")
     if repository.config["protocol"] != data["protocol_binding"]:
         raise SpecError("topology proposal Protocol binding changed", "stale_proposal")
-    prompt = resolve_skill_prompt(
-        host.package_root / "roles/concorde-coordinator/SKILL.md", "skill", "")
+    prompt = load_role_prompt(host.package_root, "concorde-coordinator")
     snapshot = resolve_discovery_context(
         repository,
         tuple(data["discovered_targets"]),
@@ -640,7 +640,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Oper
                      target: dict, task: str, occurrence: int,
                      candidate_document_references: tuple[dict, ...]) -> dict:
     role = "concorde-spec-author"
-    prompt = resolve_skill_prompt(host.package_root / "roles" / role / "SKILL.md", "skill", "")
+    prompt = load_role_prompt(host.package_root, role)
     snapshot = resolve_topology_author_context(repository, target, task=task, instructions=prompt.body,
         candidate_document_references=candidate_document_references)
     before_registry = repository.registry_bytes
@@ -966,7 +966,7 @@ class Invocation:
     def stage(self, operation: str, *, inputs: tuple[dict, ...] = (), readonly=False,
               defer_gap_resolution=False) -> dict:
         phase, role = {**AGENT_OPERATIONS, **TARGET_AGENT_STAGES}[operation]
-        prompt = resolve_skill_prompt(self.host.package_root / "roles" / role / "SKILL.md", "skill", "")
+        prompt = load_role_prompt(self.host.package_root, role)
         snapshot = resolve_context(self.repository, self.target.id, phase=phase, task=self.task["task"],
             focus_id=self.task.get("focus_id"), constraints=tuple(self.task.get("constraints", [])),
             instructions=prompt.body, stage_inputs=inputs)
@@ -1357,8 +1357,8 @@ class Invocation:
                     pass
             record.update(implementation_status="running", gaps=[], outcome=None)
             save_target_state(self.repository.root, state)
-            result = run_operation("concorde-fast-loop", self.configuration,
-                typed("concorde-fast-loop-request", {**payload, "run_reviews": bool(
+            result = run_operation("concorde-dev-loop", self.configuration,
+                typed("concorde-dev-loop-request", {**payload, "specify": False, "run_reviews": bool(
                     read_change(self.repository.root, required=True).get("review_requirements", {})
                     .get(self.target.id, {}).get("spec"))}), host_context=child_host)
             if result["status"] != "succeeded":
@@ -1488,15 +1488,17 @@ class Invocation:
             raise SpecError("required implementation checks are missing, failed, or stale", "stale_evidence")
         return state
 
-    def loop(self, fast=False) -> dict:
+    def loop(self) -> dict:
         from .review import current, require_reviews, skip
         from langgraph.graph import StateGraph, START, END
         from typing import TypedDict
         class State(TypedDict):
             output: dict
-        require_reviews(self, not fast or self.task.get("run_reviews", False))
-        stages = (["plan", "tasks", "implement", "validate"] if fast else
-                  ["specify", "plan", "tasks", "implement", "validate"])
+        specify = self.task.get("specify", True)
+        run_reviews = self.task.get("run_reviews", True)
+        require_reviews(self, run_reviews)
+        stages = (["specify", "plan", "tasks", "implement", "validate"] if specify else
+                  ["plan", "tasks", "implement", "validate"])
         change = read_change(self.repository.root)
         existing = change["targets"].get(self.target.id) if change else None
         blocked_phases = {item["phase"] for item in change.get("gap_history", [])
@@ -1507,9 +1509,9 @@ class Invocation:
             and all(authored.get(key) == value for key, value in {
             "task": self.task["task"], "focus_id": self.task.get("focus_id"),
             "constraints": self.task.get("constraints", [])}.items()))
-        if not fast and has_authored_spec:
+        if specify and has_authored_spec:
             stages.remove("specify")
-        if ((fast or has_authored_spec) and existing and existing.get("plan")
+        if ((not specify or has_authored_spec) and existing and existing.get("plan")
                 and not blocked_phases.intersection({"context-solve", "plan"})
                 and existing.get("task") == self.task["task"]
                 and existing.get("focus_id") == self.task.get("focus_id")
@@ -1677,19 +1679,20 @@ def _dispatch(operation, configuration, task, host):
         return review_scope(run, task["review_mode"])
     if host.mode == "describe-policy":
         stages = [operation] if operation in AGENT_OPERATIONS else []
-        if operation in {"concorde-standard-dev-loop", "concorde-fast-loop"}:
+        describe_reviews = False
+        if operation == "concorde-dev-loop":
+            describe_reviews = task.get("run_reviews", True)
             stages = ["concorde-context-solve", "concorde-plan", "concorde-tasks"]
             if run.target.kind != "domain":
                 stages.append("concorde-implement")
-            if operation == "concorde-standard-dev-loop":
+            if task.get("specify", True):
                 stages.insert(0, "concorde-specify")
         for stage in stages:
-            if stage == "concorde-context-solve" and (
-                    operation == "concorde-standard-dev-loop" or task.get("run_reviews", False)):
+            if stage == "concorde-context-solve" and describe_reviews:
                 from .review import review
                 review(run, "spec")
             run.stage(stage)
-        if (operation == "concorde-standard-dev-loop" or task.get("run_reviews", False)) and run.target.implementation:
+        if describe_reviews and run.target.implementation:
             from .review import review
             review(run, "code")
         return run.response("described")
@@ -1706,8 +1709,8 @@ def _dispatch(operation, configuration, task, host):
         return run.implement()
     if operation == "concorde-validate":
         return run.validate(task.get("run_checks", True))
-    if operation in {"concorde-standard-dev-loop", "concorde-fast-loop"}:
-        return run.loop(operation == "concorde-fast-loop")
+    if operation == "concorde-dev-loop":
+        return run.loop()
     result = run.stage(operation)
     return run.response("completed" if result["outcome"] == "sufficient" else result["outcome"],
                         result["answer"], gaps=result["gaps"])
@@ -1726,6 +1729,12 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
             raise SpecError("unknown registered Operation", "unknown_operation")
         if host.mode not in {"execute", "describe-policy"}:
             raise SpecError("unknown Operation mode", "invalid_input")
+        if host.depth == 1 and operation not in LIFECYCLE_OPERATIONS:
+            # The build is the only instruction source. Lifecycle Operations run no agent
+            # cognition and load no role, so they never consume generated/; every other
+            # top-level invocation is verified once here, and load_role_prompt verifies it
+            # again independently before trusting any generated/roles/*.md body.
+            verify_fresh(host.package_root)
         configuration = validate_typed(configuration if configuration is not None else load_configuration(host.project_root), "concorde-operation-configuration")
         task = validate_typed(runtime_input, OPERATION_CONTRACTS[operation][0])["data"]
         task = copy.deepcopy(task)
@@ -1787,6 +1796,8 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
             else "failed" if outcome == "failed" else "blocked")
     except (SpecError, OperationDataError) as error:
         result["errors"] = [{"code": error.code, "field": error.field, "message": str(error)}]
+    except BuildError as error:
+        result["errors"] = [{"code": error.code, "field": "", "message": str(error)}]
     except Exception as error:
         result.update(status="failed", errors=[{"code": "execution_failed", "field": "", "message": str(error)}])
     if any(error["code"] in {"incompatible_handoff", "workspace_mismatch", "invalid_worktree_state"}

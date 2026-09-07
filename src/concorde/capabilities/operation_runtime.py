@@ -302,6 +302,10 @@ def load_operation_stages(
 
     if not definition:
         raise ValueError("Operation requires at least one stage")
+    from .build import load_role_prompt
+    from .roles import ROLE_NAMES
+
+    known_roles = {"concorde-" + name.replace("_", "-") for name in ROLE_NAMES}
     stages: list[OperationStage] = []
     names: set[str] = set()
     for name, capability_names in definition:
@@ -310,7 +314,9 @@ def load_operation_stages(
         if not isinstance(capability_names, tuple) or not capability_names:
             raise ValueError(f"Operation stage {name!r} requires at least one capability")
         capabilities = tuple(
-            load_skill_prompt(package_root, capability_name, framework_prefix)
+            load_role_prompt(package_root, capability_name)
+            if capability_name in known_roles
+            else load_skill_prompt(package_root, capability_name, framework_prefix)
             for capability_name in capability_names
         )
         stages.append(OperationStage(name=name, capabilities=capabilities))

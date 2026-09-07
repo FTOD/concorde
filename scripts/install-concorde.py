@@ -37,15 +37,19 @@ RECEIPT_PATH = ".concorde/install.json"
 INSTALL_SCHEMA = 1
 PACKAGE_ROOTS = [
     "agent-assets",
+    "capabilities",
     "docsite",
     "operations",
+    "prompts",
     "protocol",
     "roles",
     "scripts",
+    "skills",
     "src",
     "templates",
     "viewer",
 ]
+from concorde.capabilities import build as concorde_build
 from concorde.capabilities.protocol_contracts import INTERNAL_SKILLS, OPERATIONS as ALL_OPERATIONS
 SKILLS = list(INTERNAL_SKILLS)
 OPERATIONS = list(ALL_OPERATIONS)
@@ -194,6 +198,10 @@ def load_package(root: Path) -> Package:
         render_capabilities(root, "codex", FRAMEWORK_ROOT)
     except SkillAssetError as error:
         raise InstallError(str(error)) from error
+    try:
+        concorde_build.build(root, "all", framework_prefix=FRAMEWORK_ROOT)
+    except concorde_build.BuildError as error:
+        raise InstallError(str(error)) from error
     license_path = root / "LICENSE"
     readme_path = root / "README.md"
     if manifest.get("license") != "MIT" or manifest.get("license_file") != "LICENSE" or license_path.is_symlink() or not license_path.is_file():
@@ -216,7 +224,8 @@ def _package_files(package: Package) -> dict[str, bytes]:
     desired[f"{FRAMEWORK_ROOT}/concorde.json"] = (package.root / "concorde.json").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/LICENSE"] = (package.root / "LICENSE").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/README.md"] = (package.root / "README.md").read_bytes()
-    for directory in ("agent-assets", "operations", "protocol", "roles", "src", "templates", "viewer"):
+    for directory in ("agent-assets", "capabilities", "operations", "prompts", "protocol", "roles",
+                      "skills", "src", "templates", "viewer"):
         source_root = package.root / directory
         for path in sorted(source_root.rglob("*")):
             if path.is_symlink():
@@ -236,7 +245,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
         "concorde.ps1",
         "concorde.sh",
         "reflections_queue.py",
-        "render-capability-surfaces.py",
+        "run-capability.py",
         "run-viewer.py",
         "run-operation.py",
     )
@@ -253,15 +262,22 @@ def desired_outputs(package: Package, integration: str) -> dict[str, tuple[bytes
         raise InstallError(f"unsupported integration: {integration}")
     outputs = {path: (content, "framework") for path, content in _package_files(package).items()}
     try:
-        capabilities = render_capabilities(package.root, integration, FRAMEWORK_ROOT)
         reflections = render_projection(package.root / "agent-assets/reflections", integration)
-    except (SkillAssetError, AgentAssetError) as error:
+    except AgentAssetError as error:
         raise InstallError(str(error)) from error
-    operations = set(package.manifest["operations"])
-    for path, content in capabilities.items():
-        name = PurePosixPath(path).parent.name
-        role = "operation" if name in operations else "skill"
-        outputs[path] = (content.encode("utf-8"), role)
+    # The build is the only instruction source: it renders the framework's generated/**
+    # (role bodies, the build manifest, the Studio graph list) and, for this integration,
+    # the seven consumer-facing skill wrappers. Consumers never run this build themselves.
+    try:
+        build_result = concorde_build.build(package.root, integration, framework_prefix=FRAMEWORK_ROOT)
+    except concorde_build.BuildError as error:
+        raise InstallError(str(error)) from error
+    for output in build_result.outputs:
+        if output.path.startswith((".claude/skills/", ".agents/skills/")):
+            outputs[output.path] = (output.content, "skill")
+        else:
+            outputs[f"{FRAMEWORK_ROOT}/{output.path}"] = (output.content, "framework")
+    outputs[f"{FRAMEWORK_ROOT}/generated/build-manifest.json"] = (build_result.manifest, "framework")
     for path, content in reflections.items():
         if path in outputs:
             raise InstallError(f"agent output collision: {path}")

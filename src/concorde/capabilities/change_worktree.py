@@ -290,7 +290,7 @@ def ensure_change(root: Path, *, task: dict | None = None, change_id: str | None
     return state
 
 
-def create_worktree(root: Path, task: dict) -> dict:
+def create_worktree(root: Path, task: dict, *, package_root: Path | None = None) -> dict:
     primary, current = workspace_identity(root)
     if primary is None or current["path"] != primary["path"] or not primary["branch"]:
         raise SpecError("create a change from the primary worktree's attached branch", "workspace_mismatch")
@@ -299,6 +299,11 @@ def create_worktree(root: Path, task: dict) -> dict:
     directory = Path(tempfile.mkdtemp(prefix="concorde-worktree-")) / "project"
     git(root, "worktree", "add", "-b", branch, str(directory), current["head"])
     state = ensure_change(directory, task=task, change_id=change_id)
+    if package_root is not None and package_root.resolve() == root.resolve():
+        # Self-hosted Concorde: the new linked worktree is also its own package root, and
+        # generated/ is untracked, so the handoff must not open on a build-less checkout.
+        from .build import write_build
+        write_build(directory)
     return {"path": str(directory), "branch": branch, "base_commit": current["head"],
             "change_id": state["change_id"], "primary_worktree": primary["path"]}
 

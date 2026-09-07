@@ -80,8 +80,9 @@ def triage(run):
             # Only intended behavior is a task input. Investigation prose, source, evidence and
             # logs must not contaminate specification/planning cognition.
             child_host=replace(run.host,routed_target=run.target.id,coordinated=True)
-            child=run_operation("concorde-standard-dev-loop",run.configuration,
-                typed("concorde-standard-dev-loop-request",{"target_id":run.target.id,"task":f["resolution"]}),host_context=child_host)
+            child=run_operation("concorde-dev-loop",run.configuration,
+                typed("concorde-dev-loop-request",{"target_id":run.target.id,"task":f["resolution"],
+                    "specify":True}),host_context=child_host)
             if child["status"]!="succeeded":
                 if child["output"]:
                     data=child["output"]["data"]

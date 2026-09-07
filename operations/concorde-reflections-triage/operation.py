@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 OPERATION_NAME = 'concorde-reflections-triage'
-OPERATION_CAPABILITIES = ('concorde-implementation-worker', 'concorde-standard-dev-loop')
+OPERATION_CAPABILITIES = ('concorde-implementation-worker', 'concorde-dev-loop')
 
 def package_root():
     return Path(__file__).resolve().parents[2]

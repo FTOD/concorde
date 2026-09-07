@@ -16,7 +16,7 @@ class ScopeReflectionTests(unittest.TestCase):
         self.double=ModelProcessDouble(callback);self.host=OperationHost(self.root,PACKAGE,executor=self.double.executor,allow_primary_worktree=True)
         return run_operation(op,CONFIGURATION,typed(op+'-request',data),host_context=self.host)
     def test_domain_coordinates_separate_component_contexts(self):
-        result=self.run_op('concorde-standard-dev-loop',{'target_id':'scope.bank','task':'Implement the banking transfer promise'})
+        result=self.run_op('concorde-dev-loop',{'target_id':'scope.bank','task':'Implement the banking transfer promise'})
         self.assertEqual('succeeded',result['status'],result)
         task_call=next(call for call in self.double.calls if call['stage']=='tasks')
         self.assertIn('"target_id": "service.transfer"',
@@ -31,14 +31,14 @@ class ScopeReflectionTests(unittest.TestCase):
         registry=json.loads((self.root/'.concorde/specs.json').read_text());registry['targets'][2]['participates_in']=['scope.audit'];(self.root/'.concorde/specs.json').write_text(json.dumps(registry))
         def cb(stage,snap,data,cwd):
             if stage=='tasks':data['tasks'][0]['target_id']='service.transfer'
-        result=self.run_op('concorde-standard-dev-loop',{'target_id':'scope.bank','task':'Implement transfer'},cb)
+        result=self.run_op('concorde-dev-loop',{'target_id':'scope.bank','task':'Implement transfer'},cb)
         self.assertNotEqual('succeeded',result['status']);self.assertFalse(any(c['stage']=='implementation' for c in self.double.calls))
     def test_domain_retains_component_gap_and_stops_before_code(self):
         def cb(stage,snapshot,data,cwd):
             if stage=='tasks' and snapshot['kind']=='domain':data['tasks'][0]['target_id']='service.transfer'
             if stage=='specify' and snapshot['target_id']=='service.transfer':
                 data.update(outcome='spec_incomplete',gaps=[{'question':'Which retry key identifies a transfer?','blocked_step':'Specify retries','needed_contract':'Idempotency ownership'}])
-        result=self.run_op('concorde-standard-dev-loop',{'target_id':'scope.bank','task':'Implement transfer retries'},cb)
+        result=self.run_op('concorde-dev-loop',{'target_id':'scope.bank','task':'Implement transfer retries'},cb)
         self.assertEqual('blocked',result['status'],result)
         gap=result['output']['data']['gaps'][0]
         self.assertEqual('service.transfer',gap['target_id']);self.assertTrue(gap['context_id'].startswith('sha256:'))

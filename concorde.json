@@ -26,7 +26,7 @@
     "concorde-configure",
     "concorde-context-solve",
     "concorde-deliver",
-    "concorde-fast-loop",
+    "concorde-dev-loop",
     "concorde-implement",
     "concorde-init",
     "concorde-main",
@@ -34,7 +34,6 @@
     "concorde-reflections-triage",
     "concorde-review",
     "concorde-specify",
-    "concorde-standard-dev-loop",
     "concorde-tasks",
     "concorde-validate"
   ],
@@ -73,11 +72,14 @@
   ],
   "package_roots": [
     "agent-assets",
+    "capabilities",
     "docsite",
     "operations",
+    "prompts",
     "protocol",
     "roles",
     "scripts",
+    "skills",
     "src",
     "templates",
     "viewer"

@@ -10,7 +10,7 @@ its head. Supply observed_state, verification, analysis, resolution, interventio
 human_intervention, route, effort, files, steps, validation, risks and protocol_change.
 resolution describes intended behavior only; keep code details in verification/analysis.
 A non-reproduced problem requires route dismiss and human_intervention required.
-Only small work may use fast-loop. Keep documents, plan and tasks empty and make no mutations. Return no document replacements or plan. Do not include raw code or logs in downstream results.
+Only small work may route to dev-loop with specify:false. Keep documents, plan and tasks empty and make no mutations. Return no document replacements or plan. Do not include raw code or logs in downstream results.
 
 @include prompts/workflow-host/host-bound-invocation.md
 

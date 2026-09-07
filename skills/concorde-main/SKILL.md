@@ -24,10 +24,10 @@ action `apply-topology` accepts it and atomically applies or rolls back the regi
 Ask and design-topology requests require task and accept optional target_id/focus_id routing hints
 and constraints. Accept-topology requires the exact topology_proposal returned by design. Apply-
 topology requires only the exact application ArtifactRef returned by accept.
-The hint never grants Spec access to the coordinator. The global development loops
-(`concorde-standard-dev-loop`, `concorde-fast-loop`) accept the same task, with optional target_id,
-focus_id, constraints, and change_id, and route through main exactly like this Operation's own ask
-action; their internal stages are bound to one target by the loop and are never invoked directly.
+The hint never grants Spec access to the coordinator. The global development loop
+(`concorde-dev-loop`) accepts the same task, with optional target_id, focus_id, constraints, and
+change_id, and routes through main exactly like this Operation's own ask action; its internal
+stages are bound to one target by the loop and are never invoked directly.
 @include prompts/workflow-host/init-request-and-no-flags.md
 
 The coordinator expands main-visible Domain/Service documents only as needed and records the exact
