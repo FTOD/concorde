@@ -19,7 +19,7 @@ from concorde.capabilities.validation import (  # noqa: E402
 )
 
 
-PACKAGE_ROOTS = ["agent-assets", "docsite", "operations", "scripts", "skills", "src", "templates", "viewer"]
+PACKAGE_ROOTS = ["agent-assets", "docsite", "operations", "roles", "scripts", "src", "templates", "viewer"]
 
 
 def write_capabilities(root: Path) -> None:
@@ -34,7 +34,7 @@ def write_capabilities(root: Path) -> None:
     for directory in PACKAGE_ROOTS:
         (root / directory).mkdir(exist_ok=True)
     for name in manifest["skills"]:
-        directory = root / "skills" / name
+        directory = root / "roles" / name
         directory.mkdir()
         (directory / "SKILL.md").write_text(
             f"---\nname: {name}\ndescription: Leaf {name}.\nexposure: public\n"
@@ -93,7 +93,7 @@ class CapabilityValidationTests(unittest.TestCase):
             )
             paths = capability_source_paths(root)
             self.assertIn("concorde.json", paths)
-            self.assertIn("skills/concorde-alpha/SKILL.md", paths)
+            self.assertIn("roles/concorde-alpha/SKILL.md", paths)
             self.assertIn("operations/concorde-loop/operation.py", paths)
 
     def test_missing_or_extra_operation_pair_members_are_rejected(self):
@@ -203,7 +203,7 @@ class CapabilityValidationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             write_capabilities(root)
-            leaf = root / "skills/concorde-alpha/SKILL.md"
+            leaf = root / "roles/concorde-alpha/SKILL.md"
             text = leaf.read_text(encoding="utf-8")
             start = text.index("effects:\n")
             end = text.index("---\n", start)
@@ -238,7 +238,7 @@ class CapabilityValidationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             write_capabilities(root)
-            (root / "skills/concorde-alpha/graph.py").write_text("pass\n", encoding="utf-8")
+            (root / "roles/concorde-alpha/graph.py").write_text("pass\n", encoding="utf-8")
             (root / "scripts/bad.py").write_text("from langgraph.graph import StateGraph\n", encoding="utf-8")
             (root / "commands").mkdir()
             (root / "examples").mkdir()
@@ -258,12 +258,12 @@ class CapabilityValidationTests(unittest.TestCase):
             write_capabilities(root)
             first = validate_project(root)
             self.assertEqual(first.status, "success", first.findings)
-            skill = root / "skills/concorde-alpha/SKILL.md"
+            skill = root / "roles/concorde-alpha/SKILL.md"
             skill.write_text(skill.read_text() + "\nChanged capability bytes.\n", encoding="utf-8")
             second = validate_project(root)
             self.assertEqual(second.status, "success", second.findings)
             self.assertNotEqual(first.result["source_digest"], second.result["source_digest"])
-            self.assertIn("skills/concorde-alpha/SKILL.md", second.artifacts)
+            self.assertIn("roles/concorde-alpha/SKILL.md", second.artifacts)
 
 
 if __name__ == "__main__":

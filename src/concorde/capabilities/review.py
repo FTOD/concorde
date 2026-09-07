@@ -77,7 +77,7 @@ def inputs(run, mode: str) -> tuple[dict, object]:
     if mode == "code" and (target.kind == "domain" or not target.implementation):
         raise SpecError("code review requires a target with registered implementation files", "unsupported_target")
     phase, role = REVIEW_STAGES[mode]
-    prompt = resolve_skill_prompt(run.host.package_root / "skills" / role / "SKILL.md", "skill", "")
+    prompt = resolve_skill_prompt(run.host.package_root / "roles" / role / "SKILL.md", "skill", "")
     change = read_change(repository.root)
     _, current = workspace_identity(repository.root)
     head = current["head"] if current else None

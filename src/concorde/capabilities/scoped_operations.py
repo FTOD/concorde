@@ -213,7 +213,7 @@ class MainInvocation:
 
     def stage(self, phase: str, occurrence: int, *, worker_results: tuple[dict, ...] = ()) -> dict:
         role = "concorde-coordinator"
-        prompt = resolve_skill_prompt(self.host.package_root / "skills" / role / "SKILL.md", "skill", "")
+        prompt = resolve_skill_prompt(self.host.package_root / "roles" / role / "SKILL.md", "skill", "")
         snapshot = resolve_discovery_context(
             self.repository,
             tuple(self.discovered),
@@ -617,7 +617,7 @@ def _validate_topology_proposal(host: OperationHost, proposal: dict) -> tuple[Sp
     if repository.config["protocol"] != data["protocol_binding"]:
         raise SpecError("topology proposal Protocol binding changed", "stale_proposal")
     prompt = resolve_skill_prompt(
-        host.package_root / "skills/concorde-coordinator/SKILL.md", "skill", "")
+        host.package_root / "roles/concorde-coordinator/SKILL.md", "skill", "")
     snapshot = resolve_discovery_context(
         repository,
         tuple(data["discovered_targets"]),
@@ -640,7 +640,7 @@ def _topology_author(repository: SpecRepository, configuration: dict, host: Oper
                      target: dict, task: str, occurrence: int,
                      candidate_document_references: tuple[dict, ...]) -> dict:
     role = "concorde-spec-author"
-    prompt = resolve_skill_prompt(host.package_root / "skills" / role / "SKILL.md", "skill", "")
+    prompt = resolve_skill_prompt(host.package_root / "roles" / role / "SKILL.md", "skill", "")
     snapshot = resolve_topology_author_context(repository, target, task=task, instructions=prompt.body,
         candidate_document_references=candidate_document_references)
     before_registry = repository.registry_bytes
@@ -966,7 +966,7 @@ class Invocation:
     def stage(self, operation: str, *, inputs: tuple[dict, ...] = (), readonly=False,
               defer_gap_resolution=False) -> dict:
         phase, role = {**AGENT_OPERATIONS, **TARGET_AGENT_STAGES}[operation]
-        prompt = resolve_skill_prompt(self.host.package_root / "skills" / role / "SKILL.md", "skill", "")
+        prompt = resolve_skill_prompt(self.host.package_root / "roles" / role / "SKILL.md", "skill", "")
         snapshot = resolve_context(self.repository, self.target.id, phase=phase, task=self.task["task"],
             focus_id=self.task.get("focus_id"), constraints=tuple(self.task.get("constraints", [])),
             instructions=prompt.body, stage_inputs=inputs)

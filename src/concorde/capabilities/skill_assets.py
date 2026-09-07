@@ -132,7 +132,7 @@ def _inventory(manifest: Mapping[str, object], field: CapabilityKind | Literal["
 
 
 def _canonical_source(name: str, kind: CapabilityKind) -> str:
-    root = "skills" if kind == "skill" else "operations"
+    root = "roles" if kind == "skill" else "operations"
     return f"{root}/{name}/SKILL.md"
 
 
@@ -289,7 +289,7 @@ def resolve_skill_prompt(
 
 
 def _exact_directory(root: Path, name: str, kind: CapabilityKind) -> Path:
-    directory = root / ("skills" if kind == "skill" else "operations") / name
+    directory = root / ("roles" if kind == "skill" else "operations") / name
     if directory.is_symlink() or not directory.is_dir():
         raise SkillAssetError(f"canonical {kind} directory is missing or unsafe: {directory}")
     allowed = {"SKILL.md"} if kind == "skill" else {"SKILL.md", "operation.py"}
@@ -431,7 +431,7 @@ def render_capabilities(
     if overlap:
         raise SkillAssetError(f"capability names must be globally unique: {sorted(overlap)}")
 
-    for directory_name, declared in (("skills", skills), ("operations", operations)):
+    for directory_name, declared in (("roles", skills), ("operations", operations)):
         capability_root = root / directory_name
         if capability_root.is_symlink() or not capability_root.is_dir():
             raise SkillAssetError(f"canonical capability directory is missing: {capability_root}")

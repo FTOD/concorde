@@ -27,11 +27,11 @@ class CapabilityLayoutRuleTests(unittest.TestCase):
         self.assertFalse(set(skills) & set(operations))
 
     def test_each_leaf_is_one_markdown_capability_without_python(self):
-        observed = sorted(path.name for path in (REPOSITORY_ROOT / "skills").iterdir())
+        observed = sorted(path.name for path in (REPOSITORY_ROOT / "roles").iterdir())
         self.assertEqual(observed, sorted(self.manifest["skills"]))
         for name in observed:
             with self.subTest(skill=name):
-                directory = REPOSITORY_ROOT / "skills" / name
+                directory = REPOSITORY_ROOT / "roles" / name
                 self.assertEqual(
                     [path.name for path in directory.iterdir()],
                     ["SKILL.md"],

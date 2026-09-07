@@ -19,13 +19,13 @@ def validate_package(root: Path) -> list[Finding]:
         for key, value in {"schema_version":3,"architecture_profile":8,"workspace_protocol":14,
                            "delivery_proposal":10,"skills":list(INTERNAL_SKILLS),"operations":list(OPERATIONS)}.items():
             if manifest.get(key) != value: fail("concorde.json", f"Invalid {key}; expected {value}")
-        for folder, names in (("skills", INTERNAL_SKILLS), ("operations", OPERATIONS)):
+        for folder, names in (("roles", INTERNAL_SKILLS), ("operations", OPERATIONS)):
             actual={p.name for p in (root/folder).iterdir() if p.is_dir() and p.name != "__pycache__"}
             if actual != set(names): fail(folder, "Canonical inventory differs from the manifest")
             for name in names:
                 path=f"{folder}/{name}/SKILL.md"
-                prompt=resolve_skill_prompt(root/path, "skill" if folder=="skills" else "operation", "")
-                expected_exposure = "internal" if folder=="skills" else ("internal" if name in INTERNAL_OPERATIONS else "public")
+                prompt=resolve_skill_prompt(root/path, "skill" if folder=="roles" else "operation", "")
+                expected_exposure = "internal" if folder=="roles" else ("internal" if name in INTERNAL_OPERATIONS else "public")
                 if prompt.exposure != expected_exposure:
                     fail(path,"Exposure differs from the Operation classification")
                 if folder=="operations":

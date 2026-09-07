@@ -211,7 +211,7 @@ with `npm run typecheck`, `npm test`, `npm run validate`, `npm run build`. Regen
 projections after prompt changes. `scripts/sync-protocol-assets.py` exports executable wire schemas;
 `--bind-project` is an explicit maintainer decision to accept that Protocol in this checkout.
 
-Canonical `skills/`, `operations/`, and `agent-assets/` produce the tracked checkout agent surfaces.
+Canonical `roles/`, `operations/`, and `agent-assets/` produce the tracked checkout agent surfaces.
 Never edit `.agents/skills/concorde-*`, `.claude/skills/concorde-*`, or generated reflection agents
 directly. After changing their sources, run both commands in the same primary or linked worktree:
 

@@ -52,7 +52,7 @@ class ManifestContractTests(unittest.TestCase):
             sys.path.pop(0)
 
     def test_manifest_inventory_equals_root_capabilities_and_templates(self):
-        skills = sorted(path.name for path in (REPOSITORY_ROOT / "skills").iterdir())
+        skills = sorted(path.name for path in (REPOSITORY_ROOT / "roles").iterdir())
         operations = sorted(
             path.name for path in (REPOSITORY_ROOT / "operations").iterdir() if path.is_dir()
         )

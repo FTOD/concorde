@@ -67,21 +67,21 @@ class SkillAssetTests(unittest.TestCase):
     def test_internal_leaf_is_loadable_but_not_projected(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            (root / "skills").mkdir()
+            (root / "roles").mkdir()
             (root / "operations").mkdir()
             manifest = {
                 "skills": ["concorde-alpha", "concorde-beta", "concorde-private"],
                 "operations": ["concorde-loop"],
             }
             for name in ("concorde-alpha", "concorde-beta"):
-                directory = root / "skills" / name
+                directory = root / "roles" / name
                 directory.mkdir()
                 (directory / "SKILL.md").write_text(
                     f"---\nname: {name}\ndescription: Public leaf.\n"
                     "exposure: public\n---\n\n# Public\n",
                     encoding="utf-8",
                 )
-            internal = root / "skills/concorde-private"
+            internal = root / "roles/concorde-private"
             internal.mkdir()
             (internal / "SKILL.md").write_text(
                 "---\nname: concorde-private\ndescription: Private leaf.\n"
@@ -108,7 +108,7 @@ class SkillAssetTests(unittest.TestCase):
     def test_loads_immutable_leaf_and_operation_prompts(self):
         leaf = load_skill_prompt(REPOSITORY_ROOT, "concorde-planner", "")
         self.assertEqual((leaf.name, leaf.kind), ("concorde-planner", "skill"))
-        self.assertEqual(leaf.source_path, "skills/concorde-planner/SKILL.md")
+        self.assertEqual(leaf.source_path, "roles/concorde-planner/SKILL.md")
         self.assertEqual(leaf.exposure, "internal")
         self.assertIn("Spec only", leaf.body)
         self.assertEqual((leaf.operation, leaf.capabilities), (None, ()))
@@ -217,7 +217,7 @@ class SkillAssetTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            (root / "skills/concorde-missing").mkdir(parents=True)
+            (root / "roles/concorde-missing").mkdir(parents=True)
             (root / "operations").mkdir()
             (root / "concorde.json").write_text(
                 json.dumps({"skills": ["concorde-missing"], "operations": []})
@@ -227,13 +227,13 @@ class SkillAssetTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills")
+            shutil.copytree(REPOSITORY_ROOT / "roles", root / "roles")
             (root / "operations").mkdir()
             (root / "concorde.json").write_text(
                 json.dumps({"skills": ["concorde-spec-author"], "operations": []})
             )
             target = root / "plan-target.md"
-            source = root / "skills/concorde-spec-author/SKILL.md"
+            source = root / "roles/concorde-spec-author/SKILL.md"
             shutil.copy2(source, target)
             source.unlink()
             source.symlink_to(target)
@@ -267,7 +267,7 @@ class SkillAssetTests(unittest.TestCase):
     def test_rejects_global_collision_unknown_dependencies_and_inexact_pairs(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills")
+            shutil.copytree(REPOSITORY_ROOT / "roles", root / "roles")
             shutil.copytree(REPOSITORY_ROOT / "operations", root / "operations")
             manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
             manifest["skills"] = [*manifest["skills"], "concorde-plan"]
@@ -277,7 +277,7 @@ class SkillAssetTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills")
+            shutil.copytree(REPOSITORY_ROOT / "roles", root / "roles")
             shutil.copytree(REPOSITORY_ROOT / "operations", root / "operations")
             manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
             (root / "concorde.json").write_text(json.dumps(manifest))
@@ -297,7 +297,7 @@ class SkillAssetTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills")
+            shutil.copytree(REPOSITORY_ROOT / "roles", root / "roles")
             shutil.copytree(REPOSITORY_ROOT / "operations", root / "operations")
             shutil.copy2(
                 root / "operations/concorde-standard-dev-loop/operation.py",

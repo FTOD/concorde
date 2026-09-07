@@ -54,14 +54,14 @@ or when it owns the active session. No delivery request grants permission to dis
 ## Maintaining this worktree's Skill projections
 
 `scripts/development/sync-agent-surfaces.py` always operates on the worktree containing that script.
-After changing canonical `skills/`, Operations' `SKILL.md` files, capability projection code, or
+After changing canonical `roles/`, Operations' `SKILL.md` files, capability projection code, or
 reflection agent assets, run `apply` in that same worktree and then require `check` to pass. This is
 required in primary and linked worktrees alike; never point one worktree's script at another
 worktree.
 
 Never directly create, edit, delete, or rename `.agents/skills/concorde-*` or
 `.claude/skills/concorde-*`. They are generated projections, not authoring sources. Make the change
-in the owning canonical `skills/` or `operations/*/SKILL.md` file and let this worktree's `apply`
+in the owning canonical `roles/` or `operations/*/SKILL.md` file and let this worktree's `apply`
 write both integrations. The same generated-only rule applies to `.codex/agents/reflection_*` and
 `.claude/agents/reflection-*`; their sources live under `agent-assets/reflections/`.
 

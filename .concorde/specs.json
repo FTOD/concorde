@@ -418,7 +418,7 @@
         "src/concorde/reflections/agent_assets.py",
         "scripts/render-capability-surfaces.py",
         "scripts/sync-protocol-assets.py",
-        "skills",
+        "roles",
         "operations",
         "agent-assets"
       ],

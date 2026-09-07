@@ -74,7 +74,7 @@ class AlignmentExplorerContractTests(unittest.TestCase):
         self.assertIn("concorde-coordinator", manifest["skills"])
         self.assertIn("concorde-main", manifest["operations"])
         self.assertFalse(any("explore" in skill for skill in manifest["skills"]))
-        self.assertFalse((REPOSITORY_ROOT / "skills/concorde-explore").exists())
+        self.assertFalse((REPOSITORY_ROOT / "roles/concorde-explore").exists())
 
     def test_alignment_input_has_no_similarity_or_confidence_escape_hatch(self):
         record = self.schemas["alignment-input.schema.json"]["$defs"]["record"]

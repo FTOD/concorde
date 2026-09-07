@@ -199,7 +199,7 @@ def capability_source_paths(project_root: str | Path) -> tuple[str, ...]:
     if manifest is None or manifest.get("name") != "concorde":
         return ()
     paths: list[str] = ["concorde.json"]
-    for directory_name in ("scripts", "skills", "operations"):
+    for directory_name in ("scripts", "roles", "operations"):
         directory = root / directory_name
         if not directory.is_dir() or directory.is_symlink():
             continue
@@ -261,8 +261,8 @@ def validate_capabilities(package: Any) -> list[Finding]:
         "agent-assets",
         "docsite",
         "operations",
+        "roles",
         "scripts",
-        "skills",
         "src",
         "templates",
         "viewer",
@@ -281,11 +281,11 @@ def validate_capabilities(package: Any) -> list[Finding]:
                 "CONCORDE-CAPABILITY-LEGACY",
                 legacy,
                 f"Legacy capability root '{legacy}/' remains.",
-                "Move leaf prompts to skills/ and maintained LangGraphs to paired operations/.",
+                "Move leaf prompts to roles/ and maintained LangGraphs to paired operations/.",
             ))
 
     for kind, declared in (("skill", skills), ("operation", operations)):
-        root_name = "skills" if kind == "skill" else "operations"
+        root_name = "roles" if kind == "skill" else "operations"
         capability_root = root / root_name
         if capability_root.is_symlink() or not capability_root.is_dir():
             findings.append(_finding(
@@ -310,8 +310,8 @@ def validate_capabilities(package: Any) -> list[Finding]:
     skill_exposure: dict[str, str] = {}
     skill_effects: dict[str, bool] = {}
     for name in skills:
-        directory = root / "skills" / name
-        source = f"skills/{name}"
+        directory = root / "roles" / name
+        source = f"roles/{name}"
         observed = _real_files(directory)
         if directory.is_symlink() or observed != {"SKILL.md"}:
             findings.append(_finding(
@@ -462,7 +462,7 @@ def validate_capabilities(package: Any) -> list[Finding]:
         if not skill_effects.get(name, False):
             findings.append(_finding(
                 "CONCORDE-SKILL-EFFECTS-001",
-                f"skills/{name}/SKILL.md",
+                f"roles/{name}/SKILL.md",
                 f"Operation-composed leaf Skill {name} has no machine-readable effects.",
                 "Declare exact reads, writes, network, and credential posture on the leaf Skill.",
             ))
@@ -470,7 +470,7 @@ def validate_capabilities(package: Any) -> list[Finding]:
         if exposure == "internal" and name not in composed_leaves:
             findings.append(_finding(
                 "CONCORDE-CAPABILITY-EXPOSURE-001",
-                f"skills/{name}/SKILL.md",
+                f"roles/{name}/SKILL.md",
                 f"Internal leaf Skill {name} is not composed by any Operation.",
                 "Compose the internal implementation leaf or remove it from the package.",
             ))

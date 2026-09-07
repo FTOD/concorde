@@ -40,8 +40,8 @@ PACKAGE_ROOTS = [
     "docsite",
     "operations",
     "protocol",
+    "roles",
     "scripts",
-    "skills",
     "src",
     "templates",
     "viewer",
@@ -216,7 +216,7 @@ def _package_files(package: Package) -> dict[str, bytes]:
     desired[f"{FRAMEWORK_ROOT}/concorde.json"] = (package.root / "concorde.json").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/LICENSE"] = (package.root / "LICENSE").read_bytes()
     desired[f"{FRAMEWORK_ROOT}/README.md"] = (package.root / "README.md").read_bytes()
-    for directory in ("agent-assets", "operations", "protocol", "skills", "src", "templates", "viewer"):
+    for directory in ("agent-assets", "operations", "protocol", "roles", "src", "templates", "viewer"):
         source_root = package.root / directory
         for path in sorted(source_root.rglob("*")):
             if path.is_symlink():

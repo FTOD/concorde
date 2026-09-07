@@ -21,7 +21,7 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
         self.root = Path(self.temporary.name) / "checkout"
         self.root.mkdir()
         shutil.copy2(REPOSITORY_ROOT / "concorde.json", self.root / "concorde.json")
-        for directory in ("agent-assets", "operations", "skills", "src", "templates"):
+        for directory in ("agent-assets", "operations", "roles", "src", "templates"):
             shutil.copytree(REPOSITORY_ROOT / directory, self.root / directory, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
         (self.root / "scripts/development").mkdir(parents=True)
         shutil.copy2(REPOSITORY_ROOT / SCRIPT_RELATIVE, self.root / SCRIPT_RELATIVE)
