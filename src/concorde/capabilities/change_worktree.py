@@ -251,7 +251,7 @@ def ensure_change(root: Path, *, task: dict | None = None, change_id: str | None
         return existing
     legacy = checked_path(root, ".concorde/attempts")
     if legacy.exists() and any(legacy.iterdir()):
-        raise SpecError("legacy attempts require explicit migration before adopting this worktree",
+        raise SpecError("legacy attempt state is not supported; remove it explicitly before adopting this worktree",
                         "legacy_attempt")
     primary, current = workspace_identity(root)
     secondary = current is not None and current["path"] != primary["path"]

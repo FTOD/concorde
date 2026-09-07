@@ -11,7 +11,6 @@ from concorde.capabilities.scoped_operations import Invocation
 from concorde.specification.repository import SpecRepository,SpecError
 from concorde.specification.context import resolve_context,recheck_context
 from concorde.specification.changes import file_change,apply_files
-from concorde.specification.initialize import migration_proposal,apply_project_proposal
 from concorde.specification.schema import admit,ContractError
 from .support import project,PACKAGE,CONFIGURATION,ModelProcessDouble,update_document_declaration
 
@@ -160,19 +159,8 @@ class BoundaryTests(unittest.TestCase):
     def test_unsupported_and_malformed_contract_schemas_fail_admission(self):
         for schema in [{'type':'object','unevaluatedProperties':False},{'$ref':'https://example.invalid/schema'},{'minLength':True},{'enum':[]},{'minimum':3,'maximum':1}]:
             with self.subTest(schema=schema),self.assertRaises(ContractError):admit(schema)
-    def migrate(self):
+    def downgrade_to_profile7(self):
         config=json.loads((self.root/'.concorde/config.json').read_text());config={'profile_version':7,'specification_root':'specs','root_module_id':'module.old','operation_configuration':config['operation_configuration']}
         (self.root/'.concorde/config.json').write_text(json.dumps(config))
-        return migration_proposal(self.root,PACKAGE,self.registry,[])
-    def test_explicit_migration_preserves_code_and_record_allocation(self):
-        code=(self.root/'secret.py').read_bytes();index=(self.root/'.concorde/reflections/index.json').read_bytes()
-        proposal=self.migrate();apply_project_proposal(self.root,PACKAGE,proposal)
-        self.assertEqual(code,(self.root/'secret.py').read_bytes());self.assertEqual(index,(self.root/'.concorde/reflections/index.json').read_bytes());SpecRepository(self.root)
-    def test_migration_rejects_stale_base(self):
-        proposal=self.migrate();p=self.root/'.concorde/config.json';p.write_text(p.read_text()+'\n')
-        with self.assertRaises(SpecError):apply_project_proposal(self.root,PACKAGE,proposal)
-    def test_migration_rejects_active_attempt(self):
-        proposal=self.migrate();p=self.root/'.concorde/attempts/active';p.mkdir(parents=True)
-        with self.assertRaises(SpecError):apply_project_proposal(self.root,PACKAGE,proposal)
     def test_profile7_cannot_be_silently_used_by_new_agent_runtime(self):
-        self.migrate();result=self.run_op('concorde-main');self.assertEqual('blocked',result['status']);self.assertEqual([],self.double.calls)
+        self.downgrade_to_profile7();result=self.run_op('concorde-main');self.assertEqual('blocked',result['status']);self.assertEqual([],self.double.calls)

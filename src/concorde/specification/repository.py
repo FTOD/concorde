@@ -96,7 +96,7 @@ class SpecRepository:
         self.package_root = Path(package_root).resolve() if package_root else Path(__file__).resolve().parents[3]
         self.config = decode(read_file(self.root, ".concorde/config.json").decode())
         if self.config.get("profile_version") != PROFILE_VERSION:
-            raise SpecError("Profile 8 is required; run the explicit Profile 7 migration first", "migration_required")
+            raise SpecError("Profile 8 is required; Profile 7 projects are not supported", "unsupported_profile")
         if set(self.config) != {"profile_version", "registry", "protocol", "operation_configuration"}:
             raise SpecError("Profile 8 configuration fields must be profile_version, registry, protocol, operation_configuration")
         self.registry_path = safe_path(self.config["registry"])
