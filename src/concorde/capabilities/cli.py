@@ -45,6 +45,11 @@ def create_parser() -> argparse.ArgumentParser:
         if name in {"sync", "remove"}:
             command.add_argument("--allow-primary-worktree", action="store_true")
         command.add_argument("--format", choices=["json"], default="json")
+
+    build = subparsers.add_parser("build")
+    build.add_argument("--integration", choices=["claude", "codex", "all"], default="all")
+    build.add_argument("--check", action="store_true")
+    build.add_argument("--format", choices=["json"], default="json")
     return parser
 
 
@@ -90,6 +95,47 @@ def dispatch(arguments: argparse.Namespace) -> ToolResult:
         if arguments.agent_asset_tool == "verify":
             return verify_agent_assets(root, source, arguments.integration)
         return remove_agent_assets(root, arguments.integration)
+    if arguments.tool == "build":
+        from .build import BuildError, check_build, write_build
+
+        try:
+            if arguments.check:
+                current, differences = check_build(root, arguments.integration)
+                if current:
+                    return ToolResult("build", ".", "success", result={"differences": []})
+                return ToolResult(
+                    "build",
+                    ".",
+                    "invalid",
+                    findings=(
+                        Finding(
+                            "CONCORDE-BUILD-001",
+                            "error",
+                            "generated/",
+                            f"Build outputs are stale or missing: {', '.join(differences)}",
+                            "Run `python -m concorde build` to refresh generated/ outputs.",
+                        ),
+                    ),
+                    result={"differences": list(differences)},
+                )
+            result = write_build(root, arguments.integration)
+            artifacts = tuple(output.path for output in result.outputs) + ("generated/build-manifest.json",)
+            return ToolResult("build", ".", "success", artifacts=artifacts, result={"outputs": len(result.outputs)})
+        except BuildError as error:
+            return ToolResult(
+                "build",
+                ".",
+                "invalid",
+                findings=(
+                    Finding(
+                        "CONCORDE-BUILD-001",
+                        "error",
+                        "prompts",
+                        str(error),
+                        "Repair the prompt, role, or skill source and rebuild.",
+                    ),
+                ),
+            )
     from ..understanding.validate import validate_project
 
     return validate_project(root, arguments.target)
@@ -124,7 +170,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         tool = arguments.tool if arguments is not None else (argv[0] if argv else "validate")
         payload = envelope(
             tool
-            if tool in {"init", "configure", "context", "explore", "validate", "deliver", "agent-assets", "docsite"}
+            if tool in {"init", "configure", "context", "explore", "validate", "deliver", "agent-assets", "docsite", "build"}
             else "validate",
             ".",
             "failed",
