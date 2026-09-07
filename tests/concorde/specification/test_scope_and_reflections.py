@@ -3,8 +3,8 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from concorde.capabilities.operation_service import OperationHost,run_operation
-from concorde.capabilities.operation_data import typed
+from concorde.host.capability_service import CapabilityHost,run_capability
+from concorde.host.typed_data import typed
 from concorde.reflections.scoped_triage import queue_module
 from concorde.specification.validation import validate_repository
 from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
@@ -13,8 +13,8 @@ class ScopeReflectionTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.root=Path(self.tmp.name);project(self.root)
     def run_op(self,op,data,callback=None):
-        self.double=ModelProcessDouble(callback);self.host=OperationHost(self.root,PACKAGE,executor=self.double.executor,allow_primary_worktree=True)
-        return run_operation(op,CONFIGURATION,typed(op+'-request',data),host_context=self.host)
+        self.double=ModelProcessDouble(callback);self.host=CapabilityHost(self.root,PACKAGE,executor=self.double.executor,allow_primary_worktree=True)
+        return run_capability(op,CONFIGURATION,typed(op+'-request',data),host_context=self.host)
     def test_domain_coordinates_separate_component_contexts(self):
         result=self.run_op('concorde-dev-loop',{'target_id':'scope.bank','task':'Implement the banking transfer promise'})
         self.assertEqual('succeeded',result['status'],result)

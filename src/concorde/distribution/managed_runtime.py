@@ -1,4 +1,4 @@
-"""Installer-owned virtual environment lifecycle for paired Concorde Operations."""
+"""Installer-owned virtual environment lifecycle for paired Concorde capabilities."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ _SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 class ManagedRuntimeError(ValueError):
-    """A managed Operation runtime cannot be planned or provisioned safely."""
+    """A managed runtime cannot be planned or provisioned safely."""
 
 
 @dataclass(frozen=True)
@@ -177,30 +177,30 @@ def load_runtime_spec(
     package_root: Path,
     manifest: Mapping[str, Any],
 ) -> ManagedRuntimeSpec:
-    configuration = manifest.get("operation_runtime")
+    configuration = manifest.get("runtime")
     if not isinstance(configuration, Mapping):
-        raise ManagedRuntimeError("operation_runtime must be one manifest object")
-    venv = _safe_relative(configuration.get("venv"), "operation_runtime.venv")
+        raise ManagedRuntimeError("runtime must be one manifest object")
+    venv = _safe_relative(configuration.get("venv"), "runtime.venv")
     requirements = _safe_relative(
-        configuration.get("requirements"), "operation_runtime.requirements"
+        configuration.get("requirements"), "runtime.requirements"
     )
-    launcher = _safe_relative(configuration.get("launcher"), "operation_runtime.launcher")
+    launcher = _safe_relative(configuration.get("launcher"), "runtime.launcher")
     python = configuration.get("python")
     if python != ">=3.11":
-        raise ManagedRuntimeError("operation_runtime.python must be '>=3.11'")
+        raise ManagedRuntimeError("runtime.python must be '>=3.11'")
     if venv != ".concorde/.venv":
-        raise ManagedRuntimeError("operation_runtime.venv must be .concorde/.venv")
-    from ..capabilities.build import SKILL_NAMES
+        raise ManagedRuntimeError("runtime.venv must be .concorde/.venv")
+    from ..host.build import SKILL_NAMES
     requirement_path = package_root / requirements
     launcher_path = package_root / launcher
     for label, path in (("requirements", requirement_path), ("launcher", launcher_path)):
         if path.is_symlink() or not path.is_file():
-            raise ManagedRuntimeError(f"Operation runtime {label} must be one real file: {path}")
+            raise ManagedRuntimeError(f"runtime {label} must be one real file: {path}")
     content = requirement_path.read_bytes()
     lines = [line.strip() for line in content.decode("utf-8").splitlines() if line.strip()]
     if len(lines) != 1 or (match := _LOCK_LINE.fullmatch(lines[0])) is None:
         raise ManagedRuntimeError(
-            "Operation runtime requirements must contain exactly one pinned langgraph version"
+            "runtime requirements must contain exactly one pinned langgraph version"
         )
     version = manifest.get("version")
     if not isinstance(version, str) or not version:
@@ -634,7 +634,7 @@ def provision_runtime(
                     cwd=target,
                     environment=os.environ,
                 ),
-                "managed Operation dependency installation",
+                "managed runtime dependency installation",
             )
             _install_viewer(runtime, framework, spec, target)
         python = runtime_python(runtime)

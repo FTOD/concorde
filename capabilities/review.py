@@ -1,7 +1,7 @@
 """Internal stage: independent read-only Spec or code review of the bound target.
 
 Never projected as a user-invocable Skill; the executable boundary has no direct entry for it."""
-from concorde.capabilities import contract_shapes as shapes, roles
+from concorde.host import contract_shapes as shapes, roles
 
 from . import external_name
 
@@ -27,5 +27,5 @@ RESPONSE = {
 
 
 def run(host, configuration, request):
-    from concorde.capabilities.operation_service import run_operation
-    return run_operation(EXTERNAL_NAME, configuration, request, host_context=host)
+    from concorde.host.capability_service import run_capability
+    return run_capability(EXTERNAL_NAME, configuration, request, host_context=host)

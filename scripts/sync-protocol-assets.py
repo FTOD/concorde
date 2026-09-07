@@ -6,8 +6,8 @@ import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"src"))
-from concorde.capabilities.protocol_contracts import OPERATIONS, dependencies, exported_types, schemas
-from concorde.capabilities.operation_data import json_schema
+from concorde.host.contracts import CAPABILITY_NAMES, dependencies, exported_types, schemas
+from concorde.host.typed_data import json_schema
 from concorde.specification.repository import digest
 
 def main():
@@ -15,7 +15,7 @@ def main():
     args=parser.parse_args()
     names=list(exported_types())
     (ROOT/"protocol/schemas.json").write_text(json.dumps({name:json_schema(name) for name in names},indent=2)+"\n")
-    for operation in OPERATIONS:
+    for operation in CAPABILITY_NAMES:
         skill=ROOT/"operations"/operation/"SKILL.md"
         body=skill.read_text().split("\n## Input TypedValue schema\n",1)[0].rstrip()
         body=body.replace("(the initialized concorde-operation-configuration@1)",
@@ -24,7 +24,7 @@ def main():
             "This complete schema is the invocation's input field. It does not grant project reads.\n\n```json\n"+
             json.dumps(json_schema(operation+"-request"),indent=2)+"\n```\n")
     documented=schemas()
-    from concorde.capabilities.operation_data import DATA_SCHEMAS
+    from concorde.host.typed_data import DATA_SCHEMAS
     documented["concorde-operation-configuration"]=DATA_SCHEMAS["concorde-operation-configuration"]
     wire=("```concorde-document\n" + json.dumps({"id":"document.operation.wire",
         "targets":["service.workflow-host"],"main_visible":True},indent=2) +

@@ -18,12 +18,12 @@ from .paths import REPOSITORY_ROOT
 def build_package_copy(root: Path, integration: str = "all"):
     """Copy ``prompts/`` and ``skills/`` into ``root`` and build them there.
 
-    Requires ``concorde.capabilities.build`` to already be importable (callers insert
+    Requires ``concorde.host.build`` to already be importable (callers insert
     ``RUNTIME_ROOT`` onto ``sys.path`` before importing this helper, as usual). Returns the
     ``BuildResult``.
     """
 
-    from concorde.capabilities.build import write_build
+    from concorde.host.build import write_build
 
     shutil.copytree(REPOSITORY_ROOT / "prompts", root / "prompts", dirs_exist_ok=True)
     shutil.copytree(REPOSITORY_ROOT / "skills", root / "skills", dirs_exist_ok=True)

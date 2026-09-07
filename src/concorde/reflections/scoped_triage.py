@@ -5,7 +5,7 @@ import sys
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
-from ..capabilities.operation_data import typed, artifact
+from ..host.typed_data import typed, artifact
 from ..specification.repository import SpecError, read_file, digest
 from .investigation import apply_investigation
 
@@ -18,8 +18,8 @@ def queue_module(package):
 
 
 def triage(run):
-    from ..capabilities.scoped_operations import Invocation, invoke_capability, _implementation_digest
-    from ..capabilities.change_worktree import progress, read_change, target_state
+    from ..host.capability_host import Invocation, invoke_capability, _implementation_digest
+    from ..host.change_worktree import progress, read_change, target_state
     root=run.repository.root;queue=queue_module(run.host.package_root)
     action=run.task["action"];ids=run.task["reflection_ids"]
     if action == "record-gaps":
@@ -80,7 +80,7 @@ def triage(run):
             # Only intended behavior is a task input. Investigation prose, source, evidence and
             # logs must not contaminate specification/planning cognition.
             child_host=replace(run.host,routed_target=run.target.id,coordinated=True)
-            child=invoke_capability(run.operation,"concorde-dev-loop",run.configuration,
+            child=invoke_capability(run.capability,"concorde-dev-loop",run.configuration,
                 typed("concorde-dev-loop-request",{"target_id":run.target.id,"task":f["resolution"],
                     "specify":True}),child_host)
             if child["status"]!="succeeded":
@@ -105,7 +105,7 @@ def triage(run):
 
 def record_gaps(run, queue):
     """Explicitly promote selected existing gaps, preserving their actual owners."""
-    from ..capabilities.change_worktree import read_change, save_change
+    from ..host.change_worktree import read_change, save_change
     from ..specification.changes import apply_files, file_change
     from .reflections import parse_reflection_document
     ids = run.task.get("gap_ids", [])
@@ -182,7 +182,7 @@ def record_gaps(run, queue):
 
 def gap_records(run):
     """Public selection metadata around the existing gap contract, without source reads."""
-    from ..capabilities.change_worktree import read_change
+    from ..host.change_worktree import read_change
     state = read_change(run.repository.root)
     result = []
     for item in (state or {}).get("gap_history", []):

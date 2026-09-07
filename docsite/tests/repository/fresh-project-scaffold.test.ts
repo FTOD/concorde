@@ -38,7 +38,7 @@ beforeAll(async () => {
   const initialized=run('python3',['-c', `import sys;from pathlib import Path
 sys.path.insert(0,sys.argv[1]+'/src')
 from concorde.specification.initialize import project_proposal,apply_project_proposal
-from concorde.capabilities.operation_data import typed
+from concorde.host.typed_data import typed
 root=Path(sys.argv[2]);package=Path(sys.argv[1])
 config=typed('concorde-operation-configuration',{'integration':'codex','enforcement':'native'})
 apply_project_proposal(root,package,project_proposal(root,package,'Atlas',config,'domain.atlas'))`,repositoryRoot,root],root);

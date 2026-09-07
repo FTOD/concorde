@@ -11,7 +11,7 @@ from tests.concorde.support.paths import CONTEXT_PROJECT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.capabilities.cli import create_parser, dispatch  # noqa: E402
+from concorde.host.cli import create_parser, dispatch  # noqa: E402
 from concorde.lifecycle.delivery import apply_delivery, propose_delivery  # noqa: E402
 
 

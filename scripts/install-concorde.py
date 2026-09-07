@@ -41,8 +41,8 @@ PACKAGE_ROOTS = [
     "templates",
     "viewer",
 ]
-from concorde.capabilities import build as concorde_build
-OPERATION_RUNTIME = {
+from concorde.host import build as concorde_build
+RUNTIME = {
     "launcher": "scripts/run-capability.py",
     "python": ">=3.11",
     "requirements": "scripts/requirements.lock",
@@ -114,7 +114,7 @@ def load_package(root: Path) -> Package:
         "version",
         "architecture_profile",
         "workspace_protocol",
-        "operation_runtime",
+        "runtime",
         "viewer",
         "templates",
         "integrations",
@@ -136,19 +136,19 @@ def load_package(root: Path) -> Package:
         raise InstallError("Concorde manifest must declare exactly claude and codex integrations")
     if manifest.get("package_roots") != PACKAGE_ROOTS:
         raise InstallError("Concorde manifest declares an unsupported root package inventory")
-    if manifest.get("operation_runtime") != OPERATION_RUNTIME:
+    if manifest.get("runtime") != RUNTIME:
         raise InstallError(
-            f"Concorde manifest must declare the exact managed Operation runtime: {OPERATION_RUNTIME}"
+            f"Concorde manifest must declare the exact managed runtime: {RUNTIME}"
         )
     if manifest.get("viewer") != VIEWER:
         raise InstallError(
             f"Concorde manifest must declare the exact official Viewer runtime: {VIEWER}"
         )
     for field in ("launcher", "requirements"):
-        relative = _safe_relative(OPERATION_RUNTIME[field], f"operation_runtime.{field}")
+        relative = _safe_relative(RUNTIME[field], f"runtime.{field}")
         path = root / relative
         if path.is_symlink() or not path.is_file():
-            raise InstallError(f"Concorde Operation runtime {field} is missing: {relative}")
+            raise InstallError(f"Concorde runtime {field} is missing: {relative}")
     for field in ("npm_package", "npm_lock", "launcher"):
         relative = _safe_relative(VIEWER[field], f"viewer.{field}")
         path = root / relative
@@ -183,7 +183,7 @@ def load_package(root: Path) -> Package:
         load_runtime_spec(root, manifest)
     except ManagedRuntimeError as error:
         raise InstallError(str(error)) from error
-    from concorde.capabilities.package_validation import validate_package
+    from concorde.host.package_validation import validate_package
     findings = validate_package(root)
     if findings:
         raise InstallError("; ".join(f.message for f in findings))
@@ -377,7 +377,7 @@ def installation_plan(
     except ManagedRuntimeError as error:
         actions.append(
             {
-                "path": OPERATION_RUNTIME["venv"],
+                "path": RUNTIME["venv"],
                 "action": "conflict",
                 "role": "runtime",
                 "sha256": "sha256:" + "0" * 64,

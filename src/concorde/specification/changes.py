@@ -5,7 +5,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from ..capabilities.operation_data import checked_path
+from ..host.typed_data import checked_path
 from .repository import SpecError, digest, read_file
 
 

@@ -7,11 +7,11 @@ from dataclasses import asdict, replace
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.capabilities.change_worktree import ensure_change, read_change, save_change
-from concorde.capabilities.operation_data import DATA_SCHEMAS, typed
-from concorde.capabilities.operation_service import OperationHost, run_operation
-from concorde.capabilities.scoped_operations import Invocation
-from concorde.capabilities.review import current, inputs
+from concorde.host.change_worktree import ensure_change, read_change, save_change
+from concorde.host.typed_data import DATA_SCHEMAS, typed
+from concorde.host.capability_service import CapabilityHost, run_capability
+from concorde.host.capability_host import Invocation
+from concorde.host.review import current, inputs
 from .support import CONFIGURATION, PACKAGE, ModelProcessDouble, project, update_document_declaration
 
 
@@ -31,9 +31,9 @@ class ReviewTests(unittest.TestCase):
 
     def run_op(self, operation, data=None, callback=None, *, mode="execute", double=None):
         self.model = double or self.double(callback)
-        self.host = OperationHost(self.root, PACKAGE, executor=self.model.executor,
+        self.host = CapabilityHost(self.root, PACKAGE, executor=self.model.executor,
             allow_primary_worktree=True, mode=mode, routed_target=(data or self.task)["target_id"])
-        return run_operation(operation, self.configuration, typed(operation + "-request", data or self.task),
+        return run_capability(operation, self.configuration, typed(operation + "-request", data or self.task),
                              host_context=self.host)
 
     def review(self, review_mode="spec", callback=None, **kwargs):
@@ -41,7 +41,7 @@ class ReviewTests(unittest.TestCase):
 
     def invocation(self):
         return Invocation("concorde-review", self.configuration, self.task,
-            OperationHost(self.root, PACKAGE, routed_target=self.task["target_id"]))
+            CapabilityHost(self.root, PACKAGE, routed_target=self.task["target_id"]))
 
     def commit_fixture(self):
         for args in [("init",), ("add", "."), ("-c", "user.name=Test", "-c", "user.email=test@example.invalid",
@@ -179,7 +179,7 @@ class ReviewTests(unittest.TestCase):
             self.assertNotIn("private process failure diagnostics", json.dumps(result))
 
     def test_failed_reviews_retain_available_native_attestation_privately(self):
-        from concorde.capabilities.operation_executor import OperationExecutionError
+        from concorde.host.agent_executor import CapabilityExecutionError
         double = self.double()
         executor = double.executor
         captured = []
@@ -187,7 +187,7 @@ class ReviewTests(unittest.TestCase):
             executed = executor(launch)
             receipt = replace(executed.receipt, status="failed", exit_code=17, completion_status="failed")
             captured.append(receipt)
-            raise OperationExecutionError("private failed completion diagnostics", receipt)
+            raise CapabilityExecutionError("private failed completion diagnostics", receipt)
         double.executor = fail
         failed = self.review(double=double)
         self.assertEqual("failed", failed["status"], failed)
@@ -426,7 +426,7 @@ class ReviewTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             project(root)
-            peer = Invocation("concorde-review", self.configuration, self.task, OperationHost(root, PACKAGE))
+            peer = Invocation("concorde-review", self.configuration, self.task, CapabilityHost(root, PACKAGE))
             self.assertNotEqual(original, inputs(peer, "spec")[0]["input_digest"])
         rejected = self.run_op("concorde-review", {**self.task, "review_mode": "spec", "change_id": "change.foreign"})
         self.assertEqual("incompatible_handoff", rejected["errors"][0]["code"])
@@ -525,17 +525,17 @@ class ReviewTests(unittest.TestCase):
                     self.root = previous_root
 
     def test_failed_plan_artifact_write_can_resume_and_resolve_the_planning_gap(self):
-        from concorde.capabilities import scoped_operations
+        from concorde.host import capability_host
         self.assertEqual("blocked", self.run_op("concorde-dev-loop",
             callback=self.missing("plan"))["status"])
         spec = self.root / "specs/send-money.md"
         spec.write_text(spec.read_text() + "\nThe daily-limit owner is transfer.\n")
-        original_apply = scoped_operations.apply_files
+        original_apply = capability_host.apply_files
         def reject_plan(root, changes, allowed, **kwargs):
             if any(item["path"].endswith("/plan.md") for item in changes):
                 raise OSError("fixture plan directory cannot be written")
             return original_apply(root, changes, allowed, **kwargs)
-        with patch.object(scoped_operations, "apply_files", side_effect=reject_plan):
+        with patch.object(capability_host, "apply_files", side_effect=reject_plan):
             self.assertNotEqual("succeeded", self.run_op("concorde-dev-loop")["status"])
         self.assertEqual("open", read_change(self.root)["gap_history"][0]["status"])
         resumed = self.run_op("concorde-dev-loop")

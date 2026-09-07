@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ..capabilities.operation_data import canonical
+from ..host.typed_data import canonical
 from .repository import SpecError, SpecRepository, digest, read_file
 
 
@@ -21,7 +21,7 @@ class ContextSnapshot:
 
     @property
     def value(self) -> dict:
-        from ..capabilities.operation_data import decode
+        from ..host.typed_data import decode
         return decode(self.serialized)
 
     @property
@@ -37,7 +37,7 @@ class DiscoveryContext:
 
     @property
     def value(self) -> dict:
-        from ..capabilities.operation_data import decode
+        from ..host.typed_data import decode
         return decode(self.serialized)
 
     @property
@@ -53,7 +53,7 @@ class TopologyAuthorContext:
 
     @property
     def value(self) -> dict:
-        from ..capabilities.operation_data import decode
+        from ..host.typed_data import decode
         return decode(self.serialized)
 
     @property
@@ -97,7 +97,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
     if not isinstance(task, str) or not task.strip():
         raise SpecError("task intent is required", "invalid_input")
     target = repository.select(target_id, focus_id)
-    from ..capabilities.operation_data import validate_typed
+    from ..host.typed_data import validate_typed
     for item in stage_inputs:
         if item.get("type_id") not in {"concorde-plan-artifact","concorde-implementation-task","concorde-reflection-selection"}:
             raise SpecError("unknown stage input type", "incompatible_handoff")
@@ -108,7 +108,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
         raw = repository.protocol_assets[path]
         protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
-    from ..capabilities.change_worktree import workspace_context
+    from ..host.change_worktree import workspace_context
     manifest = {"schema_version": 1, "target_id": target.id, "kind": target.kind,
         "focus_id": focus_id, "phase": phase, "task": task, "constraints": list(constraints),
         "protocol_binding": repository.config["protocol"], "protocol": protocol,
@@ -144,7 +144,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
         raise SpecError("a focus hint requires a target hint", "invalid_focus")
     if target_hint is not None:
         repository.select(target_hint, focus_hint)
-    from ..capabilities.operation_data import validate_typed
+    from ..host.typed_data import validate_typed
     admitted_results = []
     for item in worker_results:
         admitted_results.append(validate_typed(item, "concorde-main-worker-result"))
@@ -173,7 +173,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
     for path in protocol_paths:
         raw = repository.protocol_assets[path]
         protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
-    from ..capabilities.change_worktree import workspace_context
+    from ..host.change_worktree import workspace_context
     manifest = {
         "schema_version": 1,
         "operation": operation,
@@ -222,7 +222,7 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
     for path in ("protocol/principles.md", f"protocol/kinds/{target['kind']}.md"):
         raw = repository.protocol_assets[path]
         protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
-    from ..capabilities.change_worktree import workspace_context
+    from ..host.change_worktree import workspace_context
     manifest = {
         "base_registry_digest": digest(repository.registry_bytes),
         "target": target,
@@ -301,7 +301,7 @@ def recheck_topology_author_context(repository: SpecRepository, snapshot: Topolo
 
 
 def _recheck_workspace(root: Path, observed: dict) -> None:
-    from ..capabilities.change_worktree import workspace_context
+    from ..host.change_worktree import workspace_context
     current = workspace_context(root)
     # Other worktrees may advance while this stage runs. Their inventory is an
     # explicitly timestamp-free observation, never an authority grant. This

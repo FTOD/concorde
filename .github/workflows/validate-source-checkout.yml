@@ -32,10 +32,10 @@ jobs:
       - name: Test build, resolver and worktree-affinity contracts
         run: |
           python3 -m unittest \
-            tests.concorde.capabilities.unit.test_build \
-            tests.concorde.capabilities.unit.test_prompt_resolver \
-            tests.concorde.capabilities.unit.test_worktree_affinity \
-            tests.concorde.capabilities.unit.test_capability_modules
+            tests.concorde.host.unit.test_build \
+            tests.concorde.host.unit.test_prompt_resolver \
+            tests.concorde.host.unit.test_worktree_affinity \
+            tests.concorde.host.unit.test_capability_modules
 
   studio:
     runs-on: ubuntu-latest
@@ -62,6 +62,6 @@ jobs:
           CONCORDE_TEST_STUDIO: "1"
         run: |
           .venv/bin/python -m unittest \
-            tests.concorde.capabilities.unit.test_studio \
-            tests.concorde.capabilities.unit.test_studio_client \
-            tests.concorde.capabilities.integration.test_studio_server
+            tests.concorde.host.unit.test_studio \
+            tests.concorde.host.unit.test_studio_client \
+            tests.concorde.host.integration.test_studio_server

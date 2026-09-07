@@ -109,7 +109,7 @@ class ProtocolGuidanceTests(unittest.TestCase):
             self.assertEqual(before, name.read_bytes())
 
     def test_entry_precedes_user_fences_and_survives_lifecycle_block_cleanup(self):
-        from concorde.capabilities.change_worktree import GUIDANCE_START, GUIDANCE_END, strip_guidance
+        from concorde.host.change_worktree import GUIDANCE_START, GUIDANCE_END, strip_guidance
         root = self.root / "CLAUDE.md"
         original = b"# User examples\n```text\nunclosed fence\n"
         root.write_bytes(original)

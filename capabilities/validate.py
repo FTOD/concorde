@@ -1,6 +1,6 @@
 """Lifecycle: run deterministic Spec and configured code checks and record readiness for the
 current candidate. Deterministic; runs no agent cognition and selects no context."""
-from concorde.capabilities import contract_shapes as shapes
+from concorde.host import contract_shapes as shapes
 
 from . import external_name
 
@@ -18,5 +18,5 @@ RESPONSE = shapes.stage_response()
 
 
 def run(host, configuration, request):
-    from concorde.capabilities.operation_service import run_operation
-    return run_operation(EXTERNAL_NAME, configuration, request, host_context=host)
+    from concorde.host.capability_service import run_capability
+    return run_capability(EXTERNAL_NAME, configuration, request, host_context=host)

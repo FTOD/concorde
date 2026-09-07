@@ -15,7 +15,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
-from concorde.capabilities.cli import main  # noqa: E402
+from concorde.host.cli import main  # noqa: E402
 from concorde.autodocs.docsite_scaffold import apply_docsite, propose_docsite  # noqa: E402
 from concorde.autodocs.docsite_template import TEMPLATE_ROOT, adapter_files, workflow_template  # noqa: E402
 from concorde.understanding.initialize import apply_proposal, propose_initialization  # noqa: E402

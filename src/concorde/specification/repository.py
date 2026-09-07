@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ..capabilities.operation_data import canonical, decode, checked_path, safe_path
+from ..host.typed_data import canonical, decode, checked_path, safe_path
 from ..frontmatter import parse_document
 from .schema import ContractError, admit, validate
 

@@ -5,9 +5,9 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from concorde.capabilities.operation_data import typed,validate_typed,OperationDataError
-from concorde.capabilities.operation_service import OperationHost,run_operation
-from concorde.capabilities.scoped_operations import Invocation
+from concorde.host.typed_data import typed,validate_typed,TypedDataError
+from concorde.host.capability_service import CapabilityHost,run_capability
+from concorde.host.capability_host import Invocation
 from concorde.specification.repository import SpecRepository,SpecError
 from concorde.specification.context import resolve_context,recheck_context
 from concorde.specification.changes import file_change,apply_files
@@ -21,8 +21,8 @@ class BoundaryTests(unittest.TestCase):
     def save(self): (self.root/'.concorde/specs.json').write_text(json.dumps(self.registry))
     def run_op(self,name,data=None,callback=None,mode='execute'):
         double=ModelProcessDouble(callback);self.double=double
-        self.host=OperationHost(self.root,PACKAGE,executor=double.executor,allow_primary_worktree=True,mode=mode)
-        return run_operation(name,CONFIGURATION,typed(name+'-request',data or self.task),host_context=self.host)
+        self.host=CapabilityHost(self.root,PACKAGE,executor=double.executor,allow_primary_worktree=True,mode=mode)
+        return run_capability(name,CONFIGURATION,typed(name+'-request',data or self.task),host_context=self.host)
     def change(self):
         result=self.run_op('concorde-plan');self.assertEqual('succeeded',result['status'],result)
         return {**self.task,'change_id':result['output']['data']['change_id']}
@@ -87,11 +87,11 @@ class BoundaryTests(unittest.TestCase):
         with self.assertRaises(SpecError):SpecRepository(self.root,package)
     def test_configuration_cannot_replace_initialized_authority(self):
         other=typed('concorde-operation-configuration',{'integration':'codex','enforcement':'native'})
-        result=run_operation('concorde-main',other,typed('concorde-main-request',self.task),host_context=OperationHost(self.root,PACKAGE))
+        result=run_capability('concorde-main',other,typed('concorde-main-request',self.task),host_context=CapabilityHost(self.root,PACKAGE))
         self.assertEqual('configuration_mismatch',result['errors'][0]['code'])
     def test_wrong_version_and_extra_fields_are_rejected(self):
         for value in [dict(typed('concorde-main-request',self.task),schema_version=True),dict(typed('concorde-main-request',self.task),schema_version=7),{'type_id':'concorde-main-request','schema_version':1,'data':{**self.task,'read_paths':['secret.py']}}]:
-            with self.subTest(value=value),self.assertRaises(OperationDataError):validate_typed(value,'concorde-main-request')
+            with self.subTest(value=value),self.assertRaises(TypedDataError):validate_typed(value,'concorde-main-request')
     def test_unsupported_is_not_spec_incomplete(self):
         def cb(stage,snapshot,data,cwd):
             if stage=='context-solve':data.update(outcome='unsupported',answer='The Spec prohibits this use.')

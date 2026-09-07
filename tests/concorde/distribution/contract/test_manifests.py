@@ -27,7 +27,7 @@ class ManifestContractTests(unittest.TestCase):
             "receipt": ".concorde/install.json",
         })
         self.assertEqual(
-            manifest["operation_runtime"],
+            manifest["runtime"],
             {
                 "launcher": "scripts/run-capability.py",
                 "python": ">=3.11",
@@ -54,9 +54,9 @@ class ManifestContractTests(unittest.TestCase):
     def test_manifest_inventory_equals_root_capabilities_and_templates(self):
         sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
         try:
-            from concorde.capabilities.roles import ROLES
-            from concorde.capabilities.build import SKILL_NAMES
-            from concorde.capabilities.protocol_contracts import load_capability_inventory
+            from concorde.host.roles import ROLES
+            from concorde.host.build import SKILL_NAMES
+            from concorde.host.contracts import load_capability_inventory
         finally:
             sys.path.pop(0)
         capabilities = load_capability_inventory()
@@ -115,7 +115,7 @@ class ManifestContractTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
             self.assertEqual(json.loads(result.stdout)["status"], "installed")
             self.assertTrue((target / ".concorde/framework/concorde.json").is_file())
-            self.assertTrue((target / ".concorde/framework/src/concorde/capabilities/scoped_operations.py").is_file())
+            self.assertTrue((target / ".concorde/framework/src/concorde/host/capability_host.py").is_file())
             self.assertTrue((target / ".concorde/framework/scripts/run-capability.py").is_file())
             self.assertTrue((target / ".concorde/framework/generated/build-manifest.json").is_file())
             self.assertFalse((target / ".concorde/framework/operations").exists())
@@ -128,7 +128,7 @@ class ManifestContractTests(unittest.TestCase):
             check = subprocess.run(
                 [sys.executable, "-c",
                  "import sys; sys.path.insert(0, '.concorde/framework/src'); "
-                 "from concorde.capabilities.build import verify_fresh; "
+                 "from concorde.host.build import verify_fresh; "
                  "verify_fresh('.concorde/framework'); print('fresh')"],
                 cwd=target, capture_output=True, text=True,
             )

@@ -4,7 +4,7 @@
 Only skills are directly invocable. This launcher accepts exactly one of the seven skill names,
 maps it to its capability module through the `capability:` front-matter field of
 `skills/<name>/SKILL.md`, and runs the shared trusted stdin/envelope handling
-(`concorde.capabilities.scoped_operations.json_main`) through that module's own `run`. Stage
+(`concorde.host.capability_host.json_main`) through that module's own `run`. Stage
 capabilities have no launcher and no direct invocation. `<skill-name> --runtime-check` is a
 lightweight offline smoke check used by the managed runtime provisioner: it loads the capability
 module and confirms LangGraph is importable, without touching stdin or launching an agent.
@@ -85,9 +85,9 @@ def main(argv: list[str] | None = None) -> int:
     sys.path.insert(0, source)
     import importlib
 
-    from concorde.capabilities.scoped_operations import invocation_failure, json_main
-    from concorde.capabilities.operation_data import canonical
-    from concorde.capabilities.protocol_contracts import load_capability_inventory
+    from concorde.host.capability_host import invocation_failure, json_main
+    from concorde.host.typed_data import canonical
+    from concorde.host.contracts import load_capability_inventory
 
     runtime_check = len(arguments) == 2 and arguments[1] == "--runtime-check"
     valid_call = bool(arguments) and arguments[0] in SKILL_NAMES and (len(arguments) == 1 or runtime_check)

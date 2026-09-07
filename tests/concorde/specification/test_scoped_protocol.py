@@ -4,8 +4,8 @@ import re
 import tempfile
 import unittest
 from pathlib import Path
-from concorde.capabilities.operation_data import typed, OperationDataError
-from concorde.capabilities.operation_service import OperationHost, run_operation
+from concorde.host.typed_data import typed, TypedDataError
+from concorde.host.capability_service import CapabilityHost, run_capability
 from concorde.specification.repository import SpecRepository, SpecError
 from concorde.specification.context import (resolve_context, recheck_context,
     resolve_discovery_context, recheck_discovery_context)
@@ -17,9 +17,9 @@ class ScopedProtocolTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name); self.registry=project(self.root)
     def run_op(self, name, data, double=None, mode='execute'):
-        self.host=OperationHost(self.root,PACKAGE,executor=double.executor if double else None,
+        self.host=CapabilityHost(self.root,PACKAGE,executor=double.executor if double else None,
             allow_primary_worktree=True,mode=mode)
-        return run_operation(name,CONFIGURATION,typed(name+'-request',data),host_context=self.host)
+        return run_capability(name,CONFIGURATION,typed(name+'-request',data),host_context=self.host)
     def test_independent_dimensions_and_complete_arbitrary_collections(self):
         repo=SpecRepository(self.root)
         target=repo.select('service.transfer','feature.transfer')
@@ -380,8 +380,8 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual(['route','route','context-solve'],[call['stage'] for call in double.calls][:3])
         self.assertEqual(['concorde-coordinator','concorde-coordinator','concorde-context-assessor'],
                          [call['capability'] for call in double.calls][:3])
-    def test_internal_stage_operation_requires_target_id_at_the_top_level(self):
-        with self.assertRaises(OperationDataError) as caught:
+    def test_internal_stage_capability_requires_target_id_at_the_top_level(self):
+        with self.assertRaises(TypedDataError) as caught:
             typed('concorde-plan-request',{'task':'Plan the transfer promise'})
         self.assertEqual('invalid_field',caught.exception.code)
         self.assertIn('target_id',caught.exception.field)

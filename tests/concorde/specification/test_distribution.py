@@ -7,10 +7,10 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from concorde.capabilities.protocol_contracts import OPERATIONS,INTERNAL_SKILLS
-from concorde.capabilities.package_validation import validate_package
-from concorde.capabilities.build import load_role_prompt
-from concorde.capabilities.operation_data import typed
+from concorde.host.contracts import CAPABILITY_NAMES,INTERNAL_SKILLS
+from concorde.host.package_validation import validate_package
+from concorde.host.build import load_role_prompt
+from concorde.host.typed_data import typed
 from concorde.specification.repository import SpecRepository
 from concorde.specification.validation import validate_repository
 from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
@@ -18,17 +18,17 @@ from .support import PACKAGE,CONFIGURATION,project,ModelProcessDouble
 class DistributionTests(unittest.TestCase):
     def test_catalog_roles_and_exported_schemas_are_executable_package_contracts(self):
         self.assertEqual([],validate_package(PACKAGE))
-        self.assertEqual(13,len(OPERATIONS));self.assertEqual(9,len(INTERNAL_SKILLS))
-        self.assertIn('concorde-main',OPERATIONS);self.assertNotIn('concorde-ask',OPERATIONS)
+        self.assertEqual(13,len(CAPABILITY_NAMES));self.assertEqual(9,len(INTERNAL_SKILLS))
+        self.assertIn('concorde-main',CAPABILITY_NAMES);self.assertNotIn('concorde-ask',CAPABILITY_NAMES)
         self.assertIn('concorde-coordinator',INTERNAL_SKILLS);self.assertNotIn('concorde-main',INTERNAL_SKILLS)
         for role in INTERNAL_SKILLS:
             prompt=load_role_prompt(PACKAGE,role)
             self.assertEqual(role,prompt.name);self.assertTrue(prompt.body.strip());self.assertIsNotNone(prompt.effects)
-    def test_self_architecture_uses_two_axes_and_local_operation_registry(self):
+    def test_self_architecture_uses_two_axes_and_local_capability_registry(self):
         repo=SpecRepository(PACKAGE);self.assertEqual('success',validate_repository(PACKAGE).status)
         self.assertEqual({'domain':4,'service':5,'module':8},{kind:sum(t.kind==kind for t in repo.targets.values()) for kind in ('domain','service','module')})
         text='\n'.join(d.body for d in repo.documents(repo.select('service.workflow-host')))
-        for op in OPERATIONS:self.assertIn(op+'-request',text)
+        for op in CAPABILITY_NAMES:self.assertIn(op+'-request',text)
     def test_launcher_refuses_a_stage_capability_name_and_accepts_a_public_skill(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);project(root)
@@ -59,15 +59,15 @@ from pathlib import Path
 root=Path.cwd();framework=root/'.concorde/framework';sys.path.insert(0,str(framework/'src'))
 spec=importlib.util.spec_from_file_location('model_process_fixture',sys.argv[1]);helper=importlib.util.module_from_spec(spec);spec.loader.exec_module(helper)
 helper.PACKAGE=framework
-from concorde.capabilities.operation_data import typed
+from concorde.host.typed_data import typed
 helper.CONFIGURATION=typed('concorde-operation-configuration',{'integration':sys.argv[2],'enforcement':'native'})
 helper.project(root)
-from concorde.capabilities.operation_service import OperationHost,run_operation
-import concorde.capabilities.scoped_operations as actual_host
-model=helper.ModelProcessDouble();host=OperationHost(root,framework,executor=model.executor,allow_primary_worktree=True)
-result=run_operation('concorde-dev-loop',None,typed('concorde-dev-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
+from concorde.host.capability_service import CapabilityHost,run_capability
+import concorde.host.capability_host as actual_host
+model=helper.ModelProcessDouble();host=CapabilityHost(root,framework,executor=model.executor,allow_primary_worktree=True)
+result=run_capability('concorde-dev-loop',None,typed('concorde-dev-loop-request',{'target_id':'service.transfer','task':'Implement transfer'}),host_context=host)
 before=len(model.calls)
-ask=run_operation('concorde-main',None,typed('concorde-main-request',{'task':'Explain transfer'}),host_context=host)
+ask=run_capability('concorde-main',None,typed('concorde-main-request',{'task':'Explain transfer'}),host_context=host)
 print(json.dumps({'result':result,'ask':ask,'module_source':actual_host.__file__,
   'stages':[c['stage'] for c in model.calls[:before]],'ask_stages':[c['stage'] for c in model.calls[before:]]}))
 ''')
@@ -77,7 +77,7 @@ print(json.dumps({'result':result,'ask':ask,'module_source':actual_host.__file__
                 self.assertEqual('ready',value['result']['output']['data']['outcome']);self.assertEqual('passed',value['result']['output']['data']['checks'][0]['status'])
                 self.assertEqual('succeeded',value['ask']['status'],value);self.assertEqual(['route','route','ask','synthesize'],value['ask_stages'])
     def test_completion_from_previous_invocation_cannot_be_replayed(self):
-        from concorde.capabilities.operation_service import OperationHost,run_operation
+        from concorde.host.capability_service import CapabilityHost,run_capability
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);project(root);model=ModelProcessDouble();saved=[];replay=[False]
             def executor(launch):
@@ -85,8 +85,8 @@ print(json.dumps({'result':result,'ask':ask,'module_source':actual_host.__file__
                 result=model.executor(launch)
                 if not saved:saved.append(result)
                 return result
-            host=OperationHost(root,PACKAGE,executor=executor,allow_primary_worktree=True)
+            host=CapabilityHost(root,PACKAGE,executor=executor,allow_primary_worktree=True)
             task=typed('concorde-main-request',{'target_id':'service.transfer','task':'Explain transfer'})
-            first=run_operation('concorde-main',CONFIGURATION,task,host_context=host);replay[0]=True
-            second=run_operation('concorde-main',CONFIGURATION,task,host_context=host)
+            first=run_capability('concorde-main',CONFIGURATION,task,host_context=host);replay[0]=True
+            second=run_capability('concorde-main',CONFIGURATION,task,host_context=host)
             self.assertEqual('succeeded',first['status']);self.assertEqual('blocked',second['status']);self.assertEqual('invalid_completion',second['errors'][0]['code'])

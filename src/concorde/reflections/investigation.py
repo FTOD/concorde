@@ -8,7 +8,7 @@ import re
 import tempfile
 from pathlib import Path
 
-from ..capabilities.operation_data import OperationDataError, checked_path, validate_typed, verify_artifacts
+from ..host.typed_data import TypedDataError, checked_path, validate_typed, verify_artifacts
 from .reflections import parse_reflection_document
 
 
@@ -70,14 +70,14 @@ def _write_plan(project: Path, relative: str, original: bytes | None, content: s
     path.parent.mkdir(parents=True, exist_ok=True)
     observed = path.read_bytes() if path.exists() else None
     if observed != original:
-        raise OperationDataError("stale_reference", "/domain_output", "reflection plan changed during investigation")
+        raise TypedDataError("stale_reference", "/domain_output", "reflection plan changed during investigation")
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as stream:
         temporary = Path(stream.name)
         stream.write(content)
     try:
         observed = checked_path(project, relative).read_bytes() if path.exists() else None
         if observed != original:
-            raise OperationDataError("stale_reference", "/domain_output", "reflection plan changed during persistence")
+            raise TypedDataError("stale_reference", "/domain_output", "reflection plan changed during persistence")
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)
@@ -91,9 +91,9 @@ def apply_investigation(project: Path, queue, runtime_input: dict, domain_output
     identifiers = task["reflection_ids"]
     findings = output["data"]["findings"]
     if [item["reflection_id"] for item in findings] != identifiers:
-        raise OperationDataError("incompatible_handoff", "/domain_output/data/findings", "investigation must return exactly the selected IDs in order")
+        raise TypedDataError("incompatible_handoff", "/domain_output/data/findings", "investigation must return exactly the selected IDs in order")
     if queue._captured_head(project) != data["head"]:
-        raise OperationDataError("workspace_mismatch", "/domain_output", "Git HEAD changed during investigation")
+        raise TypedDataError("workspace_mismatch", "/domain_output", "Git HEAD changed during investigation")
     verify_artifacts(project, runtime_input, "/input")
     config = queue.load_config(project)
     plans = queue._load_plans(project, config)
@@ -102,18 +102,18 @@ def apply_investigation(project: Path, queue, runtime_input: dict, domain_output
         identifier = finding["reflection_id"]
         entry = entries[identifier]
         if entry.status != "open":
-            raise OperationDataError("incompatible_handoff", "/domain_output", "investigation cannot alter a closed reflection")
+            raise TypedDataError("incompatible_handoff", "/domain_output", "investigation cannot alter a closed reflection")
         if finding["verified_commit"] != data["head"]:
-            raise OperationDataError("workspace_mismatch", "/domain_output", "investigator verification does not match its admitted HEAD")
+            raise TypedDataError("workspace_mismatch", "/domain_output", "investigator verification does not match its admitted HEAD")
         if concorde_project and finding["protocol_change"]:
-            raise OperationDataError("incompatible_handoff", "/domain_output", "normative Protocol changes require feature.concorde.evolve-protocol")
+            raise TypedDataError("incompatible_handoff", "/domain_output", "normative Protocol changes require feature.concorde.evolve-protocol")
         if finding["observed_state"] == "not-reproduced" and (finding["route"] != "dismiss" or finding["human_intervention"] != "required"):
-            raise OperationDataError("incompatible_handoff", "/domain_output", "a non-reproduced problem requires a maintainer dismissal decision")
+            raise TypedDataError("incompatible_handoff", "/domain_output", "a non-reproduced problem requires a maintainer dismissal decision")
         if finding["route"] == "fast-loop" and finding["effort"] != "small":
-            raise OperationDataError("incompatible_handoff", "/domain_output", "fast-loop requires a small verified change")
+            raise TypedDataError("incompatible_handoff", "/domain_output", "fast-loop requires a small verified change")
         for key in ("verification", "analysis", "resolution", "intervention_rationale", "steps", "validation", "risks"):
             if re.search(r"^#{1,2}\s", finding[key], re.M):
-                raise OperationDataError("invalid_field", f"/domain_output/{key}", "section text cannot introduce document-level headings")
+                raise TypedDataError("invalid_field", f"/domain_output/{key}", "section text cannot introduce document-level headings")
         for relative in finding["files"]:
             checked_path(project, relative, "/domain_output/data/findings/files")
         source = checked_path(project, entry.path)
@@ -124,10 +124,10 @@ def apply_investigation(project: Path, queue, runtime_input: dict, domain_output
         bucket = "needs-comments" if finding["human_intervention"] == "required" else "planned"
         updated, problems = parse_reflection_document(text, f".concorde/reflections/{bucket}/{identifier}.md")
         if problems or updated is None:
-            raise OperationDataError("invalid_field", "/domain_output", "invalid triage completion: " + "; ".join(item.message for item in problems))
+            raise TypedDataError("invalid_field", "/domain_output", "invalid triage completion: " + "; ".join(item.message for item in problems))
         for key in ("Status", "Note", "User Comments", "Context", "Expected", "Observed", "Impact", "Evidence", "Occurrences"):
             if updated.fields.get(key) != entry.fields.get(key):
-                raise OperationDataError("incompatible_handoff", "/domain_output", f"investigation changed preserved field: {key}")
+                raise TypedDataError("incompatible_handoff", "/domain_output", f"investigation changed preserved field: {key}")
         status = ("stale" if finding["observed_state"] == "not-reproduced" else
                   "hold" if finding["human_intervention"] == "required" else "proposed")
         old_plan = plans.get(identifier)
@@ -146,20 +146,20 @@ def apply_investigation(project: Path, queue, runtime_input: dict, domain_output
         prepared.append((identifier, source, original, text, plan_path, old_bytes, plan_text, status))
     for identifier, source, original, text, plan_path, old_bytes, plan_text, status in prepared:
         if queue._captured_head(project) != data["head"]:
-            raise OperationDataError("workspace_mismatch", "/domain_output", "Git HEAD changed before persistence")
+            raise TypedDataError("workspace_mismatch", "/domain_output", "Git HEAD changed before persistence")
         _write_plan(project, plan_path, old_bytes, plan_text)
         queue._atomic_file_replace(project, source, original, text.encode("utf-8"), "triage completion")
         queue.relocate(project, [identifier])
         report = queue.validate_entry(project, identifier)
         if report.get("status") != "valid":
-            raise OperationDataError("incompatible_handoff", "/domain_output", f"persisted triage completion failed validation: {identifier}")
+            raise TypedDataError("incompatible_handoff", "/domain_output", f"persisted triage completion failed validation: {identifier}")
     if task["action"] == "implement":
         if any(item["observed_state"] != "reproduced" for item in findings):
-            raise OperationDataError("incompatible_handoff", "/domain_output", "problem no longer reproduces; downstream implementation stopped")
+            raise TypedDataError("incompatible_handoff", "/domain_output", "problem no longer reproduces; downstream implementation stopped")
         if any(item["human_intervention"] == "required" for item in findings):
-            raise OperationDataError("incompatible_handoff", "/domain_output", "selected reflection requires maintainer comments")
+            raise TypedDataError("incompatible_handoff", "/domain_output", "selected reflection requires maintainer comments")
         if any(item["route"] != task["route"] for item in findings):
-            raise OperationDataError("incompatible_handoff", "/domain_output", "verified resolution route differs from the requested route")
+            raise TypedDataError("incompatible_handoff", "/domain_output", "verified resolution route differs from the requested route")
         if any(item[-1] != "approved" for item in prepared):
-            raise OperationDataError("incompatible_handoff", "/domain_output", "project requires explicit approval of this resolution plan")
+            raise TypedDataError("incompatible_handoff", "/domain_output", "project requires explicit approval of this resolution plan")
     return findings

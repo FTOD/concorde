@@ -168,10 +168,10 @@ import sys
 PROJECT = Path(__file__).resolve().parent
 PACKAGE = PROJECT / ".concorde/framework"
 sys.path.insert(0, str(PACKAGE / "src"))
-from concorde.capabilities.protocol_contracts import PUBLIC_OPERATIONS
-from concorde.capabilities.studio import build_studio_graph
+from concorde.host.contracts import SKILL_NAMES
+from concorde.host.studio import build_studio_graph
 
-for operation in PUBLIC_OPERATIONS:
+for operation in SKILL_NAMES:
     globals()[operation.replace("-", "_")] = build_studio_graph(operation, PROJECT, PACKAGE)
 ```
 
@@ -187,8 +187,8 @@ From the source checkout:
 
 ```bash
 uv sync --locked --group studio
-PYTHONPATH=src .venv/bin/python -m unittest tests.concorde.capabilities.unit.test_studio tests.concorde.capabilities.unit.test_studio_client
-CONCORDE_TEST_STUDIO=1 PYTHONPATH=src .venv/bin/python -m unittest tests.concorde.capabilities.integration.test_studio_server
+PYTHONPATH=src .venv/bin/python -m unittest tests.concorde.host.unit.test_studio tests.concorde.host.unit.test_studio_client
+CONCORDE_TEST_STUDIO=1 PYTHONPATH=src .venv/bin/python -m unittest tests.concorde.host.integration.test_studio_server
 PYTHONPATH=src .venv/bin/python -m unittest discover -s tests/concorde -t . -p 'test_*.py'
 ```
 

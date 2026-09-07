@@ -1,4 +1,4 @@
-"""Explicit process doubles for JSON Operation integration tests.
+"""Explicit process doubles for JSON capability integration tests.
 
 Only the external model process is substituted. The real graph, launch policy,
 completion decoder, receipt checks, artifact IO, and delivery tools still run.
@@ -10,8 +10,8 @@ import json
 import subprocess
 from pathlib import Path
 
-from concorde.capabilities.operation_data import typed
-from concorde.capabilities.operation_executor import AgentProcessExecutor
+from concorde.host.typed_data import typed
+from concorde.host.agent_executor import AgentProcessExecutor
 
 
 CONFIGURATION = typed("concorde-operation-configuration", {"integration": "claude", "enforcement": "native"})
@@ -19,12 +19,12 @@ CONFIGURATION = typed("concorde-operation-configuration", {"integration": "claud
 
 def invocation(operation: str, data: dict, *, configuration: dict | None = None,
                mode: str = "describe-policy") -> dict:
-    from concorde.capabilities.operation_data import OPERATION_CONTRACTS
+    from concorde.host.typed_data import CAPABILITY_CONTRACTS
 
     return {"type_id": "concorde-operation-invocation", "schema_version": 1,
             "operation_id": operation, "mode": mode,
             "configuration": configuration or CONFIGURATION,
-            "input": typed(OPERATION_CONTRACTS[operation][0], data)}
+            "input": typed(CAPABILITY_CONTRACTS[operation][0], data)}
 
 
 def configure(project: Path, configuration: dict | None = None) -> dict:

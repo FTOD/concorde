@@ -133,15 +133,15 @@
         "domain.workflow"
       ],
       "implementation": [
-        "src/concorde/capabilities/scoped_operations.py",
-        "src/concorde/capabilities/operation_service.py",
-        "src/concorde/capabilities/change_worktree.py",
-        "src/concorde/capabilities/worktree_delivery.py",
-        "src/concorde/capabilities/review.py",
+        "src/concorde/host/capability_host.py",
+        "src/concorde/host/capability_service.py",
+        "src/concorde/host/change_worktree.py",
+        "src/concorde/host/worktree_delivery.py",
+        "src/concorde/host/review.py",
         "tests/concorde/specification/test_review.py",
-        "src/concorde/capabilities/operation_config.py",
-        "src/concorde/capabilities/session_handoff.py",
-        "tests/concorde/capabilities/unit/test_session_handoff.py"
+        "src/concorde/host/configuration.py",
+        "src/concorde/host/session_handoff.py",
+        "tests/concorde/host/unit/test_session_handoff.py"
       ],
       "features": [
         {
@@ -206,9 +206,9 @@
         "scripts/run-capability.py",
         "scripts/run-viewer.py",
         "scripts/concorde.py",
-        "src/concorde/capabilities/cli.py",
-        "src/concorde/capabilities/worktree_affinity.py",
-        "tests/concorde/capabilities/unit/test_worktree_affinity.py",
+        "src/concorde/host/cli.py",
+        "src/concorde/host/worktree_affinity.py",
+        "tests/concorde/host/unit/test_worktree_affinity.py",
         "src/concorde/distribution/protocol_guidance.py",
         "tests/concorde/distribution/unit/test_protocol_guidance.py"
       ],
@@ -298,9 +298,9 @@
         "domain.installation"
       ],
       "implementation": [
-        "src/concorde/capabilities/operation_data.py",
-        "src/concorde/capabilities/protocol_contracts.py",
-        "src/concorde/capabilities/wire_shapes.py",
+        "src/concorde/host/typed_data.py",
+        "src/concorde/host/contracts.py",
+        "src/concorde/host/wire_shapes.py",
         "src/concorde/specification/schema.py"
       ],
       "features": [],
@@ -355,7 +355,7 @@
         "domain.workflow"
       ],
       "implementation": [
-        "src/concorde/capabilities/operation_executor.py"
+        "src/concorde/host/agent_executor.py"
       ],
       "features": [],
       "apis": [
@@ -382,8 +382,8 @@
         "domain.workflow"
       ],
       "implementation": [
-        "src/concorde/capabilities/operation_permissions.py",
-        "src/concorde/capabilities/worktree.py"
+        "src/concorde/host/permissions.py",
+        "src/concorde/host/worktree.py"
       ],
       "features": [],
       "apis": [
@@ -410,13 +410,13 @@
         "domain.installation"
       ],
       "implementation": [
-        "src/concorde/capabilities/package_validation.py",
+        "src/concorde/host/package_validation.py",
         "scripts/sync-protocol-assets.py",
-        "src/concorde/capabilities/build.py",
-        "src/concorde/capabilities/prompt_resolver.py",
-        "src/concorde/capabilities/roles.py",
-        "src/concorde/capabilities/effects.py",
-        "src/concorde/capabilities/contract_shapes.py",
+        "src/concorde/host/build.py",
+        "src/concorde/host/prompt_resolver.py",
+        "src/concorde/host/roles.py",
+        "src/concorde/host/effects.py",
+        "src/concorde/host/contract_shapes.py",
         "capabilities",
         "prompts",
         "skills"

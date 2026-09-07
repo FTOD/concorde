@@ -6,8 +6,8 @@ import tempfile
 import hashlib
 import subprocess
 from pathlib import Path
-from concorde.capabilities.operation_data import typed
-from concorde.capabilities.operation_executor import AgentProcessExecutor
+from concorde.host.typed_data import typed
+from concorde.host.agent_executor import AgentProcessExecutor
 from concorde.specification.initialize import project_proposal, apply_project_proposal, empty_target
 
 PACKAGE = Path(__file__).resolve().parents[3]
@@ -82,7 +82,7 @@ class ModelProcessDouble:
         self.executor=AgentProcessExecutor(runner=self.run, version_probe=lambda *args:'test-client 4.2', runtime_bootstrap_resolver=self.bootstrap)
     def bootstrap(self,integration,*args):
         if integration!='codex':return ()
-        from concorde.capabilities.operation_permissions import runtime_bootstrap_file
+        from concorde.host.permissions import runtime_bootstrap_file
         path=self.runtime_executable;info=path.stat()
         return (runtime_bootstrap_file(path=str(path),sha256='sha256:'+hashlib.sha256(path.read_bytes()).hexdigest(),size=info.st_size,mode=info.st_mode & 0o777,owner=info.st_uid),)
     def run(self, argv, *, cwd, env, input_text):

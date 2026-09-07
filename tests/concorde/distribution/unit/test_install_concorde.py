@@ -56,7 +56,7 @@ class NativeInstallerTests(unittest.TestCase):
         self.assertEqual(self.package.manifest["workspace_protocol"], 14)
         self.assertEqual(len(self.package.manifest["templates"]), 7)
         self.assertEqual(
-            self.package.manifest["operation_runtime"]["venv"],
+            self.package.manifest["runtime"]["venv"],
             ".concorde/.venv",
         )
         self.assertEqual(self.package.manifest["viewer"]["version"], "2.9.0")
@@ -83,7 +83,7 @@ class NativeInstallerTests(unittest.TestCase):
 
     def test_desired_codex_outputs_use_native_paths_only(self):
         outputs = installer.desired_outputs(self.package, "codex")
-        self.assertIn(".concorde/framework/src/concorde/capabilities/cli.py", outputs)
+        self.assertIn(".concorde/framework/src/concorde/host/cli.py", outputs)
         self.assertIn(".concorde/framework/src/concorde/understanding/alignment.py", outputs)
         self.assertIn(".concorde/framework/docsite/docusaurus.config.ts", outputs)
         self.assertIn(".concorde/framework/docsite/scaffold/deploy-docsite.yml", outputs)

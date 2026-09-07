@@ -55,10 +55,10 @@ def _installed_viewer(project: Path) -> tuple[Mapping[str, Any], Path]:
         raise ViewerLaunchError(f"installed Concorde framework must not be a symlink: {framework}")
     manifest = _json_object(manifest_path, "installed Concorde manifest")
     viewer = manifest.get("viewer")
-    runtime = manifest.get("operation_runtime")
+    runtime = manifest.get("runtime")
     if not isinstance(viewer, Mapping) or not isinstance(runtime, Mapping):
         raise ViewerLaunchError("installed Concorde manifest omits Viewer runtime identity")
-    venv = _safe_relative(runtime.get("venv"), "operation_runtime.venv")
+    venv = _safe_relative(runtime.get("venv"), "runtime.venv")
     if venv != ".concorde/.venv":
         raise ViewerLaunchError("installed Concorde manifest has an unsupported runtime path")
     install_relative = _safe_relative(viewer.get("install_relative"), "viewer.install_relative")

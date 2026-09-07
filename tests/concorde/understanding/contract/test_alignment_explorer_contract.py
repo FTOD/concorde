@@ -71,15 +71,15 @@ class AlignmentExplorerContractTests(unittest.TestCase):
     def test_distribution_does_not_add_a_conversational_explorer_skill(self):
         # The 9 roles and 13 capabilities are derived (Python data), not manifest inventories;
         # this guards the same historical mistake against their current source instead.
-        from concorde.capabilities.protocol_contracts import INTERNAL_SKILLS, OPERATIONS
-        from concorde.capabilities.roles import ROLES
+        from concorde.host.contracts import INTERNAL_SKILLS, CAPABILITY_NAMES
+        from concorde.host.roles import ROLES
 
         self.assertEqual(len(ROLES), 9)
         self.assertEqual(len(INTERNAL_SKILLS), 9)
         self.assertIn("concorde-coordinator", INTERNAL_SKILLS)
-        self.assertIn("concorde-main", OPERATIONS)
+        self.assertIn("concorde-main", CAPABILITY_NAMES)
         self.assertFalse(any("explore" in role for role in ROLES))
-        self.assertFalse(any("explore" in name for name in OPERATIONS))
+        self.assertFalse(any("explore" in name for name in CAPABILITY_NAMES))
         self.assertFalse((REPOSITORY_ROOT / "prompts/workflow-host/explore.md").exists())
 
     def test_alignment_input_has_no_similarity_or_confidence_escape_hatch(self):

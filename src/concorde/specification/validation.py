@@ -195,7 +195,7 @@ def validate_repository(root: str | Path, target_id: str | None = None,
             inputs.extend((p,digest(b)) for p,b in raw.items())
             inputs.append(("reflection-index",digest(index)))
         if (repository.root/"concorde.json").is_file():
-            from ..capabilities.package_validation import validate_package
+            from ..host.package_validation import validate_package
             findings.extend(validate_package(repository.root))
         inputs.append((".concorde/config.json",digest(read_file(repository.root,".concorde/config.json"))))
         inputs.append((repository.registry_path, digest(repository.registry_bytes)))

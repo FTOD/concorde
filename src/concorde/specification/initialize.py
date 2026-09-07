@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..capabilities.operation_data import decode, typed, validate_typed, checked_path, canonical
+from ..host.typed_data import decode, typed, validate_typed, checked_path, canonical
 from ..model import ToolResult
 from .changes import file_change, apply_files
 from .repository import SpecError, SpecRepository, identifier, digest, read_file

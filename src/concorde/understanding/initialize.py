@@ -85,7 +85,7 @@ def _configured_architecture(project_root: Path) -> ToolResult | None:
 
 def _create_proposal(project_root: Path, module_id: str | None, name: str | None,
                      operation_configuration: dict | None) -> InitializationProposal:
-    from ..capabilities.operation_data import validate_typed
+    from ..host.typed_data import validate_typed
 
     configuration = validate_typed(operation_configuration, "concorde-operation-configuration", "/configuration")
     project_name = name or project_root.resolve().name
@@ -215,7 +215,7 @@ None.
     reflection_index = json.dumps(
         {"schema_version": 1, "high_water": "R-000"}, indent=2, sort_keys=True
     )
-    from ..capabilities.operation_data import checked_path, decode
+    from ..host.typed_data import checked_path, decode
     from ..reflections.configuration import validate_configuration
 
     settings_path = checked_path(project_root, ".concorde/reflections/config.json")
@@ -248,7 +248,7 @@ def propose_initialization(project_root: str | Path, module_id: str | None = Non
     configured = _configured_architecture(root)
     if configured is not None:
         if configured.status == "unchanged":
-            from ..capabilities.operation_config import load_configuration
+            from ..host.configuration import load_configuration
 
             try:
                 load_configuration(root)
@@ -295,7 +295,7 @@ def _load_accepted(root: Path, proposal_path: str) -> InitializationProposal:
         raise ValueError(
             "proposal must contain exactly project configuration, reflection index and settings, one root architecture.md, and its system overview diagram"
         )
-    from ..capabilities.operation_data import decode, validate_typed
+    from ..host.typed_data import decode, validate_typed
 
     config = decode(next(item.content for item in files if item.path == ".concorde/config.json"))
     validate_typed(config.get("operation_configuration"), "concorde-operation-configuration", "/configuration")

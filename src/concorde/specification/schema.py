@@ -140,7 +140,7 @@ def validate(value: Any, schema: Any, field: str = "", *, root: dict | None = No
             child(item, schema.get("items", True), pointer(field, index))
     if actual == "string":
         if schema.get("format") == "project-path":
-            from ..capabilities.operation_data import safe_path
+            from ..host.typed_data import safe_path
             safe_path(value, field)
         if not schema.get("minLength", 0) <= len(value) <= schema.get("maxLength", math.inf):
             raise ContractError("invalid string length", field)

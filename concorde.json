@@ -2,7 +2,7 @@
   "schema_version": 3,
   "name": "concorde",
   "version": "4.0.0",
-  "description": "Explicit Domain scopes, Service/Module Specs, and permission-enforced Operations",
+  "description": "Explicit Domain scopes, Service/Module Specs, and permission-enforced capabilities",
   "license": "MIT",
   "license_file": "LICENSE",
   "repository": "https://github.com/FTOD/concorde",
@@ -11,7 +11,7 @@
   "delivery_proposal": 10,
   "skill_namespace": "concorde",
   "format_lineage": "Skill and Markdown template formatting was informed by GitHub Spec Kit; Concorde owns and executes every distributed asset.",
-  "operation_runtime": {
+  "runtime": {
     "launcher": "scripts/run-capability.py",
     "python": ">=3.11",
     "requirements": "scripts/requirements.lock",

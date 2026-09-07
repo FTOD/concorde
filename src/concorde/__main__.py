@@ -1,3 +1,3 @@
-from .capabilities.cli import main
+from .host.cli import main
 
 raise SystemExit(main())

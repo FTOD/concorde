@@ -37,7 +37,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE_ROOT / "src"))
 
 from concorde.frontmatter import FrontMatterError, parse_document  # noqa: E402
-from concorde.capabilities.worktree import require_isolated_worktree  # noqa: E402
+from concorde.host.worktree import require_isolated_worktree  # noqa: E402
 from concorde.reflections.reflections import (  # noqa: E402
     BUCKETS,
     PENDING_BUCKET,

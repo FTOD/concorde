@@ -9,13 +9,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.capabilities.change_worktree import (
+from concorde.host.change_worktree import (
     GUIDANCE_START, REGISTRY_PATH, STATE_PATH, git, git_value, read_change,
 )
-from concorde.capabilities.operation_data import typed
-from concorde.capabilities.operation_service import OperationHost, run_operation
-from concorde.capabilities import worktree_delivery
-from concorde.capabilities import change_worktree
+from concorde.host.typed_data import typed
+from concorde.host.capability_service import CapabilityHost, run_capability
+from concorde.host import worktree_delivery
+from concorde.host import change_worktree
 from concorde.specification.validation import validate_repository
 from .support import CONFIGURATION, PACKAGE, ModelProcessDouble, project
 
@@ -47,8 +47,8 @@ class WorktreeLifecycleTests(unittest.TestCase):
         double = ModelProcessDouble(callback)
         self.addCleanup(double.runtime_directory.cleanup)
         self.last_double = double
-        host = host or OperationHost(root, PACKAGE, executor=double.executor, mode=mode)
-        return run_operation(name, CONFIGURATION, typed(name + "-request", data), host_context=host)
+        host = host or CapabilityHost(root, PACKAGE, executor=double.executor, mode=mode)
+        return run_capability(name, CONFIGURATION, typed(name + "-request", data), host_context=host)
 
     def ready(self, callback=None, task=None):
         result = self.run_op(self.change, "concorde-dev-loop", task or self.task, callback)
@@ -251,10 +251,10 @@ class WorktreeLifecycleTests(unittest.TestCase):
         third_package = third / ".concorde/framework"
         third_package.mkdir(parents=True, exist_ok=True)
         old_head = git_value(self.primary, "rev-parse", "HEAD")
-        hosts = [OperationHost(third, PACKAGE),
-                 OperationHost(self.primary, PACKAGE, session_root=third),
-                 OperationHost(self.primary, third_package),
-                 OperationHost(self.primary, PACKAGE, depth=1)]
+        hosts = [CapabilityHost(third, PACKAGE),
+                 CapabilityHost(self.primary, PACKAGE, session_root=third),
+                 CapabilityHost(self.primary, third_package),
+                 CapabilityHost(self.primary, PACKAGE, depth=1)]
         for host in hosts:
             with self.subTest(root=host.project_root, origin=host.session_root, depth=host.depth):
                 result = self.run_op(host.project_root, "concorde-deliver", {"change_id": change_id}, host=host)
