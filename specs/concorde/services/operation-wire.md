@@ -389,6 +389,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -618,6 +619,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -847,6 +849,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -1152,6 +1155,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -1470,6 +1474,292 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         ],
         "additionalProperties": false
       }
+    },
+    "workspace": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "primary",
+            "change",
+            "unversioned"
+          ]
+        },
+        "current_worktree": {
+          "type": "string",
+          "minLength": 1
+        },
+        "current_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_worktree": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "change_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1
+              },
+              "blocked_step": {
+                "type": "string",
+                "minLength": 1
+              },
+              "needed_contract": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "context_id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "question",
+              "blocked_step",
+              "needed_contract"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "spec_status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "implementation_status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "target_id",
+              "spec_status",
+              "implementation_status",
+              "outcome"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "active_worktrees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "branch": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "head": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "managed": {
+                "type": "boolean"
+              },
+              "locked": {
+                "type": "boolean"
+              },
+              "change_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "target_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "task": {
+                "type": "string"
+              },
+              "phase": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "branch",
+              "head",
+              "managed",
+              "locked",
+              "change_id",
+              "target_id",
+              "task",
+              "phase",
+              "status",
+              "outcome"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "current_worktree",
+        "current_branch",
+        "primary_worktree",
+        "primary_branch",
+        "change_id",
+        "phase",
+        "status",
+        "outcome",
+        "gaps",
+        "components",
+        "active_worktrees"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -1483,7 +1773,8 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "protocol",
     "document_order",
     "target_spec",
-    "shared_specs"
+    "shared_specs",
+    "workspace"
   ],
   "additionalProperties": false
 }
@@ -1875,6 +2166,292 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         ],
         "additionalProperties": false
       }
+    },
+    "workspace": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "primary",
+            "change",
+            "unversioned"
+          ]
+        },
+        "current_worktree": {
+          "type": "string",
+          "minLength": 1
+        },
+        "current_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_worktree": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "change_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1
+              },
+              "blocked_step": {
+                "type": "string",
+                "minLength": 1
+              },
+              "needed_contract": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "context_id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "question",
+              "blocked_step",
+              "needed_contract"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "spec_status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "implementation_status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "target_id",
+              "spec_status",
+              "implementation_status",
+              "outcome"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "active_worktrees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "branch": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "head": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "managed": {
+                "type": "boolean"
+              },
+              "locked": {
+                "type": "boolean"
+              },
+              "change_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "target_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "task": {
+                "type": "string"
+              },
+              "phase": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "branch",
+              "head",
+              "managed",
+              "locked",
+              "change_id",
+              "target_id",
+              "task",
+              "phase",
+              "status",
+              "outcome"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "current_worktree",
+        "current_branch",
+        "primary_worktree",
+        "primary_branch",
+        "change_id",
+        "phase",
+        "status",
+        "outcome",
+        "gaps",
+        "components",
+        "active_worktrees"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -1893,7 +2470,8 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "shared_specs",
     "instructions",
     "stage_inputs",
-    "implementation_artifacts"
+    "implementation_artifacts",
+    "workspace"
   ],
   "additionalProperties": false
 }
@@ -1985,6 +2563,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -2215,6 +2794,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -2365,6 +2945,10 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
 {
   "type": "object",
   "properties": {
+    "change_id": {
+      "type": "string",
+      "minLength": 1
+    },
     "target_id": {
       "type": "string",
       "minLength": 1
@@ -2383,15 +2967,10 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "type": "string",
         "minLength": 1
       }
-    },
-    "change_id": {
-      "type": "string",
-      "minLength": 1
     }
   },
   "required": [
-    "target_id",
-    "task"
+    "change_id"
   ],
   "additionalProperties": false
 }
@@ -2445,6 +3024,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -3115,6 +3695,292 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         ],
         "additionalProperties": false
       }
+    },
+    "workspace": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "primary",
+            "change",
+            "unversioned"
+          ]
+        },
+        "current_worktree": {
+          "type": "string",
+          "minLength": 1
+        },
+        "current_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_worktree": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "change_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1
+              },
+              "blocked_step": {
+                "type": "string",
+                "minLength": 1
+              },
+              "needed_contract": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "context_id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "question",
+              "blocked_step",
+              "needed_contract"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "spec_status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "implementation_status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "target_id",
+              "spec_status",
+              "implementation_status",
+              "outcome"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "active_worktrees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "branch": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "head": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "managed": {
+                "type": "boolean"
+              },
+              "locked": {
+                "type": "boolean"
+              },
+              "change_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "target_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "task": {
+                "type": "string"
+              },
+              "phase": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "branch",
+              "head",
+              "managed",
+              "locked",
+              "change_id",
+              "target_id",
+              "task",
+              "phase",
+              "status",
+              "outcome"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "current_worktree",
+        "current_branch",
+        "primary_worktree",
+        "primary_branch",
+        "change_id",
+        "phase",
+        "status",
+        "outcome",
+        "gaps",
+        "components",
+        "active_worktrees"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -3132,7 +3998,8 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "topology",
     "targets",
     "instructions",
-    "worker_results"
+    "worker_results",
+    "workspace"
   ],
   "additionalProperties": false
 }
@@ -3224,6 +4091,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -3454,6 +4322,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -4100,6 +4969,292 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "type": "string",
         "minLength": 1
       }
+    },
+    "workspace": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "primary",
+            "change",
+            "unversioned"
+          ]
+        },
+        "current_worktree": {
+          "type": "string",
+          "minLength": 1
+        },
+        "current_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_worktree": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "change_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1
+              },
+              "blocked_step": {
+                "type": "string",
+                "minLength": 1
+              },
+              "needed_contract": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "context_id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "question",
+              "blocked_step",
+              "needed_contract"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "spec_status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "implementation_status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "target_id",
+              "spec_status",
+              "implementation_status",
+              "outcome"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "active_worktrees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "branch": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "head": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "managed": {
+                "type": "boolean"
+              },
+              "locked": {
+                "type": "boolean"
+              },
+              "change_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "target_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "task": {
+                "type": "string"
+              },
+              "phase": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "branch",
+              "head",
+              "managed",
+              "locked",
+              "change_id",
+              "target_id",
+              "task",
+              "phase",
+              "status",
+              "outcome"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "current_worktree",
+        "current_branch",
+        "primary_worktree",
+        "primary_branch",
+        "change_id",
+        "phase",
+        "status",
+        "outcome",
+        "gaps",
+        "components",
+        "active_worktrees"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -4115,7 +5270,8 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "application",
     "files",
     "gaps",
-    "completed_operations"
+    "completed_operations",
+    "workspace"
   ],
   "additionalProperties": false
 }
@@ -4680,6 +5836,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -5050,6 +6207,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -5426,6 +6584,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -5655,6 +6814,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -5885,6 +7045,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -6115,6 +7276,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",
@@ -6732,6 +7894,292 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     },
     "instructions": {
       "type": "string"
+    },
+    "workspace": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "primary",
+            "change",
+            "unversioned"
+          ]
+        },
+        "current_worktree": {
+          "type": "string",
+          "minLength": 1
+        },
+        "current_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_worktree": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "change_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1
+              },
+              "blocked_step": {
+                "type": "string",
+                "minLength": 1
+              },
+              "needed_contract": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "context_id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "question",
+              "blocked_step",
+              "needed_contract"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "spec_status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "implementation_status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "target_id",
+              "spec_status",
+              "implementation_status",
+              "outcome"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "active_worktrees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "branch": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "head": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "managed": {
+                "type": "boolean"
+              },
+              "locked": {
+                "type": "boolean"
+              },
+              "change_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "target_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "task": {
+                "type": "string"
+              },
+              "phase": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "branch",
+              "head",
+              "managed",
+              "locked",
+              "change_id",
+              "target_id",
+              "task",
+              "phase",
+              "status",
+              "outcome"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "current_worktree",
+        "current_branch",
+        "primary_worktree",
+        "primary_branch",
+        "change_id",
+        "phase",
+        "status",
+        "outcome",
+        "gaps",
+        "components",
+        "active_worktrees"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -6745,7 +8193,8 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "current_document_order",
     "target_spec",
     "shared_specs",
-    "instructions"
+    "instructions",
+    "workspace"
   ],
   "additionalProperties": false
 }
@@ -7257,6 +8706,292 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
         "data"
       ],
       "additionalProperties": false
+    },
+    "workspace": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "primary",
+            "change",
+            "unversioned"
+          ]
+        },
+        "current_worktree": {
+          "type": "string",
+          "minLength": 1
+        },
+        "current_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_worktree": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "primary_branch": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "change_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1
+              },
+              "blocked_step": {
+                "type": "string",
+                "minLength": 1
+              },
+              "needed_contract": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "context_id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "question",
+              "blocked_step",
+              "needed_contract"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "spec_status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "implementation_status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "target_id",
+              "spec_status",
+              "implementation_status",
+              "outcome"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "active_worktrees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "branch": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "head": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "managed": {
+                "type": "boolean"
+              },
+              "locked": {
+                "type": "boolean"
+              },
+              "change_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "target_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "task": {
+                "type": "string"
+              },
+              "phase": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "branch",
+              "head",
+              "managed",
+              "locked",
+              "change_id",
+              "target_id",
+              "task",
+              "phase",
+              "status",
+              "outcome"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "current_worktree",
+        "current_branch",
+        "primary_worktree",
+        "primary_branch",
+        "change_id",
+        "phase",
+        "status",
+        "outcome",
+        "gaps",
+        "components",
+        "active_worktrees"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
@@ -7269,7 +9004,8 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "constraints",
     "target_hint",
     "focus_hint",
-    "design"
+    "design",
+    "workspace"
   ],
   "additionalProperties": false
 }
@@ -7365,6 +9101,7 @@ The following schemas define data inside TypedValue {type_id,schema_version:1,da
     "outcome": {
       "enum": [
         "completed",
+        "ready",
         "spec_incomplete",
         "unsupported",
         "conflicting",

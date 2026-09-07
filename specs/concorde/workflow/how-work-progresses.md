@@ -18,8 +18,8 @@ A Task is user intent for exactly one target, optionally focused on a local Feat
 constraints travel unchanged through the change attempt. A Configuration selects a supported agent
 integration and enforcement mode; it is project setup, not per-stage agent authority. A Spec snapshot
 freezes the selected target's Target Spec plus one-hop Shared Specs, global principles and kind definition. A Stage is
-one fresh cognition session with a declared role. A Change attempt binds its plan and tasks to the
-intent and Spec revision. A Check measures implementation and returns status plus byte identities.
+one fresh cognition session with a declared role. A candidate worktree owns one change and binds its plan, target tasks and progress to
+the intent and Spec revision. A Check measures implementation and returns status plus byte identities.
 A Gap is a concrete missing obligation or fact required by a stage. A Reflection is a reported
 problem that may require investigation and, separately, human approval of a proposed resolution.
 A Topology design is a coordinator-authored candidate registry plus target-local Spec tasks. A
@@ -31,7 +31,7 @@ collections of co-referencing entities. The host gives that snapshot to the
 agent execution Module under a permission policy compiled for the stage. Authoring returns proposed
 replacement documents. A normal target author may change only documents referenced by that target
 alone; collective shared truth requires the accepted multi-author topology path. Planning first
-assesses whether the task is answerable. An insufficient context stops before an attempt is created.
+assesses whether the task is answerable. An insufficient context stops before a target plan is created and leaves a recorded worktree gap.
 Tasks turn the accepted plan into explicit acceptance conditions. The implementation worker receives
 that plan/tasks TypedValue plus explicitly owned code. It cannot edit Specs, registry or other code.
 
@@ -65,7 +65,7 @@ from this routing view but their Specs remain unavailable to the main coordinato
     "target_id": "service.workflow-host",
     "kind": "service",
     "responsibility": "Admit public Operations and coordinate their bounded lifecycle transitions.",
-    "selection_condition": "Select for Operation routing, agent-stage orchestration, attempts, checks, or delivery behavior.",
+    "selection_condition": "Select for Operation routing, agent-stage orchestration, worktree changes, checks, or delivery behavior.",
     "relied_upon_promises": [
       "Every agent stage is a fresh invocation bound to typed input, context identity, policy, and completion evidence."
     ]
@@ -101,7 +101,7 @@ from this routing view but their Specs remain unavailable to the main coordinato
     "target_id": "module.file-transactions",
     "kind": "module",
     "responsibility": "Apply exact authorized file replacements with current before-digests and rollback.",
-    "selection_condition": "Select when a workflow stage persists documents, attempts, proposals, or other approved files.",
+    "selection_condition": "Select when a workflow stage persists documents, worktree state, proposals, or other approved files.",
     "relied_upon_promises": [
       "A stale or invalid multi-file change leaves or restores the complete pre-change state."
     ]
@@ -196,8 +196,8 @@ again before Domain delivery.
 
 Checks are trusted deterministic argv declared by project configuration, not commands invented by
 an agent. Raw logs stay out of later Spec-only sessions. A stale Spec, changed task intent, modified
-code, failed check or missing completion blocks delivery and preserves the attempt. Resuming a
-change reuses its typed artifacts but starts a fresh agent session. The host does not copy unrelated
+code, failed check or missing completion blocks delivery and preserves the candidate worktree. Resuming a
+change reuses its target records and typed artifacts but starts a fresh agent session. The host does not copy unrelated
 conversation or free-form predecessor output into context.
 
 Reflection status is metadata-only. Investigation runs as read-only implementation with selected
@@ -205,3 +205,25 @@ record bytes and HEAD. The host preserves the original report and human comments
 and an evidence-bound plan, and enforces configured approval. Implementation gets a newly authored
 behavior task through a standard loop. Human disposition remains required before closing a report;
 merely observing that a problem no longer reproduces does not dismiss it.
+
+
+## Candidate worktrees and primary delivery
+
+One linked worktree contains the entire in-progress revision for one top-level change. Its
+`.concorde/worktree.json` records ownership, phase/status, target plans and task progress, per-component
+Spec reconciliation and implementation outcomes, gaps and the exact validated tree. Already authored
+component Specs may remain as draft bytes if another component blocks. Recovery resumes this explicit
+state, and global consumer/provider agreement is checked only after the affected authors finish.
+
+The primary worktree retains `.concorde/worktrees.json` with basic information about all live linked
+worktrees. Primary main cognition sees that inventory; secondary main cognition also sees its own
+candidate identity and status. These are declared lifecycle inputs, not hidden reads of another
+worktree's Specs or code. Secondary AGENTS.md/CLAUDE.md blocks remind newly opened agents of this scope.
+
+Standard and fast loops end at ready. The user must open an agent in the primary worktree and request
+concorde-deliver with the selected change_id there. A secondary session cannot switch directories,
+redirect or forward delivery. Only the primary host merges the verified candidate into the branch
+currently checked out in the primary worktree, whose name need not be main. It verifies the actual
+integration result and then removes the secondary worktree and its local state. Local prompt injection
+and control files never enter the merged tree. A primary delivery receipt distinguishes an accepted
+merge from pending cleanup, allowing cleanup to resume without another merge.

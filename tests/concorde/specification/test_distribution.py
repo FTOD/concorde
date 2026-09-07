@@ -71,7 +71,7 @@ print(json.dumps({'result':result,'ask':ask,'module_source':actual_host.__file__
                 completed=subprocess.run([sys.executable,str(driver),str(PACKAGE/'tests/concorde/specification/support.py'),integration],cwd=root,capture_output=True,text=True,env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1'})
                 self.assertEqual(0,completed.returncode,completed.stderr);value=json.loads(completed.stdout)
                 self.assertIn('.concorde/framework/src',value['module_source']);self.assertEqual('succeeded',value['result']['status'],value)
-                self.assertEqual('delivered',value['result']['output']['data']['outcome']);self.assertEqual('passed',value['result']['output']['data']['checks'][0]['status'])
+                self.assertEqual('ready',value['result']['output']['data']['outcome']);self.assertEqual('passed',value['result']['output']['data']['checks'][0]['status'])
                 self.assertEqual('succeeded',value['ask']['status'],value);self.assertEqual(['route','route','ask','synthesize'],value['ask_stages'])
     def test_completion_from_previous_invocation_cannot_be_replayed(self):
         from concorde.capabilities.operation_service import OperationHost,run_operation

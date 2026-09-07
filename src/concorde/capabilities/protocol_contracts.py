@@ -42,6 +42,18 @@ REGISTRY = obj({"schema_version": {"const": 1}, "project_id": STRING,
 SPEC_TASK = obj({"target_id": STRING, "task": STRING})
 PROPOSAL_FILE = obj({"path": PATH, "before_digest": {"anyOf": [DIGEST, {"type": "null"}]},
                      "content": {"type": "string"}})
+WORKTREE_SUMMARY = obj({"path": STRING, "branch": NULLABLE_ID, "head": NULLABLE_ID,
+    "managed": {"type": "boolean"}, "locked": {"type": "boolean"},
+    "change_id": NULLABLE_ID, "target_id": NULLABLE_ID, "task": {"type": "string"},
+    "phase": NULLABLE_ID, "status": STRING, "outcome": NULLABLE_ID})
+COMPONENT_PROGRESS = obj({"target_id": STRING, "spec_status": STRING,
+    "implementation_status": STRING, "outcome": NULLABLE_ID})
+WORKSPACE_CONTEXT = obj({"kind": {"enum": ["primary", "change", "unversioned"]},
+    "current_worktree": STRING, "current_branch": NULLABLE_ID,
+    "primary_worktree": NULLABLE_ID, "primary_branch": NULLABLE_ID,
+    "change_id": NULLABLE_ID, "phase": NULLABLE_ID, "status": NULLABLE_ID,
+    "outcome": NULLABLE_ID, "gaps": array(GAP), "components": array(COMPONENT_PROGRESS),
+    "active_worktrees": array(WORKTREE_SUMMARY)})
 
 AGENT_OPERATIONS = {
     "concorde-specify": ("specify", "concorde-spec-author"),
@@ -89,9 +101,9 @@ def dependencies(operation: str) -> tuple[str, ...]:
     elif operation == "concorde-plan":
         result = ("concorde-context-assessor", "concorde-planner")
     elif operation == "concorde-standard-dev-loop":
-        result = tuple("concorde-"+x for x in ("specify","plan","tasks","implement","validate","deliver"))
+        result = tuple("concorde-"+x for x in ("specify","plan","tasks","implement","validate"))
     elif operation == "concorde-fast-loop":
-        result = tuple("concorde-"+x for x in ("plan","tasks","implement","validate","deliver"))
+        result = tuple("concorde-"+x for x in ("plan","tasks","implement","validate"))
     elif operation == "concorde-reflections-triage":
         result = ("concorde-implementation-worker", "concorde-standard-dev-loop")
     else:
@@ -116,7 +128,7 @@ def schemas() -> dict:
         result[f"{name}-response"] = obj({
             "target_id": STRING, "focus_id": NULLABLE_ID, "change_id": NULLABLE_ID,
             "context_id": {"anyOf": [DIGEST, {"type": "null"}]},
-            "outcome": {"enum": ["completed", "spec_incomplete", "unsupported", "conflicting", "failed", "described", "delivered"]},
+            "outcome": {"enum": ["completed", "ready", "spec_incomplete", "unsupported", "conflicting", "failed", "described", "delivered"]},
             "answer": {"type": "string"}, "artifacts": array(ARTIFACT), "gaps": array(GAP),
             "checks": array(CHECK_RESULT), "completed_operations": array(STRING)})
     for name in MAIN_ROUTED_OPERATIONS:
@@ -133,7 +145,11 @@ def schemas() -> dict:
         "routes": array(ROUTE), "worker_results": array(typed_schema("concorde-main-worker-result")),
         "topology_proposal": {"anyOf": [typed_schema("concorde-topology-proposal"), {"type": "null"}]},
         "application": {"anyOf": [ARTIFACT, {"type": "null"}]},
-        "files": array(PATH, unique=True), "gaps": array(GAP), "completed_operations": array(STRING)})
+        "files": array(PATH, unique=True), "gaps": array(GAP), "completed_operations": array(STRING),
+        "workspace": WORKSPACE_CONTEXT})
+    result["concorde-deliver-request"] = obj({"change_id": STRING,
+        "target_id": STRING, "task": STRING, "focus_id": STRING, "constraints": array(STRING)},
+        ("target_id", "task", "focus_id", "constraints"))
     for name in ("concorde-context", "concorde-resolve-context"):
         result[f"{name}-request"] = obj({**TASK_FIELDS, "phase": {"enum": ["ask", "specify", "plan", "tasks", "implementation", "validate", "deliver", "context-solve"]}}, (*TASK_OPTIONAL, "phase"))
         result[f"{name}-response"] = obj({"manifest": typed_schema("concorde-context-manifest")})
@@ -174,14 +190,15 @@ def schemas() -> dict:
         "protocol": array(protocol_document),
         "document_order": array(PATH, unique=True), "target_spec": array(document),
         "shared_specs": array(document), "instructions": {"type": "string"},
-        "stage_inputs": array(stage_input), "implementation_artifacts": array(ARTIFACT)})
+        "stage_inputs": array(stage_input), "implementation_artifacts": array(ARTIFACT),
+        "workspace": WORKSPACE_CONTEXT})
     result["concorde-context-manifest"] = obj({"schema_version": {"const": 1},
         "context_id": DIGEST, "target_id": STRING,
         "kind": {"enum": ["domain", "service", "module"]}, "focus_id": NULLABLE_ID,
         "phase": STRING, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
         "protocol": array(obj({"path": PATH, "digest": DIGEST})),
         "document_order": array(PATH, unique=True), "target_spec": array(document_ref),
-        "shared_specs": array(document_ref)})
+        "shared_specs": array(document_ref), "workspace": WORKSPACE_CONTEXT})
     result["concorde-agent-stage-context"] = obj({"snapshot": typed_schema("concorde-context-snapshot"),
         "change_id": NULLABLE_ID, "expected_artifacts": array(PATH)})
     result["concorde-agent-stage-result"] = obj({"context_id": DIGEST,
@@ -203,7 +220,8 @@ def schemas() -> dict:
         "base_registry_digest": DIGEST, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
         "context_id": DIGEST, "discovered_targets": {**array(STRING, unique=True), "minItems": 1},
         "task": STRING, "constraints": array(STRING), "target_hint": NULLABLE_ID,
-        "focus_hint": NULLABLE_ID, "design": typed_schema("concorde-topology-design")})
+        "focus_hint": NULLABLE_ID, "design": typed_schema("concorde-topology-design"),
+        "workspace": WORKSPACE_CONTEXT})
     result["concorde-topology-application"] = obj({"application_id": DIGEST,
         "topology_proposal": typed_schema("concorde-topology-proposal"),
         "base_registry_digest": DIGEST, "protocol_binding": obj({"version": STRING, "digest": DIGEST}),
@@ -219,7 +237,8 @@ def schemas() -> dict:
         "protocol": array(protocol_document), "topology": {"anyOf": [REGISTRY, {"type": "null"}]},
         "targets": array(discovery_target),
         "instructions": {"type": "string"},
-        "worker_results": array(typed_schema("concorde-main-worker-result"))})
+        "worker_results": array(typed_schema("concorde-main-worker-result")),
+        "workspace": WORKSPACE_CONTEXT})
     result["concorde-main-stage-context"] = obj({
         "snapshot": typed_schema("concorde-discovery-context")})
     result["concorde-main-stage-result"] = obj({"context_id": DIGEST, "outcome": MAIN_OUTCOMES,
@@ -234,7 +253,7 @@ def schemas() -> dict:
             "targets": {**array(STRING, unique=True), "minItems": 1}})),
         "current_document_order": array(PATH, unique=True),
         "target_spec": array(document), "shared_specs": array(document),
-        "instructions": {"type": "string"}})
+        "instructions": {"type": "string"}, "workspace": WORKSPACE_CONTEXT})
     result["concorde-topology-author-result"] = obj({"context_id": DIGEST, "target_id": STRING,
         "outcome": WORKER_OUTCOMES, "answer": {"type": "string"}, "gaps": array(GAP),
         "documents": array(DOCUMENT_CHANGE)})

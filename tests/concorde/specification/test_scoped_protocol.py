@@ -441,7 +441,7 @@ class ScopedProtocolTests(unittest.TestCase):
         (self.root/'specs/send-money.md').unlink()
         (self.root/'specs/send-money.md').symlink_to(self.root/'secret.py')
         with self.assertRaises(ValueError): resolve_context(SpecRepository(self.root),'service.transfer')
-    def test_gap_blocks_planning_without_attempt(self):
+    def test_gap_is_recorded_without_creating_a_target_plan(self):
         def gap(stage,snapshot,data,cwd):
             if stage=='context-solve':
                 data.update(outcome='spec_incomplete',gaps=[{'question':'Who owns the daily limit?',
@@ -452,13 +452,17 @@ class ScopedProtocolTests(unittest.TestCase):
         self.assertEqual('spec_incomplete',result['output']['data']['outcome'])
         self.assertEqual(['route','context-solve'],[call['stage'] for call in double.calls])
         self.assertFalse((self.root/'.concorde/attempts').exists())
-    def test_standard_loop_real_checks_and_delivery(self):
+        state=json.loads((self.root/'.concorde/worktree.json').read_text())
+        self.assertEqual('blocked',state['status']);self.assertEqual({},state['targets'])
+    def test_standard_loop_real_checks_leave_a_ready_change(self):
         double=ModelProcessDouble()
         result=self.run_op('concorde-standard-dev-loop',{'task':'Implement the transfer contract'},double)
         self.assertEqual('succeeded',result['status'],result)
-        self.assertEqual('delivered',result['output']['data']['outcome'])
+        self.assertEqual('ready',result['output']['data']['outcome'])
         self.assertEqual('passed',result['output']['data']['checks'][0]['status'])
-        self.assertFalse(any((self.root/'.concorde/attempts').iterdir()))
+        self.assertFalse((self.root/'.concorde/attempts').exists())
+        state=json.loads((self.root/'.concorde/worktree.json').read_text())
+        self.assertEqual('ready',state['status'])
         self.assertEqual(['route','route','specify','context-solve','plan','tasks','implementation'],[c['stage'] for c in double.calls])
         for call in double.calls:
             if call['stage']!='implementation':
@@ -472,7 +476,8 @@ class ScopedProtocolTests(unittest.TestCase):
         result=self.run_op('concorde-standard-dev-loop',{'target_id':'service.transfer','task':'Implement transfer'},ModelProcessDouble(broken))
         self.assertEqual('failed',result['status'],result)
         self.assertEqual('failed',result['output']['data']['checks'][0]['status'])
-        self.assertTrue(any((self.root/'.concorde/attempts').iterdir()))
+        state=json.loads((self.root/'.concorde/worktree.json').read_text())
+        self.assertEqual('failed',state['status'])
     def test_wrong_context_result_rejected(self):
         def wrong(stage,snapshot,data,cwd): data['context_id']='sha256:'+'0'*64
         result=self.run_op('concorde-main',{'target_id':'service.transfer','task':'Explain transfer'},ModelProcessDouble(wrong))

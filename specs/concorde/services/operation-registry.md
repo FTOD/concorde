@@ -21,8 +21,8 @@ Every public Skill below has a paired executable. Configuration and runtime inpu
 | concorde-context | concorde-context-request | concorde-context-response | Deterministic host | Report exact context membership and digests without bodies |
 | concorde-context-solve | concorde-context-solve-request | concorde-context-solve-response | concorde-coordinator, concorde-context-assessor | Validate Domain participant routing, then assess information sufficiency without expanding worker context |
 | concorde-converge | concorde-converge-request | concorde-converge-response | concorde-implementation-worker | Reconcile implementation with accepted tasks |
-| concorde-deliver | concorde-deliver-request | concorde-deliver-response | Deterministic host | Verify current completion evidence and remove the attempt |
-| concorde-fast-loop | concorde-fast-loop-request | concorde-fast-loop-response | concorde-coordinator, concorde-plan, concorde-tasks, concorde-implement, concorde-validate, concorde-deliver | Route, plan, tasks, implement, validate, deliver |
+| concorde-deliver | concorde-deliver-request | concorde-deliver-response | Deterministic host | From a primary agent session, verify, merge and clean up the selected change worktree |
+| concorde-fast-loop | concorde-fast-loop-request | concorde-fast-loop-response | concorde-coordinator, concorde-plan, concorde-tasks, concorde-implement, concorde-validate | Route, plan, tasks, implement, validate to ready |
 | concorde-implement | concorde-implement-request | concorde-implement-response | concorde-implementation-worker | Implement component tasks or coordinate participating components |
 | concorde-init | concorde-init-request | concorde-init-response | Deterministic host | Propose/apply explicit project initialization |
 | concorde-migrate | concorde-migrate-request | concorde-migrate-response | Deterministic host | Propose/apply authored Profile 7 to 8 replacements |
@@ -30,7 +30,7 @@ Every public Skill below has a paired executable. Configuration and runtime inpu
 | concorde-reflections-triage | concorde-reflections-triage-request | concorde-reflections-triage-response | concorde-implementation-worker, concorde-standard-dev-loop | Select/status/investigate/implement/dispose owned reflections |
 | concorde-resolve-context | concorde-resolve-context-request | concorde-resolve-context-response | Deterministic host | Resolve a redacted context manifest without bodies |
 | concorde-specify | concorde-specify-request | concorde-specify-response | concorde-coordinator, concorde-spec-author | Route then author local Spec replacements |
-| concorde-standard-dev-loop | concorde-standard-dev-loop-request | concorde-standard-dev-loop-response | concorde-coordinator, concorde-specify, concorde-plan, concorde-tasks, concorde-implement, concorde-validate, concorde-deliver | Route, specify, plan, tasks, implement, validate, deliver |
+| concorde-standard-dev-loop | concorde-standard-dev-loop-request | concorde-standard-dev-loop-response | concorde-coordinator, concorde-specify, concorde-plan, concorde-tasks, concorde-implement, concorde-validate | Route, specify, plan, tasks, implement, validate to ready |
 | concorde-tasks | concorde-tasks-request | concorde-tasks-response | concorde-task-author | Author acceptance tasks from the accepted plan |
 | concorde-taskstoissues | concorde-taskstoissues-request | concorde-taskstoissues-response | Deterministic host | Prepare local issue drafts from authored tasks |
 | concorde-validate | concorde-validate-request | concorde-validate-response | Deterministic host | Run deterministic Spec and configured code checks |

@@ -131,6 +131,7 @@ Keep this user comment intact.
     def test_reflection_implementation_restarts_spec_cognition_and_marks_plan(self):
         self.record();result=self.run_op('concorde-reflections-triage',self.task('implement'),self.finding)
         self.assertEqual('succeeded',result['status'],result)
+        self.assertEqual('ready',json.loads((self.root/'.concorde/worktree.json').read_text())['status'])
         for call in self.double.calls:
             if call['stage']!='implementation':self.assertNotIn('PRIVATE_REFLECTION',call['prompt']);self.assertNotIn('Current transfer returns',call['prompt'])
         queue=queue_module(PACKAGE);plans=queue._load_plans(self.root,queue.load_config(self.root))

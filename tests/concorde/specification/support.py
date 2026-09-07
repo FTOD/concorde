@@ -153,7 +153,10 @@ class ModelProcessDouble:
             data['tasks']=[{'id':'task.transfer','target_id':task_target,
             'description':'Implement the transfer promise.','acceptance':'Valid transfer subtracts; invalid amount or insufficient funds raises ValueError.','complete':False}]
         if stage=='implementation' and snapshot['stage_inputs'][0]['type_id']=='concorde-implementation-task':
-            (Path(cwd)/'app/transfer.py').write_text('def transfer(balance, amount):\n    if amount <= 0 or amount > balance:\n        raise ValueError("invalid transfer")\n    return balance - amount\n')
+            if snapshot['target_id']=='module.ledger':
+                (Path(cwd)/'app/ledger.py').write_text('def read(account_id):\n    balances = {"known": 100}\n    return balances[account_id]\n')
+            else:
+                (Path(cwd)/'app/transfer.py').write_text('def transfer(balance, amount):\n    if amount <= 0 or amount > balance:\n        raise ValueError("invalid transfer")\n    return balance - amount\n')
             task_input=snapshot['stage_inputs'][0]['data']
             data['tasks']=[{**task,'complete':True} for task in task_input['tasks']]
         if self.callback: self.callback(stage, snapshot, data, Path(cwd))

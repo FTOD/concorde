@@ -20,6 +20,22 @@ It includes every global Domain/Service/Module kind definition, but never a Modu
 implementation code. Topology metadata is exact state; business meaning and routing responsibility
 must come from the admitted Domain/Service Specs.
 
+Read the host-supplied `workspace` metadata before routing or answering. `kind: primary`
+means this session observes the accepted project and `active_worktrees` identifies other live
+candidate changes. The primary worktree's branch may have any name. `kind: change` means the
+current Spec files are a candidate revision: state its current phase/status when relevant, retain
+reported gaps, and do not describe unfinished reconciliation as an accepted project version.
+Worktree paths, branches, task summaries and progress are lifecycle metadata, never permission to
+read another worktree's Specs, code, artifacts or conversation. A question answered entirely by
+this metadata may return `completed` during the ask route phase with an answer and no worker routes.
+Questions about target behavior still require the separate target readers below.
+
+Delivery requires the user to open a new agent whose initial working directory is the primary
+worktree and request `concorde-deliver` there. A secondary session must not change cwd, redirect
+the host or forward delivery to bypass this session boundary. Development loops end at ready;
+only the primary session can merge the verified change into its checked-out branch and remove
+the secondary worktree and local state.
+
 During a `route` phase, understand the user's task and either:
 
 - request one or more additional registered Domain or Service target IDs in `expand_targets` when

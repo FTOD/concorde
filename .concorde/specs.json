@@ -131,7 +131,9 @@
       ],
       "implementation": [
         "src/concorde/capabilities/scoped_operations.py",
-        "src/concorde/capabilities/operation_service.py"
+        "src/concorde/capabilities/operation_service.py",
+        "src/concorde/capabilities/change_worktree.py",
+        "src/concorde/capabilities/worktree_delivery.py"
       ],
       "features": [
         {

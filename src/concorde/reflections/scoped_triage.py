@@ -17,7 +17,8 @@ def queue_module(package):
 
 
 def triage(run):
-    from ..capabilities.scoped_operations import run_operation, _implementation_digest
+    from ..capabilities.scoped_operations import Invocation, run_operation, _implementation_digest
+    from ..capabilities.change_worktree import progress, read_change, target_state
     root=run.repository.root;queue=queue_module(run.host.package_root)
     action=run.task["action"];ids=run.task["reflection_ids"]
     _,_,parsed,_,raw=queue._load_reflections(root,required=True)
@@ -39,6 +40,7 @@ def triage(run):
     if action in {"close","merge"}:
         (queue.remove_closed if action=="close" else queue.remove_merged)(root,ids)
         return run.response(answer="Eligible records removed; Git history retains their disposition.")
+    progress(root, phase="reflection_investigation", status="active", invalidate=True)
     if run.target.kind=="domain":
         return run.response("unsupported","Domain scopes do not own implementation code; select a participating Service or Module before investigation.")
     head=queue._captured_head(root);before=_implementation_digest(run.repository,run.target)
@@ -70,7 +72,7 @@ def triage(run):
         for f in findings:
             # Only intended behavior is a task input. Investigation prose, source, evidence and
             # logs must not contaminate specification/planning cognition.
-            child_host=replace(run.host,routed_target=run.target.id)
+            child_host=replace(run.host,routed_target=run.target.id,coordinated=True)
             child=run_operation("concorde-standard-dev-loop",run.configuration,
                 typed("concorde-standard-dev-loop-request",{"target_id":run.target.id,"task":f["resolution"]}),host_context=child_host)
             if child["status"]!="succeeded":
@@ -79,4 +81,15 @@ def triage(run):
                     return run.response(data["outcome"],data["answer"],gaps=data["gaps"],artifacts=data["artifacts"])
                 raise SpecError("reflection implementation failed admission", "child_blocked")
             queue.update_plan(root,f["reflection_id"],["status=implemented"])
-    return run.response(answer="Reflection investigation persisted"+(" and implementation delivered." if action=="implement" else "."))
+        change = read_change(root, required=True)
+        state = target_state(root, run.target.id, run.task.get("focus_id"))
+        payload = {"target_id": run.target.id, "task": state["task"],
+                   "constraints": state.get("constraints", []), "change_id": change["change_id"]}
+        if run.task.get("focus_id"):
+            payload["focus_id"] = run.task["focus_id"]
+        verified = Invocation("concorde-validate", run.configuration, payload,
+                              replace(run.host, coordinated=False)).validate()
+        data = verified["data"]
+        return run.response(data["outcome"], "Reflection implementation completed in the candidate worktree. "
+                            + data["answer"], checks=data["checks"], gaps=data["gaps"])
+    return run.response(answer="Reflection investigation persisted"+(" and component implementation completed in the candidate worktree." if action=="implement" else "."))

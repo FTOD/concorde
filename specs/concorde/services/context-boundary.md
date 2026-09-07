@@ -40,6 +40,15 @@ references with document ID, path, digest, targets and main_visible; it never ex
 document content, instructions, stage inputs, implementation locators or a reusable cognitive
 snapshot.
 
+The manifest and private snapshots also carry declared `workspace` lifecycle metadata: current and
+primary worktree identities/branches, current change phase/status/outcome, its reported gaps and
+component progress, and basic information about live linked worktrees. This contains no target plan,
+implementation body or hidden Spec document. Paths and task summaries identify candidate work, not
+permission to read another worktree. A secondary context is explicitly a candidate revision.
+The host rechecks the current workspace identity and lifecycle after a stage; other worktrees' frozen
+summaries may advance independently. Topology proposals retain their originating workspace observation
+so a committed-base handoff can recheck the same admitted Spec and design inputs in its candidate.
+
 The snapshot data adds the content of each target_spec/shared_specs reference. Target Spec contains
 documents referenced only by the selected target; Shared Specs contains each multiply referenced
 document once. document_order preserves the registry order across both headings. The resolver does

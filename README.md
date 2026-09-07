@@ -28,7 +28,9 @@ The installer distributes canonical runtime, 22 paired public Operations, 7 inte
 Markdown templates to Codex or Claude. Check `python scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit
-primary-worktree authorization). The Operation host reports any newly created worktree in its result.
+primary-worktree authorization). A mutation requested from the primary worktree prepares a linked
+worktree from committed HEAD and returns its identity. Open a new agent in that worktree to continue;
+the originating session does not follow the task into a different checkout.
 
 ```json
 {
@@ -67,19 +69,40 @@ Null configuration asks the trusted host to load initialized settings. The `ask`
 `concorde-main` may omit target_id: a separate coordinator discovers Domain/Service Specs, routes one or more fresh
 target readers, then synthesizes only their typed results. A supplied target_id is a routing hint,
 not a context grant. The loop executes specification,
-context assessment, plan, tasks, implementation, checks and delivery. Each step is also independently
+context assessment, plan, tasks, implementation and checks, ending at a ready candidate. Each step is also independently
 callable with its own named request/response type. `concorde-context` reports the exact membership
 and digests without returning raw Spec bodies;
 `concorde-context-solve` diagnoses missing information. `describe-policy` previews stage grants without
-launching an agent. Delivery removes a verified attempt; it does not merge or push Git changes.
+launching an agent. One change belongs to one linked worktree. `.concorde/worktree.json` records
+its task, phase/status, per-target plans and progress, gaps and verified revision. Auxiliary artifacts
+live under `.concorde/work/`; there is no separate attempt lifecycle.
 For a Domain, context solving first reports missing or inconsistent participant declarations as
 structured Spec gaps, before planning or task generation.
 
 A blocked change preserves evidence and names missing contracts or failed admission. Author missing
 facts through an explicit local Spec task, reconcile affected consumer/provider views and resolve a
-new context. Changed Spec/intent invalidates an existing attempt; do not reuse stale evidence.
+new context. Completed component work can be resumed when its bound inputs remain current. Partial
+Spec changes stay in the explicitly marked candidate worktree; they do not change the accepted
+primary revision. Changed Spec/intent invalidates stale plan or check evidence.
+The primary worktree maintains `.concorde/worktrees.json` with every live linked worktree's basic
+metadata and change status. `concorde-main` receives this inventory and identifies whether its own
+session is in the primary or a candidate worktree. Secondary AGENTS.md/CLAUDE.md guidance also points
+to the local state and the primary worktree, without granting access to other worktrees' contents.
+
+To deliver, **open a new agent in the primary worktree** and request `concorde-deliver` there with the
+selected change_id. The destination is the primary worktree's current branch; it need not be named
+main. Secondary sessions cannot deliver by changing directories, redirecting a host or forwarding the
+request. The primary host verifies the actual merge result, merges it, then removes the temporary
+worktree and its local state. Managed prompt injection and control files are excluded from the merge.
+A primary-local delivery receipt records commits and checks; cleanup can be retried after a successful
+merge without merging again. Development loops never perform this delivery automatically.
+
 `concorde-taskstoissues` produces local issue drafts only. Reflection investigation is a separate,
 read-only implementation invocation; human approval/disposition remains governed by project settings.
+
+For a directly authored candidate without generated plans, `concorde-validate` checks the whole project and records readiness in the
+same worktree state. Any already authored plans and tasks must still be completed. No placeholder
+attempt is needed for a Spec-only change.
 
 For architecture changes, invoke `concorde-main` with `action:design-topology`. It returns a complete
 candidate registry and target-local Spec tasks without writing. Send the exact returned proposal with

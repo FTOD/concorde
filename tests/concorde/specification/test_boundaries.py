@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from concorde.capabilities.operation_data import typed,validate_typed,OperationDataError
 from concorde.capabilities.operation_service import OperationHost,run_operation
+from concorde.capabilities.scoped_operations import Invocation
 from concorde.specification.repository import SpecRepository,SpecError
 from concorde.specification.context import resolve_context,recheck_context
 from concorde.specification.changes import file_change,apply_files
@@ -23,9 +24,11 @@ class BoundaryTests(unittest.TestCase):
         double=ModelProcessDouble(callback);self.double=double
         self.host=OperationHost(self.root,PACKAGE,executor=double.executor,allow_primary_worktree=True,mode=mode)
         return run_operation(name,CONFIGURATION,typed(name+'-request',data or self.task),host_context=self.host)
-    def attempt(self):
+    def change(self):
         result=self.run_op('concorde-plan');self.assertEqual('succeeded',result['status'],result)
         return {**self.task,'change_id':result['output']['data']['change_id']}
+    def completion(self, task):
+        return Invocation('concorde-validate', CONFIGURATION, task, self.host).verify_completion()
     def test_shared_physical_markdown_is_one_hop_context_not_entity_expansion(self):
         self.registry['targets'][3]['documents'].append('specs/transfer-promises.md');self.save()
         update_document_declaration(self.root,'specs/transfer-promises.md',
@@ -108,11 +111,11 @@ class BoundaryTests(unittest.TestCase):
         self.assertEqual(['context.json'],self.host.descriptions[1]['read_paths'])
         self.assertEqual(['scope.bank'],self.host.descriptions[0]['discovered_targets'])
         self.assertTrue(all(item['write_paths']==[] for item in self.host.descriptions))
-    def test_changed_spec_requires_a_new_attempt(self):
-        task=self.attempt();p=self.root/'specs/send-money.md';p.write_text(p.read_text()+'\nChanged obligations.\n')
+    def test_changed_spec_requires_replanning_the_change(self):
+        task=self.change();p=self.root/'specs/send-money.md';p.write_text(p.read_text()+'\nChanged obligations.\n')
         self.assertEqual('blocked',self.run_op('concorde-tasks',task)['status']);self.assertEqual([],self.double.calls)
-    def test_changed_intent_cannot_reuse_attempt(self):
-        task=self.attempt();task['task']='Different behavior'
+    def test_changed_intent_cannot_reuse_the_worktree_change(self):
+        task=self.change();task['task']='Different behavior'
         self.assertEqual('blocked',self.run_op('concorde-tasks',task)['status'])
     def test_spec_author_cannot_edit_provider_or_registry(self):
         def cb(stage,snap,data,cwd):
@@ -133,18 +136,19 @@ class BoundaryTests(unittest.TestCase):
             if stage=='plan':data['documents']=[{'path':'specs/send-money.md','content':'Changed'}]
         self.assertEqual('blocked',self.run_op('concorde-plan',callback=cb)['status'])
     def test_delivery_requires_real_current_checks(self):
-        task=self.attempt();self.run_op('concorde-tasks',task);self.run_op('concorde-implement',task)
-        result=self.run_op('concorde-deliver',task);self.assertEqual('blocked',result['status'])
+        task=self.change();self.run_op('concorde-tasks',task);self.run_op('concorde-implement',task)
+        with self.assertRaises(SpecError):self.completion(task)
         self.assertEqual('succeeded',self.run_op('concorde-validate',task)['status'])
+        self.completion(task)
         (self.root/'checks/transfer_check.py').write_text('raise AssertionError("new expectation")')
-        self.assertEqual('blocked',self.run_op('concorde-deliver',task)['status'])
+        with self.assertRaisesRegex(SpecError,'changed|stale'):self.completion(task)
     def test_separate_check_inputs_invalidate_evidence(self):
         check=self.registry['checks'][0];check['inputs']=['acceptance.json'];self.save();(self.root/'acceptance.json').write_text('{}')
-        task=self.attempt();self.run_op('concorde-tasks',task);self.run_op('concorde-implement',task);self.run_op('concorde-validate',task)
+        task=self.change();self.run_op('concorde-tasks',task);self.run_op('concorde-implement',task);self.run_op('concorde-validate',task)
         (self.root/'acceptance.json').write_text('{"revision":2}')
-        self.assertEqual('blocked',self.run_op('concorde-deliver',task)['status'])
+        with self.assertRaisesRegex(SpecError,'stale'):self.completion(task)
     def test_issue_drafts_are_local_exact_authored_tasks(self):
-        task=self.attempt();self.run_op('concorde-tasks',task);result=self.run_op('concorde-taskstoissues',task)
+        task=self.change();self.run_op('concorde-tasks',task);result=self.run_op('concorde-taskstoissues',task)
         self.assertEqual('succeeded',result['status']);self.assertEqual([],self.double.calls)
         artifact=result['output']['data']['artifacts'][0];issues=json.loads((self.root/artifact['path']).read_text())
         self.assertEqual('task.transfer',issues['issues'][0]['task_id'])

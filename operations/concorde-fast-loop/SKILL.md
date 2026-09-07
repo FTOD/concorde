@@ -3,7 +3,7 @@ name: concorde-fast-loop
 description: "Run fast-loop through Concorde's enforced Spec context and JSON boundary."
 exposure: public
 operation: operation.py
-capabilities: ["concorde-coordinator", "concorde-plan", "concorde-tasks", "concorde-implement", "concorde-validate", "concorde-deliver"]
+capabilities: ["concorde-coordinator", "concorde-plan", "concorde-tasks", "concorde-implement", "concorde-validate"]
 ---
 
 # concorde-fast-loop
@@ -21,9 +21,16 @@ Initialization/migration use their typed propose/apply requests; use the publish
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
 Main may inspect Domain/Service Specs on demand but cannot read Module Specs or code. It returns one
-typed route for this Operation; the host then starts a different target worker. The host captures a committed-base worktree for mutations when necessary.
-Its result names that workspace. Report Spec gaps or blocked execution as returned; do not work
+typed route for this Operation; the host then starts a different target worker. When a mutation starts in the primary worktree, the host prepares a committed-base linked
+worktree and returns a handoff. Open a new agent in the returned worktree before continuing;
+never carry this conversation or its worktree-owned Skills across that boundary. Report Spec gaps or blocked execution as returned; do not work
 around the boundary. Non-implementation agents never receive implementation code or raw test logs.
+
+
+This loop ends at a verified `ready` candidate in the current change worktree. It never
+invokes deliver. Partial progress and gaps remain in `.concorde/worktree.json` and resume under
+the same worktree change. Delivery is a separate request from a new agent opened in the primary
+worktree; report its path and the change_id when the candidate is ready.
 
 ## Input TypedValue schema
 

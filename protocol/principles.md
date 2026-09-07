@@ -245,3 +245,33 @@ before mutation. Application is atomic: stale registry, Protocol, discovery cont
 target gaps or invalid final structure prevent project writes; failed target authoring leaves the
 project unchanged. The trusted host applies the accepted registry and documents together or restores
 their previous bytes.
+
+### P9. A candidate change belongs to one worktree and one delivery session
+
+One linked Git worktree MUST own one top-level change, including all of its participating component
+work. That mutable worktree is the candidate version. Partial Spec or implementation work MAY remain
+there for inspection and recovery, but MUST have explicit host-owned phase, status, component progress
+and gap provenance in `.concorde/worktree.json`. It MUST NOT be represented as the accepted primary
+revision. Plans, tasks and check evidence belong to that worktree; new work MUST NOT create an
+independent attempt lifecycle beneath it. A blocked component author does not require already authored
+draft bytes to be discarded. Cross-component agreement is assessed after all affected authors finish
+and before component implementation begins. Recovery resumes the recorded phase with current inputs.
+
+The primary Git worktree is a location, independent of its branch's name. It MUST retain basic metadata
+for every live linked worktree in `.concorde/worktrees.json`. Main cognition MUST receive the current
+workspace identity, candidate status when applicable, and the live worktree inventory. These declared
+lifecycle inputs MUST NOT grant access to another worktree's Specs, implementation or conversation.
+Managed secondary AGENTS.md and CLAUDE.md guidance supplements the host-enforced context.
+
+Creating a linked worktree from a primary mutation request is a handoff: a new agent MUST be opened in
+that worktree before project work continues. Development loops MUST stop at a verified ready candidate.
+Delivery MUST be requested in an agent whose initial working directory is the primary worktree.
+A secondary session MUST NOT deliver, change cwd, redirect the host or forward an invocation to bypass
+this requirement. Component completion never independently delivers the enclosing change.
+
+The primary delivery host MUST bind validation to the exact candidate and actual integration result,
+merge into the primary worktree's checked-out branch, then remove the temporary worktree and its local
+state. Failed checks, conflicting merges or stale evidence preserve the candidate and the primary
+revision. Local control files and managed worktree prompt blocks MUST NOT enter the delivered tree.
+Delivery evidence survives in the primary worktree. A completed merge with unfinished cleanup MUST be
+distinguishable and resumable without repeating the merge.

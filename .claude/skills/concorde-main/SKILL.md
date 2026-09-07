@@ -57,6 +57,19 @@ Changing document references tasks every retained current/candidate target. Shar
 unique owner: ordinary single-target authoring cannot change it, and topology preparation accepts a
 replacement only when every candidate referencing target author returns identical exact bytes.
 
+
+Every main invocation receives host-supplied workspace metadata. In the primary worktree it lists
+all live linked worktrees and their basic change status, so ongoing work is visible without loading
+other worktrees' Spec or implementation bodies. In a secondary worktree it identifies the current
+candidate, its phase/status, and the primary worktree. The primary inventory is
+`.concorde/worktrees.json`; secondary lifecycle state is `.concorde/worktree.json`.
+A worktree is a mutable candidate until its exact version is verified and delivered. Do not treat
+partial drafts as the accepted primary revision. Read-only awareness does not authorize cross-worktree
+reads or a continuation of the same agent session in another checkout.
+
+`concorde-deliver` is available only from a new agent opened in the primary worktree. A secondary
+session must report that path and its change_id, then leave delivery to that primary session.
+
 ## Input TypedValue schema
 
 This complete schema is the invocation's input field. It does not grant project reads.
@@ -262,6 +275,292 @@ This complete schema is the invocation's input field. It does not grant project 
             "data"
           ],
           "additionalProperties": false
+        },
+        "workspace": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "primary",
+                "change",
+                "unversioned"
+              ]
+            },
+            "current_worktree": {
+              "type": "string",
+              "minLength": 1
+            },
+            "current_branch": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "primary_worktree": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "primary_branch": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "change_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "phase": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "outcome": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gaps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "question": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "blocked_step": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "needed_contract": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "context_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "question",
+                  "blocked_step",
+                  "needed_contract"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "target_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spec_status": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "implementation_status": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "outcome": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "target_id",
+                  "spec_status",
+                  "implementation_status",
+                  "outcome"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "active_worktrees": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "branch": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "head": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "managed": {
+                    "type": "boolean"
+                  },
+                  "locked": {
+                    "type": "boolean"
+                  },
+                  "change_id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "target_id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "task": {
+                    "type": "string"
+                  },
+                  "phase": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "outcome": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "path",
+                  "branch",
+                  "head",
+                  "managed",
+                  "locked",
+                  "change_id",
+                  "target_id",
+                  "task",
+                  "phase",
+                  "status",
+                  "outcome"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "current_worktree",
+            "current_branch",
+            "primary_worktree",
+            "primary_branch",
+            "change_id",
+            "phase",
+            "status",
+            "outcome",
+            "gaps",
+            "components",
+            "active_worktrees"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -274,7 +573,8 @@ This complete schema is the invocation's input field. It does not grant project 
         "constraints",
         "target_hint",
         "focus_hint",
-        "design"
+        "design",
+        "workspace"
       ],
       "additionalProperties": false
     },

@@ -90,7 +90,7 @@ def _spec_sections(documents, *, references: dict[str, tuple[str, ...]] | None =
 def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = "ask",
                     task: str = "Understand this Spec", focus_id: str | None = None,
                     constraints: tuple[str, ...] = (), instructions: str = "",
-                    stage_inputs: tuple[dict, ...] = ()) -> ContextSnapshot:
+                    stage_inputs: tuple[dict, ...] = (), workspace: dict | None = None) -> ContextSnapshot:
     if phase not in PHASES:
         raise SpecError("unsupported context phase", "invalid_phase")
     if not isinstance(task, str) or not task.strip():
@@ -107,6 +107,7 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
         raw = repository.protocol_assets[path]
         protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
     # No ancestry, participant inventory, code locator, or co-referencing entity's remaining body.
+    from ..capabilities.change_worktree import workspace_context
     manifest = {"schema_version": 1, "target_id": target.id, "kind": target.kind,
         "focus_id": focus_id, "phase": phase, "task": task, "constraints": list(constraints),
         "protocol_binding": repository.config["protocol"], "protocol": protocol,
@@ -115,7 +116,8 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
         "stage_inputs": list(stage_inputs),
         "implementation_artifacts": [{"id": path, "path": path,
             "digest": digest(read_file(repository.root, path))} for path in repository.implementation_files(target)]
-            if phase == "implementation" else []}
+            if phase == "implementation" else [],
+        "workspace": workspace if workspace is not None else workspace_context(repository.root)}
     return ContextSnapshot(canonical({**manifest, "context_id": digest(manifest)}))
 
 
@@ -130,6 +132,7 @@ def public_context_manifest(snapshot: ContextSnapshot) -> dict:
         "kind": value["kind"],
         "focus_id": value["focus_id"],
         "phase": value["phase"],
+        "workspace": value["workspace"],
         "protocol_binding": value["protocol_binding"],
         "protocol": [{"path": item["path"], "digest": item["digest"]}
                      for item in value["protocol"]],
@@ -149,7 +152,8 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
                               target_hint: str | None = None,
                               focus_hint: str | None = None,
                               constraints: tuple[str, ...] = (), instructions: str = "",
-                              worker_results: tuple[dict, ...] = ()) -> DiscoveryContext:
+                              worker_results: tuple[dict, ...] = (),
+                              workspace: dict | None = None) -> DiscoveryContext:
     """Resolve the main agent's explicit, append-only Domain/Service discovery context."""
 
     if phase not in DISCOVERY_PHASES:
@@ -193,6 +197,7 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
     for path in protocol_paths:
         raw = repository.protocol_assets[path]
         protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
+    from ..capabilities.change_worktree import workspace_context
     manifest = {
         "schema_version": 1,
         "operation": operation,
@@ -210,13 +215,15 @@ def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str,
         "targets": targets,
         "instructions": instructions,
         "worker_results": admitted_results,
+        "workspace": workspace if workspace is not None else workspace_context(repository.root),
     }
     return DiscoveryContext(canonical({**manifest, "context_id": digest(manifest)}))
 
 
 def resolve_topology_author_context(repository: SpecRepository, target: dict, *, task: str,
                                     instructions: str,
-                                    candidate_document_references: tuple[dict, ...] = ()) -> TopologyAuthorContext:
+                                    candidate_document_references: tuple[dict, ...] = (),
+                                    workspace: dict | None = None) -> TopologyAuthorContext:
     """Build a private authoring context without exposing the target body to main."""
 
     if target.get("kind") not in {"domain", "service", "module"}:
@@ -239,6 +246,7 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
     for path in ("protocol/principles.md", f"protocol/kinds/{target['kind']}.md"):
         raw = repository.protocol_assets[path]
         protocol.append({"path": path, "digest": digest(raw), "content": raw.decode()})
+    from ..capabilities.change_worktree import workspace_context
     manifest = {
         "base_registry_digest": digest(repository.registry_bytes),
         "target": target,
@@ -250,6 +258,7 @@ def resolve_topology_author_context(repository: SpecRepository, target: dict, *,
         "target_spec": target_spec,
         "shared_specs": shared_specs,
         "instructions": instructions,
+        "workspace": workspace if workspace is not None else workspace_context(repository.root),
     }
     return TopologyAuthorContext(canonical({**manifest, "context_id": digest(manifest)}))
 
@@ -259,6 +268,7 @@ def recheck_context(repository: SpecRepository, snapshot: ContextSnapshot, *, ch
     declared = value.pop("context_id")
     if digest(value) != declared:
         raise SpecError("context snapshot identity has changed", "stale_context")
+    _recheck_workspace(repository.root, value["workspace"])
     current = SpecRepository(repository.root, repository.package_root)
     target = current.select(value["target_id"], value["focus_id"])
     if current.config["protocol"] != value["protocol_binding"]:
@@ -278,6 +288,7 @@ def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryCon
     """Re-resolve every admitted Domain/Service and reject any changed discovery input."""
 
     value = snapshot.value
+    _recheck_workspace(repository.root, value["workspace"])
     current = SpecRepository(repository.root, repository.package_root)
     resolved = resolve_discovery_context(
         current,
@@ -291,6 +302,7 @@ def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryCon
         constraints=tuple(value["constraints"]),
         instructions=value["instructions"],
         worker_results=tuple(value["worker_results"]),
+        workspace=value["workspace"],
     )
     if resolved.serialized != snapshot.serialized:
         raise SpecError("Domain/Service discovery context changed", "stale_context")
@@ -298,6 +310,7 @@ def recheck_discovery_context(repository: SpecRepository, snapshot: DiscoveryCon
 
 def recheck_topology_author_context(repository: SpecRepository, snapshot: TopologyAuthorContext) -> None:
     value = snapshot.value
+    _recheck_workspace(repository.root, value["workspace"])
     current = SpecRepository(repository.root, repository.package_root)
     resolved = resolve_topology_author_context(
         current,
@@ -305,9 +318,21 @@ def recheck_topology_author_context(repository: SpecRepository, snapshot: Topolo
         task=value["task"],
         instructions=value["instructions"],
         candidate_document_references=tuple(value["candidate_document_references"]),
+        workspace=value["workspace"],
     )
     if resolved.serialized != snapshot.serialized:
         raise SpecError("topology author context changed", "stale_context")
+
+
+def _recheck_workspace(root: Path, observed: dict) -> None:
+    from ..capabilities.change_worktree import workspace_context
+    current = workspace_context(root)
+    # Other worktrees may advance while this stage runs. Their inventory is an
+    # explicitly timestamp-free observation, never an authority grant. This
+    # invocation's own identity and lifecycle boundary must remain unchanged.
+    for key in observed.keys() - {"active_worktrees"}:
+        if current[key] != observed[key]:
+            raise SpecError("current worktree identity or lifecycle changed", "stale_context")
 
 
 def assess_result(snapshot: ContextSnapshot, assessment: dict) -> dict:

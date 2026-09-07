@@ -8,7 +8,6 @@ from __future__ import annotations
 import copy
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -25,6 +24,10 @@ from .operation_permissions import (PolicyBinding, compile_policy, render_codex_
 from .skill_assets import EffectDeclaration, resolve_skill_prompt
 from .protocol_contracts import (AGENT_OPERATIONS, TARGET_AGENT_STAGES,
     MAIN_OPERATION, MAIN_ROUTED_OPERATIONS)
+from .change_worktree import (STATE_PATH, WORK_PATH, bind_owner, create_worktree,
+    ensure_change, progress, read_change, refresh_registry, save_change,
+    save_target_state, snapshot_tree, target_state, work_path, workspace_context,
+    workspace_identity)
 from ..specification.repository import SpecRepository, SpecError, digest, read_file, identifier
 from ..specification.context import (DiscoveryContext, resolve_context,
     public_context_manifest, recheck_context, resolve_discovery_context,
@@ -45,6 +48,9 @@ class OperationHost:
     outer_sandbox: str | None = None
     routed_target: str | None = None
     configuration_snapshot: str = ""
+    session_root: Path | None = None
+    coordinated: bool = False
+    depth: int = 0
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     descriptions: list[dict] = field(default_factory=list)
     evidence: list[Any] = field(default_factory=list)
@@ -54,54 +60,31 @@ class OperationHost:
             raise SpecError("host roots cannot be symlinks", "workspace_mismatch")
         object.__setattr__(self, "project_root", self.project_root.resolve())
         object.__setattr__(self, "package_root", self.package_root.resolve())
+        object.__setattr__(self, "session_root", (self.session_root or self.project_root).resolve())
 
 
-def _git(root: Path, *args: str) -> str:
-    result = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
-    if result.returncode:
-        raise SpecError("Git workspace operation failed: " + result.stderr.strip(), "workspace_mismatch")
-    return result.stdout.strip()
-
-
-def _worktree(host: OperationHost, mutation: bool) -> tuple[OperationHost, dict | None]:
-    if not mutation or host.mode == "describe-policy":
+def _worktree(host: OperationHost, mutation: bool, task: dict) -> tuple[OperationHost, dict | None]:
+    if host.mode == "describe-policy":
         return host, None
-    from .worktree import require_isolated_worktree, WorktreeBoundaryError
-    try:
-        require_isolated_worktree(host.project_root, allow_primary_worktree=host.allow_primary_worktree)
-        return host, None
-    except WorktreeBoundaryError:
-        # Work from committed HEAD only; no stash, dirty-file copy, reset, or primary mutation.
-        base = _git(host.project_root, "rev-parse", "HEAD")
-        branch = "concorde/" + host.invocation_id
-        parent = Path(tempfile.mkdtemp(prefix="concorde-worktree-"))
-        path = parent / "project"
-        _git(host.project_root, "worktree", "add", "-b", branch, str(path), base)
-        return replace(host, project_root=path), {"path": str(path), "branch": branch, "base_commit": base}
-
-
-def _attempt(root: Path, target_id: str, change_id: str) -> str:
-    identifier(change_id)
-    identifier(target_id)
-    return f".concorde/attempts/{change_id}"
-
-
-def _state(root: Path, attempt: str, target_id: str, focus_id: str | None, *, create=False) -> dict:
-    path = checked_path(root, attempt + "/state.json")
-    if path.exists():
-        value = decode(read_file(root, attempt + "/state.json").decode())
-        if value.get("target_id") != target_id or value.get("focus_id") != focus_id or value.get("schema_version") != 1:
-            raise SpecError("change belongs to a different target or focus", "incompatible_handoff")
-        return value
-    if not create:
-        raise SpecError("this Operation requires an active change", "missing_attempt")
-    return {"schema_version": 1, "target_id": target_id, "focus_id": focus_id, "plan": "", "tasks": [],
-            "checks": [], "spec_digest": None, "implementation_digest": None, "completed_operations": []}
-
-
-def _save_state(root: Path, attempt: str, value: dict) -> None:
-    relative = attempt + "/state.json"
-    apply_files(root, [file_change(root, relative, canonical(value) + "\n")], {relative})
+    primary, current = workspace_identity(host.project_root)
+    if current is not None and current["path"] != primary["path"]:
+        state = ensure_change(host.project_root, task=task if mutation else None,
+                              change_id=task.get("change_id"))
+        refresh_registry(host.project_root)
+        return host, {key: state[key] for key in
+                      ("path", "branch", "base_commit", "change_id", "primary_worktree")}
+    if mutation and not host.allow_primary_worktree:
+        if primary is None:
+            raise SpecError("mutations require a committed Git worktree", "workspace_mismatch")
+        # Preparing a worktree is a handoff, never permission to continue the
+        # originating agent conversation against a different checkout.
+        return host, {**create_worktree(host.project_root, task), "handoff": True}
+    if mutation:
+        ensure_change(host.project_root, task=task, change_id=task.get("change_id"),
+                      allow_primary=True)
+    if current is not None:
+        refresh_registry(host.project_root)
+    return host, None
 
 
 def _implementation_digest(repository: SpecRepository, target) -> str:
@@ -197,6 +180,7 @@ class MainInvocation:
             "files": list(files),
             "gaps": list(gaps),
             "completed_operations": list(self.completed),
+            "workspace": self.last_snapshot.value["workspace"],
         })
 
     def operation_response(self, outcome: str, answer: str = "", *, gaps=()) -> dict:
@@ -330,7 +314,11 @@ class MainInvocation:
         expansions, routes, gaps = data["expand_targets"], data["routes"], data["gaps"]
         topology = data["topology_design"]
         if phase == "route":
-            if outcome == "expand":
+            if outcome == "completed":
+                if (self.operation != MAIN_OPERATION or self.action != "ask"
+                        or expansions or routes or gaps or topology is not None or not data["answer"].strip()):
+                    raise SpecError("direct main answers require only an answer from admitted workspace metadata", "invalid_completion")
+            elif outcome == "expand":
                 if not expansions or routes or gaps or topology is not None:
                     raise SpecError("expand requires only nonempty Domain/Service targets", "invalid_completion")
             elif outcome == "routed":
@@ -503,6 +491,7 @@ class MainInvocation:
             "target_hint": self.task.get("target_id"),
             "focus_hint": self.task.get("focus_id"),
             "design": decision["topology_design"],
+            "workspace": self.last_snapshot.value["workspace"],
         }
         proposal = typed("concorde-topology-proposal", {
             "proposal_id": digest(payload), **payload,
@@ -628,6 +617,7 @@ def _validate_topology_proposal(host: OperationHost, proposal: dict) -> tuple[Sp
         focus_hint=data["focus_hint"],
         constraints=tuple(data["constraints"]),
         instructions=prompt.body,
+        workspace=data["workspace"],
     )
     if snapshot.id != data["context_id"]:
         raise SpecError("topology proposal discovery context changed", "stale_proposal")
@@ -728,10 +718,13 @@ def _main_topology_response(action: str, repository: SpecRepository, proposal: d
         "discovered_targets": data["discovered_targets"], "routes": [], "worker_results": [],
         "topology_proposal": proposal if action == "accept-topology" else None,
         "application": application, "files": list(files), "gaps": list(gaps),
-        "completed_operations": list(completed)})
+        "completed_operations": list(completed),
+        "workspace": workspace_context(repository.root)})
 
 
 def _prepare_topology(configuration: dict, proposal: dict, host: OperationHost) -> dict:
+    if host.mode == "execute":
+        progress(host.project_root, phase="topology_authoring", status="active", invalidate=True)
     repository, proposal = _validate_topology_proposal(host, proposal)
     design, candidate, candidate_bytes, current_targets, candidate_targets, tasks = (
         _inspect_topology_design(
@@ -810,6 +803,8 @@ def _prepare_topology(configuration: dict, proposal: dict, host: OperationHost) 
 
 
 def _apply_topology(application_ref: dict, host: OperationHost) -> dict:
+    if host.mode == "execute":
+        progress(host.project_root, phase="topology_apply", status="active", invalidate=True)
     repository = SpecRepository(host.project_root, host.package_root)
     verify_artifacts(repository.root, application_ref)
     raw = read_file(repository.root, application_ref["path"])
@@ -872,7 +867,23 @@ def _apply_topology(application_ref: dict, host: OperationHost) -> dict:
         if current.status != "success":
             raise SpecError("applied topology failed validation: " + "; ".join(
                 finding.message for finding in current.findings), "invalid_proposal")
-    changed = apply_files(repository.root, files, allowed, verify=verify)
+    change = read_change(repository.root)
+    transaction = list(files)
+    if change is not None:
+        owner = design["registry"]["entry_target"]
+        if change["target_id"] is not None and (change["target_id"] != owner
+                or change["task"] != proposal["data"]["task"]
+                or change["constraints"] != proposal["data"]["constraints"]):
+            raise SpecError("topology application differs from this worktree's owning task", "incompatible_handoff")
+        change.update(target_id=owner, focus_id=None, task=proposal["data"]["task"],
+                      constraints=proposal["data"]["constraints"], phase="specified", status="active",
+                      outcome="topology_applied", gaps=[])
+        transaction.append(file_change(repository.root, STATE_PATH, canonical(change) + "\n"))
+        allowed.add(STATE_PATH)
+    changed = [path for path in apply_files(repository.root, transaction, allowed, verify=verify)
+               if path != STATE_PATH]
+    if change is not None:
+        refresh_registry(repository.root)
     try:
         checked_path(repository.root, application_ref["path"]).unlink()
         proposal_dir = checked_path(repository.root, ".concorde/topology-proposals")
@@ -892,8 +903,9 @@ class Invocation:
         self.operation, self.configuration, self.task, self.host = operation, configuration, task, host
         self.repository = SpecRepository(host.project_root, host.package_root)
         self.target = self.repository.select(task["target_id"], task.get("focus_id"))
-        self.change_id = task.get("change_id")
-        self.attempt = _attempt(host.project_root, self.target.id, self.change_id) if self.change_id else None
+        change = read_change(host.project_root)
+        self.change_id = task.get("change_id") or (change["change_id"] if change else None)
+        self.work_directory = f"{WORK_PATH}/{self.target.id}" if change else None
         self.last_context = None
         self.completed: list[str] = []
 
@@ -1011,6 +1023,8 @@ class Invocation:
             return data
 
     def author(self, operation: str) -> dict:
+        if not self.host.coordinated:
+            progress(self.repository.root, phase="specify", status="active", invalidate=True)
         result = self.stage(operation)
         if result["outcome"] not in {"completed", "sufficient"}:
             return self.response(result["outcome"], result["answer"], gaps=result["gaps"])
@@ -1072,6 +1086,8 @@ class Invocation:
         return self.response(answer=result["answer"])
 
     def plan(self) -> dict:
+        if not self.host.coordinated:
+            progress(self.repository.root, phase="plan", status="active", invalidate=True)
         assessment = self.stage("concorde-context-solve")
         if assessment["outcome"] not in {"completed", "sufficient"}:
             return self.response(assessment["outcome"], assessment["answer"], gaps=assessment["gaps"])
@@ -1082,22 +1098,27 @@ class Invocation:
             return self.response("described")
         if not result["plan"].strip():
             raise SpecError("planning produced no usable plan", "invalid_completion")
-        if self.change_id is None:
-            self.change_id = "change." + self.host.invocation_id
-            self.attempt = _attempt(self.repository.root, self.target.id, self.change_id)
-        state = _state(self.repository.root, self.attempt, self.target.id, self.task.get("focus_id"), create=True)
+        change = read_change(self.repository.root, required=True)
+        self.change_id = change["change_id"]
+        self.work_directory = f"{WORK_PATH}/{self.target.id}"
+        state = target_state(self.repository.root, self.target.id, self.task.get("focus_id"), create=True)
+        state.pop("coordination", None)
+        state.pop("component_revisions", None)
         state.update(plan=result["plan"], tasks=[], checks=[], spec_digest=_target_revision(self.repository, self.target),
                      task=self.task["task"], constraints=self.task.get("constraints", []),
-                     implementation_digest=None, completed_operations=list(self.completed))
-        _save_state(self.repository.root, self.attempt, state)
-        path = self.attempt + "/plan.md"
+                     implementation_digest=None, completed_operations=list(self.completed),
+                     phase="plan", status="active")
+        save_target_state(self.repository.root, state)
+        path = work_path(self.target.id, "plan.md")
         apply_files(self.repository.root, [file_change(self.repository.root, path, result["plan"])], {path})
         return self.response(answer=result["answer"], artifacts=[artifact(self.repository.root, "plan", path)])
 
     def tasks(self) -> dict:
-        if not self.attempt:
-            raise SpecError("task authoring requires change_id", "missing_attempt")
-        state = _state(self.repository.root, self.attempt, self.target.id, self.task.get("focus_id"))
+        if not self.work_directory:
+            raise SpecError("task authoring requires a managed change", "missing_change")
+        if not self.host.coordinated:
+            progress(self.repository.root, phase="tasks", status="active", invalidate=True)
+        state = target_state(self.repository.root, self.target.id, self.task.get("focus_id"))
         self.check_state(state)
         if not state["plan"]:
             raise SpecError("tasks require an authored plan", "missing_plan")
@@ -1114,21 +1135,23 @@ class Invocation:
             self.repository.select(task["target_id"])
             if self.target.kind != "domain" and task["target_id"] != self.target.id:
                 raise SpecError("component tasks must remain in their owning context", "permission_denied")
-        state.update(tasks=tasks, checks=[], implementation_digest=None)
-        _save_state(self.repository.root, self.attempt, state)
-        return self.response(answer=result["answer"], artifacts=[artifact(self.repository.root, "change", self.attempt + "/state.json")])
+        state.update(tasks=tasks, checks=[], implementation_digest=None, phase="tasks", status="active")
+        save_target_state(self.repository.root, state)
+        return self.response(answer=result["answer"], artifacts=[artifact(self.repository.root, "change", STATE_PATH)])
 
     def implement(self) -> dict:
-        if not self.attempt:
-            raise SpecError("implementation requires change_id and authored tasks", "missing_attempt")
-        state = _state(self.repository.root, self.attempt, self.target.id, self.task.get("focus_id"))
+        if not self.work_directory:
+            raise SpecError("implementation requires a managed change and authored tasks", "missing_change")
+        state = target_state(self.repository.root, self.target.id, self.task.get("focus_id"))
         self.check_state(state)
         if not state["tasks"]:
             raise SpecError("implementation requires tasks", "missing_tasks")
-        if validate_repository(self.repository.root, package_root=self.host.package_root).status != "success":
-            raise SpecError("reconcile all shared contracts before implementation", "incompatible_contracts")
         if self.target.kind == "domain":
             return self.implement_scope(state)
+        if validate_repository(self.repository.root, package_root=self.host.package_root).status != "success":
+            raise SpecError("reconcile all shared contracts before implementation", "incompatible_contracts")
+        if not self.host.coordinated:
+            progress(self.repository.root, phase="implementation", status="active", invalidate=True)
         inputs = (typed("concorde-implementation-task", {"plan":state["plan"],"tasks":state["tasks"]}),)
         result = self.stage("concorde-implement", inputs=inputs)
         if result["outcome"] not in {"completed", "sufficient"}:
@@ -1142,7 +1165,8 @@ class Invocation:
         state["tasks"] = returned
         state["implementation_digest"] = _implementation_digest(self.repository, self.target)
         state["checks"] = []
-        _save_state(self.repository.root, self.attempt, state)
+        state.update(phase="implementation", status="completed")
+        save_target_state(self.repository.root, state)
         return self.response(answer=result["answer"])
 
     def check_state(self, state: dict) -> None:
@@ -1153,30 +1177,31 @@ class Invocation:
 
     def checklist(self):
         inputs=()
-        if self.attempt:
-            state=_state(self.repository.root,self.attempt,self.target.id,self.task.get("focus_id")); self.check_state(state)
+        change = read_change(self.repository.root)
+        if change and self.target.id in change["targets"]:
+            state=target_state(self.repository.root,self.target.id,self.task.get("focus_id")); self.check_state(state)
             inputs=(typed("concorde-plan-artifact",{"plan":state["plan"]}),)
         result=self.stage("concorde-checklist",inputs=inputs)
         if result["outcome"] not in {"completed","sufficient"}: return self.response(result["outcome"],result["answer"],gaps=result["gaps"])
         content=result["plan"] or result["answer"]
         if not content.strip(): raise SpecError("checklist contains no acceptance criteria", "invalid_completion")
-        if not self.attempt:return self.response(answer=content)
-        path=self.attempt+"/checklist.md"
+        if not self.work_directory:return self.response(answer=content)
+        path=work_path(self.target.id,"checklist.md")
         apply_files(self.repository.root,[file_change(self.repository.root,path,content)],{path})
         return self.response(answer=result["answer"],artifacts=[artifact(self.repository.root,"checklist",path)])
 
     def issue_drafts(self):
-        if not self.attempt:raise SpecError("issue drafts require authored tasks", "missing_attempt")
-        state=_state(self.repository.root,self.attempt,self.target.id,self.task.get("focus_id"));self.check_state(state)
+        if not self.work_directory:raise SpecError("issue drafts require authored tasks", "missing_change")
+        state=target_state(self.repository.root,self.target.id,self.task.get("focus_id"));self.check_state(state)
         if not state["tasks"]:raise SpecError("issue drafts require tasks", "missing_tasks")
         drafts=[{"task_id":t["id"],"target_id":t["target_id"],"title":t["description"],"body":"Acceptance:\n"+t["acceptance"]} for t in state["tasks"]]
-        path=self.attempt+"/issue-drafts.json"
+        path=work_path(self.target.id,"issue-drafts.json")
         apply_files(self.repository.root,[file_change(self.repository.root,path,canonical({"schema_version":1,"issues":drafts})+"\n")],{path})
         return self.response(answer="Local issue drafts prepared.",artifacts=[artifact(self.repository.root,"issues",path)])
 
     def implement_scope(self, state: dict) -> dict:
-        """Coordinate separate component contexts; Domain agents never receive component bodies."""
-        components = []
+        """Retain resumable component drafts inside this one candidate worktree."""
+        grouped = {}
         for task in state["tasks"]:
             component = self.repository.select(task["target_id"])
             scopes = set(component.participates_in)
@@ -1187,84 +1212,218 @@ class Invocation:
                     parent = self.repository.targets[parent].scope_parent
             if component.kind == "domain" or self.target.id not in scopes:
                 raise SpecError("Domain task must target an explicitly participating component", "permission_denied")
-            components.append((task, component))
-        # Reconcile each local consumer/provider view before any component implementation starts.
-        for task, component in components:
-            payload = {"target_id": component.id, "task": task["description"] + "\nAcceptance: " + task["acceptance"]}
-            child_host = replace(self.host, routed_target=component.id)
+            grouped.setdefault(component.id, []).append(task)
+        component_tasks = {target_id: "\n\n".join(
+            task["description"] + "\nAcceptance: " + task["acceptance"] for task in tasks)
+            for target_id, tasks in grouped.items()}
+        coordination = state.setdefault("coordination", {})
+        if coordination and set(coordination) != set(component_tasks):
+            raise SpecError("participating tasks changed; replan this worktree change", "stale_context")
+        for target_id, task_text in component_tasks.items():
+            record = coordination.setdefault(target_id, {
+                "task": task_text, "spec_status": "pending", "implementation_status": "pending",
+                "spec_digest": None, "implementation_digest": None, "gaps": [], "outcome": None})
+            if record["task"] != task_text:
+                raise SpecError("component intent changed; replan this worktree change", "stale_context")
+        progress(self.repository.root, phase="spec_reconciliation", status="active", invalidate=True)
+        state.update(phase="spec_reconciliation", status="active")
+        save_target_state(self.repository.root, state)
+
+        def blocked(result, target_id, phase):
+            record = coordination[target_id]
+            record[phase + "_status"] = "blocked"
+            child = result["output"]["data"] if result["output"] else None
+            record["outcome"] = child["outcome"] if child else "failed"
+            record["gaps"] = child["gaps"] if child else []
+            state["status"] = "blocked"
+            save_target_state(self.repository.root, state)
+            progress(self.repository.root, status="blocked", outcome=record["outcome"],
+                     gaps=record["gaps"])
+            if child:
+                return self.response(child["outcome"], "Component " + target_id + ": " + child["answer"],
+                                     gaps=child["gaps"], artifacts=child["artifacts"])
+            raise SpecError("component " + phase + " blocked: " + target_id, "child_blocked")
+
+        for target_id, task_text in component_tasks.items():
+            component = self.repository.select(target_id)
+            record = coordination[target_id]
+            revision = _target_revision(self.repository, component)
+            if record["spec_status"] == "completed" and record["spec_digest"] == revision:
+                continue
+            record.update(spec_status="running", implementation_status="pending", gaps=[], outcome=None)
+            save_target_state(self.repository.root, state)
+            payload = {"target_id": target_id, "task": task_text, "change_id": self.change_id,
+                       "constraints": self.task.get("constraints", [])}
+            child_host = replace(self.host, routed_target=target_id, coordinated=True)
             result = run_operation("concorde-specify", self.configuration,
                 typed("concorde-specify-request", payload), host_context=child_host)
             if result["status"] != "succeeded":
-                if result["output"]:
-                    child=result["output"]["data"]
-                    return self.response(child["outcome"],"Component "+component.id+": "+child["answer"],gaps=child["gaps"],artifacts=child["artifacts"])
-                raise SpecError("component specification blocked: " + component.id, "child_blocked")
+                return blocked(result, target_id, "spec")
+            self.repository = SpecRepository(self.host.project_root, self.host.package_root)
+            record.update(spec_status="completed", outcome="completed",
+                          spec_digest=_target_revision(self.repository, self.repository.select(target_id)))
+            save_target_state(self.repository.root, state)
+
+        # Transitional consumer/provider disagreement is allowed until every
+        # participating author has completed. It must not prevent resuming a draft.
+        progress(self.repository.root, phase="spec_validation", status="active")
         if validate_repository(self.repository.root, package_root=self.host.package_root).status != "success":
+            state.update(phase="spec_validation", status="blocked")
+            save_target_state(self.repository.root, state)
+            progress(self.repository.root, status="blocked", outcome="incompatible_contracts")
             raise SpecError("reconcile all consumer/provider contracts before implementation", "incompatible_contracts")
-        for task, component in components:
-            payload = {"target_id": component.id, "task": task["description"] + "\nAcceptance: " + task["acceptance"]}
-            child_host = replace(self.host, routed_target=component.id)
+        progress(self.repository.root, phase="implementation", status="active")
+        state.update(phase="implementation", status="active")
+        for target_id, task_text in component_tasks.items():
+            component = self.repository.select(target_id)
+            record = coordination[target_id]
+            payload = {"target_id": target_id, "task": task_text, "change_id": self.change_id,
+                       "constraints": self.task.get("constraints", [])}
+            child_host = replace(self.host, routed_target=target_id, coordinated=True)
+            if (record["implementation_status"] == "completed"
+                    and record["implementation_digest"] == _implementation_digest(self.repository, component)):
+                try:
+                    Invocation("concorde-validate", self.configuration, payload, child_host).verify_completion()
+                    continue
+                except SpecError:
+                    pass
+            record.update(implementation_status="running", gaps=[], outcome=None)
+            save_target_state(self.repository.root, state)
             result = run_operation("concorde-fast-loop", self.configuration,
                 typed("concorde-fast-loop-request", payload), host_context=child_host)
             if result["status"] != "succeeded":
-                if result["output"]:
-                    child=result["output"]["data"]
-                    return self.response(child["outcome"],"Component "+component.id+": "+child["answer"],gaps=child["gaps"],artifacts=child["artifacts"])
-                raise SpecError("component implementation blocked: " + component.id, "child_blocked")
-        state["component_revisions"] = {component.id: {"spec":_target_revision(self.repository,component),"implementation":_implementation_digest(self.repository,component)} for _,component in components}
+                return blocked(result, target_id, "implementation")
+            self.repository = SpecRepository(self.host.project_root, self.host.package_root)
+            record.update(implementation_status="completed", outcome="completed",
+                          implementation_digest=_implementation_digest(self.repository, self.repository.select(target_id)))
+            save_target_state(self.repository.root, state)
+        state["component_revisions"] = {target_id: {
+            "spec": _target_revision(self.repository, self.repository.select(target_id)),
+            "implementation": _implementation_digest(self.repository, self.repository.select(target_id))}
+            for target_id in component_tasks}
         state["tasks"] = [{**task, "complete": True} for task in state["tasks"]]
         state["implementation_digest"] = _implementation_digest(self.repository, self.target)
-        _save_state(self.repository.root, self.attempt, state)
-        return self.response(answer="Participating components completed through separate contexts.")
+        state.update(phase="implementation", status="completed")
+        save_target_state(self.repository.root, state)
+        return self.response(answer="Participating components completed in the candidate worktree.")
 
     def validate(self, run_checks: bool = True) -> dict:
+        if not self.host.coordinated:
+            progress(self.repository.root, phase="validate", status="active", invalidate=True)
+        before_tree = snapshot_tree(self.repository.root) if self.work_directory else None
+        change = read_change(self.repository.root)
+        direct_candidate = bool(change is not None and not change["targets"] and not self.host.coordinated)
         report = validate_repository(self.repository.root, self.target.id, self.host.package_root)
         if report.status != "success":
+            progress(self.repository.root, status="blocked", outcome="invalid_spec")
             return self.response("failed", "Spec structure or shared contracts failed deterministic validation.")
-        results = _check(self.repository, self.target, self.host.invocation_id) if run_checks else []
-        if self.attempt:
-            state = _state(self.repository.root, self.attempt, self.target.id, self.task.get("focus_id"))
-            state["checks"] = results
-            state["validation_spec_digest"] = report.result["source_digest"]
-            _save_state(self.repository.root, self.attempt, state)
+        checked_targets = tuple(self.repository.targets.values()) if direct_candidate else (self.target,)
+        results = [result for target in checked_targets
+                   for result in _check(self.repository, target, self.host.invocation_id)] if run_checks else []
+        state = None
+        if change and self.target.id in change["targets"]:
+            state = target_state(self.repository.root, self.target.id, self.task.get("focus_id"))
+            state.update(checks=results, validation_spec_digest=report.result["source_digest"],
+                         phase="validate", status="active")
+            save_target_state(self.repository.root, state)
         self.completed.append("concorde-validate")
         failed = any(item["status"] != "passed" for item in results)
-        return self.response("failed" if failed else "completed", "Deterministic validation failed." if failed else "Deterministic validation passed; semantic completeness is not proven.", checks=results)
+        if failed:
+            if state is not None:
+                state["status"] = "blocked"
+                save_target_state(self.repository.root, state)
+            return self.response("failed", "Deterministic validation failed.", checks=results)
+        if self.work_directory and snapshot_tree(self.repository.root) != before_tree:
+            raise SpecError("candidate files changed while checks were running", "stale_evidence")
+        if direct_candidate:
+            change = read_change(self.repository.root, required=True)
+            change["validation"] = {"target_id": self.target.id, "focus_id": self.task.get("focus_id"),
+                "task": self.task["task"], "constraints": self.task.get("constraints", []),
+                "spec_digest": _target_revision(self.repository, self.target),
+                "source_digest": report.result["source_digest"], "checks": results}
+            save_change(self.repository.root, change)
+            self.verify_completion()
+            change.update(phase="ready", status="ready", outcome="ready", gaps=[], validated_tree=before_tree)
+            save_change(self.repository.root, change)
+            return self.response("ready", "Directly authored candidate verified. Request delivery from an agent opened in the primary worktree.", checks=results)
+        if state and state["tasks"] and all(task["complete"] for task in state["tasks"]):
+            self.verify_completion()
+            state.update(phase="ready", status="ready")
+            save_target_state(self.repository.root, state)
+            if not self.host.coordinated:
+                change = read_change(self.repository.root, required=True)
+                change.update(phase="ready", status="ready", outcome="ready", gaps=[],
+                              validated_tree=before_tree)
+                save_change(self.repository.root, change)
+            return self.response("ready", "Candidate verified. Request concorde-deliver from a new agent opened in the primary worktree.",
+                                 checks=results)
+        return self.response(answer="Deterministic validation passed; semantic completeness is not proven.", checks=results)
 
-    def deliver(self) -> dict:
-        if not self.attempt:
-            raise SpecError("delivery requires an active change", "missing_attempt")
-        state = _state(self.repository.root, self.attempt, self.target.id, self.task.get("focus_id"))
+    def verify_completion(self) -> dict:
+        """Read current target evidence; merging is exclusively a primary-host action."""
+        change = read_change(self.repository.root, required=True)
+        if not change["targets"]:
+            validation = change.get("validation")
+            if (not validation or validation["target_id"] != self.target.id
+                    or validation["focus_id"] != self.task.get("focus_id")
+                    or validation["task"] != self.task["task"]
+                    or validation["constraints"] != self.task.get("constraints", [])):
+                raise SpecError("direct candidate has no bound validation evidence", "stale_evidence")
+            report = validate_repository(self.repository.root, package_root=self.host.package_root)
+            if (report.status != "success" or validation["source_digest"] != report.result["source_digest"]
+                    or validation["spec_digest"] != _target_revision(self.repository, self.target)):
+                raise SpecError("direct candidate Spec validation is stale", "stale_evidence")
+            required = {check_id for target in self.repository.targets.values() for check_id in target.checks}
+            if {item["check_id"] for item in validation["checks"]} != required or any(
+                    item["status"] != "passed" or item["source_digest"] != _check_revision(
+                        self.repository, self.repository.select(item["target_id"]))
+                    for item in validation["checks"]):
+                raise SpecError("direct candidate checks are missing, failed, or stale", "stale_evidence")
+            return validation
+        state = target_state(self.repository.root, self.target.id, self.task.get("focus_id"))
         self.check_state(state)
-        for target_id, revision in state.get("component_revisions",{}).items():
-            component=self.repository.select(target_id)
-            if revision!={"spec":_target_revision(self.repository,component),"implementation":_implementation_digest(self.repository,component)}:
+        for target_id, revision in state.get("component_revisions", {}).items():
+            component = self.repository.select(target_id)
+            if revision != {"spec": _target_revision(self.repository, component),
+                            "implementation": _implementation_digest(self.repository, component)}:
                 raise SpecError("a completed component changed before Domain delivery", "stale_evidence")
+            component_state = target_state(self.repository.root, target_id, None)
+            payload = {"target_id": target_id, "task": component_state["task"],
+                       "constraints": component_state.get("constraints", []), "change_id": self.change_id}
+            Invocation("concorde-validate", self.configuration, payload,
+                       replace(self.host, coordinated=True)).verify_completion()
         if not state["tasks"] or any(not task["complete"] for task in state["tasks"]):
-            raise SpecError("delivery requires completed tasks", "incomplete_attempt")
+            raise SpecError("delivery requires completed tasks", "incomplete_change")
         if state["implementation_digest"] != _implementation_digest(self.repository, self.target):
             raise SpecError("implementation changed since completion", "stale_evidence")
         report = validate_repository(self.repository.root, self.target.id, self.host.package_root)
         if report.status != "success" or state.get("validation_spec_digest") != report.result["source_digest"]:
             raise SpecError("Spec validation is missing or stale", "stale_evidence")
         if {item["check_id"] for item in state["checks"]} != set(self.target.checks) or any(
-                item["status"] != "passed" or item["source_digest"] != _check_revision(self.repository,self.target) for item in state["checks"]):
+                item["status"] != "passed" or item["source_digest"] != _check_revision(self.repository, self.target)
+                for item in state["checks"]):
             raise SpecError("required implementation checks are missing, failed, or stale", "stale_evidence")
-        attempt = checked_path(self.repository.root, self.attempt)
-        for path in attempt.rglob("*"):
-            if path.is_symlink():
-                raise SpecError("delivery attempt contains a symlink", "unsafe_path")
-        shutil.rmtree(attempt)
-        self.completed.append("concorde-deliver")
-        return self.response("delivered", "Removed the completed change attempt.", checks=state["checks"])
+        return state
 
     def loop(self, fast=False) -> dict:
         from langgraph.graph import StateGraph, START, END
         from typing import TypedDict
         class State(TypedDict):
             output: dict
-        stages = (["plan", "tasks", "implement", "validate", "deliver"] if fast else
-                  ["specify", "plan", "tasks", "implement", "validate", "deliver"])
+        stages = (["plan", "tasks", "implement", "validate"] if fast else
+                  ["specify", "plan", "tasks", "implement", "validate"])
+        change = read_change(self.repository.root)
+        existing = change["targets"].get(self.target.id) if change else None
+        if (existing and existing.get("plan")
+                and existing.get("task") == self.task["task"]
+                and existing.get("constraints", []) == self.task.get("constraints", [])
+                and existing.get("spec_digest") == _target_revision(self.repository, self.target)):
+            stages = ["tasks", "implement", "validate"]
+            if existing.get("tasks"):
+                stages = ["implement", "validate"]
+                if (all(item["complete"] for item in existing["tasks"])
+                        and existing.get("implementation_digest") == _implementation_digest(self.repository, self.target)):
+                    stages = ["validate"]
         graph = StateGraph(State)
         def execute(name):
             def node(state):
@@ -1283,7 +1442,7 @@ class Invocation:
                     raise SpecError(f"{operation} blocked: " + canonical(result["errors"]), "child_blocked")
                 data = result["output"]["data"]
                 self.change_id = data["change_id"] or self.change_id
-                self.attempt = _attempt(self.repository.root, self.target.id, self.change_id) if self.change_id else None
+                self.work_directory = f"{WORK_PATH}/{self.target.id}" if self.change_id else None
                 self.last_context = data["context_id"] or self.last_context
                 self.completed.extend(data["completed_operations"])
                 self.repository = SpecRepository(self.host.project_root, self.host.package_root)
@@ -1293,7 +1452,7 @@ class Invocation:
             graph.add_node(stage, execute(stage))
             successor = stages[index + 1] if index + 1 < len(stages) else END
             graph.add_conditional_edges(stage, lambda state, next_stage=successor:
-                next_stage if state["output"]["outcome"] in {"completed", "delivered"} else END,
+                next_stage if state["output"]["outcome"] in {"completed", "ready"} else END,
                 {successor: successor, END: END})
         graph.add_edge(START, stages[0])
         result = graph.compile().invoke({"output": {}})["output"]
@@ -1330,6 +1489,9 @@ def _project_operation(operation, configuration, task, host):
 
 
 def _dispatch(operation, configuration, task, host):
+    if operation == "concorde-deliver":
+        from .worktree_delivery import deliver
+        return deliver(host, configuration, task)
     if operation in {"concorde-init", "concorde-migrate", "concorde-configure"}:
         if host.mode == "describe-policy":
             raise SpecError("project proposals are the deterministic preview for this Operation", "use_proposal")
@@ -1358,6 +1520,11 @@ def _dispatch(operation, configuration, task, host):
                 task["focus_id"] = route["focus_id"]
             host = replace(host, routed_target=route["target_id"])
             main_completed = tuple(main.completed)
+    readonly = operation in {"concorde-main", "concorde-analyze", "concorde-context-solve",
+                             "concorde-context", "concorde-resolve-context"}
+    readonly = readonly or (operation == "concorde-reflections-triage" and task["action"] == "status")
+    if host.mode == "execute" and not readonly:
+        bind_owner(host.project_root, task, coordinated=host.coordinated)
     run = Invocation(operation, configuration, task, host)
     run.completed.extend(main_completed)
     if operation in {"concorde-context", "concorde-resolve-context"}:
@@ -1391,8 +1558,6 @@ def _dispatch(operation, configuration, task, host):
         return run.implement()
     if operation == "concorde-validate":
         return run.validate(task.get("run_checks", True))
-    if operation == "concorde-deliver":
-        return run.deliver()
     if operation in {"concorde-standard-dev-loop", "concorde-fast-loop"}:
         return run.loop(operation == "concorde-fast-loop")
     result = run.stage(operation)
@@ -1401,7 +1566,8 @@ def _dispatch(operation, configuration, task, host):
 
 
 def run_operation(operation: str, configuration: dict | None, runtime_input: dict, *, host_context: OperationHost) -> dict:
-    host = replace(host_context, invocation_id=str(uuid.uuid4()), evidence=[])
+    host = replace(host_context, invocation_id=str(uuid.uuid4()), evidence=[], depth=host_context.depth + 1)
+    record_progress = False
     result = {"type_id": "concorde-operation-result", "schema_version": 2,
               "operation_id": operation if operation in OPERATION_CONTRACTS else None,
               "invocation_id": host.invocation_id, "mode": host.mode, "status": "blocked",
@@ -1414,7 +1580,7 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
         configuration = validate_typed(configuration if configuration is not None else load_configuration(host.project_root), "concorde-operation-configuration")
         task = validate_typed(runtime_input, OPERATION_CONTRACTS[operation][0])["data"]
         task = copy.deepcopy(task)
-        if not (operation == MAIN_OPERATION
+        if operation != "concorde-deliver" and not (operation == MAIN_OPERATION
                 and task.get("action") in {"accept-topology", "apply-topology"}):
             task.setdefault("constraints", [])
             task.setdefault("task", "Inspect the selected records")
@@ -1426,8 +1592,23 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
             mutation = task["action"] in {"accept-topology", "apply-topology"}
         if operation == "concorde-reflections-triage" and task["action"] == "status":
             mutation = False
-        host, workspace = _worktree(host, mutation)
+        if operation == "concorde-deliver":
+            from .worktree_delivery import require_primary_session
+            primary = require_primary_session(host)
+            workspace = {"path": primary["path"], "branch": primary["branch"]}
+        else:
+            host, workspace = _worktree(host, mutation, task)
         result["workspace"] = workspace
+        if workspace and workspace.get("handoff"):
+            raise SpecError("Change worktree prepared at " + workspace["path"]
+                + ". Open a new agent in that worktree to continue this task.", "worktree_handoff_required")
+        record_progress = mutation and operation != "concorde-deliver" and host.depth == 1
+        if mutation and operation != "concorde-deliver":
+            change = read_change(host.project_root)
+            if change and change["status"] in {"delivering", "cleanup_pending"}:
+                record_progress = False
+                raise SpecError("this candidate is being delivered; resume from the primary agent session",
+                                "delivery_in_progress")
         if operation not in {"concorde-init", "concorde-migrate"}:
             if configuration != load_configuration(host.project_root):
                 raise SpecError("invocation configuration differs from initialized project settings", "configuration_mismatch")
@@ -1437,13 +1618,24 @@ def run_operation(operation: str, configuration: dict | None, runtime_input: dic
         output = _dispatch(operation, configuration, task, host)
         outcome = output["data"].get("outcome", "completed")
         result.update(output=output, status="described" if host.mode == "describe-policy" else
-            "succeeded" if outcome in {"completed", "delivered", "topology_proposed",
+            "succeeded" if outcome in {"completed", "ready", "delivered", "topology_proposed",
                                        "topology_prepared", "topology_applied"}
             else "failed" if outcome == "failed" else "blocked")
     except (SpecError, OperationDataError) as error:
         result["errors"] = [{"code": error.code, "field": error.field, "message": str(error)}]
     except Exception as error:
         result.update(status="failed", errors=[{"code": "execution_failed", "field": "", "message": str(error)}])
+    if any(error["code"] in {"incompatible_handoff", "workspace_mismatch", "invalid_worktree_state"}
+           for error in result["errors"]):
+        record_progress = False
+    if record_progress and host.mode == "execute" and result["status"] not in {"succeeded", "described"}:
+        data = result["output"]["data"] if result["output"] else {}
+        try:
+            progress(host.project_root, status="blocked" if result["status"] == "blocked" else "failed",
+                     outcome=data.get("outcome") or (result["errors"][0]["code"] if result["errors"] else "failed"),
+                     gaps=data.get("gaps", []))
+        except (ValueError, OSError) as error:
+            result["errors"].append({"code": "state_persistence_failed", "field": "", "message": str(error)})
     host_context.evidence.extend(host.evidence)
     return result
 
