@@ -45,9 +45,9 @@ PACKAGE_ROOTS = [
     "templates",
     "viewer",
 ]
-from concorde.capabilities.protocol_contracts import INTERNAL_SKILLS, OPERATIONS as PUBLIC_OPERATIONS
+from concorde.capabilities.protocol_contracts import INTERNAL_SKILLS, OPERATIONS as ALL_OPERATIONS
 SKILLS = list(INTERNAL_SKILLS)
-OPERATIONS = list(PUBLIC_OPERATIONS)
+OPERATIONS = list(ALL_OPERATIONS)
 OPERATION_RUNTIME = {
     "launcher": "scripts/run-operation.py",
     "python": ">=3.11",
@@ -238,7 +238,6 @@ def _package_files(package: Package) -> dict[str, bytes]:
         "render-capability-surfaces.py",
         "run-viewer.py",
         "run-operation.py",
-        "workspace.py",
     )
     for name in scripts:
         source = package.root / "scripts" / name

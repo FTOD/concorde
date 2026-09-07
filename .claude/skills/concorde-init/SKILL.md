@@ -1,6 +1,6 @@
 ---
 name: concorde-init
-description: "Run init through Concorde's enforced Spec context and JSON boundary."
+description: "Lifecycle: propose and apply explicit project initialization with a pinned Protocol and an honest registry stub."
 argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
@@ -17,12 +17,13 @@ disable-model-invocation: false
 Invoke this Operation to init. The host owns context
 resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
 input; do not perform it directly in this ambient conversation or inspect additional project files.
+This is a deterministic lifecycle Operation: it runs no agent cognition and selects no context.
 
 Send one concorde-operation-invocation@2 JSON object on stdin to `python3 scripts/run-operation.py operations/concorde-init/operation.py`. Its exact fields
 are type_id, schema_version:2, operation_id:"concorde-init", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-init-request@1).
 Task requests select target_id and task, with optional focus_id, constraints, and change_id.
-Initialization/migration use their typed propose/apply requests; use the published request schema.
+Initialization uses its typed propose/apply request; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
 Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of
@@ -128,8 +129,7 @@ This complete schema is the invocation's input field. It does not grant project 
       "properties": {
         "action": {
           "enum": [
-            "initialize",
-            "migrate"
+            "initialize"
           ]
         },
         "base_digest": {

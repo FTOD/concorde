@@ -17,6 +17,7 @@ from concorde.capabilities.skill_assets import (  # noqa: E402
     capability_projection_roles,
     render_capabilities,
 )
+from concorde.capabilities.protocol_contracts import PUBLIC_OPERATIONS  # noqa: E402
 
 
 def main() -> int:
@@ -35,9 +36,9 @@ def main() -> int:
         roles = capability_projection_roles(
             package_root, arguments.integration, arguments.framework_prefix
         )
-        if set(rendered) != set(roles) or len(rendered) != 23:
+        if set(rendered) != set(roles) or len(rendered) != len(PUBLIC_OPERATIONS):
             raise SkillAssetError(
-                "Concorde 4.0.0 must render exactly 23 public Operations with owned roles"
+                f"Concorde 4.0.0 must render exactly {len(PUBLIC_OPERATIONS)} public Operations with owned roles"
             )
     except SkillAssetError as error:
         parser.error(str(error))

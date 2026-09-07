@@ -1,6 +1,6 @@
 ---
 name: concorde-fast-loop
-description: "Run fast-loop through Concorde's enforced Spec context and JSON boundary."
+description: "Global development loop without Spec authoring: route one change, then plan, task, implement and validate to a ready candidate; reviews are optional and every skip is recorded."
 argument-hint: "Optional capability guidance"
 compatibility: "Requires a Concorde project"
 metadata:
@@ -23,7 +23,7 @@ are type_id, schema_version:2, operation_id:"concorde-fast-loop", mode:"execute"
 configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-fast-loop-request@1).
 New task requests require task and may supply target_id/focus_id as routing hints; main discovery
 selects the owning target before the bounded loop starts. Existing changes retain their bound target.
-Initialization/migration use their typed propose/apply requests; use the published request schema.
+Initialization uses its typed propose/apply request; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
 Main may inspect Domain/Service Specs on demand but cannot read Module Specs or code. It returns one

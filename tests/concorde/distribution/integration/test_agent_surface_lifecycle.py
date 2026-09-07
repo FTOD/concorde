@@ -60,22 +60,22 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
         self.assertEqual(check_value["status"], "drift")
         _, applied = self.run_sync("apply")
         self.assertEqual(applied["status"], "current")
-        self.assertEqual(applied["outputs"], 50)
+        self.assertEqual(applied["outputs"], 20)
         checked, check_value = self.run_sync("check")
         self.assertEqual(checked.returncode, 0)
         self.assertEqual(check_value["status"], "current")
-        self.assertTrue((self.root / ".agents/skills/concorde-plan/SKILL.md").is_file())
-        self.assertTrue((self.root / ".claude/skills/concorde-plan/SKILL.md").is_file())
+        self.assertTrue((self.root / ".agents/skills/concorde-validate/SKILL.md").is_file())
+        self.assertTrue((self.root / ".claude/skills/concorde-validate/SKILL.md").is_file())
 
     def test_status_is_read_only_and_apply_refreshes_one_drifted_output(self):
         self.run_sync("apply")
-        skill = self.root / ".agents/skills/concorde-plan/SKILL.md"
+        skill = self.root / ".agents/skills/concorde-validate/SKILL.md"
         skill.write_text("stale\n")
         before = skill.read_bytes()
         _, status = self.run_sync("status")
         self.assertEqual(skill.read_bytes(), before)
         drift = [item for item in status["actions"] if item["action"] != "current"]
-        self.assertEqual([(item["path"], item["action"]) for item in drift], [(".agents/skills/concorde-plan/SKILL.md", "update")])
+        self.assertEqual([(item["path"], item["action"]) for item in drift], [(".agents/skills/concorde-validate/SKILL.md", "update")])
         checked, value = self.run_sync("check", check=False)
         self.assertEqual(checked.returncode, 1)
         self.assertEqual(value["status"], "drift")
@@ -85,11 +85,11 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
     def test_legacy_symlink_is_replaced_with_regular_native_surface(self):
         target = self.root / "legacy.md"
         target.write_text("legacy\n")
-        skill = self.root / ".claude/skills/concorde-context/SKILL.md"
+        skill = self.root / ".claude/skills/concorde-main/SKILL.md"
         skill.parent.mkdir(parents=True)
         skill.symlink_to(target)
         _, status = self.run_sync("status")
-        action = next(item for item in status["actions"] if item["path"] == ".claude/skills/concorde-context/SKILL.md")
+        action = next(item for item in status["actions"] if item["path"] == ".claude/skills/concorde-main/SKILL.md")
         self.assertEqual(action["action"], "replace-symlink")
         self.run_sync("apply")
         self.assertTrue(skill.is_file())
@@ -97,7 +97,7 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
         self.assertEqual(target.read_text(), "legacy\n")
 
     def test_non_file_output_conflict_stops_apply(self):
-        blocked = self.root / ".agents/skills/concorde-plan/SKILL.md"
+        blocked = self.root / ".agents/skills/concorde-validate/SKILL.md"
         blocked.mkdir(parents=True)
         result, value = self.run_sync("apply", check=False)
         self.assertEqual(result.returncode, 2)
@@ -122,13 +122,13 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
 
     def test_canonical_skill_change_updates_only_its_generated_integrations(self):
         self.run_sync("apply")
-        skill = self.root / "operations/concorde-checklist/SKILL.md"
+        skill = self.root / "operations/concorde-validate/SKILL.md"
         skill.write_text(skill.read_text() + "\nLifecycle marker.\n")
         _, status = self.run_sync("status")
         changed = {item["path"] for item in status["actions"] if item["action"] == "update"}
         self.assertEqual(changed, {
-            ".agents/skills/concorde-checklist/SKILL.md",
-            ".claude/skills/concorde-checklist/SKILL.md",
+            ".agents/skills/concorde-validate/SKILL.md",
+            ".claude/skills/concorde-validate/SKILL.md",
         })
         checked, check_value = self.run_sync("check", check=False)
         self.assertEqual(checked.returncode, 1)
@@ -137,7 +137,7 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
         self.assertIn(
             "Lifecycle marker.",
             (
-                self.root / ".agents/skills/concorde-checklist/SKILL.md"
+                self.root / ".agents/skills/concorde-validate/SKILL.md"
             ).read_text(),
         )
 
@@ -161,7 +161,7 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
             cwd=self.root,
             check=True,
         )
-        loaded = self.root / ".agents/skills/concorde-context/SKILL.md"
+        loaded = self.root / ".agents/skills/concorde-main/SKILL.md"
 
         rejected, _value = self.run_sync(
             "verify-worktree",
@@ -174,7 +174,7 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
         self.assertIn("open a new agent", rejected.stderr)
         self.assertIn("worktree identity still differs", rejected.stderr)
 
-        changed = linked / "operations/concorde-checklist/SKILL.md"
+        changed = linked / "operations/concorde-validate/SKILL.md"
         changed.write_text(changed.read_text() + "\nLinked marker.\n")
         primary_before = loaded.read_bytes()
         wrong_script = subprocess.run(
@@ -198,14 +198,14 @@ class SelfDistributionLifecycleIntegrationTests(unittest.TestCase):
             extra=("--loaded-skill-path", str(loaded)),
         )
         self.assertEqual(rejected.returncode, 1)
-        self.assertIn("Skill versions differ for concorde-checklist", rejected.stderr)
+        self.assertIn("Skill versions differ for concorde-validate", rejected.stderr)
 
         accepted, value = self.run_sync(
             "verify-worktree",
             root=linked,
             extra=(
                 "--loaded-skill-path",
-                str(linked / ".agents/skills/concorde-context/SKILL.md"),
+                str(linked / ".agents/skills/concorde-main/SKILL.md"),
             ),
         )
         self.assertEqual(accepted.returncode, 0)

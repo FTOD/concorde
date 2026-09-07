@@ -7,8 +7,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 from tests.concorde.support.managed_runtime import create_langgraph_index, runtime_install_environment
+
+sys.path.insert(0, str(RUNTIME_ROOT))
+
+from concorde.capabilities.protocol_contracts import PUBLIC_OPERATIONS  # noqa: E402
 
 
 class CapabilitySurfaceParityAcceptance(unittest.TestCase):
@@ -25,7 +29,7 @@ class CapabilitySurfaceParityAcceptance(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
                 roots[integration] = root
-            for capability in ("concorde-plan", "concorde-specify", "concorde-fast-loop", "concorde-deliver", "concorde-constitution", "concorde-standard-dev-loop", "concorde-reflections-triage"):
+            for capability in PUBLIC_OPERATIONS:
                 codex = (roots["codex"] / f".agents/skills/{capability}/SKILL.md").read_text()
                 claude = (roots["claude"] / f".claude/skills/{capability}/SKILL.md").read_text()
                 codex_body = codex.split("---", 2)[-1]

@@ -22,15 +22,15 @@ class SourceCheckoutDistributionTests(unittest.TestCase):
     def test_repository_surfaces_are_current(self):
         desired = sync.expected_outputs(REPOSITORY_ROOT)
         actions = sync.inspect_checkout(REPOSITORY_ROOT, desired)
-        self.assertEqual(len(desired), 50)
+        self.assertEqual(len(desired), 20)
         self.assertEqual({item["action"] for item in actions}, {"current"})
 
     def test_inventory_contains_all_capabilities_for_both_integrations(self):
         desired = sync.expected_outputs(REPOSITORY_ROOT)
         codex = {path for path in desired if path.startswith(".agents/skills/concorde-")}
         claude = {path for path in desired if path.startswith(".claude/skills/concorde-")}
-        self.assertEqual(len(codex), 23)
-        self.assertEqual(len(claude), 23)
+        self.assertEqual(len(codex), 8)
+        self.assertEqual(len(claude), 8)
         self.assertIn(
             ".agents/skills/concorde-standard-dev-loop/SKILL.md", codex
         )
@@ -43,8 +43,8 @@ class SourceCheckoutDistributionTests(unittest.TestCase):
 
     def test_loaded_skill_identity_resolves_the_owning_worktree_and_integration(self):
         for integration, relative in (
-            ("codex", ".agents/skills/concorde-context/SKILL.md"),
-            ("claude", ".claude/skills/concorde-context/SKILL.md"),
+            ("codex", ".agents/skills/concorde-main/SKILL.md"),
+            ("claude", ".claude/skills/concorde-main/SKILL.md"),
         ):
             with self.subTest(integration=integration):
                 root, observed_integration, capability = sync._loaded_skill_identity(
@@ -52,12 +52,12 @@ class SourceCheckoutDistributionTests(unittest.TestCase):
                 )
                 self.assertEqual(root, REPOSITORY_ROOT)
                 self.assertEqual(observed_integration, integration)
-                self.assertEqual(capability, "concorde-context")
+                self.assertEqual(capability, "concorde-main")
 
     def test_worktree_affinity_accepts_a_current_skill_from_the_same_worktree(self):
         verified = sync.verify_worktree_affinity(
             REPOSITORY_ROOT,
-            REPOSITORY_ROOT / ".agents/skills/concorde-context/SKILL.md",
+            REPOSITORY_ROOT / ".agents/skills/concorde-main/SKILL.md",
         )
         self.assertEqual(verified["project_root"], str(REPOSITORY_ROOT))
         self.assertEqual(verified["loaded_worktree"], str(REPOSITORY_ROOT))
@@ -65,7 +65,7 @@ class SourceCheckoutDistributionTests(unittest.TestCase):
 
     def test_loaded_skill_path_must_be_an_absolute_checkout_capability(self):
         with self.assertRaisesRegex(sync.WorktreeAffinityError, "absolute path"):
-            sync._loaded_skill_identity(".agents/skills/concorde-context/SKILL.md")
+            sync._loaded_skill_identity(".agents/skills/concorde-main/SKILL.md")
 
     def test_inspect_classifies_create_update_symlink_and_conflict(self):
         with tempfile.TemporaryDirectory() as temporary:

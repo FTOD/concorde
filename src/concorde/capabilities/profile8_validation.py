@@ -3,7 +3,8 @@ import ast
 import json
 from pathlib import Path
 from ..model import Finding
-from .protocol_contracts import OPERATIONS, INTERNAL_SKILLS, dependencies, exported_types, schemas
+from .protocol_contracts import (OPERATIONS, INTERNAL_SKILLS, INTERNAL_OPERATIONS, PUBLIC_OPERATIONS,
+    dependencies, exported_types, schemas)
 from .skill_assets import resolve_skill_prompt, render_capabilities
 from .operation_data import json_schema
 
@@ -24,8 +25,9 @@ def validate_package(root: Path) -> list[Finding]:
             for name in names:
                 path=f"{folder}/{name}/SKILL.md"
                 prompt=resolve_skill_prompt(root/path, "skill" if folder=="skills" else "operation", "")
-                if prompt.exposure != ("internal" if folder=="skills" else "public"):
-                    fail(path,"Only paired Operations are public")
+                expected_exposure = "internal" if folder=="skills" else ("internal" if name in INTERNAL_OPERATIONS else "public")
+                if prompt.exposure != expected_exposure:
+                    fail(path,"Exposure differs from the Operation classification")
                 if folder=="operations":
                     source=(root/folder/name/"operation.py").read_text()
                     tree=ast.parse(source)
@@ -37,8 +39,8 @@ def validate_package(root: Path) -> list[Finding]:
                     if "operation_service import" not in source or "operation_main" not in source:
                         fail(path,"Entry point must delegate to the trusted host")
         for integration in ("claude","codex"):
-            if len(render_capabilities(root,integration)) != len(OPERATIONS):
-                fail("concorde.json",f"{integration} must expose every paired Operation exactly once")
+            if len(render_capabilities(root,integration)) != len(PUBLIC_OPERATIONS):
+                fail("concorde.json",f"{integration} must expose every public Operation exactly once")
         names=list(exported_types())
         if json.loads((root/"protocol/schemas.json").read_text()) != {name:json_schema(name) for name in names}:
             fail("protocol/schemas.json","Exported contracts differ from executable schemas")

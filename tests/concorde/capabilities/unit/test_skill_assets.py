@@ -20,6 +20,7 @@ from concorde.capabilities.skill_assets import (  # noqa: E402
     render_skill,
     resolve_skill_prompt,
 )
+from concorde.capabilities.protocol_contracts import PUBLIC_OPERATIONS  # noqa: E402
 
 
 class SkillAssetTests(unittest.TestCase):
@@ -112,10 +113,10 @@ class SkillAssetTests(unittest.TestCase):
         self.assertIn("Spec only", leaf.body)
         self.assertEqual((leaf.operation, leaf.capabilities), (None, ()))
         planner = load_skill_prompt(REPOSITORY_ROOT, "concorde-plan", "")
-        self.assertEqual((planner.kind, planner.exposure), ("operation", "public"))
+        self.assertEqual((planner.kind, planner.exposure), ("operation", "internal"))
         self.assertEqual(
             planner.capabilities,
-            ("concorde-coordinator", "concorde-context-assessor", "concorde-planner"),
+            ("concorde-context-assessor", "concorde-planner"),
         )
         operation = load_skill_prompt(REPOSITORY_ROOT, "concorde-standard-dev-loop", "")
         self.assertEqual(operation.kind, "operation")
@@ -137,17 +138,17 @@ class SkillAssetTests(unittest.TestCase):
             leaf.body = "changed"  # type: ignore[misc]
 
     def test_source_and_installed_layouts_only_change_resolved_entry_points(self):
-        source = load_skill_prompt(REPOSITORY_ROOT, "concorde-plan", "")
+        source = load_skill_prompt(REPOSITORY_ROOT, "concorde-init", "")
         installed = load_skill_prompt(
-            REPOSITORY_ROOT, "concorde-plan", ".concorde/framework"
+            REPOSITORY_ROOT, "concorde-init", ".concorde/framework"
         )
         self.assertIn(
-            "python3 scripts/run-operation.py operations/concorde-plan/operation.py",
+            "python3 scripts/run-operation.py operations/concorde-init/operation.py",
             source.body,
         )
         self.assertIn(
             "python3 .concorde/framework/scripts/run-operation.py "
-            ".concorde/framework/operations/concorde-plan/operation.py",
+            ".concorde/framework/operations/concorde-init/operation.py",
             installed.body,
         )
         source_operation = load_skill_prompt(
@@ -168,13 +169,13 @@ class SkillAssetTests(unittest.TestCase):
             ".concorde/framework/operations/concorde-standard-dev-loop/operation.py",
             installed_operation.body,
         )
-        source_analyze = load_skill_prompt(REPOSITORY_ROOT, "concorde-analyze", "")
-        installed_analyze = load_skill_prompt(
-            REPOSITORY_ROOT, "concorde-analyze", ".concorde/framework"
+        source_validate = load_skill_prompt(REPOSITORY_ROOT, "concorde-validate", "")
+        installed_validate = load_skill_prompt(
+            REPOSITORY_ROOT, "concorde-validate", ".concorde/framework"
         )
-        self.assertEqual(source_analyze.script_paths, ())
+        self.assertEqual(source_validate.script_paths, ())
         self.assertEqual(
-            installed_analyze.script_paths,
+            installed_validate.script_paths,
             (),
         )
 
@@ -199,15 +200,13 @@ class SkillAssetTests(unittest.TestCase):
         )
         self.assertIn("user-invocable: true", rendered_operation)
 
-    def test_complete_manifest_renders_fifteen_public_leaves_and_three_operations(self):
-        manifest = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
+    def test_complete_manifest_renders_only_public_operations(self):
         for integration, prefix in (("codex", ".agents"), ("claude", ".claude")):
             rendered = render_capabilities(REPOSITORY_ROOT, integration, "")
-            self.assertEqual(len(rendered), 23)
-            expected_public = set()
+            self.assertEqual(len(rendered), len(PUBLIC_OPERATIONS))
             self.assertEqual(
                 set(rendered),
-                {f"{prefix}/skills/{name}/SKILL.md" for name in (*expected_public, *manifest["operations"])},
+                {f"{prefix}/skills/{name}/SKILL.md" for name in PUBLIC_OPERATIONS},
             )
 
     def test_rejects_unsafe_unmanifested_missing_and_symlinked_sources(self):

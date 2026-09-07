@@ -1,30 +1,31 @@
 ---
 name: concorde-specify
-description: "Run specify through Concorde's enforced Spec context and JSON boundary."
-exposure: public
+description: "Internal stage: author the bound target's Spec replacements."
+exposure: internal
 operation: operation.py
-capabilities: ["concorde-coordinator", "concorde-spec-author"]
+capabilities: ["concorde-spec-author"]
 ---
 
 # concorde-specify
 
-Invoke this Operation to specify. The host owns context
-resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
-input; do not perform it directly in this ambient conversation or inspect additional project files.
+This is an internal stage Operation. It receives an already routed `target_id` and one frozen
+context snapshot from its composing Operation (`concorde-standard-dev-loop`); it is never selected
+directly by a user or by main. It is not projected as a user-invocable Skill, and the executable
+boundary rejects a direct invocation of `operations/concorde-specify/operation.py` with error code
+`internal_operation`. Compose it only through `run_operation` from a public Operation or from another
+internal stage that already holds a bound target.
 
-Send one concorde-operation-invocation@2 JSON object on stdin to `{OPERATION}`. Its exact fields
-are type_id, schema_version:2, operation_id:"concorde-specify", mode:"execute" or "describe-policy",
-configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-specify-request@1).
-New task requests require task and may supply target_id/focus_id as routing hints; main discovery
-selects the owning target before the bounded author starts. Existing changes retain their bound target.
-Initialization/migration use their typed propose/apply requests; use the published request schema.
-No domain flags or positional task arguments are accepted. Configuration is never a context grant.
+A composing Operation invokes it in-process through `run_operation` with a
+`concorde-specify-request@1` TypedValue; the request requires target_id and task and accepts
+optional focus_id, constraints and change_id, all supplied by the caller. Configuration is never a
+context grant.
 
-Main may inspect Domain/Service Specs on demand but cannot read Module Specs or code. It returns one
-typed route for this Operation; the host then starts a different target worker. When a mutation starts in the primary worktree, the host prepares a committed-base linked
-worktree and returns a handoff. Open a new agent in the returned worktree before continuing;
-never carry this conversation or its worktree-owned Skills across that boundary. Report Spec gaps or blocked execution as returned; do not work
-around the boundary. Non-implementation agents never receive implementation code or raw test logs.
+The host owns context resolution, agent execution, permissions, and lifecycle state. When a mutation
+starts in the primary worktree, the host prepares a committed-base linked worktree and returns a
+handoff. Open a new agent in the returned worktree before continuing; never carry this conversation
+or its worktree-owned Skills across that boundary. Report Spec gaps or blocked execution as returned;
+do not work around the boundary. Non-implementation agents never receive implementation code or raw
+test logs.
 
 ## Input TypedValue schema
 
@@ -81,6 +82,7 @@ This complete schema is the invocation's input field. It does not grant project 
         }
       },
       "required": [
+        "target_id",
         "task"
       ],
       "additionalProperties": false

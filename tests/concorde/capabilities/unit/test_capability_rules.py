@@ -9,6 +9,7 @@ from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
 sys.path.insert(0, str(RUNTIME_ROOT))
 
 from concorde.capabilities.skill_assets import PATH_ROLES  # noqa: E402
+from concorde.capabilities.protocol_contracts import PUBLIC_OPERATIONS  # noqa: E402
 
 
 class CapabilityLayoutRuleTests(unittest.TestCase):
@@ -22,7 +23,7 @@ class CapabilityLayoutRuleTests(unittest.TestCase):
         self.assertEqual(self.manifest["schema_version"], 3)
         self.assertEqual(self.manifest["skill_namespace"], "concorde")
         self.assertEqual(len(skills), 9)
-        self.assertEqual(len(operations), 23)
+        self.assertEqual(len(operations), 14)
         self.assertFalse(set(skills) & set(operations))
 
     def test_each_leaf_is_one_markdown_capability_without_python(self):
@@ -60,7 +61,10 @@ class CapabilityLayoutRuleTests(unittest.TestCase):
                 self.assertIn("operation: operation.py", skill)
                 self.assertIn("capabilities:", skill)
                 self.assertNotIn("skills:\n", skill)
-                self.assertIn("{OPERATION}", skill)
+                if name in PUBLIC_OPERATIONS:
+                    self.assertIn("{OPERATION}", skill)
+                else:
+                    self.assertNotIn("{OPERATION}", skill)
                 python = (directory / "operation.py").read_text()
                 self.assertIn("OPERATION_CAPABILITIES", python)
                 self.assertIn("operation_service", python)

@@ -1,6 +1,6 @@
 ---
 name: concorde-reflections-triage
-description: "Run reflections-triage through Concorde's enforced Spec context and JSON boundary."
+description: "Global reflection queue: report status, capture recorded gaps, and investigate, implement, merge or close owned reflections."
 compatibility: "Requires a Concorde project"
 metadata:
   author: "concorde"
@@ -19,7 +19,7 @@ Send one concorde-operation-invocation@2 JSON object on stdin to `python3 script
 are type_id, schema_version:2, operation_id:"concorde-reflections-triage", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-reflections-triage-request@1).
 Task requests select target_id and task, with optional focus_id, constraints, and change_id.
-Initialization/migration use their typed propose/apply requests; use the published request schema.
+Initialization uses its typed propose/apply request; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
 Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of

@@ -116,18 +116,13 @@ DATA_SCHEMAS = {
 
 # Leaf adapters have fixed identities too; their results are derived from verified
 # workspace state, never by parsing an agent's narrative completion output.
-for _name in ("specify", "tasks", "implement", "validate", "deliver", "analyze", "fast-loop"):
+for _name in ("specify", "tasks", "implement", "validate", "deliver", "fast-loop"):
     DATA_SCHEMAS[f"concorde-{_name}-context"] = obj({
         "task": {"type": "object", "format": "typed-task"}, **SELECTION,
         "source_artifacts": array(ARTIFACT, unique=True),
     }, ("source_artifacts",))
     DATA_SCHEMAS[f"concorde-{_name}-result"] = obj(SELECTION)
 DATA_SCHEMAS["concorde-specify-context"] = obj({"task": {"type": "object", "format": "typed-task"}, "feature_path": PATH})
-DATA_SCHEMAS["concorde-analyze-context"] = obj({
-    "task": typed_schema("concorde-reflections-triage-context"), **SELECTION,
-    "head": COMMIT, "verified_on": {**STRING, "pattern": r"^\d{4}-\d{2}-\d{2}$"},
-    "reflections": array(obj({"reflection_id": REFLECTION_ID, "document": ARTIFACT, "plan": ARTIFACT}, ("plan",))),
-})
 DATA_SCHEMAS["concorde-reflection-investigation-result"] = obj({
     "findings": array(obj({
         "reflection_id": REFLECTION_ID, "verified_commit": COMMIT,

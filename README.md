@@ -24,8 +24,9 @@ Spec incomplete, not a search for arbitrary files. See [the principles](protocol
 
 ## Install and initialize
 
-The installer distributes canonical runtime, 23 paired public Operations, 9 internal roles and 9
-Markdown templates to Codex or Claude. Check `python scripts/install-concorde.py --help` for installation
+The installer distributes canonical runtime, 14 Operations (8 public wrappers plus 6 internal stage
+Operations reachable only through them), 9 internal roles and 7 Markdown templates to Codex or Claude.
+Check `python scripts/install-concorde.py --help` for installation
 administration. Project task inputs use JSON, not positional or flag arguments. Install into a Git
 project, then invoke the paired init entry in an isolated worktree (or use the trusted host's explicit
 primary-worktree authorization). A mutation requested from the primary worktree prepares a linked
@@ -69,11 +70,19 @@ Null configuration asks the trusted host to load initialized settings. The `ask`
 `concorde-main` may omit target_id: a separate coordinator discovers Domain/Service Specs, routes one or more fresh
 target readers, then synthesizes only their typed results. A supplied target_id is a routing hint,
 not a context grant. The loop executes specification,
-context assessment, plan, tasks, implementation and checks, ending at a ready candidate. Each step is also independently
-callable with its own named request/response type. `concorde-context` reports the exact membership
-and digests without returning raw Spec bodies;
-`concorde-context-solve` diagnoses missing information. `describe-policy` previews stage grants without
-launching an agent. One change belongs to one linked worktree. `.concorde/worktree.json` records
+context assessment, plan, tasks, implementation and checks, ending at a ready candidate.
+
+Operations fall into three classes, distinguished by who selects context. Global Operations
+(`concorde-main` and the two development loops) receive only intent, at most with routing hints, and
+let main select the target. Lifecycle Operations (`concorde-init`, `concorde-configure`,
+`concorde-validate`, `concorde-deliver`) are deterministic host behavior with no agent cognition.
+Every other Operation — `concorde-specify`, `concorde-review`, `concorde-context-solve`,
+`concorde-plan`, `concorde-tasks`, `concorde-implement` — is an internal stage: it receives an
+already bound target and one frozen context from its composing loop, is never projected as a user
+Skill, and the executable boundary rejects a direct invocation with error code `internal_operation`.
+No public Operation returns a context manifest; `describe-policy` mode previews the exact stage
+grants any Operation would receive without launching an agent or mutating project state. One change
+belongs to one linked worktree. `.concorde/worktree.json` records
 its task, phase/status, per-target plans and progress, gaps and verified revision. Auxiliary artifacts
 live under `.concorde/work/`; there is no separate attempt lifecycle.
 For a Domain, context solving first reports missing or inconsistent participant declarations as
@@ -97,8 +106,8 @@ worktree and its local state. Managed prompt injection and control files are exc
 A primary-local delivery receipt records commits and checks; cleanup can be retried after a successful
 merge without merging again. Development loops never perform this delivery automatically.
 
-`concorde-taskstoissues` produces local issue drafts only. Reflection investigation is a separate,
-read-only implementation invocation; human approval/disposition remains governed by project settings.
+Reflection investigation is a separate, read-only implementation invocation; human
+approval/disposition remains governed by project settings.
 
 For a directly authored candidate without generated plans, `concorde-validate` checks the whole project and records readiness in the
 same worktree state. Any already authored plans and tasks must still be completed. No placeholder
@@ -118,12 +127,10 @@ authors return identical shared bytes.
 [Operation inventory](specs/concorde/services/operation-registry.md) ·
 [Complete wire contracts](specs/concorde/services/operation-wire.md)
 
-## Migration and documentation
+## Documentation
 
 Concorde 4 uses Package Manifest 3, Architecture Profile 8, Workspace Protocol 14 and Delivery Proposal
-10. Profile 7 is rejected for agent execution. `concorde-migrate` accepts an authored replacement
-registry and Markdown collection, proposes exact changes, rejects active attempts and applies with
-preconditions/rollback. It never guesses new scopes or imports ancestor dependencies. Legacy readers
+10. Profile 7 is rejected for agent execution and has no migration Operation. Legacy readers
 remain deterministic diagnostic utilities only.
 
 The docsite publishes explicit registry members with separate scope/component navigation and a typed

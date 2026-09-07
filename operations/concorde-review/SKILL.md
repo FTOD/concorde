@@ -1,16 +1,27 @@
 ---
 name: concorde-review
-description: "Review a complete admitted Spec or its target implementation in an independent read-only session."
-exposure: public
+description: "Internal stage: independent read-only Spec or code review of the bound target."
+exposure: internal
 operation: operation.py
-capabilities: ["concorde-coordinator", "concorde-spec-reviewer", "concorde-code-reviewer"]
+capabilities: ["concorde-spec-reviewer", "concorde-code-reviewer"]
 ---
 
 # concorde-review
 
+This is an internal stage Operation. It receives an already routed `target_id` and one frozen
+context snapshot from a composing Operation (`concorde-standard-dev-loop`, `concorde-fast-loop`, or
+another internal stage acting on a Domain's recorded component work); it is never selected directly
+by a user or by main. It is not projected as a user-invocable Skill, and the executable boundary
+rejects a direct invocation of `operations/concorde-review/operation.py` with error code
+`internal_operation`.
+
 Invoke this Operation with review_mode=spec or code. The host routes the task, resolves the complete Target Spec and Shared Specs, and starts a fresh reviewer with no project write authority. Spec review cannot read implementation. Code review reads only the target's registered implementation files. Neither mode can modify source, Spec or tests. The host captures structured results and receipts separately.
 
-Send one concorde-operation-invocation@2 JSON object on stdin to `{OPERATION}`. Its exact fields are type_id, schema_version:2, operation_id:"concorde-review", mode:"execute" or "describe-policy", configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-review-request@1). Supply task and review_mode; target_id/focus_id are routing hints for a new request. A change_id selects the current worktree's bound change, never another worktree's contents.
+A composing Operation invokes it in-process through `run_operation` with a
+`concorde-review-request@1` TypedValue; the request requires target_id and task (review also
+requires review_mode) and accepts optional focus_id, constraints and change_id, all supplied by the
+caller. A change_id selects the current worktree's bound change, never another worktree's contents.
+Configuration is never a context grant.
 
 Use the executable boundary; do not perform the review in this ambient conversation or inspect project files to fill gaps. The full granted collection is reviewed against representative tasks. The host scopes changes to the selected target and binds results to the candidate's current bytes and its recorded committed base (HEAD for an unmanaged checkout). Cross-target work requires separately bound reviewers and only typed result aggregation.
 

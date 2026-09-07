@@ -1,6 +1,6 @@
 ---
 name: concorde-configure
-description: "Run configure through Concorde's enforced Spec context and JSON boundary."
+description: "Lifecycle: apply the initialized integration and enforcement configuration."
 exposure: public
 operation: operation.py
 capabilities: []
@@ -11,12 +11,13 @@ capabilities: []
 Invoke this Operation to configure. The host owns context
 resolution, agent execution, permissions, and lifecycle state. Supply the user's task as typed
 input; do not perform it directly in this ambient conversation or inspect additional project files.
+This is a deterministic lifecycle Operation: it runs no agent cognition and selects no context.
 
 Send one concorde-operation-invocation@2 JSON object on stdin to `{OPERATION}`. Its exact fields
 are type_id, schema_version:2, operation_id:"concorde-configure", mode:"execute" or "describe-policy",
 configuration (null to load initialized host settings, or a matching concorde-operation-configuration@1), and input (concorde-configure-request@1).
 Task requests select target_id and task, with optional focus_id, constraints, and change_id.
-Initialization/migration use their typed propose/apply requests; use the published request schema.
+Initialization uses its typed propose/apply request; use the published request schema.
 No domain flags or positional task arguments are accepted. Configuration is never a context grant.
 
 Use the supplied target identity; if it is ambiguous, ask the user to identify it instead of

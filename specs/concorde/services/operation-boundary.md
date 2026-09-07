@@ -10,9 +10,13 @@
 
 ## feature.workflow.execute
 
-An Operation is a public Skill paired with an executable Python entry point. Canonical internal
-Skills name one agent role; they are not public agent shortcuts. Every request passes through this
-host. The local Operation registry and wire-contract document are members of this complete Spec.
+A global or lifecycle Operation is a public Skill paired with an executable Python entry point. An
+internal stage Operation shares the same paired executable shape but is not projected as a Skill; it
+is reachable only in-process, composed by a global Operation or by another already-bound internal
+stage, and the executable boundary rejects its direct invocation with error code `internal_operation`.
+Canonical internal Skills name one agent role; they are not public agent shortcuts. Every request
+passes through this host. The local Operation registry and wire-contract document are members of
+this complete Spec.
 
 Executable entry: `python operations/<operation-id>/operation.py`, no task command-line arguments.
 stdin is exactly one JSON object with type_id=concorde-operation-invocation, schema_version=2,
@@ -41,7 +45,8 @@ access disabled, writes restricted by phase. A native integration unable to enfo
 outer enforcement requires a host-issued sandbox. Executor completions must match invocation, policy,
 launch and context identities. No ambient conversation or predecessor transcript is admitted.
 
-Every new agent-backed task first launches `concorde-coordinator` with the entry Domain or Service.
+Every new agent-backed task in a global Operation first launches `concorde-coordinator` with the
+entry Domain or Service.
 Main discovery can
 append only registered main-visible Domain/Service Target Spec and Shared Specs on demand; each append starts a fresh process with a
 new context identity. The host rejects Module expansion and code access. For Operations other than
@@ -64,8 +69,10 @@ or invalid final target state blocks mutation.
 Document membership changes require tasks for all retained current/candidate references. A shared
 replacement is admitted only when every candidate referencing target author returns identical bytes.
 
-Public `concorde-context` and `concorde-resolve-context` return only a redacted membership/digest
-manifest. Complete cognitive snapshots never cross the public Operation result boundary.
+No public Operation returns context manifests; the context Service is host-internal and
+`describe-policy` mode already previews the exact grants an Operation would receive without
+launching an agent or mutating project state. Complete cognitive snapshots never cross the public
+Operation result boundary.
 
 Authoring returns local document replacements; the host alone applies them. A single-target author
 cannot change a multiply referenced document. Planning runs a separate
@@ -100,8 +107,7 @@ private deterministic verification checkout, and merges only that verified resul
 checks and stale bytes preserve both the accepted primary revision and the candidate worktree.
 After the merge, it removes the secondary worktree, its state and temporary prompt injection. Primary
 `.concorde/deliveries/` receipts preserve commit identities and checks; a cleanup failure is resumable
-without a second merge. Local control files and managed prompt blocks are excluded from the Git tree. Checklist authoring
-creates acceptance criteria; taskstoissues produces local issue drafts without sending messages.
+without a second merge. Local control files and managed prompt blocks are excluded from the Git tree.
 
 ```concorde-contract
 {
@@ -171,14 +177,14 @@ summaries are frozen observations and their progress does not invalidate unrelat
 
 ## Independent review contract
 
-`concorde-review` requires task and review_mode=spec|code, with the usual optional target/focus,
-constraints and current-worktree change_id. New requests route through main; an existing change
-retains its explicit target selection. Spec mode uses the complete admitted Target Spec plus Shared
+`concorde-review` requires target_id, task and review_mode=spec|code, with the usual optional focus,
+constraints and current-worktree change_id. It is an internal stage Operation invoked with an
+already routed target by its composing global Operation or by another already-bound internal stage;
+it is never invoked directly with an unrouted task. Spec mode uses the complete admitted Target Spec plus Shared
 Specs, Protocol/kind rules, task and only that collection's Spec changes. Code mode uses those
 contracts, the target's exact current registered implementation-file enumeration and scoped code
 changes. Both roles have empty write grants, no network/credentials, fresh sessions, and empty
-predecessor input. Code review does not reuse implement's writable policy. `analyze` retains its
-existing task-context assessment responsibility.
+predecessor input. Code review does not reuse implement's writable policy.
 
 The host compares the candidate's current bytes, including uncommitted and untracked owned files,
 against this managed change's recorded base_commit; an unmanaged Git checkout uses its current HEAD.
@@ -292,8 +298,8 @@ the host relies on, independently of implementation imports.
   inputs. Implementation/code-review phases include only registered code ArtifactRefs.
   `recheck_context(repository, snapshot, *, check_implementation: bool=True) -> None` reconstructs
   current context and rejects changed membership, classification, bytes or worktree identity via
-  SpecError(code="stale_context"). `public_context_manifest(snapshot) -> dict` omits all bodies and
-  implementation locators. These APIs read but never write project sources or execute an agent.
+  SpecError(code="stale_context"). These APIs read but never write project sources or execute an
+  agent, and this Service is host-internal: no public Operation exposes its return values directly.
 - Permissions (`module.permissions`): `compile_policy(effects, binding, role_paths, *, deny_paths=(),
   outer_sandbox_required=False) -> NormalizedPolicy`, the Codex/Claude renderers, and
   `build_launch_specification(...) -> LaunchSpecification` have complete signatures and value types

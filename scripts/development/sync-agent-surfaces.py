@@ -22,6 +22,7 @@ from concorde.capabilities.skill_assets import (  # noqa: E402
     render_capabilities,
 )
 from concorde.capabilities.worktree import inspect_worktree  # noqa: E402
+from concorde.capabilities.protocol_contracts import PUBLIC_OPERATIONS  # noqa: E402
 
 
 SKILL_NAME = re.compile(r"^concorde-[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -50,9 +51,9 @@ def expected_outputs(root: Path) -> dict[str, bytes]:
     for integration in ("codex", "claude"):
         rendered = render_capabilities(root, integration, "")
         capability_roles = capability_projection_roles(root, integration, "")
-        if set(rendered) != set(capability_roles) or len(rendered) != 23:
+        if set(rendered) != set(capability_roles) or len(rendered) != len(PUBLIC_OPERATIONS):
             raise ValueError(
-                f"{integration} must expose exactly 23 public capabilities with owned roles"
+                f"{integration} must expose exactly {len(PUBLIC_OPERATIONS)} public capabilities with owned roles"
             )
         specialist = render_projection(root / "agent-assets/reflections", integration)
         specialist_roles = projection_roles(root / "agent-assets/reflections", integration)

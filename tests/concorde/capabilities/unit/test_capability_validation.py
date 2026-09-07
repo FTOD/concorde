@@ -161,7 +161,7 @@ class CapabilityValidationTests(unittest.TestCase):
                 for finding in findings
             ))
 
-    def test_internal_exposure_is_valid_only_for_leaf_skills(self):
+    def test_uncomposed_internal_operation_is_a_finding(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             write_capabilities(root)
@@ -172,6 +172,18 @@ class CapabilityValidationTests(unittest.TestCase):
             )
             rules = {finding.rule_id for finding in validate_capabilities(self.package(root))}
             self.assertIn("CONCORDE-CAPABILITY-EXPOSURE-001", rules)
+
+    def test_composed_internal_operation_is_valid(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            write_capabilities(root)
+            operation = root / "operations/concorde-inner/SKILL.md"
+            operation.write_text(
+                operation.read_text().replace("exposure: public", "exposure: internal"),
+                encoding="utf-8",
+            )
+            rules = {finding.rule_id for finding in validate_capabilities(self.package(root))}
+            self.assertNotIn("CONCORDE-CAPABILITY-EXPOSURE-001", rules)
 
     def test_policy_bindings_cover_each_capability_occurrence_exactly(self):
         with tempfile.TemporaryDirectory() as temporary:

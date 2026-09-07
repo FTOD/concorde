@@ -20,9 +20,11 @@ It seeds project-owned Reflection defaults and
 installation receipt and never overwritten on update.
 
 The distributable manifest is concorde.json schema 3, Concorde 4.0.0, Architecture Profile 8,
-Workspace Protocol 14 and Delivery Proposal 10. It contains exactly 9 internal Skills and 23 paired
-public Operations, explicit package roots including protocol, and 9 templates. Codex .agents/skills
-and Claude .claude/skills expose the same 23 wrappers; canonical internal roles stay private.
+Workspace Protocol 14 and Delivery Proposal 10. It contains exactly 9 internal Skills and 14
+Operations, of which 8 are public wrappers (global or lifecycle) and 6 are internal stages reachable
+only through a composing public Operation, explicit package roots including protocol, and 7
+templates. Codex .agents/skills and Claude .claude/skills expose the same 8 public wrappers;
+canonical internal roles and internal stage Operations stay private.
 Every wrapper sends typed invocation@2 to its paired executable and does not inspect project context.
 
 Owned content is hashed in the installation receipt. A local modification conflicts unless an
@@ -36,11 +38,10 @@ apply validates exact before-digests and target state. It pins the packaged glob
 definitions, configures integration/enforcement, and writes an explicit Domain stub with missing
 business requirements stated honestly. The stub declares document identity, target membership and
 main visibility. Configuration changes use concorde-configure with a typed
-configuration. Profile 7 is not agent-compatible; concorde-migrate requires authored Profile 8 registry
-and Markdown replacements with concorde-document declarations, rejects active attempts and rolls back invalid application.
+configuration. Profile 7 is not agent-compatible and has no migration Operation.
 
 Install/update cannot silently rewrite a consumer's Protocol binding. A package with changed Protocol
-assets requires the consumer's explicit migration/binding decision before execution. Templates and
+assets requires the consumer's explicit binding decision before execution. Templates and
 prompts enforce the same architectural principles for all consumer projects.
 
 ## feature.installation.self-distribute
@@ -59,7 +60,7 @@ python3 scripts/development/sync-agent-surfaces.py status --project-root . --for
 python3 scripts/development/sync-agent-surfaces.py check --project-root . --format json
 python3 scripts/development/sync-agent-surfaces.py apply --project-root . --format json
 python3 scripts/development/sync-agent-surfaces.py verify-worktree --project-root . \
-  --loaded-skill-path /absolute/runtime/path/to/.agents/skills/concorde-context/SKILL.md
+  --loaded-skill-path /absolute/runtime/path/to/.agents/skills/concorde-main/SKILL.md
 ```
 
 Every mode must execute the script belonging to the worktree named by `--project-root`; a checker/root
@@ -109,6 +110,6 @@ path succeeds.
 
 Select `module.package-assets` for manifest inventory, canonical Skill/Operation rendering and agent
 surface ownership. Select `module.managed-runtime` for managed Python or viewer provisioning. Select
-`service.spec-context` when the requested behavior is project initialization, migration or Protocol
+`service.spec-context` when the requested behavior is project initialization or Protocol
 binding rather than installation ownership. These IDs are sufficient to route Module work without
 expanding the Module targets.

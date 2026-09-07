@@ -147,11 +147,6 @@ class BoundaryTests(unittest.TestCase):
         task=self.change();self.run_op('concorde-tasks',task);self.run_op('concorde-implement',task);self.run_op('concorde-validate',task)
         (self.root/'acceptance.json').write_text('{"revision":2}')
         with self.assertRaisesRegex(SpecError,'stale'):self.completion(task)
-    def test_issue_drafts_are_local_exact_authored_tasks(self):
-        task=self.change();self.run_op('concorde-tasks',task);result=self.run_op('concorde-taskstoissues',task)
-        self.assertEqual('succeeded',result['status']);self.assertEqual([],self.double.calls)
-        artifact=result['output']['data']['artifacts'][0];issues=json.loads((self.root/artifact['path']).read_text())
-        self.assertEqual('task.transfer',issues['issues'][0]['task_id'])
     def test_atomic_replacements_rollback_after_failed_verification(self):
         original=(self.root/'specs/send-money.md').read_bytes()
         changes=[file_change(self.root,'specs/send-money.md','changed'),file_change(self.root,'new.md','new')]

@@ -122,31 +122,6 @@ def resolve_context(repository: SpecRepository, target_id: str, *, phase: str = 
     return ContextSnapshot(canonical({**manifest, "context_id": digest(manifest)}))
 
 
-def public_context_manifest(snapshot: ContextSnapshot) -> dict:
-    """Return reproducibility metadata without exposing cognitive document bodies."""
-
-    value = snapshot.value
-    return {
-        "schema_version": 1,
-        "context_id": value["context_id"],
-        "target_id": value["target_id"],
-        "kind": value["kind"],
-        "focus_id": value["focus_id"],
-        "phase": value["phase"],
-        "workspace": value["workspace"],
-        "protocol_binding": value["protocol_binding"],
-        "protocol": [{"path": item["path"], "digest": item["digest"]}
-                     for item in value["protocol"]],
-        "document_order": value["document_order"],
-        "target_spec": [{key: item[key] for key in
-                         ("document_id", "path", "digest", "targets", "main_visible")}
-                        for item in value["target_spec"]],
-        "shared_specs": [{key: item[key] for key in
-                          ("document_id", "path", "digest", "targets", "main_visible")}
-                         for item in value["shared_specs"]],
-    }
-
-
 def resolve_discovery_context(repository: SpecRepository, target_ids: tuple[str, ...], *,
                               operation: str, phase: str, task: str,
                               action: str = "route",

@@ -10,7 +10,8 @@
 
 This Domain concerns turning intended behavior into a completed, evidenced change. It includes
 Spec contexts, the Operation host, agent execution, permissions, reflection triage and file transactions.
-The Operation inventory in this collection is the complete public command vocabulary.
+The Operation inventory in this collection lists every Operation and its class (global, lifecycle or
+internal stage); only global and lifecycle Operations are public commands.
 
 ## Business entities and responsibility
 
